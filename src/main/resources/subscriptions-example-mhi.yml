@@ -1,0 +1,29 @@
+anshar:
+  subscriptions:
+    -
+      internalId: 400
+      vendor: CALR
+      name: Communauté d'Agglomérations de La Rochelle
+      datasetId: LRO
+      serviceType: SOAP
+      subscriptionType: SITUATION_EXCHANGE
+      subscriptionMode: REQUEST_RESPONSE
+      heartbeatIntervalSeconds: 10
+      updateIntervalSeconds: 10
+      operatorNamespace: http://www.siri.org.uk/siri
+      addressFieldName:
+      soapenvNamespace:
+      incrementalUpdates:
+      urlMap:
+        GET_SITUATION_EXCHANGE: https4://api.agglo-larochelle.fr/production/siri-yelo/capsiria/services/siri
+      version: 2.0
+      contentType: text/xml;charset=UTF-8
+      subscriptionId: anshar-example-${random.uuid}
+      requestorRef: ${random.uuid}
+      durationOfSubscriptionHours: 1680
+      mappingAdapterId: entur
+      filterPresets:
+      idMappingPrefixes:
+      restartTime: "01:30"
+      active: false
+      c8fe0972-f17c-43e3-adee-4c5d74a6a226

@@ -35,40 +35,25 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- versions for use in mvn plugins as we cannot inherit them from a BOM -->
-        <fabric8.version>2.3.7</fabric8.version>
         <docker.maven.plugin.version>0.21.0</docker.maven.plugin.version>
         <spring-boot-plugin.version>2.1.2.RELEASE</spring-boot-plugin.version>
         <spring-boot.version>2.1.2.RELEASE</spring-boot.version>
 
         <camel-version>2.23.0</camel-version>
 
-        <!-- Docker & Fabric8 Configs -->
-        <docker.from>eu.gcr.io/carbon-1287/openjdk11-base-image</docker.from>
-        <fabric8.dockerUser>carbon-1287/</fabric8.dockerUser>
-        <docker.image>eu.gcr.io/${fabric8.dockerUser}${project.artifactId}:${project.version}</docker.image>
+        <!-- Docker Configs -->
+        <docker.from>openjdk:11</docker.from>
+        <docker.image>registry.okina.fr/na/${project.artifactId}:${project.version}</docker.image>
         <docker.cleanup>none</docker.cleanup>
 
         <!-- Holding back activemq version as newest version no long support spring wired broker config-->
         <activemq.version>5.13.4</activemq.version>
 
-        <!-- fabric8.env.AB_JOLOKIA_AUTH_OPENSHIFT>true</fabric8.env.AB_JOLOKIA_AUTH_OPENSHIFT -->
-        <fabric8.label.component>${project.artifactId}</fabric8.label.component>
-        <fabric8.label.container>spring-boot</fabric8.label.container>
-        <fabric8.label.group>quickstarts</fabric8.label.group>
-        <fabric8.iconRef>camel</fabric8.iconRef>
-
         <metrics.version>3.2.3</metrics.version>
+
+        <janino.version>3.0.8</janino.version>
     </properties>
 
-    <!-- Repository needs to be set up in nexus: repositories>
-        <repository>
-            <id>jclouds-snapshots</id>
-            <url>https://repository.apache.org/content/repositories/snapshots</url>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </repository>
-    </repositories -->
 
     <dependencyManagement>
         <dependencies>
@@ -101,6 +86,7 @@
                         <groupId>javax.servlet</groupId>
                         <artifactId>servlet-api</artifactId>
                     </exclusion>
+
                     <exclusion>
                         <groupId>io.netty</groupId>
                         <artifactId>netty-codec-http2</artifactId>
@@ -353,6 +339,13 @@
             <version>3.1.0</version>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>org.codehaus.janino</groupId>
+            <artifactId>janino</artifactId>
+            <version>${janino.version}</version>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -403,15 +396,24 @@
                         <image>
                             <name>${docker.image}</name>
                             <build>
-                                <cleanup>${docker.cleanup}</cleanup>
+
+                                <!-- This is the same FROM used in a Dockerfile -->
                                 <from>${docker.from}</from>
+
+                                <!-- This is the same ENTRYPOINT used in a Dockerfile -->
+                                <entryPoint>
+                                    <exec>
+                                        <arg>java</arg>
+                                        <arg>-jar</arg>
+                                        <!-- /maven/ is the default dir that the plugin copies your artifact to -->
+                                        <arg>/maven/${project.artifactId}.${project.packaging}</arg>
+                                    </exec>
+                                </entryPoint>
+
                                 <assembly>
-                                    <basedir>/deployments</basedir>
+                                    <!-- This is a predefined assembly.xml that will only copy your final artifact to the Docker image -->
                                     <descriptorRef>artifact</descriptorRef>
                                 </assembly>
-                                <env>
-                                    <JAVA_APP_JAR>${project.build.finalName}.jar</JAVA_APP_JAR>
-                                </env>
                             </build>
                         </image>
                     </images>
@@ -446,39 +448,9 @@
   -->
     <profiles>
         <profile>
-            <id>rutebanken</id>
-            <properties>
-                <fabric8.imagePullPolicySnapshot>Always</fabric8.imagePullPolicySnapshot>
-                <fabric8.recreate>true</fabric8.recreate>
-            </properties>
+            <id>okina-docker-build</id>
             <build>
-                <!-- Missing fabric8:apply, as this crashed (probably due to missing fabric8) -->
-                <defaultGoal>clean install docker:build docker:push fabric8:json</defaultGoal>
-            </build>
-        </profile>
-        <profile>
-            <id>f8-build</id>
-            <build>
-                <defaultGoal>clean install docker:build fabric8:json</defaultGoal>
-            </build>
-        </profile>
-        <profile>
-            <id>f8-deploy</id>
-            <properties>
-                <fabric8.imagePullPolicySnapshot>Always</fabric8.imagePullPolicySnapshot>
-                <fabric8.recreate>true</fabric8.recreate>
-            </properties>
-            <build>
-                <defaultGoal>clean install docker:build docker:push fabric8:json fabric8:apply</defaultGoal>
-            </build>
-        </profile>
-        <profile>
-            <id>f8-local-deploy</id>
-            <properties>
-                <fabric8.recreate>true</fabric8.recreate>
-            </properties>
-            <build>
-                <defaultGoal>clean install docker:build fabric8:json fabric8:apply</defaultGoal>
+                <defaultGoal>clean install docker:build docker:push</defaultGoal>
             </build>
         </profile>
     </profiles>
