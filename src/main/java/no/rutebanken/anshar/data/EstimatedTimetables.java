@@ -17,7 +17,6 @@ package no.rutebanken.anshar.data;
 
 import com.hazelcast.core.IMap;
 import no.rutebanken.anshar.config.AnsharConfiguration;
-import no.rutebanken.anshar.metrics.MetricsService;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -30,7 +29,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
 import uk.org.siri.siri20.*;
 
-import java.math.BigInteger;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -71,9 +69,6 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
     private IMap<String, Instant> lastUpdateRequested;
 
     @Autowired
-    private MetricsService metricsService;
-
-    @Autowired
     private AnsharConfiguration configuration;
 
     @Autowired
@@ -101,6 +96,19 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
                         sizeMap.put(datasetId, count+1);
                     });
         logger.info("Calculating data-distribution (ET) took {} ms: {}", (System.currentTimeMillis()-t1), sizeMap);
+        return sizeMap;
+    }
+
+    public Map<String, Integer> getLocalDatasetSize() {
+        Map<String, Integer> sizeMap = new HashMap<>();
+        long t1 = System.currentTimeMillis();
+        timetableDeliveries.localKeySet().forEach(key -> {
+                        String datasetId = key.substring(0, key.indexOf(":"));
+
+                        Integer count = sizeMap.getOrDefault(datasetId, 0);
+                        sizeMap.put(datasetId, count+1);
+                    });
+        logger.debug("Calculating local data-distribution (ET) took {} ms: {}", (System.currentTimeMillis()-t1), sizeMap);
         return sizeMap;
     }
 
@@ -291,7 +299,7 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
             }
             if (estimatedVehicleJourney.isCancellation() != null && estimatedVehicleJourney.isCancellation()) {
                 if (vehicleRef != null) {
-                    logger.info("Cancellation:  Operator {}, vehicleRef [{}], Cancelled journey", estimatedVehicleJourney.getDataSource(), vehicleRef);
+                    logger.info("Cancellation:  Operator {}, vehicleRef {}, Cancelled journey", estimatedVehicleJourney.getDataSource(), vehicleRef);
                 }
                 return true;
             }
@@ -309,7 +317,7 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
                 }
                 boolean hasCancelledStops = !stopPointRefs.isEmpty();
                 if (hasCancelledStops && vehicleRef != null) {
-                    logger.info("Cancellation:  Operator {}, vehicleRef [{}], stopPointRefs {}", estimatedVehicleJourney.getDataSource(), vehicleRef, stopPointRefs);
+                    logger.info("Cancellation:  Operator {}, vehicleRef {}, stopPointRefs {}", estimatedVehicleJourney.getDataSource(), vehicleRef, stopPointRefs);
                 }
                 return hasCancelledStops;
             }
@@ -604,7 +612,7 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
         });
 
         logger.info("Updated {} (of {}), {} outdated, {} without changes", changes.size(), etList.size(), outdatedCounter.getValue(), notUpdatedCounter.getValue());
-        metricsService.registerIncomingData(SiriDataType.ESTIMATED_TIMETABLE, datasetId, (id) -> getDatasetSize(id));
+//        metricsService.registerIncomingData(SiriDataType.ESTIMATED_TIMETABLE, datasetId, (id) -> getDatasetSize(id));
 
         changesMap.keySet().forEach(requestor -> {
             if (lastUpdateRequested.get(requestor) != null) {

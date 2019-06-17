@@ -16,6 +16,7 @@
 package no.rutebanken.anshar.routes.health;
 
 import com.hazelcast.core.ISet;
+import no.rutebanken.anshar.metrics.PrometheusMetricsServiceImpl;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import org.apache.camel.Exchange;
@@ -79,6 +80,9 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
     @Autowired
     private SubscriptionManager subscriptionManager;
 
+    @Autowired
+    private PrometheusMetricsServiceImpl prometheusRegistry;
+
     public static boolean triggerRestart;
 
     @PostConstruct
@@ -92,6 +96,7 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
         super.configure();
 
         rest("").tag("health")
+                .get("/scrape").to("direct:scrape")
                 .get("/ready").to("direct:ready")
                 .get("/up").to("direct:up")
                 .get("/healthy").to("direct:healthy")
@@ -103,6 +108,18 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
         from("direct:notfound")
                 .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("404"))
                 .routeId("health.notfound")
+        ;
+
+        // Application is ready to accept traffic
+        from("direct:scrape")
+                .process(p -> {
+                    if (prometheusRegistry != null) {
+                        p.getOut().setBody(prometheusRegistry.scrape());
+                    }
+                })
+                .setHeader(Exchange.CONTENT_TYPE, constant("text/plain"))
+                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("200"))
+                .routeId("health.scrape")
         ;
 
         // Application is ready to accept traffic
