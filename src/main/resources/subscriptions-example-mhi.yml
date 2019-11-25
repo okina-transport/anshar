@@ -26,4 +26,6 @@ anshar:
       idMappingPrefixes:
       restartTime: "01:30"
       active: false
-      c8fe0972-f17c-43e3-adee-4c5d74a6a226
+      customHeaders:
+        X-Cda-Lr-Api-Key: c8fe0972-f17c-43e3-adee-4c5d74a6a226
+        SOAPAction: GetSituationExchange
