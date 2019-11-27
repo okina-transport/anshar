@@ -1,0 +1,32 @@
+anshar:
+  subscriptions:
+    -
+      internalId: 400
+      vendor: CALR
+      name: Kolumbus
+      datasetId: LRO
+      serviceType: SOAP
+      subscriptionType: SITUATION_EXCHANGE
+      subscriptionMode: REQUEST_RESPONSE
+      heartbeatIntervalSeconds: 200
+      updateIntervalSeconds: 10
+      operatorNamespace: http://www.siri.org.uk/siri
+      addressFieldName:
+      soapenvNamespace:
+      incrementalUpdates:
+      urlMap:
+        GET_SITUATION_EXCHANGE: sis.kolumbus.no:90/SXWS/SXService.svc
+      version: 1.4
+      contentType: text/xml;charset=UTF-8
+      subscriptionId: kolumbus-example-${random.uuid}
+      requestorRef: ${random.uuid}
+      durationOfSubscriptionHours: 1680
+#      mappingAdapterId: kolumbus
+      mappingAdapterId: entur
+      filterPresets:
+      idMappingPrefixes:
+      restartTime: "01:30"
+      active: true
+      customHeaders:
+        X-Cda-Lr-Api-Key: c8fe0972-f17c-43e3-adee-4c5d74a6a226
+        SOAPAction: GetSituationExchange
