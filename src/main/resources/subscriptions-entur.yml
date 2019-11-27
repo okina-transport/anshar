@@ -1,0 +1,32 @@
+anshar:
+  subscriptions:
+    -
+      internalId: 400
+      vendor: CALR
+      name: Entur
+      datasetId: RUT
+      serviceType: REST
+      subscriptionType: SITUATION_EXCHANGE
+      subscriptionMode: REQUEST_RESPONSE
+      heartbeatIntervalSeconds: 200
+      updateIntervalSeconds: 10
+      operatorNamespace: http://www.siri.org.uk/siri
+      addressFieldName:
+      incrementalUpdates:
+      urlMap:
+        GET_SITUATION_EXCHANGE: https4://api.entur.io/realtime/v1/rest/sx
+      version: 2.0
+      contentType: text/xml;charset=UTF-8
+      subscriptionId: entur-example-${random.uuid}
+      requestorRef: ${random.uuid}
+      durationOfSubscriptionHours: 1680
+      mappingAdapterId: entur
+      filterPresets:
+      idMappingPrefixes:
+      restartTime: "01:30"
+      active: true
+      customHeaders:
+        # track requests as emitted by same requestor to return only data deltas from one request to another (see https://developer.entur.org/pages-real-time-api)
+        requestorId: 757c9284-0f12-4a46-a557-33a19e80119bEEEEE
+        # limit number of results
+        maxSize: 2
