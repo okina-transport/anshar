@@ -28,13 +28,13 @@ import java.util.Set;
 public class OutboundSubscriptionSetup implements Serializable {
 
     private ZonedDateTime requestTimestamp;
-    private final SiriDataType subscriptionType;
-    private final String address;
+    private SiriDataType subscriptionType;
+    private String address;
     private long heartbeatInterval;
     private int timeToLive;
     private Map<Class, Set<String>> filterMap;
-    private final List<ValueAdapter> valueAdapters;
-    private final String subscriptionId;
+    private List<ValueAdapter> valueAdapters;
+    private String subscriptionId;
     private String requestorRef;
     private ZonedDateTime initialTerminationTime;
     private String datasetId;
@@ -64,6 +64,10 @@ public class OutboundSubscriptionSetup implements Serializable {
         this.timeToLive = timeToLive;
         this.valueAdapters = outboundAdapters;
         this.subscriptionId = subscriptionId;
+    }
+
+    public OutboundSubscriptionSetup() {
+
     }
 
     public String createRouteId() {
@@ -124,5 +128,57 @@ public class OutboundSubscriptionSetup implements Serializable {
 
     public String toString() {
         return MessageFormat.format("[subscriptionId={0}, clientTrackingName={1}, requestorRef={2}, address={3}]", subscriptionId, clientTrackingName, requestorRef, address);
+    }
+
+    public void setSubscriptionType(SiriDataType subscriptionType) {
+        this.subscriptionType = subscriptionType;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public void setHeartbeatInterval(long heartbeatInterval) {
+        this.heartbeatInterval = heartbeatInterval;
+    }
+
+    public void setTimeToLive(int timeToLive) {
+        this.timeToLive = timeToLive;
+    }
+
+    public void setFilterMap(Map<Class, Set<String>> filterMap) {
+        this.filterMap = filterMap;
+    }
+
+    public void setValueAdapters(List<ValueAdapter> valueAdapters) {
+        this.valueAdapters = valueAdapters;
+    }
+
+    public void setSubscriptionId(String subscriptionId) {
+        this.subscriptionId = subscriptionId;
+    }
+
+    public void setRequestorRef(String requestorRef) {
+        this.requestorRef = requestorRef;
+    }
+
+    public void setInitialTerminationTime(ZonedDateTime initialTerminationTime) {
+        this.initialTerminationTime = initialTerminationTime;
+    }
+
+    public void setDatasetId(String datasetId) {
+        this.datasetId = datasetId;
+    }
+
+    public void setClientTrackingName(String clientTrackingName) {
+        this.clientTrackingName = clientTrackingName;
+    }
+
+    public void setChangeBeforeUpdates(long changeBeforeUpdates) {
+        this.changeBeforeUpdates = changeBeforeUpdates;
+    }
+
+    public void setRequestTimestamp(ZonedDateTime requestTimestamp) {
+        this.requestTimestamp = requestTimestamp;
     }
 }

@@ -18,6 +18,7 @@ package no.rutebanken.anshar.routes.outbound;
 import com.hazelcast.core.IMap;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
+import no.rutebanken.anshar.subscription.OutboundSubscriptionConfig;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import org.json.simple.JSONArray;
@@ -61,6 +62,9 @@ import static java.time.temporal.ChronoUnit.MILLIS;
 public class ServerSubscriptionManager extends CamelRouteManager {
 
     private final Logger logger = LoggerFactory.getLogger(ServerSubscriptionManager.class);
+
+    @Autowired
+    private OutboundSubscriptionConfig outboundSubscriptionConfig;
 
     @Autowired
     IMap<String, OutboundSubscriptionSetup> subscriptions;
@@ -114,6 +118,12 @@ public class ServerSubscriptionManager extends CamelRouteManager {
         activeMQ_VM = createActiveMQSubscription(SiriDataType.VEHICLE_MONITORING, "activemq.internal.subscription.vm");
         activeMQ_ET = createActiveMQSubscription(SiriDataType.ESTIMATED_TIMETABLE, "activemq.internal.subscription.et");
         activeMQ_PT = createActiveMQSubscription(SiriDataType.PRODUCTION_TIMETABLE, "activemq.internal.subscription.pt");
+
+        if (this.outboundSubscriptionConfig.getOutboundSubscriptions() != null) {
+            this.outboundSubscriptionConfig.getOutboundSubscriptions().forEach(outSub -> {
+                this.addSubscription(outSub);
+            });
+        }
     }
 
     private OutboundSubscriptionSetup createActiveMQSubscription(SiriDataType type, String subscriptionId) {

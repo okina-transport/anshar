@@ -1,0 +1,12 @@
+anshar:
+  outboundSubscriptions:
+    -
+      clientTrackingName: Okina
+      datasetId: RUT
+      subscriptionType: SITUATION_EXCHANGE
+      heartbeatInterval: 300
+      address: http://localhost:1234/incoming
+      subscriptionId: okina-outbound-subscription-${random.uuid}
+      requestorRef: okina-${random.uuid}
+      timeToLive: 2000000
+
