@@ -15,7 +15,7 @@
 
 package no.rutebanken.anshar.metrics;
 
-import com.hazelcast.core.ReplicatedMap;
+import com.hazelcast.replicatedmap.ReplicatedMap;
 import io.micrometer.core.instrument.ImmutableTag;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Tag;
@@ -25,11 +25,11 @@ import no.rutebanken.anshar.data.EstimatedTimetables;
 import no.rutebanken.anshar.data.Situations;
 import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
+import no.rutebanken.anshar.routes.siri.transformer.MappingNames;
+import no.rutebanken.anshar.routes.validation.ValidationType;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
@@ -39,7 +39,6 @@ import uk.org.siri.siri20.SituationExchangeDeliveryStructure;
 import uk.org.siri.siri20.VehicleMonitoringDeliveryStructure;
 
 import javax.annotation.PreDestroy;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -47,39 +46,62 @@ import java.util.Map;
 
 @Component
 public class PrometheusMetricsService extends PrometheusMeterRegistry {
-    private static final Logger logger = LoggerFactory.getLogger(PrometheusMetricsService.class);
 
-    private final String METRICS_PREFIX = "app.anshar.";
+    private static final String DATATYPE_TAG_NAME = "dataType";
+    private static final String AGENCY_TAG_NAME = "agency";
+    private static final String MAPPING_NAME_TAG = "mappingName";
+
+    private static final String CODESPACE_TAG_NAME = "codespace";
+    private static final String VALIDATION_TYPE_TAG_NAME = "validationType";
+    private static final String VALIDATION_RULE_TAG_NAME = "category";
+    private static final String SCHEMA_VALID_TAG_NAME = "schema";
+    private static final String PROFILE_VALID_TAG_NAME = "profile";
 
     @Autowired
     protected SubscriptionManager manager;
 
-    private final String DATA_COUNTER_NAME = METRICS_PREFIX + "data";
-    private final String DATA_TOTAL_COUNTER_NAME = METRICS_PREFIX + "data.total";
-    private final String DATA_SUCCESS_COUNTER_NAME = METRICS_PREFIX + "data.success";
-    private final String DATA_EXPIRED_COUNTER_NAME = METRICS_PREFIX + "data.expired";
-    private final String DATA_IGNORED_COUNTER_NAME = METRICS_PREFIX + "data.ignored";
-    private final String DATA_OUTBOUND_COUNTER_NAME = METRICS_PREFIX + "data.outbound";
+    private static final String METRICS_PREFIX = "app.anshar.";
+    private static final String DATA_COUNTER_NAME = METRICS_PREFIX + "data";
+    private static final String DATA_TOTAL_COUNTER_NAME = METRICS_PREFIX + "data.total";
+    private static final String DATA_SUCCESS_COUNTER_NAME = METRICS_PREFIX + "data.success";
+    private static final String DATA_EXPIRED_COUNTER_NAME = METRICS_PREFIX + "data.expired";
+    private static final String DATA_IGNORED_COUNTER_NAME = METRICS_PREFIX + "data.ignored";
+    private static final String DATA_OUTBOUND_COUNTER_NAME = METRICS_PREFIX + "data.outbound";
+
+    private static final String DATA_MAPPING_COUNTER_NAME = METRICS_PREFIX + "data.mapping";
+
+    private static final String DATA_VALIDATION_COUNTER = METRICS_PREFIX + "data.validation";
+    private static final String DATA_VALIDATION_RESULT_COUNTER = METRICS_PREFIX + "data.validation.result";
 
     public PrometheusMetricsService() {
         super(PrometheusConfig.DEFAULT);
     }
 
     @PreDestroy
-    public void shutdown() throws IOException {
+    public void shutdown() {
         this.close();
     }
 
     public void registerIncomingData(SiriDataType dataType, String agencyId, long total, long updated, long expired, long ignored) {
 
         List<Tag> counterTags = new ArrayList<>();
-        counterTags.add(new ImmutableTag("dataType", dataType.name()));
-        counterTags.add(new ImmutableTag("agency", agencyId));
+        counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType.name()));
+        counterTags.add(new ImmutableTag(AGENCY_TAG_NAME, agencyId));
 
         counter(DATA_TOTAL_COUNTER_NAME,   counterTags).increment(total);
         counter(DATA_SUCCESS_COUNTER_NAME, counterTags).increment(updated);
         counter(DATA_EXPIRED_COUNTER_NAME, counterTags).increment(expired);
         counter(DATA_IGNORED_COUNTER_NAME, counterTags).increment(ignored);
+    }
+
+    public void registerDataMapping(SiriDataType dataType, String agencyId, MappingNames mappingName, int mappedCount) {
+
+        List<Tag> counterTags = new ArrayList<>();
+        counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType.name()));
+        counterTags.add(new ImmutableTag(AGENCY_TAG_NAME, agencyId));
+        counterTags.add(new ImmutableTag(MAPPING_NAME_TAG, mappingName.toString()));
+
+        counter(DATA_MAPPING_COUNTER_NAME, counterTags).increment(mappedCount);
     }
 
     public void countOutgoingData(Siri siri, SubscriptionSetup.SubscriptionMode mode) {
@@ -113,15 +135,39 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
                     count = deliveryStructure.getSituations().getPtSituationElements().size();
                 }
             }
+            countOutgoingData(dataType, mode, count);
         }
 
-        countOutgoingData(dataType, mode, count);
+    }
+
+    public void addValidationMetrics(
+        SiriDataType dataType, String codespaceId, ValidationType validationType, String message, Integer count
+    ) {
+        List<Tag> counterTags = new ArrayList<>();
+        counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType.name()));
+        counterTags.add(new ImmutableTag(CODESPACE_TAG_NAME, codespaceId));
+        counterTags.add(new ImmutableTag(VALIDATION_TYPE_TAG_NAME, validationType.name()));
+        counterTags.add(new ImmutableTag(VALIDATION_RULE_TAG_NAME, message));
+
+        counter(DATA_VALIDATION_COUNTER, counterTags).increment(count);
+    }
+
+    public void addValidationResult(
+        SiriDataType dataType, String codespaceId, boolean schemaValid, boolean profileValid
+    ) {
+        List<Tag> counterTags = new ArrayList<>();
+        counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType.name()));
+        counterTags.add(new ImmutableTag(CODESPACE_TAG_NAME, codespaceId));
+        counterTags.add(new ImmutableTag(SCHEMA_VALID_TAG_NAME, ""+schemaValid));
+        counterTags.add(new ImmutableTag(PROFILE_VALID_TAG_NAME, ""+profileValid));
+
+        counter(DATA_VALIDATION_RESULT_COUNTER, counterTags).increment();
     }
 
     private void countOutgoingData(SiriDataType dataType, SubscriptionSetup.SubscriptionMode mode, long objectCount) {
         if (dataType != null && objectCount > 0) {
             List<Tag> counterTags = new ArrayList<>();
-            counterTags.add(new ImmutableTag("dataType", dataType.name()));
+            counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType.name()));
             counterTags.add(new ImmutableTag("mode", mode.name()));
 
             counter(DATA_OUTBOUND_COUNTER_NAME, counterTags).increment(objectCount);
@@ -133,8 +179,8 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
     public void gaugeDataset(SiriDataType subscriptionType, String agencyId, Integer count) {
 
         List<Tag> counterTags = new ArrayList<>();
-        counterTags.add(new ImmutableTag("dataType", subscriptionType.name()));
-        counterTags.add(new ImmutableTag("agency", agencyId));
+        counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, subscriptionType.name()));
+        counterTags.add(new ImmutableTag(AGENCY_TAG_NAME, agencyId));
 
         String key = "" + subscriptionType + agencyId;
         gaugeValues.put(key, count);
@@ -158,23 +204,22 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
 
         EstimatedTimetables estimatedTimetables = ApplicationContextHolder.getContext().getBean(EstimatedTimetables.class);
         Map<String, Integer> datasetSize = estimatedTimetables.getLocalDatasetSize();
-        for (String codespaceId : datasetSize.keySet()) {
-            gaugeDataset(SiriDataType.ESTIMATED_TIMETABLE, codespaceId, datasetSize.get(codespaceId));
+        for (Map.Entry<String, Integer> entry : datasetSize.entrySet()) {
+            gaugeDataset(SiriDataType.ESTIMATED_TIMETABLE, entry.getKey(), entry.getValue());
         }
 
         Situations situations = ApplicationContextHolder.getContext().getBean(Situations.class);
         datasetSize = situations.getLocalDatasetSize();
-        for (String codespaceId : datasetSize.keySet()) {
-            gaugeDataset(SiriDataType.SITUATION_EXCHANGE, codespaceId, datasetSize.get(codespaceId));
+        for (Map.Entry<String, Integer> entry : datasetSize.entrySet()) {
+            gaugeDataset(SiriDataType.SITUATION_EXCHANGE, entry.getKey(), entry.getValue());
         }
 
         VehicleActivities vehicleActivities = ApplicationContextHolder.getContext().getBean(VehicleActivities.class);
         datasetSize = vehicleActivities.getLocalDatasetSize();
-        for (String codespaceId : datasetSize.keySet()) {
-            gaugeDataset(SiriDataType.VEHICLE_MONITORING, codespaceId, datasetSize.get(codespaceId));
+        for (Map.Entry<String, Integer> entry : datasetSize.entrySet()) {
+            gaugeDataset(SiriDataType.VEHICLE_MONITORING, entry.getKey(), entry.getValue());
         }
 
-        long t1 = System.currentTimeMillis();
         ReplicatedMap<String, SubscriptionSetup> subscriptions = manager.subscriptions;
         for (SubscriptionSetup subscription : subscriptions.values()) {
 
@@ -187,8 +232,8 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
 
 
             List<Tag> counterTags = new ArrayList<>();
-            counterTags.add(new ImmutableTag("dataType", subscriptionType.name()));
-            counterTags.add(new ImmutableTag("agency", subscription.getDatasetId()));
+            counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, subscriptionType.name()));
+            counterTags.add(new ImmutableTag(AGENCY_TAG_NAME, subscription.getDatasetId()));
             counterTags.add(new ImmutableTag("vendor", subscription.getVendor()));
 
 

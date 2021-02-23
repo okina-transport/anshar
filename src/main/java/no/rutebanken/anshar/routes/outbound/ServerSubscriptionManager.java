@@ -15,15 +15,18 @@
 
 package no.rutebanken.anshar.routes.outbound;
 
-import com.hazelcast.core.IMap;
+import com.hazelcast.map.IMap;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
+import org.apache.camel.Produce;
+import org.apache.camel.ProducerTemplate;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,7 +43,6 @@ import uk.org.siri.siri20.SubscriptionRequest;
 import uk.org.siri.siri20.VehicleActivityStructure;
 import uk.org.siri.siri20.VehicleMonitoringSubscriptionStructure;
 
-import javax.annotation.PostConstruct;
 import javax.xml.datatype.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -58,7 +60,7 @@ import static java.time.temporal.ChronoUnit.MILLIS;
 @SuppressWarnings("unchecked")
 @Service
 @Configuration
-public class ServerSubscriptionManager extends CamelRouteManager {
+public class ServerSubscriptionManager {
 
     private final Logger logger = LoggerFactory.getLogger(ServerSubscriptionManager.class);
 
@@ -66,21 +68,21 @@ public class ServerSubscriptionManager extends CamelRouteManager {
     IMap<String, OutboundSubscriptionSetup> subscriptions;
 
     @Autowired
-    @Qualifier("getLockMap")
-    private IMap<String, Instant> lockMap;
-
-    @Autowired
     @Qualifier("getFailTrackerMap")
     private IMap<String, Instant> failTrackerMap;
 
     @Autowired
-    private SiriObjectFactory siriObjectFactory;
+    @Qualifier("getHeartbeatTimestampMap")
+    private IMap<String, Instant> heartbeatTimestampMap;
 
     @Autowired
-    private MappingAdapterPresets mappingAdapterPresets;
+    private SiriObjectFactory siriObjectFactory;
 
     @Value("${anshar.outbound.heartbeatinterval.minimum}")
-    private long minimumHeartbeatInterval = 60000;
+    private long minimumHeartbeatInterval = 10000;
+
+    @Value("${anshar.outbound.heartbeatinterval.maximum}")
+    private long maximumHeartbeatInterval = 300000;
 
     @Value("${anshar.outbound.error.consumeraddress}")
     private String errorConsumerAddressMissing = "Error";
@@ -88,42 +90,23 @@ public class ServerSubscriptionManager extends CamelRouteManager {
     @Value("${anshar.outbound.error.initialtermination}")
     private String initialTerminationTimePassed = "Error";
 
-    @Value("${anshar.outbound.activemq.topic.prefix}")
-    private String activeMqTopicPrefix;
+    @Value("${anshar.outbound.pubsub.topic.enabled}")
+    private boolean pushToTopicEnabled;
 
-    @Value("${anshar.outbound.activemq.topic.timeToLive.millisec}")
-    private int activeMqTopicTimeToLive = 30000;
+    @Produce(uri = "direct:send.to.pubsub.topic.estimated_timetable")
+    protected ProducerTemplate siriEtTopicProducer;
 
-    @Value("${anshar.outbound.activemq.topic.id.mapping.policy}")
-    private OutboundIdMappingPolicy outboundIdMappingPolicy;
+    @Produce(uri = "direct:send.to.pubsub.topic.vehicle_monitoring")
+    protected ProducerTemplate siriVmTopicProducer;
 
-    @Value("${anshar.outbound.activemq.topic.enabled}")
-    private boolean activeMqTopicEnabled;
+    @Produce(uri = "direct:send.to.pubsub.topic.situation_exchange")
+    protected ProducerTemplate siriSxTopicProducer;
+
+    @Autowired
+    private CamelRouteManager camelRouteManager;
 
     @Autowired
     private SiriHelper siriHelper;
-
-    private OutboundSubscriptionSetup activeMQ_SX;
-    private OutboundSubscriptionSetup activeMQ_VM;
-    private OutboundSubscriptionSetup activeMQ_ET;
-    private OutboundSubscriptionSetup activeMQ_PT;
-
-    @PostConstruct
-    private void initializeActiveMqProducers() {
-        activeMQ_SX = createActiveMQSubscription(SiriDataType.SITUATION_EXCHANGE, "activemq.internal.subscription.sx");
-        activeMQ_VM = createActiveMQSubscription(SiriDataType.VEHICLE_MONITORING, "activemq.internal.subscription.vm");
-        activeMQ_ET = createActiveMQSubscription(SiriDataType.ESTIMATED_TIMETABLE, "activemq.internal.subscription.et");
-        activeMQ_PT = createActiveMQSubscription(SiriDataType.PRODUCTION_TIMETABLE, "activemq.internal.subscription.pt");
-    }
-
-    private OutboundSubscriptionSetup createActiveMQSubscription(SiriDataType type, String subscriptionId) {
-        return new OutboundSubscriptionSetup(
-                type,
-                activeMqTopicPrefix + type.name().toLowerCase(),
-                activeMqTopicTimeToLive,
-                mappingAdapterPresets.getOutboundAdapters(outboundIdMappingPolicy),
-                subscriptionId);
-    }
 
 
     public Collection getSubscriptions() {
@@ -172,9 +155,18 @@ public class ServerSubscriptionManager extends CamelRouteManager {
             errorText = initialTerminationTimePassed;
         }
 
+        if (subscriptions.containsKey(subscription.getSubscriptionId())) {
+
+            final OutboundSubscriptionSetup subscriptionSetup = subscriptions.get(subscription.getSubscriptionId());
+
+            if (subscription.getSubscriptionType() != subscriptionSetup.getSubscriptionType()) {
+                hasError = true;
+                errorText = "A different subscription with id=" + subscription.getSubscriptionId() + " already exists";
+            }
+        }
+
         if (hasError) {
-            Siri subscriptionResponse = siriObjectFactory.createSubscriptionResponse(subscription.getSubscriptionId(), false, errorText);
-            return subscriptionResponse;
+            return siriObjectFactory.createSubscriptionResponse(subscription.getSubscriptionId(), false, errorText);
         } else {
             addSubscription(subscription);
 
@@ -184,8 +176,8 @@ public class ServerSubscriptionManager extends CamelRouteManager {
             Siri delivery = siriHelper.findInitialDeliveryData(subscription);
 
             if (delivery != null) {
-                logger.info("Sending initial delivery to " + subscription.getAddress());
-                pushSiriData(delivery, subscription);
+                logger.info("Sending initial delivery to {}", subscription.getAddress());
+                camelRouteManager.pushSiriData(delivery, subscription, this);
             }
             return subscriptionResponse;
         }
@@ -202,7 +194,7 @@ public class ServerSubscriptionManager extends CamelRouteManager {
                 getHeartbeatInterval(subscriptionRequest),
                 getChangeBeforeUpdates(subscriptionRequest),
                 siriHelper.getFilter(subscriptionRequest),
-                mappingAdapterPresets.getOutboundAdapters(outboundIdMappingPolicy),
+                MappingAdapterPresets.getOutboundAdapters(outboundIdMappingPolicy),
                 findSubscriptionIdentifier(subscriptionRequest),
                 subscriptionRequest.getRequestorRef().getValue(),
                 findInitialTerminationTime(subscriptionRequest),
@@ -211,14 +203,18 @@ public class ServerSubscriptionManager extends CamelRouteManager {
                 );
     }
 
-    private long getHeartbeatInterval(SubscriptionRequest subscriptionRequest) {
+    // public for unittest
+    public long getHeartbeatInterval(SubscriptionRequest subscriptionRequest) {
         long heartbeatInterval = 0;
         if (subscriptionRequest.getSubscriptionContext() != null &&
                 subscriptionRequest.getSubscriptionContext().getHeartbeatInterval() != null) {
             Duration interval = subscriptionRequest.getSubscriptionContext().getHeartbeatInterval();
             heartbeatInterval = interval.getTimeInMillis(new Date(0));
         }
-        return Math.max(heartbeatInterval, minimumHeartbeatInterval);
+        heartbeatInterval = Math.max(heartbeatInterval, minimumHeartbeatInterval);
+        heartbeatInterval = Math.min(heartbeatInterval, maximumHeartbeatInterval);
+
+        return heartbeatInterval;
     }
 
     private SiriDataType getSubscriptionType(SubscriptionRequest subscriptionRequest) {
@@ -228,24 +224,20 @@ public class ServerSubscriptionManager extends CamelRouteManager {
             return SiriDataType.VEHICLE_MONITORING;
         } else if (SiriHelper.containsValues(subscriptionRequest.getEstimatedTimetableSubscriptionRequests())) {
             return SiriDataType.ESTIMATED_TIMETABLE;
-        } else if (SiriHelper.containsValues(subscriptionRequest.getProductionTimetableSubscriptionRequests())) {
-            return SiriDataType.PRODUCTION_TIMETABLE;
         }
         return null;
     }
 
-    private long getChangeBeforeUpdates(SubscriptionRequest subscriptionRequest) {
+    private int getChangeBeforeUpdates(SubscriptionRequest subscriptionRequest) {
         if (SiriHelper.containsValues(subscriptionRequest.getVehicleMonitoringSubscriptionRequests())) {
             return getMilliSeconds(subscriptionRequest.getVehicleMonitoringSubscriptionRequests().get(0).getChangeBeforeUpdates());
         } else if (SiriHelper.containsValues(subscriptionRequest.getEstimatedTimetableSubscriptionRequests())) {
-            return getMilliSeconds(subscriptionRequest.getEstimatedTimetableSubscriptionRequests().get(0).getChangeBeforeUpdates());
-        } else if (SiriHelper.containsValues(subscriptionRequest.getProductionTimetableSubscriptionRequests())) {
             return getMilliSeconds(subscriptionRequest.getEstimatedTimetableSubscriptionRequests().get(0).getChangeBeforeUpdates());
         }
         return 0;
     }
 
-    private long getMilliSeconds(Duration changeBeforeUpdates) {
+    private int getMilliSeconds(Duration changeBeforeUpdates) {
         if (changeBeforeUpdates != null) {
             return changeBeforeUpdates.getSeconds()*1000;
         }
@@ -259,6 +251,7 @@ public class ServerSubscriptionManager extends CamelRouteManager {
     private OutboundSubscriptionSetup removeSubscription(String subscriptionId) {
         logger.info("Removing subscription {}", subscriptionId);
         failTrackerMap.delete(subscriptionId);
+        heartbeatTimestampMap.remove(subscriptionId);
         return subscriptions.remove(subscriptionId);
     }
 
@@ -315,7 +308,7 @@ public class ServerSubscriptionManager extends CamelRouteManager {
             Siri terminateSubscriptionResponse = siriObjectFactory.createTerminateSubscriptionResponse(subscriptionRef);
             logger.info("Sending TerminateSubscriptionResponse to {}", subscriptionRequest.getAddress());
 
-            pushSiriData(terminateSubscriptionResponse, subscriptionRequest);
+            camelRouteManager.pushSiriData(terminateSubscriptionResponse, subscriptionRequest, this);
         } else {
             logger.trace("Got TerminateSubscriptionRequest for non-existing subscription");
         }
@@ -327,83 +320,101 @@ public class ServerSubscriptionManager extends CamelRouteManager {
 
 
     public void pushUpdatesAsync(SiriDataType datatype, List updates, String datasetId) {
+
+        final String breadcrumbId = MDC.get("camel.breadcrumbId");
+
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         switch (datatype) {
             case ESTIMATED_TIMETABLE:
-                executorService.submit(() -> pushUpdatedEstimatedTimetables(updates, datasetId));
+                executorService.submit(() -> pushUpdatedEstimatedTimetables(updates, datasetId, breadcrumbId));
                 break;
             case SITUATION_EXCHANGE:
-                executorService.submit(() -> pushUpdatedSituations(updates, datasetId));
+                executorService.submit(() -> pushUpdatedSituations(updates, datasetId, breadcrumbId));
                 break;
             case VEHICLE_MONITORING:
-                executorService.submit(() -> pushUpdatedVehicleActivities(updates, datasetId));
+                executorService.submit(() -> pushUpdatedVehicleActivities(updates, datasetId, breadcrumbId));
+                break;
+            default:
+                // Ignore
                 break;
         }
     }
 
-    private void pushUpdatedVehicleActivities(List<VehicleActivityStructure> addedOrUpdated, String datasetId) {
+    private void pushUpdatedVehicleActivities(
+        List<VehicleActivityStructure> addedOrUpdated, String datasetId, String breadcrumbId
+    ) {
+        MDC.put("camel.breadcrumbId", breadcrumbId);
 
         if (addedOrUpdated == null || addedOrUpdated.isEmpty()) {
             return;
         }
         Siri delivery = siriObjectFactory.createVMServiceDelivery(addedOrUpdated);
 
-        if (activeMqTopicEnabled) {
-            pushSiriData(delivery, activeMQ_VM);
+        if (pushToTopicEnabled) {
+            siriVmTopicProducer.asyncSendBody(siriVmTopicProducer.getDefaultEndpoint(), delivery);
         }
 
         subscriptions.values().stream().filter(subscriptionRequest ->
-                        ( subscriptionRequest.getSubscriptionType().equals(SiriDataType.VEHICLE_MONITORING) &
+                        ( subscriptionRequest.getSubscriptionType().equals(SiriDataType.VEHICLE_MONITORING) &&
                                 (subscriptionRequest.getDatasetId() == null || (subscriptionRequest.getDatasetId().equals(datasetId))))
 
         ).forEach(subscription ->
 
-                        pushSiriData(delivery, subscription)
+                camelRouteManager.pushSiriData(delivery, subscription, this)
         );
-
+        MDC.remove("camel.breadcrumbId");
     }
 
 
-    private void pushUpdatedSituations(List<PtSituationElement> addedOrUpdated, String datasetId) {
+    private void pushUpdatedSituations(
+        List<PtSituationElement> addedOrUpdated, String datasetId, String breadcrumbId
+    ) {
+        MDC.put("camel.breadcrumbId", breadcrumbId);
 
         if (addedOrUpdated == null || addedOrUpdated.isEmpty()) {
             return;
         }
         Siri delivery = siriObjectFactory.createSXServiceDelivery(addedOrUpdated);
 
-        if (activeMqTopicEnabled) {
-            pushSiriData(delivery, activeMQ_SX);
+        if (pushToTopicEnabled) {
+            siriSxTopicProducer.asyncSendBody(siriSxTopicProducer.getDefaultEndpoint(), delivery);
         }
 
         subscriptions.values().stream().filter(subscriptionRequest ->
-                        (subscriptionRequest.getSubscriptionType().equals(SiriDataType.SITUATION_EXCHANGE) &
+                        (subscriptionRequest.getSubscriptionType().equals(SiriDataType.SITUATION_EXCHANGE) &&
                                 (subscriptionRequest.getDatasetId() == null || (subscriptionRequest.getDatasetId().equals(datasetId))))
 
         ).forEach(subscription ->
 
-                        pushSiriData(delivery, subscription)
+                camelRouteManager.pushSiriData(delivery, subscription, this)
         );
+
+        MDC.remove("camel.breadcrumbId");
     }
 
-    private void pushUpdatedEstimatedTimetables(List<EstimatedVehicleJourney> addedOrUpdated, String datasetId) {
+    private void pushUpdatedEstimatedTimetables(List<EstimatedVehicleJourney> addedOrUpdated, String datasetId, String breadcrumbId) {
 
         if (addedOrUpdated == null || addedOrUpdated.isEmpty()) {
             return;
         }
 
+        MDC.put("camel.breadcrumbId", breadcrumbId);
+        logger.info("Pushing {} ET updates to outbound subscriptions", addedOrUpdated.size());
+
         Siri delivery = siriObjectFactory.createETServiceDelivery(addedOrUpdated);
 
-        if (activeMqTopicEnabled) {
-            pushSiriData(delivery, activeMQ_ET);
+        if (pushToTopicEnabled) {
+            siriEtTopicProducer.asyncSendBody(siriEtTopicProducer.getDefaultEndpoint(), delivery);
         }
 
         subscriptions.values().stream().filter(subscriptionRequest ->
-                        (subscriptionRequest.getSubscriptionType().equals(SiriDataType.ESTIMATED_TIMETABLE) &
+                        (subscriptionRequest.getSubscriptionType().equals(SiriDataType.ESTIMATED_TIMETABLE) &&
                                 (subscriptionRequest.getDatasetId() == null || (subscriptionRequest.getDatasetId().equals(datasetId))))
 
         ).forEach(subscription ->
-                        pushSiriData(delivery, subscription)
+                camelRouteManager.pushSiriData(delivery, subscription, this)
         );
+        MDC.remove("camel.breadcrumbId");
     }
 
     public void pushFailedForSubscription(String subscriptionId) {
@@ -411,7 +422,7 @@ public class ServerSubscriptionManager extends CamelRouteManager {
         if (outboundSubscriptionSetup != null) {
 
             //Grace-period is set to minimum 5 minutes
-            long gracePeriod = Math.max(3*outboundSubscriptionSetup.getHeartbeatInterval(), 5*60*1000);
+            long gracePeriod = Math.max(3*outboundSubscriptionSetup.getHeartbeatInterval(), 5*60*1000L);
 
             Instant firstFail = failTrackerMap.getOrDefault(subscriptionId, Instant.now());
 

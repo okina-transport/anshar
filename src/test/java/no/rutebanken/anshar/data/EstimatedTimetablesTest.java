@@ -16,15 +16,11 @@
 package no.rutebanken.anshar.data;
 
 import junit.framework.TestCase;
-import no.rutebanken.anshar.App;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import no.rutebanken.anshar.integration.SpringBootBaseTest;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import uk.org.siri.siri20.EstimatedCall;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
 import uk.org.siri.siri20.EstimatedVehicleJourney;
 import uk.org.siri.siri20.Extensions;
 import uk.org.siri.siri20.LineRef;
@@ -49,14 +45,12 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 
-@RunWith(SpringJUnit4ClassRunner.class)
-@SpringBootTest(webEnvironment= SpringBootTest.WebEnvironment.MOCK, classes = App.class)
-public class EstimatedTimetablesTest {
+public class EstimatedTimetablesTest extends SpringBootBaseTest {
 
     @Autowired
     private EstimatedTimetables estimatedTimetables;
 
-    @Before
+    @BeforeEach
     public void init() {
         estimatedTimetables.clearAll();
     }
@@ -81,7 +75,6 @@ public class EstimatedTimetablesTest {
 
     @Test
     public void testGetUpdatesOnly() {
-        int previousSize = estimatedTimetables.getAll().size();
 
         estimatedTimetables.add("test", createEstimatedVehicleJourney("1234-update", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
         estimatedTimetables.add("test", createEstimatedVehicleJourney("2345-update", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
@@ -93,7 +86,7 @@ public class EstimatedTimetablesTest {
         // Added 3
         String requestorId = UUID.randomUUID().toString();
 
-        assertEquals(previousSize + 3, estimatedTimetables.getAllUpdates(requestorId, null).size());
+        assertEquals( 3, estimatedTimetables.getAllUpdates(requestorId, null).size());
 
         estimatedTimetables.add("test", createEstimatedVehicleJourney("4567-update", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
         estimatedTimetables.commitChanges();
@@ -107,7 +100,7 @@ public class EstimatedTimetablesTest {
         assertEquals("Returning partial updates when nothing has changed", 0, estimatedTimetables.getAllUpdates(requestorId, null).size());
 
         //Verify that all elements still exist
-        assertEquals(previousSize+4, estimatedTimetables.getAll().size());
+        assertEquals(4, estimatedTimetables.getAll().size());
     }
 
     @Test
@@ -213,14 +206,15 @@ public class EstimatedTimetablesTest {
 
         ZonedDateTime departure = ZonedDateTime.now().plusHours(1);
         String lineRefValue = "12345-wrongOrder";
-        EstimatedVehicleJourney estimatedVehicleJourney = createEstimatedVehicleJourney(lineRefValue, "4321", 0, 10, departure, true);
-        estimatedVehicleJourney.setRecordedAtTime(ZonedDateTime.now().plusMinutes(1));
+        EstimatedVehicleJourney estimatedVehicleJourney = createEstimatedVehicleJourney(lineRefValue, "4321", 0, 20, departure, true);
+        final ZonedDateTime firstRecordedAtTime = ZonedDateTime.now().plusMinutes(1);
+        estimatedVehicleJourney.setRecordedAtTime(firstRecordedAtTime);
 
         estimatedTimetables.add("test", estimatedVehicleJourney);
         int expectedSize = previousSize +1;
         assertTrue("Adding Journey did not add element.", estimatedTimetables.getAll().size() == expectedSize);
 
-        EstimatedVehicleJourney estimatedVehicleJourney1 = createEstimatedVehicleJourney(lineRefValue, "4321", 1, 20, departure, true);
+        EstimatedVehicleJourney estimatedVehicleJourney1 = createEstimatedVehicleJourney(lineRefValue, "4321", 0, 20, departure, true);
         estimatedVehicleJourney1.setRecordedAtTime(ZonedDateTime.now());
         estimatedTimetables.add("test", estimatedVehicleJourney1);
 
@@ -230,9 +224,7 @@ public class EstimatedTimetablesTest {
         Collection<EstimatedVehicleJourney> all = estimatedTimetables.getAll();
         for (EstimatedVehicleJourney vehicleJourney : all) {
             if (lineRefValue.equals(vehicleJourney.getLineRef().getValue())) {
-                List<EstimatedCall> estimatedCallsList = vehicleJourney.getEstimatedCalls().getEstimatedCalls();
-                int size = estimatedCallsList.size();
-                assertEquals("Older request should have been ignored.", 10, size);
+                assertEquals("Older request should have been ignored.", firstRecordedAtTime, vehicleJourney.getRecordedAtTime());
                 checkedMatchingJourney = true;
             }
         }
@@ -272,7 +264,7 @@ public class EstimatedTimetablesTest {
         estimatedCall.setOrder(BigInteger.ONE);
         estimatedCall.setExtensions(extensions);
 
-        RecordedCall recordedCall = estimatedTimetables.mapToRecordedCall(estimatedCall);
+        RecordedCall recordedCall = mapToRecordedCall(estimatedCall);
 
         assertEquals(stopPoint.getValue(), recordedCall.getStopPointRef().getValue());
         assertEquals(name.getValue(), recordedCall.getStopPointNames().get(0).getValue());
@@ -312,8 +304,8 @@ public class EstimatedTimetablesTest {
         estimatedVehicleJourneyUpdate.setRecordedCalls(new EstimatedVehicleJourney.RecordedCalls());
 
         // Updating journey with RecordedCalls for fourth and fifth stop
-        estimatedVehicleJourneyUpdate.getRecordedCalls().getRecordedCalls().add(estimatedTimetables.mapToRecordedCall(estimatedCalls.get(4)));
-        estimatedVehicleJourneyUpdate.getRecordedCalls().getRecordedCalls().add(estimatedTimetables.mapToRecordedCall(estimatedCalls.get(5)));
+        estimatedVehicleJourneyUpdate.getRecordedCalls().getRecordedCalls().add(mapToRecordedCall(estimatedCalls.get(4)));
+        estimatedVehicleJourneyUpdate.getRecordedCalls().getRecordedCalls().add(mapToRecordedCall(estimatedCalls.get(5)));
 
         EstimatedCall e = estimatedCalls.get(6);
         //Updating delay for first stop after RecordedCalls
@@ -351,6 +343,8 @@ public class EstimatedTimetablesTest {
         estimatedTimetables.add(datasetId, createEstimatedVehicleJourney("2345", "2", 0, 30, ZonedDateTime.now().plusHours(1), true));
         estimatedTimetables.add(datasetId, createEstimatedVehicleJourney("3456", "3", 0, 30, ZonedDateTime.now().plusHours(1), true));
 
+        estimatedTimetables.commitChanges();
+
         // Added 3
         String requestorId = UUID.randomUUID().toString();
 
@@ -381,37 +375,13 @@ public class EstimatedTimetablesTest {
     }
 
     @Test
-    public void testJourneyWithFutureRecordedCalls() {
-        int callCount = 30;
-        EstimatedVehicleJourney journeyWithRecordedCallsOnly = createEstimatedVehicleJourneyWithRecordedCallsOnly("3333", "1", 0, callCount, ZonedDateTime.now().plusHours(1), true);
-        String datasetId = "recordedCallDataset";
-
-        estimatedTimetables.add(datasetId, journeyWithRecordedCallsOnly);
-
-        Siri serviceDelivery = estimatedTimetables.createServiceDelivery(datasetId + datasetId, datasetId, 2, -1);
-        assertNotNull(serviceDelivery);
-        assertNotNull(serviceDelivery.getServiceDelivery());
-        assertNotNull(serviceDelivery.getServiceDelivery().getEstimatedTimetableDeliveries());
-        assertEquals(1, serviceDelivery.getServiceDelivery().getEstimatedTimetableDeliveries().size());
-
-        EstimatedTimetableDeliveryStructure deliveryStructure = serviceDelivery.getServiceDelivery().getEstimatedTimetableDeliveries().get(0);
-        List<EstimatedVehicleJourney> estimatedVehicleJourneies = deliveryStructure.getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies();
-        assertEquals(1, estimatedVehicleJourneies.size());
-        EstimatedVehicleJourney remappedVehicleJourney = estimatedVehicleJourneies.get(0);
-        assertNotNull(remappedVehicleJourney.getEstimatedCalls());
-        assertTrue(remappedVehicleJourney.getRecordedCalls() == null || remappedVehicleJourney.getRecordedCalls().getRecordedCalls().isEmpty());
-        List<EstimatedCall> estimatedCalls = remappedVehicleJourney.getEstimatedCalls().getEstimatedCalls();
-        assertEquals(callCount, estimatedCalls.size());
-    }
-
-    @Test
     public void testServiceDeliveryWithPreviewInterval() {
         String datasetId = "PreviewIntervalTest";
 
-        estimatedTimetables.add(datasetId, createEstimatedVehicleJourney("1234", "1", 0, 30, ZonedDateTime.now().plusMinutes(1), true));
-        estimatedTimetables.add(datasetId, createEstimatedVehicleJourney("2345", "2", 0, 30, ZonedDateTime.now().plusMinutes(10), true));
+        estimatedTimetables.add(datasetId, createEstimatedVehicleJourney("1234", "1", 0, 30, ZonedDateTime.now().plusMinutes(10), true));
+        estimatedTimetables.add(datasetId, createEstimatedVehicleJourney("2345", "2", 0, 30, ZonedDateTime.now().plusMinutes(100), true));
 
-        Siri serviceDelivery_1 = estimatedTimetables.createServiceDelivery(null, datasetId, 10, 2*60*1000);
+        Siri serviceDelivery_1 = estimatedTimetables.createServiceDelivery(null, datasetId, 10, 20*60*1000);
         assertNotNull(serviceDelivery_1);
         assertNotNull(serviceDelivery_1.getServiceDelivery());
         assertNotNull(serviceDelivery_1.getServiceDelivery().getEstimatedTimetableDeliveries());
@@ -420,7 +390,7 @@ public class EstimatedTimetablesTest {
         assertFalse(serviceDelivery_1.getServiceDelivery().isMoreData());
 
 
-        Siri serviceDelivery_10 = estimatedTimetables.createServiceDelivery(null, datasetId, 10, 11*60*1000);
+        Siri serviceDelivery_10 = estimatedTimetables.createServiceDelivery(null, datasetId, 10, 110*60*1000);
         assertNotNull(serviceDelivery_10);
         assertNotNull(serviceDelivery_10.getServiceDelivery());
         assertNotNull(serviceDelivery_10.getServiceDelivery().getEstimatedTimetableDeliveries());
@@ -434,7 +404,7 @@ public class EstimatedTimetablesTest {
         estimatedVehicleJourneyWithCancellation.setCancellation(Boolean.TRUE);
         estimatedTimetables.add(datasetId, estimatedVehicleJourneyWithCancellation);
 
-        Siri serviceDelivery_30 = estimatedTimetables.createServiceDelivery(null, datasetId, 10, 11*60*1000);
+        Siri serviceDelivery_30 = estimatedTimetables.createServiceDelivery(null, datasetId, 10, 110*60*1000);
 
         assertNotNull(serviceDelivery_30);
         assertNotNull(serviceDelivery_30.getServiceDelivery());
@@ -504,11 +474,18 @@ public class EstimatedTimetablesTest {
         String lineRefValue = "GetAll:Line:1";
 
         EstimatedVehicleJourney monitoredTarget = null;
+        EstimatedVehicleJourney cancelledTarget = null;
         for (int i = 0; i < 10; i++) {
             EstimatedVehicleJourney estimatedVehicleJourney = createEstimatedVehicleJourney(lineRefValue, UUID.randomUUID() + " - " + i, 1, 20, ZonedDateTime.now().plusMinutes(2), true);
             if (i == 5) {
+                estimatedVehicleJourney.setCancellation(false);
                 estimatedVehicleJourney.setMonitored(true);
                 monitoredTarget = estimatedVehicleJourney;
+            }
+            if (i == 6) {
+                estimatedVehicleJourney.setCancellation(true);
+                estimatedVehicleJourney.setMonitored(false);
+                cancelledTarget = estimatedVehicleJourney;
             }
             estimatedTimetables.add("GetAll", estimatedVehicleJourney);
         }
@@ -517,8 +494,23 @@ public class EstimatedTimetablesTest {
         assertNotNull(monitoredTarget);
         Collection<EstimatedVehicleJourney> allMonitored = estimatedTimetables.getAllMonitored();
         assertNotNull(allMonitored);
-        TestCase.assertEquals(1, allMonitored.size());
-        TestCase.assertEquals(monitoredTarget.getVehicleRef().getValue(), allMonitored.iterator().next().getVehicleRef().getValue());
+        TestCase.assertEquals(2, allMonitored.size());
+
+        boolean monitoredMatch = false;
+        boolean cancelledMatch = false;
+        for (EstimatedVehicleJourney estimatedVehicleJourney : allMonitored) {
+            if (monitoredTarget.getVehicleRef().getValue().equals(estimatedVehicleJourney.getVehicleRef().getValue())) {
+                TestCase.assertFalse(monitoredTarget.isCancellation());
+                monitoredMatch = true;
+            }
+            if (cancelledTarget.getVehicleRef().getValue().equals(estimatedVehicleJourney.getVehicleRef().getValue())) {
+                TestCase.assertFalse(cancelledTarget.isMonitored());
+                cancelledMatch = true;
+            }
+        }
+
+        TestCase.assertTrue(monitoredMatch);
+        TestCase.assertTrue(cancelledMatch);
 
     }
 
@@ -604,4 +596,33 @@ public class EstimatedTimetablesTest {
         return element;
     }
 
+    RecordedCall mapToRecordedCall(EstimatedCall call) {
+        RecordedCall recordedCall = new RecordedCall();
+
+        recordedCall.setStopPointRef(call.getStopPointRef());
+        recordedCall.getStopPointNames().addAll(call.getStopPointNames());
+
+        recordedCall.setOrder(call.getOrder());
+        recordedCall.setVisitNumber(call.getVisitNumber());
+        recordedCall.setCancellation(call.isCancellation());
+        recordedCall.setExtraCall(call.isExtraCall());
+        recordedCall.setExtensions(call.getExtensions());
+
+        recordedCall.setAimedArrivalTime(call.getAimedArrivalTime());
+        recordedCall.setExpectedArrivalTime(call.getExpectedArrivalTime());
+        if (recordedCall.getExpectedArrivalTime() != null) {
+            //Setting actual arrival from expected
+            recordedCall.setActualArrivalTime(call.getExpectedArrivalTime());
+        }
+        recordedCall.setArrivalPlatformName(call.getArrivalPlatformName());
+
+        recordedCall.setAimedDepartureTime(call.getAimedDepartureTime());
+        recordedCall.setExpectedDepartureTime(call.getExpectedDepartureTime());
+        if (recordedCall.getExpectedDepartureTime() != null) {
+            //Setting actual departure from expected
+            recordedCall.setActualDepartureTime(call.getExpectedDepartureTime());
+        }
+        recordedCall.setDeparturePlatformName(call.getDeparturePlatformName());
+        return recordedCall;
+    }
 }

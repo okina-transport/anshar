@@ -16,6 +16,7 @@
 package no.rutebanken.anshar.routes.siri.processor;
 
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
+import no.rutebanken.anshar.subscription.SiriDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
@@ -28,6 +29,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static no.rutebanken.anshar.data.EstimatedTimetables.getLatestArrivalTime;
+import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.REMOVE_EXPIRED_JOURNEYS;
 
 /**
  * Remove expired VehicleJourneys to avoid conflict in vehicleRef per date.
@@ -38,6 +40,11 @@ public class BaneNorRemoveExpiredJourneysPostProcessor extends ValueAdapter impl
 
     // Indicates how long after latest arrival the data should be processed.
     private static final long FILTER_LIMIT_MINUTES = 10;
+    private String datasetId;
+
+    public BaneNorRemoveExpiredJourneysPostProcessor(String datasetId) {
+        this.datasetId = datasetId;
+    }
 
     @Override
     public void process(Siri siri) {
@@ -48,9 +55,11 @@ public class BaneNorRemoveExpiredJourneysPostProcessor extends ValueAdapter impl
                 List<EstimatedVersionFrameStructure> estimatedJourneyVersionFrames = etDelivery.getEstimatedJourneyVersionFrames();
                 for (EstimatedVersionFrameStructure estimatedJourneyVersionFrame : estimatedJourneyVersionFrames) {
                     int size = estimatedJourneyVersionFrame.getEstimatedVehicleJourneies().size();
-                    estimatedJourneyVersionFrame.getEstimatedVehicleJourneies().removeIf(et -> isExpired(et));
+                    estimatedJourneyVersionFrame.getEstimatedVehicleJourneies().removeIf(this::isExpired);
                     if (estimatedJourneyVersionFrame.getEstimatedVehicleJourneies().size() != size) {
-                        logger.info("Removed {} expired journeys", (size - estimatedJourneyVersionFrame.getEstimatedVehicleJourneies().size()));
+                        final int removedJourneys = size - estimatedJourneyVersionFrame.getEstimatedVehicleJourneies().size();
+                        logger.info("Removed {} expired journeys", removedJourneys);
+                        getMetricsService().registerDataMapping(SiriDataType.ESTIMATED_TIMETABLE, datasetId, REMOVE_EXPIRED_JOURNEYS, removedJourneys);
                     }
                 }
             }

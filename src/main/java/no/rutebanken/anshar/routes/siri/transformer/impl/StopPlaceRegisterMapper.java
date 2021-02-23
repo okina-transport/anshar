@@ -17,6 +17,7 @@ package no.rutebanken.anshar.routes.siri.transformer.impl;
 
 
 import no.rutebanken.anshar.routes.health.HealthManager;
+import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -26,6 +27,8 @@ import org.slf4j.LoggerFactory;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.ORIGINAL_ID_TO_NSR;
 
 public class StopPlaceRegisterMapper extends ValueAdapter {
 
@@ -40,6 +43,7 @@ public class StopPlaceRegisterMapper extends ValueAdapter {
 
     private final String datasetId;
     private final SiriDataType type;
+    private boolean metricsEnabled = true;
 
     public StopPlaceRegisterMapper(SiriDataType type, String datasetId, Class clazz, List<String> prefixes) {
         this(type, datasetId, clazz, prefixes, "Quay");
@@ -73,12 +77,18 @@ public class StopPlaceRegisterMapper extends ValueAdapter {
                     for (String prefix : prefixes) {
                         mappedValue = stopPlaceService.get(createCompleteId(prefix, id, datatype));
                         if (mappedValue != null) {
+                            if (metricsEnabled) {
+                                getMetricsService().registerDataMapping(type, datasetId, ORIGINAL_ID_TO_NSR, 1);
+                            }
                             return mappedValue;
                         }
                     }
                 } else {
                     mappedValue = stopPlaceService.get(id);
                     if (mappedValue != null) {
+                        if (metricsEnabled) {
+                            getMetricsService().registerDataMapping(type, datasetId, ORIGINAL_ID_TO_NSR, 1);
+                        }
                         return mappedValue;
                     }
                 }
@@ -113,5 +123,9 @@ public class StopPlaceRegisterMapper extends ValueAdapter {
 
         if (!super.getClassToApply().equals(that.getClassToApply())) return false;
         return prefixes.equals(that.prefixes);
+    }
+
+    public void disableMetrics() {
+        this.metricsEnabled = false;
     }
 }

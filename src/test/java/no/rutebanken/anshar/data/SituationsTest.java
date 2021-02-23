@@ -15,17 +15,15 @@
 
 package no.rutebanken.anshar.data;
 
-import no.rutebanken.anshar.App;
+import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import uk.org.siri.siri20.HalfOpenTimestampOutputRangeStructure;
 import uk.org.siri.siri20.PtSituationElement;
 import uk.org.siri.siri20.SituationNumber;
+import uk.org.siri.siri20.WorkflowStatusEnumeration;
 
 import java.time.ZonedDateTime;
 
@@ -33,9 +31,7 @@ import static no.rutebanken.anshar.helpers.SleepUtil.sleep;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-@RunWith(SpringJUnit4ClassRunner.class)
-@SpringBootTest(webEnvironment= SpringBootTest.WebEnvironment.MOCK, classes = App.class)
-public class SituationsTest {
+public class SituationsTest extends SpringBootBaseTest {
 
     @Autowired
     private Situations situations;
@@ -43,7 +39,7 @@ public class SituationsTest {
     @Autowired
     private SiriObjectFactory siriObjectFactory;
 
-    @Before
+    @BeforeEach
     public void init() {
         situations.clearAll();
     }
@@ -58,6 +54,19 @@ public class SituationsTest {
 
         assertEquals("Situation not added", previousSize + 1, situations.getAll().size());
     }
+
+    @Test
+    public void testDraftSituationIgnored() {
+        int previousSize = situations.getAll().size();
+        PtSituationElement element = createPtSituationElement("tst", "43123", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(4));
+
+        element.setProgress(WorkflowStatusEnumeration.DRAFT);
+
+        situations.add("test", element);
+
+        assertEquals("Draft-situation added", previousSize, situations.getAll().size());
+    }
+
     @Test
     public void testAddNullSituation() {
         int previousSize = situations.getAll().size();

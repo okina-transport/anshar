@@ -46,9 +46,6 @@ import uk.org.siri.siri20.LineRef;
 import uk.org.siri.siri20.MessageQualifierStructure;
 import uk.org.siri.siri20.OperatorRefStructure;
 import uk.org.siri.siri20.OtherErrorStructure;
-import uk.org.siri.siri20.ProductionTimetableDeliveryStructure;
-import uk.org.siri.siri20.ProductionTimetableRequestStructure;
-import uk.org.siri.siri20.ProductionTimetableSubscriptionRequest;
 import uk.org.siri.siri20.PtSituationElement;
 import uk.org.siri.siri20.RequestorRef;
 import uk.org.siri.siri20.ResponseStatus;
@@ -128,7 +125,7 @@ public class SiriObjectFactory {
     @Autowired
     private AnsharConfiguration configuration;
 
-    public Instant serverStartTime;
+    public final Instant serverStartTime;
 
     public SiriObjectFactory(@Autowired Instant serverStartTime) {
         this.serverStartTime = serverStartTime;
@@ -173,14 +170,6 @@ public class SiriObjectFactory {
                     subscriptionSetup.getPreviewInterval(),
                     subscriptionSetup.getChangeBeforeUpdates());
         }
-        if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.PRODUCTION_TIMETABLE)) {
-            request = createProductionTimetableSubscriptionRequest(subscriptionSetup.getRequestorRef(), subscriptionSetup.getSubscriptionId(),
-                    subscriptionSetup.getHeartbeatInterval(),
-                    subscriptionSetup.buildUrl(),
-                    subscriptionSetup.getDurationOfSubscription(),
-                    subscriptionSetup.getFilterMap(),
-                    subscriptionSetup.getAddressFieldName());
-        }
         siri.setSubscriptionRequest(request);
 
         return siri;
@@ -203,10 +192,6 @@ public class SiriObjectFactory {
         }
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.ESTIMATED_TIMETABLE)) {
             request.getEstimatedTimetableRequests().add(createEstimatedTimetableRequestStructure(subscriptionSetup.getPreviewInterval()));
-        }
-
-        if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.PRODUCTION_TIMETABLE)) {
-            request.getProductionTimetableRequests().add(createProductionTimetableRequestStructure());
         }
 
         siri.setServiceRequest(request);
@@ -270,14 +255,6 @@ public class SiriObjectFactory {
         return etRequest;
     }
 
-    private static ProductionTimetableRequestStructure createProductionTimetableRequestStructure() {
-        ProductionTimetableRequestStructure ptRequest = new ProductionTimetableRequestStructure();
-        ptRequest.setRequestTimestamp(ZonedDateTime.now());
-        ptRequest.setVersion(SIRI_VERSION);
-        ptRequest.setMessageIdentifier(createMessageIdentifier());
-        return ptRequest;
-    }
-
     private static SubscriptionRequest createSituationExchangeSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap, String addressFieldName, Boolean incrementalUpdates, Duration previewInterval) {
         SubscriptionRequest request = createSubscriptionRequest(requestorRef, heartbeatInterval, address, addressFieldName);
 
@@ -289,7 +266,7 @@ public class SiriObjectFactory {
 
         if (filterMap != null) {
             Set<Object> vehicleRefs = filterMap.get(VehicleRef.class);
-            if (vehicleRefs != null && vehicleRefs.size() > 0) {
+            if (vehicleRefs != null && !vehicleRefs.isEmpty()) {
                 Object next = vehicleRefs.iterator().next();
                 if (next instanceof VehicleRef)  {
                     sxRequest.setVehicleRef((VehicleRef) next);
@@ -325,14 +302,14 @@ public class SiriObjectFactory {
 
         if (filterMap != null) {
             Set lineRefs = filterMap.get(LineRef.class);
-            if (lineRefs != null && lineRefs.size() > 0) {
+            if (lineRefs != null && !lineRefs.isEmpty()) {
                 Object next = lineRefs.iterator().next();
                 if (next instanceof LineRef) {
                     vmRequest.setLineRef((LineRef) next);
                 }
             }
             Set<Object> vehicleRefs = filterMap.get(VehicleRef.class);
-            if (vehicleRefs != null && vehicleRefs.size() > 0) {
+            if (vehicleRefs != null && !vehicleRefs.isEmpty()) {
                 Object next = vehicleRefs.iterator().next();
                 if (next instanceof VehicleRef)  {
                     vmRequest.setVehicleRef((VehicleRef) next);
@@ -379,8 +356,7 @@ public class SiriObjectFactory {
                     EstimatedTimetableRequestStructure.Lines lines = new EstimatedTimetableRequestStructure.Lines();
                     Set lineRefs = filterMap.get(LineDirectionStructure.class);
                     for (Object lineref : lineRefs) {
-                        if (lineref != null &&
-                                lineref instanceof LineDirectionStructure) {
+                        if (lineref instanceof LineDirectionStructure) {
                             lines.getLineDirections().add((LineDirectionStructure) lineref);
                         }
                     }
@@ -392,8 +368,7 @@ public class SiriObjectFactory {
                 if (filterMap.containsKey(OperatorRefStructure.class)) {
                     Set<Object> operatorRefs = filterMap.get(OperatorRefStructure.class);
                     for (Object operatorRef : operatorRefs) {
-                        if (operatorRef != null &&
-                                operatorRef instanceof OperatorRefStructure) {
+                        if (operatorRef instanceof OperatorRefStructure) {
                             etRequest.getOperatorReves().add((OperatorRefStructure) operatorRef);
                         }
                     }
@@ -413,31 +388,6 @@ public class SiriObjectFactory {
         etSubscriptionReq.setIncrementalUpdates(incrementalUpdates);
 
         request.getEstimatedTimetableSubscriptionRequests().add(etSubscriptionReq);
-
-        return request;
-    }
-
-
-    private static SubscriptionRequest createProductionTimetableSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap, String addressFieldName) {
-        SubscriptionRequest request = createSubscriptionRequest(requestorRef, heartbeatInterval, address, addressFieldName);
-
-        ProductionTimetableRequestStructure ptRequest = new ProductionTimetableRequestStructure();
-        ptRequest.setRequestTimestamp(ZonedDateTime.now());
-        ptRequest.setVersion(SIRI_VERSION);
-
-        if (filterMap != null) {
-            if (filterMap.size() > 0) {
-                logger.info("TODO: Implement filtering");
-            }
-        }
-
-        ProductionTimetableSubscriptionRequest ptSubscriptionReq = new ProductionTimetableSubscriptionRequest();
-        ptSubscriptionReq.setProductionTimetableRequest(ptRequest);
-        ptSubscriptionReq.setSubscriptionIdentifier(createSubscriptionIdentifier(subscriptionId));
-        ptSubscriptionReq.setInitialTerminationTime(ZonedDateTime.now().plusSeconds(subscriptionDuration.getSeconds()));
-        ptSubscriptionReq.setSubscriberRef(request.getRequestorRef());
-
-        request.getProductionTimetableSubscriptionRequests().add(ptSubscriptionReq);
 
         return request;
     }
@@ -495,10 +445,6 @@ public class SiriObjectFactory {
     	RequestorRef requestorRef = new RequestorRef();
         requestorRef.setValue(value);
         return requestorRef;
-    }
-
-    private static RequestorRef createRequestorRef() {
-        return createRequestorRef(UUID.randomUUID().toString());
     }
 
     private static SubscriptionQualifierStructure createSubscriptionIdentifier(String subscriptionId) {
@@ -565,14 +511,6 @@ public class SiriObjectFactory {
             delivery.setProducerRef(createRequestorRef(configuration.getProducerRef()));
         }
         return delivery;
-    }
-
-    public Siri createPTServiceDelivery(Collection<ProductionTimetableDeliveryStructure> elements) {
-        Siri siri = createSiriObject();
-        ServiceDelivery delivery = createServiceDelivery();
-        delivery.getProductionTimetableDeliveries().addAll(elements);
-        siri.setServiceDelivery(delivery);
-        return siri;
     }
 
     private static DatatypeFactory createDataTypeFactory() {

@@ -24,6 +24,7 @@ import org.w3c.dom.Node;
 import uk.org.siri.siri20.VehicleModesEnumeration;
 
 import javax.xml.bind.ValidationEvent;
+import java.util.List;
 import java.util.Set;
 
 import static no.rutebanken.anshar.routes.validation.validators.Constants.ESTIMATED_VEHICLE_JOURNEY;
@@ -41,7 +42,7 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.ESTIMA
 public class ExtraJourneyValidator extends CustomValidator {
 
     private static final String FIELDNAME = "ExtraJourney";
-    private static final String path = ESTIMATED_VEHICLE_JOURNEY + "/" + FIELDNAME;
+    private String path = ESTIMATED_VEHICLE_JOURNEY + FIELD_DELIMITER + FIELDNAME;
 
 
     private static final Set<String> validVehicleModes = Sets.newHashSet(
@@ -53,10 +54,15 @@ public class ExtraJourneyValidator extends CustomValidator {
             VehicleModesEnumeration.RAIL.value(),
             VehicleModesEnumeration.TRAM.value());
 
-    private static final String vehicleModeNodeName = "VehicleMode";
-    private static final String routeRefNodeName = "RouteRef";
-    private static final String groupOfLinesRef = "GroupOfLinesRef";
-    private static final String estimatedVehicleJourneyCodeRef = "EstimatedVehicleJourneyCode";
+    private static final String VEHICLE_MODE_NODE_NAME = "VehicleMode";
+    private static final String ROUTE_REF_NODE_NAME = "RouteRef";
+    private static final String GROUP_OF_LINES_REF_NODE_NAME = "GroupOfLinesRef";
+    private static final String ESTIMATED_VEHICLE_JOURNEY_CODE_NODE_NAME = "EstimatedVehicleJourneyCode";
+    private static final String ESTIMATED_CALLS_NODE_NAME = "EstimatedCalls";
+    private static final String ESTIMATED_CALL_NODE_NAME = "EstimatedCall";
+    private static final String RECORDED_CALLS_NODE_NAME = "RecordedCalls";
+    private static final String RECORDED_CALL_NODE_NAME = "RecordedCall";
+    private static final String DESTINATION_DISPLAY_NODE_NAME = "DestinationDisplay";
 
     @Override
     public String getXpath() {
@@ -68,50 +74,68 @@ public class ExtraJourneyValidator extends CustomValidator {
         String isExtraJourney = getNodeValue(node);
 
         if (isExtraJourney == null) {
-            return  createEvent(node, vehicleModeNodeName, "not null when present", FIELDNAME, ValidationEvent.ERROR);
+            return  createEvent(node, VEHICLE_MODE_NODE_NAME, "not null when present", FIELDNAME, ValidationEvent.ERROR);
         }
 
-        if (Boolean.valueOf(isExtraJourney)) {
+        if (Boolean.TRUE.equals(Boolean.valueOf(isExtraJourney))) {
             // ExtraJourney == true
 
+            String expectedValuesMessageText = "not null when ExtraJourney=true";
+
             // VehicleMode - required
-            final String vehicleMode = getSiblingNodeValue(node, vehicleModeNodeName);
+            final String vehicleMode = getSiblingNodeValue(node, VEHICLE_MODE_NODE_NAME);
             if (vehicleMode == null) {
-                return  createEvent(node, vehicleModeNodeName, "not null when ExtraJourney=true", vehicleMode, ValidationEvent.ERROR);
-            }
-            if (!validVehicleModes.contains(vehicleMode)) {
-                return  createEvent(node, vehicleModeNodeName, validVehicleModes, vehicleMode, ValidationEvent.ERROR);
+                return  createEvent(node, VEHICLE_MODE_NODE_NAME, expectedValuesMessageText, vehicleMode, ValidationEvent.ERROR);
+            } else if (!validVehicleModes.contains(vehicleMode)) {
+                return  createEvent(node, VEHICLE_MODE_NODE_NAME, validVehicleModes, vehicleMode, ValidationEvent.ERROR);
             }
 
 
             // RouteRef - required
-            final String routeRef = getSiblingNodeValue(node, routeRefNodeName);
+            final String routeRef = getSiblingNodeValue(node, ROUTE_REF_NODE_NAME);
             if (routeRef == null) {
-                return  createEvent(node, routeRefNodeName, "not null when ExtraJourney=true", routeRef, ValidationEvent.ERROR);
-            }
-            if (!routeRef.contains(":Route:")) {
-                return  createEvent(node, routeRefNodeName, "valid RouteRef - CODESPACE:Route:ID", routeRef, ValidationEvent.ERROR);
+                return  createEvent(node, ROUTE_REF_NODE_NAME, expectedValuesMessageText, routeRef, ValidationEvent.ERROR);
+            } else if (!routeRef.contains(":Route:")) {
+                return  createEvent(node, ROUTE_REF_NODE_NAME, "valid RouteRef - CODESPACE:Route:ID", routeRef, ValidationEvent.ERROR);
             }
 
             // GroupOfLinesRef - required
-            final String groupOfLines = getSiblingNodeValue(node, groupOfLinesRef);
+            final String groupOfLines = getSiblingNodeValue(node, GROUP_OF_LINES_REF_NODE_NAME);
             if (groupOfLines == null) {
-                return  createEvent(node, groupOfLinesRef, "not null when ExtraJourney=true", groupOfLines, ValidationEvent.ERROR);
-            }
-            if (!groupOfLines.contains(":Network:")) {
-                return  createEvent(node, groupOfLinesRef, "valid GroupOfLinesRef - CODESPACE:Network:ID", groupOfLines, ValidationEvent.ERROR);
+                return  createEvent(node, GROUP_OF_LINES_REF_NODE_NAME, expectedValuesMessageText, groupOfLines, ValidationEvent.ERROR);
+            } else if (!groupOfLines.contains(":Network:")) {
+                return  createEvent(node, GROUP_OF_LINES_REF_NODE_NAME, "valid GroupOfLinesRef - CODESPACE:Network:ID", groupOfLines, ValidationEvent.ERROR);
             }
 
             // EstimatedVehicleJourneyCode - required
-            final String estimatedVehicleJourneyCode = getSiblingNodeValue(node, estimatedVehicleJourneyCodeRef);
+            final String estimatedVehicleJourneyCode = getSiblingNodeValue(node, ESTIMATED_VEHICLE_JOURNEY_CODE_NODE_NAME);
             if (estimatedVehicleJourneyCode == null) {
-                return  createEvent(node, estimatedVehicleJourneyCodeRef, "not null when ExtraJourney=true", groupOfLines, ValidationEvent.ERROR);
-            }
-            if (!estimatedVehicleJourneyCode.contains(":ServiceJourney:")) {
+                return  createEvent(node, ESTIMATED_VEHICLE_JOURNEY_CODE_NODE_NAME, expectedValuesMessageText, groupOfLines, ValidationEvent.ERROR);
+            } else if (!estimatedVehicleJourneyCode.contains(":ServiceJourney:")) {
                 return  createEvent(node, estimatedVehicleJourneyCode, "valid EstimatedVehicleJourneyCode - CODESPACE:ServiceJourney:ID", estimatedVehicleJourneyCode, ValidationEvent.ERROR);
             }
-        }
 
+            // EstimatedCall - DestinationDisplay
+
+            final List<Node> estimatedCallsNodes = getSiblingNodesByName(node, ESTIMATED_CALLS_NODE_NAME);
+
+            if (estimatedCallsNodes != null) {
+                for (Node estimatedCallsNode : estimatedCallsNodes) {
+                    final List<Node> estimatedCall = getChildNodesByName(
+                        estimatedCallsNode,
+                        ESTIMATED_CALL_NODE_NAME
+                    );
+                    for (Node call : estimatedCall) {
+                        final String destinationDisplay = getChildNodeValue(call,
+                            DESTINATION_DISPLAY_NODE_NAME
+                        );
+                        if (destinationDisplay == null) {
+                            return  createEvent(node, ESTIMATED_CALL_NODE_NAME + "." + DESTINATION_DISPLAY_NODE_NAME, expectedValuesMessageText, null, ValidationEvent.ERROR);
+                        }
+                    }
+                }
+            }
+        }
 
         return null;
     }

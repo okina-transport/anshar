@@ -20,13 +20,13 @@ import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
-import org.junit.Test;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.rutebanken.siri20.util.SiriXml;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri20.Siri;
 
 import javax.xml.bind.JAXBException;
-import javax.xml.stream.XMLStreamException;
 
 import static io.restassured.RestAssured.given;
 import static junit.framework.TestCase.assertTrue;
@@ -39,7 +39,8 @@ public class SiriSubscriptionTest extends BaseHttpTest {
     ServerSubscriptionManager subscriptionManager;
 
     @Test
-    public void testCreateSubscription() throws JAXBException, XMLStreamException {
+    @Disabled
+    public void testCreateSubscription() throws JAXBException {
         SubscriptionSetup subscriptionSetup = getSubscriptionSetup(SiriDataType.ESTIMATED_TIMETABLE);
 
         Siri subscriptionRequest = SiriObjectFactory.createSubscriptionRequest(subscriptionSetup);

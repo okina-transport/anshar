@@ -18,6 +18,8 @@ package no.rutebanken.anshar.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.List;
+
 @Configuration
 public class AnsharConfiguration {
 
@@ -36,17 +38,14 @@ public class AnsharConfiguration {
     @Value("${anshar.incoming.port}")
     private String inboundPort;
 
-    @Value("${anshar.incoming.activemq.concurrentConsumers}")
+    @Value("${anshar.incoming.concurrentConsumers}")
     private long concurrentConsumers;
 
     @Value("${anshar.incoming.logdirectory}")
     private String incomingLogDirectory = "/tmp";
 
-    @Value("${anshar.incoming.activemq.timetolive}")
-    private String timeToLive;
-
     @Value("${anshar.inbound.pattern}")
-    private String incomingPathPattern = "/foo/bar/rest";
+    private String incomingPathPattern;
 
     @Value("${anshar.inbound.url}")
     private String inboundUrl = "http://localhost:8080";
@@ -78,11 +77,11 @@ public class AnsharConfiguration {
     @Value("${anshar.siri.vm.graceperiod.minutes:0}")
     private long vmGraceperiodMinutes;
 
-    @Value("${anshar.siri.pt.graceperiod.minutes:0}")
-    private long ptGraceperiodMinutes;
-
     @Value("${anshar.validation.profile.enabled}")
     private boolean profileValidation;
+
+    @Value("${anshar.validation.enabled:false}")
+    private boolean fullValidationEnabled;
 
     @Value("${anshar.validation.profile.name}")
     private String validationProfileName;
@@ -109,6 +108,16 @@ public class AnsharConfiguration {
     @Value("${anshar.tracking.data.buffer.commit.frequency.seconds:2}")
     private int changeBufferCommitFrequency;
 
+    @Value("${anshar.message.queue.camel.route.prefix}")
+    private String messageQueueCamelRoutePrefix;
+
+
+    @Value("${anshar.sirivm.position.forward.url:}")
+    private String siriVmPositionForwardingUrl;
+
+    @Value("${anshar.admin.blocked.clients:}")
+    private List<String> blockedEtClientNames;
+
     public String getHazelcastManagementUrl() {
         return hazelcastManagementUrl;
     }
@@ -131,10 +140,6 @@ public class AnsharConfiguration {
 
     public String getIncomingPathPattern() {
         return incomingPathPattern;
-    }
-
-    public String getTimeToLive() {
-        return timeToLive;
     }
 
     public long getConcurrentConsumers() {
@@ -181,12 +186,12 @@ public class AnsharConfiguration {
         return vmGraceperiodMinutes;
     }
 
-    public long getPtGraceperiodMinutes() {
-        return ptGraceperiodMinutes;
-    }
-
     public boolean isProfileValidation() {
         return profileValidation;
+    }
+
+    public boolean isFullValidationEnabled() {
+        return fullValidationEnabled;
     }
 
     public String getValidationProfileName() {
@@ -219,5 +224,20 @@ public class AnsharConfiguration {
 
     public int getChangeBufferCommitFrequency() {
         return changeBufferCommitFrequency;
+    }
+
+    public String getMessageQueueCamelRoutePrefix() {
+        return messageQueueCamelRoutePrefix;
+    }
+
+    public String getSiriVmPositionForwardingUrl() {
+        if (siriVmPositionForwardingUrl != null && siriVmPositionForwardingUrl.isEmpty()) {
+            siriVmPositionForwardingUrl = null;
+        }
+        return siriVmPositionForwardingUrl;
+    }
+
+    public List<String> getBlockedEtClientNames() {
+        return blockedEtClientNames;
     }
 }

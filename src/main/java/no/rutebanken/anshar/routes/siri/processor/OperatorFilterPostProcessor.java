@@ -16,6 +16,9 @@
 package no.rutebanken.anshar.routes.siri.processor;
 
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
+import no.rutebanken.anshar.subscription.SiriDataType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
 import uk.org.siri.siri20.EstimatedVersionFrameStructure;
 import uk.org.siri.siri20.Siri;
@@ -24,17 +27,22 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.LINE_MAPPING;
 import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.createCombinedId;
 
 public class OperatorFilterPostProcessor extends ValueAdapter implements PostProcessor {
+    private static transient final Logger logger = LoggerFactory.getLogger(OperatorFilterPostProcessor.class);
+
     private final List<String> operatorsToIgnore;
+    private final String datasetId;
 
     /**
      *
      * @param operatorsToIgnore List of OperatorRef-values to remove
      * @param operatorOverrideMapping Defines Operator-override if original should not be used.
      */
-    public OperatorFilterPostProcessor(List<String> operatorsToIgnore, Map<String, String> operatorOverrideMapping) {
+    public OperatorFilterPostProcessor(String datasetId, List<String> operatorsToIgnore, Map<String, String> operatorOverrideMapping) {
+        this.datasetId = datasetId;
         this.operatorsToIgnore = operatorsToIgnore;
         this.operatorOverrideMapping = operatorOverrideMapping;
     }
@@ -58,8 +66,18 @@ public class OperatorFilterPostProcessor extends ValueAdapter implements PostPro
                             if (estimatedVersionFrameStructure != null) {
 
                                 if (operatorsToIgnore != null && !operatorsToIgnore.isEmpty()) {
+                                    final int sizeBefore = estimatedVersionFrameStructure
+                                        .getEstimatedVehicleJourneies()
+                                        .size();
+
                                     estimatedVersionFrameStructure.getEstimatedVehicleJourneies()
                                             .removeIf(et -> et.getOperatorRef() != null && operatorsToIgnore.contains(et.getOperatorRef().getValue()));
+
+                                    int ignoredUpdates = sizeBefore - estimatedVersionFrameStructure
+                                                                        .getEstimatedVehicleJourneies()
+                                                                        .size();
+
+                                    logger.info("Removed {} updates from ignored operators {}", ignoredUpdates, operatorsToIgnore);
                                 }
 
                                 estimatedVersionFrameStructure.getEstimatedVehicleJourneies()
@@ -74,6 +92,7 @@ public class OperatorFilterPostProcessor extends ValueAdapter implements PostPro
                                                         updatedLineRef = lineRef;
                                                     } else {
                                                         updatedLineRef = operatorOverrideMapping.getOrDefault(operatorRef, operatorRef) + ":Line:" + lineRef;
+                                                        getMetricsService().registerDataMapping(SiriDataType.ESTIMATED_TIMETABLE, datasetId, LINE_MAPPING, 1);
                                                     }
 
                                                     et.getLineRef().setValue(createCombinedId(lineRef, updatedLineRef));

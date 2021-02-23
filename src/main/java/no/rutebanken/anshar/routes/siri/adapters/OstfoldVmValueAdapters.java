@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.routes.siri.adapters;
 
+import no.rutebanken.anshar.routes.siri.processor.OstfoldIdPlatformPostProcessor;
 import no.rutebanken.anshar.routes.siri.processor.OstfoldVmPostProcessor;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.routes.siri.transformer.impl.StopPlaceRegisterMapper;
@@ -48,10 +49,13 @@ public class OstfoldVmValueAdapters extends MappingAdapter {
                 subscriptionSetup.getIdMappingPrefixes(),
                 "StopPlace"));
 
-        valueAdapters.add(new OstfoldVmPostProcessor());
+        valueAdapters.add(new OstfoldVmPostProcessor(subscriptionSetup.getDatasetId()));
+
+        valueAdapters.add(new OstfoldIdPlatformPostProcessor(subscriptionSetup));
+
 
         if (subscriptionSetup.getDatasetId() != null && !subscriptionSetup.getDatasetId().isEmpty()) {
-            List<ValueAdapter> datasetPrefix = createIdPrefixAdapters(subscriptionSetup.getDatasetId());
+            List<ValueAdapter> datasetPrefix = createIdPrefixAdapters(subscriptionSetup);
             if (!subscriptionSetup.getMappingAdapters().containsAll(datasetPrefix)) {
                 subscriptionSetup.getMappingAdapters().addAll(datasetPrefix);
             }

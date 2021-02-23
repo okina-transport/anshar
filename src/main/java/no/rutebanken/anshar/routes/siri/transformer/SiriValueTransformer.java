@@ -81,17 +81,50 @@ public class SiriValueTransformer {
     }
 
     public static Siri transform(Siri siri, List<ValueAdapter> adapters) {
+        return transform(siri, adapters, true, false);
+    }
+
+    /**
+     *
+     *
+     * @param siri SIRI data to transform
+     * @param adapters Adapters to apply
+     * @param deepCopyBeforeTransform Defines if SIRI-object should be deep-copied before transformation. !! Note: If false - input-object will be altered !!
+     * @param detailedLogging Switches on/off detailed logging
+     * @return Transformed SIRI-object
+     */
+    public static Siri transform(Siri siri, List<ValueAdapter> adapters, boolean deepCopyBeforeTransform, boolean detailedLogging) {
         if (siri == null) {
             return null;
         }
-        Siri transformed;
-        try {
-        	transformed = SiriObjectFactory.deepCopy(siri);
-        } catch (Exception e) {
-            logger.warn("Unable to transform SIRI-object", e);
-            return siri;
+        if (detailedLogging) {
+            logger.info("SIRI Transform: starting");
         }
-        if (transformed != null && adapters != null) {
+        Siri transformed;
+        if (deepCopyBeforeTransform) {
+            try {
+                transformed = SiriObjectFactory.deepCopy(siri);
+            }
+            catch (Exception e) {
+                logger.warn("Unable to transform SIRI-object", e);
+                return siri;
+            }
+
+            if (detailedLogging) {
+                logger.info("SIRI Transform: deepCopy done");
+            }
+        } else {
+            transformed = siri;
+
+            if (detailedLogging) {
+                logger.info("SIRI Transform: deepCopy ignored");
+            }
+        }
+
+        if (transformed != null && // Object exists
+            adapters != null &&    // Has mapping-rules
+            transformed.getServiceDelivery() != null // Has actual data to map
+        ) {
 
             List<ValueAdapter> valueAdapters = new ArrayList<>();
             for (ValueAdapter adapter : adapters) {
@@ -100,6 +133,9 @@ public class SiriValueTransformer {
                 }
             }
 
+            if (detailedLogging) {
+                logger.info("SIRI Transform: {} valueAdapters added", valueAdapters.size());
+            }
             List<PostProcessor> postProcessors = new ArrayList<>();
             for (ValueAdapter valueAdapter : adapters) {
                 if ((valueAdapter instanceof PostProcessor)) {
@@ -107,20 +143,38 @@ public class SiriValueTransformer {
                 }
             }
 
+            if (detailedLogging) {
+                logger.info("SIRI Transform: {} postProcessors added", postProcessors.size());
+            }
             for (ValueAdapter a : valueAdapters) {
                 try {
                     applyAdapter(transformed, a);
+
+                    if (detailedLogging) {
+                        logger.info("SIRI Transform: valueAdapter {} processed", a.toString());
+                    }
                 } catch (Throwable t) {
                     logger.warn("Caught exception while transforming SIRI-object.", t);
                 }
+            }
+            if (detailedLogging) {
+                logger.info("SIRI Transform: valueAdapters processed");
             }
 
             for (PostProcessor processor : postProcessors) {
                 try {
                     processor.process(transformed);
+
+                    if (detailedLogging) {
+                        logger.info("SIRI Transform: PostProcessor {} processed", processor.toString());
+                    }
                 } catch (Throwable t) {
                     logger.warn("Caught exception while post-processing SIRI-object with processor '" + processor + "'", t);
                 }
+            }
+
+            if (detailedLogging) {
+                logger.info("SIRI Transform: postProcessors processed");
             }
         }
 

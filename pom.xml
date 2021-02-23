@@ -21,7 +21,7 @@
   <parent>
       <groupId>org.rutebanken.superpom</groupId>
       <artifactId>superpom</artifactId>
-      <version>0.0.6</version>
+      <version>1.0.11</version>
   </parent>
 
 
@@ -35,30 +35,23 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- versions for use in mvn plugins as we cannot inherit them from a BOM -->
-        <fabric8.version>2.3.7</fabric8.version>
         <docker.maven.plugin.version>0.21.0</docker.maven.plugin.version>
-        <spring-boot-plugin.version>2.1.8.RELEASE</spring-boot-plugin.version>
-        <spring-boot.version>2.1.8.RELEASE</spring-boot.version>
+        <spring-boot-plugin.version>2.4.1</spring-boot-plugin.version>
+        <spring-boot.version>2.4.1</spring-boot.version>
 
-        <camel-version>2.24.2</camel-version>
-
-        <!-- Docker & Fabric8 Configs -->
-        <docker.from>eu.gcr.io/entur-system-1287/openjdk11-base-image</docker.from>
-        <fabric8.dockerUser>entur-system-1287/</fabric8.dockerUser>
-        <docker.image>eu.gcr.io/${fabric8.dockerUser}${project.artifactId}:${project.version}</docker.image>
-        <docker.cleanup>none</docker.cleanup>
-
-        <!-- Holding back activemq version as newest version no long support spring wired broker config-->
-        <activemq.version>5.13.4</activemq.version>
-
-        <!-- fabric8.env.AB_JOLOKIA_AUTH_OPENSHIFT>true</fabric8.env.AB_JOLOKIA_AUTH_OPENSHIFT -->
-        <fabric8.label.component>${project.artifactId}</fabric8.label.component>
-        <fabric8.label.container>spring-boot</fabric8.label.container>
-        <fabric8.label.group>quickstarts</fabric8.label.group>
-        <fabric8.iconRef>camel</fabric8.iconRef>
+        <camel-version>3.7.0</camel-version>
 
         <metrics.version>3.2.3</metrics.version>
+        <entur.helpers.version>1.0.34</entur.helpers.version>
     </properties>
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>snapshots</id>
+            <name>entur2-snapshots</name>
+            <url>https://entur2.jfrog.io/entur2/libs-snapshot-local</url>
+        </snapshotRepository>
+    </distributionManagement>
 
     <!-- Repository needs to be set up in nexus: repositories>
         <repository>
@@ -73,6 +66,20 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
+                <groupId>org.apache.camel</groupId>
+                <artifactId>camel-bom</artifactId>
+                <version>${camel-version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.camel.springboot</groupId>
+                <artifactId>camel-spring-boot-dependencies</artifactId>
+                <version>${camel-version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
                 <!-- Import dependency management from Spring Boot -->
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
@@ -81,21 +88,19 @@
                 <scope>import</scope>
             </dependency>
             <dependency>
-                <groupId>io.fabric8</groupId>
-                <artifactId>fabric8-project</artifactId>
-                <version>${fabric8.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
+                <groupId>org.entur.helpers</groupId>
+                <artifactId>camel3-entur-google-pubsub</artifactId>
+                <version>${entur.helpers.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.entur.helpers</groupId>
-                <artifactId>hazelcast-helper</artifactId>
-                <version>0.0.4-SNAPSHOT</version>
+                <artifactId>hazelcast4-helper</artifactId>
+                <version>${entur.helpers.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.entur.helpers</groupId>
                 <artifactId>gcp-storage</artifactId>
-                <version>0.0.4-SNAPSHOT</version>
+                <version>${entur.helpers.version}</version>
                 <exclusions>
                     <exclusion>
                         <groupId>javax.servlet</groupId>
@@ -111,12 +116,6 @@
                     </exclusion>
                 </exclusions>
             </dependency>
-            <!-- Need to add this explicitly, to avoid old dep. Problem with either maven or nexus... -->
-            <dependency>
-                <groupId>io.fabric8</groupId>
-                <artifactId>kubernetes-client</artifactId>
-                <version>2.6.1</version>
-            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -124,16 +123,23 @@
         <dependency>
             <groupId>net.logstash.logback</groupId>
             <artifactId>logstash-logback-encoder</artifactId>
-            <version>6.2</version>
+            <version>6.3</version>
         </dependency>
-
+        <dependency>
+            <groupId>org.apache.camel.springboot</groupId>
+            <artifactId>camel-spring-boot-starter</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.entur.helpers</groupId>
-            <artifactId>hazelcast-helper</artifactId>
+            <artifactId>hazelcast4-helper</artifactId>
         </dependency>
         <dependency>
             <groupId>org.entur.helpers</groupId>
             <artifactId>gcp-storage</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.entur.helpers</groupId>
+            <artifactId>camel3-entur-google-pubsub</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.camel</groupId>
@@ -149,14 +155,14 @@
 
         <dependency>
             <groupId>org.apache.camel</groupId>
-            <artifactId>camel-http4</artifactId>
+            <artifactId>camel-http</artifactId>
             <version>${camel-version}</version>
         </dependency>
 
 
         <dependency>
             <groupId>org.apache.camel</groupId>
-            <artifactId>camel-jetty9</artifactId>
+            <artifactId>camel-jetty</artifactId>
             <version>${camel-version}</version>
         </dependency>
 
@@ -168,30 +174,15 @@
 
         <dependency>
             <groupId>org.apache.camel</groupId>
-            <artifactId>camel-websocket</artifactId>
-            <version>${camel-version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.camel</groupId>
             <artifactId>camel-jaxb</artifactId>
-            <version>${camel-version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.camel</groupId>
             <artifactId>camel-jms</artifactId>
-            <version>${camel-version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.camel</groupId>
-            <artifactId>camel-spring-boot</artifactId>
-            <version>${camel-version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.camel</groupId>
-            <artifactId>camel-quartz2</artifactId>
-            <version>${camel-version}</version>
+            <artifactId>camel-quartz</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.camel</groupId>
@@ -214,7 +205,20 @@
             <artifactId>camel-swagger-java</artifactId>
             <version>${camel-version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>org.apache.camel</groupId>
+            <artifactId>camel-paho</artifactId>
+            <version>${camel-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.camel</groupId>
+            <artifactId>camel-xslt-saxon</artifactId>
+            <version>${camel-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-core</artifactId>
@@ -224,20 +228,6 @@
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>org.apache.activemq</groupId>
-            <artifactId>activemq-camel</artifactId>
-            <version>${activemq.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>net.sf.saxon</groupId>
-            <artifactId>Saxon-HE</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.paho</groupId>
-            <artifactId>org.eclipse.paho.client.mqttv3</artifactId>
-            <version>1.2.1</version>
-        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
@@ -251,25 +241,35 @@
         <dependency>
             <groupId>com.hazelcast</groupId>
             <artifactId>hazelcast</artifactId>
-            <version>3.12.2</version>
+            <version>4.0.3</version>
         </dependency>
 
         <dependency>
             <groupId>org.entur</groupId>
             <artifactId>siri-java-model</artifactId>
-            <version>0.13-SNAPSHOT</version>
+            <version>0.12</version>
         </dependency>
 
         <dependency>
             <groupId>org.entur</groupId>
+            <artifactId>siri-protobuf-mapper</artifactId>
+            <version>0.6</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>3.13.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.entur</groupId>
             <artifactId>netex-java-model</artifactId>
-            <version>1.0.9-SNAPSHOT</version>
+            <version>1.0.9</version>
         </dependency>
 
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.4</version>
+            <version>3.9</version>
         </dependency>
 
         <dependency>
@@ -281,6 +281,7 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
+            <version>30.0-jre</version>
         </dependency>
 
         <dependency>
@@ -311,12 +312,13 @@
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
+            <version>20160212</version>
         </dependency>
 
         <!-- testing -->
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -330,34 +332,36 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.jboss.arquillian.junit</groupId>
-            <artifactId>arquillian-junit-container</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.fabric8</groupId>
-            <artifactId>fabric8-arquillian</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.apache.camel</groupId>
-            <artifactId>camel-test</artifactId>
+            <artifactId>camel-test-junit5</artifactId>
             <version>${camel-version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.camel</groupId>
-            <artifactId>camel-test-spring</artifactId>
+            <artifactId>camel-test-spring-junit5</artifactId>
             <version>${camel-version}</version>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>io.rest-assured</groupId>
             <artifactId>rest-assured</artifactId>
-            <version>3.1.0</version>
+            <version>4.3.3</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>json-path</artifactId>
+            <version>4.3.3</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>xml-path</artifactId>
+            <version>4.3.3</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -374,7 +378,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.18.1</version>
+                <version>2.22.2</version>
                 <inherited>true</inherited>
                 <configuration>
                     <excludes>
@@ -397,29 +401,29 @@
                 </executions>
             </plugin>
 
-
             <plugin>
-                <groupId>io.fabric8</groupId>
-                <artifactId>docker-maven-plugin</artifactId>
-                <version>${docker.maven.plugin.version}</version>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-pubsub-emulator</id>
+                        <phase>test-compile</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                    </execution>
+                </executions>
                 <configuration>
-                    <autoPull>always</autoPull>
-                    <images>
-                        <image>
-                            <name>${docker.image}</name>
-                            <build>
-                                <cleanup>${docker.cleanup}</cleanup>
-                                <from>${docker.from}</from>
-                                <assembly>
-                                    <basedir>/deployments</basedir>
-                                    <descriptorRef>artifact</descriptorRef>
-                                </assembly>
-                                <env>
-                                    <JAVA_APP_JAR>${project.build.finalName}.jar</JAVA_APP_JAR>
-                                </env>
-                            </build>
-                        </image>
-                    </images>
+                    <artifactItems>
+                        <artifactItem>
+                            <groupId>com.google.cloud</groupId>
+                            <artifactId>pubsub-emulator</artifactId>
+                            <version>1.51.0</version>
+                            <type>jar</type>
+                            <overWrite>true</overWrite>
+                            <outputDirectory>${project.build.directory}/pubsub-emulator</outputDirectory>
+                        </artifactItem>
+                    </artifactItems>
                 </configuration>
             </plugin>
         </plugins>
@@ -438,54 +442,10 @@
             <layout>default</layout>
             <url>https://maven.conveyal.com</url>
         </repository>
+        <repository>
+            <id>github</id>
+            <name>Entur Github package repo</name>
+            <url>https://maven.pkg.github.com/entur/siri-protobuf-mapper</url>
+        </repository>
     </repositories>
-
-    <!--
-  Default sample commands:
-
-  mvn -Pf8-build         ... build Docker images and create OpenShift deployment configs
-  mvn -Pf8-deploy        ... f8-build + push to Docker registry + applying deployment config to OpenShift
-  mvn -Pf8-local-deploy ... deployment for a single node setup without pushing to a registry
-
-  For individual goal usage please consult the fabric8 documentation
-  -->
-    <profiles>
-        <profile>
-            <id>rutebanken</id>
-            <properties>
-                <fabric8.imagePullPolicySnapshot>Always</fabric8.imagePullPolicySnapshot>
-                <fabric8.recreate>true</fabric8.recreate>
-            </properties>
-            <build>
-                <!-- Missing fabric8:apply, as this crashed (probably due to missing fabric8) -->
-                <defaultGoal>clean install docker:build docker:push fabric8:json</defaultGoal>
-            </build>
-        </profile>
-        <profile>
-            <id>f8-build</id>
-            <build>
-                <defaultGoal>clean install docker:build fabric8:json</defaultGoal>
-            </build>
-        </profile>
-        <profile>
-            <id>f8-deploy</id>
-            <properties>
-                <fabric8.imagePullPolicySnapshot>Always</fabric8.imagePullPolicySnapshot>
-                <fabric8.recreate>true</fabric8.recreate>
-            </properties>
-            <build>
-                <defaultGoal>clean install docker:build docker:push fabric8:json fabric8:apply</defaultGoal>
-            </build>
-        </profile>
-        <profile>
-            <id>f8-local-deploy</id>
-            <properties>
-                <fabric8.recreate>true</fabric8.recreate>
-            </properties>
-            <build>
-                <defaultGoal>clean install docker:build fabric8:json fabric8:apply</defaultGoal>
-            </build>
-        </profile>
-    </profiles>
-
 </project>

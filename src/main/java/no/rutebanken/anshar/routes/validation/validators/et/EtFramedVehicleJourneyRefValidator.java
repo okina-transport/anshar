@@ -16,6 +16,7 @@
 package no.rutebanken.anshar.routes.validation.validators.et;
 
 import no.rutebanken.anshar.routes.validation.validators.CustomValidator;
+import no.rutebanken.anshar.routes.validation.validators.ProfileValidationEventOrList;
 import no.rutebanken.anshar.routes.validation.validators.Validator;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.springframework.stereotype.Component;
@@ -39,12 +40,13 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.ESTIMA
 public class EtFramedVehicleJourneyRefValidator extends CustomValidator {
 
     private static final String FIELDNAME = "FramedVehicleJourneyRef";
-    private static final String path = ESTIMATED_VEHICLE_JOURNEY + "/" + FIELDNAME;
+    private static final String DATA_FRAMEREF_FIELDNAME = "DataFrameRef";
+    private String path = ESTIMATED_VEHICLE_JOURNEY + FIELD_DELIMITER + FIELDNAME;
+    private static final String PATTERN = "yyyy-MM-dd";
     private final DateFormat format;
-    private final String pattern = "yyyy-MM-dd";
 
     public EtFramedVehicleJourneyRefValidator() {
-        format = new SimpleDateFormat(pattern);
+        format = new SimpleDateFormat(PATTERN);
         format.setLenient(false);
     }
 
@@ -58,23 +60,16 @@ public class EtFramedVehicleJourneyRefValidator extends CustomValidator {
         return path;
     }
 
-
-    /*
-        <FramedVehicleJourneyRef>
-            <DataFrameRef>2018-12-31</DataFrameRef>
-            <DatedVehicleJourneyRef>CODESPACE:ServiceJourney:ID</DatedVehicleJourneyRef>
-        </FramedVehicleJourneyRef>
-     */
-
     @Override
     public ValidationEvent isValid(Node node) {
+        ProfileValidationEventOrList validationEvents = new ProfileValidationEventOrList();
 
-        String dataFrameRef = getChildNodeValue(node, "DataFrameRef");
+        String dataFrameRef = getChildNodeValue(node, DATA_FRAMEREF_FIELDNAME);
         if (dataFrameRef == null) {
-            return createEvent(node, "DataFrameRef", "valid date", dataFrameRef, ValidationEvent.FATAL_ERROR);
+            validationEvents.addEvent(createEvent(node, DATA_FRAMEREF_FIELDNAME, "valid date", dataFrameRef, ValidationEvent.FATAL_ERROR));
         } else {
             if (!isValidDate(dataFrameRef)) {
-                return createEvent(node, "DataFrameRef", "valid date with pattern " + pattern, dataFrameRef, ValidationEvent.FATAL_ERROR);
+                validationEvents.addEvent(createEvent(node, DATA_FRAMEREF_FIELDNAME, "valid date with PATTERN " + PATTERN, dataFrameRef, ValidationEvent.FATAL_ERROR));
 
             }
         }
@@ -82,10 +77,13 @@ public class EtFramedVehicleJourneyRefValidator extends CustomValidator {
         String datedVehicleJourneyRef = getChildNodeValue(node, "DatedVehicleJourneyRef");
         if (!isValidGenericId("ServiceJourney", datedVehicleJourneyRef)) {
 
-            return createEvent(node, "DatedVehicleJourneyRef", "CODESPACE:ServiceJourney:ID", datedVehicleJourneyRef, ValidationEvent.FATAL_ERROR);
+            validationEvents.addEvent(createEvent(node, "DatedVehicleJourneyRef", "CODESPACE:ServiceJourney:ID", datedVehicleJourneyRef, ValidationEvent.FATAL_ERROR));
         }
 
-        return null;
+        if (validationEvents.getEvents().isEmpty()) {
+            return null;
+        }
+        return validationEvents;
     }
 
     private boolean isValidDate(String date) {
@@ -94,6 +92,12 @@ public class EtFramedVehicleJourneyRefValidator extends CustomValidator {
         } catch (ParseException e) {
             return false;
         }
+
+        if (date.length() != PATTERN.length()) {
+            // If length does not match, date cannot match pattern
+            return false;
+        }
+
         return true;
     }
 }

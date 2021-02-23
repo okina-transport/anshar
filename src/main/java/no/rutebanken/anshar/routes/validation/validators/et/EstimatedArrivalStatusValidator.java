@@ -32,15 +32,16 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.ESTIMA
 @Component
 public class EstimatedArrivalStatusValidator extends LimitedSubsetValidator {
 
-    private static String path;
+    private String path;
 
     public EstimatedArrivalStatusValidator() {
         FIELDNAME = "ArrivalStatus";
-        path = ESTIMATED_CALL + "/" + FIELDNAME;
+        path = ESTIMATED_CALL + FIELD_DELIMITER + FIELDNAME;
 
         expectedValues = Sets.newHashSet(
                 CallStatusEnumeration.ARRIVED.value(),
                 CallStatusEnumeration.CANCELLED.value(),
+                CallStatusEnumeration.MISSED.value(),
                 CallStatusEnumeration.EARLY.value(),
                 CallStatusEnumeration.ON_TIME.value(),
                 CallStatusEnumeration.DELAYED.value());

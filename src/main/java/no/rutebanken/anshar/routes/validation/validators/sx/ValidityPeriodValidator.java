@@ -22,7 +22,9 @@ import org.springframework.stereotype.Component;
 import org.w3c.dom.Node;
 
 import javax.xml.bind.ValidationEvent;
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 
 import static no.rutebanken.anshar.routes.validation.validators.Constants.PT_SITUATION_ELEMENT;
@@ -39,10 +41,11 @@ public class ValidityPeriodValidator extends CustomValidator {
 
 
     private static final String FIELDNAME = "ValidityPeriod";
-    private static final String path = PT_SITUATION_ELEMENT + "/" + FIELDNAME;
+    private static String path = PT_SITUATION_ELEMENT + FIELD_DELIMITER + FIELDNAME;
 
-    private final String START_TIME_FIELD_NAME = "StartTime";
-    private final String END_TIME_FIELD_NAME = "EndTime";
+    private static final String START_TIME_FIELD_NAME = "StartTime";
+    private static final String END_TIME_FIELD_NAME = "EndTime";
+    private static final int MAX_SX_VALIDITY_SECONDS = 24*3600*365; // One year
 
 
     @Override
@@ -69,7 +72,7 @@ public class ValidityPeriodValidator extends CustomValidator {
         final ZonedDateTime startTime;
 
         if (startTimeValue != null && !startTimeValue.isEmpty()) {
-            startTime = ZonedDateTime.parse(startTimeValue);
+            startTime = parseDate(startTimeValue);
             if (startTime == null) {
                 return createEvent(node, START_TIME_FIELD_NAME, "valid date", startTimeValue, ValidationEvent.FATAL_ERROR);
             }
@@ -84,19 +87,31 @@ public class ValidityPeriodValidator extends CustomValidator {
                 return createEvent(node, END_TIME_FIELD_NAME, "EndTime when Progress is 'closed'", endTimeValue, ValidationEvent.FATAL_ERROR);
             }
 
-            final ZonedDateTime endTime = ZonedDateTime.parse(endTimeValue);
+            final ZonedDateTime endTime = parseDate(endTimeValue);
             if (endTime == null) {
                 return createEvent(node, END_TIME_FIELD_NAME, "valid date", endTimeValue, ValidationEvent.FATAL_ERROR);
             } else if (endTime.minus(5, ChronoUnit.HOURS).isBefore(startTime)){
-                return createEvent(node, END_TIME_FIELD_NAME, "EndTime should be at least 5 hours after StarTime when Progress is closed", endTimeValue, ValidationEvent.ERROR);
+                return createEvent(node, END_TIME_FIELD_NAME, "EndTime should be at least 5 hours after StartTime when Progress is closed", endTimeValue, ValidationEvent.ERROR);
 
             }
 
         } else if (endTimeValue != null && !endTimeValue.isEmpty()) {
-            final ZonedDateTime parsedValue = ZonedDateTime.parse(endTimeValue);
-            if (parsedValue != null && parsedValue.isBefore(ZonedDateTime.now())) {
-                return createEvent(node, END_TIME_FIELD_NAME, "date after 'now'", endTimeValue, ValidationEvent.WARNING);
+            final ZonedDateTime endTime = parseDate(endTimeValue);
+            if (endTime != null) {
+                if (endTime.isBefore(ZonedDateTime.now())) {
+                    return createEvent(node, END_TIME_FIELD_NAME, "date after 'now'", endTimeValue, ValidationEvent.WARNING);
+                }
+                if (startTime != null) {
+                    final long startTimeSec = startTime.toEpochSecond();
+                    final long endTimeSec = endTime.toEpochSecond();
+                    final long validityPeriod = endTimeSec - startTimeSec;
+
+                    if (validityPeriod > MAX_SX_VALIDITY_SECONDS) {
+                        return createCustomFieldEvent(node, "EndTime states too long validity (" + startTime + " => " + endTime + ")" , ValidationEvent.WARNING);
+                    }
+                }
             }
+
         }
 
 

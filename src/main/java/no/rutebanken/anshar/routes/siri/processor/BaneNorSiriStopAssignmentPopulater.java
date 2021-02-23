@@ -18,17 +18,29 @@ package no.rutebanken.anshar.routes.siri.processor;
 import no.rutebanken.anshar.routes.siri.processor.routedata.ServiceDate;
 import no.rutebanken.anshar.routes.siri.processor.routedata.StopTime;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
+import no.rutebanken.anshar.subscription.SiriDataType;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri20.EstimatedCall;
+import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
+import uk.org.siri.siri20.EstimatedVehicleJourney;
+import uk.org.siri.siri20.EstimatedVersionFrameStructure;
+import uk.org.siri.siri20.FramedVehicleJourneyRefStructure;
+import uk.org.siri.siri20.QuayRefStructure;
+import uk.org.siri.siri20.RecordedCall;
+import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri20.StopAssignmentStructure;
 
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Set;
 
-import static no.rutebanken.anshar.routes.siri.processor.routedata.NetexUpdaterService.*;
+import static no.rutebanken.anshar.routes.siri.processor.routedata.NetexUpdaterService.getServiceDates;
+import static no.rutebanken.anshar.routes.siri.processor.routedata.NetexUpdaterService.getServiceJourney;
+import static no.rutebanken.anshar.routes.siri.processor.routedata.NetexUpdaterService.getStopTimes;
+import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.POPULATE_STOP_ASSIGNMENTS;
 import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getMappedId;
 
 /**
@@ -38,6 +50,11 @@ import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapte
 public class BaneNorSiriStopAssignmentPopulater extends ValueAdapter implements PostProcessor {
 
     private static final Logger logger = LoggerFactory.getLogger(BaneNorSiriStopAssignmentPopulater.class);
+    private final String datasetId;
+
+    public BaneNorSiriStopAssignmentPopulater(String datasetId) {
+        this.datasetId = datasetId;
+    }
 
     @Override
     protected String apply(String value) {
@@ -61,6 +78,8 @@ public class BaneNorSiriStopAssignmentPopulater extends ValueAdapter implements 
                             estimatedVehicleJourneyCounter++;
                             if (populateStopAssignments(estimatedVehicleJourney)) {
                                 populatedAssigmentsCounter++;
+                                getMetricsService().registerDataMapping(SiriDataType.ESTIMATED_TIMETABLE, datasetId, POPULATE_STOP_ASSIGNMENTS, 1);
+
                             }
                         }
                     }
@@ -108,7 +127,7 @@ public class BaneNorSiriStopAssignmentPopulater extends ValueAdapter implements 
                 }
             }
             if (extraCalls > 0) {
-                logger.info("Found {} ExtraCalls in RecordedCalls");
+                logger.info("Found {} ExtraCalls in RecordedCalls", extraCalls);
             }
         }
 

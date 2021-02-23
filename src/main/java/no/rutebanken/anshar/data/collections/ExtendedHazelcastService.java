@@ -15,17 +15,16 @@
 
 package no.rutebanken.anshar.data.collections;
 
+import com.hazelcast.collection.ISet;
 import com.hazelcast.config.SerializerConfig;
-import com.hazelcast.core.Cluster;
 import com.hazelcast.core.DistributedObject;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.IMap;
-import com.hazelcast.core.ISet;
 import com.hazelcast.core.LifecycleEvent;
-import com.hazelcast.core.Member;
-import com.hazelcast.core.ReplicatedMap;
+import com.hazelcast.map.IMap;
+import com.hazelcast.replicatedmap.ReplicatedMap;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.RequestorRefStats;
+import no.rutebanken.anshar.data.SiriObjectStorageKey;
 import no.rutebanken.anshar.routes.outbound.OutboundSubscriptionSetup;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
@@ -39,10 +38,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.ProductionTimetableDeliveryStructure;
 import uk.org.siri.siri20.PtSituationElement;
 import uk.org.siri.siri20.VehicleActivityStructure;
 
+import javax.annotation.PreDestroy;
 import java.math.BigInteger;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -57,20 +56,29 @@ public class ExtendedHazelcastService extends HazelCastService {
 
     private Logger logger = LoggerFactory.getLogger(ExtendedHazelcastService.class);
 
-    private AnsharConfiguration cfg;
-
     public ExtendedHazelcastService(@Autowired KubernetesService kubernetesService, @Autowired AnsharConfiguration cfg) {
-        super(kubernetesService, cfg.getHazelcastManagementUrl());
-        this.cfg = cfg;
+        super(kubernetesService);
     }
 
     public void addBeforeShuttingDownHook(Runnable destroyFunction) {
         hazelcast.getLifecycleService().addLifecycleListener(lifecycleEvent -> {
+            logger.info("Lifecycle: Event triggered: {}", lifecycleEvent);
             if (lifecycleEvent.getState().equals(LifecycleEvent.LifecycleState.SHUTTING_DOWN)) {
-                logger.info("Shutting down - committing all changes.");
+                logger.info("Lifecycle: Shutting down - committing all changes.");
                 destroyFunction.run();
             }
+            else {
+                logger.info("Lifecycle: Ignoring event {}", lifecycleEvent);
+            }
         });
+        logger.info("Lifecycle: Shutdownhook added.");
+    }
+
+    @PreDestroy
+    private void customShutdown() {
+        logger.info("Attempting to shutdown through LifecycleService");
+        hazelcast.getLifecycleService().shutdown();
+        logger.info("Shutdown through LifecycleService");
     }
 
     public HazelcastInstance getHazelcastInstance() {
@@ -98,73 +106,68 @@ public class ExtendedHazelcastService extends HazelCastService {
     }
 
     @Bean
-    public IMap<String, PtSituationElement> getSituationsMap(){
+    public IMap<SiriObjectStorageKey, PtSituationElement> getSituationsMap(){
         return hazelcast.getMap("anshar.sx");
     }
 
     @Bean
-    public IMap<String, Set<String>> getSituationChangesMap() {
+    public IMap<String, Set<SiriObjectStorageKey>> getSituationChangesMap() {
         return hazelcast.getMap("anshar.sx.changes");
     }
 
     @Bean
-    public IMap<String, EstimatedVehicleJourney> getEstimatedTimetablesMap(){
+    public IMap<SiriObjectStorageKey, EstimatedVehicleJourney> getEstimatedTimetablesMap(){
         return hazelcast.getMap("anshar.et");
     }
 
     @Bean
-    public IMap<String, Set<String>> getEstimatedTimetableChangesMap() {
+    public IMap<String, Set<SiriObjectStorageKey>> getEstimatedTimetableChangesMap() {
         return hazelcast.getMap("anshar.et.changes");
     }
 
     @Bean
-    public ReplicatedMap<String, String> getIdForPatternChangesMap() {
+    public ReplicatedMap<SiriObjectStorageKey, String> getIdForPatternChangesMap() {
         return hazelcast.getReplicatedMap("anshar.et.index.pattern");
     }
 
     @Bean
-    public ReplicatedMap<String, String> getSxChecksumMap() {
+    public ReplicatedMap<SiriObjectStorageKey, String> getSxChecksumMap() {
         return hazelcast.getReplicatedMap("anshar.sx.checksum.cache");
     }
 
     @Bean
-    public ReplicatedMap<String, String> getEtChecksumMap() {
+    public ReplicatedMap<SiriObjectStorageKey, String> getEtChecksumMap() {
         return hazelcast.getReplicatedMap("anshar.et.checksum.cache");
     }
 
     @Bean
-    public ReplicatedMap<String, String> getVmChecksumMap() {
+    public ReplicatedMap<SiriObjectStorageKey, String> getVmChecksumMap() {
         return hazelcast.getReplicatedMap("anshar.vm.checksum.cache");
     }
 
     @Bean
-    public ReplicatedMap<String, ZonedDateTime> getIdStartTimeMap() {
+    public ReplicatedMap<SiriObjectStorageKey, ZonedDateTime> getIdStartTimeMap() {
         return hazelcast.getReplicatedMap("anshar.et.index.startTime");
     }
 
     @Bean
-    public IMap<String, VehicleActivityStructure> getVehiclesMap(){
+    public IMap<SiriObjectStorageKey, VehicleActivityStructure> getVehiclesMap(){
         return hazelcast.getMap("anshar.vm");
     }
 
     @Bean
-    public IMap<String, Set<String>> getVehicleChangesMap() {
+    public IMap<String, Set<SiriObjectStorageKey>> getVehicleChangesMap() {
         return hazelcast.getMap("anshar.vm.changes");
-    }
-
-    @Bean
-    public IMap<String, ProductionTimetableDeliveryStructure> getProductionTimetablesMap(){
-        return hazelcast.getMap("anshar.pt");
-    }
-
-    @Bean
-    public IMap<String, Set<String>> getProductionTimetableChangesMap() {
-        return hazelcast.getMap("anshar.pt.changes");
     }
 
     @Bean
     public ReplicatedMap<String,SubscriptionSetup> getSubscriptionsMap() {
         return hazelcast.getReplicatedMap("anshar.subscriptions.active");
+    }
+
+    @Bean
+    public ReplicatedMap<String,String> getValidationFilterMap() {
+        return hazelcast.getReplicatedMap("anshar.validation.filter");
     }
 
     @Bean
@@ -190,12 +193,6 @@ public class ExtendedHazelcastService extends HazelCastService {
     }
 
     @Bean
-    public IMap<String, Instant> getLastPtUpdateRequest() {
-        return hazelcast.getMap("anshar.activity.last.pt.update.request");
-    }
-
-
-    @Bean
     public IMap<String, Instant> getLastSxUpdateRequest() {
         return hazelcast.getMap("anshar.activity.last.sx.update.request");
     }
@@ -204,26 +201,6 @@ public class ExtendedHazelcastService extends HazelCastService {
     public IMap<String, Instant> getLastVmUpdateRequest() {
         return hazelcast.getMap("anshar.activity.last.vm.update.request");
     }
-
-//    /**
-//     * Temporary method that migrates existing data from ReplicatedMap to IMap
-//     * @param mapName
-//     * @return
-//     */
-//    private IMap<String, Instant> migrateReplicatedMapToIMap(String mapName) {
-//        IMap<String, Instant> hazelcastMap = hazelcast.getMap(mapName);
-//
-//        ReplicatedMap<String, Instant> replicatedMap = hazelcast.getReplicatedMap(mapName);
-//        if (!replicatedMap.isEmpty()) {
-//
-//            // TTL-values are specifically for the change-tracker maps used in this migration
-//            replicatedMap.forEach((key, value) -> hazelcastMap.set(key, value, cfg.getTrackingPeriodMinutes(), TimeUnit.MINUTES));
-//            replicatedMap.clear();
-//
-//            logger.info("Migrated {} objects from ReplicatedMap to IMap for {}.", hazelcastMap.size(), mapName);
-//        }
-//        return hazelcastMap;
-//    }
 
     @Bean
     public IMap<String, Instant> getActivatedTimestampMap() {
@@ -253,38 +230,6 @@ public class ExtendedHazelcastService extends HazelCastService {
     @Bean
     public IMap<Enum<HealthCheckKey>, Instant> getHealthCheckMap() {
         return hazelcast.getMap("anshar.admin.health");
-    }
-
-    public String listNodes(Boolean includeStats) {
-        JSONObject root = new JSONObject();
-        JSONArray clusterMembers = new JSONArray();
-        Cluster cluster = hazelcast.getCluster();
-        if (cluster != null) {
-            Set<Member> members = cluster.getMembers();
-            if (members != null && !members.isEmpty()) {
-                for (Member member : members) {
-
-                    JSONObject obj = new JSONObject();
-                    obj.put("uuid", member.getUuid());
-                    obj.put("host", member.getAddress().getHost());
-                    obj.put("port", member.getAddress().getPort());
-                    obj.put("local", member.localMember());
-
-                    if (includeStats != null && includeStats) {
-                        JSONObject stats = new JSONObject();
-                        Collection<DistributedObject> distributedObjects = hazelcast.getDistributedObjects();
-                        for (DistributedObject distributedObject : distributedObjects) {
-                            stats.put(distributedObject.getName(), hazelcast.getMap(distributedObject.getName()).getLocalMapStats().toJson());
-                        }
-
-                        obj.put("localmapstats", stats);
-                    }
-                    clusterMembers.add(obj);
-                }
-            }
-        }
-        root.put("members", clusterMembers);
-        return root.toString();
     }
 
     @Bean

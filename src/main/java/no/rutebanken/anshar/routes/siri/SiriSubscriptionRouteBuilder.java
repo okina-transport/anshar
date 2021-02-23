@@ -26,7 +26,7 @@ import no.rutebanken.anshar.subscription.helpers.DataNotReceivedAction;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
-import org.apache.camel.component.http4.HttpMethods;
+import org.apache.camel.component.http.HttpMethods;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -72,11 +72,6 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
         return "?httpClient.socketTimeout=" + timeout + "&httpClient.connectTimeout=" + timeout;
     }
 
-    String getTimeToLive() {
-        return config.getTimeToLive();
-    }
-
-
     protected Processor addCustomHeaders() {
         return exchange -> {
             if (subscriptionSetup.getCustomHeaders() != null && !subscriptionSetup.getCustomHeaders().isEmpty()) {
@@ -102,7 +97,7 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
             hasBeenStarted = subscriptionSetup.isActive();
         }
 
-        singletonFrom("quartz2://anshar/monitor_" + subscriptionSetup.getSubscriptionId() + "?fireNow=true&trigger.repeatInterval=" + 15000,
+        singletonFrom("quartz://anshar/monitor_" + subscriptionSetup.getSubscriptionId() + "?fireNow=true&trigger.repeatInterval=" + 15000,
                 "monitor.subscription." + subscriptionSetup.getVendor())
                 .choice()
                 .when(p -> shouldPerformDataNotReceivedAction(p.getFromRouteId()))
@@ -153,12 +148,12 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
                         return false;
                     }
 
-                    //Clear data
-                    estimatedTimetables.clearAllByDatasetId(subscriptionSetup.getDatasetId());
-
-                    restartTriggered = Instant.now();
-
                     if (enabled) {
+                        //Clear data
+                        estimatedTimetables.clearAllByDatasetId(subscriptionSetup.getDatasetId());
+
+                        restartTriggered = Instant.now();
+
                         logger.warn("Triggering DataNotReceivedAction: POST {} to {}", dataNotReceivedAction.getJsonPostContent(), dataNotReceivedAction.getEndpoint());
                     } else {
                         logger.info("Should have triggered DataNotReceivedAction, but it has been disabled");
@@ -205,6 +200,6 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
         boolean isActive = subscriptionManager.isActiveSubscription(subscriptionSetup.getSubscriptionId());
         boolean isHealthy = subscriptionManager.isSubscriptionHealthy(subscriptionSetup.getSubscriptionId());
 
-        return (hasBeenStarted & !isActive) | (hasBeenStarted & isActive & !isHealthy);
+        return (hasBeenStarted & !isActive) || (hasBeenStarted & isActive & !isHealthy);
     }
 }

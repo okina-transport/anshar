@@ -17,11 +17,9 @@ package no.rutebanken.anshar.routes.siri.handlers;
 
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.EstimatedTimetables;
-import no.rutebanken.anshar.data.ProductionTimetables;
 import no.rutebanken.anshar.data.Situations;
 import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
-import no.rutebanken.anshar.routes.ServiceNotSupportedException;
 import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.outbound.SiriHelper;
@@ -32,7 +30,10 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
+import org.apache.camel.Produce;
+import org.apache.camel.ProducerTemplate;
 import org.json.simple.JSONObject;
+import org.rutebanken.siri20.util.SiriXml;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +44,7 @@ import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
 import uk.org.siri.siri20.EstimatedVehicleJourney;
 import uk.org.siri.siri20.LineRef;
 import uk.org.siri.siri20.PtSituationElement;
+import uk.org.siri.siri20.RequestorRef;
 import uk.org.siri.siri20.ServiceDeliveryErrorConditionElement;
 import uk.org.siri.siri20.ServiceRequest;
 import uk.org.siri.siri20.Siri;
@@ -69,6 +71,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getOriginalId;
+
 @Service
 public class SiriHandler {
 
@@ -90,9 +94,6 @@ public class SiriHandler {
     private EstimatedTimetables estimatedTimetables;
 
     @Autowired
-    private ProductionTimetables productionTimetables;
-
-    @Autowired
     private SiriObjectFactory siriObjectFactory;
 
     @Autowired
@@ -102,17 +103,15 @@ public class SiriHandler {
     private HealthManager healthManager;
 
     @Autowired
-    private MappingAdapterPresets mappingAdapterPresets;
-
-    @Autowired
     private SiriXmlValidator siriXmlValidator;
 
     @Autowired
     private PrometheusMetricsService metrics;
 
-    public SiriHandler() {
 
-    }
+    @Produce(uri = "direct:forward.position.data")
+    ProducerTemplate positionForwardRoute;
+
 
     public Siri handleIncomingSiri(String subscriptionId, InputStream xml) throws UnmarshalException {
         return handleIncomingSiri(subscriptionId, xml, null, -1);
@@ -194,11 +193,12 @@ public class SiriHandler {
             if (serviceRequest.getRequestorRef() != null) {
                 requestorRef = serviceRequest.getRequestorRef().getValue();
             }
-
+            SiriDataType dataType = null;
             if (hasValues(serviceRequest.getSituationExchangeRequests())) {
+                dataType = SiriDataType.SITUATION_EXCHANGE;
                 serviceResponse = situations.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize);
             } else if (hasValues(serviceRequest.getVehicleMonitoringRequests())) {
-
+                dataType = SiriDataType.VEHICLE_MONITORING;
                 Map<Class, Set<String>> filterMap = new HashMap<>();
                 for (VehicleMonitoringRequestStructure req : serviceRequest.getVehicleMonitoringRequests()) {
                     LineRef lineRef = req.getLineRef();
@@ -223,6 +223,7 @@ public class SiriHandler {
 
                 serviceResponse = SiriHelper.filterSiriPayload(siri, filterMap);
             } else if (hasValues(serviceRequest.getEstimatedTimetableRequests())) {
+                dataType = SiriDataType.ESTIMATED_TIMETABLE;
                 Duration previewInterval = serviceRequest.getEstimatedTimetableRequests().get(0).getPreviewInterval();
                 long previewIntervalInMillis = -1;
 
@@ -231,13 +232,17 @@ public class SiriHandler {
                 }
 
                 serviceResponse = estimatedTimetables.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize, previewIntervalInMillis);
-            } else if (hasValues(serviceRequest.getProductionTimetableRequests())) {
-                serviceResponse = siriObjectFactory.createPTServiceDelivery(productionTimetables.getAllUpdates(requestorRef, datasetId));
             }
+
 
             if (serviceResponse != null) {
                 metrics.countOutgoingData(serviceResponse, SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE);
-                return SiriValueTransformer.transform(serviceResponse, mappingAdapterPresets.getOutboundAdapters(outboundIdMappingPolicy));
+                return SiriValueTransformer.transform(
+                    serviceResponse,
+                    MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy),
+                    false,
+                    true
+                );
             }
         }
 
@@ -256,7 +261,8 @@ public class SiriHandler {
      * @return
      * @throws JAXBException
      */
-    private void processSiriClientRequest(String subscriptionId, InputStream xml) {
+    private void processSiriClientRequest(String subscriptionId, InputStream xml)
+        throws XMLStreamException {
         SubscriptionSetup subscriptionSetup = subscriptionManager.get(subscriptionId);
 
         if (subscriptionSetup != null) {
@@ -304,19 +310,46 @@ public class SiriHandler {
                     List<PtSituationElement> addedOrUpdated = new ArrayList<>();
                     if (situationExchangeDeliveries != null) {
                         situationExchangeDeliveries.forEach(sx -> {
-                                    if (sx.isStatus() != null && !sx.isStatus()) {
-                                        logger.info(getErrorContents(sx.getErrorCondition()));
-                                    } else {
-                                        addedOrUpdated.addAll(
-                                                situations.addAll(subscriptionSetup.getDatasetId(), sx.getSituations().getPtSituationElements())
-                                        );
+                                    if (sx != null) {
+                                        if (sx.isStatus() != null && !sx.isStatus()) {
+                                            logger.info(getErrorContents(sx.getErrorCondition()));
+                                        } else {
+                                            if (sx.getSituations() != null && sx.getSituations().getPtSituationElements() != null) {
+                                                if (subscriptionSetup.isUseCodespaceFromParticipantRef()) {
+                                                    Map<String, List<PtSituationElement>> situationsByCodespace = splitSituationsByCodespace(sx.getSituations().getPtSituationElements());
+                                                    for (String codespace : situationsByCodespace.keySet()) {
+
+                                                        // List containing added situations for current codespace
+                                                        List<PtSituationElement> addedSituations = new ArrayList();
+
+                                                        addedSituations.addAll(situations.addAll(
+                                                            codespace,
+                                                            situationsByCodespace.get(codespace)
+                                                        ));
+
+                                                        // Push updates to subscribers on this codespace
+                                                        serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedSituations, codespace);
+
+                                                        // Add to complete list of added situations
+                                                        addedOrUpdated.addAll(addedSituations);
+
+                                                    }
+
+                                                } else {
+
+                                                    addedOrUpdated.addAll(situations.addAll(
+                                                        subscriptionSetup.getDatasetId(),
+                                                        sx.getSituations().getPtSituationElements()
+                                                    ));
+                                                    serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                         );
                     }
                     deliveryContainsData = addedOrUpdated.size() > 0;
-
-                    serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
 
                     subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdated.size());
 
@@ -324,23 +357,33 @@ public class SiriHandler {
                 }
                 if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.VEHICLE_MONITORING)) {
                     List<VehicleMonitoringDeliveryStructure> vehicleMonitoringDeliveries = incoming.getServiceDelivery().getVehicleMonitoringDeliveries();
-                    logger.info("Got VM-delivery: Subscription [{}]", subscriptionSetup);
+                    logger.info("Got VM-delivery: Subscription [{}] {}", subscriptionSetup, subscriptionSetup.forwardPositionData() ? "- Position only":"");
 
                     List<VehicleActivityStructure> addedOrUpdated = new ArrayList<>();
                     if (vehicleMonitoringDeliveries != null) {
                         vehicleMonitoringDeliveries.forEach(vm -> {
-                                    if (vm.isStatus() != null && !vm.isStatus()) {
-                                        logger.info(getErrorContents(vm.getErrorCondition()));
-                                    } else {
-                                        addedOrUpdated.addAll(
-                                                vehicleActivities.addAll(subscriptionSetup.getDatasetId(), vm.getVehicleActivities())
-                                        );
+                                    if (vm != null) {
+                                        if (vm.isStatus() != null && !vm.isStatus()) {
+                                            logger.info(getErrorContents(vm.getErrorCondition()));
+                                        } else {
+                                            if (vm.getVehicleActivities() != null) {
+                                                if (subscriptionSetup.forwardPositionData()) {
+                                                    positionForwardRoute.sendBody(incoming);
+                                                    addedOrUpdated.addAll(vm.getVehicleActivities());
+                                                    logger.info("Forwarding VM positiondata for {} vehicles.", vm.getVehicleActivities().size());
+                                                } else {
+                                                    addedOrUpdated.addAll(
+                                                            vehicleActivities.addAll(subscriptionSetup.getDatasetId(), vm.getVehicleActivities())
+                                                    );
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                         );
                     }
 
-                    deliveryContainsData = deliveryContainsData | (addedOrUpdated.size() > 0);
+                    deliveryContainsData = deliveryContainsData || (addedOrUpdated.size() > 0);
 
                     serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
 
@@ -355,20 +398,26 @@ public class SiriHandler {
                     List<EstimatedVehicleJourney> addedOrUpdated = new ArrayList<>();
                     if (estimatedTimetableDeliveries != null) {
                         estimatedTimetableDeliveries.forEach(et -> {
-                                    if (et.isStatus() != null && !et.isStatus()) {
-                                        logger.info(getErrorContents(et.getErrorCondition()));
-                                    } else {
-                                        et.getEstimatedJourneyVersionFrames().forEach(versionFrame -> {
-                                            addedOrUpdated.addAll(
-                                                    estimatedTimetables.addAll(subscriptionSetup.getDatasetId(), versionFrame.getEstimatedVehicleJourneies())
-                                            );
-                                        });
+                                    if (et != null) {
+                                        if (et.isStatus() != null && !et.isStatus()) {
+                                            logger.info(getErrorContents(et.getErrorCondition()));
+                                        } else {
+                                            if (et.getEstimatedJourneyVersionFrames() != null) {
+                                                et.getEstimatedJourneyVersionFrames().forEach(versionFrame -> {
+                                                    if (versionFrame != null && versionFrame.getEstimatedVehicleJourneies() != null) {
+                                                        addedOrUpdated.addAll(
+                                                                estimatedTimetables.addAll(subscriptionSetup.getDatasetId(), versionFrame.getEstimatedVehicleJourneies())
+                                                        );
+                                                    }
+                                                });
+                                            }
+                                        }
                                     }
                                 }
                         );
                     }
 
-                    deliveryContainsData = deliveryContainsData | (addedOrUpdated.size() > 0);
+                    deliveryContainsData = deliveryContainsData || (addedOrUpdated.size() > 0);
 
                     serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
 
@@ -383,11 +432,39 @@ public class SiriHandler {
                     subscriptionManager.touchSubscription(subscriptionId);
                 }
             } else {
-                throw new RuntimeException(new ServiceNotSupportedException());
+                try {
+                    logger.info("Unsupported SIRI-request:" + SiriXml.toXml(incoming));
+                } catch (JAXBException e) {
+                    //Ignore
+                }
             }
         } else {
             logger.debug("ServiceDelivery for invalid subscriptionId [{}] ignored.", subscriptionId);
         }
+    }
+
+    private Map<String, List<PtSituationElement>> splitSituationsByCodespace(
+        List<PtSituationElement> ptSituationElements
+    ) {
+        Map<String, List<PtSituationElement>> result = new HashMap<>();
+        for (PtSituationElement ptSituationElement : ptSituationElements) {
+            final RequestorRef participantRef = ptSituationElement.getParticipantRef();
+            if (participantRef != null) {
+                final String codespace = getOriginalId(participantRef.getValue());
+
+                //Override mapped value if present
+                participantRef.setValue(codespace);
+
+                final List<PtSituationElement> situations = result.getOrDefault(
+                    codespace,
+                    new ArrayList<>()
+                );
+
+                situations.add(ptSituationElement);
+                result.put(codespace, situations);
+            }
+        }
+        return result;
     }
 
     /**

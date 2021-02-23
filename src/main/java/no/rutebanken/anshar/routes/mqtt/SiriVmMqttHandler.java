@@ -15,52 +15,53 @@
 
 package no.rutebanken.anshar.routes.mqtt;
 
-import com.hazelcast.core.IMap;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
+import org.apache.camel.Produce;
+import org.apache.camel.ProducerTemplate;
 import org.apache.commons.lang3.tuple.Pair;
-import org.eclipse.paho.client.mqttv3.MqttClient;
-import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
-import org.eclipse.paho.client.mqttv3.MqttException;
-import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri20.DirectionRefStructure;
+import uk.org.siri.siri20.FramedVehicleJourneyRefStructure;
+import uk.org.siri.siri20.LineRef;
+import uk.org.siri.siri20.LocationStructure;
+import uk.org.siri.siri20.MonitoredCallStructure;
+import uk.org.siri.siri20.NaturalLanguageStringStructure;
+import uk.org.siri.siri20.OnwardCallsStructure;
+import uk.org.siri.siri20.OperatorRefStructure;
+import uk.org.siri.siri20.StopPointRef;
+import uk.org.siri.siri20.VehicleActivityStructure;
 import uk.org.siri.siri20.VehicleActivityStructure.MonitoredVehicleJourney;
+import uk.org.siri.siri20.VehicleModesEnumeration;
+import uk.org.siri.siri20.VehicleRef;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
 import javax.xml.datatype.Duration;
 import java.math.BigInteger;
-import java.text.DecimalFormat;
 import java.time.DateTimeException;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Configuration
 @Component
 public class SiriVmMqttHandler {
     private final Logger logger = LoggerFactory.getLogger(SiriVmMqttHandler.class);
 
-    private static final String MQTT_COUNTER_KEY = "Anshar.MQTT.message.count";
-    private static final String MQTT_SIZE_KEY = "Anshar.MQTT.message.size";
-    private static final String MQTT_START_TIME_IN_SECONDS_KEY = "Anshar.MQTT.start.time";
-
-
     private static final String TOPIC_PREFIX = "/hfp/journey/";
 
-    private static final String ZERO = "0";
     private static final String SLASH = "/";
-    private static final String JOURNEY_DELIM = " -> ";
     private static final String DATE_FORMAT = "yyyy-MM-dd";
     private static final String ODAY_FORMAT = "hhmm";
 
@@ -70,136 +71,78 @@ public class SiriVmMqttHandler {
     private static final String GO = "go";
     private static final String BACK = "back";
 
+    private int pushCounter = 0;
     @Value("${anshar.mqtt.enabled:false}")
     private boolean mqttEnabled;
 
-    @Value("${anshar.mqtt.subscribe:false}")
-    private boolean mqttSubscribe;
+    private static AtomicInteger processCounter = new AtomicInteger(0);
 
     @Value("${anshar.mqtt.destination.id.fallback:false}")
     private boolean destinationIdFallback;
 
-    @Value("${anshar.mqtt.host}")
-    private String host;
+    @Value("${anshar.mqtt.empty.headsign.allowed:false}")
+    private boolean allowEmptyHeadsign;
 
-    @Value("${anshar.mqtt.username}")
-    private String username;
+    @Value("${anshar.mqtt.threadpool.size:20}")
+    private int threadpoolSize = 20;
 
-    @Value("${anshar.mqtt.password}")
-    private String password;
+    @Produce(uri = "direct:send.to.mqtt")
+    ProducerTemplate mqttProducer;
 
-    @Value("${anshar.mqtt.reconnectInterval.millis:30000}")
-    private long reconnectInterval;
+    ExecutorService executorService;
 
-    @Autowired
-    @Qualifier("getHitcountMap")
-    private IMap<String, Integer> hitcount;
-
-    private MqttClient mqttClient;
-
-    private long lastConnectionAttempt;
-
-    private static final String clientId = UUID.randomUUID().toString();
-
-    private final int connectionTimeout = 10;
-
-    @PostConstruct
-    private void initialize() {
-        try {
-            mqttClient = new MqttClient(host, clientId, null);
-
-            logger.info("Initializing MQTT-client with clientId {}, enabled: {}", clientId, mqttEnabled);
-        } catch (MqttException e) {
-            throw new ExceptionInInitializerError(e);
-        }
+    public SiriVmMqttHandler() {
+        logger.info("Creating ExecutorService with fixed Threadpool of size {}", threadpoolSize);
+        final ThreadFactory threadFactory = new ThreadFactoryBuilder().setNameFormat("mqtt-push").build();
+        executorService = Executors.newFixedThreadPool(threadpoolSize, threadFactory);
     }
-
-    @PreDestroy
-    private void disconnect() {
-        if (mqttClient.isConnected()) {
-            try {
-                logger.info("Disconnecting from MQTT on address {}", host);
-                mqttClient.disconnectForcibly();
-            } catch (MqttException e) {
-                //Disconnect failed - ignore
-            }
-        }
-    }
-
-    private void publishMessage(String topic, String content) {
-
-        if (!mqttClient.isConnected() &&
-                (System.currentTimeMillis() - lastConnectionAttempt) > reconnectInterval) {
-            connect();
-        }
-
-        try {
-            if (mqttClient.isConnected()) {
-                MqttMessage message = new MqttMessage(content.getBytes());
-                message.setQos(1);
-                mqttClient.publish(topic, message);
-
-                Integer publishedCount = hitcount.merge(MQTT_COUNTER_KEY, 1, Integer::sum);
-                Integer publishedSize = hitcount.merge(MQTT_SIZE_KEY, content.length(), Integer::sum);
-
-                if (publishedCount != null && publishedCount % 1000 == 0) {
-                    logger.info("MQTT: Published {} updates, total size {}, last message:[{}]",
-                            publishedCount, readableFileSize(publishedSize.longValue()), content);
-                }
-            }
-        } catch (MqttException e) {
-            logger.info("Unable to publish to MQTT", e);
-        }
-    }
-
-    private synchronized void connect() {
-        if (mqttClient.isConnected()) {
-            logger.info("Already connected to mqtt - ignoring connect-request");
-            return;
-        }
-
-        MqttConnectOptions connOpts = new MqttConnectOptions();
-        connOpts.setUserName(username);
-        connOpts.setPassword(password.toCharArray());
-        connOpts.setConnectionTimeout(connectionTimeout);
-        connOpts.setMaxInflight(32000); //Half of the mqtt-specification
-        connOpts.setCleanSession(false);
-        try {
-            lastConnectionAttempt = System.currentTimeMillis();
-            logger.info("Connecting to MQTT on address {} using {} seconds timeout", host, connectionTimeout);
-            mqttClient.connect(connOpts);
-            logger.info("Connected to MQTT on address {} with user {}", host, username);
-        } catch (MqttException e) {
-            logger.warn("Failed to connect to MQTT ", e);
-        }
-    }
-
 
     public void pushToMqttAsync(String datasetId, VehicleActivityStructure activity) {
-        CompletableFuture.runAsync(() -> pushToMqtt(datasetId, activity));
+        if (mqttEnabled) {
+            executorService.submit(() -> pushToMqtt(datasetId, activity));
+        }
     }
 
-    public void pushToMqtt(String datasetId, VehicleActivityStructure activity) {
+    private void pushToMqtt(String datasetId, VehicleActivityStructure activity) {
         if (!mqttEnabled) {
             return;
         }
 
         // If monitored == false, ignore update
         if (activity != null && activity.getMonitoredVehicleJourney() != null &&
-                activity.getMonitoredVehicleJourney().isMonitored() != null &&
-                !activity.getMonitoredVehicleJourney().isMonitored()) {
+                Boolean.FALSE.equals(activity.getMonitoredVehicleJourney().isMonitored())) {
             return;
         }
 
         try {
+            processCounter.incrementAndGet();
             Pair<String, String> message = getMessage(datasetId, activity);
-            publishMessage(message.getKey(), message.getValue());
+
+            if (pushCounter % 500 == 0) {
+                logger.info("Pushed {} MQTT-messages. Current queue length: {}", pushCounter, processCounter.get());
+                logger.info("Errors since start: {}", errorCounter);
+            }
+            pushCounter++;
+
+            mqttProducer.sendBodyAndHeader(message.getValue(), "topic", message.getKey());
 
         } catch (NullPointerException e) {
             logger.debug("Incomplete Siri data", e);
+            trackError(datasetId, e.getMessage());
         } catch (Exception e) {
             logger.warn("Could not parse", e);
+        } finally {
+            processCounter.decrementAndGet();
         }
+    }
+
+    private Map<String, Map<String, Integer>> errorCounter = new HashMap<>();
+    private void trackError(String datasetId, String message) {
+        final Map<String, Integer> datasetCounterMap = errorCounter.getOrDefault(message, new HashMap<>());
+
+        int occurrences = datasetCounterMap.getOrDefault(datasetId, 0);
+        datasetCounterMap.put(datasetId, ++occurrences);
+        errorCounter.put(message, datasetCounterMap);
     }
 
     public Pair<String, String> getMessage(String datasetId, VehicleActivityStructure activity) {
@@ -232,7 +175,7 @@ public class SiriVmMqttHandler {
         } catch (JSONException e) {
            logger.info("Caught exception when generating MQTT-messsage - will be ignored", e);
         }
-        
+
         return Pair.of(topic, message);
     }
 
@@ -256,7 +199,7 @@ public class SiriVmMqttHandler {
 
     private String getMessage(MonitoredVehicleJourney monitoredVehicleJourney, String vehicleId, String timeStamp,
                               long tsi, String route, String tripId, String direction, String headSign, String startTime, double lat,
-                              double lng, String mode) throws JSONException {
+                              double lng, String mode) {
         JSONObject vehiclePosition = new JSONObject();
         vehiclePosition.put(VehiclePosition.DESIGNATION, getDesignation(monitoredVehicleJourney));
         vehiclePosition.put(VehiclePosition.DIRECTION, direction);
@@ -264,12 +207,9 @@ public class SiriVmMqttHandler {
         vehiclePosition.put(VehiclePosition.VEHICLE_ID, vehicleId);
         vehiclePosition.put(VehiclePosition.TIMESTAMP, timeStamp);
         vehiclePosition.put(VehiclePosition.TSI, tsi);
-        //vehiclePosition.put(VehiclePosition.HEADING, 9);
-        //vehiclePosition.put(VehiclePosition.SPEED, 28);
         vehiclePosition.put(VehiclePosition.LATITUDE, lat);
         vehiclePosition.put(VehiclePosition.LONGITUDE, lng);
         vehiclePosition.put(VehiclePosition.DELAY, getDelay(monitoredVehicleJourney));
-        //vehiclePosition.put(VehiclePosition.ODOMETER: odometer);
         vehiclePosition.put(VehiclePosition.ODAY, getDepartureDay(monitoredVehicleJourney));
         vehiclePosition.put(VehiclePosition.JOURNEY, getJourney(headSign));
         vehiclePosition.put(VehiclePosition.LINE, route);
@@ -301,13 +241,12 @@ public class SiriVmMqttHandler {
 
     private String getMode(MonitoredVehicleJourney monitoredVehicleJourney) {
         String vehicleMode = getVehicleMode(monitoredVehicleJourney);
+
         if (vehicleMode != null) {
-            switch (vehicleMode) {
-                case "ferry":
-                    return "water";
-                default:
-                    return vehicleMode;
+            if ("ferry".equals(vehicleMode)) {
+                return "water";
             }
+            return vehicleMode;
         }
 
         if ("Sporvognsdrift".equals(getOperator(monitoredVehicleJourney))) {
@@ -352,7 +291,7 @@ public class SiriVmMqttHandler {
     private String getHeadSign(MonitoredVehicleJourney monitoredVehicleJourney) {
         String headsign = VehiclePosition.UNKNOWN;
         List<NaturalLanguageStringStructure> destinationNames = monitoredVehicleJourney.getDestinationNames();
-        if (destinationNames.size() > 0) {
+        if (!destinationNames.isEmpty()) {
             NaturalLanguageStringStructure destinationName = destinationNames.get(0);
             if (destinationName != null &&
                     destinationName.getValue() != null &&
@@ -387,7 +326,7 @@ public class SiriVmMqttHandler {
 
     private String getNextStop(MonitoredVehicleJourney monitoredVehicleJourney) {
         OnwardCallsStructure onwardCalls = monitoredVehicleJourney.getOnwardCalls();
-        if (onwardCalls != null && onwardCalls.getOnwardCalls().size() > 0) {
+        if (onwardCalls != null && !onwardCalls.getOnwardCalls().isEmpty()) {
             StopPointRef stopPointRef = onwardCalls.getOnwardCalls().get(0).getStopPointRef();
             if (stopPointRef != null && stopPointRef.getValue() != null) {
                 return OutboundIdAdapter.getMappedId(stopPointRef.getValue());
@@ -427,7 +366,7 @@ public class SiriVmMqttHandler {
 
     private String getDesignation(MonitoredVehicleJourney monitoredVehicleJourney) {
         List<NaturalLanguageStringStructure> publishedLineNames = monitoredVehicleJourney.getPublishedLineNames();
-        if (publishedLineNames != null && publishedLineNames.size() > 0) {
+        if (publishedLineNames != null && !publishedLineNames.isEmpty()) {
             NaturalLanguageStringStructure publishedLine = publishedLineNames.get(0);
             if (publishedLine != null && publishedLine.getValue() != null) {
                 return publishedLine.getValue();
@@ -506,7 +445,10 @@ public class SiriVmMqttHandler {
     }
 
     private String getJourney(String headSign) {
-        if (headSign.isEmpty() | headSign.equals(VehiclePosition.UNKNOWN)) {
+        if (headSign.isEmpty() || headSign.equals(VehiclePosition.UNKNOWN)) {
+            if (allowEmptyHeadsign) {
+                return VehiclePosition.UNKNOWN;
+            }
             throw new NullPointerException("VehicleActivityStructure.MonitoredVehicleJourney.DestinationName not set");
         }
 
@@ -539,12 +481,5 @@ public class SiriVmMqttHandler {
             results.append(digit(latitude, i)).append(digit(longitude, i)).append(SLASH);
         }
         return results.toString();
-    }
-
-    private static String readableFileSize(long size) {
-        if(size <= 0) return "0";
-        final String[] units = new String[] { "B", "kB", "MB", "GB", "TB" };
-        int digitGroups = (int) (Math.log10(size)/Math.log10(1024));
-        return new DecimalFormat("#,##0.#").format(size/Math.pow(1024, digitGroups)) + " " + units[digitGroups];
     }
 }

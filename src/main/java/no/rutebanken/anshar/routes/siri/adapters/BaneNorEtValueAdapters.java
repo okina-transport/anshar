@@ -15,11 +15,18 @@
 
 package no.rutebanken.anshar.routes.siri.adapters;
 
-import no.rutebanken.anshar.routes.siri.processor.*;
+import no.rutebanken.anshar.routes.siri.processor.BaneNorIdPlatformPostProcessor;
+import no.rutebanken.anshar.routes.siri.processor.BaneNorRemoveExpiredJourneysPostProcessor;
+import no.rutebanken.anshar.routes.siri.processor.BaneNorRemoveFreightTrainPostProcessor;
+import no.rutebanken.anshar.routes.siri.processor.BaneNorSiriEtRewriter;
+import no.rutebanken.anshar.routes.siri.processor.BaneNorSiriStopAssignmentPopulater;
+import no.rutebanken.anshar.routes.siri.processor.EnsureIncreasingTimesProcessor;
+import no.rutebanken.anshar.routes.siri.processor.OperatorFilterPostProcessor;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,32 +44,34 @@ public class BaneNorEtValueAdapters extends MappingAdapter {
         Map<String, String> operatorOverrideMapping = new HashMap<>();
         operatorOverrideMapping.put("NG", "GJB");
 
-//        TODO: Possible necessary changes for NSB => VY
-//        operatorOverrideMapping.put("NSB", "VY");
-//        operatorOverrideMapping.put("NG", "VY");
-
         operatorOverrideMapping.put("FLY", "FLT");
         operatorOverrideMapping.put("SJ", "SJV");
+        operatorOverrideMapping.put("GAG", "GOA");
+        operatorOverrideMapping.put("VY", "NSB"); //BaneNOR has prematurely mapped their operatorRef...
+        operatorOverrideMapping.put("VYG", "GJB"); //BaneNOR has prematurely mapped their operatorRef...
+        operatorOverrideMapping.put("VYT", "VYG");
 
-        List<String> operatorsToIgnore = new ArrayList<>();//Arrays.asList("BN", "");
-        valueAdapters.add(new OperatorFilterPostProcessor(operatorsToIgnore, operatorOverrideMapping));
+        List<String> operatorsToIgnore = Collections.emptyList();
+        //List<String> operatorsToIgnore = Arrays.asList("FLY");
 
-        valueAdapters.add(new BaneNorRemoveFreightTrainPostProcessor());
+        valueAdapters.add(new OperatorFilterPostProcessor(subscriptionSetup.getDatasetId(), operatorsToIgnore, operatorOverrideMapping));
+
+        valueAdapters.add(new BaneNorRemoveFreightTrainPostProcessor(subscriptionSetup.getDatasetId()));
 
         /*
          Need to remove already expired VehicleJourneys before matching with NeTEx routedata since vehicleRef-
          values (privateCode/trainNumber) are reused for each departure-date.
          */
-        valueAdapters.add(new BaneNorRemoveExpiredJourneysPostProcessor());
+        valueAdapters.add(new BaneNorRemoveExpiredJourneysPostProcessor(subscriptionSetup.getDatasetId()));
 
         // Rewrites stop-pattern based on plan-data from NSB which not always matches
-        valueAdapters.add(new BaneNorSiriEtRewriter());
+        valueAdapters.add(new BaneNorSiriEtRewriter(subscriptionSetup.getDatasetId()));
 
         //Populates EstimatedCalls with StopAssignments to indicate platform-changes
-        valueAdapters.add(new BaneNorSiriStopAssignmentPopulater());
+        valueAdapters.add(new BaneNorSiriStopAssignmentPopulater(subscriptionSetup.getDatasetId()));
 
         //Ensures that arrival-/departure-times are always increasing
-        valueAdapters.add(new EnsureIncreasingTimesProcessor());
+        valueAdapters.add(new EnsureIncreasingTimesProcessor(subscriptionSetup.getDatasetId()));
 
         return valueAdapters;
     }

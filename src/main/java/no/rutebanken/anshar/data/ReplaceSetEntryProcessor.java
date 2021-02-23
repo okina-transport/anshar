@@ -1,33 +1,22 @@
 package no.rutebanken.anshar.data;
 
-import com.hazelcast.map.EntryBackupProcessor;
 import com.hazelcast.map.EntryProcessor;
 
 import java.util.Map;
 import java.util.Set;
 
-public class ReplaceSetEntryProcessor implements EntryProcessor<String, Set<String>>,
-                                                                EntryBackupProcessor<String, Set<String>> {
+public class ReplaceSetEntryProcessor implements EntryProcessor<String, Set<SiriObjectStorageKey>, Set<SiriObjectStorageKey>> {
 
-    private final Set<String> changes;
+    private final Set<SiriObjectStorageKey> changes;
 
-    public ReplaceSetEntryProcessor(Set<String> changes) {
+    public ReplaceSetEntryProcessor(Set<SiriObjectStorageKey> changes) {
         this.changes = changes;
     }
 
     @Override
-    public Object process(Map.Entry<String, Set<String>> entry) {
+    public Set<SiriObjectStorageKey> process(Map.Entry<String, Set<SiriObjectStorageKey>> entry) {
         entry.setValue(changes);
-        return null;
+        return changes;
     }
 
-    @Override
-    public EntryBackupProcessor getBackupProcessor() {
-        return ReplaceSetEntryProcessor.this;
-    }
-
-    @Override
-    public void processBackup(Map.Entry<String, Set<String>> entry) {
-        entry.setValue(changes);
-    }
 }

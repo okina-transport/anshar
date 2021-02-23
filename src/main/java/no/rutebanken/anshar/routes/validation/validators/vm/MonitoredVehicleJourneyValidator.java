@@ -48,7 +48,7 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.MONITO
 public class MonitoredVehicleJourneyValidator extends NsrQuayValidator {
 
     private static final String FIELDNAME = "MonitoredVehicleJourney";
-    private static final String path = MONITORED_VEHICLE_JOURNEY;
+    private String path = MONITORED_VEHICLE_JOURNEY;
 
     @Override
     public String getXpath() {
@@ -67,6 +67,7 @@ public class MonitoredVehicleJourneyValidator extends NsrQuayValidator {
                 "FramedVehicleJourneyRef",
                 "DataSource",
                 "VehicleLocation",
+                "VehicleRef",
                 "Delay");
 
     }

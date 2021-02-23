@@ -4,7 +4,7 @@
 |name|Any string|Informational name used in stats-page|
 |datasetId|Any string - should be short|Preferable Codespace-ID used to separate data from different vendors - also used in urls|
 |serviceType|REST, SOAP|Specifies if requests should be wrapped in soap envelopes|
-|subscriptionType|VEHICLE_MONITORING, SITUATION_EXCHANGE, ESTIMATED_TIMETABLE, PRODUCTION_TIMETABLE|SIRI datatype for this subscription|
+|subscriptionType|VEHICLE_MONITORING, SITUATION_EXCHANGE, ESTIMATED_TIMETABLE|SIRI datatype for this subscription|
 |subscriptionMode|REQUEST_RESPONSE, SUBSCRIBE, FETCHED_DELIVERY| - REQUEST_RESPONSE: Client gets all current data at som interval - SUBSCRIBE:Pubsub-pattern - changes are pushed from server to client when they occur. - FETCHED_DELIVERY:Client is notified that data is updated, and should POST a GetServiceRequest to get updated data.|
 |heartbeatIntervalSeconds|Any int|Expected heartbeat frequency|
 |updateIntervalSeconds|Any int|Indicates update-interval (only applicable when subscription is ESTIMATED_TIMETABLE/VEHICLE_MONITORING and type SUBSCRIBE)|
@@ -13,7 +13,6 @@
 |addressFieldName| *Address* or *ConsumerAddress* (default)| XML-attribute to use for inbound URL |
 |soapenvNamespace| Namespace URL for soap-Envelope| Optional namespace used in XML-marshalling Soap-Envelope|
 |incrementalUpdates|_true_, _false_ or leave empty | _true_ and _false_ sets the attribute to specified value. If empty, the IncrementalUpdates-element is not included in the Request| 
-|overrideHttps|_true_ or _false_ (default)| if set to true, the inbound URL for this subscriptions replaces _https://..._ with _http://..._  Should only be used when dataprovider explicitly does not support *https*|
 |urlMap|List of urls| Specifies URLs to separate services, unused may be deleted. Specify https4:// for HTTPS (e.g. https4://localhost:8080/siri/sx)|
 |  SUBSCRIBE|localhost:8080/siri/service/subscribe.xml |URL to register subscription|
 |  DELETE_SUBSCRIPTION|localhost:8080/siri/service/managesubscription.xml |URL to terminate subscription|

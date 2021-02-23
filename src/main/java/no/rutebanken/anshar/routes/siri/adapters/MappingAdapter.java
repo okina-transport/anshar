@@ -23,7 +23,11 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import uk.org.ifopt.siri20.StopPlaceRef;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri20.CourseOfJourneyRefStructure;
+import uk.org.siri.siri20.DestinationRef;
+import uk.org.siri.siri20.JourneyPlaceRefStructure;
+import uk.org.siri.siri20.LineRef;
+import uk.org.siri.siri20.StopPointRef;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,9 +36,9 @@ public abstract class MappingAdapter {
 
     public abstract List<ValueAdapter> getValueAdapters(SubscriptionSetup subscriptionSetup);
 
-    public List<ValueAdapter> getOutboundValueAdapters(OutboundIdMappingPolicy mappingPolicy) {
-        return new MappingAdapterPresets().getOutboundAdapters(mappingPolicy);
-    }
+//    public List<ValueAdapter> getOutboundValueAdapters(OutboundIdMappingPolicy mappingPolicy) {
+//        return MappingAdapterPresets.getOutboundAdapters(mappingPolicy);
+//    }
     List<ValueAdapter> createNsrIdMappingAdapters(SiriDataType type, String datasetId, List<String> idMappingPrefixes) {
         List<ValueAdapter> nsr = new ArrayList<>();
         nsr.add(new StopPlaceRegisterMapper(type, datasetId, StopPlaceRef.class, idMappingPrefixes, "StopPlace"));
@@ -45,10 +49,12 @@ public abstract class MappingAdapter {
     }
 
 
-    public List<ValueAdapter> createIdPrefixAdapters(String datasetId) {
+    public List<ValueAdapter> createIdPrefixAdapters(SubscriptionSetup subscriptionSetup) {
         List<ValueAdapter> adapters = new ArrayList<>();
-        adapters.add(new PrefixAdapter(LineRef.class, datasetId + ":Line:"));
-        adapters.add(new PrefixAdapter(CourseOfJourneyRefStructure.class, datasetId + ":VehicleJourney:"));
+        String datasetId = subscriptionSetup.getDatasetId();
+        final SiriDataType dataType = subscriptionSetup.getSubscriptionType();
+        adapters.add(new PrefixAdapter(dataType, datasetId, LineRef.class, datasetId + ":Line:"));
+        adapters.add(new PrefixAdapter(dataType, datasetId, CourseOfJourneyRefStructure.class, datasetId + ":VehicleJourney:"));
         return adapters;
     }
 }

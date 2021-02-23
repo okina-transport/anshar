@@ -23,6 +23,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
+import java.io.InputStream;
+
 @Repository
 @Profile("gcs-blobstore")
 public class GcsBlobStoreRepository implements BlobStoreRepository {
@@ -34,9 +36,9 @@ public class GcsBlobStoreRepository implements BlobStoreRepository {
     @Value("${blobstore.gcs.container.name}")
     private String containerName;
 
-
     @Override
     public void setStorage(Storage storage) {
+        logger.info("Setting storage: {}", storage);
         this.storage = storage;
     }
 
@@ -46,8 +48,14 @@ public class GcsBlobStoreRepository implements BlobStoreRepository {
     }
 
     @Override
-    public void uploadBlob(String name, byte[] bytes, boolean makePublic) {
+    public void uploadBlob(String name, byte[] bytes) {
         logger.info("Uploading file {} to container {}", name, containerName);
-        BlobStoreHelper.uploadBlob(storage, containerName, name, bytes, makePublic);
+        BlobStoreHelper.uploadBlob(storage, containerName, name, bytes, false);
+    }
+
+    @Override
+    public InputStream getBlob(String name) {
+        logger.info("Downloading file {} from container {} and storage: {}", name, containerName, storage);
+        return BlobStoreHelper.getBlob(storage, containerName, name);
     }
 }

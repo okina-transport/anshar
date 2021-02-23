@@ -17,6 +17,8 @@ package no.rutebanken.anshar.routes.export.file;
 
 import com.google.cloud.storage.Storage;
 import org.apache.camel.Header;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -24,10 +26,13 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PostConstruct;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 
 @Service
 public class BlobStoreService {
+
+	private Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	@Autowired
 	private BlobStoreRepository repository;
@@ -40,18 +45,27 @@ public class BlobStoreService {
 
 	@PostConstruct
 	public void init() {
+		logger.info("Initializing BlobStoreService with container {}, storage {}", containerName, storage);
 		repository.setStorage(storage);
 		repository.setContainerName(containerName);
 	}
 
 	public void uploadBlob(@Header(value = RealtimeDataFileUploader.ZIP_FILE_PATH) String path) throws IOException {
 		File f = new File(path);
-		repository.uploadBlob(f.getName(), Files.readAllBytes(f.toPath()), true);
+		repository.uploadBlob(f.getName(), Files.readAllBytes(f.toPath()));
 	}
 
 	public void uploadBlob(String name, byte[] data) {
+		uploadBlob(name, data);
+	}
+
+	public void uploadBlob(String name, byte[] data, boolean makePublic) {
 		if (data != null) {
-			repository.uploadBlob(name, data, true);
+			repository.uploadBlob(name, data);
 		}
+	}
+
+	public InputStream getBlob(String name) {
+		return repository.getBlob(name);
 	}
 }

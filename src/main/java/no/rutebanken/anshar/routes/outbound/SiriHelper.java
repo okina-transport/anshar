@@ -16,7 +16,6 @@
 package no.rutebanken.anshar.routes.outbound;
 
 import no.rutebanken.anshar.data.EstimatedTimetables;
-import no.rutebanken.anshar.data.ProductionTimetables;
 import no.rutebanken.anshar.data.Situations;
 import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
@@ -26,9 +25,34 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri20.AffectedLineStructure;
+import uk.org.siri.siri20.AffectsScopeStructure;
+import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
+import uk.org.siri.siri20.EstimatedTimetableRequestStructure;
+import uk.org.siri.siri20.EstimatedTimetableSubscriptionStructure;
+import uk.org.siri.siri20.EstimatedVehicleJourney;
+import uk.org.siri.siri20.EstimatedVersionFrameStructure;
+import uk.org.siri.siri20.LineDirectionStructure;
+import uk.org.siri.siri20.LineRef;
+import uk.org.siri.siri20.PtSituationElement;
+import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri20.SituationExchangeDeliveryStructure;
+import uk.org.siri.siri20.SituationExchangeRequestStructure;
+import uk.org.siri.siri20.SituationExchangeSubscriptionStructure;
+import uk.org.siri.siri20.SubscriptionRequest;
+import uk.org.siri.siri20.VehicleActivityStructure;
+import uk.org.siri.siri20.VehicleMonitoringDeliveryStructure;
+import uk.org.siri.siri20.VehicleMonitoringRequestStructure;
+import uk.org.siri.siri20.VehicleMonitoringSubscriptionStructure;
+import uk.org.siri.siri20.VehicleRef;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @SuppressWarnings("unchecked")
 @Component
@@ -45,9 +69,6 @@ public class SiriHelper {
 
     @Autowired
     private EstimatedTimetables estimatedTimetables;
-
-    @Autowired
-    private ProductionTimetables productionTimetables;
 
     private final SiriObjectFactory siriObjectFactory;
 
@@ -148,12 +169,6 @@ public class SiriHelper {
                 Collection<EstimatedVehicleJourney> timetables = estimatedTimetables.getAll(subscriptionRequest.getDatasetId());
                 logger.info("Initial ET-delivery: {} elements", timetables.size());
                 delivery = siriObjectFactory.createETServiceDelivery(timetables);
-                break;
-            case PRODUCTION_TIMETABLE:
-
-                Collection<ProductionTimetableDeliveryStructure> ptTimetables = productionTimetables.getAll(subscriptionRequest.getDatasetId());
-                logger.info("Initial EPT-delivery: {} elements", ptTimetables.size());
-                delivery = siriObjectFactory.createPTServiceDelivery(ptTimetables);
                 break;
         }
         return delivery;
@@ -320,7 +335,7 @@ public class SiriHelper {
         if (completeValue.contains(SiriValueTransformer.SEPARATOR)) {
             String mappedId = OutboundIdAdapter.getMappedId(completeValue);
             String originalId = OutboundIdAdapter.getOriginalId(completeValue);
-            return linerefValues.contains(mappedId) | linerefValues.contains(originalId);
+            return linerefValues.contains(mappedId) || linerefValues.contains(originalId);
         } else return linerefValues.contains(completeValue);
     }
 
@@ -421,8 +436,5 @@ public class SiriHelper {
     }
     public Siri getAllET() {
         return siriObjectFactory.createETServiceDelivery(estimatedTimetables.getAll());
-    }
-    public Siri getAllPT() {
-        return siriObjectFactory.createPTServiceDelivery(productionTimetables.getAll());
     }
 }

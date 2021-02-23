@@ -15,7 +15,7 @@
 
 package no.rutebanken.anshar.routes.outbound;
 
-import com.hazelcast.core.IMap;
+import com.hazelcast.map.IMap;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.routes.BaseRouteBuilder;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class HeartbeatRoute extends BaseRouteBuilder {
 
-    private final int heartbeatIntervalMillis = 2000;
+    private static final int HEARTBEAT_INTERVAL_MILLIS = 2000;
 
 
     @Autowired
@@ -44,6 +44,9 @@ public class HeartbeatRoute extends BaseRouteBuilder {
     private ServerSubscriptionManager serverSubscriptionManager;
 
     @Autowired
+    private CamelRouteManager camelRouteManager;
+
+    @Autowired
     private SiriObjectFactory siriObjectFactory;
 
     protected HeartbeatRoute(@Autowired  AnsharConfiguration config, @Autowired SubscriptionManager subscriptionManager) {
@@ -52,24 +55,26 @@ public class HeartbeatRoute extends BaseRouteBuilder {
 
     @Override
     public void configure() throws Exception {
-        singletonFrom("quartz2://anshar.outbound.subscription.manager?fireNow=true&trigger.repeatInterval=" + heartbeatIntervalMillis,
+        singletonFrom("quartz://anshar.outbound.subscription.manager?fireNow=true&trigger.repeatInterval=" + HEARTBEAT_INTERVAL_MILLIS,
                 "anshar.outbound.subscription.manager.route")
             .process(p -> {
                 final Set<String> subscriptionIds = serverSubscriptionManager.subscriptions.keySet();
                 for (String subscriptionId : subscriptionIds) {
                     final OutboundSubscriptionSetup outboundSubscriptionSetup = serverSubscriptionManager.subscriptions.get(subscriptionId);
 
-                    if (LocalDateTime.now().isAfter(outboundSubscriptionSetup.getInitialTerminationTime().toLocalDateTime())) {
-                        serverSubscriptionManager.terminateSubscription(outboundSubscriptionSetup.getSubscriptionId());
-                    } else if (!heartbeatTimestampMap.containsKey(subscriptionId)) {
-                        if (outboundSubscriptionSetup != null) {
+                    if (outboundSubscriptionSetup != null) {
+                        if (LocalDateTime.now().isAfter(outboundSubscriptionSetup.getInitialTerminationTime().toLocalDateTime())) {
+                            serverSubscriptionManager.terminateSubscription(outboundSubscriptionSetup.getSubscriptionId());
+                        } else if (!heartbeatTimestampMap.containsKey(subscriptionId)) {
                             final long heartbeatInterval = outboundSubscriptionSetup.getHeartbeatInterval();
 
                             Siri heartbeatNotification = siriObjectFactory.createHeartbeatNotification(outboundSubscriptionSetup.getSubscriptionId());
-                            serverSubscriptionManager.pushSiriData(heartbeatNotification, outboundSubscriptionSetup);
+                            camelRouteManager.pushSiriData(heartbeatNotification, outboundSubscriptionSetup, serverSubscriptionManager);
 
                             heartbeatTimestampMap.put(subscriptionId, Instant.now(), heartbeatInterval, TimeUnit.MILLISECONDS);
                         }
+                    } else {
+                        log.info("Outbound subscription {} not found.", subscriptionId);
                     }
                 }
             })

@@ -16,6 +16,7 @@
 package no.rutebanken.anshar.routes.siri.processor;
 
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
+import no.rutebanken.anshar.subscription.SiriDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
@@ -24,6 +25,8 @@ import uk.org.siri.siri20.ServiceFeatureRef;
 import uk.org.siri.siri20.Siri;
 
 import java.util.List;
+
+import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.REMOVE_FREIGHT_TRAIN;
 
 /**
  * Remove expired VehicleJourneys to avoid conflict in vehicleRef per date.
@@ -34,6 +37,11 @@ public class BaneNorRemoveFreightTrainPostProcessor extends ValueAdapter impleme
 
     // Indicates how long after latest arrival the data should be processed.
     private static final String FREIGHT_TRAIN_FEATURE_REF = "freightTrain";
+    private String datasetId;
+
+    public BaneNorRemoveFreightTrainPostProcessor(String datasetId) {
+        this.datasetId = datasetId;
+    }
 
     @Override
     public void process(Siri siri) {
@@ -46,7 +54,9 @@ public class BaneNorRemoveFreightTrainPostProcessor extends ValueAdapter impleme
                     int size = estimatedJourneyVersionFrame.getEstimatedVehicleJourneies().size();
                     estimatedJourneyVersionFrame.getEstimatedVehicleJourneies().removeIf(et -> isFreightTrain(et.getServiceFeatureReves()));
                     if (estimatedJourneyVersionFrame.getEstimatedVehicleJourneies().size() != size) {
-                        logger.info("Removed {} freight trains", (size - estimatedJourneyVersionFrame.getEstimatedVehicleJourneies().size()));
+                        final int removedFreightTrains = size - estimatedJourneyVersionFrame.getEstimatedVehicleJourneies().size();
+                        logger.info("Removed {} freight trains", removedFreightTrains);
+                        getMetricsService().registerDataMapping(SiriDataType.ESTIMATED_TIMETABLE, datasetId, REMOVE_FREIGHT_TRAIN, removedFreightTrains);
                     }
                 }
             }

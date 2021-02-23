@@ -1,10 +1,11 @@
 package no.rutebanken.anshar.routes.siri.processor;
 
+import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.siri.processor.routedata.NetexUpdaterService;
 import no.rutebanken.anshar.routes.siri.processor.routedata.StopTime;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
@@ -14,7 +15,11 @@ import uk.org.siri.siri20.Siri;
 
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoField;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static junit.framework.TestCase.assertFalse;
@@ -22,18 +27,19 @@ import static no.rutebanken.anshar.routes.siri.processor.BaneNorSiriStopAssignme
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class BaneNorSiriEtRewriterTest {
+
+public class BaneNorSiriEtRewriterTest extends SpringBootBaseTest {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private BaneNorSiriEtRewriter rewriter;
 
-    @Before
+    @BeforeEach
     public void init() {
-        rewriter = new BaneNorSiriEtRewriter();
+        rewriter = new BaneNorSiriEtRewriter("BNR");
     }
 
-    @Ignore("Ignored because of excessive memory-usage which breaks CircleCI")
+    @Disabled("Ignored because of excessive memory-usage which breaks CircleCI")
     @Test
     public void testMapping() throws Exception {
         logger.info("Reads routedata...");

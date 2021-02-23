@@ -16,10 +16,15 @@
 package no.rutebanken.anshar.subscription;
 
 
-import com.hazelcast.core.IMap;
-import com.hazelcast.core.ReplicatedMap;
+import com.hazelcast.map.IMap;
+import com.hazelcast.replicatedmap.ReplicatedMap;
 import no.rutebanken.anshar.config.AnsharConfiguration;
-import no.rutebanken.anshar.data.*;
+import no.rutebanken.anshar.data.EstimatedTimetables;
+import no.rutebanken.anshar.data.RequestorRefRepository;
+import no.rutebanken.anshar.data.RequestorRefStats;
+import no.rutebanken.anshar.data.SiriObjectStorageKey;
+import no.rutebanken.anshar.data.Situations;
+import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
@@ -34,17 +39,29 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigInteger;
-import java.time.*;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
-import static no.rutebanken.anshar.subscription.SiriDataType.*;
+import static no.rutebanken.anshar.subscription.SiriDataType.ESTIMATED_TIMETABLE;
+import static no.rutebanken.anshar.subscription.SiriDataType.SITUATION_EXCHANGE;
+import static no.rutebanken.anshar.subscription.SiriDataType.VEHICLE_MONITORING;
 
 @Service
 public class SubscriptionManager {
 
-    final int HEALTHCHECK_INTERVAL_FACTOR = 5;
+    static final int HEALTHCHECK_INTERVAL_FACTOR = 5;
     private final Logger logger = LoggerFactory.getLogger(SubscriptionManager.class);
 
     @Autowired
@@ -56,7 +73,7 @@ public class SubscriptionManager {
 
     @Autowired
     @Qualifier("getLastActivityMap")
-    private ReplicatedMap<String, java.time.Instant> lastActivity;
+    private ReplicatedMap<String, Instant> lastActivity;
 
     @Autowired
     @Qualifier("getDataReceivedMap")
@@ -101,15 +118,15 @@ public class SubscriptionManager {
 
     @Autowired
     @Qualifier("getSituationChangesMap")
-    private IMap<String, Set<String>> sxChanges;
+    private IMap<String, Set<SiriObjectStorageKey>> sxChanges;
 
     @Autowired
     @Qualifier("getEstimatedTimetableChangesMap")
-    private IMap<String, Set<String>> etChanges;
+    private IMap<String, Set<SiriObjectStorageKey>> etChanges;
 
     @Autowired
     @Qualifier("getVehicleChangesMap")
-    private IMap<String, Set<String>> vmChanges;
+    private IMap<String, Set<SiriObjectStorageKey>> vmChanges;
 
     @Autowired
     private RequestorRefRepository requestorRefRepository;
@@ -175,9 +192,9 @@ public class SubscriptionManager {
     public boolean touchSubscription(String subscriptionId, ZonedDateTime serviceStartedTime) {
         SubscriptionSetup setup = subscriptions.get(subscriptionId);
         if (setup != null && serviceStartedTime != null) {
-            Instant lastActivity = this.lastActivity.get(subscriptionId);
-            if (lastActivity == null || serviceStartedTime.toInstant().isBefore(lastActivity)) {
-                logger.info("Remote Service startTime ({}) is before lastActivity ({}) for subscription [{}]",serviceStartedTime, lastActivity, setup);
+            Instant lastSubscriptionActivity = lastActivity.get(subscriptionId);
+            if (lastSubscriptionActivity == null || serviceStartedTime.toInstant().isBefore(lastSubscriptionActivity)) {
+                logger.info("Remote Service startTime ({}) is before lastSubscriptionActivity ({}) for subscription [{}]",serviceStartedTime, lastSubscriptionActivity, setup);
                 return touchSubscription(subscriptionId);
             } else {
                 logger.info("Remote service has been restarted, forcing subscription to be restarted [{}]", setup);
@@ -202,7 +219,7 @@ public class SubscriptionManager {
         JSONArray filteredSubscriptions = new JSONArray();
 
         filteredSubscriptions.addAll(subscriptions.values().stream()
-                .filter(subscription -> subscription.getDatasetId().equals(codespace))
+                .filter(subscription -> subscription.getDatasetId().equalsIgnoreCase(codespace))
                 .map(this::getJsonObject)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList()));
@@ -225,7 +242,7 @@ public class SubscriptionManager {
 
         String subscriptionId = subscriptionSetup.getSubscriptionId();
         if (subscriptionId != null) {
-            BigInteger counter = (objectCounter.get(subscriptionId) != null ? objectCounter.get(subscriptionId) : new BigInteger("0"));
+            BigInteger counter = (objectCounter.get(subscriptionId) != null ? objectCounter.get(subscriptionId) : BigInteger.valueOf(0));
             objectCounter.put(subscriptionId, counter.add(BigInteger.valueOf(size)));
         }
     }
@@ -314,11 +331,11 @@ public class SubscriptionManager {
                 //If active subscription has existed longer than "initial subscription duration" - restart
                 Instant activated = activatedTimestamp.get(subscriptionId);
                 if (activated != null) {
-                    if (activeSubscription.getRestartTime() != null && activeSubscription.getRestartTime().indexOf(":") > 0) {
+                    if (activeSubscription.getRestartTime() != null && activeSubscription.getRestartTime().contains(":")) {
                         // Allowing subscriptions to be restarted at specified time
                         ZonedDateTime restartTime = ZonedDateTime.of(LocalDate.now(), LocalTime.parse(activeSubscription.getRestartTime()), ZoneId.systemDefault());
                         if (restartTime.isBefore(ZonedDateTime.now()) && activated.atZone(ZoneId.systemDefault()).isBefore(restartTime)) {
-                            logger.info("Subscription [{}] configured for nightly restart at {}.", activeSubscription.toString(), restartTime);
+                            logger.info("Subscription [{}] configured for nightly restart at {}.", activeSubscription, restartTime);
                             forceRestart(subscriptionId);
                             return false;
                         }
@@ -337,6 +354,7 @@ public class SubscriptionManager {
     }
 
     public JSONObject buildStats() {
+        logger.info("Start building stats");
         JSONObject result = new JSONObject();
         JSONArray stats = new JSONArray();
 
@@ -347,6 +365,7 @@ public class SubscriptionManager {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList())
         );
+        logger.info("Built ET stats");
 
         JSONArray vmSubscriptions = new JSONArray();
         vmSubscriptions.addAll(this.subscriptions.values().stream()
@@ -355,6 +374,7 @@ public class SubscriptionManager {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList())
         );
+        logger.info("Built VM stats");
 
         JSONArray sxSubscriptions = new JSONArray();
         sxSubscriptions.addAll(this.subscriptions.values().stream()
@@ -363,6 +383,7 @@ public class SubscriptionManager {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList())
         );
+        logger.info("Built SX stats");
 
         JSONObject etType = new JSONObject();
         etType.put("typeName", ""+ ESTIMATED_TIMETABLE);
@@ -381,16 +402,20 @@ public class SubscriptionManager {
         result.put("types", stats);
 
         JSONArray pollingClients = new JSONArray();
+        logger.info("Build polling stats");
 
         JSONObject etPolling = new JSONObject();
         etPolling.put("typeName", ""+ ESTIMATED_TIMETABLE);
         etPolling.put("polling", getIdAndCount(etChanges, ESTIMATED_TIMETABLE));
+        logger.info("Built ET polling stats");
         JSONObject vmPolling = new JSONObject();
         vmPolling.put("typeName", ""+ VEHICLE_MONITORING);
         vmPolling.put("polling", getIdAndCount(vmChanges, VEHICLE_MONITORING));
+        logger.info("Built VM polling stats");
         JSONObject sxPolling = new JSONObject();
         sxPolling.put("typeName", ""+ SITUATION_EXCHANGE);
         sxPolling.put("polling", getIdAndCount(sxChanges, SITUATION_EXCHANGE));
+        logger.info("Built SX polling stats");
 
         pollingClients.add(etPolling);
         pollingClients.add(vmPolling);
@@ -403,22 +428,29 @@ public class SubscriptionManager {
         result.put("secondsSinceDataReceived", healthManager.getSecondsSinceDataReceived());
         JSONObject count = new JSONObject();
 
+        logger.info("Getting dataset sizes");
         Map<String, Integer> etDatasetSize = et.getDatasetSize();
+        logger.info("Got ET size");
         Map<String, Integer> vmDatasetSize = vm.getDatasetSize();
+        logger.info("Got VM size");
         Map<String, Integer> sxDatasetSize = sx.getDatasetSize();
+        logger.info("Got SX size");
 
         count.put("sx", sxDatasetSize.values().stream().mapToInt(Number::intValue).sum());
         count.put("et", etDatasetSize.values().stream().mapToInt(Number::intValue).sum());
         count.put("vm", vmDatasetSize.values().stream().mapToInt(Number::intValue).sum());
 
+        logger.info("Building distribution stats");
         count.put("distribution", getCountPerDataset(etDatasetSize, vmDatasetSize, sxDatasetSize));
+        logger.info("Built distribution stats");
 
         result.put("elements", count);
 
+        logger.info("Done building stats");
         return result;
     }
 
-    private JSONArray getIdAndCount(Map<String, Set<String>> map, SiriDataType dataType) {
+    private JSONArray getIdAndCount(Map<String, Set<SiriObjectStorageKey>> map, SiriDataType dataType) {
         JSONArray count = new JSONArray();
         for (String key : map.keySet()) {
             JSONObject keyValue = new JSONObject();
@@ -518,6 +550,7 @@ public class SubscriptionManager {
             urllist.put(s.name(), setup.getUrlMap().get(s));
         }
         obj.put("urllist", urllist);
+        obj.put("validationUrl", configuration.getInboundUrl() + "validation/" + setup.getDatasetId());
 
         return obj;
     }
@@ -569,7 +602,7 @@ public class SubscriptionManager {
                 subscriptions.put(subscriptionId, subscriptionSetup);
 
                 removeSubscription(subscriptionId);
-                logger.info("Handled request to cancel subscription ", subscriptionSetup);
+                logger.info("Handled request to cancel subscription {}", subscriptionSetup);
             }
         }
     }
@@ -580,7 +613,7 @@ public class SubscriptionManager {
             if (subscriptionSetup != null) {
                 subscriptionSetup.setActive(true);
                 activatePendingSubscription(subscriptionId);
-                logger.info("Handled request to start subscription ", subscriptionSetup);
+                logger.info("Handled request to start subscription {}", subscriptionSetup);
             }
         }
     }

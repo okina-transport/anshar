@@ -99,7 +99,7 @@
                         <tr id="accordion${type?counter}-${item?counter}" class="collapse ${item.healthy???then(item.healthy?then("success","danger"), "warning")}">
                         <td colspan="9">
                             <table class="table table-striped">
-                                <tr><th>Dataset ID</th><td><a href="validation/${item.datasetId}" target="_blank">${item.datasetId}</a></td></tr>
+                                <tr><th>Dataset ID</th><td><a href="${item.validationUrl}" target="_blank">${item.datasetId}</a></td></tr>
                                 <tr><th>Vendor ID</th><td>${item.vendor}</td></tr>
                                 <tr><th>Servicetype</th><td>${item.serviceType}</td></tr>
                                 <tr><th>Inbound URL</th><td>${item.inboundUrl}</td></tr>
@@ -112,6 +112,7 @@
                                 <tr><th>Duration</th><td>${item.durationOfSubscription}</td></tr>
                                 <tr><th>Restart time</th><td>${item.restartTime!""}</td></tr>
                                 <tr><th>Type</th><td>${item.subscriptionType}</td></tr>
+                                <tr><th>Forward positiondata</th><td>${item.forwardPositionData?c}</td></tr>
                                 <tr><th>Id</th><td>${item.subscriptionId}</td></tr>
                                 <tr><th>RequestorRef</th><td>${item.requestorRef}</td></tr>
                                 <tr><th>Mode</th><td>${item.subscriptionMode}</td></tr>
@@ -295,17 +296,34 @@ Request count: ${item.requestCount}">${item.id}</span></td>
             </table>
         </div>
         <div class="tab-pane" id="map" role="tabpanel" aria-labelledby="map-tab" align="center">
-
-            <button type="button" class="btn btn-success text-success" onclick="showMap()">Show map</button> <br />
-            <iframe id="mapFrame" width="90%" height="90%" align="center" frameborder="0"></iframe>
+            <table class="table table-striped">
+                <thead>
+                <tr><th colspan="2"><h4>Available vehicle maps</h4></th></tr>
+                <tr>
+                    <th >Environment</th>
+                    <th >URL</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td >Dev</td>
+                    <td ><a href="https://vehicle-map.dev.entur.org/" target="_blank">https://vehicle-map.dev.entur.org/</a></td>
+                </tr>
+                <tr>
+                    <td >Staging</td>
+                    <td ><a href="https://vehicle-map.staging.entur.org/" target="_blank">https://vehicle-map.staging.entur.org/</a></td>
+                </tr>
+                <tr>
+                    <td >Production</td>
+                    <td ><a href="https://vehicle-map.entur.org/" target="_blank">https://vehicle-map.entur.org/</a></td>
+                </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 </body>
 <script>
-    function showMap() {
-        document.getElementById("mapFrame"). src = "https://jsfiddle.net/lassetyr/cj0xaoyw/show";
-    }
     $(function () {
         $(document).ready(function(){
             //Manage hash in URL to open the right tab

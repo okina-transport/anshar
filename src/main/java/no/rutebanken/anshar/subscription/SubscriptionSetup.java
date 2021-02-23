@@ -66,7 +66,6 @@ public class SubscriptionSetup implements Serializable {
     private String addressFieldName;
     private String soapenvNamespace;
     private Boolean incrementalUpdates;
-    private boolean overrideHttps;
     private String contentType;
     private String vehicleMonitoringRefValue;
     private boolean validation;
@@ -74,6 +73,20 @@ public class SubscriptionSetup implements Serializable {
 
     private DataNotReceivedAction dataNotReceivedAction;
     private String validationFilter;
+
+    private boolean forwardPositionData;
+
+    private boolean useCodespaceFromParticipantRef = false;
+
+    public boolean isUseCodespaceFromParticipantRef() {
+        return useCodespaceFromParticipantRef;
+    }
+
+    public void setUseCodespaceFromParticipantRef(
+        boolean useCodespaceFromParticipantRef
+    ) {
+        this.useCodespaceFromParticipantRef = useCodespaceFromParticipantRef;
+    }
 
     public DataNotReceivedAction getDataNotReceivedAction() {
         return dataNotReceivedAction;
@@ -161,7 +174,24 @@ public class SubscriptionSetup implements Serializable {
     }
 
     public Map<RequestType, String> getUrlMap() {
+        ensureHttpPrefixes(urlMap);
         return urlMap;
+    }
+
+    private void ensureHttpPrefixes(Map<RequestType, String> urlMap) {
+        if (urlMap != null) {
+            for (Map.Entry<RequestType, String> entry : urlMap.entrySet()) {
+                final String url = entry.getValue();
+                if (!url.startsWith("http")) {
+                    if (!url.isEmpty()) {
+                        entry.setValue("http://" + url);
+                        logger.warn("Prefixing url with 'http://': ", entry.getValue());
+                    }
+                } else if (url.startsWith("https4")) {
+                    entry.setValue(url.replaceFirst("https4://", "https://"));
+                }
+            }
+        }
     }
 
     public String getSubscriptionId() {
@@ -239,8 +269,10 @@ public class SubscriptionSetup implements Serializable {
         obj.put("requestorRef", getRequestorRef());
         obj.put("inboundUrl", buildUrl(true));
         obj.put("validation", isValidation());
+        obj.put("validationFilter", getValidationFilter());
         obj.put("contentType", getContentType());
         obj.put("restartTime", getRestartTime());
+        obj.put("forwardPositionData", forwardPositionData());
 
         return obj;
     }
@@ -317,14 +349,6 @@ public class SubscriptionSetup implements Serializable {
         this.incrementalUpdates = incrementalUpdates;
     }
 
-    public boolean getOverrideHttps() {
-        return overrideHttps;
-    }
-
-    public void setOverrideHttps(boolean overrideHttps) {
-        this.overrideHttps = overrideHttps;
-    }
-
     public String getContentType() {
         return contentType;
     }
@@ -367,7 +391,7 @@ public class SubscriptionSetup implements Serializable {
 
     public enum ServiceType {SOAP, REST}
 
-    public enum SubscriptionMode {SUBSCRIBE, REQUEST_RESPONSE, POLLING_FETCHED_DELIVERY, FETCHED_DELIVERY, LITE, WEBSOCKET}
+    public enum SubscriptionMode {SUBSCRIBE, REQUEST_RESPONSE, POLLING_FETCHED_DELIVERY, FETCHED_DELIVERY, LITE, WEBSOCKET, BIG_DATA_EXPORT, VM_POSITION_FORWARDING}
 
     public void setIdMappingPrefixes(List<String> idMappingPrefixes) {
         this.idMappingPrefixes = idMappingPrefixes;
@@ -426,7 +450,9 @@ public class SubscriptionSetup implements Serializable {
         this.previewInterval = previewIntervalSeconds;
     }
     public void setChangeBeforeUpdatesSeconds(int seconds) {
-        setChangeBeforeUpdates(Duration.ofSeconds(seconds));
+        if (seconds > 0) {
+            setChangeBeforeUpdates(Duration.ofSeconds(seconds));
+        }
     }
 
     private void setChangeBeforeUpdates(Duration changeBeforeUpdates) {
@@ -438,6 +464,8 @@ public class SubscriptionSetup implements Serializable {
     }
 
     public void setUrlMap(Map<RequestType, String> urlMap) {
+        ensureHttpPrefixes(urlMap);
+
         this.urlMap = urlMap;
     }
 
@@ -493,6 +521,14 @@ public class SubscriptionSetup implements Serializable {
         this.customHeaders = customHeaders;
     }
 
+    public boolean forwardPositionData() {
+        return forwardPositionData;
+    }
+
+    public void setForwardPositionData(boolean forwardPositionData) {
+        this.forwardPositionData = forwardPositionData;
+    }
+
     /**
      * Variant of equals that only compares fields crucial to detect updated subscription-config
      * NOTE: e.g. subscriptionId is NOT compared
@@ -527,10 +563,10 @@ public class SubscriptionSetup implements Serializable {
             logger.info("getOperatorNamespace() does not match [{}] vs [{}]", getOperatorNamespace(), that.getOperatorNamespace());
             return false;
         }
-        if (!getUrlMap().equals(that.getUrlMap())) {
-            logger.info("getUrlMap() does not match [{}] vs [{}]", getUrlMap(), that.getUrlMap());
-            return false;
-        }
+//        if (!getUrlMap().equals(that.getUrlMap())) {
+//            logger.info("getUrlMap() does not match [{}] vs [{}]", getUrlMap(), that.getUrlMap());
+//            return false;
+//        }
         if (!getVersion().equals(that.getVersion())) {
             logger.info("getVersion() does not match [{}] vs [{}]", getVersion(), that.getVersion());
             return false;

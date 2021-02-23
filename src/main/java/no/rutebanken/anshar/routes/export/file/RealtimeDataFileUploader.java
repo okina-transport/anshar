@@ -71,7 +71,7 @@ public class RealtimeDataFileUploader extends BaseRouteBuilder {
         log.info("Uploading snapshot with cron-expression [{}], first upload at: {}.", snapshotCronExpression,
                 new CronExpression(snapshotCronExpression).getNextValidTimeAfter(new Date()));
 
-        singletonFrom("quartz2://anshar.export.snapshot?cron=" + snapshotCronExpression
+        singletonFrom("quartz://anshar.export.snapshot?cron=" + snapshotCronExpression
                 ,"anshar.export.snapshot")
                 .choice()
                 .when(p -> isLeader())
@@ -90,10 +90,6 @@ public class RealtimeDataFileUploader extends BaseRouteBuilder {
 
                     .bean(exportHelper, "exportVM")
                     .setHeader("siriDataType", simple("VM"))
-                    .to("direct:anshar.export.snapshot.create.file")
-
-                    .bean(exportHelper, "exportPT")
-                    .setHeader("siriDataType", simple("PT"))
                     .to("direct:anshar.export.snapshot.create.file")
 
                     .to("direct:anshar.export.create.zip")

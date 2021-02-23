@@ -17,10 +17,18 @@ package no.rutebanken.anshar.subscription;
 
 import com.google.common.base.Preconditions;
 import no.rutebanken.anshar.config.AnsharConfiguration;
-import no.rutebanken.anshar.routes.siri.*;
+import no.rutebanken.anshar.routes.siri.Siri20ToSiriRS14Subscription;
+import no.rutebanken.anshar.routes.siri.Siri20ToSiriRS20RequestResponse;
+import no.rutebanken.anshar.routes.siri.Siri20ToSiriRS20Subscription;
+import no.rutebanken.anshar.routes.siri.Siri20ToSiriWS14RequestResponse;
+import no.rutebanken.anshar.routes.siri.Siri20ToSiriWS14Subscription;
+import no.rutebanken.anshar.routes.siri.Siri20ToSiriWS20RequestResponse;
+import no.rutebanken.anshar.routes.siri.Siri20ToSiriWS20Subscription;
 import no.rutebanken.anshar.routes.siri.adapters.Mapping;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.processor.CodespaceProcessor;
+import no.rutebanken.anshar.routes.siri.processor.ExtraJourneyDestinationDisplayPostProcessor;
+import no.rutebanken.anshar.routes.siri.processor.RemovePersonalInformationProcessor;
 import no.rutebanken.anshar.routes.siri.processor.ReportTypeProcessor;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
@@ -31,12 +39,20 @@ import org.apache.camel.builder.RouteBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
-import java.util.*;
+import javax.annotation.PreDestroy;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.ServiceConfigurationError;
+import java.util.Set;
+import java.util.stream.Collectors;
 
-@Service
+@Component
 public class SubscriptionInitializer implements CamelContextAware {
     private final Logger logger = LoggerFactory.getLogger(SubscriptionInitializer.class);
 
@@ -62,11 +78,20 @@ public class SubscriptionInitializer implements CamelContextAware {
     @Override
     public void setCamelContext(CamelContext camelContext) {
         this.camelContext = camelContext;
+        logger.info("ShutdownStrategy: {}", camelContext.getShutdownStrategy());
+    }
+
+    @PreDestroy
+    void shutdown() {
+        logger.info("Triggering Camel shutdown");
+        this.camelContext.shutdown();
+        logger.info("Triggered Camel shutdown");
     }
 
     @PostConstruct
     void createSubscriptions() {
         camelContext.setUseMDCLogging(true);
+        camelContext.setUseBreadcrumb(true);
 
 
         final Map<String, Object> mappingBeans = ApplicationContextHolder.getContext().getBeansWithAnnotation(Mapping.class);
@@ -83,16 +108,16 @@ public class SubscriptionInitializer implements CamelContextAware {
             List<SubscriptionSetup> subscriptionSetups = subscriptionConfig.getSubscriptions();
             logger.info("Initializing {} subscriptions", subscriptionSetups.size());
             Set<String> subscriptionIds = new HashSet<>();
+            Set<String> subscriptionNames = new HashSet<>();
+
+            Set<Long> subscriptionInternalIds = new HashSet<>();
 
             List<SubscriptionSetup> actualSubscriptionSetups = new ArrayList<>();
 
             // Validation and consistency-verification
             for (SubscriptionSetup subscriptionSetup : subscriptionSetups) {
-                if (subscriptionSetup.getOverrideHttps() && configuration.getInboundUrl().startsWith("https://")) {
-                    subscriptionSetup.setAddress(configuration.getInboundUrl().replaceFirst("https:", "http:"));
-                } else {
-                    subscriptionSetup.setAddress(configuration.getInboundUrl());
-                }
+
+                subscriptionSetup.setAddress(configuration.getInboundUrl());
 
                 if (!isValid(subscriptionSetup)) {
                     throw new ServiceConfigurationError("Configuration is not valid for subscription " + subscriptionSetup);
@@ -103,6 +128,16 @@ public class SubscriptionInitializer implements CamelContextAware {
                     throw new ServiceConfigurationError("SubscriptionIds are NOT unique for ID="+subscriptionSetup.getSubscriptionId());
                 }
 
+                if (subscriptionNames.contains(subscriptionSetup.getVendor())) {
+                    //Verify vendor-uniqueness
+                    throw new ServiceConfigurationError("Vendor is NOT unique for vendor="+subscriptionSetup.getVendor());
+                }
+
+                if (subscriptionInternalIds.contains(subscriptionSetup.getInternalId())) {
+                    //Verify internalId-uniqueness
+                    throw new ServiceConfigurationError("InternalId is NOT unique for ID="+subscriptionSetup.getInternalId());
+                }
+
 
                 if (mappingAdaptersById.containsKey(subscriptionSetup.getMappingAdapterId())) {
                     Class adapterClass = mappingAdaptersById.get(subscriptionSetup.getMappingAdapterId());
@@ -111,7 +146,9 @@ public class SubscriptionInitializer implements CamelContextAware {
 
                         //Is added to ALL subscriptions
                         valueAdapters.add(new CodespaceProcessor(subscriptionSetup.getDatasetId()));
-                        valueAdapters.add(new ReportTypeProcessor());
+                        valueAdapters.add(new ReportTypeProcessor(subscriptionSetup.getDatasetId()));
+                        valueAdapters.add(new RemovePersonalInformationProcessor());
+                        valueAdapters.add(new ExtraJourneyDestinationDisplayPostProcessor(subscriptionSetup.getDatasetId()));
 
                         subscriptionSetup.getMappingAdapters().addAll(valueAdapters);
                     } catch (Exception e) {
@@ -148,14 +185,18 @@ public class SubscriptionInitializer implements CamelContextAware {
 
                         actualSubscriptionSetups.add(subscriptionSetup);
                         subscriptionIds.add(subscriptionSetup.getSubscriptionId());
+                        subscriptionNames.add(subscriptionSetup.getVendor());
+                        subscriptionInternalIds.add(subscriptionSetup.getInternalId());
                     } else {
                         logger.info("Subscription with internalId={} already registered - keep existing. {}", subscriptionSetup.getInternalId(), subscriptionSetup);
                         actualSubscriptionSetups.add(existingSubscription);
                         subscriptionIds.add(existingSubscription.getSubscriptionId());
+                        subscriptionNames.add(existingSubscription.getVendor());
                     }
                 } else {
                     actualSubscriptionSetups.add(subscriptionSetup);
                     subscriptionIds.add(subscriptionSetup.getSubscriptionId());
+                    subscriptionNames.add(subscriptionSetup.getVendor());
                 }
 
             }
@@ -195,7 +236,7 @@ public class SubscriptionInitializer implements CamelContextAware {
 
         if (subscriptionSetup.getVersion().equals("1.4")) {
             if (isSoap) {
-                if (isSubscription | isFetchedDelivery) {
+                if (isSubscription || isFetchedDelivery) {
                     routeBuilders.add(new Siri20ToSiriWS14Subscription(configuration, handler, subscriptionSetup, subscriptionManager));
                 } else {
                     routeBuilders.add(new Siri20ToSiriWS14RequestResponse(configuration, subscriptionSetup, subscriptionManager));
@@ -208,20 +249,20 @@ public class SubscriptionInitializer implements CamelContextAware {
             }
         } else {
             if (isSoap) {
-                if (isSubscription | isFetchedDelivery) {
+                if (isSubscription || isFetchedDelivery) {
                     routeBuilders.add(new Siri20ToSiriWS20Subscription(configuration, handler, subscriptionSetup, subscriptionManager));
 
-                    if (isFetchedDelivery | subscriptionSetup.isDataSupplyRequestForInitialDelivery()) {
+                    if (isFetchedDelivery || subscriptionSetup.isDataSupplyRequestForInitialDelivery()) {
                         routeBuilders.add(new Siri20ToSiriWS20RequestResponse(configuration, subscriptionSetup, subscriptionManager));
                     }
                 } else {
                     routeBuilders.add(new Siri20ToSiriWS20RequestResponse(configuration, subscriptionSetup, subscriptionManager));
                 }
             } else {
-                if (isSubscription | isFetchedDelivery) {
+                if (isSubscription || isFetchedDelivery) {
                     routeBuilders.add(new Siri20ToSiriRS20Subscription(configuration, handler, subscriptionSetup, subscriptionManager));
 
-                    if (isFetchedDelivery | subscriptionSetup.isDataSupplyRequestForInitialDelivery()) {
+                    if (isFetchedDelivery || subscriptionSetup.isDataSupplyRequestForInitialDelivery()) {
                         routeBuilders.add(new Siri20ToSiriRS20RequestResponse(configuration, subscriptionSetup, subscriptionManager));
                     }
                 } else {
@@ -279,6 +320,10 @@ public class SubscriptionInitializer implements CamelContextAware {
             Preconditions.checkNotNull(urlMap.get(RequestType.DELETE_SUBSCRIPTION), "DELETE_SUBSCRIPTION-url is missing. " + s);
         } else {
             Preconditions.checkArgument(false, "Subscription mode not configured");
+        }
+
+        if (!SiriDataType.VEHICLE_MONITORING.equals(s.getSubscriptionType())) {
+            Preconditions.checkArgument(! s.forwardPositionData(), "Position only is only valid for VM-subscription.");
         }
 
         return true;

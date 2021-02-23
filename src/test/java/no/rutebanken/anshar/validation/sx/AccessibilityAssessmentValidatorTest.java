@@ -17,21 +17,25 @@ package no.rutebanken.anshar.validation.sx;
 
 import no.rutebanken.anshar.routes.validation.validators.sx.AccessibilityAssessmentValidator;
 import no.rutebanken.anshar.validation.CustomValidatorTest;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.w3c.dom.Node;
 import uk.org.acbs.siri20.AccessibilityEnumeration;
 
 import javax.xml.bind.ValidationEvent;
 
-import static junit.framework.TestCase.*;
-import static uk.org.acbs.siri20.AccessibilityEnumeration.*;
+import static junit.framework.TestCase.assertNotNull;
+import static junit.framework.TestCase.assertNull;
+import static junit.framework.TestCase.assertTrue;
+import static uk.org.acbs.siri20.AccessibilityEnumeration.FALSE;
+import static uk.org.acbs.siri20.AccessibilityEnumeration.TRUE;
+import static uk.org.acbs.siri20.AccessibilityEnumeration.UNKNOWN;
 
 public class AccessibilityAssessmentValidatorTest extends CustomValidatorTest {
 
     private static AccessibilityAssessmentValidator validator;
 
-    @BeforeClass
+    @BeforeAll
     public static void init() {
         validator = new AccessibilityAssessmentValidator();
     }
@@ -115,7 +119,7 @@ public class AccessibilityAssessmentValidatorTest extends CustomValidatorTest {
             xml.append("        <MobilityImpairedAccess>").append(mobilityImpairedAccess).append("</MobilityImpairedAccess>\n");
         }
 
-        if (wheelchairAccess != null | stepFreeAccess != null | escalatorFreeAccess != null | liftFreeAccess != null) {
+        if (wheelchairAccess != null || stepFreeAccess != null || escalatorFreeAccess != null || liftFreeAccess != null) {
             xml.append("        <Limitations>\n");
             xml.append("            <AccessibilityLimitation>\n");
             if (wheelchairAccess != null) {

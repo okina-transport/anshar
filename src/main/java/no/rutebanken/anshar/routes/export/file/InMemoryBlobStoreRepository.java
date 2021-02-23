@@ -21,6 +21,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
+
 @Repository
 @Profile("in-memory-blobstore")
 public class InMemoryBlobStoreRepository implements BlobStoreRepository {
@@ -28,18 +32,28 @@ public class InMemoryBlobStoreRepository implements BlobStoreRepository {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     @Override
-    public void uploadBlob(String objectName, byte[] bytes, boolean makePublic) {
+    public void uploadBlob(String objectName, byte[] bytes) {
         logger.info("blob with name {}, size {} ignored for in-memory-blobstore", objectName, bytes.length);
     }
 
     @Override
     public void setStorage(Storage storage) {
-
+        // Do nothing
     }
 
     @Override
     public void setContainerName(String containerName) {
+        // Do nothing
+    }
 
+    @Override
+    public InputStream getBlob(String name) {
+        try {
+            return new FileInputStream(name);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
 }

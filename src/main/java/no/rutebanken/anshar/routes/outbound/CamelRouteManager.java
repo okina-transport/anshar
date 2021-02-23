@@ -15,20 +15,12 @@
 
 package no.rutebanken.anshar.routes.outbound;
 
-import no.rutebanken.anshar.metrics.PrometheusMetricsService;
-import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
-import no.rutebanken.anshar.subscription.SiriDataType;
-import org.apache.camel.CamelContext;
-import org.apache.camel.CamelContextAware;
-import org.apache.camel.Exchange;
-import org.apache.camel.ExchangePattern;
-import org.apache.camel.LoggingLevel;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
-import org.apache.camel.Route;
-import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.model.RouteDefinition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -38,68 +30,53 @@ import uk.org.siri.siri20.Siri;
 import uk.org.siri.siri20.SituationExchangeDeliveryStructure;
 import uk.org.siri.siri20.VehicleMonitoringDeliveryStructure;
 
-import javax.ws.rs.core.MediaType;
-import java.net.ConnectException;
 import java.net.SocketException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 import static no.rutebanken.anshar.routes.siri.transformer.SiriOutputTransformerRoute.OUTPUT_ADAPTERS_HEADER_NAME;
 
 @Service
-public class CamelRouteManager implements CamelContextAware {
+public class CamelRouteManager {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    private CamelContext camelContext;
-    
     @Autowired
     private SiriHelper siriHelper;
 
     @Value("${anshar.default.max.elements.per.delivery:1000}")
     private int maximumSizePerDelivery;
 
-    @Value("${anshar.default.max.elements.per.websocket.delivery:100}")
-    private int maximumWebSocketSizePerDelivery;
+    @Value("${anshar.default.max.threads.per.outbound.subscription:20}")
+    private int maximumThreadsPerOutboundSubscription;
 
-    private final Map<OutboundSubscriptionSetup, SiriPushRouteBuilder> outboundRoutes = new HashMap<>();
+    @Produce(uri = "direct:send.to.external.subscription")
+    protected ProducerTemplate siriSubscriptionProcessor;
 
-    @Autowired
-    private ServerSubscriptionManager subscriptionManager;
-
-    @Autowired
-    private PrometheusMetricsService metrics;
-
-    @Override
-    public CamelContext getCamelContext() {
-        return camelContext;
-    }
-
-    @Override
-    public void setCamelContext(CamelContext camelContext) {
-        this.camelContext = camelContext;
-    }
-
-
-    
-    
     /**
-     * Creates a new ad-hoc route that sends the SIRI payload to supplied address, executes it, and finally terminates and removes it.
+     * Splits SIRI-data if applicable, and pushes data to external subscription
      * @param payload
      * @param subscriptionRequest
      */
-    void pushSiriData(Siri payload, OutboundSubscriptionSetup subscriptionRequest) {
+    void pushSiriData(Siri payload, OutboundSubscriptionSetup subscriptionRequest, ServerSubscriptionManager subscriptionManager) {
         String consumerAddress = subscriptionRequest.getAddress();
         if (consumerAddress == null) {
             logger.info("ConsumerAddress is null - ignoring data.");
             return;
         }
-
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        final String breadcrumbId = MDC.get("camel.breadcrumbId");
+        ExecutorService executorService = getOrCreateExecutorService(subscriptionRequest);
         executorService.submit(() -> {
             try {
+                MDC.put("camel.breadcrumbId", breadcrumbId);
+                if (!subscriptionManager.subscriptions.containsKey(subscriptionRequest.getSubscriptionId())) {
+                    // Short circuit if subscription has been terminated while waiting
+                    return;
+                }
 
                 Siri filteredPayload = SiriHelper.filterSiriPayload(payload, subscriptionRequest.getFilterMap());
 
@@ -108,33 +85,14 @@ public class CamelRouteManager implements CamelContextAware {
                     deliverySize = Integer.MAX_VALUE;
                 }
 
-                if (subscriptionRequest.getAddress().contains("activemq:topic") &&
-                        subscriptionRequest.getSubscriptionType() == SiriDataType.ESTIMATED_TIMETABLE) {
-                    // Only send monitored updates
-                    filteredPayload.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
-                            .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().removeIf(et -> (et.isMonitored() == null || !et.isMonitored()));
-
-                    if (filteredPayload.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
-                            .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().isEmpty()) {
-                        // No longer any updates to send.
-                        return;
-                    }
-                    logger.info("Sending {} messages to topic", filteredPayload.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
-                            .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size());
-                    deliverySize = maximumWebSocketSizePerDelivery;
-                }
-
                 List<Siri> splitSiri = siriHelper.splitDeliveries(filteredPayload, deliverySize);
 
                 if (splitSiri.size() > 1) {
-                    logger.info("Object split into {} deliveries for subscription.", splitSiri.size(), subscriptionRequest);
+                    logger.info("Object split into {} deliveries for subscription {}.", splitSiri.size(), subscriptionRequest);
                 }
 
-                SiriPushRouteBuilder siriPushRouteBuilder = new SiriPushRouteBuilder(consumerAddress, subscriptionRequest);
-                Route route = addSiriPushRoute(siriPushRouteBuilder);
-
                 for (Siri siri : splitSiri) {
-                    executeSiriPushRoute(siri, route.getId());
+                    postDataToSubscription(siri, subscriptionRequest);
                 }
             } catch (Exception e) {
                 logger.info("Failed to push data for subscription {}: {}", subscriptionRequest, e);
@@ -149,139 +107,93 @@ public class CamelRouteManager implements CamelContextAware {
                     logger.info("Exception caught when pushing SIRI-data: {}", msg);
                 }
                 subscriptionManager.pushFailedForSubscription(subscriptionRequest.getSubscriptionId());
-            } finally {
-                executorService.shutdown();
-            }
 
+                removeDeadSubscriptionExecutors(subscriptionManager);
+            } finally {
+                MDC.remove("camel.breadcrumbId");
+            }
         });
     }
 
-    private Route addSiriPushRoute(SiriPushRouteBuilder route) throws Exception {
-        Route existingRoute = camelContext.getRoute(route.getRouteName());
-        if (existingRoute == null) {
-            camelContext.addRoutes(route);
-            logger.trace("Route added - CamelContext now has {} routes", camelContext.getRoutes().size());
-            existingRoute = camelContext.getRoute(route.getRouteName());
+    Map<String, ExecutorService> threadFactoryMap = new HashMap<>();
+    private ExecutorService getOrCreateExecutorService(OutboundSubscriptionSetup subscriptionRequest) {
+
+        final String subscriptionId = subscriptionRequest.getSubscriptionId();
+        if (!threadFactoryMap.containsKey(subscriptionId)) {
+            ThreadFactory factory = new ThreadFactoryBuilder().setNameFormat("outbound"+subscriptionId).build();
+
+            threadFactoryMap.put(subscriptionId, Executors.newSingleThreadExecutor(factory));
         }
-        return existingRoute;
+
+        return threadFactoryMap.get(subscriptionId);
     }
 
-    private void executeSiriPushRoute(Siri payload, String routeName) {
-        if (!serviceDeliveryContainsData(payload)) {
-            return;
+
+    /**
+     * Clean up dead ExecutorServices
+     * @param subscriptionManager
+     */
+    private void removeDeadSubscriptionExecutors(ServerSubscriptionManager subscriptionManager) {
+        List<String> idsToRemove = new ArrayList<>();
+        for (String id : threadFactoryMap.keySet()) {
+            if (!subscriptionManager.subscriptions.containsKey(id)) {
+                final ExecutorService service = threadFactoryMap.get(id);
+                idsToRemove.add(id);
+                // Force shutdown since outbound subscription has been stopped
+                service.shutdownNow();
+            }
         }
-        ProducerTemplate template = camelContext.createProducerTemplate();
-        template.sendBody(routeName, payload);
+        if (!idsToRemove.isEmpty()) {
+            for (String id : idsToRemove) {
+                logger.info("Remove executor for subscription {}", id);
+                threadFactoryMap.remove(id);
+            }
+        }
     }
 
+    private void postDataToSubscription(Siri payload, OutboundSubscriptionSetup subscription) {
+
+        if (serviceDeliveryContainsData(payload)) {
+            String remoteEndPoint = subscription.getAddress();
+
+            Map<String, Object> headers = new HashMap<>();
+            headers.put("breadcrumbId", MDC.get("camel.breadcrumbId"));
+            headers.put("endpoint", remoteEndPoint);
+            headers.put("SubscriptionId", subscription.getSubscriptionId());
+            headers.put(OUTPUT_ADAPTERS_HEADER_NAME, subscription.getValueAdapters());
+
+            siriSubscriptionProcessor.sendBodyAndHeaders(payload, headers);
+        }
+    }
+
+    /**
+     * Returns false if payload contains an empty ServiceDelivery (i.e. no actual SIRI-data), otherwise it returns false
+     * @param payload
+     * @return
+     */
     private boolean serviceDeliveryContainsData(Siri payload) {
         if (payload.getServiceDelivery() != null) {
             ServiceDelivery serviceDelivery = payload.getServiceDelivery();
 
             if (SiriHelper.containsValues(serviceDelivery.getSituationExchangeDeliveries())) {
                 SituationExchangeDeliveryStructure deliveryStructure = serviceDelivery.getSituationExchangeDeliveries().get(0);
-                boolean containsSXdata = deliveryStructure.getSituations() != null &&
+                return deliveryStructure.getSituations() != null &&
                         SiriHelper.containsValues(deliveryStructure.getSituations().getPtSituationElements());
-                return containsSXdata;
             }
 
             if (SiriHelper.containsValues(serviceDelivery.getVehicleMonitoringDeliveries())) {
                 VehicleMonitoringDeliveryStructure deliveryStructure = serviceDelivery.getVehicleMonitoringDeliveries().get(0);
-                boolean containsVMdata = deliveryStructure.getVehicleActivities() != null &&
+                return deliveryStructure.getVehicleActivities() != null &&
                         SiriHelper.containsValues(deliveryStructure.getVehicleActivities());
-                return containsVMdata;
             }
 
             if (SiriHelper.containsValues(serviceDelivery.getEstimatedTimetableDeliveries())) {
                 EstimatedTimetableDeliveryStructure deliveryStructure = serviceDelivery.getEstimatedTimetableDeliveries().get(0);
-                boolean containsETdata = (deliveryStructure.getEstimatedJourneyVersionFrames() != null &&
+                return (deliveryStructure.getEstimatedJourneyVersionFrames() != null &&
                         SiriHelper.containsValues(deliveryStructure.getEstimatedJourneyVersionFrames()) &&
                         SiriHelper.containsValues(deliveryStructure.getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies()));
-                return containsETdata;
             }
         }
         return true;
-    }
-
-    private class SiriPushRouteBuilder extends RouteBuilder {
-
-        private final OutboundSubscriptionSetup subscriptionRequest;
-        private String remoteEndPoint;
-        private RouteDefinition definition;
-        private final String routeName;
-
-        public SiriPushRouteBuilder(String remoteEndPoint, OutboundSubscriptionSetup subscriptionRequest) {
-            this.remoteEndPoint=remoteEndPoint;
-            this.subscriptionRequest = subscriptionRequest;
-            routeName = String.format("direct:%s", subscriptionRequest.createRouteId());
-        }
-
-        @Override
-        public void configure() throws Exception {
-
-            boolean isActiveMQ = false;
-
-            if (remoteEndPoint.startsWith("http://")) {
-                //Translating URL to camel-format
-                remoteEndPoint = "http4://" + remoteEndPoint.substring("http://".length());
-            } else if (remoteEndPoint.startsWith("https://")) {
-                //Translating URL to camel-format
-                remoteEndPoint = "https4://" + remoteEndPoint.substring("https://".length());
-            } else if (remoteEndPoint.startsWith("activemq:")) {
-                isActiveMQ = true;
-            }
-
-            String options;
-            if (isActiveMQ) {
-                int timeout = subscriptionRequest.getTimeToLive();
-                options = "?asyncConsumer=true&timeToLive=" + timeout;
-            } else {
-                int timeout = 60000;
-                options = "?httpClient.socketTimeout=" + timeout + "&httpClient.connectTimeout=" + timeout;
-                onException(ConnectException.class)
-                        .maximumRedeliveries(0)
-                        .log("Failed to connect to recipient");
-
-                errorHandler(noErrorHandler());
-            }
-
-            if (isActiveMQ) {
-                if (subscriptionRequest.getSubscriptionType() == SiriDataType.ESTIMATED_TIMETABLE){
-                    definition = from(routeName)
-                            .routeId(routeName)
-                            .to("direct:siri.transform.output")
-                            .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
-                            .setHeader("asyncConsumer", simple("true"))
-                            .setHeader("timeToLive", simple("" + subscriptionRequest.getTimeToLive()))
-                            .to(ExchangePattern.InOnly, "direct:send.to.topic.estimated_timetable")
-                            .log(LoggingLevel.INFO, "Pushed data to ActiveMQ-topic: [" + remoteEndPoint + "]");
-                }
-            } else {
-                definition = from(routeName)
-                        .routeId(routeName)
-                        .log(LoggingLevel.INFO, "POST data to " + subscriptionRequest)
-                        .setHeader("SubscriptionId", constant(subscriptionRequest.getSubscriptionId()))
-                        .setHeader("CamelHttpMethod", constant("POST"))
-                        .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.APPLICATION_XML))
-                        .bean(metrics, "countOutgoingData(${body}, SUBSCRIBE)")
-                        .setHeader(OUTPUT_ADAPTERS_HEADER_NAME, constant(subscriptionRequest.getValueAdapters()))
-                        .to("direct:siri.transform.output")
-                        .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
-                        .to("log:push:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
-                        .to(remoteEndPoint + options)
-                        .bean(subscriptionManager, "clearFailTracker(${header.SubscriptionId})")
-                        .to("log:push-resp:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
-                        .log(LoggingLevel.INFO, "POST complete " + subscriptionRequest);
-            }
-
-        }
-
-        public RouteDefinition getDefinition() {
-            return definition;
-        }
-
-        public String getRouteName() {
-            return routeName;
-        }
     }
 }

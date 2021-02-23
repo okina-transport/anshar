@@ -17,8 +17,10 @@ package no.rutebanken.anshar.routes.siri.adapters;
 
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.routes.siri.transformer.impl.LeftPaddingAdapter;
+import no.rutebanken.anshar.routes.siri.transformer.impl.PrefixAdapter;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import uk.org.siri.siri20.LineRef;
+import uk.org.siri.siri20.StopPointRef;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,11 +34,12 @@ public class AktValueAdapters extends MappingAdapter {
 
         List<ValueAdapter> valueAdapters = new ArrayList<>();
         valueAdapters.add(new LeftPaddingAdapter(LineRef.class, 4, '0'));
+        valueAdapters.add(new PrefixAdapter(subscriptionSetup.getSubscriptionType(), subscriptionSetup.getDatasetId(), StopPointRef.class,"NSR:Quay:"));
 
         valueAdapters.addAll(createNsrIdMappingAdapters(subscriptionSetup.getSubscriptionType(), subscriptionSetup.getDatasetId(), subscriptionSetup.getIdMappingPrefixes()));
 
         if (subscriptionSetup.getDatasetId() != null && !subscriptionSetup.getDatasetId().isEmpty()) {
-            List<ValueAdapter> datasetPrefix = createIdPrefixAdapters(subscriptionSetup.getDatasetId());
+            List<ValueAdapter> datasetPrefix = createIdPrefixAdapters(subscriptionSetup);
             if (!subscriptionSetup.getMappingAdapters().containsAll(datasetPrefix)) {
                 subscriptionSetup.getMappingAdapters().addAll(datasetPrefix);
             }

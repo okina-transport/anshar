@@ -22,7 +22,6 @@ import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.apache.camel.model.RouteDefinition;
-import org.apache.camel.spi.RouteContext;
 import org.apache.camel.spi.RoutePolicy;
 import org.apache.camel.spring.SpringRouteBuilder;
 
@@ -69,12 +68,11 @@ public abstract class BaseRouteBuilder extends SpringRouteBuilder {
         boolean isLeader = isLeader(fromRouteId);
         log.debug("isActive: {}, isActivated {}, isLeader {}: {}", subscriptionSetup.isActive(), subscriptionManager.isActiveSubscription(subscriptionId), isLeader, subscriptionSetup);
 
-        return (isLeader & subscriptionSetup.isActive() && subscriptionManager.isActiveSubscription(subscriptionId));
+        return (isLeader && subscriptionSetup.isActive() && subscriptionManager.isActiveSubscription(subscriptionId));
     }
 
     protected boolean isLeader(String routeId) {
-        RouteContext routeContext = getContext().getRoute(routeId).getRouteContext();
-        List<RoutePolicy> routePolicyList = routeContext.getRoutePolicyList();
+        List<RoutePolicy> routePolicyList =getContext().getRoute(routeId).getRoutePolicyList();
         if (routePolicyList != null) {
             for (RoutePolicy routePolicy : routePolicyList) {
                 if (routePolicy instanceof InterruptibleHazelcastRoutePolicy) {
@@ -86,8 +84,7 @@ public abstract class BaseRouteBuilder extends SpringRouteBuilder {
     }
 
     protected void releaseLeadership(String routeId) {
-        RouteContext routeContext = getContext().getRoute(routeId).getRouteContext();
-        List<RoutePolicy> routePolicyList = routeContext.getRoutePolicyList();
+        List<RoutePolicy> routePolicyList = getContext().getRoute(routeId).getRoutePolicyList();
         if (routePolicyList != null) {
             for (RoutePolicy routePolicy : routePolicyList) {
                 if (routePolicy instanceof InterruptibleHazelcastRoutePolicy) {
@@ -119,7 +116,9 @@ public abstract class BaseRouteBuilder extends SpringRouteBuilder {
         if (subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.SUBSCRIBE &&
                 subscriptionSetup.isDataSupplyRequestForInitialDelivery()) {
             return "DataSupplyRequest";
-        } if (subscriptionSetup.getSubscriptionType() == SiriDataType.ESTIMATED_TIMETABLE) {
+        }
+
+        if (subscriptionSetup.getSubscriptionType() == SiriDataType.ESTIMATED_TIMETABLE) {
             return "GetEstimatedTimetableRequest";
         } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.VEHICLE_MONITORING) {
             return "GetVehicleMonitoring";

@@ -11,6 +11,7 @@
 <div class="jumbotron text-center">
     <h2>Validation results</h2>
     <strong>${(body?? && body.subscription??)?then(body.subscription.name, "Subscription not found")}</strong>
+    <h4>${(body?? && body.filter??)?then('Filter: ${body.filter}', "No filter")}</h4>
 </div>
 <#if body?? >
 <div class="container">
@@ -28,7 +29,7 @@
             </thead>
             <tbody >
                 <#list body.validationRefs as validation>
-                <tr style="cursor: pointer" class="${((validation.schema.errorCount + validation.profile.errorCount) != 0)?then("danger","success")}">
+                <tr style="cursor: pointer" class="${(validation.schema?? && validation.profile?? && (validation.schema.errorCount + validation.profile.errorCount) != 0)?then("danger","success")}">
                     <th data-toggle="collapse" data-target="#accordion${validation?counter}" >${validation?counter}</th>
                     <td data-toggle="collapse" data-target="#accordion${validation?counter}" >${validation.schema.timestamp?number_to_datetime}</td>
                     <td data-toggle="collapse" data-target="#accordion${validation?counter}" >${validation.schema.errorCount?c}</td>
