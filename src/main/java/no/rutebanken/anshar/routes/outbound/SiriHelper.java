@@ -16,6 +16,7 @@
 package no.rutebanken.anshar.routes.outbound;
 
 import no.rutebanken.anshar.data.EstimatedTimetables;
+import no.rutebanken.anshar.data.MonitoredStopVisits;
 import no.rutebanken.anshar.data.Situations;
 import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
@@ -34,11 +35,13 @@ import uk.org.siri.siri20.EstimatedVehicleJourney;
 import uk.org.siri.siri20.EstimatedVersionFrameStructure;
 import uk.org.siri.siri20.LineDirectionStructure;
 import uk.org.siri.siri20.LineRef;
+import uk.org.siri.siri20.MonitoredStopVisit;
 import uk.org.siri.siri20.PtSituationElement;
 import uk.org.siri.siri20.Siri;
 import uk.org.siri.siri20.SituationExchangeDeliveryStructure;
 import uk.org.siri.siri20.SituationExchangeRequestStructure;
 import uk.org.siri.siri20.SituationExchangeSubscriptionStructure;
+import uk.org.siri.siri20.StopMonitoringSubscriptionStructure;
 import uk.org.siri.siri20.SubscriptionRequest;
 import uk.org.siri.siri20.VehicleActivityStructure;
 import uk.org.siri.siri20.VehicleMonitoringDeliveryStructure;
@@ -70,6 +73,9 @@ public class SiriHelper {
     @Autowired
     private EstimatedTimetables estimatedTimetables;
 
+    @Autowired
+    private MonitoredStopVisits monitoredStopVisits;
+
     private final SiriObjectFactory siriObjectFactory;
 
     public SiriHelper(@Autowired SiriObjectFactory siriObjectFactory) {
@@ -84,6 +90,8 @@ public class SiriHelper {
             return getFilter(subscriptionRequest.getVehicleMonitoringSubscriptionRequests().get(0));
         } else if (containsValues(subscriptionRequest.getEstimatedTimetableSubscriptionRequests())) {
             return getFilter(subscriptionRequest.getEstimatedTimetableSubscriptionRequests().get(0));
+        } else if (containsValues(subscriptionRequest.getStopMonitoringSubscriptionRequests())) {
+            return getFilter(subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0));
         }
 
         return new HashMap<>();
@@ -98,7 +106,7 @@ public class SiriHelper {
             Set<String> linerefValues = new HashSet<>();
 
             lineReves.forEach(ref ->
-                            linerefValues.add(ref.getValue())
+                    linerefValues.add(ref.getValue())
             );
 
             filterMap.put(LineRef.class, linerefValues);
@@ -148,6 +156,18 @@ public class SiriHelper {
         return filterMap;
     }
 
+    /**
+     * Returns optional filters for stopMonitoringSubscription
+     * TODO MHI
+     *
+     * @param stopMonitoringSubscription
+     * @return
+     */
+    private Map<Class, Set<String>> getFilter(StopMonitoringSubscriptionStructure stopMonitoringSubscription) {
+        Map<Class, Set<String>> filterMap = new HashMap<>();
+        return filterMap;
+    }
+
     Siri findInitialDeliveryData(OutboundSubscriptionSetup subscriptionRequest) {
         Siri delivery = null;
 
@@ -169,6 +189,13 @@ public class SiriHelper {
                 Collection<EstimatedVehicleJourney> timetables = estimatedTimetables.getAll(subscriptionRequest.getDatasetId());
                 logger.info("Initial ET-delivery: {} elements", timetables.size());
                 delivery = siriObjectFactory.createETServiceDelivery(timetables);
+                break;
+
+            case STOP_MONITORING:
+
+                Collection<MonitoredStopVisit> stopVisits = monitoredStopVisits.getAll(subscriptionRequest.getDatasetId());
+                logger.info("Initial SM-delivery: {} elements", stopVisits.size());
+                delivery = siriObjectFactory.createSMServiceDelivery(stopVisits);
                 break;
         }
         return delivery;
@@ -220,6 +247,18 @@ public class SiriHelper {
             for (List<EstimatedVehicleJourney> list : etList) {
                 siriList.add(siriObjectFactory.createETServiceDelivery(list));
             }
+
+        } else if (containsValues(payload.getServiceDelivery().getStopMonitoringDeliveries())) {
+
+            List<MonitoredStopVisit> monitoredStopVisits = payload.getServiceDelivery()
+                    .getStopMonitoringDeliveries().get(0)
+                    .getMonitoredStopVisits();
+
+            List<List> etList = splitList(monitoredStopVisits, maximumSizePerDelivery);
+
+            for (List<MonitoredStopVisit> list : etList) {
+                siriList.add(siriObjectFactory.createSMServiceDelivery(list));
+            }
         }
 
         return siriList;
@@ -231,7 +270,7 @@ public class SiriHelper {
 
         List<List> list = new ArrayList<>();
         boolean hasMoreElements = true;
-        while(hasMoreElements) {
+        while (hasMoreElements) {
 
             list.add(fullList.subList(startIndex, endIndex));
             if (endIndex >= fullList.size()) {
@@ -268,6 +307,7 @@ public class SiriHelper {
             } else if (containsValues(filtered.getServiceDelivery().getSituationExchangeDeliveries())) {
                 return applyMultipleMatchFilter(filtered, filter);
             }
+            // TODO MHI filter SM paylod
         }
 
         return siri;
@@ -285,6 +325,8 @@ public class SiriHelper {
         return siri;
     }
 
+
+    // TODO MHI filter SM deliveries ?
     private static void filterLineRef(Siri siri, Set<String> linerefValues) {
         if (linerefValues == null || linerefValues.isEmpty()) {
             return;
@@ -339,10 +381,12 @@ public class SiriHelper {
         } else return linerefValues.contains(completeValue);
     }
 
+    // TODO MHI : filter SM deliveries ?
     private static void filterVehicleRef(Siri siri, Set<String> vehiclerefValues) {
         if (vehiclerefValues == null || vehiclerefValues.isEmpty()) {
             return;
         }
+        //VM-deliveries
         List<VehicleMonitoringDeliveryStructure> vehicleMonitoringDeliveries = siri.getServiceDelivery().getVehicleMonitoringDeliveries();
         for (VehicleMonitoringDeliveryStructure delivery : vehicleMonitoringDeliveries) {
             List<VehicleActivityStructure> vehicleActivities = delivery.getVehicleActivities();
@@ -431,9 +475,11 @@ public class SiriHelper {
     public Siri getAllVM() {
         return siriObjectFactory.createVMServiceDelivery(vehicleActivities.getAll());
     }
+
     public Siri getAllSX() {
         return siriObjectFactory.createSXServiceDelivery(situations.getAll());
     }
+
     public Siri getAllET() {
         return siriObjectFactory.createETServiceDelivery(estimatedTimetables.getAll());
     }

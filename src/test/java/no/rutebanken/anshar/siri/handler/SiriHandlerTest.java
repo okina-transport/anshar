@@ -129,7 +129,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         }
     }
 
-
+    // TODO MHI : Test error SM
 
     private SubscriptionSetup getSxSubscription() {
         return getSubscriptionSetup(SiriDataType.SITUATION_EXCHANGE);

@@ -51,6 +51,7 @@ public class EnsureIncreasingTimesProcessor extends ValueAdapter implements Post
         return null;
     }
 
+    // TODO MHI : adapter pour SM ?
     @Override
     public void process(Siri siri) {
         long startTime = System.currentTimeMillis();

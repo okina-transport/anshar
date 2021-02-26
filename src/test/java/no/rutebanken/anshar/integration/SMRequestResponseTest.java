@@ -13,8 +13,9 @@
  * limitations under the Licence.
  */
 
-package no.rutebanken.anshar.subscription.helpers;
+package no.rutebanken.anshar.integration;
 
-public enum SubscriptionPreset {
+public class SMRequestResponseTest extends BaseHttpTest {
 
+    // TODO MHI
 }

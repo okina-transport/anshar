@@ -21,9 +21,13 @@ import no.rutebanken.anshar.routes.siri.processor.RuterOutboundDatedVehicleRefAd
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
-import org.springframework.stereotype.Component;
 import uk.org.ifopt.siri20.StopPlaceRef;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri20.CourseOfJourneyRefStructure;
+import uk.org.siri.siri20.DestinationRef;
+import uk.org.siri.siri20.JourneyPlaceRefStructure;
+import uk.org.siri.siri20.LineRef;
+import uk.org.siri.siri20.RequestorRef;
+import uk.org.siri.siri20.StopPointRef;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,6 +54,9 @@ public class MappingAdapterPresets {
                 adapters.add(new OutboundIdAdapter(RequestorRef.class, outboundIdMappingPolicy));
                 adapters.add(new OutboundIdAdapter(StopPlaceRef.class, outboundIdMappingPolicy));
                 adapters.add(new RemoveEmojiPostProcessor(outboundIdMappingPolicy));
+                break;
+            case STOP_MONITORING:
+                // TODO MHI
                 break;
             default:
                 return getOutboundAdapters(outboundIdMappingPolicy);

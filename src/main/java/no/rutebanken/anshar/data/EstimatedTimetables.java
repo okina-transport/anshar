@@ -189,6 +189,59 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
         lastUpdateRequested.clear();
     }
 
+    /**
+     * @return All ET that are still valid
+     */
+    public Collection<EstimatedVehicleJourney> getAll(String datasetId) {
+        if (datasetId == null || datasetId.isEmpty()) {
+            return getAll();
+        }
+        return  getValuesByDatasetId(timetableDeliveries, datasetId);
+    }
+
+
+    public Collection<EstimatedVehicleJourney> getAllUpdates(String requestorId, String datasetId) {
+        if (requestorId != null) {
+
+            Set<SiriObjectStorageKey> idSet = changesMap.get(requestorId);
+            lastUpdateRequested.put(requestorId, Instant.now(), configuration.getTrackingPeriodMinutes(), TimeUnit.MINUTES);
+
+            if (idSet != null) {
+                Set<SiriObjectStorageKey> datasetFilteredIdSet = new HashSet<>();
+
+                if (datasetId != null) {
+                    idSet.stream().filter(key -> key.getCodespaceId().equals(datasetId)).forEach(datasetFilteredIdSet::add);
+                } else {
+                    datasetFilteredIdSet.addAll(idSet);
+                }
+
+                Collection<EstimatedVehicleJourney> changes = timetableDeliveries.getAll(datasetFilteredIdSet).values();
+
+                Set<SiriObjectStorageKey> existingSet = changesMap.get(requestorId);
+                if (existingSet == null) {
+                    existingSet = new HashSet<>();
+                }
+                //Remove returned ids
+                existingSet.removeAll(idSet);
+
+                //Remove outdated ids
+                existingSet.removeIf(id -> !timetableDeliveries.containsKey(id));
+
+                updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, existingSet, configuration.getTrackingPeriodMinutes(), TimeUnit.MINUTES);
+
+
+                logger.info("Returning {} changes to requestorRef {}", changes.size(), requestorId);
+                return changes;
+            } else {
+
+                logger.info("Returning all to requestorRef {}", requestorId);
+                updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, new HashSet<>(), configuration.getTrackingPeriodMinutes(), TimeUnit.MINUTES);
+            }
+        }
+
+        return getAll(datasetId);
+    }
+
     public Siri createServiceDelivery(final String lineRef) {
         SortedSet<EstimatedVehicleJourney> matchingEstimatedVehicleJourneys = new TreeSet<>((o1, o2) -> {
             ZonedDateTime o1_firstTimestamp = getFirstAimedTime(o1);
@@ -319,6 +372,16 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
         return siri;
     }
 
+    public long getExpiration(EstimatedVehicleJourney vehicleJourney) {
+        ZonedDateTime expiryTimestamp = getLatestArrivalTime(vehicleJourney);
+
+        if (expiryTimestamp != null) {
+            return ZonedDateTime.now().until(expiryTimestamp.plus(configuration.getEtGraceperiodMinutes(), ChronoUnit.MINUTES), ChronoUnit.MILLIS);
+        } else {
+            return -1;
+        }
+    }
+
     /**
      * Returns true if EstimatedVehicleJourney has any cancellations or quay-changes
      * @param estimatedVehicleJourney
@@ -377,54 +440,8 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
         return false;
     }
 
-    public Collection<EstimatedVehicleJourney> getAllUpdates(String requestorId, String datasetId) {
-        if (requestorId != null) {
-
-            Set<SiriObjectStorageKey> idSet = changesMap.get(requestorId);
-            lastUpdateRequested.put(requestorId, Instant.now(), configuration.getTrackingPeriodMinutes(), TimeUnit.MINUTES);
-
-            if (idSet != null) {
-                Set<SiriObjectStorageKey> datasetFilteredIdSet = new HashSet<>();
-
-                if (datasetId != null) {
-                    idSet.stream().filter(key -> key.getCodespaceId().equals(datasetId)).forEach(datasetFilteredIdSet::add);
-                } else {
-                    datasetFilteredIdSet.addAll(idSet);
-                }
-
-                Collection<EstimatedVehicleJourney> changes = timetableDeliveries.getAll(datasetFilteredIdSet).values();
-
-                Set<SiriObjectStorageKey> existingSet = changesMap.get(requestorId);
-                if (existingSet == null) {
-                    existingSet = new HashSet<>();
-                }
-                //Remove returned ids
-                existingSet.removeAll(idSet);
-
-                //Remove outdated ids
-                existingSet.removeIf(id -> !timetableDeliveries.containsKey(id));
-
-                updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, existingSet, configuration.getTrackingPeriodMinutes(), TimeUnit.MINUTES);
 
 
-                logger.info("Returning {} changes to requestorRef {}", changes.size(), requestorId);
-                return changes;
-            } else {
-
-                logger.info("Returning all to requestorRef {}", requestorId);
-                updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, new HashSet<>(), configuration.getTrackingPeriodMinutes(), TimeUnit.MINUTES);
-            }
-        }
-
-        return getAll(datasetId);
-    }
-
-    public Collection<EstimatedVehicleJourney> getAll(String datasetId) {
-        if (datasetId == null || datasetId.isEmpty()) {
-            return getAll();
-        }
-        return  getValuesByDatasetId(timetableDeliveries, datasetId);
-    }
 
     private ZonedDateTime getFirstAimedTime(EstimatedVehicleJourney vehicleJourney) {
 
@@ -457,16 +474,6 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
         logger.warn("Unable to find aimed time for VehicleJourney with key {}, returning 'now'", key);
 
         return ZonedDateTime.now();
-    }
-
-    public long getExpiration(EstimatedVehicleJourney vehicleJourney) {
-        ZonedDateTime expiryTimestamp = getLatestArrivalTime(vehicleJourney);
-
-        if (expiryTimestamp != null) {
-            return ZonedDateTime.now().until(expiryTimestamp.plus(configuration.getEtGraceperiodMinutes(), ChronoUnit.MINUTES), ChronoUnit.MILLIS);
-        } else {
-            return -1;
-        }
     }
 
     public static ZonedDateTime getLatestArrivalTime(EstimatedVehicleJourney vehicleJourney) {
@@ -670,4 +677,6 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
         }
         return new SiriObjectStorageKey(datasetId, line, key.toString());
     }
+
+
 }

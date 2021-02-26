@@ -57,7 +57,7 @@ public class StopPlaceRegisterMapper extends ValueAdapter {
         this.datatype = datatype;
     }
 
-
+    // TODO MHI : vérifier comment sont fait les mappings, adapter
     public String apply(String id) {
         if (id == null || id.isEmpty() || id.startsWith("NSR:")) {
             return id;

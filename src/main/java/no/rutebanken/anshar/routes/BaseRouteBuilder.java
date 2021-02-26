@@ -105,6 +105,8 @@ public abstract class BaseRouteBuilder extends SpringRouteBuilder {
             url = urlMap.get(RequestType.GET_VEHICLE_MONITORING);
         } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.SITUATION_EXCHANGE) {
             url = urlMap.get(RequestType.GET_SITUATION_EXCHANGE);
+        } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.STOP_MONITORING) {
+            url = urlMap.get(RequestType.GET_STOP_MONITORING);
         } else {
             throw new ServiceNotSupportedException();
         }
@@ -124,6 +126,8 @@ public abstract class BaseRouteBuilder extends SpringRouteBuilder {
             return "GetVehicleMonitoring";
         } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.SITUATION_EXCHANGE) {
             return "GetSituationExchange";
+        } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.STOP_MONITORING) {
+            return "GetStopMonitoring";
         } else {
             throw new ServiceNotSupportedException();
         }

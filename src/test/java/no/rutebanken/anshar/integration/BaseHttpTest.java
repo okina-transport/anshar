@@ -25,8 +25,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
-import java.util.List;
-
 public abstract class BaseHttpTest extends SpringBootBaseTest{
 
     static final String TEST_SUBSCRIPTION_ID = "test.subscription.id";
@@ -54,15 +52,6 @@ public abstract class BaseHttpTest extends SpringBootBaseTest{
         sub.setDurationOfSubscriptionHours(1);
         sub.setAddress("http://localhost:1234/incoming");
         return sub;
-    }
-
-    /**
-     * Get a real subscription to ease new provider testing.
-     * @return
-     */
-    SubscriptionSetup getRealSubscriptionSetup() {
-        List<SubscriptionSetup> subscriptionSetups = subscriptionConfig.getSubscriptions();
-        return subscriptionSetups.get(0);
     }
 
 

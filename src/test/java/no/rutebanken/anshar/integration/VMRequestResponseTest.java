@@ -23,7 +23,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.rutebanken.siri20.util.SiriXml;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.context.TestPropertySource;
 import uk.org.siri.siri20.CourseOfJourneyRefStructure;
 import uk.org.siri.siri20.DirectionRefStructure;
 import uk.org.siri.siri20.LineRef;
@@ -32,7 +31,6 @@ import uk.org.siri.siri20.Siri;
 import uk.org.siri.siri20.VehicleActivityStructure;
 import uk.org.siri.siri20.VehicleRef;
 
-import javax.xml.bind.JAXBException;
 import java.math.BigDecimal;
 import java.time.ZonedDateTime;
 
@@ -41,7 +39,6 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.not;
 
-@TestPropertySource("classpath:real-subscription.properties")
 public class VMRequestResponseTest extends BaseHttpTest {
 
     @Autowired
@@ -148,23 +145,6 @@ public class VMRequestResponseTest extends BaseHttpTest {
         ;
     }
 
-
-    @Test
-    public void testRealRequest() throws JAXBException {
-        //Test SIRI Request
-        Siri siriRequest = SiriObjectFactory.createServiceRequest(getRealSubscriptionSetup());
-        given()
-                .when()
-                .contentType(ContentType.XML)
-                .body(SiriXml.toXml(siriRequest))
-                .post("anshar/services")
-                .then()
-                .statusCode(200)
-                .rootPath("Siri.ServiceDelivery.VehicleMonitoringDelivery.VehicleActivity.MonitoredVehicleJourney")
-                .body("VehicleRef", equalTo(vehicleReference))
-                .body("DataSource", equalTo(dataSource))
-        ;
-    }
 
     private VehicleActivityStructure createVehicleActivityStructure(ZonedDateTime recordedAtTime, String vehicleReference, String dataSource) {
         VehicleActivityStructure element = new VehicleActivityStructure();

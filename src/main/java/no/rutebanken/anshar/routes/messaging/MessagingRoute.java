@@ -57,6 +57,7 @@ public class MessagingRoute extends RestRouteBuilder {
         final String pubsubQueueSX = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_SX;
         final String pubsubQueueVM = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_VM;
         final String pubsubQueueET = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_ET;
+        final String pubsubQueueSM = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_SM;
         final String pubsubQueueDefault = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_DEFAULT;
 
         if (messageQueueCamelRoutePrefix.contains("direct")) {
@@ -75,6 +76,9 @@ public class MessagingRoute extends RestRouteBuilder {
                     .endChoice()
                     .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.SITUATION_EXCHANGE.name()))
                         .setHeader("target_topic", simple(pubsubQueueSX))
+                    .endChoice()
+                    .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.STOP_MONITORING.name()))
+                        .setHeader("target_topic", simple(pubsubQueueSM))
                     .endChoice()
                     .otherwise()
                         // DataReadyNotification is processed immediately
@@ -119,7 +123,7 @@ public class MessagingRoute extends RestRouteBuilder {
                 .log("Processing data from " + pubsubQueueDefault + ", size ${header.Content-Length}")
                 .wireTap("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
             .endChoice()
-            .startupOrder(100004)
+            .startupOrder(100005)
             .routeId("incoming.transform.default")
         ;
 
@@ -129,7 +133,7 @@ public class MessagingRoute extends RestRouteBuilder {
                 .log("Processing data from " + pubsubQueueSX + ", size ${header.Content-Length}")
                 .wireTap("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
             .endChoice()
-            .startupOrder(100003)
+            .startupOrder(100004)
             .routeId("incoming.transform.sx")
         ;
 
@@ -139,7 +143,7 @@ public class MessagingRoute extends RestRouteBuilder {
                 .log("Processing data from " + pubsubQueueVM + ", size ${header.Content-Length}")
                 .wireTap("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
             .endChoice()
-            .startupOrder(100002)
+            .startupOrder(100003)
             .routeId("incoming.transform.vm")
         ;
 
@@ -149,8 +153,18 @@ public class MessagingRoute extends RestRouteBuilder {
                 .log("Processing data from " + pubsubQueueET + ", size ${header.Content-Length}")
                 .wireTap("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
             .endChoice()
-            .startupOrder(100001)
+            .startupOrder(100002)
             .routeId("incoming.transform.et")
+        ;
+
+        from(pubsubQueueSM + queueConsumerParameters)
+            .choice().when(readFromPubsub)
+                .to("direct:decompress.jaxb")
+                .log("Processing data from " + pubsubQueueSM + ", size ${header.Content-Length}")
+                .wireTap("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
+            .endChoice()
+            .startupOrder(100001)
+            .routeId("incoming.transform.sm")
         ;
 
         from("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)

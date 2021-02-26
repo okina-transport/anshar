@@ -18,6 +18,9 @@ public class PubsubTopicRoute extends RouteBuilder {
     @Value("${anshar.outbound.camel.route.topic.sx.name}")
     private String sxTopic;
 
+    @Value("${anshar.outbound.camel.route.topic.sm.name}")
+    private String smTopic;
+
     @Value("${anshar.outbound.pubsub.topic.enabled}")
     private boolean pushToTopicEnabled;
 
@@ -26,6 +29,8 @@ public class PubsubTopicRoute extends RouteBuilder {
     private AtomicInteger vmCounter = new AtomicInteger();
 
     private AtomicInteger sxCounter = new AtomicInteger();
+
+    private AtomicInteger smCounter = new AtomicInteger();
 
     @Override
     public void configure() {
@@ -68,6 +73,19 @@ public class PubsubTopicRoute extends RouteBuilder {
                     .to("direct:map.jaxb.to.protobuf")
                     .wireTap("direct:log.pubsub.sx.traffic")
                     .to(sxTopic)
+            ;
+
+            /**
+             * Splits SIRI SM-ServiceDelivery into singular messages (i.e. one SM-message per ServiceDelivery), converts
+             * message to protobuf, and posts to Cloud Pubsub
+             */
+            from("direct:send.to.pubsub.topic.stop_monitoring")
+                    .to("direct:siri.transform.data")
+                    .to("xslt-saxon:xsl/split.xsl")
+                    .split().tokenizeXML("Siri").streaming()
+                    .to("direct:map.jaxb.to.protobuf")
+                    .wireTap("direct:log.pubsub.sm.traffic")
+                    .to(smTopic)
             ;
 
             /**
@@ -118,6 +136,23 @@ public class PubsubTopicRoute extends RouteBuilder {
                     .choice()
                     .when(header("counter").isNotNull())
                     .log("Pubsub: Published ${header.counter} sx updates")
+                    .endChoice()
+                    .end();
+
+            /**
+             * Logs sm traffic periodically
+             */
+            from("direct:log.pubsub.sm.traffic")
+                    .routeId("log.pubsub.sm")
+                    .process(p -> {
+                        if (smCounter.incrementAndGet() % 50 == 0) {
+                            p.getOut().setHeader("counter", sxCounter.get());
+                            p.getOut().setBody(p.getIn().getBody());
+                        }
+                    })
+                    .choice()
+                    .when(header("counter").isNotNull())
+                    .log("Pubsub: Published ${header.counter} sm updates")
                     .endChoice()
                     .end();
         }

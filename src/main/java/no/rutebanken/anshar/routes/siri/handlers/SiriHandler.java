@@ -232,6 +232,8 @@ public class SiriHandler {
                 }
 
                 serviceResponse = estimatedTimetables.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize, previewIntervalInMillis);
+            } else if (hasValues(serviceRequest.getVehicleMonitoringRequests())) {
+                // TODO MHI
             }
 
 
@@ -302,6 +304,8 @@ public class SiriHandler {
             } else if (incoming.getServiceDelivery() != null) {
                 boolean deliveryContainsData = false;
                 healthManager.dataReceived();
+
+                // TODO MHI : rajouter SM
 
                 if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.SITUATION_EXCHANGE)) {
                     List<SituationExchangeDeliveryStructure> situationExchangeDeliveries = incoming.getServiceDelivery().getSituationExchangeDeliveries();

@@ -19,7 +19,6 @@ import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.helpers.DataNotReceivedAction;
 import no.rutebanken.anshar.subscription.helpers.FilterMapPresets;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
-import no.rutebanken.anshar.subscription.helpers.SubscriptionPreset;
 import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,7 +99,9 @@ public class SubscriptionSetup implements Serializable {
     }
 
     /**
-     * @param subscriptionType SX, VM, ET
+     *
+     * TODO MHI : voir si params supplémentaires nécessaires pour SM
+     * @param subscriptionType SX, VM, ET, SM
      * @param address Base-URL for receiving incoming data
      * @param heartbeatInterval Requested heartbeatinterval for subscriptions, Request-interval for Request/Response "subscriptions"
      * @param operatorNamespace Namespace

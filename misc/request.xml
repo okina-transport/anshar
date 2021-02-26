@@ -15,8 +15,8 @@
                 <ns5:RequestTimestamp>2020-10-14T10:12:40.686+02:00</ns5:RequestTimestamp>
                 <ns5:MessageIdentifier>4cc4393e-d856-4489-9268-d81f0eb5cc29</ns5:MessageIdentifier>
                     <ns5:MonitoringRef>1033</ns5:MonitoringRef>
-                    <ns5:MinimumStopVisitsPerLine>20</ns5:MinimumStopVisitsPerLine>
-                    <ns5:StopMonitoringDetailLevel>full</ns5:StopMonitoringDetailLevel>
+<!--                    <ns5:MinimumStopVisitsPerLine>20</ns5:MinimumStopVisitsPerLine>-->
+<!--                    <ns5:StopMonitoringDetailLevel>full</ns5:StopMonitoringDetailLevel>-->
             </Request>
             <RequestExtension
                     xmlns:ns5="http://www.siri.org.uk/siri"/>

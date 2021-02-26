@@ -34,6 +34,7 @@ import java.nio.charset.StandardCharsets;
 
 import static junit.framework.TestCase.*;
 
+// TODO MHI : tests validator SM
 public class CustomValidatorTest {
 
     XPathFactory xpathFactory = XPathFactory.newInstance();
