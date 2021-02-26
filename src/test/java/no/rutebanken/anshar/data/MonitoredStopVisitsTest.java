@@ -28,13 +28,15 @@ import java.time.ZonedDateTime;
 import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class MonitoredStopVisitsTest extends SpringBootBaseTest {
 
 
     @Autowired
     private MonitoredStopVisits monitoredStopVisits;
-    
+
     @BeforeEach
     public void init() {
         monitoredStopVisits.clearAll();
@@ -43,8 +45,8 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
     @Test
     public void testAddMonitoredStopVisit() {
         int previousSize = monitoredStopVisits.getAll().size();
-        MonitoredStopVisit element = createMonitoredStopVisitStructure(
-                                                    ZonedDateTime.now().plusMinutes(1), UUID.randomUUID().toString());
+        MonitoredStopVisit element = createMonitoredStopVisit(
+                ZonedDateTime.now().plusMinutes(1), UUID.randomUUID().toString());
 
         monitoredStopVisits.add("test", element);
         assertEquals("Vehicle not added", previousSize + 1, monitoredStopVisits.getAll().size());
@@ -59,46 +61,45 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testUpdatedVehicle() {
-        int previousSize = vehicleActivities.getAll().size();
+    public void testUpdatedMonitoredStopvisit() {
+        int previousSize = monitoredStopVisits.getAll().size();
 
         //Add element
-        String vehicleReference = UUID.randomUUID().toString();
-        VehicleActivityStructure element = createMonitoredStopVisitStructure(
-                                                    ZonedDateTime.now().plusMinutes(1), vehicleReference);
+        String stopReference = UUID.randomUUID().toString();
+        String itempIdentifier = UUID.randomUUID().toString();
+        MonitoredStopVisit element = createMonitoredStopVisit(ZonedDateTime.now().plusMinutes(1), stopReference, itempIdentifier);
 
-        vehicleActivities.add("test", element);
+        monitoredStopVisits.add("test", element);
         //Verify that element is added
-        assertEquals(previousSize + 1, vehicleActivities.getAll().size());
+        assertEquals(previousSize + 1, monitoredStopVisits.getAll().size());
 
         //Update element
-        VehicleActivityStructure element2 = createMonitoredStopVisitStructure(
-                                                    ZonedDateTime.now().plusMinutes(1), vehicleReference);
+        MonitoredStopVisit element2 = createMonitoredStopVisit(ZonedDateTime.now().plusMinutes(1), stopReference, itempIdentifier);
 
-        VehicleActivityStructure updatedVehicle = vehicleActivities.add("test", element2);
+        MonitoredStopVisit updatedMonitoredStopVisit = monitoredStopVisits.add("test", element2);
 
         //Verify that activity is found as updated
-        assertNotNull(updatedVehicle);
+        assertNotNull(updatedMonitoredStopVisit);
         //Verify that existing element is updated
-        assertTrue(vehicleActivities.getAll().size() == previousSize + 1);
+        assertEquals(previousSize + 1, monitoredStopVisits.getAll().size());
 
         //Add brand new element
-        VehicleActivityStructure element3 = createMonitoredStopVisitStructure(
-                ZonedDateTime.now().plusMinutes(1), UUID.randomUUID().toString());
+        MonitoredStopVisit element3 = createMonitoredStopVisit(
+                ZonedDateTime.now().plusMinutes(1), UUID.randomUUID().toString(), UUID.randomUUID().toString());
 
-        updatedVehicle = vehicleActivities.add("test", element3);
+        updatedMonitoredStopVisit = monitoredStopVisits.add("test", element3);
 
         //Verify that activity is found as new
-        assertNotNull(updatedVehicle);
+        assertNotNull(updatedMonitoredStopVisit);
         //Verify that new element is added
-        assertEquals(previousSize + 2, vehicleActivities.getAll().size());
+        assertEquals(previousSize + 2, monitoredStopVisits.getAll().size());
 
-        vehicleActivities.add("test2", element3);
+        monitoredStopVisits.add("test2", element3);
         //Verify that new element is added
-        assertEquals(previousSize + 3, vehicleActivities.getAll().size());
+        assertEquals(previousSize + 3, monitoredStopVisits.getAll().size());
 
         //Verify that element added is vendor-specific
-        assertEquals(previousSize + 2, vehicleActivities.getAll("test").size());
+        assertEquals(previousSize + 2, monitoredStopVisits.getAll("test").size());
     }
 //
 //    @Test
@@ -107,7 +108,7 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
 //
 //        //Add element
 //        String vehicleReference = UUID.randomUUID().toString();
-//        VehicleActivityStructure element = createMonitoredStopVisitStructure(
+//        MonitoredStopVisit element = createMonitoredStopVisitStructure(
 //                                                    ZonedDateTime.now().plusMinutes(1), vehicleReference);
 //        ProgressBetweenStopsStructure progress = new ProgressBetweenStopsStructure();
 //        progress.setPercentage(BigDecimal.ONE);
@@ -116,12 +117,12 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
 //
 //        vehicleActivities.add("test", element);
 //
-//        VehicleActivityStructure testOriginal = vehicleActivities.add("test", element);
+//        MonitoredStopVisit testOriginal = vehicleActivities.add("test", element);
 //
 //        assertEquals("VM has not been added.", BigDecimal.ONE, testOriginal.getProgressBetweenStops().getPercentage());
 //
 //        //Update element
-//        VehicleActivityStructure element2 = createMonitoredStopVisitStructure(
+//        MonitoredStopVisit element2 = createMonitoredStopVisitStructure(
 //                                                    ZonedDateTime.now().plusMinutes(1), vehicleReference);
 //
 //        ProgressBetweenStopsStructure progress2 = new ProgressBetweenStopsStructure();
@@ -131,7 +132,7 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
 //        //Update is recorder BEFORE current - should be ignored
 //        element2.setRecordedAtTime(ZonedDateTime.now());
 //
-//        VehicleActivityStructure test = vehicleActivities.add("test", element2);
+//        MonitoredStopVisit test = vehicleActivities.add("test", element2);
 //
 //        assertEquals("VM has been wrongfully updated", BigDecimal.ONE, test.getProgressBetweenStops().getPercentage());
 //    }
@@ -142,7 +143,7 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
 //
 //        //Add element
 //        String vehicleReference = UUID.randomUUID().toString();
-//        VehicleActivityStructure element = createMonitoredStopVisitStructure(
+//        MonitoredStopVisit element = createMonitoredStopVisitStructure(
 //                                                    ZonedDateTime.now().plusMinutes(1), vehicleReference);
 //        ProgressBetweenStopsStructure progress = new ProgressBetweenStopsStructure();
 //        progress.setPercentage(BigDecimal.ONE);
@@ -151,12 +152,12 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
 //
 //        vehicleActivities.add("test", element);
 //
-//        VehicleActivityStructure testOriginal = vehicleActivities.add("test", element);
+//        MonitoredStopVisit testOriginal = vehicleActivities.add("test", element);
 //
 //        assertEquals("VM has not been added.", BigDecimal.ONE, testOriginal.getProgressBetweenStops().getPercentage());
 //
 //        //Update element
-//        VehicleActivityStructure element2 = createMonitoredStopVisitStructure(
+//        MonitoredStopVisit element2 = createMonitoredStopVisitStructure(
 //                                                    ZonedDateTime.now().plusMinutes(1), vehicleReference);
 //
 //        ProgressBetweenStopsStructure progress2 = new ProgressBetweenStopsStructure();
@@ -165,7 +166,7 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
 //
 //        element2.setRecordedAtTime(null);
 //
-//        VehicleActivityStructure test = vehicleActivities.add("test", element2);
+//        MonitoredStopVisit test = vehicleActivities.add("test", element2);
 //
 //        assertEquals("VM has been wrongfully updated", BigDecimal.ONE, test.getProgressBetweenStops().getPercentage());
 //    }
@@ -198,7 +199,12 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
 //        assertEquals(previousSize+4, vehicleActivities.getAll().size());
 //    }
 //
-    private MonitoredStopVisit createMonitoredStopVisitStructure(ZonedDateTime recordedAtTime, String stopReference) {
+
+    private MonitoredStopVisit createMonitoredStopVisit(ZonedDateTime recordedAtTime, String stopReference) {
+        return createMonitoredStopVisit(recordedAtTime, stopReference, UUID.randomUUID().toString());
+    }
+
+    private MonitoredStopVisit createMonitoredStopVisit(ZonedDateTime recordedAtTime, String stopReference, String itemIdentifier) {
         MonitoredStopVisit element = new MonitoredStopVisit();
 
         element.setRecordedAtTime(recordedAtTime);
@@ -211,6 +217,8 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
         monitoredCallStructure.setExpectedArrivalTime(ZonedDateTime.now().plusHours(1));
         monitoredVehicleJourneyStructure.setMonitoredCall(monitoredCallStructure);
         element.setMonitoredVehicleJourney(monitoredVehicleJourneyStructure);
+
+        element.setItemIdentifier(itemIdentifier);
         return element;
     }
 //
@@ -220,15 +228,15 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
 //
 //        String prefix = "excludedOnly-";
 //
-//        VehicleActivityStructure activity_1 = createMonitoredStopVisitStructure(ZonedDateTime.now(), prefix + "1234");
+//        MonitoredStopVisit activity_1 = createMonitoredStopVisitStructure(ZonedDateTime.now(), prefix + "1234");
 //        activity_1.getMonitoredVehicleJourney().setDataSource("test1");
 //        vehicleActivities.add("test1", activity_1);
 //
-//        VehicleActivityStructure activity_2 = createMonitoredStopVisitStructure(ZonedDateTime.now(), prefix + "2345");
+//        MonitoredStopVisit activity_2 = createMonitoredStopVisitStructure(ZonedDateTime.now(), prefix + "2345");
 //        activity_2.getMonitoredVehicleJourney().setDataSource("test2");
 //        vehicleActivities.add("test2", activity_2);
 //
-//        VehicleActivityStructure activity_3 = createMonitoredStopVisitStructure(ZonedDateTime.now(), prefix + "3456");
+//        MonitoredStopVisit activity_3 = createMonitoredStopVisitStructure(ZonedDateTime.now(), prefix + "3456");
 //        activity_3.getMonitoredVehicleJourney().setDataSource("test3");
 //        vehicleActivities.add("test3", activity_3);
 //
@@ -240,10 +248,10 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
 //    private void assertExcludedId(String excludedDatasetId) {
 //        Siri serviceDelivery = vehicleActivities.createServiceDelivery(null, null, null, Arrays.asList(excludedDatasetId), 100);
 //
-//        List<VehicleActivityStructure> vehicleActivities = serviceDelivery.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities();
+//        List<MonitoredStopVisit> vehicleActivities = serviceDelivery.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities();
 //
 //        assertEquals(2, vehicleActivities.size());
-//        for (VehicleActivityStructure activity : vehicleActivities) {
+//        for (MonitoredStopVisit activity : vehicleActivities) {
 //            assertFalse(activity.getMonitoredVehicleJourney().getDataSource().equals(excludedDatasetId));
 //        }
 //    }

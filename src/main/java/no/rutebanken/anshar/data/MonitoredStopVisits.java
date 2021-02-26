@@ -32,7 +32,6 @@ import uk.org.siri.siri20.AbstractItemStructure;
 import uk.org.siri.siri20.MonitoredCallStructure;
 import uk.org.siri.siri20.MonitoredStopVisit;
 import uk.org.siri.siri20.MonitoredVehicleJourneyStructure;
-import uk.org.siri.siri20.MonitoringRefStructure;
 import uk.org.siri.siri20.Siri;
 
 import javax.annotation.PostConstruct;
@@ -227,9 +226,10 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         smList.stream()
                 .filter(monitoredStopVisit -> monitoredStopVisit.getMonitoringRef() != null)
+                .filter(monitoredStopVisit -> monitoredStopVisit.getItemIdentifier() != null)
                 .forEach(monitoredStopVisit -> {
 
-                    SiriObjectStorageKey key = createKey(datasetId, monitoredStopVisit.getMonitoringRef());
+                    SiriObjectStorageKey key = createKey(datasetId, monitoredStopVisit.getItemIdentifier());
 
                     String currentChecksum = null;
                     ZonedDateTime validUntilTime = monitoredStopVisit.getValidUntilTime();
@@ -307,7 +307,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         List<MonitoredStopVisit> monitoredStopVisits = new ArrayList<>();
         monitoredStopVisits.add(monitoredStopVisit);
         addAll(datasetId, monitoredStopVisits);
-        return this.monitoredStopVisits.get(createKey(datasetId, monitoredStopVisit.getMonitoringRef()));
+        return this.monitoredStopVisits.get(createKey(datasetId, monitoredStopVisit.getItemIdentifier()));
     }
 
     @Override
@@ -342,19 +342,11 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     /**
      * Creates unique key - assumes that any operator has a set of unique StopMonitoringRefs
      * @param datasetId
-     * @param monitoringRefStructure
+     * @param monitoredStopVisitIdentifier
      * @return
      */
-    private SiriObjectStorageKey createKey(String datasetId, MonitoringRefStructure monitoringRefStructure) {
-        StringBuilder key = new StringBuilder();
-
-
-        if (monitoringRefStructure != null) {
-            key.append(monitoringRefStructure.getValue());
-        }
-
-        return new SiriObjectStorageKey(datasetId, null, key.toString());
-
+    private SiriObjectStorageKey createKey(String datasetId, String monitoredStopVisitIdentifier) {
+        return new SiriObjectStorageKey(datasetId, null, monitoredStopVisitIdentifier);
     }
 
 
