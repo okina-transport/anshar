@@ -15,7 +15,6 @@
 
 package no.rutebanken.anshar.subscription.helpers;
 
-import uk.org.siri.siri20.DirectionRefStructure;
 import uk.org.siri.siri20.LineDirectionStructure;
 import uk.org.siri.siri20.LineRef;
 import uk.org.siri.siri20.OperatorRefStructure;
@@ -27,25 +26,32 @@ import java.util.Set;
 
 public class FilterMapPresets {
 
-    public Map<Class, Set<Object>> get(SubscriptionPreset preset) {
+    public Map<Class, Set<Object>> get(String preset) {
 
         Map<Class, Set<Object>> filters = new HashMap<>();
-        switch (preset) {
-            case BYBANEN:
-                filters.put(LineDirectionStructure.class, getSkyssLineDirectionFilters());
-                break;
-            case INN:
-                filters.put(OperatorRefStructure.class, getOperatorFilter("51")); // 51 - Fara's internal OperatorRef for Innlandet
-                break;
-            case VKT:
-                filters.put(OperatorRefStructure.class, getOperatorFilter("70")); // 70 - Fara's internal OperatorRef for Vestfold
-                break;
-            case TEL:
-                filters.put(OperatorRefStructure.class, getOperatorFilter("80")); // 80 - Fara's internal OperatorRef for Telemark
-                break;
-            default:
-                // ignore
+
+        if (preset.startsWith("LRO")) {
+            filters.put(LineDirectionStructure.class, getLROLineFilters(preset));
         }
+//        switch (preset) {
+//            case BYBANEN:
+//                filters.put(LineDirectionStructure.class, getSkyssLineDirectionFilters());
+//                break;
+//            case INN:
+//                filters.put(OperatorRefStructure.class, getOperatorFilter("51")); // 51 - Fara's internal OperatorRef for Innlandet
+//                break;
+//            case VKT:
+//                filters.put(OperatorRefStructure.class, getOperatorFilter("70")); // 70 - Fara's internal OperatorRef for Vestfold
+//                break;
+//            case TEL:
+//                filters.put(OperatorRefStructure.class, getOperatorFilter("80")); // 80 - Fara's internal OperatorRef for Telemark
+//                break;
+//            case LRO:
+//                filters.put(LineDirectionStructure.class, getLROLineFilters());
+//                break;
+//            default:
+                // ignore
+//        }
 
         return filters;
     }
@@ -58,32 +64,17 @@ public class FilterMapPresets {
         return operators;
     }
 
-    private Set<Object> getSkyssLineDirectionFilters() {
-
-        LineRef lineRef = new LineRef();
-        lineRef.setValue("1");
-
-        DirectionRefStructure directionRef = new DirectionRefStructure();
-        directionRef.setValue("10");
-
-        LineDirectionStructure lineDir = new LineDirectionStructure();
-        lineDir.setLineRef(lineRef);
-        lineDir.setDirectionRef(directionRef);
-
-        LineRef lineRef2 = new LineRef();
-        lineRef2.setValue("1");
-
-        DirectionRefStructure directionRef2 = new DirectionRefStructure();
-        directionRef2.setValue("11");
-
-        LineDirectionStructure lineDir2 = new LineDirectionStructure();
-        lineDir2.setLineRef(lineRef2);
-        lineDir2.setDirectionRef(directionRef2);
-
+    private Set<Object> getLROLineFilters(String preset) {
         Set<Object> lines = new HashSet<>();
-        lines.add(lineDir);
-        lines.add(lineDir2);
-
+        lines.add(buildLineRefAsLineDirectionStructure(preset.substring(3)));
         return lines;
+    }
+
+    private LineDirectionStructure buildLineRefAsLineDirectionStructure(String lineId) {
+        LineRef lineRef = new LineRef();
+        lineRef.setValue(lineId);
+        LineDirectionStructure lineDirectionStructure = new LineDirectionStructure();
+        lineDirectionStructure.setLineRef(lineRef);
+        return lineDirectionStructure;
     }
 }

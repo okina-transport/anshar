@@ -19,9 +19,13 @@ import io.restassured.RestAssured;
 import io.restassured.filter.log.RequestLoggingFilter;
 import io.restassured.filter.log.ResponseLoggingFilter;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+
+import java.util.List;
 
 public abstract class BaseHttpTest extends SpringBootBaseTest{
 
@@ -30,6 +34,9 @@ public abstract class BaseHttpTest extends SpringBootBaseTest{
     private int port;
 
     static final String dataSource = "TTT";
+
+    @Autowired
+    private SubscriptionConfig subscriptionConfig;
 
     @BeforeEach
     public void init() {
@@ -48,4 +55,16 @@ public abstract class BaseHttpTest extends SpringBootBaseTest{
         sub.setAddress("http://localhost:1234/incoming");
         return sub;
     }
+
+    /**
+     * Get a real subscription to ease new provider testing.
+     * @return
+     */
+    SubscriptionSetup getRealSubscriptionSetup() {
+        List<SubscriptionSetup> subscriptionSetups = subscriptionConfig.getSubscriptions();
+        return subscriptionSetups.get(0);
+    }
+
+
+
 }

@@ -62,7 +62,7 @@ public class SubscriptionSetup implements Serializable {
     private Map<String, Object> customHeaders;
     private List<String> idMappingPrefixes;
     private String mappingAdapterId;
-    private SubscriptionPreset[] filterMapPresets;
+    private String[] filterMapPresets;
     private String addressFieldName;
     private String soapenvNamespace;
     private Boolean incrementalUpdates;
@@ -293,10 +293,10 @@ public class SubscriptionSetup implements Serializable {
         return subscriptionMode;
     }
 
-    public void setFilterPresets(SubscriptionPreset[] presets) {
+    public void setFilterPresets(String[] presets) {
         this.filterMapPresets = presets;
         filterMap = new HashMap<>();
-        for (SubscriptionPreset preset : presets) {
+        for (String preset : presets) {
             addFilterMap(new FilterMapPresets().get(preset));
         }
     }

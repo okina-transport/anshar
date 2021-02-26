@@ -65,6 +65,7 @@ public class Siri20ToSiriWS14RequestResponse extends SiriSubscriptionRouteBuilde
         from("direct:" + subscriptionSetup.getServiceRequestRouteName())
                 .log("Retrieving data " + subscriptionSetup.toString())
                 .bean(helper, "createSiriDataRequest")
+                .process(e -> log.debug(e.toString()))
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
                 .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
                 .setHeader("SOAPAction", simple(getSoapAction(subscriptionSetup))) // extract and compute SOAPAction (Microsoft requirement)

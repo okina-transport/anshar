@@ -15,15 +15,15 @@
 
 package no.rutebanken.anshar.routes.mapping;
 
-import no.rutebanken.anshar.routes.export.file.BlobStoreService;
 import org.quartz.utils.counter.Counter;
 import org.quartz.utils.counter.CounterImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.HashMap;
@@ -35,8 +35,8 @@ public class StopPlaceRegisterMappingFetcher {
 
     private static final Logger logger = LoggerFactory.getLogger(StopPlaceRegisterMappingFetcher.class);
 
-    @Autowired
-    BlobStoreService blobStoreService;
+//    @Autowired
+//    BlobStoreService blobStoreService;
 
     public Map<String, String> fetchStopPlaceMapping(String name) {
 
@@ -47,7 +47,13 @@ public class StopPlaceRegisterMappingFetcher {
 
             Counter duplicates = new CounterImpl(0);
 
-            final InputStream blob = blobStoreService.getBlob(name);
+//            final InputStream blob = blobStoreService.getBlob(name);
+            InputStream blob = null;
+            try {
+                blob = new FileInputStream("/home/mhicauber/dev/misc/quays.csv");
+            } catch (FileNotFoundException e) {
+                logger.error("Can't find stop places mapping file");
+            }
 
             if (blob != null) {
                 BufferedReader reader = new BufferedReader(new InputStreamReader(blob));

@@ -178,7 +178,7 @@
                                 <xsl:copy-of select="../siri:RequestTimestamp" copy-namespaces="no"/>
                                 <xsl:copy-of select="../siri:Address" copy-namespaces="no"/>
                                 <xsl:copy-of select="../siri:RequestorRef" copy-namespaces="no"/>
-                                <xsl:copy-of select="../siri:MessageIdentifier" copy-namespaces="no"/>
+                                <xsl:copy-of select="siri:MessageIdentifier" copy-namespaces="no"/>
                                 <xsl:copy-of select="../siri:ConsumerAddress" copy-namespaces="no"/>
                             </xsl:element>
                             <xsl:element name="Request">
@@ -191,7 +191,9 @@
                                 <xsl:element name="siri:MessageIdentifier">
                                     <xsl:value-of select="siri:MessageIdentifier"/>
                                 </xsl:element>
-
+                                <xsl:element name="siri:LineRef">
+                                    <xsl:value-of select="siri:LineRef"/>
+                                </xsl:element>
                             </xsl:element>
                             <xsl:element name="RequestExtension"/>
                         </xsl:element>

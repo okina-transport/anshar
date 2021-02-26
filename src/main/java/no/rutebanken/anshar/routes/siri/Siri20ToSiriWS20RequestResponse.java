@@ -22,6 +22,7 @@ import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
+import org.apache.camel.http.base.HttpOperationFailedException;
 
 import static no.rutebanken.anshar.routes.HttpParameter.INTERNAL_SIRI_DATA_TYPE;
 import static no.rutebanken.anshar.routes.HttpParameter.PARAM_SUBSCRIPTION_ID;
@@ -67,12 +68,17 @@ public class Siri20ToSiriWS20RequestResponse extends SiriSubscriptionRouteBuilde
                 .log("Retrieving data " + subscriptionSetup.toString())
                 .bean(helper, "createSiriDataRequest")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .process(e -> log.info("Marshalled Siri : " + e.getIn().getBody(String.class)))
                 .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
                 .setHeader("SOAPAction", simple(getSoapAction(subscriptionSetup))) // extract and compute SOAPAction (Microsoft requirement)
                 .setHeader("operatorNamespace", constant(subscriptionSetup.getOperatorNamespace())) // Need to make SOAP request with endpoint specific element namespace
+                .process(e -> log.debug(e.getIn().getBody().toString()))
                 .setHeader("endpointUrl", constant(endpointUrl)) // Need to make SOAP request with endpoint specific element namespace
+                .process(e -> log.debug(e.getIn().getBody().toString()))
                 .to("xslt-saxon:xsl/siri_raw_soap.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Convert SIRI raw request to SOAP version
+                .process(e -> log.debug(e.getIn().getBody().toString()))
                 .to("xslt-saxon:xsl/siri_14_20.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Convert SIRI raw request to SOAP version
+                .process(e -> log.debug(e.toString()))
                 .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
                 .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
                 .setHeader(Exchange.HTTP_METHOD, constant(org.apache.camel.component.http.HttpMethods.POST))
@@ -91,6 +97,12 @@ public class Siri20ToSiriWS20RequestResponse extends SiriSubscriptionRouteBuilde
                     .log("Caught exception - releasing leadership: " + subscriptionSetup.toString())
                     .to("log:response:" + getClass().getSimpleName() + "?showCaughtException=true&showAll=true&multiline=true")
                     .process(p -> {
+
+                        if (p.getProperty(Exchange.EXCEPTION_CAUGHT) instanceof HttpOperationFailedException) {
+                            HttpOperationFailedException exception = p.getProperty(Exchange.EXCEPTION_CAUGHT, HttpOperationFailedException.class);
+                            log.error("Response body : " + exception.getResponseBody());
+                        }
+
                         if (releaseLeadershipOnError) {
                             releaseLeadership(monitoringRouteId);
                         }
