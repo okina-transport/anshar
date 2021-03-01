@@ -29,6 +29,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
 import uk.org.siri.siri20.AbstractItemStructure;
+import uk.org.siri.siri20.MessageRefStructure;
 import uk.org.siri.siri20.MonitoredCallStructure;
 import uk.org.siri.siri20.MonitoredStopVisit;
 import uk.org.siri.siri20.MonitoredVehicleJourneyStructure;
@@ -48,7 +49,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 @Repository
 // TODO MHI
@@ -62,6 +67,14 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     @Autowired
     @Qualifier("getSmChecksumMap")
     private ReplicatedMap<SiriObjectStorageKey, String> checksumCache;
+
+    @Autowired
+    @Qualifier("getIdForPatternChangesMap")
+    private ReplicatedMap<SiriObjectStorageKey, String> idForPatternChanges;
+
+    @Autowired
+    @Qualifier("getIdStartTimeMap")
+    private ReplicatedMap<SiriObjectStorageKey, ZonedDateTime> idStartTimeMap;
 
     @Autowired
     @Qualifier("getMonitoredStopVisitChangesMap")
@@ -79,6 +92,10 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
     @Autowired
     ExtendedHazelcastService hazelcastService;
+
+    @Autowired
+    private RequestorRefRepository requestorRefRepository;
+
 
     @PostConstruct
     private void initializeUpdateCommitter() {
@@ -213,6 +230,114 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         return siriObjectFactory.createSMServiceDelivery(monitoredStopVisitsStructures);
     }
 
+    // TODO MHI : copié collé, à revoir
+    public Siri createServiceDelivery(String requestorId, String datasetId, String clientTrackingName, List<String> excludedDatasetIds, int maxSize) {
+
+        requestorRefRepository.touchRequestorRef(requestorId, datasetId, clientTrackingName, SiriDataType.STOP_MONITORING);
+
+        int trackingPeriodMinutes = configuration.getTrackingPeriodMinutes();
+
+        boolean isAdHocRequest = false;
+
+        if (requestorId == null) {
+            requestorId = UUID.randomUUID().toString();
+            trackingPeriodMinutes = configuration.getAdHocTrackingPeriodMinutes();
+            isAdHocRequest = true;
+        }
+
+        // Get all relevant ids
+        Set<SiriObjectStorageKey> allIds = new HashSet<>();
+        Set<SiriObjectStorageKey> idSet = changesMap.getOrDefault(requestorId, allIds);
+
+        if (idSet == allIds) {
+            idSet.addAll(monitoredStopVisits
+                    .keySet(entry -> datasetId == null || ((SiriObjectStorageKey) entry.getKey()).getCodespaceId().equals(datasetId))
+            );
+        }
+
+        //Filter by datasetId
+        Set<SiriObjectStorageKey> requestedIds = filterIdsByDataset(idSet, excludedDatasetIds, datasetId);
+
+        Set<SiriObjectStorageKey> sizeLimitedIds = requestedIds.stream().limit(maxSize).collect(Collectors.toSet());
+
+//        final ZonedDateTime previewExpiry = ZonedDateTime.now().plusSeconds(previewInterval / 1000);
+
+        Set<SiriObjectStorageKey> startTimes = new HashSet<>();
+
+//        if (previewInterval >= 0) {
+//            long t1 = System.currentTimeMillis();
+//            startTimes.addAll(idStartTimeMap
+//                    .entrySet().stream()
+//                    .filter(entry -> entry.getValue().isBefore(previewExpiry))
+//                    .map(Map.Entry::getKey)
+//                    .collect(Collectors.toSet()));
+//
+//            logger.info("Found {} ids starting within {} ms in {} ms", startTimes.size(), previewInterval, (System.currentTimeMillis()-t1));
+//        }
+
+        final AtomicInteger previewIntervalInclusionCounter = new AtomicInteger();
+        final AtomicInteger previewIntervalExclusionCounter = new AtomicInteger();
+        Predicate<SiriObjectStorageKey> previewIntervalFilter = id -> {
+
+            if (idForPatternChanges.containsKey(id) || startTimes.contains(id)) {
+                // Is valid in requested previewInterval
+                previewIntervalInclusionCounter.incrementAndGet();
+                return true;
+            }
+
+            previewIntervalExclusionCounter.incrementAndGet();
+            return false;
+        };
+
+        long t1 = System.currentTimeMillis();
+//        Set<SiriObjectStorageKey> sizeLimitedIds = requestedIds
+//                .stream()
+//                .filter(id -> previewInterval < 0 || previewIntervalFilter.test(id))
+//                .limit(maxSize)
+//                .collect(Collectors.toSet());
+
+        long t2 = System.currentTimeMillis();
+        //Remove collected objects
+//        sizeLimitedIds.forEach(idSet::remove);
+
+        long t3 = System.currentTimeMillis();
+
+        logger.info("Filter by startTime: {}, limiting size: {} ms", (t2 - t1), (t3 - t2));
+
+        t1 = System.currentTimeMillis();
+
+        Boolean isMoreData = (previewIntervalExclusionCounter.get() + sizeLimitedIds.size()) < requestedIds.size();
+
+        Collection<MonitoredStopVisit> values = monitoredStopVisits.getAll(sizeLimitedIds).values();
+        logger.info("Fetching data: {} ms", (System.currentTimeMillis()-t1));
+        t1 = System.currentTimeMillis();
+
+        Siri siri = siriObjectFactory.createSMServiceDelivery(values);
+        logger.info("Creating SIRI-delivery: {} sm", (System.currentTimeMillis()-t1));
+
+        siri.getServiceDelivery().setMoreData(isMoreData);
+
+        if (isAdHocRequest) {
+            logger.info("Returning {}, no requestorRef is set", sizeLimitedIds.size());
+        } else {
+
+            MessageRefStructure msgRef = new MessageRefStructure();
+            msgRef.setValue(requestorId);
+            siri.getServiceDelivery().setRequestMessageRef(msgRef);
+
+            if (idSet.size() > monitoredStopVisits.size()) {
+                //Remove outdated ids
+                idSet.removeIf(id -> !monitoredStopVisits.containsKey(id));
+            }
+
+            //Update change-tracker
+            updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, idSet, trackingPeriodMinutes, TimeUnit.MINUTES);
+
+            logger.info("Returning {}, {} left for requestorRef {}", sizeLimitedIds.size(), idSet.size(), requestorId);
+        }
+
+        return siri;
+    }
     // TODO MHI : copié / collé, à revoir
     @Override
     Collection<MonitoredStopVisit> addAll(String datasetId, List<MonitoredStopVisit> smList) {

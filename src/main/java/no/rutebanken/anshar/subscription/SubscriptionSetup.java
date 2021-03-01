@@ -67,6 +67,7 @@ public class SubscriptionSetup implements Serializable {
     private Boolean incrementalUpdates;
     private String contentType;
     private String vehicleMonitoringRefValue;
+    private String stopMonitoringRefValue;
     private boolean validation;
     private String restartTime;
 

@@ -16,6 +16,7 @@
 package no.rutebanken.anshar.data;
 
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
+import org.junit.Ignore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,14 +24,18 @@ import uk.org.siri.siri20.MonitoredCallStructure;
 import uk.org.siri.siri20.MonitoredStopVisit;
 import uk.org.siri.siri20.MonitoredVehicleJourneyStructure;
 import uk.org.siri.siri20.MonitoringRefStructure;
+import uk.org.siri.siri20.Siri;
 
 import java.time.ZonedDateTime;
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 import static no.rutebanken.anshar.helpers.SleepUtil.sleep;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 public class MonitoredStopVisitsTest extends SpringBootBaseTest {
 
@@ -152,39 +157,40 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
         element.setItemIdentifier(itemIdentifier);
         return element;
     }
-//
-//
-//    @Test
-//    public void testExcludeDatasetIds() {
-//
-//        String prefix = "excludedOnly-";
-//
-//        MonitoredStopVisit activity_1 = createMonitoredStopVisit(ZonedDateTime.now(), prefix + "1234");
-//        activity_1.getMonitoredVehicleJourney().setDataSource("test1");
-//        monitoredStopVisits.add("test1", activity_1);
-//
-//        MonitoredStopVisit activity_2 = createMonitoredStopVisit(ZonedDateTime.now(), prefix + "2345");
-//        activity_2.getMonitoredVehicleJourney().setDataSource("test2");
-//        monitoredStopVisits.add("test2", activity_2);
-//
-//        MonitoredStopVisit activity_3 = createMonitoredStopVisit(ZonedDateTime.now(), prefix + "3456");
-//        activity_3.getMonitoredVehicleJourney().setDataSource("test3");
-//        monitoredStopVisits.add("test3", activity_3);
-//
-//        assertExcludedId("test1");
-//        assertExcludedId("test2");
-//        assertExcludedId("test3");
-//    }
-//
-//    private void assertExcludedId(String excludedDatasetId) {
-//        Siri serviceDelivery = monitoredStopVisits.createServiceDelivery(null, null, null, Arrays.asList(excludedDatasetId), 100);
-//
-//        List<MonitoredStopVisit> monitoredStopVisits = serviceDelivery.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getmonitoredStopVisits();
-//
-//        assertEquals(2, monitoredStopVisits.size());
-//        for (MonitoredStopVisit activity : monitoredStopVisits) {
-//            assertFalse(activity.getMonitoredVehicleJourney().getDataSource().equals(excludedDatasetId));
-//        }
-//    }
+
+
+    @Test
+    @Ignore // TODO MHI à faire
+    public void testExcludeDatasetIds() {
+
+        String prefix = "excludedOnly-";
+
+        MonitoredStopVisit activity_1 = createMonitoredStopVisit(ZonedDateTime.now(), prefix + "1234");
+        activity_1.getMonitoredVehicleJourney().setDataSource("test1");
+        monitoredStopVisits.add("test1", activity_1);
+
+        MonitoredStopVisit activity_2 = createMonitoredStopVisit(ZonedDateTime.now(), prefix + "2345");
+        activity_2.getMonitoredVehicleJourney().setDataSource("test2");
+        monitoredStopVisits.add("test2", activity_2);
+
+        MonitoredStopVisit activity_3 = createMonitoredStopVisit(ZonedDateTime.now(), prefix + "3456");
+        activity_3.getMonitoredVehicleJourney().setDataSource("test3");
+        monitoredStopVisits.add("test3", activity_3);
+
+        assertExcludedId("test1");
+        assertExcludedId("test2");
+        assertExcludedId("test3");
+    }
+
+    private void assertExcludedId(String excludedDatasetId) {
+        Siri serviceDelivery = monitoredStopVisits.createServiceDelivery(null, null, null, Arrays.asList(excludedDatasetId), 100);
+
+        List<MonitoredStopVisit> monitoredStopVisits = serviceDelivery.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits();
+
+        assertEquals(2, monitoredStopVisits.size());
+        for (MonitoredStopVisit activity : monitoredStopVisits) {
+            assertFalse(activity.getMonitoredVehicleJourney().getDataSource().equals(excludedDatasetId));
+        }
+    }
 
 }
