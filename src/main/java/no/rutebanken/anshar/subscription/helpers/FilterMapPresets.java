@@ -15,8 +15,10 @@
 
 package no.rutebanken.anshar.subscription.helpers;
 
+import com.google.common.collect.ImmutableSet;
 import uk.org.siri.siri20.LineDirectionStructure;
 import uk.org.siri.siri20.LineRef;
+import uk.org.siri.siri20.MonitoringRefStructure;
 import uk.org.siri.siri20.OperatorRefStructure;
 
 import java.util.HashMap;
@@ -32,6 +34,9 @@ public class FilterMapPresets {
 
         if (preset.startsWith("LRO")) {
             filters.put(LineDirectionStructure.class, getLROLineFilters(preset));
+            MonitoringRefStructure monitoringRefStructure = new MonitoringRefStructure();
+            monitoringRefStructure.setValue("1033");
+            filters.put(MonitoringRefStructure.class, ImmutableSet.of(monitoringRefStructure));
         }
 //        switch (preset) {
 //            case BYBANEN:

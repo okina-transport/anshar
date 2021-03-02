@@ -44,6 +44,7 @@ import uk.org.siri.siri20.HeartbeatNotificationStructure;
 import uk.org.siri.siri20.LineDirectionStructure;
 import uk.org.siri.siri20.MessageQualifierStructure;
 import uk.org.siri.siri20.MonitoredStopVisit;
+import uk.org.siri.siri20.MonitoringRefStructure;
 import uk.org.siri.siri20.OperatorRefStructure;
 import uk.org.siri.siri20.OtherErrorStructure;
 import uk.org.siri.siri20.PtSituationElement;
@@ -56,6 +57,7 @@ import uk.org.siri.siri20.Siri;
 import uk.org.siri.siri20.SituationExchangeDeliveryStructure;
 import uk.org.siri.siri20.SituationExchangeRequestStructure;
 import uk.org.siri.siri20.SituationExchangeSubscriptionStructure;
+import uk.org.siri.siri20.StopMonitoringDeliveryStructure;
 import uk.org.siri.siri20.StopMonitoringRequestStructure;
 import uk.org.siri.siri20.SubscriptionContextStructure;
 import uk.org.siri.siri20.SubscriptionQualifierStructure;
@@ -138,7 +140,9 @@ public class SiriObjectFactory {
         SubscriptionRequest request = null;
 
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.SITUATION_EXCHANGE)) {
-            request = createSituationExchangeSubscriptionRequest(subscriptionSetup.getRequestorRef(), subscriptionSetup.getSubscriptionId(),
+            request = createSituationExchangeSubscriptionRequest(
+                    subscriptionSetup.getRequestorRef(),
+                    subscriptionSetup.getSubscriptionId(),
                     subscriptionSetup.getHeartbeatInterval(),
                     subscriptionSetup.buildUrl(),
                     subscriptionSetup.getDurationOfSubscription(),
@@ -148,7 +152,8 @@ public class SiriObjectFactory {
                     subscriptionSetup.getPreviewInterval());
         }
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.VEHICLE_MONITORING)) {
-            request = createVehicleMonitoringSubscriptionRequest(subscriptionSetup.getRequestorRef(),
+            request = createVehicleMonitoringSubscriptionRequest(
+                    subscriptionSetup.getRequestorRef(),
                     subscriptionSetup.getSubscriptionId(),
                     subscriptionSetup.getHeartbeatInterval(),
                     subscriptionSetup.buildUrl(),
@@ -161,7 +166,9 @@ public class SiriObjectFactory {
                     subscriptionSetup.getVehicleMonitoringRefValue());
         }
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.ESTIMATED_TIMETABLE)) {
-            request = createEstimatedTimetableSubscriptionRequest(subscriptionSetup.getRequestorRef(), subscriptionSetup.getSubscriptionId(),
+            request = createEstimatedTimetableSubscriptionRequest(
+                    subscriptionSetup.getRequestorRef(),
+                    subscriptionSetup.getSubscriptionId(),
                     subscriptionSetup.getHeartbeatInterval(),
                     subscriptionSetup.buildUrl(),
                     subscriptionSetup.getDurationOfSubscription(),
@@ -172,7 +179,17 @@ public class SiriObjectFactory {
                     subscriptionSetup.getChangeBeforeUpdates());
         }
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
-            request = createStopMonitoringSubscriptionRequest();
+            request = createStopMonitoringSubscriptionRequest(
+                    subscriptionSetup.getRequestorRef(),
+                    subscriptionSetup.getSubscriptionId(),
+                    subscriptionSetup.getHeartbeatInterval(),
+                    subscriptionSetup.buildUrl(),
+                    subscriptionSetup.getFilterMap(),
+                    subscriptionSetup.getAddressFieldName(),
+                    subscriptionSetup.getIncrementalUpdates(),
+                    subscriptionSetup.getPreviewInterval(),
+                    subscriptionSetup.getChangeBeforeUpdates(),
+                    subscriptionSetup.getVehicleMonitoringRefValue());
         }
         siri.setSubscriptionRequest(request);
 
@@ -198,7 +215,7 @@ public class SiriObjectFactory {
             request.getEstimatedTimetableRequests().add(createEstimatedTimetableRequestStructure(subscriptionSetup.getPreviewInterval()));
         }
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
-            request.getStopMonitoringRequests().add(createStopMonitoringRequestStructure());
+            request.getStopMonitoringRequests().add(createStopMonitoringRequestStructure(subscriptionSetup.getPreviewInterval(), subscriptionSetup.getFilterMap()));
         }
 
         siri.setServiceRequest(request);
@@ -250,7 +267,7 @@ public class SiriObjectFactory {
         vmRequest.setVersion(SIRI_VERSION);
         vmRequest.setMessageIdentifier(createMessageIdentifier());
 
-        addFiltersToRequest(filterMap, vmRequest);
+        addFiltersToVmRequest(filterMap, vmRequest);
 
         return vmRequest;
     }
@@ -267,8 +284,16 @@ public class SiriObjectFactory {
     }
 
     // TODO MHI
-    private static StopMonitoringRequestStructure createStopMonitoringRequestStructure() {
-        throw new NotImplementedException("TODO MHI");
+    private static StopMonitoringRequestStructure createStopMonitoringRequestStructure(Duration previewInterval, Map<Class, Set<Object>> filterMap) {
+        StopMonitoringRequestStructure smRequest = new StopMonitoringRequestStructure();
+        smRequest.setRequestTimestamp(ZonedDateTime.now());
+        smRequest.setVersion(SIRI_VERSION);
+        smRequest.setMessageIdentifier(createMessageIdentifier());
+        if (previewInterval != null) {
+            smRequest.setPreviewInterval(createDataTypeFactory().newDuration(previewInterval.toString()));
+        }
+        addFiltersToSmRequest(filterMap, smRequest);
+        return smRequest;
     }
 
     private static SubscriptionRequest createSituationExchangeSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap, String addressFieldName, Boolean incrementalUpdates, Duration previewInterval) {
@@ -316,7 +341,7 @@ public class SiriObjectFactory {
             vmRequest.setVehicleMonitoringRef(vehicleMonitoringRef);
         }
 
-        addFiltersToRequest(filterMap, vmRequest);
+        addFiltersToVmRequest(filterMap, vmRequest);
 
         VehicleMonitoringSubscriptionStructure vmSubscriptionReq = new VehicleMonitoringSubscriptionStructure();
         vmSubscriptionReq.setVehicleMonitoringRequest(vmRequest);
@@ -338,9 +363,44 @@ public class SiriObjectFactory {
         return request;
     }
 
-    private static SubscriptionRequest createStopMonitoringSubscriptionRequest() {
-        // TODO MHI
-        throw new NotImplementedException("TODO");
+    private static SubscriptionRequest createStopMonitoringSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Map<Class, Set<Object>> filterMap, String addressFieldName, Boolean incrementalUpdates, Duration previewInterval, Duration changeBeforeUpdates, String vehicleMonitoringRefValue) {
+//        SubscriptionRequest request = createSubscriptionRequest(requestorRef, heartbeatInterval, address, addressFieldName);
+//
+//        StopMonitoringRequestStructure smRequest = new StopMonitoringRequestStructure();
+//        smRequest.setRequestTimestamp(ZonedDateTime.now());
+//        smRequest.setVersion(SIRI_VERSION);
+//
+//        if (previewInterval != null) {
+//            smRequest.setPreviewInterval(createDataTypeFactory().newDuration(previewInterval.toString()));
+//        }
+//
+//        if (filterMap != null) {
+//            Set<Object> stopPointsRefs = filterMap.get(MonitoringRefStructure.class);
+//            if (stopPointsRefs != null && !stopPointsRefs.isEmpty()) {
+//                Object next = stopPointsRefs.iterator().next();
+//                if (next instanceof MonitoringRefStructure) {
+//                    smRequest.setMonitoringRef((MonitoringRefStructure) next);
+//                }
+//            }
+//        }
+//
+//        StopMonitoringRequestStructure stopMonitoringRequestStructure = new StopMonitoringRequestStructure();
+//
+//        EstimatedTimetableSubscriptionStructure etSubscriptionReq = new EstimatedTimetableSubscriptionStructure();
+//        etSubscriptionReq.setEstimatedTimetableRequest(smRequest);
+//        etSubscriptionReq.setSubscriptionIdentifier(createSubscriptionIdentifier(subscriptionId));
+//        etSubscriptionReq.setInitialTerminationTime(ZonedDateTime.now().plusSeconds(subscriptionDuration.getSeconds()));
+//        etSubscriptionReq.setSubscriberRef(request.getRequestorRef());
+//        if (changeBeforeUpdates != null) {
+//            etSubscriptionReq.setChangeBeforeUpdates(createDataTypeFactory().newDuration(changeBeforeUpdates.toString()));
+//        }
+//
+//        etSubscriptionReq.setIncrementalUpdates(incrementalUpdates);
+//
+//        request.getEstimatedTimetableSubscriptionRequests().add(etSubscriptionReq);
+//
+//        return request;
+        return null;// TODO MHI
     }
 
 
@@ -444,7 +504,7 @@ public class SiriObjectFactory {
         return siri;
     }
 
-    private static void addFiltersToRequest(Map<Class, Set<Object>> filterMap, VehicleMonitoringRequestStructure vmRequest) {
+    private static void addFiltersToVmRequest(Map<Class, Set<Object>> filterMap, VehicleMonitoringRequestStructure vmRequest) {
         if (filterMap != null) {
             Set<LineDirectionStructure> lineDirectionStructure = (Set) filterMap.get(LineDirectionStructure.class);
 
@@ -462,8 +522,15 @@ public class SiriObjectFactory {
                 }
             }
         }
+    }
 
-
+    private static void addFiltersToSmRequest(Map<Class, Set<Object>> filterMap, StopMonitoringRequestStructure smRequest) {
+        if (filterMap != null) {
+            Set<Object> monitoringRefs = filterMap.get(MonitoringRefStructure.class);
+            if (monitoringRefs != null && monitoringRefs.iterator().hasNext()) {
+                smRequest.setMonitoringRef((MonitoringRefStructure) monitoringRefs.iterator().next());
+            }
+        }
     }
 
     public static RequestorRef createRequestorRef(String value) {
@@ -534,7 +601,15 @@ public class SiriObjectFactory {
 
     // TODO MHI
     public Siri createSMServiceDelivery(Collection<MonitoredStopVisit> elements) {
-        throw new NotImplementedException("TODO MHI");
+        Siri siri = createSiriObject();
+        ServiceDelivery delivery = createServiceDelivery();
+        StopMonitoringDeliveryStructure deliveryStructure = new StopMonitoringDeliveryStructure();
+        deliveryStructure.setVersion(SIRI_VERSION);
+        deliveryStructure.getMonitoredStopVisits().addAll(elements);
+        deliveryStructure.setResponseTimestamp(ZonedDateTime.now());
+        delivery.getStopMonitoringDeliveries().add(deliveryStructure);
+        siri.setServiceDelivery(delivery);
+        return siri;
     }
 
 

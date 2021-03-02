@@ -312,8 +312,9 @@ public class SubscriptionInitializer implements CamelContextAware {
                 Preconditions.checkNotNull(s.getPreviewInterval(), "PreviewInterval is not set");
             } else if (SiriDataType.SITUATION_EXCHANGE.equals(s.getSubscriptionType())) {
                 Preconditions.checkNotNull(s.getPreviewInterval(), "PreviewInterval is not set");
+            } else if (SiriDataType.STOP_MONITORING.equals(s.getSubscriptionType())) {
+                Preconditions.checkNotNull(s.getStopMonitoringRefValue());
             }
-
             Preconditions.checkNotNull(urlMap.get(RequestType.SUBSCRIBE), "SUBSCRIBE-url is missing. " + s);
             Preconditions.checkNotNull(urlMap.get(RequestType.DELETE_SUBSCRIPTION), "DELETE_SUBSCRIPTION-url is missing. " + s);
         }  else if (s.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.FETCHED_DELIVERY |

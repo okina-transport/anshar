@@ -67,6 +67,7 @@ public class SubscriptionSetup implements Serializable {
     private Boolean incrementalUpdates;
     private String contentType;
     private String vehicleMonitoringRefValue;
+
     private String stopMonitoringRefValue;
     private boolean validation;
     private String restartTime;
@@ -365,6 +366,14 @@ public class SubscriptionSetup implements Serializable {
 
     public void setVehicleMonitoringRefValue(String vehicleMonitoringRefValue) {
         this.vehicleMonitoringRefValue = vehicleMonitoringRefValue;
+    }
+
+    public String getStopMonitoringRefValue() {
+        return stopMonitoringRefValue;
+    }
+
+    public void setStopMonitoringRefValue(String stopMonitoringRefValue) {
+        this.stopMonitoringRefValue = stopMonitoringRefValue;
     }
 
     public Duration getChangeBeforeUpdates() {

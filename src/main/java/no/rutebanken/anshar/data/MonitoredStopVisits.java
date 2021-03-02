@@ -108,7 +108,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     }
 
     @Override
-    int getSize() {
+    public int getSize() {
         return monitoredStopVisits.keySet().size();
     }
 
@@ -340,7 +340,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     }
     // TODO MHI : copié / collé, à revoir
     @Override
-    Collection<MonitoredStopVisit> addAll(String datasetId, List<MonitoredStopVisit> smList) {
+    public Collection<MonitoredStopVisit> addAll(String datasetId, List<MonitoredStopVisit> smList) {
         Set<SiriObjectStorageKey> changes = new HashSet<>();
         Set<MonitoredStopVisit> addedData = new HashSet<>();
 
