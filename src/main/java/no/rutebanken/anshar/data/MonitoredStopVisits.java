@@ -28,7 +28,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
-import uk.org.siri.siri20.AbstractItemStructure;
 import uk.org.siri.siri20.MessageRefStructure;
 import uk.org.siri.siri20.MonitoredCallStructure;
 import uk.org.siri.siri20.MonitoredStopVisit;
@@ -41,14 +40,11 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -220,14 +216,8 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         return getAll(datasetId);
     }
 
-    public Siri createServiceDelivery(final String lineRef) {
-        SortedSet<MonitoredStopVisit> monitoredStopVisitsStructures = new TreeSet<>(Comparator.comparing(AbstractItemStructure::getRecordedAtTime));
-
-        final Set<SiriObjectStorageKey> lineRefKeys = monitoredStopVisits.keySet(createLineRefPredicate(lineRef));
-
-        monitoredStopVisitsStructures.addAll(monitoredStopVisits.getAll(lineRefKeys).values());
-
-        return siriObjectFactory.createSMServiceDelivery(monitoredStopVisitsStructures);
+    public Siri createServiceDelivery(String requestorRef, String datasetId, String clientTrackingName, int maxSize) {
+        return createServiceDelivery(requestorRef, datasetId, clientTrackingName, null, maxSize);
     }
 
     // TODO MHI : copié collé, à revoir
@@ -473,6 +463,5 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     private SiriObjectStorageKey createKey(String datasetId, String monitoredStopVisitIdentifier) {
         return new SiriObjectStorageKey(datasetId, null, monitoredStopVisitIdentifier);
     }
-
 
 }

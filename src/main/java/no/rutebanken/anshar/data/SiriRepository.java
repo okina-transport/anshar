@@ -254,6 +254,7 @@ abstract class SiriRepository<T> {
         };
     }
 
+
     /**
      * Compares object-equality by calculating and comparing MD5-checksum
      * @param existing

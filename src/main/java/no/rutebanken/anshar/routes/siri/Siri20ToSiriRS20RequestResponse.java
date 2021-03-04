@@ -64,12 +64,14 @@ public class Siri20ToSiriRS20RequestResponse extends SiriSubscriptionRouteBuilde
             .bean(helper, "createSiriDataRequest")
             .process(e -> log.debug(e.toString()))
             .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .process(e -> log.info("AS JSON ======> " + e.getIn().getBody(String.class)))
             .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
             .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
             .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
             .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))
             .process(addCustomHeaders())
             .to("log:request:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .process(e -> log.info(e.getIn().getBody(String.class)))
             .doTry()
                 .to(getRequestUrl(subscriptionSetup) + httpOptions)
                 .setHeader("CamelHttpPath", constant("/appContext" + subscriptionSetup.buildUrl(false)))

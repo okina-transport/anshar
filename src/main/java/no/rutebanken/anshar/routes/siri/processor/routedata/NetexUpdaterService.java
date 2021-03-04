@@ -15,8 +15,10 @@
 
 package no.rutebanken.anshar.routes.siri.processor.routedata;
 
+import no.rutebanken.anshar.config.AnsharConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
@@ -45,6 +47,9 @@ public class NetexUpdaterService {
     private static final int UPDATE_FREQUENCY = 6;
     private static final TimeUnit FREQUENCY_TIME_UNIT = TimeUnit.HOURS;
 
+    @Autowired
+    AnsharConfiguration configuration;
+
     // Kept non-configurable since this whole adapter is a temporary hack - ROR-326/ROR-329
     private static final String[] urls = {
 //        "https://storage.googleapis.com/marduk-production/outbound/netex/rb_nsb-aggregated-netex.zip", // NSB
@@ -55,8 +60,10 @@ public class NetexUpdaterService {
 //        "https://storage.googleapis.com/marduk-production/outbound/netex/rb_sjn-aggregated-netex.zip", // SJ
 //        "https://storage.googleapis.com/marduk-production/outbound/netex/rb_vyg-aggregated-netex.zip", // VYG
 //        "https://storage.googleapis.com/marduk-production/tiamat/CurrentAndFuture_latest.zip"
-            "file:///home/mhicauber/dev/misc/outbound_netex_naq_lro-aggregated-netex.zip",               // LRO
-            "file:///home/mhicauber/dev/misc/tiamat_CurrentAndFuture_latest.zip",
+//            "file:///home/mhicauber/dev/misc/outbound_netex_naq_lro-aggregated-netex.zip",               // LRO
+//            "file:///home/mhicauber/dev/misc/tiamat_CurrentAndFuture_latest.zip",
+//            "file:///home/mhicauber/dev/misc/outbound_netex_naq_lro-aggregated-netex.zip",               // T2C
+//            "file:///home/mhicauber/dev/misc/tiamat_CurrentAndFuture_latest.zip",
     };
 
     private static Map<String, List<StopTime>> tripStops = new HashMap<>();

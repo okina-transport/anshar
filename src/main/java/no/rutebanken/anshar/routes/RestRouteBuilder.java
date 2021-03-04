@@ -78,6 +78,8 @@ public class RestRouteBuilder extends RouteBuilder {
             .routeId("reject.request.blocked.header")
         ;
 
+
+
     }
     protected boolean isTrackingHeaderAcceptable(Exchange e) {
         String camelHttpMethod = (String) e.getIn().getHeader("CamelHttpMethod");

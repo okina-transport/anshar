@@ -45,6 +45,7 @@ import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
 import uk.org.siri.siri20.EstimatedVehicleJourney;
 import uk.org.siri.siri20.LineRef;
 import uk.org.siri.siri20.MonitoredStopVisit;
+import uk.org.siri.siri20.MonitoringRefStructure;
 import uk.org.siri.siri20.PtSituationElement;
 import uk.org.siri.siri20.RequestorRef;
 import uk.org.siri.siri20.ServiceDeliveryErrorConditionElement;
@@ -52,6 +53,7 @@ import uk.org.siri.siri20.ServiceRequest;
 import uk.org.siri.siri20.Siri;
 import uk.org.siri.siri20.SituationExchangeDeliveryStructure;
 import uk.org.siri.siri20.StopMonitoringDeliveryStructure;
+import uk.org.siri.siri20.StopMonitoringRequestStructure;
 import uk.org.siri.siri20.SubscriptionResponseStructure;
 import uk.org.siri.siri20.TerminateSubscriptionRequestStructure;
 import uk.org.siri.siri20.TerminateSubscriptionResponseStructure;
@@ -142,9 +144,9 @@ public class SiriHandler {
     public Siri handleIncomingSiri(String subscriptionId, InputStream xml, String datasetId, List<String> excludedDatasetIdList, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String clientTrackingName) throws UnmarshalException {
         try {
             if (subscriptionId != null) {
-                processSiriClientRequest(subscriptionId, xml);
+                processSiriClientRequest(subscriptionId, xml); // Response to a request we made on behalf of one of the subscriptions
             } else {
-                Siri incoming = SiriValueTransformer.parseXml(xml);
+                Siri incoming = SiriValueTransformer.parseXml(xml); // Someone asking for sir
 
                 return processSiriServerRequest(incoming, datasetId, excludedDatasetIdList, outboundIdMappingPolicy, maxSize, clientTrackingName);
             }
@@ -238,8 +240,26 @@ public class SiriHandler {
                 }
 
                 serviceResponse = estimatedTimetables.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize, previewIntervalInMillis);
-            } else if (hasValues(serviceRequest.getVehicleMonitoringRequests())) {
-                // TODO MHI
+            } else if (hasValues(serviceRequest.getStopMonitoringRequests())) {
+                dataType = SiriDataType.STOP_MONITORING;
+                Map<Class, Set<String>> filterMap = new HashMap<>();
+                Duration previewInterval = serviceRequest.getStopMonitoringRequests().get(0).getPreviewInterval();
+                long previewIntervalInMillis = -1;
+                if (previewInterval != null) {
+                    previewIntervalInMillis = previewInterval.getTimeInMillis(new Date());
+                }
+
+                for (StopMonitoringRequestStructure req : serviceRequest.getStopMonitoringRequests()) {
+                    MonitoringRefStructure monitoringRef = req.getMonitoringRef();
+                    if (monitoringRef != null) {
+                        Set<String> monitoringRefs = filterMap.get(MonitoringRefStructure.class) != null ? filterMap.get(MonitoringRefStructure.class): new HashSet<>();
+                        monitoringRefs.add(monitoringRef.getValue());
+                        filterMap.put(MonitoringRefStructure.class, monitoringRefs);
+                    }
+                }
+
+                Siri siri = monitoredStopVisits.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize);
+                serviceResponse = SiriHelper.filterSiriPayload(siri, filterMap);
             }
 
 

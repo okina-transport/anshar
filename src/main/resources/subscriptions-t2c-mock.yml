@@ -1,0 +1,30 @@
+anshar:
+  subscriptions:
+    -
+      vendor: T2C-SM1
+      name: T2C
+      datasetId: T2C
+      serviceType: REST
+      subscriptionType: STOP_MONITORING
+      subscriptionMode: REQUEST_RESPONSE
+      heartbeatIntervalSeconds: 60
+      updateIntervalSeconds: 20
+      operatorNamespace: http://www.siri.org.uk/siri
+      addressFieldName:
+      soapenvNamespace:
+      incrementalUpdates:
+      urlMap:
+        GET_STOP_MONITORING: http://localhost:8012/mock-siri/ara
+      version: 2.0
+      contentType: application/json;charset=UTF-8
+      subscriptionId: t2c-sm-${random.uuid}
+      requestorRef: okina
+      durationOfSubscriptionHours: 1680
+      mappingAdapterId: okina
+      filterPresets:
+      idMappingPrefixes: T2C
+      restartTime: "01:30"
+      active: true
+      customHeaders:
+        Authorization: Basic YWxhZGRpbjpvcGVuc2VzYW1l
+        SOAPAction: GetStopMonitoring

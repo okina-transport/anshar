@@ -29,7 +29,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import java.text.MessageFormat;
 import java.time.LocalTime;
 import java.util.Set;
 
@@ -131,7 +130,6 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
 
         // Application is (still) alive and well
         from("direct:up")
-                //TODO: On error - POST to hubot - Ex: wget --post-data='{"source":"otp", "message":"Downloaded file is empty or not present. This makes OTP fail! Please check logs"}' http://hubot/hubot/say/
                 .choice()
                 .when(p -> !healthManager.isHazelcastAlive())
                     .log("Hazelcast is shut down")
@@ -159,74 +157,6 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
                     .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("200"))
                 .end()
                 .routeId("health.healthy")
-        ;
-
-        from("direct:anshardata")
-                .choice()
-                .when(p -> getAllUnhealthySubscriptions().isEmpty() && !unhealthySubscriptionsAlreadyNotified.isEmpty())
-                    .process(p -> {
-                        unhealthySubscriptionsAlreadyNotified.clear();
-                        String message = hubotMessageSuccess;
-
-                        if (LocalTime.now().isAfter(startMonitorTime) &&
-                                LocalTime.now().isBefore(endMonitorTime)) {
-                            String jsonPayload = "{" + MessageFormat.format(hubotTemplate, hubotSource, hubotIconSuccess, message) + "}";
-                            p.getOut().setBody("{" + jsonPayload + "}");
-                            p.getOut().setHeader("notify-target", "hubot");
-                        } else {
-                            p.getOut().setBody(message);
-                            p.getOut().setHeader("notify-target", "log");
-                        }
-                    })
-                    .log("Server is back to normal")
-                    .to("direct:notify.hubot")
-                .endChoice()
-                .when(p -> getAllUnhealthySubscriptions() != null && !getAllUnhealthySubscriptions().isEmpty())
-                    .process(p -> {
-                        Set<String> unhealthySubscriptions = getAllUnhealthySubscriptions();
-
-                        //Avoid notifying multiple times for same subscriptions
-                        unhealthySubscriptions.removeAll(unhealthySubscriptionsAlreadyNotified);
-
-                        //Keep
-                        unhealthySubscriptionsAlreadyNotified.addAll(unhealthySubscriptions);
-
-                        if (!unhealthySubscriptions.isEmpty()) {
-                            String message = MessageFormat.format(hubotMessageFail, getAllUnhealthySubscriptions());
-
-                            if (LocalTime.now().isAfter(startMonitorTime) &&
-                                    LocalTime.now().isBefore(endMonitorTime)) {
-
-                                String jsonPayload = "{" + MessageFormat.format(hubotTemplate, hubotSource, hubotIconFail, message) + "}";
-                                p.getOut().setBody( jsonPayload );
-                                p.getOut().setHeader("notify-target", "hubot");
-                            } else {
-                                p.getOut().setBody("Subscriptions not receiving data - NOT notifying hubot:" + message);
-                                p.getOut().setHeader("notify-target", "log");
-                            }
-                        }
-                    })
-                    .log("Server is NOT receiving data")
-                    .to("direct:notify.hubot")
-                .endChoice()
-                .otherwise()
-                    .setBody(simple("OK"))
-                    .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("200"))
-                .endChoice()
-                .routeId("health.data.received")
-        ;
-        from("direct:notify.hubot")
-                .choice()
-                .when(header("notify-target").isEqualTo("log"))
-                    .to("log:health:" + getClass().getSimpleName() + "?showAll=false&multiline=false")
-                .endChoice()
-                .when(header("notify-target").isEqualTo("hubot"))
-                    .to("log:health:" + getClass().getSimpleName() + "?showAll=false&multiline=false")
-//                    .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.JSON_UTF_8))
-//                    .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
-//                    .to(hubotUrl)
-                .endChoice()
-            .routeId("health.notify.hubot")
         ;
 
     }

@@ -36,11 +36,13 @@ import uk.org.siri.siri20.EstimatedVersionFrameStructure;
 import uk.org.siri.siri20.LineDirectionStructure;
 import uk.org.siri.siri20.LineRef;
 import uk.org.siri.siri20.MonitoredStopVisit;
+import uk.org.siri.siri20.MonitoringRefStructure;
 import uk.org.siri.siri20.PtSituationElement;
 import uk.org.siri.siri20.Siri;
 import uk.org.siri.siri20.SituationExchangeDeliveryStructure;
 import uk.org.siri.siri20.SituationExchangeRequestStructure;
 import uk.org.siri.siri20.SituationExchangeSubscriptionStructure;
+import uk.org.siri.siri20.StopMonitoringDeliveryStructure;
 import uk.org.siri.siri20.StopMonitoringSubscriptionStructure;
 import uk.org.siri.siri20.SubscriptionRequest;
 import uk.org.siri.siri20.VehicleActivityStructure;
@@ -306,8 +308,9 @@ public class SiriHelper {
                 return applySingleMatchFilter(filtered, filter);
             } else if (containsValues(filtered.getServiceDelivery().getSituationExchangeDeliveries())) {
                 return applyMultipleMatchFilter(filtered, filter);
+            } else if (containsValues(filtered.getServiceDelivery().getStopMonitoringDeliveries())) {
+                return applySingleMatchFilter(filtered, filter);
             }
-            // TODO MHI filter SM paylod
         }
 
         return siri;
@@ -317,10 +320,9 @@ public class SiriHelper {
      * Filters elements with 1 - one - possible match per element
      */
     private static Siri applySingleMatchFilter(Siri siri, Map<Class, Set<String>> filter) {
-
-
         filterLineRef(siri, filter.get(LineRef.class));
         filterVehicleRef(siri, filter.get(VehicleRef.class));
+        filterMonitoringRef(siri, filter.get(MonitoringRefStructure.class));
 
         return siri;
     }
@@ -424,6 +426,26 @@ public class SiriHelper {
                 version.getEstimatedVehicleJourneies().clear();
                 version.getEstimatedVehicleJourneies().addAll(matches);
             }
+        }
+    }
+
+
+    private static void filterMonitoringRef(Siri siri, Set<String> monitoringRef) {
+        if (monitoringRef == null || monitoringRef.isEmpty()) {
+            return;
+
+        }
+        //SM-deliveries
+        List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = siri.getServiceDelivery().getStopMonitoringDeliveries();
+        for (StopMonitoringDeliveryStructure delivery : stopMonitoringDeliveries) {
+            List<MonitoredStopVisit> monitoredStopVisits = delivery.getMonitoredStopVisits();
+            List<MonitoredStopVisit> filteredStopVisits = new ArrayList<>();
+            for (MonitoredStopVisit monitoredStopVisit : monitoredStopVisits) {
+                if (monitoringRef.contains(monitoredStopVisit.getMonitoringRef().getValue()))
+                    filteredStopVisits.add(monitoredStopVisit);
+            }
+            delivery.getMonitoredStopVisits().clear();
+            delivery.getMonitoredStopVisits().addAll(filteredStopVisits);
         }
     }
 

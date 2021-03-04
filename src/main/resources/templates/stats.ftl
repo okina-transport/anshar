@@ -238,6 +238,7 @@ Request count: ${item.requestCount}">${item.id}</span></td>
                     <th class="text-right">ET</th>
                     <th class="text-right">VM</th>
                     <th class="text-right">SX</th>
+                    <th class="text-right">SM</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -247,6 +248,7 @@ Request count: ${item.requestCount}">${item.id}</span></td>
                     <td class="text-right">${item.etCount}</td>
                     <td class="text-right">${item.vmCount}</td>
                     <td class="text-right">${item.sxCount}</td>
+                    <td class="text-right">${item.smCount}</td>
                 </tr>
                 </#list>
                 </tbody>
@@ -256,6 +258,7 @@ Request count: ${item.requestCount}">${item.id}</span></td>
                     <th class="text-right">${body.elements.et}</th>
                     <th class="text-right">${body.elements.vm}</th>
                     <th class="text-right">${body.elements.sx}</th>
+                    <th class="text-right">${body.elements.sm}</th>
                 </tr>
                 </tfoot>
             </table>
