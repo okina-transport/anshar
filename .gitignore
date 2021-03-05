@@ -33,3 +33,5 @@ gradlew
 gradlew.bat
 
 /local_config/
+
+do-not-commit/*
