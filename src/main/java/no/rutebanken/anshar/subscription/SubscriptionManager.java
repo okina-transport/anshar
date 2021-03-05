@@ -18,6 +18,7 @@ package no.rutebanken.anshar.subscription;
 
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.EstimatedTimetables;
+import no.rutebanken.anshar.data.MonitoredStopVisits;
 import no.rutebanken.anshar.data.RequestorRefRepository;
 import no.rutebanken.anshar.data.RequestorRefStats;
 import no.rutebanken.anshar.data.SiriObjectStorageKey;
@@ -56,6 +57,7 @@ import java.util.stream.Collectors;
 
 import static no.rutebanken.anshar.subscription.SiriDataType.ESTIMATED_TIMETABLE;
 import static no.rutebanken.anshar.subscription.SiriDataType.SITUATION_EXCHANGE;
+import static no.rutebanken.anshar.subscription.SiriDataType.STOP_MONITORING;
 import static no.rutebanken.anshar.subscription.SiriDataType.VEHICLE_MONITORING;
 
 @Service
@@ -115,6 +117,8 @@ public class SubscriptionManager {
     private EstimatedTimetables et;
     @Autowired
     private VehicleActivities vm;
+    @Autowired
+    private MonitoredStopVisits sm;
 
     @Autowired
     @Qualifier("getSituationChangesMap")
@@ -127,6 +131,10 @@ public class SubscriptionManager {
     @Autowired
     @Qualifier("getVehicleChangesMap")
     private RMapCache<String, Set<SiriObjectStorageKey>> vmChanges;
+
+    @Autowired
+    @Qualifier("getMonitoredStopVisitChangesMap")
+    private RMapCache<String, Set<SiriObjectStorageKey>> smChanges;
 
     @Autowired
     private RequestorRefRepository requestorRefRepository;
@@ -385,6 +393,16 @@ public class SubscriptionManager {
         );
         logger.info("Built SX stats");
 
+        JSONArray smSubscriptions = new JSONArray();
+        smSubscriptions.addAll(this.subscriptions.values().stream()
+                .filter(subscriptionSetup -> subscriptionSetup.getSubscriptionType() == STOP_MONITORING)
+                .map(this::getJsonObject)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList())
+        );
+        logger.info("Built SM stats");
+
+
         JSONObject etType = new JSONObject();
         etType.put("typeName", ""+ ESTIMATED_TIMETABLE);
         etType.put("subscriptions", etSubscriptions);
@@ -394,10 +412,14 @@ public class SubscriptionManager {
         JSONObject sxType = new JSONObject();
         sxType.put("typeName", ""+ SITUATION_EXCHANGE);
         sxType.put("subscriptions", sxSubscriptions);
+        JSONObject smType = new JSONObject();
+        smType.put("typeName", ""+ STOP_MONITORING);
+        smType.put("subscriptions", smSubscriptions);
 
         stats.add(etType);
         stats.add(vmType);
         stats.add(sxType);
+        stats.add(smType);
 
         result.put("types", stats);
 
@@ -416,10 +438,15 @@ public class SubscriptionManager {
         sxPolling.put("typeName", ""+ SITUATION_EXCHANGE);
         sxPolling.put("polling", getIdAndCount(sxChanges, SITUATION_EXCHANGE));
         logger.info("Built SX polling stats");
+        JSONObject smPolling = new JSONObject();
+        smPolling.put("typeName", ""+ STOP_MONITORING);
+        smPolling.put("polling", getIdAndCount(smChanges, STOP_MONITORING));
+        logger.info("Built SM polling stats");
 
         pollingClients.add(etPolling);
         pollingClients.add(vmPolling);
         pollingClients.add(sxPolling);
+        pollingClients.add(smPolling);
 
         result.put("polling", pollingClients);
 
@@ -435,13 +462,16 @@ public class SubscriptionManager {
         logger.info("Got VM size");
         Map<String, Integer> sxDatasetSize = sx.getDatasetSize();
         logger.info("Got SX size");
+        Map<String, Integer> smDatasetSize = sm.getDatasetSize();
+        logger.info("Got SM size");
 
         count.put("sx", sxDatasetSize.values().stream().mapToInt(Number::intValue).sum());
         count.put("et", etDatasetSize.values().stream().mapToInt(Number::intValue).sum());
         count.put("vm", vmDatasetSize.values().stream().mapToInt(Number::intValue).sum());
+        count.put("sm", smDatasetSize.values().stream().mapToInt(Number::intValue).sum());
 
         logger.info("Building distribution stats");
-        count.put("distribution", getCountPerDataset(etDatasetSize, vmDatasetSize, sxDatasetSize));
+        count.put("distribution", getCountPerDataset(etDatasetSize, vmDatasetSize, sxDatasetSize, smDatasetSize));
         logger.info("Built distribution stats");
 
         result.put("elements", count);
@@ -502,13 +532,14 @@ public class SubscriptionManager {
         return count;
     }
 
-    private JSONArray getCountPerDataset(Map<String, Integer> etDatasetSize, Map<String, Integer> vmDatasetSize, Map<String, Integer> sxDatasetSize) {
+    private JSONArray getCountPerDataset(Map<String, Integer> etDatasetSize, Map<String, Integer> vmDatasetSize, Map<String, Integer> sxDatasetSize, Map<String, Integer> smDatasetSize) {
         JSONArray etDatasetCount = new JSONArray();
 
         Set<String> allKeys = new HashSet<>();
         allKeys.addAll(etDatasetSize.keySet());
         allKeys.addAll(vmDatasetSize.keySet());
         allKeys.addAll(sxDatasetSize.keySet());
+        allKeys.addAll(smDatasetSize.keySet());
 
         for (String datasetId : allKeys) {
             JSONObject counter = new JSONObject();
@@ -516,6 +547,7 @@ public class SubscriptionManager {
             counter.put("etCount", etDatasetSize.getOrDefault(datasetId,0));
             counter.put("vmCount", vmDatasetSize.getOrDefault(datasetId,0));
             counter.put("sxCount", sxDatasetSize.getOrDefault(datasetId,0));
+            counter.put("smCount", smDatasetSize.getOrDefault(datasetId,0));
             etDatasetCount.add(counter);
         }
         return etDatasetCount;

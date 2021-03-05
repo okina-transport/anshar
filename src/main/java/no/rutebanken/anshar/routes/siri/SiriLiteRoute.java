@@ -17,6 +17,7 @@ package no.rutebanken.anshar.routes.siri;
 
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.EstimatedTimetables;
+import no.rutebanken.anshar.data.MonitoredStopVisits;
 import no.rutebanken.anshar.data.Situations;
 import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
@@ -53,6 +54,7 @@ import static no.rutebanken.anshar.routes.HttpParameter.PARAM_EXCLUDED_DATASET_I
 import static no.rutebanken.anshar.routes.HttpParameter.PARAM_LINE_REF;
 import static no.rutebanken.anshar.routes.HttpParameter.PARAM_MAX_SIZE;
 import static no.rutebanken.anshar.routes.HttpParameter.PARAM_PREVIEW_INTERVAL;
+import static no.rutebanken.anshar.routes.HttpParameter.PARAM_STOP_REF;
 import static no.rutebanken.anshar.routes.HttpParameter.PARAM_USE_ORIGINAL_ID;
 import static no.rutebanken.anshar.routes.HttpParameter.getParameterValuesAsList;
 
@@ -71,6 +73,9 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
     @Autowired
     private EstimatedTimetables estimatedTimetables;
+
+    @Autowired
+    private MonitoredStopVisits monitoredStopVisits;
 
     @Autowired
     private PrometheusMetricsService metrics;
@@ -102,6 +107,12 @@ public class SiriLiteRoute extends RestRouteBuilder {
                         .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
 
                 .get("/et-monitored").to("direct:anshar.rest.et.monitored")
+
+                .get("/sm").to("direct:anshar.rest.sm")
+                        .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
+                        .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response").dataType("string").endParam()
+                        .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
+                        .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
         ;
 
         // Dataproviders
@@ -256,6 +267,60 @@ public class SiriLiteRoute extends RestRouteBuilder {
                     .to("direct:anshar.invalid.tracking.header.response")
                 .routeId("incoming.rest.et")
         ;
+
+        from("direct:anshar.rest.sm")
+                .log("RequestTracer - Incoming request (SM)")
+                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true")
+                .choice()
+                .when(e -> isTrackingHeaderAcceptable(e))
+                .process(p -> {
+                    p.getOut().setHeaders(p.getIn().getHeaders());
+
+                    String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
+                    String originalId = p.getIn().getHeader(PARAM_USE_ORIGINAL_ID, String.class);
+                    String maxSizeStr = p.getIn().getHeader(PARAM_MAX_SIZE, String.class);
+                    String stopRef = p.getIn().getHeader(PARAM_STOP_REF, String.class);
+                    String etClientName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
+                    List<String> excludedIdList = getParameterValuesAsList(p.getIn(), PARAM_EXCLUDED_DATASET_ID);
+
+                    String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
+
+                    int maxSize = datasetId != null ? Integer.MAX_VALUE:configuration.getDefaultMaxSize();
+                    if (maxSizeStr != null) {
+                        try {
+                            maxSize = Integer.parseInt(maxSizeStr);
+                        } catch (NumberFormatException nfe) {
+                            //ignore
+                        }
+                    }
+
+                    // TODO MHI : prévoir un filtre par stop ref
+                    Siri response;
+//                    if (stopRef != null) {
+//                        response = monitoredStopVisits.createServiceDelivery(stopRef);
+//                    } else {
+                        response = monitoredStopVisits.createServiceDelivery(requestorId, datasetId, etClientName, excludedIdList, maxSize);
+//                    }
+
+                    List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
+                            SiriDataType.STOP_MONITORING,
+                            SiriHandler.getIdMappingPolicy(originalId)
+                    );
+                    if ("test".equals(originalId)) {
+                        outboundAdapters = null;
+                    }
+                    response = SiriValueTransformer.transform(response, outboundAdapters, false, false);
+
+                    HttpServletResponse out = p.getIn().getBody(HttpServletResponse.class);
+
+                    streamOutput(p, response, out);
+                })
+                .log("RequestTracer - Request done (SM)")
+                .otherwise()
+                .to("direct:anshar.invalid.tracking.header.response")
+                .routeId("incoming.rest.sm")
+        ;
+
 
         from("direct:anshar.rest.et.monitored")
                 .log("RequestTracer - Incoming request (ET)")

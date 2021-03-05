@@ -87,4 +87,32 @@ anshar:
       filterPresets:
       idMappingPrefixes:
       active: false
+    -
+      internalId: 400
+      vendor: T2V
+      name: T2C
+      datasetId: T2C
+      serviceType: REST
+      subscriptionType: STOP_MONITORING
+      subscriptionMode: REQUEST_RESPONSE
+      heartbeatIntervalSeconds: 60
+      previewIntervalSeconds: 3600
+      updateIntervalSeconds: 60
+      operatorNamespace: http://www.siri.org.uk/siri
+      addressFieldName:
+      soapenvNamespace:
+      incrementalUpdates:
+      urlMap:
+        GET_STOP_MONITORING: localhost:8012/mock-siri/ara
+      version: 2.0
+      contentType: text/xml;charset=UTF-8
+      subscriptionId: anshar-example-${random.uuid}
+      requestorRef: ${random.uuid}
+      durationOfSubscriptionHours: 1680
+      mappingAdapterId: entur
+      filterPresets:
+      idMappingPrefixes:
+      restartTime:
+      active: true
+
       

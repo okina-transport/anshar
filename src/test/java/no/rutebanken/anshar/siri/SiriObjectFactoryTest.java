@@ -18,6 +18,7 @@ package no.rutebanken.anshar.siri;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import org.apache.commons.lang3.NotImplementedException;
 import org.junit.jupiter.api.Test;
 import uk.org.siri.siri20.EstimatedTimetableRequestStructure;
 import uk.org.siri.siri20.EstimatedTimetableSubscriptionStructure;
@@ -115,6 +116,12 @@ public class SiriObjectFactoryTest {
 
 
 
+    }
+
+    @Test
+    public void testCreateSMSubscription(){
+        // TODO MHI
+        throw new NotImplementedException("");
     }
 
     @Test
@@ -229,6 +236,12 @@ public class SiriObjectFactoryTest {
 
         EstimatedTimetableRequestStructure request = etRequests.get(0);
         assertNotNull(request);
+    }
+
+    // TODO MHI
+    @Test
+    public void testCreateSMServiceRequest(){
+        throw new NotImplementedException("TODO MHI");
     }
 
     @Test

@@ -47,6 +47,8 @@ public class Constants {
     public static final String MONITORED_VEHICLE_JOURNEY =  VEHICLE_ACTIVITY + "/MonitoredVehicleJourney";
     public static final String MONITORED_CALL_STRUCTURE =  MONITORED_VEHICLE_JOURNEY + "/MonitoredCall";
 
+    // TODO MHI : implement validators for SM
+
     private Constants() {
         // should not be instantiated
     }

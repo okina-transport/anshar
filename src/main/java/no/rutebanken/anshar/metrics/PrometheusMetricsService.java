@@ -30,7 +30,6 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.redisson.api.RMap;
-import org.redisson.api.RMapCache;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
@@ -220,6 +219,8 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
         for (Map.Entry<String, Integer> entry : datasetSize.entrySet()) {
             gaugeDataset(SiriDataType.VEHICLE_MONITORING, entry.getKey(), entry.getValue());
         }
+
+        // TODO MHI : add SM to prometheus
 
         RMap<String, SubscriptionSetup> subscriptions = manager.subscriptions;
         for (SubscriptionSetup subscription : subscriptions.values()) {

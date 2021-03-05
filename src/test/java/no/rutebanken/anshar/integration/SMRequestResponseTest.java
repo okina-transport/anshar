@@ -13,11 +13,9 @@
  * limitations under the Licence.
  */
 
-package no.rutebanken.anshar.subscription;
+package no.rutebanken.anshar.integration;
 
-public enum SiriDataType {
-    SITUATION_EXCHANGE,
-    VEHICLE_MONITORING,
-    ESTIMATED_TIMETABLE,
-    STOP_MONITORING
+public class SMRequestResponseTest extends BaseHttpTest {
+
+    // TODO MHI
 }

@@ -17,6 +17,7 @@ package no.rutebanken.anshar.routes.siri.handlers;
 
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.EstimatedTimetables;
+import no.rutebanken.anshar.data.MonitoredStopVisits;
 import no.rutebanken.anshar.data.Situations;
 import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
@@ -43,12 +44,16 @@ import uk.org.siri.siri20.ErrorDescriptionStructure;
 import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
 import uk.org.siri.siri20.EstimatedVehicleJourney;
 import uk.org.siri.siri20.LineRef;
+import uk.org.siri.siri20.MonitoredStopVisit;
+import uk.org.siri.siri20.MonitoringRefStructure;
 import uk.org.siri.siri20.PtSituationElement;
 import uk.org.siri.siri20.RequestorRef;
 import uk.org.siri.siri20.ServiceDeliveryErrorConditionElement;
 import uk.org.siri.siri20.ServiceRequest;
 import uk.org.siri.siri20.Siri;
 import uk.org.siri.siri20.SituationExchangeDeliveryStructure;
+import uk.org.siri.siri20.StopMonitoringDeliveryStructure;
+import uk.org.siri.siri20.StopMonitoringRequestStructure;
 import uk.org.siri.siri20.SubscriptionResponseStructure;
 import uk.org.siri.siri20.TerminateSubscriptionRequestStructure;
 import uk.org.siri.siri20.TerminateSubscriptionResponseStructure;
@@ -94,6 +99,9 @@ public class SiriHandler {
     private EstimatedTimetables estimatedTimetables;
 
     @Autowired
+    private MonitoredStopVisits monitoredStopVisits;
+
+    @Autowired
     private SiriObjectFactory siriObjectFactory;
 
     @Autowired
@@ -136,9 +144,9 @@ public class SiriHandler {
     public Siri handleIncomingSiri(String subscriptionId, InputStream xml, String datasetId, List<String> excludedDatasetIdList, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String clientTrackingName) throws UnmarshalException {
         try {
             if (subscriptionId != null) {
-                processSiriClientRequest(subscriptionId, xml);
+                processSiriClientRequest(subscriptionId, xml); // Response to a request we made on behalf of one of the subscriptions
             } else {
-                Siri incoming = SiriValueTransformer.parseXml(xml);
+                Siri incoming = SiriValueTransformer.parseXml(xml); // Someone asking us for siri update
 
                 return processSiriServerRequest(incoming, datasetId, excludedDatasetIdList, outboundIdMappingPolicy, maxSize, clientTrackingName);
             }
@@ -232,6 +240,26 @@ public class SiriHandler {
                 }
 
                 serviceResponse = estimatedTimetables.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize, previewIntervalInMillis);
+            } else if (hasValues(serviceRequest.getStopMonitoringRequests())) {
+                dataType = SiriDataType.STOP_MONITORING;
+                Map<Class, Set<String>> filterMap = new HashMap<>();
+                Duration previewInterval = serviceRequest.getStopMonitoringRequests().get(0).getPreviewInterval();
+                long previewIntervalInMillis = -1;
+                if (previewInterval != null) {
+                    previewIntervalInMillis = previewInterval.getTimeInMillis(new Date());
+                }
+
+                for (StopMonitoringRequestStructure req : serviceRequest.getStopMonitoringRequests()) {
+                    MonitoringRefStructure monitoringRef = req.getMonitoringRef();
+                    if (monitoringRef != null) {
+                        Set<String> monitoringRefs = filterMap.get(MonitoringRefStructure.class) != null ? filterMap.get(MonitoringRefStructure.class): new HashSet<>();
+                        monitoringRefs.add(monitoringRef.getValue());
+                        filterMap.put(MonitoringRefStructure.class, monitoringRefs);
+                    }
+                }
+
+                Siri siri = monitoredStopVisits.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize);
+                serviceResponse = SiriHelper.filterSiriPayload(siri, filterMap);
             }
 
 
@@ -425,6 +453,38 @@ public class SiriHandler {
 
                     logger.info("Active ET-elements: {}, current delivery: {}, {}", estimatedTimetables.getSize(), addedOrUpdated.size(), subscriptionSetup);
                 }
+
+                // TODO MHI
+                if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
+                    List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = incoming.getServiceDelivery().getStopMonitoringDeliveries();
+                    logger.info("Got SM-delivery: Subscription [{}] {}", subscriptionSetup);
+
+                    List<MonitoredStopVisit> addedOrUpdated = new ArrayList<>();
+                    if (stopMonitoringDeliveries != null) {
+                        stopMonitoringDeliveries.forEach(sm -> {
+                                    if (sm != null) {
+                                        if (sm.isStatus() != null && !sm.isStatus()) {
+                                            logger.info(getErrorContents(sm.getErrorCondition()));
+                                        } else {
+                                            if (sm.getMonitoredStopVisits() != null) {
+                                                addedOrUpdated.addAll(
+                                                        monitoredStopVisits.addAll(subscriptionSetup.getDatasetId(), sm.getMonitoredStopVisits()));
+                                            }
+                                        }
+                                    }
+                                }
+                        );
+                    }
+
+                    deliveryContainsData = deliveryContainsData || (addedOrUpdated.size() > 0);
+
+                    serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
+
+                    subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdated.size());
+
+                    logger.info("Active SM-elements: {}, current delivery: {}, {}", monitoredStopVisits.getSize(), addedOrUpdated.size(), subscriptionSetup);
+                }
+
 
                 if (deliveryContainsData) {
                     subscriptionManager.dataReceived(subscriptionId, receivedBytes);

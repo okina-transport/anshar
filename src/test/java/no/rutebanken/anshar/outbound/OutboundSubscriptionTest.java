@@ -123,4 +123,6 @@ public class OutboundSubscriptionTest extends SpringBootBaseTest {
         subscriptionRequest.setSubscriptionContext(context);
         return subscriptionRequest;
     }
+
+    // TODO MHI : test for SM subscription
 }

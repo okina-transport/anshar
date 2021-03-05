@@ -37,7 +37,8 @@
 
     <xsl:template match="*"/>
 
-    <xsl:template match="siri:VehicleMonitoringRequest | siri:SituationExchangeRequest | siri:EstimatedTimetableRequest | siri:SubscriptionRequest | siri:TerminateSubscriptionRequest | siri:CheckStatusRequest | siri:DataSupplyRequest"> <!-- TODO add all conseptual types of requests -->
+    <xsl:template
+            match="siri:VehicleMonitoringRequest | siri:SituationExchangeRequest | siri:EstimatedTimetableRequest | siri:SubscriptionRequest | siri:TerminateSubscriptionRequest | siri:CheckStatusRequest | siri:DataSupplyRequest | siri:StopMonitoringRequest"> <!-- TODO add all conceptual types of requests -->
             <xsl:element name="soapenv:Envelope" namespace="{$soapEnvelopeNamespace}" >
 
                 <xsl:choose>
@@ -191,7 +192,14 @@
                                 <xsl:element name="siri:MessageIdentifier">
                                     <xsl:value-of select="siri:MessageIdentifier"/>
                                 </xsl:element>
-
+                                <xsl:element name="siri:LineRef">
+                                    <xsl:value-of select="siri:LineRef"/>
+                                </xsl:element>
+                                <xsl:if test="local-name()='StopMonitoringRequest'">
+                                    <xsl:element name="siri:MonitoringRef">
+                                        <xsl:value-of select="siri:MonitoringRef"></xsl:value-of>
+                                    </xsl:element>
+                                </xsl:if>
                             </xsl:element>
                             <xsl:element name="RequestExtension"/>
                         </xsl:element>

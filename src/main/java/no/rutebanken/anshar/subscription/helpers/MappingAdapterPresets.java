@@ -51,6 +51,9 @@ public class MappingAdapterPresets {
                 adapters.add(new OutboundIdAdapter(StopPlaceRef.class, outboundIdMappingPolicy));
                 adapters.add(new RemoveEmojiPostProcessor(outboundIdMappingPolicy));
                 break;
+            case STOP_MONITORING:
+                // TODO MHI
+                break;
             default:
                 return getOutboundAdapters(outboundIdMappingPolicy);
         }

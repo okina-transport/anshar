@@ -15,7 +15,6 @@
 
 package no.rutebanken.anshar.routes.outbound;
 
-import com.hazelcast.map.IMap;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -38,9 +37,11 @@ import uk.org.siri.siri20.AbstractSubscriptionStructure;
 import uk.org.siri.siri20.CheckStatusRequestStructure;
 import uk.org.siri.siri20.EstimatedTimetableSubscriptionStructure;
 import uk.org.siri.siri20.EstimatedVehicleJourney;
+import uk.org.siri.siri20.MonitoredStopVisit;
 import uk.org.siri.siri20.PtSituationElement;
 import uk.org.siri.siri20.Siri;
 import uk.org.siri.siri20.SituationExchangeSubscriptionStructure;
+import uk.org.siri.siri20.StopMonitoringSubscriptionStructure;
 import uk.org.siri.siri20.SubscriptionRequest;
 import uk.org.siri.siri20.VehicleActivityStructure;
 import uk.org.siri.siri20.VehicleMonitoringSubscriptionStructure;
@@ -103,6 +104,9 @@ public class ServerSubscriptionManager {
 
     @Produce(uri = "direct:send.to.pubsub.topic.situation_exchange")
     protected ProducerTemplate siriSxTopicProducer;
+
+    @Produce(uri = "direct:send.to.pubsub.topic.stop_monitoring")
+    protected ProducerTemplate siriSmTopicProducer;
 
     @Autowired
     private CamelRouteManager camelRouteManager;
@@ -226,6 +230,8 @@ public class ServerSubscriptionManager {
             return SiriDataType.VEHICLE_MONITORING;
         } else if (SiriHelper.containsValues(subscriptionRequest.getEstimatedTimetableSubscriptionRequests())) {
             return SiriDataType.ESTIMATED_TIMETABLE;
+        } else if (SiriHelper.containsValues(subscriptionRequest.getStopMonitoringSubscriptionRequests())) {
+            return SiriDataType.STOP_MONITORING;
         }
         return null;
     }
@@ -278,6 +284,12 @@ public class ServerSubscriptionManager {
                     subscriptionRequest.getEstimatedTimetableSubscriptionRequests().get(0);
 
             return getSubscriptionIdentifier(estimatedTimetableSubscriptionStructure);
+        } else if (SiriHelper.containsValues(subscriptionRequest.getStopMonitoringSubscriptionRequests())) {
+
+            StopMonitoringSubscriptionStructure stopMonitoringSubscriptionStructure =
+                    subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0);
+
+            return getSubscriptionIdentifier(stopMonitoringSubscriptionStructure);
         }
         return null;
     }
@@ -299,6 +311,9 @@ public class ServerSubscriptionManager {
         } else if (SiriHelper.containsValues(subscriptionRequest.getEstimatedTimetableSubscriptionRequests())) {
 
             return subscriptionRequest.getEstimatedTimetableSubscriptionRequests().get(0).getInitialTerminationTime();
+        } else if (SiriHelper.containsValues(subscriptionRequest.getStopMonitoringSubscriptionRequests())) {
+
+            return subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0).getInitialTerminationTime();
         }
         return null;
     }
@@ -335,6 +350,9 @@ public class ServerSubscriptionManager {
                 break;
             case VEHICLE_MONITORING:
                 executorService.submit(() -> pushUpdatedVehicleActivities(updates, datasetId, breadcrumbId));
+                break;
+            case STOP_MONITORING:
+                executorService.submit(() -> pushUpdatedStopMonitoring(updates, datasetId, breadcrumbId));
                 break;
             default:
                 // Ignore
@@ -414,6 +432,31 @@ public class ServerSubscriptionManager {
                                 (subscriptionRequest.getDatasetId() == null || (subscriptionRequest.getDatasetId().equals(datasetId))))
 
         ).forEach(subscription ->
+                camelRouteManager.pushSiriData(delivery, subscription, this)
+        );
+        MDC.remove("camel.breadcrumbId");
+    }
+
+    // TODO MHI
+    private void pushUpdatedStopMonitoring(List<MonitoredStopVisit> addedOrUpdated, String datasetId, String breadcrumbId
+    ) {
+        MDC.put("camel.breadcrumbId", breadcrumbId);
+
+        if (addedOrUpdated == null || addedOrUpdated.isEmpty()) {
+            return;
+        }
+        Siri delivery = siriObjectFactory.createSMServiceDelivery(addedOrUpdated);
+
+        if (pushToTopicEnabled) {
+            siriSmTopicProducer.asyncSendBody(siriSmTopicProducer.getDefaultEndpoint(), delivery);
+        }
+
+        subscriptions.values().stream().filter(subscriptionRequest ->
+                ( subscriptionRequest.getSubscriptionType().equals(SiriDataType.STOP_MONITORING) &&
+                        (subscriptionRequest.getDatasetId() == null || (subscriptionRequest.getDatasetId().equals(datasetId))))
+
+        ).forEach(subscription ->
+
                 camelRouteManager.pushSiriData(delivery, subscription, this)
         );
         MDC.remove("camel.breadcrumbId");

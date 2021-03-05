@@ -28,6 +28,7 @@ import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
 import uk.org.siri.siri20.ServiceDelivery;
 import uk.org.siri.siri20.Siri;
 import uk.org.siri.siri20.SituationExchangeDeliveryStructure;
+import uk.org.siri.siri20.StopMonitoringDeliveryStructure;
 import uk.org.siri.siri20.VehicleMonitoringDeliveryStructure;
 
 import java.net.SocketException;
@@ -192,6 +193,11 @@ public class CamelRouteManager {
                 return (deliveryStructure.getEstimatedJourneyVersionFrames() != null &&
                         SiriHelper.containsValues(deliveryStructure.getEstimatedJourneyVersionFrames()) &&
                         SiriHelper.containsValues(deliveryStructure.getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies()));
+            }
+            if (SiriHelper.containsValues(serviceDelivery.getStopMonitoringDeliveries())) {
+                StopMonitoringDeliveryStructure deliveryStructure = serviceDelivery.getStopMonitoringDeliveries().get(0);
+                return (SiriHelper.containsValues(deliveryStructure.getMonitoredStopVisits()) &&
+                        deliveryStructure.getMonitoredStopVisits().get(0).getMonitoredVehicleJourney() != null);
             }
         }
         return true;

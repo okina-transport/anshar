@@ -33,6 +33,7 @@ import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri20.EstimatedVehicleJourney;
+import uk.org.siri.siri20.MonitoredStopVisit;
 import uk.org.siri.siri20.PtSituationElement;
 import uk.org.siri.siri20.VehicleActivityStructure;
 
@@ -95,6 +96,11 @@ public class RedisService {
     }
 
     @Bean
+    public RMapCache<SiriObjectStorageKey, MonitoredStopVisit> getMonitoredStopVisitsMap(){
+        return redisson.getMapCache("anshar.sm");
+    }
+
+    @Bean
     public RMapCache<String, Set<SiriObjectStorageKey>> getSituationChangesMap() {
         return redisson.getMapCache("anshar.sx.changes");
     }
@@ -125,6 +131,11 @@ public class RedisService {
     }
 
     @Bean
+    public RMapCache<SiriObjectStorageKey, String> getSmChecksumMap() {
+        return redisson.getMapCache("anshar.sm.checksum.cache");
+    }
+
+    @Bean
     public RMapCache<SiriObjectStorageKey, ZonedDateTime> getIdStartTimeMap() {
         return redisson.getMapCache("anshar.et.index.startTime");
     }
@@ -132,6 +143,11 @@ public class RedisService {
     @Bean
     public RMapCache<String, Set<SiriObjectStorageKey>> getVehicleChangesMap() {
         return redisson.getMapCache("anshar.vm.changes");
+    }
+
+    @Bean
+    public RMapCache<String, Set<SiriObjectStorageKey>> getMonitoredStopVisitChangesMap() {
+        return redisson.getMapCache("anshar.sm.changes");
     }
 
     @Bean
@@ -174,6 +190,11 @@ public class RedisService {
     @Bean
     public RMapCache<String, Instant> getLastVmUpdateRequest() {
         return redisson.getMapCache("anshar.activity.last.vm.update.request");
+    }
+
+    @Bean
+    public RMapCache<String, Instant> getLastSmUpdateRequest() {
+        return redisson.getMapCache("anshar.activity.last.sm.update.request");
     }
 
     @Bean

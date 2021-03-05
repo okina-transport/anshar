@@ -50,7 +50,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceConfigurationError;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Component
 public class SubscriptionInitializer implements CamelContextAware {
@@ -165,6 +164,7 @@ public class SubscriptionInitializer implements CamelContextAware {
                     subscriptionSetup.getUrlMap().putIfAbsent(RequestType.GET_ESTIMATED_TIMETABLE, url);
                     subscriptionSetup.getUrlMap().putIfAbsent(RequestType.GET_VEHICLE_MONITORING, url);
                     subscriptionSetup.getUrlMap().putIfAbsent(RequestType.GET_SITUATION_EXCHANGE, url);
+                    subscriptionSetup.getUrlMap().putIfAbsent(RequestType.GET_STOP_MONITORING, url);
                 }
 
                 SubscriptionSetup existingSubscription = subscriptionManager.getSubscriptionById(subscriptionSetup.getInternalId());
@@ -300,6 +300,8 @@ public class SubscriptionInitializer implements CamelContextAware {
                 Preconditions.checkNotNull(urlMap.get(RequestType.GET_VEHICLE_MONITORING), "GET_VEHICLE_MONITORING-url is missing. " + s);
             } else if (SiriDataType.ESTIMATED_TIMETABLE.equals(s.getSubscriptionType())) {
                 Preconditions.checkNotNull(urlMap.get(RequestType.GET_ESTIMATED_TIMETABLE), "GET_ESTIMATED_TIMETABLE-url is missing. " + s);
+            } else if (SiriDataType.STOP_MONITORING.equals(s.getSubscriptionType())) {
+                Preconditions.checkNotNull(urlMap.get(RequestType.GET_STOP_MONITORING), "GET_STOP_MONITORING-url is missing. " + s);
             } else {
                 Preconditions.checkArgument(false, "URLs not configured correctly");
             }
@@ -310,6 +312,8 @@ public class SubscriptionInitializer implements CamelContextAware {
                 Preconditions.checkNotNull(s.getPreviewInterval(), "PreviewInterval is not set");
             } else if (SiriDataType.SITUATION_EXCHANGE.equals(s.getSubscriptionType())) {
                 Preconditions.checkNotNull(s.getPreviewInterval(), "PreviewInterval is not set");
+            } else if (SiriDataType.STOP_MONITORING.equals(s.getSubscriptionType())) {
+                Preconditions.checkNotNull(s.getStopMonitoringRefValue());
             }
 
             Preconditions.checkNotNull(urlMap.get(RequestType.SUBSCRIBE), "SUBSCRIBE-url is missing. " + s);
