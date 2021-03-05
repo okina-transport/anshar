@@ -65,7 +65,7 @@ public class AnsharConfiguration {
     @Value("${anshar.outbound.adhoc.tracking.period.minutes:3}")
     private int adHocTrackingPeriodMinutes;
 
-    @Value("${anshar.siri.default.producerRef:ENT}")
+    @Value("${anshar.siri.default.producerRef:OKI}")
     private String producerRef;
 
     @Value("${anshar.siri.sx.graceperiod.minutes:0}")

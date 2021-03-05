@@ -19,9 +19,9 @@
 
   <modelVersion>4.0.0</modelVersion>
   <parent>
-      <groupId>org.rutebanken.superpom</groupId>
+      <groupId>com.okina.springboot</groupId>
       <artifactId>superpom</artifactId>
-      <version>1.0.11</version>
+      <version>1.0.1-SNAPSHOT</version>
   </parent>
 
 
@@ -42,16 +42,9 @@
         <camel-version>3.7.0</camel-version>
 
         <metrics.version>3.2.3</metrics.version>
-        <entur.helpers.version>1.0.34</entur.helpers.version>
+        <okina.helpers.version>1.0.24-SNAPSHOT</okina.helpers.version>
     </properties>
 
-    <distributionManagement>
-        <snapshotRepository>
-            <id>snapshots</id>
-            <name>entur2-snapshots</name>
-            <url>https://entur2.jfrog.io/entur2/libs-snapshot-local</url>
-        </snapshotRepository>
-    </distributionManagement>
 
     <!-- Repository needs to be set up in nexus: repositories>
         <repository>
@@ -87,20 +80,20 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+<!--            <dependency>-->
+<!--                <groupId>org.entur.helpers</groupId>-->
+<!--                <artifactId>camel3-entur-google-pubsub</artifactId>-->
+<!--                <version>${okina.helpers.version}</version>-->
+<!--            </dependency>-->
             <dependency>
-                <groupId>org.entur.helpers</groupId>
-                <artifactId>camel3-entur-google-pubsub</artifactId>
-                <version>${entur.helpers.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.entur.helpers</groupId>
+                <groupId>com.okina.helpers</groupId>
                 <artifactId>hazelcast4-helper</artifactId>
-                <version>${entur.helpers.version}</version>
+                <version>${okina.helpers.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.entur.helpers</groupId>
+                <groupId>com.okina.helpers</groupId>
                 <artifactId>gcp-storage</artifactId>
-                <version>${entur.helpers.version}</version>
+                <version>${okina.helpers.version}</version>
                 <exclusions>
                     <exclusion>
                         <groupId>javax.servlet</groupId>
@@ -126,6 +119,12 @@
             <version>6.3</version>
         </dependency>
         <dependency>
+            <groupId>org.codehaus.janino</groupId>
+            <artifactId>janino</artifactId>
+            <version>3.0.7</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.apache.camel.springboot</groupId>
             <artifactId>camel-spring-boot-starter</artifactId>
         </dependency>
@@ -139,17 +138,17 @@
             <version>3.12.0</version>
         </dependency>
         <dependency>
-            <groupId>org.entur.helpers</groupId>
+            <groupId>com.okina.helpers</groupId>
             <artifactId>hazelcast4-helper</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.entur.helpers</groupId>
+            <groupId>com.okina.helpers</groupId>
             <artifactId>gcp-storage</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.entur.helpers</groupId>
-            <artifactId>camel3-entur-google-pubsub</artifactId>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>com.okina.helpers</groupId>-->
+<!--            <artifactId>camel3-entur-google-pubsub</artifactId>-->
+<!--        </dependency>-->
         <dependency>
             <groupId>org.apache.camel</groupId>
             <artifactId>camel-core</artifactId>
@@ -224,6 +223,12 @@
             <artifactId>camel-xslt-saxon</artifactId>
             <version>${camel-version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.camel</groupId>
+            <artifactId>camel-activemq</artifactId>
+        </dependency>
+
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
