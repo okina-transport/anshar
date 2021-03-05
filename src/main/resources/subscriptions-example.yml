@@ -89,7 +89,7 @@ anshar:
       active: false
     -
       internalId: 400
-      vendor: T2V
+      vendor: T2C
       name: T2C
       datasetId: T2C
       serviceType: REST
