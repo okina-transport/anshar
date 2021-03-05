@@ -17,6 +17,7 @@ import uk.org.siri.siri20.Siri;
 import uk.org.siri.siri20.StopPointRef;
 
 import java.math.BigInteger;
+import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -64,11 +65,12 @@ public class MockSiriFactory {
         monitoredCallStructure.setStopPointRef(stopPointRef);
         monitoredCallStructure.setOrder(BigInteger.valueOf(18));
         monitoredCallStructure.setVehicleAtStop(false);
-        monitoredCallStructure.setAimedArrivalTime(ZonedDateTime.now().plusMinutes(10));
-        monitoredCallStructure.setExpectedArrivalTime(ZonedDateTime.now().plusMinutes(10));
+        ZonedDateTime date = ZonedDateTime.parse("2020-04-03T17:00:00.000+01:00[Europe/Paris]").with(LocalDate.now());
+        monitoredCallStructure.setAimedArrivalTime(date);
+        monitoredCallStructure.setExpectedArrivalTime(date);
         monitoredCallStructure.setArrivalStatus(ON_TIME);
-        monitoredCallStructure.setAimedDepartureTime(ZonedDateTime.now().plusMinutes(11));
-        monitoredCallStructure.setExpectedDepartureTime(ZonedDateTime.now().plusMinutes(11));
+        monitoredCallStructure.setAimedDepartureTime(date.plusMinutes(1));
+        monitoredCallStructure.setExpectedDepartureTime(date.plusMinutes(1));
         monitoredCallStructure.setDepartureStatus(ON_TIME);
         NaturalLanguageStringStructure naturalLanguageStringStructure = new NaturalLanguageStringStructure();
         naturalLanguageStringStructure.setValue("H1");

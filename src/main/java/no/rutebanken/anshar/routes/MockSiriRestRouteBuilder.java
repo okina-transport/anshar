@@ -36,7 +36,7 @@ public class MockSiriRestRouteBuilder extends RestRouteBuilder {
                 .get("/ara")
                 .outType(Siri.class)
                 .consumes(MediaType.TEXT_PLAIN)
-                .produces(MediaType.APPLICATION_JSON)
+                .produces(MediaType.APPLICATION_XML)
                 .route()
                 .to("bean:mockSiriFactory")
                 .endRest();
