@@ -281,6 +281,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
                     String maxSizeStr = p.getIn().getHeader(PARAM_MAX_SIZE, String.class);
                     String stopRef = p.getIn().getHeader(PARAM_STOP_REF, String.class);
                     String etClientName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
+                    String previewIntervalMinutesStr = p.getIn().getHeader(PARAM_PREVIEW_INTERVAL, String.class);
                     List<String> excludedIdList = getParameterValuesAsList(p.getIn(), PARAM_EXCLUDED_DATASET_ID);
 
                     String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
@@ -293,13 +294,18 @@ public class SiriLiteRoute extends RestRouteBuilder {
                             //ignore
                         }
                     }
+                    long previewIntervalMillis = -1;
+                    if (previewIntervalMinutesStr != null) {
+                        int minutes = Integer.parseInt(previewIntervalMinutesStr);
+                        previewIntervalMillis = minutes*60*1000;
+                    }
 
                     // TODO MHI : prévoir un filtre par stop ref
                     Siri response;
 //                    if (stopRef != null) {
 //                        response = monitoredStopVisits.createServiceDelivery(stopRef);
 //                    } else {
-                        response = monitoredStopVisits.createServiceDelivery(requestorId, datasetId, etClientName, excludedIdList, maxSize);
+                        response = monitoredStopVisits.createServiceDelivery(requestorId, datasetId, etClientName, excludedIdList, maxSize, previewIntervalMillis);
 //                    }
 
                     List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
