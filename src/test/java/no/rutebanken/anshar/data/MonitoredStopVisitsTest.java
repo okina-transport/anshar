@@ -183,7 +183,7 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
     }
 
     private void assertExcludedId(String excludedDatasetId) {
-        Siri serviceDelivery = monitoredStopVisits.createServiceDelivery(null, null, null, Arrays.asList(excludedDatasetId), 100);
+        Siri serviceDelivery = monitoredStopVisits.createServiceDelivery(null, null, null, Arrays.asList(excludedDatasetId), 100, -1);
 
         List<MonitoredStopVisit> monitoredStopVisits = serviceDelivery.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits();
 

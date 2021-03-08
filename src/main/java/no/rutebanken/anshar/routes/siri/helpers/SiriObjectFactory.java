@@ -211,7 +211,7 @@ public class SiriObjectFactory {
             request.getEstimatedTimetableRequests().add(createEstimatedTimetableRequestStructure(subscriptionSetup.getPreviewInterval()));
         }
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
-            request.getStopMonitoringRequests().add(createStopMonitoringRequestStructure(subscriptionSetup.getPreviewInterval(), subscriptionSetup.getFilterMap()));
+            request.getStopMonitoringRequests().add(createStopMonitoringRequestStructure(subscriptionSetup));
         }
 
         siri.setServiceRequest(request);
@@ -276,15 +276,19 @@ public class SiriObjectFactory {
     }
 
     // TODO MHI
-    private static StopMonitoringRequestStructure createStopMonitoringRequestStructure(Duration previewInterval, Map<Class, Set<Object>> filterMap) {
+    private static StopMonitoringRequestStructure createStopMonitoringRequestStructure(SubscriptionSetup subscriptionSetup) {
         StopMonitoringRequestStructure smRequest = new StopMonitoringRequestStructure();
         smRequest.setRequestTimestamp(ZonedDateTime.now());
         smRequest.setVersion(SIRI_VERSION);
         smRequest.setMessageIdentifier(createMessageIdentifier());
-        if (previewInterval != null) {
-            smRequest.setPreviewInterval(createDataTypeFactory().newDuration(previewInterval.toString()));
+        if (subscriptionSetup.getPreviewInterval() != null) {
+            smRequest.setPreviewInterval(createDataTypeFactory().newDuration(subscriptionSetup.getPreviewInterval().toString()));
         }
-        addFiltersToSmRequest(filterMap, smRequest);
+        if (subscriptionSetup.getStopMonitoringRefValue() != null) {
+            MonitoringRefStructure monitoringRefStructure = new MonitoringRefStructure();
+            monitoringRefStructure.setValue(subscriptionSetup.getStopMonitoringRefValue());
+            smRequest.setMonitoringRef(monitoringRefStructure);
+        }
         return smRequest;
     }
 
@@ -509,15 +513,6 @@ public class SiriObjectFactory {
         Siri siri = createSiriObject();
         siri.setTerminateSubscriptionRequest(terminationReq);
         return siri;
-    }
-
-    private static void addFiltersToSmRequest(Map<Class, Set<Object>> filterMap, StopMonitoringRequestStructure smRequest) {
-        if (filterMap != null) {
-            Set<Object> monitoringRefs = filterMap.get(MonitoringRefStructure.class);
-            if (monitoringRefs != null && monitoringRefs.iterator().hasNext()) {
-                smRequest.setMonitoringRef((MonitoringRefStructure) monitoringRefs.iterator().next());
-            }
-        }
     }
 
     public static RequestorRef createRequestorRef(String value) {

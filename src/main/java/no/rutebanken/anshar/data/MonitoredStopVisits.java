@@ -35,6 +35,7 @@ import uk.org.siri.siri20.Siri;
 import javax.annotation.PostConstruct;
 import java.time.Instant;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -154,11 +155,11 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
 
     public Siri createServiceDelivery(String requestorRef, String datasetId, String clientTrackingName, int maxSize) {
-        return createServiceDelivery(requestorRef, datasetId, clientTrackingName, null, maxSize);
+        return createServiceDelivery(requestorRef, datasetId, clientTrackingName, null, maxSize, -1);
     }
 
     // TODO MHI : copié collé, à revoir
-    public Siri createServiceDelivery(String requestorId, String datasetId, String clientTrackingName, List<String> excludedDatasetIds, int maxSize) {
+    public Siri createServiceDelivery(String requestorId, String datasetId, String clientTrackingName, List<String> excludedDatasetIds, int maxSize, long previewInterval) {
 
         requestorRefRepository.touchRequestorRef(requestorId, datasetId, clientTrackingName, SiriDataType.STOP_MONITORING);
 
@@ -191,21 +192,21 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         Set<SiriObjectStorageKey> sizeLimitedIds = requestedIds.stream().limit(maxSize).collect(Collectors.toSet());
 
-//        final ZonedDateTime previewExpiry = ZonedDateTime.now().plusSeconds(previewInterval / 1000);
+        final ZonedDateTime previewExpiry = ZonedDateTime.now().plusSeconds(previewInterval / 1000);
 
         Set<SiriObjectStorageKey> startTimes = new HashSet<>();
 
         // TODO MHI
-//        if (previewInterval >= 0) {
-//            long t1 = System.currentTimeMillis();
-//            startTimes.addAll(idStartTimeMap
-//                    .entrySet().stream()
-//                    .filter(entry -> entry.getValue().isBefore(previewExpiry))
-//                    .map(Map.Entry::getKey)
-//                    .collect(Collectors.toSet()));
-//
-//            logger.info("Found {} ids starting within {} ms in {} ms", startTimes.size(), previewInterval, (System.currentTimeMillis()-t1));
-//        }
+        if (previewInterval >= 0) {
+            long t1 = System.currentTimeMillis();
+            startTimes.addAll(idStartTimeMap
+                    .entrySet().stream()
+                    .filter(entry -> entry.getValue().isBefore(previewExpiry))
+                    .map(Map.Entry::getKey)
+                    .collect(Collectors.toSet()));
+
+            logger.info("Found {} ids starting within {} ms in {} ms", startTimes.size(), previewInterval, (System.currentTimeMillis()-t1));
+        }
 
         final AtomicInteger previewIntervalInclusionCounter = new AtomicInteger();
         final AtomicInteger previewIntervalExclusionCounter = new AtomicInteger();
@@ -373,10 +374,11 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         smList.stream()
                 .filter(monitoredStopVisit -> monitoredStopVisit.getMonitoringRef() != null)
-                .filter(monitoredStopVisit -> monitoredStopVisit.getItemIdentifier() != null)
+                .filter(monitoredStopVisit -> monitoredStopVisit.getItemIdentifier() != null || monitoredStopVisit.getRecordedAtTime() != null) // need one or another to make a key later on
                 .forEach(monitoredStopVisit -> {
 
-                    SiriObjectStorageKey key = createKey(datasetId, monitoredStopVisit.getItemIdentifier());
+                    String keyCriteria = monitoredStopVisit.getItemIdentifier() != null ? monitoredStopVisit.getItemIdentifier() : monitoredStopVisit.getRecordedAtTime().format(DateTimeFormatter.ISO_DATE);
+                    SiriObjectStorageKey key = createKey(datasetId, keyCriteria);
 
                     String currentChecksum = null;
                     ZonedDateTime validUntilTime = monitoredStopVisit.getValidUntilTime();
