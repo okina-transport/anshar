@@ -374,7 +374,8 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         smList.stream()
                 .filter(monitoredStopVisit -> monitoredStopVisit.getMonitoringRef() != null)
-                .filter(monitoredStopVisit -> monitoredStopVisit.getItemIdentifier() != null || monitoredStopVisit.getRecordedAtTime() != null) // need one or another to make a key later on
+                .filter(monitoredStopVisit -> monitoredStopVisit.getItemIdentifier() != null)
+                .filter(monitoredStopVisit -> monitoredStopVisit.getRecordedAtTime() != null)
                 .forEach(monitoredStopVisit -> {
 
                     String keyCriteria = monitoredStopVisit.getItemIdentifier() != null ? monitoredStopVisit.getItemIdentifier() : monitoredStopVisit.getRecordedAtTime().format(DateTimeFormatter.ISO_DATE);
