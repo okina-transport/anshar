@@ -362,7 +362,7 @@ public class SubscriptionManager {
     }
 
     public JSONObject buildStats() {
-        logger.info("Start building stats");
+        logger.debug("Start building stats");
         JSONObject result = new JSONObject();
         JSONArray stats = new JSONArray();
 
@@ -373,7 +373,7 @@ public class SubscriptionManager {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList())
         );
-        logger.info("Built ET stats");
+        logger.debug("Built ET stats");
 
         JSONArray vmSubscriptions = new JSONArray();
         vmSubscriptions.addAll(this.subscriptions.values().stream()
@@ -382,7 +382,7 @@ public class SubscriptionManager {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList())
         );
-        logger.info("Built VM stats");
+        logger.debug("Built VM stats");
 
         JSONArray sxSubscriptions = new JSONArray();
         sxSubscriptions.addAll(this.subscriptions.values().stream()
@@ -391,7 +391,7 @@ public class SubscriptionManager {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList())
         );
-        logger.info("Built SX stats");
+        logger.debug("Built SX stats");
 
         JSONArray smSubscriptions = new JSONArray();
         smSubscriptions.addAll(this.subscriptions.values().stream()
@@ -400,7 +400,7 @@ public class SubscriptionManager {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList())
         );
-        logger.info("Built SM stats");
+        logger.debug("Built SM stats");
 
 
         JSONObject etType = new JSONObject();
@@ -424,24 +424,24 @@ public class SubscriptionManager {
         result.put("types", stats);
 
         JSONArray pollingClients = new JSONArray();
-        logger.info("Build polling stats");
+        logger.debug("Build polling stats");
 
         JSONObject etPolling = new JSONObject();
         etPolling.put("typeName", ""+ ESTIMATED_TIMETABLE);
         etPolling.put("polling", getIdAndCount(etChanges, ESTIMATED_TIMETABLE));
-        logger.info("Built ET polling stats");
+        logger.debug("Built ET polling stats");
         JSONObject vmPolling = new JSONObject();
         vmPolling.put("typeName", ""+ VEHICLE_MONITORING);
         vmPolling.put("polling", getIdAndCount(vmChanges, VEHICLE_MONITORING));
-        logger.info("Built VM polling stats");
+        logger.debug("Built VM polling stats");
         JSONObject sxPolling = new JSONObject();
         sxPolling.put("typeName", ""+ SITUATION_EXCHANGE);
         sxPolling.put("polling", getIdAndCount(sxChanges, SITUATION_EXCHANGE));
-        logger.info("Built SX polling stats");
+        logger.debug("Built SX polling stats");
         JSONObject smPolling = new JSONObject();
         smPolling.put("typeName", ""+ STOP_MONITORING);
         smPolling.put("polling", getIdAndCount(smChanges, STOP_MONITORING));
-        logger.info("Built SM polling stats");
+        logger.debug("Built SM polling stats");
 
         pollingClients.add(etPolling);
         pollingClients.add(vmPolling);
@@ -455,28 +455,28 @@ public class SubscriptionManager {
         result.put("secondsSinceDataReceived", healthManager.getSecondsSinceDataReceived());
         JSONObject count = new JSONObject();
 
-        logger.info("Getting dataset sizes");
+        logger.debug("Getting dataset sizes");
         Map<String, Integer> etDatasetSize = et.getDatasetSize();
-        logger.info("Got ET size");
+        logger.debug("Got ET size");
         Map<String, Integer> vmDatasetSize = vm.getDatasetSize();
-        logger.info("Got VM size");
+        logger.debug("Got VM size");
         Map<String, Integer> sxDatasetSize = sx.getDatasetSize();
-        logger.info("Got SX size");
+        logger.debug("Got SX size");
         Map<String, Integer> smDatasetSize = sm.getDatasetSize();
-        logger.info("Got SM size");
+        logger.debug("Got SM size");
 
         count.put("sx", sxDatasetSize.values().stream().mapToInt(Number::intValue).sum());
         count.put("et", etDatasetSize.values().stream().mapToInt(Number::intValue).sum());
         count.put("vm", vmDatasetSize.values().stream().mapToInt(Number::intValue).sum());
         count.put("sm", smDatasetSize.values().stream().mapToInt(Number::intValue).sum());
 
-        logger.info("Building distribution stats");
+        logger.debug("Building distribution stats");
         count.put("distribution", getCountPerDataset(etDatasetSize, vmDatasetSize, sxDatasetSize, smDatasetSize));
-        logger.info("Built distribution stats");
+        logger.debug("Built distribution stats");
 
         result.put("elements", count);
 
-        logger.info("Done building stats");
+        logger.debug("Done building stats");
         return result;
     }
 
