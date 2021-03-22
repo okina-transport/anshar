@@ -50,10 +50,17 @@ public class ExportHelper {
     }
     public Siri exportVM() {
         return transform(siriHelper.getAllVM(),
-            MappingAdapterPresets.getOutboundAdapters(SiriDataType.VEHICLE_MONITORING,
-                OutboundIdMappingPolicy.DEFAULT)
+                MappingAdapterPresets.getOutboundAdapters(SiriDataType.VEHICLE_MONITORING,
+                        OutboundIdMappingPolicy.DEFAULT)
         );
     }
+    public Siri getAllSM() {
+        return transform(siriHelper.getAllSM(),
+                MappingAdapterPresets.getOutboundAdapters(SiriDataType.STOP_MONITORING,
+                        OutboundIdMappingPolicy.DEFAULT)
+        );
+    }
+
 
     private Siri transform(Siri body, List<ValueAdapter> adapters) {
         return SiriValueTransformer.transform(
