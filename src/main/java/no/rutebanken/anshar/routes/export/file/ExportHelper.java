@@ -54,7 +54,7 @@ public class ExportHelper {
                         OutboundIdMappingPolicy.DEFAULT)
         );
     }
-    public Siri getAllSM() {
+    public Siri exportSM() {
         return transform(siriHelper.getAllSM(),
                 MappingAdapterPresets.getOutboundAdapters(SiriDataType.STOP_MONITORING,
                         OutboundIdMappingPolicy.DEFAULT)
