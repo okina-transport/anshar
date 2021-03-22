@@ -94,7 +94,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     }
 
     @Override
-    Collection<MonitoredStopVisit> getAll() {
+    public Collection<MonitoredStopVisit> getAll() {
         return monitoredStopVisits.values();
     }
 

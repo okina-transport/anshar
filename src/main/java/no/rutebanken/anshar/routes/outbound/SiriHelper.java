@@ -492,13 +492,12 @@ public class SiriHelper {
         return siri;
     }
 
-    public Siri getAllVM() {
-        return siriObjectFactory.createVMServiceDelivery(vehicleActivities.getAll());
-    }
+    public Siri getAllVM() { return siriObjectFactory.createVMServiceDelivery(vehicleActivities.getAll()); }
     public Siri getAllSX() {
         return siriObjectFactory.createSXServiceDelivery(situations.getAll());
     }
     public Siri getAllET() {
         return siriObjectFactory.createETServiceDelivery(estimatedTimetables.getAll());
     }
+    public Siri getAllSM() { return siriObjectFactory.createSMServiceDelivery(monitoredStopVisits.getAll()); }
 }
