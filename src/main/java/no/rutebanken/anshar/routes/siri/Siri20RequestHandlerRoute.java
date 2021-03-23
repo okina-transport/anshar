@@ -74,6 +74,16 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder {
                         .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response (SIRI ET and VM)").dataType("string").endParam()
                         .description("Backwards compatible endpoint used for SIRI ServiceRequest.")
 
+                .post("/anshar/ws/services")
+                .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response (SIRI ET and VM)").dataType("string").endParam()
+                .description("Backwards compatible endpoint used for SIRI ServiceRequest. SOAP format")
+                .route()
+                    .process(e -> e.getIn().setHeader(TRANSFORM_SOAP, TRANSFORM_SOAP))
+                    .to("direct:transform.siri")
+                    .to("direct:process.service.request")
+                .end()
+                .endRest()
+
                 .post("/anshar/services/{" + PARAM_DATASET_ID + "}").to("direct:process.service.request")
                         .description("Backwards compatible endpoint used for SIRI ServiceRequest limited to single dataprovider.")
                         .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.path).description("The id of the Codespace to limit data to").dataType("string").endParam()
@@ -168,6 +178,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder {
         ;
 
         from("direct:process.service.request")
+                .process(e -> log.info("here"))
                 .to("log:serRequest:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true")
                 .choice()
                 .when(e -> isTrackingHeaderAcceptable(e))
