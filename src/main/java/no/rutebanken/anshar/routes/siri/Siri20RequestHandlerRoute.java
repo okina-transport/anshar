@@ -23,6 +23,7 @@ import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.Exchange;
 import org.apache.camel.Message;
+import org.apache.camel.http.common.HttpMethods;
 import org.apache.camel.model.rest.RestParamType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -206,6 +207,14 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder {
                         }
                     })
                     .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                    .choice()
+                        .when(e -> TRANSFORM_SOAP.equals(e.getIn().getHeader(TRANSFORM_SOAP)))
+                            .to("xslt-saxon:xsl/siri_raw_soap.xsl") // Convert SIRI raw request to SOAP version
+                            .to("xslt-saxon:xsl/siri_14_20.xsl") // Convert SIRI raw request to SOAP version
+                            .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
+                            .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.APPLICATION_XML)) // Necessary when talking to Microsoft web services
+                            .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
+                    .endChoice()
                     .to("log:serResponse:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true")
                 .otherwise()
                     .to("direct:anshar.invalid.tracking.header.response")
