@@ -279,17 +279,22 @@
                         <xsl:copy-of select="../siri:ConsumerAddress" copy-namespaces="no"/>
                     </xsl:element>
                     <xsl:element name="Answer" namespace="{$siriNamespace}">
-                        <xsl:attribute name="version">
-                            <xsl:value-of select="/siri:Siri/@version"/>
-                        </xsl:attribute>
-                        <xsl:element name="siri:ResponseTimestamp">
-                            <xsl:value-of select="../siri:ResponseTimestamp"/>
-                        </xsl:element>
-                        <xsl:element name="siri:RequestMessageRef">
-                            <xsl:value-of select="../siri:RequestMessageRef"/>
-                        </xsl:element>
                         <xsl:if test="local-name()='StopMonitoringDelivery'">
-                            <xsl:copy-of select="./siri:MonitoredStopVisit" copy-namespaces="no"></xsl:copy-of>
+                            <xsl:element name="StopMonitoringDelivery" namespace="{$siriNamespace}">
+                                <xsl:attribute name="version">
+                                    <xsl:value-of select="1.4"/>
+                                </xsl:attribute>
+                                <xsl:attribute name="version">
+                                    <xsl:value-of select="/siri:Siri/@version"/>
+                                </xsl:attribute>
+                                <xsl:element name="siri:ResponseTimestamp">
+                                    <xsl:value-of select="../siri:ResponseTimestamp"/>
+                                </xsl:element>
+                                <xsl:element name="siri:RequestMessageRef">
+                                    <xsl:value-of select="../siri:RequestMessageRef"/>
+                                </xsl:element>
+                                <xsl:copy-of select="./siri:MonitoredStopVisit" copy-namespaces="no"></xsl:copy-of>
+                            </xsl:element>
                         </xsl:if>
                     </xsl:element>
                     <xsl:element name="RequestExtension"/>

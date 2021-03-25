@@ -212,7 +212,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder {
                             .to("xslt-saxon:xsl/siri_raw_soap.xsl") // Convert SIRI raw request to SOAP version
                             .to("xslt-saxon:xsl/siri_14_20.xsl") // Convert SIRI raw request to SOAP version
                             .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
-                            .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.APPLICATION_XML)) // Necessary when talking to Microsoft web services
+                            .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.TEXT_XML)) // Necessary when talking to Microsoft web services
                             .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
                     .endChoice()
                     .to("log:serResponse:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true")
