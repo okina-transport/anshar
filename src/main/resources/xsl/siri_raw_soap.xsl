@@ -46,7 +46,6 @@
     <xsl:template
             match="siri:VehicleMonitoringRequest | siri:SituationExchangeRequest | siri:EstimatedTimetableRequest | siri:SubscriptionRequest | siri:TerminateSubscriptionRequest | siri:CheckStatusRequest | siri:DataSupplyRequest | siri:StopMonitoringRequest"> <!-- TODO add all conceptual types of requests -->
         <xsl:element name="soapenv:Envelope" namespace="{$soapEnvelopeNamespace}">
-
             <xsl:choose>
                 <xsl:when test="local-name()='SubscriptionRequest'">
                     <xsl:element name="soapenv:Header" namespace="{$soapEnvelopeNamespace}">
@@ -269,7 +268,7 @@
 
                 <xsl:element name="{concat('Get',substring-before(local-name(),'Delivery'), 'Response')}"
                              namespace="{$siriSoapNamespace}">
-                    <xsl:element name="ServiceDeliveryInfo" namespace="{$siriNamespace}">
+                    <xsl:element name="ServiceDeliveryInfo">
                         <xsl:copy-of select="../siri:ServiceRequestContext" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:ResponseTimestamp" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:Address" copy-namespaces="no"/>
@@ -277,13 +276,11 @@
                         <xsl:copy-of select="../siri:MessageIdentifier" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:RequestMessageRef" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:ConsumerAddress" copy-namespaces="no"/>
+                        <xsl:element name="ResponseMessageIdentifier">PLACEHOLDER_IDENTIFIER</xsl:element>
                     </xsl:element>
-                    <xsl:element name="Answer" namespace="{$siriNamespace}">
+                    <xsl:element name="Answer">
                         <xsl:if test="local-name()='StopMonitoringDelivery'">
-                            <xsl:element name="StopMonitoringDelivery" namespace="{$siriNamespace}">
-                                <xsl:attribute name="version">
-                                    <xsl:value-of select="1.4"/>
-                                </xsl:attribute>
+                            <xsl:element name="siri:StopMonitoringDelivery">
                                 <xsl:attribute name="version">
                                     <xsl:value-of select="/siri:Siri/@version"/>
                                 </xsl:attribute>
@@ -293,7 +290,8 @@
                                 <xsl:element name="siri:RequestMessageRef">
                                     <xsl:value-of select="../siri:RequestMessageRef"/>
                                 </xsl:element>
-                                <xsl:copy-of select="./siri:MonitoredStopVisit" copy-namespaces="no"></xsl:copy-of>
+                                <xsl:copy-of select="./siri:MonitoredStopVisit" copy-namespaces="no">
+                                </xsl:copy-of>
                             </xsl:element>
                         </xsl:if>
                     </xsl:element>
