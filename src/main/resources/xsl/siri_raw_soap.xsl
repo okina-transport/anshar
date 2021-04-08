@@ -276,7 +276,7 @@
                         <xsl:copy-of select="../siri:MessageIdentifier" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:RequestMessageRef" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:ConsumerAddress" copy-namespaces="no"/>
-                        <xsl:element name="ResponseMessageIdentifier">PLACEHOLDER_IDENTIFIER</xsl:element>
+                        <xsl:copy-of select="../siri:ResponseMessageIdentifier" copy-namespaces="no"/>
                     </xsl:element>
                     <xsl:element name="Answer">
                         <xsl:if test="local-name()='StopMonitoringDelivery'">

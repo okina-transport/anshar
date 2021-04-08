@@ -6,5 +6,7 @@ VERSION_BACK=$(mvn -q \
     --non-recursive \
     exec:exec)
 BACK_IMAGE_NAME=registry.okina.fr/mobiiti/anshar:"${VERSION_BACK}"
-mvn spring-boot:build-image -Dspring-boot.build-image.imageName="${BACK_IMAGE_NAME}" -DskipTests
+#mvn spring-boot:build-image -Dspring-boot.build-image.imageName="${BACK_IMAGE_NAME}" -DskipTests
+mvn clean package -DskipTests
+docker build -t "${BACK_IMAGE_NAME}" .
 docker push "${BACK_IMAGE_NAME}"
