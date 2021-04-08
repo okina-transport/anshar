@@ -15,12 +15,14 @@
 
 package no.rutebanken.anshar.data;
 
+import com.hazelcast.map.IMap;
+import com.hazelcast.replicatedmap.ReplicatedMap;
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.quartz.utils.counter.Counter;
 import org.quartz.utils.counter.CounterImpl;
-import org.redisson.api.RMapCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,27 +59,27 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     private final Logger logger = LoggerFactory.getLogger(MonitoredStopVisits.class);
 
     @Autowired
-    private RMapCache<SiriObjectStorageKey, MonitoredStopVisit> monitoredStopVisits;
+    private IMap<SiriObjectStorageKey, MonitoredStopVisit> monitoredStopVisits;
 
     @Autowired
     @Qualifier("getSmChecksumMap")
-    private RMapCache<SiriObjectStorageKey, String> checksumCache;
+    private ReplicatedMap<SiriObjectStorageKey, String> checksumCache;
 
     @Autowired
     @Qualifier("getIdForPatternChangesMap")
-    private RMapCache<SiriObjectStorageKey, String> idForPatternChanges;
+    private ReplicatedMap<SiriObjectStorageKey, String> idForPatternChanges;
 
     @Autowired
     @Qualifier("getIdStartTimeMap")
-    private RMapCache<SiriObjectStorageKey, ZonedDateTime> idStartTimeMap;
+    private ReplicatedMap<SiriObjectStorageKey, ZonedDateTime> idStartTimeMap;
 
     @Autowired
     @Qualifier("getMonitoredStopVisitChangesMap")
-    private RMapCache<String, Set<SiriObjectStorageKey>> changesMap;
+    private IMap<String, Set<SiriObjectStorageKey>> changesMap;
 
     @Autowired
     @Qualifier("getLastSmUpdateRequest")
-    private RMapCache<String, Instant> lastUpdateRequested;
+    private IMap<String, Instant> lastUpdateRequested;
 
     @Autowired
     private AnsharConfiguration configuration;
@@ -88,9 +90,12 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     @Autowired
     private SiriObjectFactory siriObjectFactory;
 
+    @Autowired
+    ExtendedHazelcastService hazelcastService;
+
     @PostConstruct
     private void initializeUpdateCommitter() {
-        super.initBufferCommitter(lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
+        super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
     }
 
     @Override
@@ -124,18 +129,15 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
     @Override
     void clearAllByDatasetId(String datasetId) {
-        final Predicate<SiriObjectStorageKey> codespacePredicate = createCodespacePredicate(datasetId);
-
-        Set<SiriObjectStorageKey> idsToRemove = monitoredStopVisits.keySet().stream()
-                .filter(key -> codespacePredicate.test(key)).collect(Collectors.toSet());
+        Set<SiriObjectStorageKey> idsToRemove = monitoredStopVisits.keySet(createCodespacePredicate(datasetId));
 
         logger.warn("Removing all data ({} ids) for {}", idsToRemove.size(), datasetId);
 
         for (SiriObjectStorageKey id : idsToRemove) {
-            monitoredStopVisits.fastRemove(id);
-            checksumCache.fastRemove(id);
-            idStartTimeMap.fastRemove(id);
-            idForPatternChanges.fastRemove(id);
+            monitoredStopVisits.delete(id);
+            checksumCache.remove(id);
+            idStartTimeMap.remove(id);
+            idForPatternChanges.remove(id);
         }
         logger.warn("Removing all data done");
 
@@ -178,12 +180,8 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         Set<SiriObjectStorageKey> idSet = changesMap.getOrDefault(requestorId, allIds);
 
         if (idSet == allIds) {
-            final Predicate<SiriObjectStorageKey> codespacePredicate = createCodespacePredicate(datasetId);
             idSet.addAll(monitoredStopVisits
-                    .keySet().stream()
-                    .filter(entry -> {
-                        return datasetId == null || codespacePredicate.test(entry);
-                    }).collect(Collectors.toSet())
+                    .keySet(entry -> datasetId == null || ((SiriObjectStorageKey) entry.getKey()).getCodespaceId().equals(datasetId))
             );
         }
 

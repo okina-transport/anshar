@@ -134,7 +134,7 @@ public class SubscriptionManager {
 
     @Autowired
     @Qualifier("getMonitoredStopVisitChangesMap")
-    private RMapCache<String, Set<SiriObjectStorageKey>> smChanges;
+    private IMap<String, Set<SiriObjectStorageKey>> smChanges;
 
     @Autowired
     private RequestorRefRepository requestorRefRepository;

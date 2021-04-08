@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.routes.outbound;
 
+import com.hazelcast.map.IMap;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -57,7 +58,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static java.time.temporal.ChronoUnit.MILLIS;
-import static no.rutebanken.anshar.routes.kafka.KafkaPublisher.CODESPACE_ID_KAFKA_HEADER_NAME;
+
 
 @SuppressWarnings("unchecked")
 @Service
@@ -65,6 +66,8 @@ import static no.rutebanken.anshar.routes.kafka.KafkaPublisher.CODESPACE_ID_KAFK
 public class ServerSubscriptionManager {
 
     private final Logger logger = LoggerFactory.getLogger(ServerSubscriptionManager.class);
+
+    public static final String CODESPACE_ID_KAFKA_HEADER_NAME = "codespaceId";
 
     @Autowired
     IMap<String, OutboundSubscriptionSetup> subscriptions;

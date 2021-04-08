@@ -17,7 +17,6 @@ package no.rutebanken.anshar.data.collections;
 
 import com.hazelcast.collection.ISet;
 import com.hazelcast.config.SerializerConfig;
-import com.hazelcast.core.DistributedObject;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.LifecycleEvent;
 import com.hazelcast.map.IMap;
@@ -28,7 +27,6 @@ import no.rutebanken.anshar.data.SiriObjectStorageKey;
 import no.rutebanken.anshar.routes.outbound.OutboundSubscriptionSetup;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
-import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.rutebanken.hazelcasthelper.service.HazelCastService;
 import org.rutebanken.hazelcasthelper.service.KubernetesService;
@@ -38,6 +36,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri20.EstimatedVehicleJourney;
+import uk.org.siri.siri20.MonitoredStopVisit;
+import uk.org.siri.siri20.MonitoredVehicleJourneyStructure;
 import uk.org.siri.siri20.PtSituationElement;
 import uk.org.siri.siri20.VehicleActivityStructure;
 
@@ -46,7 +46,6 @@ import java.math.BigInteger;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -99,6 +98,9 @@ public class ExtendedHazelcastService extends HazelCastService {
                     .setTypeClass(VehicleActivityStructure.class)
                     .setImplementation(new KryoSerializer()),
                 new SerializerConfig()
+                    .setTypeClass(MonitoredVehicleJourneyStructure.class)
+                    .setImplementation(new KryoSerializer()),
+                new SerializerConfig()
                     .setTypeClass(JSONObject.class)
                     .setImplementation(new KryoSerializer())
 
@@ -126,6 +128,16 @@ public class ExtendedHazelcastService extends HazelCastService {
     }
 
     @Bean
+    public IMap<SiriObjectStorageKey, MonitoredStopVisit> getMonitoredStopVisits(){
+        return hazelcast.getMap("anshar.sm");
+    }
+
+    @Bean
+    public IMap<String, Set<SiriObjectStorageKey>> getMonitoredStopVisitChangesMap() {
+        return hazelcast.getMap("anshar.sm.changes");
+    }
+
+    @Bean
     public ReplicatedMap<SiriObjectStorageKey, String> getIdForPatternChangesMap() {
         return hazelcast.getReplicatedMap("anshar.et.index.pattern");
     }
@@ -143,6 +155,11 @@ public class ExtendedHazelcastService extends HazelCastService {
     @Bean
     public ReplicatedMap<SiriObjectStorageKey, String> getVmChecksumMap() {
         return hazelcast.getReplicatedMap("anshar.vm.checksum.cache");
+    }
+
+    @Bean
+    public ReplicatedMap<SiriObjectStorageKey, String> getSmChecksumMap() {
+        return hazelcast.getReplicatedMap("anshar.sm.checksum.cache");
     }
 
     @Bean
@@ -200,6 +217,11 @@ public class ExtendedHazelcastService extends HazelCastService {
     @Bean
     public IMap<String, Instant> getLastVmUpdateRequest() {
         return hazelcast.getMap("anshar.activity.last.vm.update.request");
+    }
+
+    @Bean
+    public IMap<String, Instant> getLastSmUpdateRequest() {
+        return hazelcast.getMap("anshar.activity.last.sm.update.request");
     }
 
     @Bean
