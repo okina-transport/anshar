@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.metrics;
 
+import com.hazelcast.replicatedmap.ReplicatedMap;
 import io.micrometer.core.instrument.ImmutableTag;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Tag;
@@ -29,7 +30,6 @@ import no.rutebanken.anshar.routes.validation.ValidationType;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
-import org.redisson.api.RMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
@@ -51,6 +51,9 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
     private static final String AGENCY_TAG_NAME = "agency";
     private static final String MAPPING_NAME_TAG = "mappingName";
 
+    private static final String KAFKA_STATUS_TAG = "kafkaStatus";
+    private static final String KAFKA_TOPIC_NAME = "kafkaTopic";
+
     private static final String CODESPACE_TAG_NAME = "codespace";
     private static final String VALIDATION_TYPE_TAG_NAME = "validationType";
     private static final String VALIDATION_RULE_TAG_NAME = "category";
@@ -69,6 +72,8 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
     private static final String DATA_OUTBOUND_COUNTER_NAME = METRICS_PREFIX + "data.outbound";
 
     private static final String DATA_MAPPING_COUNTER_NAME = METRICS_PREFIX + "data.mapping";
+
+    private static final String KAFKA_COUNTER_NAME = METRICS_PREFIX + "data.kafka";
 
     private static final String DATA_VALIDATION_COUNTER = METRICS_PREFIX + "data.validation";
     private static final String DATA_VALIDATION_RESULT_COUNTER = METRICS_PREFIX + "data.validation.result";
@@ -102,6 +107,15 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
         counterTags.add(new ImmutableTag(MAPPING_NAME_TAG, mappingName.toString()));
 
         counter(DATA_MAPPING_COUNTER_NAME, counterTags).increment(mappedCount);
+    }
+
+    public enum KafkaStatus {SENT, ACKED, FAILED}
+    public void registerKafkaRecord(String topic, KafkaStatus status) {
+        List<Tag> counterTags = new ArrayList<>();
+        counterTags.add(new ImmutableTag(KAFKA_TOPIC_NAME, topic));
+        counterTags.add(new ImmutableTag(KAFKA_STATUS_TAG, status.name()));
+
+        counter(KAFKA_COUNTER_NAME, counterTags).increment();
     }
 
     public void countOutgoingData(Siri siri, SubscriptionSetup.SubscriptionMode mode) {
@@ -203,26 +217,26 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
         }
 
         EstimatedTimetables estimatedTimetables = ApplicationContextHolder.getContext().getBean(EstimatedTimetables.class);
-        Map<String, Integer> datasetSize = estimatedTimetables.getDatasetSize();
+        Map<String, Integer> datasetSize = estimatedTimetables.getLocalDatasetSize();
         for (Map.Entry<String, Integer> entry : datasetSize.entrySet()) {
             gaugeDataset(SiriDataType.ESTIMATED_TIMETABLE, entry.getKey(), entry.getValue());
         }
 
         Situations situations = ApplicationContextHolder.getContext().getBean(Situations.class);
-        datasetSize = situations.getDatasetSize();
+        datasetSize = situations.getLocalDatasetSize();
         for (Map.Entry<String, Integer> entry : datasetSize.entrySet()) {
             gaugeDataset(SiriDataType.SITUATION_EXCHANGE, entry.getKey(), entry.getValue());
         }
 
         VehicleActivities vehicleActivities = ApplicationContextHolder.getContext().getBean(VehicleActivities.class);
-        datasetSize = vehicleActivities.getDatasetSize();
+        datasetSize = vehicleActivities.getLocalDatasetSize();
         for (Map.Entry<String, Integer> entry : datasetSize.entrySet()) {
             gaugeDataset(SiriDataType.VEHICLE_MONITORING, entry.getKey(), entry.getValue());
         }
 
         // TODO MHI : add SM to prometheus
 
-        RMap<String, SubscriptionSetup> subscriptions = manager.subscriptions;
+        ReplicatedMap<String, SubscriptionSetup> subscriptions = manager.subscriptions;
         for (SubscriptionSetup subscription : subscriptions.values()) {
 
             SiriDataType subscriptionType = subscription.getSubscriptionType();

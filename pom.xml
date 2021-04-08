@@ -27,7 +27,7 @@
 
     <groupId>no.rutebanken.anshar</groupId>
     <artifactId>anshar</artifactId>
-    <version>1.0.0-mobi-iti-SNAPSHOT</version>
+    <version>1.0.1-mobi-iti-SNAPSHOT</version>
     <packaging>jar</packaging>
 
 
@@ -129,16 +129,7 @@
             <artifactId>camel-spring-boot-starter</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-redis</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.redisson</groupId>
-            <artifactId>redisson-spring-boot-starter</artifactId>
-            <version>3.12.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.okina.helpers</groupId>
+            <groupId>org.entur.helpers</groupId>
             <artifactId>hazelcast4-helper</artifactId>
         </dependency>
         <dependency>
@@ -224,6 +215,17 @@
             <version>${camel-version}</version>
         </dependency>
         <dependency>
+            <!-- Included for recommended default producer-config -->
+            <groupId>org.apache.camel</groupId>
+            <artifactId>camel-kafka</artifactId>
+            <version>${camel-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>2.7.0</version>
+        </dependency>
+        <dependency>
             <groupId>org.apache.camel</groupId>
             <artifactId>camel-activemq</artifactId>
         </dependency>
@@ -291,11 +293,7 @@
             <artifactId>json-simple</artifactId>
             <version>1.1</version>
         </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>2.11.3</version>
-        </dependency>
+
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
@@ -379,12 +377,7 @@
             <version>4.3.3</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>it.ozimov</groupId>
-            <artifactId>embedded-redis</artifactId>
-            <version>0.7.2</version>
-            <scope>test</scope>
-        </dependency>
+
     </dependencies>
 
     <build>
