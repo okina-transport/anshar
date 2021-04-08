@@ -15,15 +15,12 @@
 
 package no.rutebanken.anshar.routes.export.file;
 
-import com.google.cloud.storage.Storage;
 import org.apache.camel.Header;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,19 +33,6 @@ public class BlobStoreService {
 
 	@Autowired
 	private BlobStoreRepository repository;
-
-	@Autowired
-	private Storage storage;
-
-	@Value("${blobstore.gcs.container.name}")
-	private String containerName;
-
-	@PostConstruct
-	public void init() {
-		logger.info("Initializing BlobStoreService with container {}, storage {}", containerName, storage);
-		repository.setStorage(storage);
-		repository.setContainerName(containerName);
-	}
 
 	public void uploadBlob(@Header(value = RealtimeDataFileUploader.ZIP_FILE_PATH) String path) throws IOException {
 		File f = new File(path);

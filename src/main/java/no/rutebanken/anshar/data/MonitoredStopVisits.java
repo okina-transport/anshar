@@ -190,8 +190,6 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         //Filter by datasetId
         Set<SiriObjectStorageKey> requestedIds = filterIdsByDataset(idSet, excludedDatasetIds, datasetId);
 
-        Set<SiriObjectStorageKey> sizeLimitedIds = requestedIds.stream().limit(maxSize).collect(Collectors.toSet());
-
         final ZonedDateTime previewExpiry = ZonedDateTime.now().plusSeconds(previewInterval / 1000);
 
         Set<SiriObjectStorageKey> startTimes = new HashSet<>();
@@ -224,15 +222,16 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         long t1 = System.currentTimeMillis();
         // TODO MHI
-//        Set<SiriObjectStorageKey> sizeLimitedIds = requestedIds
-//                .stream()
-//                .filter(id -> previewInterval < 0 || previewIntervalFilter.test(id))
-//                .limit(maxSize)
-//                .collect(Collectors.toSet());
+        Set<SiriObjectStorageKey> sizeLimitedIds = requestedIds
+                .stream()
+                .filter(id -> previewInterval < 0 || previewIntervalFilter.test(id))
+                .limit(maxSize)
+                .collect(Collectors.toSet());
 
         long t2 = System.currentTimeMillis();
+
         //Remove collected objects
-//        sizeLimitedIds.forEach(idSet::remove);
+        sizeLimitedIds.forEach(idSet::remove);
 
         long t3 = System.currentTimeMillis();
 

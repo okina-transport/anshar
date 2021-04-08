@@ -168,7 +168,7 @@ abstract class SiriRepository<T> {
                 lastUpdateRequested.put(key, Instant.now(), trackingPeriodMinutes, timeUnit);
 
                 logger.info("Replacing changes for requestor async {} took {} ms. ({})",
-                        key,(System.currentTimeMillis() - t1),this.getClass().getSimpleName()
+                         key,(System.currentTimeMillis() - t1),this.getClass().getSimpleName()
                 );
             } finally {
                 MDC.remove("camel.breadcrumbId");

@@ -20,6 +20,7 @@
 - HTTP GET https://api.entur.io/realtime/v1/rest/sx
 - HTTP GET https://api.entur.io/realtime/v1/rest/vm
 - HTTP GET https://api.entur.io/realtime/v1/rest/et
+- HTTP GET https://api.entur.io/realtime/v1/rest/sm
 
 ## Optional parameters
 
@@ -47,4 +48,3 @@
 - E.g. _maxSize=100_ (default is 1500)
 - Limits the number of elements in the returned result. _requestorId_ will be used to track changes since last request and is provided in result. An id will be created and returned if not provided.
 - If more data exists, the attribute _MoreData_ will be set to _true_ 
- 

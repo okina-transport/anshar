@@ -59,46 +59,39 @@ public class RealtimeDataFileUploader extends BaseRouteBuilder {
     @Override
     public void configure() throws Exception {
 
-        if (snapshotCronExpression == null || snapshotCronExpression.isEmpty()) {
-            log.info("Uploading snapshot disabled");
-            return;
-        }
 
         if (tmpFolder.endsWith("/")) {
-            tmpFolder = tmpFolder.substring(0, tmpFolder.length()-1);
+            tmpFolder = tmpFolder.substring(0, tmpFolder.length() - 1);
         }
 
-        log.info("Uploading snapshot with cron-expression [{}], first upload at: {}.", snapshotCronExpression,
-                new CronExpression(snapshotCronExpression).getNextValidTimeAfter(new Date()));
 
-        singletonFrom("quartz://anshar.export.snapshot?cron=" + snapshotCronExpression
-                ,"anshar.export.snapshot")
+        singletonFrom("direct:anshar.export.snapshot", "anshar.export.snapshot")
                 .choice()
                 .when(p -> isLeader())
-                    .setHeader(TMP_FOLDER, simple(tmpFolder))
-                    .setHeader(ZIP_FILE, simple("SIRI-SNAPSHOT-${date:now:yyyyMMdd-HHmmss}.zip"))
-                    .setHeader(ZIP_FILE_PATH, simple( "${header."+TMP_FOLDER+"}/${header."+ZIP_FILE+"}"))
-                    .log("Exporting snapshot to ${header."+ZIP_FILE+"}")
+                .setHeader(TMP_FOLDER, simple(tmpFolder))
+                .setHeader(ZIP_FILE, simple("SIRI-SNAPSHOT-${date:now:yyyyMMdd-HHmmss}.zip"))
+                .setHeader(ZIP_FILE_PATH, simple("${header." + TMP_FOLDER + "}/${header." + ZIP_FILE + "}"))
+                .log("Exporting snapshot to ${header." + ZIP_FILE + "}")
 
-                    .bean(exportHelper, "exportET")
-                    .setHeader("siriDataType", simple("ET"))
-                    .to("direct:anshar.export.snapshot.create.file")
+                .bean(exportHelper, "exportET")
+                .setHeader("siriDataType", simple("ET"))
+                .to("direct:anshar.export.snapshot.create.file")
 
-                    .bean(exportHelper, "exportSX")
-                    .setHeader("siriDataType", simple("SX"))
-                    .to("direct:anshar.export.snapshot.create.file")
+                .bean(exportHelper, "exportSX")
+                .setHeader("siriDataType", simple("SX"))
+                .to("direct:anshar.export.snapshot.create.file")
 
-                    .bean(exportHelper, "exportVM")
-                    .setHeader("siriDataType", simple("VM"))
-                    .to("direct:anshar.export.snapshot.create.file")
+                .bean(exportHelper, "exportVM")
+                .setHeader("siriDataType", simple("VM"))
+                .to("direct:anshar.export.snapshot.create.file")
 
-                    .bean(exportHelper, "exportSM")
-                    .setHeader("siriDataType", simple("SM"))
-                    .to("direct:anshar.export.snapshot.create.file")
+                .bean(exportHelper, "exportSM")
+                .setHeader("siriDataType", simple("SM"))
+                .to("direct:anshar.export.snapshot.create.file")
 
-                    .to("direct:anshar.export.create.zip")
-                    .to("direct:anshar.export.upload.zip")
-                    .to("direct:anshar.export.delete.zip")
+                .to("direct:anshar.export.create.zip")
+                .to("direct:anshar.export.upload.zip")
+                .to("direct:anshar.export.delete.zip")
                 .end()
 
         ;
@@ -112,7 +105,7 @@ public class RealtimeDataFileUploader extends BaseRouteBuilder {
 
         from("direct:anshar.export.create.zip")
                 .process(p -> {
-                    zipFilesInFolder((String)p.getIn().getHeader(TMP_FOLDER), (String)p.getIn().getHeader(ZIP_FILE_PATH));
+                    zipFilesInFolder((String) p.getIn().getHeader(TMP_FOLDER), (String) p.getIn().getHeader(ZIP_FILE_PATH));
                 })
                 .log("Created ZIP: ${header." + ZIP_FILE_PATH + "}")
                 .routeId("anshar.export.create.zip");
@@ -120,15 +113,28 @@ public class RealtimeDataFileUploader extends BaseRouteBuilder {
         from("direct:anshar.export.upload.zip")
                 .bean("blobStoreService", "uploadBlob")
                 .setBody(simple(""))
-                .log("Snapshot ${header."+ZIP_FILE+"} uploaded.")
+                .log("Snapshot ${header." + ZIP_FILE + "} uploaded.")
                 .routeId("anshar.export.upload.zip");
 
         from("direct:anshar.export.delete.zip")
                 .process(p -> {
-                    File folder = new File((String)p.getIn().getHeader(TMP_FOLDER));
+                    File folder = new File((String) p.getIn().getHeader(TMP_FOLDER));
                     Arrays.stream(folder.listFiles(pathname -> pathname.getName().endsWith(".zip"))).forEach(File::delete);
                 })
                 .routeId("anshar.export.delete.zip");
+
+        if (snapshotCronExpression == null || snapshotCronExpression.isEmpty()) {
+            log.info("Uploading snapshot CRON trigger disabled");
+            return;
+        }
+
+        log.info("Uploading snapshot with cron-expression [{}], first upload at: {}.", snapshotCronExpression,
+                new CronExpression(snapshotCronExpression).getNextValidTimeAfter(new Date()));
+
+        singletonFrom("quartz://anshar.export.snapshot?cron=" + snapshotCronExpression
+                , "anshar.export.snapshot.scheduler")
+                .to("direct:anshar.export.snapshot");
+
     }
 
     private boolean isLeader() {
@@ -147,12 +153,12 @@ public class RealtimeDataFileUploader extends BaseRouteBuilder {
             Arrays.stream(fileFolder.listFiles())
                     .filter(file -> file.getName().endsWith(".xml"))
                     .forEach(file -> {
-                            try {
-                                addToZipFile(file, outZip);
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        });
+                        try {
+                            addToZipFile(file, outZip);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    });
 
             outZip.close();
             out.close();
@@ -162,18 +168,18 @@ public class RealtimeDataFileUploader extends BaseRouteBuilder {
     }
 
     private static void addToZipFile(File file, ZipOutputStream zos) throws IOException {
-            FileInputStream fis = new FileInputStream(file);
-            ZipEntry zipEntry = new ZipEntry(file.getName());
-            zos.putNextEntry(zipEntry);
+        FileInputStream fis = new FileInputStream(file);
+        ZipEntry zipEntry = new ZipEntry(file.getName());
+        zos.putNextEntry(zipEntry);
 
-            byte[] bytes = new byte[1024];
-            int length;
-            while ((length = fis.read(bytes)) >= 0) {
-                zos.write(bytes, 0, length);
-            }
+        byte[] bytes = new byte[1024];
+        int length;
+        while ((length = fis.read(bytes)) >= 0) {
+            zos.write(bytes, 0, length);
+        }
 
-            zos.closeEntry();
-            fis.close();
+        zos.closeEntry();
+        fis.close();
     }
 
 
