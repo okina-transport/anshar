@@ -90,25 +90,6 @@
                 <artifactId>hazelcast4-helper</artifactId>
                 <version>${okina.helpers.version}</version>
             </dependency>
-            <dependency>
-                <groupId>com.okina.helpers</groupId>
-                <artifactId>gcp-storage</artifactId>
-                <version>${okina.helpers.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>javax.servlet</groupId>
-                        <artifactId>servlet-api</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>io.netty</groupId>
-                        <artifactId>netty-codec-http2</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>com.google.protobuf</groupId>
-                        <artifactId>protobuf-lite</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -129,12 +110,8 @@
             <artifactId>camel-spring-boot-starter</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.entur.helpers</groupId>
-            <artifactId>hazelcast4-helper</artifactId>
-        </dependency>
-        <dependency>
             <groupId>com.okina.helpers</groupId>
-            <artifactId>gcp-storage</artifactId>
+            <artifactId>hazelcast4-helper</artifactId>
         </dependency>
 <!--        <dependency>-->
 <!--            <groupId>com.okina.helpers</groupId>-->

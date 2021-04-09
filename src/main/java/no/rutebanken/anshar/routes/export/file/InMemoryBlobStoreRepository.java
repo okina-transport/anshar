@@ -15,7 +15,6 @@
 
 package no.rutebanken.anshar.routes.export.file;
 
-import com.google.cloud.storage.Storage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
@@ -34,16 +33,6 @@ public class InMemoryBlobStoreRepository implements BlobStoreRepository {
     @Override
     public void uploadBlob(String objectName, byte[] bytes) {
         logger.info("blob with name {}, size {} ignored for in-memory-blobstore", objectName, bytes.length);
-    }
-
-    @Override
-    public void setStorage(Storage storage) {
-        // Do nothing
-    }
-
-    @Override
-    public void setContainerName(String containerName) {
-        // Do nothing
     }
 
     @Override
