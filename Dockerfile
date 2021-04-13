@@ -1,5 +1,7 @@
 FROM adoptopenjdk:11-jre-hotspot as builder
-ARG JAR_FILE=target/anshar-1.0.1-mobi-iti-SNAPSHOT.jar
+
+ARG JAR_FILE
+
 COPY ${JAR_FILE} application.jar
 RUN java -Djarmode=layertools -jar application.jar extract
 
