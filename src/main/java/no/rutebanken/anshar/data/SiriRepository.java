@@ -162,13 +162,13 @@ abstract class SiriRepository<T> {
 
                 lastUpdateRequested.set(key, Instant.now(), trackingPeriodMinutes, timeUnit);
 
-                logger.info("Replacing changes for requestor async {} took {} ms. ({})",
+                logger.debug("Replacing changes for requestor async {} took {} ms. ({})",
                     key,(System.currentTimeMillis() - t1),this.getClass().getSimpleName());
             } finally {
                 MDC.remove("camel.breadcrumbId");
             }
         });
-        logger.info("Changetracker-update submitted");
+        logger.debug("Changetracker-update submitted");
     }
 
     /**

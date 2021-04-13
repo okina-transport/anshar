@@ -163,6 +163,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     // TODO MHI : copié collé, à revoir
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientTrackingName, List<String> excludedDatasetIds, int maxSize, long previewInterval) {
 
+        logger.info("Asking for service delivery for requestorId={}, datasetId={}, clientTrackingName={}", requestorId, datasetId, clientTrackingName);
         requestorRefRepository.touchRequestorRef(requestorId, datasetId, clientTrackingName, SiriDataType.STOP_MONITORING);
 
         int trackingPeriodMinutes = configuration.getTrackingPeriodMinutes();
@@ -233,23 +234,23 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         long t3 = System.currentTimeMillis();
 
-        logger.info("Filter by startTime: {}, limiting size: {} ms", (t2 - t1), (t3 - t2));
+        logger.debug("Filter by startTime: {}, limiting size: {} ms", (t2 - t1), (t3 - t2));
 
         t1 = System.currentTimeMillis();
 
         Boolean isMoreData = (previewIntervalExclusionCounter.get() + sizeLimitedIds.size()) < requestedIds.size();
 
         Collection<MonitoredStopVisit> values = monitoredStopVisits.getAll(sizeLimitedIds).values();
-        logger.info("Fetching data: {} ms", (System.currentTimeMillis()-t1));
+        logger.debug("Fetching data: {} ms", (System.currentTimeMillis()-t1));
         t1 = System.currentTimeMillis();
 
         Siri siri = siriObjectFactory.createSMServiceDelivery(values);
-        logger.info("Creating SIRI-delivery: {} sm", (System.currentTimeMillis()-t1));
+        logger.debug("Creating SIRI-delivery: {} sm", (System.currentTimeMillis()-t1));
 
         siri.getServiceDelivery().setMoreData(isMoreData);
 
         if (isAdHocRequest) {
-            logger.info("Returning {}, no requestorRef is set", sizeLimitedIds.size());
+            logger.debug("Returning {}, no requestorRef is set", sizeLimitedIds.size());
         } else {
 
             MessageRefStructure msgRef = new MessageRefStructure();
@@ -264,7 +265,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
             //Update change-tracker
             updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, idSet, trackingPeriodMinutes, TimeUnit.MINUTES);
 
-            logger.info("Returning {}, {} left for requestorRef {}", sizeLimitedIds.size(), idSet.size(), requestorId);
+            logger.debug("Returning {}, {} left for requestorRef {}", sizeLimitedIds.size(), idSet.size(), requestorId);
         }
 
         return siri;
@@ -302,11 +303,11 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
                 updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, existingSet, configuration.getTrackingPeriodMinutes(), TimeUnit.MINUTES);
 
-                logger.info("Returning {} changes to requestorRef {}", changes.size(), requestorId);
+                logger.debug("Returning {} changes to requestorRef {}", changes.size(), requestorId);
                 return changes;
             } else {
 
-                logger.info("Returning all to requestorRef {}", requestorId);
+                logger.debug("Returning all to requestorRef {}", requestorId);
                 updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, new HashSet<>(), configuration.getTrackingPeriodMinutes(), TimeUnit.MINUTES);
 
             }

@@ -93,16 +93,16 @@ public class MessagingRoute extends RestRouteBuilder {
                 .end()
                 .removeHeaders("*", "subscriptionId", "breadcrumbId", "target_topic")
                 .to("direct:compress.jaxb")
-                .log("Sending data to topic ${header.target_topic}")
+                .log(LoggingLevel.DEBUG,"Sending data to topic ${header.target_topic}")
                 .toD("${header.target_topic}")
-                .log("Data sent")
+                .log(LoggingLevel.DEBUG, "Data sent")
                 .end()
         ;
 
         from("direct:transform.siri")
                 .choice()
                     .when(header(TRANSFORM_SOAP).isEqualTo(simple(TRANSFORM_SOAP)))
-                    .log("Transforming SOAP")
+                    .log(LoggingLevel.DEBUG, "Transforming SOAP")
                     .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Extract SOAP version and convert to raw SIRI
                 .endChoice()
                 .end()

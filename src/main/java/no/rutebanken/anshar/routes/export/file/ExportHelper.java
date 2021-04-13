@@ -67,7 +67,7 @@ public class ExportHelper {
             body,
             adapters,
             false,
-            true);
+            false);
     }
 
 }

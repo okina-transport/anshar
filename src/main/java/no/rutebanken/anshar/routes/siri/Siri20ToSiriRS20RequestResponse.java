@@ -22,6 +22,7 @@ import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
+import org.apache.camel.LoggingLevel;
 import org.apache.camel.component.http.HttpMethods;
 
 import static no.rutebanken.anshar.routes.HttpParameter.INTERNAL_SIRI_DATA_TYPE;
@@ -60,7 +61,7 @@ public class Siri20ToSiriRS20RequestResponse extends SiriSubscriptionRouteBuilde
         }
 
         from("direct:" + subscriptionSetup.getServiceRequestRouteName())
-            .log("Retrieving data " + subscriptionSetup.toString())
+            .log(LoggingLevel.DEBUG, "Retrieving data " + subscriptionSetup.toString())
             .bean(helper, "createSiriDataRequest")
             .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
             .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
@@ -68,12 +69,12 @@ public class Siri20ToSiriRS20RequestResponse extends SiriSubscriptionRouteBuilde
             .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
             .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
             .process(addCustomHeaders())
-            .to("log:request:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+            .to("log:request:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
             .doTry()
                 .to(getRequestUrl(subscriptionSetup) + httpOptions)
                 .setHeader("CamelHttpPath", constant("/appContext" + subscriptionSetup.buildUrl(false)))
-                .log("Got response " + subscriptionSetup.toString())
-                .to("log:response:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .log(LoggingLevel.DEBUG, "Got response " + subscriptionSetup.toString())
+                .to("log:response:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .setHeader(PARAM_SUBSCRIPTION_ID, simple(subscriptionSetup.getSubscriptionId()))
                 .setHeader(INTERNAL_SIRI_DATA_TYPE, simple(subscriptionSetup.getSubscriptionType().name()))
                 .to("direct:enqueue.message")

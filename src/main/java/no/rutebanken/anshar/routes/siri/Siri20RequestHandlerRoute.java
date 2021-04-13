@@ -126,7 +126,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder {
 
         from("direct:process.incoming.request")
                 .removeHeaders("<Siri*") //Since Camel 3, entire body is also included as header
-                .to("log:incoming:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true")
+                .to("log:incoming:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true&level=DEBUG")
                 .choice()
                     .when(e -> subscriptionExistsAndIsActive(e))
                         //Valid subscription
@@ -179,8 +179,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder {
         ;
 
         from("direct:process.service.request")
-                .process(e -> log.info("here"))
-                .to("log:serRequest:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true")
+                .to("log:serRequest:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true&level=DEBUG")
                 .choice()
                 .when(e -> isTrackingHeaderAcceptable(e))
                     .process(p -> {
@@ -202,7 +201,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder {
 
                         Siri response = handler.handleIncomingSiri(null, msg.getBody(InputStream.class), datasetId, excludedIdList, SiriHandler.getIdMappingPolicy(useOriginalId), maxSize, clientTrackingName);
                         if (response != null) {
-                            logger.info("Found ServiceRequest-response, streaming response");
+                            logger.debug("Found ServiceRequest-response, streaming response");
                             p.getOut().setBody(response);
                         }
                     })
@@ -215,7 +214,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder {
                             .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.TEXT_XML)) // Necessary when talking to Microsoft web services
                             .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
                     .endChoice()
-                    .to("log:serResponse:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true")
+                    .to("log:serResponse:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true&level=DEBUG")
                 .otherwise()
                     .to("direct:anshar.invalid.tracking.header.response")
                 .routeId("process.service")
