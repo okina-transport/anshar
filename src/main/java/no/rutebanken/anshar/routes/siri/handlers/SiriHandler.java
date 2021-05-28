@@ -462,7 +462,7 @@ public class SiriHandler {
                     if (stopMonitoringDeliveries != null) {
                         stopMonitoringDeliveries.forEach(sm -> {
                                     if (sm != null) {
-                                        if (sm.isStatus() != null && !sm.isStatus()) {
+                                        if (sm.isStatus() != null && !sm.isStatus() || sm.getErrorCondition() != null) {
                                             logger.info(getErrorContents(sm.getErrorCondition()));
                                         } else {
                                             if (sm.getMonitoredStopVisits() != null) {

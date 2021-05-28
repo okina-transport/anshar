@@ -167,6 +167,32 @@
                                                     copy-namespaces="no"/>
                                         </xsl:element>
                                     </xsl:when>
+                                    <xsl:when
+                                            test="/siri:Siri/siri:SubscriptionRequest/siri:StopMonitoringSubscriptionRequest">
+                                        <xsl:element name="siri:StopMonitoringSubscriptionRequest">
+                                            <xsl:copy-of
+                                                    select="siri:StopMonitoringSubscriptionRequest/siri:SubscriptionIdentifier"
+                                                    copy-namespaces="no"/>
+                                            <xsl:copy-of
+                                                    select="siri:StopMonitoringSubscriptionRequest/siri:InitialTerminationTime"
+                                                    copy-namespaces="no"/>
+
+                                            <xsl:element name="siri:StopMonitoringRequest">
+                                                <xsl:attribute name="version">
+                                                    <xsl:value-of select="1.4"/>
+                                                </xsl:attribute>
+                                                <xsl:copy-of
+                                                        select="siri:StopMonitoringSubscriptionRequest/siri:StopMonitoringRequest/*"
+                                                        copy-namespaces="no"/>
+                                            </xsl:element>
+                                            <xsl:copy-of
+                                                    select="siri:StopMonitoringSubscriptionRequest/siri:IncrementalUpdates"
+                                                    copy-namespaces="no"/>
+                                            <xsl:copy-of
+                                                    select="siri:StopMonitoringSubscriptionRequest/siri:ChangeBeforeUpdates"
+                                                    copy-namespaces="no"/>
+                                        </xsl:element>
+                                    </xsl:when>
                                 </xsl:choose>
                             </xsl:element>
 
@@ -235,9 +261,11 @@
                                 <xsl:element name="siri:MessageIdentifier">
                                     <xsl:value-of select="siri:MessageIdentifier"/>
                                 </xsl:element>
-                                <xsl:element name="siri:LineRef">
-                                    <xsl:value-of select="siri:LineRef"/>
-                                </xsl:element>
+                                <xsl:if test="siri:LineRef != ''">
+                                    <xsl:element name="siri:LineRef">
+                                        <xsl:value-of select="siri:LineRef"/>
+                                    </xsl:element>
+                                </xsl:if>
                                 <xsl:if test="local-name()='StopMonitoringRequest'">
                                     <xsl:element name="siri:MonitoringRef">
                                         <xsl:value-of select="siri:MonitoringRef"></xsl:value-of>

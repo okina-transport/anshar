@@ -60,6 +60,7 @@ import uk.org.siri.siri20.SituationExchangeRequestStructure;
 import uk.org.siri.siri20.SituationExchangeSubscriptionStructure;
 import uk.org.siri.siri20.StopMonitoringDeliveryStructure;
 import uk.org.siri.siri20.StopMonitoringRequestStructure;
+import uk.org.siri.siri20.StopMonitoringSubscriptionStructure;
 import uk.org.siri.siri20.SubscriptionContextStructure;
 import uk.org.siri.siri20.SubscriptionQualifierStructure;
 import uk.org.siri.siri20.SubscriptionRequest;
@@ -164,7 +165,9 @@ public class SiriObjectFactory {
                     subscriptionSetup.getVehicleMonitoringRefValue());
         }
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.ESTIMATED_TIMETABLE)) {
-            request = createEstimatedTimetableSubscriptionRequest(subscriptionSetup.getRequestorRef(),subscriptionSetup.getSubscriptionId(),
+            request = createEstimatedTimetableSubscriptionRequest(
+                    subscriptionSetup.getRequestorRef(),
+                    subscriptionSetup.getSubscriptionId(),
                     subscriptionSetup.getHeartbeatInterval(),
                     subscriptionSetup.buildUrl(),
                     subscriptionSetup.getDurationOfSubscription(),
@@ -180,12 +183,13 @@ public class SiriObjectFactory {
                     subscriptionSetup.getSubscriptionId(),
                     subscriptionSetup.getHeartbeatInterval(),
                     subscriptionSetup.buildUrl(),
+                    subscriptionSetup.getDurationOfSubscription(),
                     subscriptionSetup.getFilterMap(),
                     subscriptionSetup.getAddressFieldName(),
                     subscriptionSetup.getIncrementalUpdates(),
                     subscriptionSetup.getPreviewInterval(),
                     subscriptionSetup.getChangeBeforeUpdates(),
-                    subscriptionSetup.getVehicleMonitoringRefValue());
+                    subscriptionSetup.getStopMonitoringRefValue());
         }
         siri.setSubscriptionRequest(request);
 
@@ -374,44 +378,46 @@ public class SiriObjectFactory {
         return request;
     }
 
-    private static SubscriptionRequest createStopMonitoringSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Map<Class, Set<Object>> filterMap, String addressFieldName, Boolean incrementalUpdates, Duration previewInterval, Duration changeBeforeUpdates, String vehicleMonitoringRefValue) {
-//        SubscriptionRequest request = createSubscriptionRequest(requestorRef, heartbeatInterval, address, addressFieldName);
-//
-//        StopMonitoringRequestStructure smRequest = new StopMonitoringRequestStructure();
-//        smRequest.setRequestTimestamp(ZonedDateTime.now());
-//        smRequest.setVersion(SIRI_VERSION);
-//
-//        if (previewInterval != null) {
-//            smRequest.setPreviewInterval(createDataTypeFactory().newDuration(previewInterval.toString()));
-//        }
-//
-//        if (filterMap != null) {
-//            Set<Object> stopPointsRefs = filterMap.get(MonitoringRefStructure.class);
-//            if (stopPointsRefs != null && !stopPointsRefs.isEmpty()) {
-//                Object next = stopPointsRefs.iterator().next();
-//                if (next instanceof MonitoringRefStructure) {
-//                    smRequest.setMonitoringRef((MonitoringRefStructure) next);
-//                }
-//            }
-//        }
-//
-//        StopMonitoringRequestStructure stopMonitoringRequestStructure = new StopMonitoringRequestStructure();
-//
-//        EstimatedTimetableSubscriptionStructure etSubscriptionReq = new EstimatedTimetableSubscriptionStructure();
-//        etSubscriptionReq.setEstimatedTimetableRequest(smRequest);
-//        etSubscriptionReq.setSubscriptionIdentifier(createSubscriptionIdentifier(subscriptionId));
-//        etSubscriptionReq.setInitialTerminationTime(ZonedDateTime.now().plusSeconds(subscriptionDuration.getSeconds()));
-//        etSubscriptionReq.setSubscriberRef(request.getRequestorRef());
-//        if (changeBeforeUpdates != null) {
-//            etSubscriptionReq.setChangeBeforeUpdates(createDataTypeFactory().newDuration(changeBeforeUpdates.toString()));
-//        }
-//
-//        etSubscriptionReq.setIncrementalUpdates(incrementalUpdates);
-//
-//        request.getEstimatedTimetableSubscriptionRequests().add(etSubscriptionReq);
-//
-//        return request;
-        return null;// TODO MHI
+    private static SubscriptionRequest createStopMonitoringSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap, String addressFieldName, Boolean incrementalUpdates, Duration previewInterval, Duration changeBeforeUpdates, String stopMonitoringRefValue) {
+        SubscriptionRequest request = createSubscriptionRequest(requestorRef, heartbeatInterval, address, addressFieldName);
+
+        StopMonitoringRequestStructure smRequest = new StopMonitoringRequestStructure();
+        smRequest.setRequestTimestamp(ZonedDateTime.now());
+        smRequest.setVersion(SIRI_VERSION);
+        if (stopMonitoringRefValue != null) {
+            MonitoringRefStructure monitoringRefStructure = new MonitoringRefStructure();
+            monitoringRefStructure.setValue(stopMonitoringRefValue);
+            smRequest.setMonitoringRef(monitoringRefStructure);
+        }
+
+        if (previewInterval != null) {
+            smRequest.setPreviewInterval(createDataTypeFactory().newDuration(previewInterval.toString()));
+        }
+
+        if (filterMap != null) {
+            Set<Object> stopPointsRefs = filterMap.get(MonitoringRefStructure.class);
+            if (stopPointsRefs != null && !stopPointsRefs.isEmpty()) {
+                Object next = stopPointsRefs.iterator().next();
+                if (next instanceof MonitoringRefStructure) {
+                    smRequest.setMonitoringRef((MonitoringRefStructure) next);
+                }
+            }
+        }
+
+        StopMonitoringSubscriptionStructure smSubscriptionReq = new StopMonitoringSubscriptionStructure();
+        smSubscriptionReq.setStopMonitoringRequest(smRequest);
+        smSubscriptionReq.setSubscriptionIdentifier(createSubscriptionIdentifier(subscriptionId));
+        smSubscriptionReq.setInitialTerminationTime(ZonedDateTime.now().plusSeconds(subscriptionDuration.getSeconds()));
+        smSubscriptionReq.setSubscriberRef(request.getRequestorRef());
+        if (changeBeforeUpdates != null) {
+            smSubscriptionReq.setChangeBeforeUpdates(createDataTypeFactory().newDuration(changeBeforeUpdates.toString()));
+        }
+
+        smSubscriptionReq.setIncrementalUpdates(incrementalUpdates);
+
+        request.getStopMonitoringSubscriptionRequests().add(smSubscriptionReq);
+
+        return request;
     }
 
 

@@ -316,7 +316,7 @@ public class SubscriptionInitializer implements CamelContextAware {
             } else if (SiriDataType.SITUATION_EXCHANGE.equals(s.getSubscriptionType())) {
                 Preconditions.checkNotNull(s.getPreviewInterval(), "PreviewInterval is not set");
             } else if (SiriDataType.STOP_MONITORING.equals(s.getSubscriptionType())) {
-                Preconditions.checkNotNull(s.getStopMonitoringRefValue());
+//                Preconditions.checkNotNull(s.getStopMonitoringRefValue());
             }
 
             Preconditions.checkNotNull(urlMap.get(RequestType.SUBSCRIBE), "SUBSCRIBE-url is missing. " + s);
