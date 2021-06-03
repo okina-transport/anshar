@@ -56,6 +56,7 @@ public class RealtimeDataFileUploader extends BaseRouteBuilder {
         super(config, subscriptionManager);
     }
 
+    // @formatter:off
     @Override
     public void configure() throws Exception {
 
@@ -68,30 +69,30 @@ public class RealtimeDataFileUploader extends BaseRouteBuilder {
         singletonFrom("direct:anshar.export.snapshot", "anshar.export.snapshot")
                 .choice()
                 .when(p -> isLeader())
-                .setHeader(TMP_FOLDER, simple(tmpFolder))
-                .setHeader(ZIP_FILE, simple("SIRI-SNAPSHOT-${date:now:yyyyMMdd-HHmmss}.zip"))
-                .setHeader(ZIP_FILE_PATH, simple("${header." + TMP_FOLDER + "}/${header." + ZIP_FILE + "}"))
-                .log("Exporting snapshot to ${header." + ZIP_FILE + "}")
+                    .setHeader(TMP_FOLDER, simple(tmpFolder))
+                    .setHeader(ZIP_FILE, simple("SIRI-SNAPSHOT-${date:now:yyyyMMdd-HHmmss}.zip"))
+                    .setHeader(ZIP_FILE_PATH, simple("${header." + TMP_FOLDER + "}/${header." + ZIP_FILE + "}"))
+                    .log("Exporting snapshot to ${header." + ZIP_FILE + "}")
 
-                .bean(exportHelper, "exportET")
-                .setHeader("siriDataType", simple("ET"))
-                .to("direct:anshar.export.snapshot.create.file")
+                    .bean(exportHelper, "exportET")
+                    .setHeader("siriDataType", simple("ET"))
+                    .to("direct:anshar.export.snapshot.create.file")
 
-                .bean(exportHelper, "exportSX")
-                .setHeader("siriDataType", simple("SX"))
-                .to("direct:anshar.export.snapshot.create.file")
+                    .bean(exportHelper, "exportSX")
+                    .setHeader("siriDataType", simple("SX"))
+                    .to("direct:anshar.export.snapshot.create.file")
 
-                .bean(exportHelper, "exportVM")
-                .setHeader("siriDataType", simple("VM"))
-                .to("direct:anshar.export.snapshot.create.file")
+                    .bean(exportHelper, "exportVM")
+                    .setHeader("siriDataType", simple("VM"))
+                    .to("direct:anshar.export.snapshot.create.file")
 
-                .bean(exportHelper, "exportSM")
-                .setHeader("siriDataType", simple("SM"))
-                .to("direct:anshar.export.snapshot.create.file")
+                    .bean(exportHelper, "exportSM")
+                    .setHeader("siriDataType", simple("SM"))
+                    .to("direct:anshar.export.snapshot.create.file")
 
-                .to("direct:anshar.export.create.zip")
-                .to("direct:anshar.export.upload.zip")
-                .to("direct:anshar.export.delete.zip")
+                    .to("direct:anshar.export.create.zip")
+                    .to("direct:anshar.export.upload.zip")
+                    .to("direct:anshar.export.delete.zip")
                 .end()
 
         ;
@@ -136,6 +137,7 @@ public class RealtimeDataFileUploader extends BaseRouteBuilder {
                 .to("direct:anshar.export.snapshot");
 
     }
+    // @formatter:on
 
     private boolean isLeader() {
         boolean isLeader = isLeader("anshar.export.snapshot");
