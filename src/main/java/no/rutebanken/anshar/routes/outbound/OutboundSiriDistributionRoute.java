@@ -41,7 +41,7 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
                 .setHeader("httpClient.socketTimeout", constant(timeout))
                 .setHeader("httpClient.connectTimeout", constant(timeout))
-                .to("log:push:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .to("log:push:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .toD("${header.endpoint}")
                 .bean(subscriptionManager, "clearFailTracker(${header.SubscriptionId})")
                 .to("log:push-resp:" + getClass().getSimpleName() + "?showAll=true&multiline=true")

@@ -166,7 +166,7 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
                 .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
                 .process(addCustomHeaders())
-                .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .to(getCamelUrl(urlMap.get(RequestType.DELETE_SUBSCRIPTION), getTimeout()))
                 .choice().when(simple("${in.body} != null"))
                     .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Extract SOAP version and convert to raw SIRI
