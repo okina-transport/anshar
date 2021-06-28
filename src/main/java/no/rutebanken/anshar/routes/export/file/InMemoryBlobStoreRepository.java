@@ -40,7 +40,7 @@ public class InMemoryBlobStoreRepository implements BlobStoreRepository {
         try {
             return new FileInputStream(name);
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            logger.error("Unable to find file:" + name);
         }
         return null;
     }

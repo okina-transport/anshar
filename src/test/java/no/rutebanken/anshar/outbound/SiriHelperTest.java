@@ -20,7 +20,13 @@ import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import uk.org.siri.siri20.LineRef;
+import uk.org.siri.siri20.MonitoredStopVisit;
+import uk.org.siri.siri20.MonitoringRefStructure;
 import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri20.StopMonitoringDeliveryStructure;
+import uk.org.siri.siri20.StopMonitoringRequestStructure;
+import uk.org.siri.siri20.StopMonitoringSubscriptionStructure;
+import uk.org.siri.siri20.SubscriptionRequest;
 import uk.org.siri.siri20.VehicleActivityStructure;
 import uk.org.siri.siri20.VehicleRef;
 
@@ -215,5 +221,48 @@ public class SiriHelperTest {
         mvj.setVehicleRef(vehicleRef);
         v.setMonitoredVehicleJourney(mvj);
         return v;
+    }
+
+    private MonitoredStopVisit createStopMonitoringActivity(String stopRefValue) {
+        MonitoredStopVisit stopVisit = new MonitoredStopVisit();
+        MonitoringRefStructure monitoringRef = new MonitoringRefStructure();
+        monitoringRef.setValue(stopRefValue);
+        stopVisit.setMonitoringRef(monitoringRef);
+        return stopVisit;
+    }
+
+    @Test
+    public void testStopMonitoringFilter() throws Exception {
+        SubscriptionRequest subscriptionRequest = new SubscriptionRequest();
+        StopMonitoringSubscriptionStructure smSubscription = new StopMonitoringSubscriptionStructure();
+        StopMonitoringRequestStructure sMRequest = new StopMonitoringRequestStructure();
+
+        MonitoringRefStructure monitoringRef = new MonitoringRefStructure();
+        monitoringRef.setValue("TESTPOINT1");
+        sMRequest.setMonitoringRef(monitoringRef);
+        smSubscription.setStopMonitoringRequest(sMRequest);
+        subscriptionRequest.getStopMonitoringSubscriptionRequests().add(smSubscription);
+
+
+        Map<Class, Set<String>>  filter = siriHelper.getFilter(subscriptionRequest);
+
+        List<MonitoredStopVisit> vmElements = new ArrayList<>();
+
+        vmElements.add(createStopMonitoringActivity("TESTPOINT1"));
+        vmElements.add(createStopMonitoringActivity("TESTPOINT2"));
+        vmElements.add(createStopMonitoringActivity("TESTPOINT3"));
+        vmElements.add(createStopMonitoringActivity("TESTPOINT4"));
+
+
+        Siri serviceDelivery = siriObjectFactory.createSMServiceDelivery(vmElements);
+
+        Siri filtered = SiriHelper.filterSiriPayload(serviceDelivery, filter);
+        assertNotNull(filtered);
+        assertNotNull(filtered.getServiceDelivery());
+        assertNotNull(filtered.getServiceDelivery().getStopMonitoringDeliveries());
+        List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = filtered.getServiceDelivery().getStopMonitoringDeliveries();
+        assertTrue(stopMonitoringDeliveries.size() == 1);
+        assertTrue("Only 1 of 4 points must be returned after filter",stopMonitoringDeliveries.get(0).getMonitoredStopVisits().size() == 1);
+        assertTrue("Only TESTPOINT1 must pass the filtering",stopMonitoringDeliveries.get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue().equals("TESTPOINT1"));
     }
 }

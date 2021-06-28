@@ -85,7 +85,7 @@ public class SiriHelper {
     }
 
 
-    Map<Class, Set<String>> getFilter(SubscriptionRequest subscriptionRequest) {
+    public Map<Class, Set<String>> getFilter(SubscriptionRequest subscriptionRequest) {
         if (containsValues(subscriptionRequest.getSituationExchangeSubscriptionRequests())) {
             return getFilter(subscriptionRequest.getSituationExchangeSubscriptionRequests().get(0));
         } else if (containsValues(subscriptionRequest.getVehicleMonitoringSubscriptionRequests())) {
@@ -167,6 +167,13 @@ public class SiriHelper {
      */
     private Map<Class, Set<String>> getFilter(StopMonitoringSubscriptionStructure stopMonitoringSubscription) {
         Map<Class, Set<String>> filterMap = new HashMap<>();
+        Set<String> stopPointRefValues = new HashSet<>();
+        stopPointRefValues.add(stopMonitoringSubscription.getStopMonitoringRequest().getMonitoringRef().getValue());
+
+        if (!stopPointRefValues.isEmpty()) {
+            filterMap.put(MonitoringRefStructure.class, stopPointRefValues);
+        }
+
         return filterMap;
     }
 
@@ -428,6 +435,7 @@ public class SiriHelper {
     }
 
 
+
     private static void filterMonitoringRef(Siri siri, Set<String> monitoringRef) {
         if (monitoringRef == null || monitoringRef.isEmpty()) {
             return;
@@ -439,8 +447,9 @@ public class SiriHelper {
             List<MonitoredStopVisit> monitoredStopVisits = delivery.getMonitoredStopVisits();
             List<MonitoredStopVisit> filteredStopVisits = new ArrayList<>();
             for (MonitoredStopVisit monitoredStopVisit : monitoredStopVisits) {
-                if (monitoringRef.contains(monitoredStopVisit.getMonitoringRef().getValue()))
+                if (monitoringRef.contains(monitoredStopVisit.getMonitoringRef().getValue())){
                     filteredStopVisits.add(monitoredStopVisit);
+                }
             }
             delivery.getMonitoredStopVisits().clear();
             delivery.getMonitoredStopVisits().addAll(filteredStopVisits);
