@@ -162,7 +162,9 @@ public class SiriObjectFactory {
                     subscriptionSetup.getChangeBeforeUpdates(),
                     subscriptionSetup.getAddressFieldName(),
                     subscriptionSetup.getIncrementalUpdates(),
-                    subscriptionSetup.getVehicleMonitoringRefValue());
+                    subscriptionSetup.getVehicleMonitoringRefValue(),
+                    subscriptionSetup.getLineRefValue()
+                    );
         }
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.ESTIMATED_TIMETABLE)) {
             request = createEstimatedTimetableSubscriptionRequest(
@@ -328,7 +330,8 @@ public class SiriObjectFactory {
         return request;
     }
 
-    private static SubscriptionRequest createVehicleMonitoringSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap, Duration updateInterval, Duration changeBeforeUpdates, String addressFieldName, Boolean incrementalUpdates, String vehicleMonitoringRefValue) {
+    private static SubscriptionRequest createVehicleMonitoringSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap,
+                                                                                  Duration updateInterval, Duration changeBeforeUpdates, String addressFieldName, Boolean incrementalUpdates, String vehicleMonitoringRefValue, String lineRefValue) {
         SubscriptionRequest request = createSubscriptionRequest(requestorRef,heartbeatInterval, address, addressFieldName);
 
         VehicleMonitoringRequestStructure vmRequest = new VehicleMonitoringRequestStructure();
@@ -339,6 +342,12 @@ public class SiriObjectFactory {
             VehicleMonitoringRefStructure vehicleMonitoringRef = new VehicleMonitoringRefStructure();
             vehicleMonitoringRef.setValue(vehicleMonitoringRefValue);
             vmRequest.setVehicleMonitoringRef(vehicleMonitoringRef);
+        }
+
+        if (lineRefValue != null){
+            LineRef lineRef = new LineRef();
+            lineRef.setValue(lineRefValue);
+            vmRequest.setLineRef(lineRef);
         }
 
         if (filterMap != null) {

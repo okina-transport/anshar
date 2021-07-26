@@ -68,6 +68,7 @@ public class SubscriptionSetup implements Serializable {
     private Boolean incrementalUpdates;
     private String contentType;
     private String vehicleMonitoringRefValue;
+    private String lineRefValue;
 
     private String stopMonitoringRefValue;
     private boolean validation;
@@ -364,6 +365,15 @@ public class SubscriptionSetup implements Serializable {
     public String getVehicleMonitoringRefValue() {
         return vehicleMonitoringRefValue;
     }
+
+    public String getLineRefValue() {
+        return lineRefValue;
+    }
+
+    public void setLineRefValue(String lineRefValue){
+        this.lineRefValue = lineRefValue;
+    }
+
 
     public void setVehicleMonitoringRefValue(String vehicleMonitoringRefValue) {
         this.vehicleMonitoringRefValue = vehicleMonitoringRefValue;
