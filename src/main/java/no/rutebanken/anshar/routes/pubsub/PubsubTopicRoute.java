@@ -58,7 +58,6 @@ public class PubsubTopicRoute extends RouteBuilder {
                     .to("direct:siri.transform.data")
                     .to("xslt-saxon:xsl/split.xsl")
                     .split().tokenizeXML("Siri").streaming()
-                    .wireTap("direct:kafka.vm.xml")
                     .to("direct:map.jaxb.to.protobuf")
                     .wireTap("direct:log.pubsub.vm.traffic")
                     .to(vmTopic)

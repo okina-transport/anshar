@@ -308,10 +308,9 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
 
         vmList.stream()
                 .filter(activity -> activity.getMonitoredVehicleJourney() != null)
-                .filter(activity -> activity.getMonitoredVehicleJourney().getVehicleRef() != null)
                 .forEach(activity -> {
 
-                    SiriObjectStorageKey key = createKey(datasetId, activity.getMonitoredVehicleJourney());
+                    SiriObjectStorageKey key = createKey(datasetId, activity.getMonitoredVehicleJourney(),activity.getVehicleMonitoringRef().getValue());
 
                     String currentChecksum = null;
                     ZonedDateTime validUntilTime = activity.getValidUntilTime();
@@ -390,7 +389,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
         List<VehicleActivityStructure> activities = new ArrayList<>();
         activities.add(activity);
         addAll(datasetId, activities);
-        return monitoredVehicles.get(createKey(datasetId, activity.getMonitoredVehicleJourney()));
+        return monitoredVehicles.get(createKey(datasetId, activity.getMonitoredVehicleJourney(), activity.getVehicleMonitoringRef().getValue()));
     }
 
     /*
@@ -469,15 +468,18 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
      * Creates unique key - assumes that any operator has a set of unique VehicleRefs
      * @param datasetId
      * @param monitoredVehicleJourney
+     * @param vehicleRefvalue
      * @return
      */
-    private SiriObjectStorageKey createKey(String datasetId, VehicleActivityStructure.MonitoredVehicleJourney monitoredVehicleJourney) {
+    private SiriObjectStorageKey createKey(String datasetId, VehicleActivityStructure.MonitoredVehicleJourney monitoredVehicleJourney, String vehicleRefvalue) {
         StringBuilder key = new StringBuilder();
 
 
         if (monitoredVehicleJourney.getVehicleRef() != null) {
             VehicleRef vehicleRef = monitoredVehicleJourney.getVehicleRef();
             key.append(vehicleRef.getValue());
+        }else{
+            key.append(vehicleRefvalue);
         }
 
         return new SiriObjectStorageKey(datasetId, null, key.toString());
