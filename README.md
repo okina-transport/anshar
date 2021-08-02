@@ -39,3 +39,9 @@ Validation is administered per codespace - and is accessible on:
 - http://<host>:<port>/anshar/validation/ENT
 ```
 
+## Workflow of incoming siri messages
+
+- Incomming messages are comming from "direct:enqueue.message" endpoint
+- Messages are sorted and sent to anshar.transform.xx, depending on their type (look "MessagingRoute" class,  from("direct:enqueue.message") method)
+- Messages are transformed by jaxb and sent to "anshar.siri.process" queue (look "MessagingRoute" class )
+- Message is processed by SiriHandler (look "SiriHandler" class, "handleIncomingSiri" method)
