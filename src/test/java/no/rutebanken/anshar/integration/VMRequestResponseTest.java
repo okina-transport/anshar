@@ -29,6 +29,7 @@ import uk.org.siri.siri20.LineRef;
 import uk.org.siri.siri20.LocationStructure;
 import uk.org.siri.siri20.Siri;
 import uk.org.siri.siri20.VehicleActivityStructure;
+import uk.org.siri.siri20.VehicleMonitoringRefStructure;
 import uk.org.siri.siri20.VehicleRef;
 
 import java.math.BigDecimal;
@@ -156,6 +157,9 @@ public class VMRequestResponseTest extends BaseHttpTest {
         VehicleRef vRef = new VehicleRef();
         vRef.setValue(vehicleReference);
         vehicleJourney.setVehicleRef(vRef);
+        VehicleMonitoringRefStructure vehicleMonitoringRef = new VehicleMonitoringRefStructure();
+        vehicleMonitoringRef.setValue(vehicleReference);
+        element.setVehicleMonitoringRef(vehicleMonitoringRef);
 
         CourseOfJourneyRefStructure journeyRefStructure = new CourseOfJourneyRefStructure();
         journeyRefStructure.setValue("yadayada");
