@@ -41,6 +41,11 @@
         <xsl:apply-templates/>
     </xsl:template>
 
+    <xsl:template match="siri:SubscriptionResponse">
+        <xsl:apply-templates/>
+    </xsl:template>
+
+
     <xsl:template match="*"/>
 
     <xsl:template
@@ -377,6 +382,50 @@
 
 
             </xsl:element>
+        </xsl:element>
+
+
+    </xsl:template>
+
+    <xsl:template match="siri:SubscriptionResponse">
+        <xsl:element name="soapenv:Envelope" namespace="{$soapEnvelopeNamespace}">
+
+            <xsl:element name="soapenv:Header" namespace="{$soapEnvelopeNamespace}"/>
+
+            <xsl:element name="soapenv:Body" namespace="{$soapEnvelopeNamespace}">
+
+                <xsl:element name="siri:ResponseStatus">
+
+                    <xsl:attribute name="version">
+                        <xsl:value-of select="1.4"/>
+                    </xsl:attribute>
+
+                    <xsl:element name="siri:ResponseTimestamp">
+                        <xsl:value-of select="./siri:ResponseTimestamp"/>
+                    </xsl:element>
+
+                    <xsl:element name="siri:RequestMessageRef">
+                        <xsl:value-of select="./siri:RequestMessageRef"/>
+                    </xsl:element>
+
+
+                    <xsl:element name="siri:SubscriptionRef">
+                        <xsl:value-of select="siri:ResponseStatus/siri:SubscriptionRef"/>
+                    </xsl:element>
+
+                    <xsl:element name="siri:Status">
+                        <xsl:value-of  select="siri:ResponseStatus/siri:Status"/>
+                    </xsl:element>
+
+
+
+
+
+                </xsl:element>
+
+
+            </xsl:element>
+
         </xsl:element>
 
 
