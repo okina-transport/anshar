@@ -121,6 +121,9 @@ public class AnsharConfiguration {
     @Value("${anshar.admin.blocked.clients:}")
     private List<String> blockedEtClientNames;
 
+    @Value("${anshar.disable.subscription.healthcheck:false}")
+    boolean isHealthcheckDisabled;
+
     public String getHazelcastManagementUrl() {
         return hazelcastManagementUrl;
     }
@@ -245,5 +248,9 @@ public class AnsharConfiguration {
 
     public List<String> getBlockedEtClientNames() {
         return blockedEtClientNames;
+    }
+
+    public boolean isHealthcheckDisabled() {
+        return isHealthcheckDisabled;
     }
 }
