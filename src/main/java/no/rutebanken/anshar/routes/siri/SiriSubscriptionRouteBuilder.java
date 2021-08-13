@@ -192,6 +192,11 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
             return false;
         }
 
+        if(subscriptionManager.isRestartTimePassed(subscriptionSetup.getSubscriptionId())){
+            return true;
+        }
+
+
         if (config.isHealthcheckDisabled()){
             //Healthcheck is disabled : subscription must never be restarted
             return false;

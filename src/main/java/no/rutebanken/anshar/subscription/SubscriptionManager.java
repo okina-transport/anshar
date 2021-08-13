@@ -333,27 +333,37 @@ public class SubscriptionManager {
                 return false;
             }
 
-            if (activeSubscription.getSubscriptionMode().equals(SubscriptionSetup.SubscriptionMode.SUBSCRIBE)) {
-                //Only actual subscriptions have an expiration - NOT request/response-"subscriptions"
-
-                //If active subscription has existed longer than "initial subscription duration" - restart
-                Instant activated = activatedTimestamp.get(subscriptionId);
-                if (activated != null) {
-                    if (activeSubscription.getRestartTime() != null && activeSubscription.getRestartTime().contains(":")) {
-                        // Allowing subscriptions to be restarted at specified time
-                        ZonedDateTime restartTime = ZonedDateTime.of(LocalDate.now(), LocalTime.parse(activeSubscription.getRestartTime()), ZoneId.systemDefault());
-                        if (restartTime.isBefore(ZonedDateTime.now()) && activated.atZone(ZoneId.systemDefault()).isBefore(restartTime)) {
-                            logger.info("Subscription [{}] configured for nightly restart at {}.", activeSubscription, restartTime);
-                            forceRestart(subscriptionId);
-                            return false;
-                        }
-                    }
-                }
+            if (isRestartTimePassed(subscriptionId)){
+                forceRestart(subscriptionId);
+                return false;
             }
 
         }
 
         return true;
+    }
+
+
+    public boolean isRestartTimePassed(String subscriptionId){
+        SubscriptionSetup activeSubscription = subscriptions.get(subscriptionId);
+
+        //If active subscription has existed longer than "initial subscription duration" - restart
+        Instant activated = activatedTimestamp.get(subscriptionId);
+
+
+        if (activated != null) {
+
+            if (activeSubscription.getRestartTime() != null && activeSubscription.getRestartTime().contains(":")) {
+                // Allowing subscriptions to be restarted at specified time
+                ZonedDateTime restartTime = ZonedDateTime.of(LocalDate.now(), LocalTime.parse(activeSubscription.getRestartTime()), ZoneId.systemDefault());
+
+                if (restartTime.isBefore(ZonedDateTime.now()) && activated.atZone(ZoneId.systemDefault()).isBefore(restartTime)) {
+                    logger.info("Subscription [{}] configured for nightly restart at {}.", activeSubscription, restartTime);
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public boolean isSubscriptionRegistered(String subscriptionId) {
