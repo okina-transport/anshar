@@ -139,6 +139,12 @@ public class SubscriptionManager {
     @Autowired
     private RequestorRefRepository requestorRefRepository;
 
+    @Autowired
+    @Qualifier("getRetryCountMap")
+    private IMap<String, Integer> retryCountMap;
+
+    private static Integer MAX_RESTART_TRIES = 3;
+
     public void addSubscription(String subscriptionId, SubscriptionSetup setup) {
 
         subscriptions.put(subscriptionId, setup);
@@ -271,6 +277,7 @@ public class SubscriptionManager {
             subscriptions.put(subscriptionId, subscriptionSetup);
             lastActivity.put(subscriptionId, Instant.now());
             activatedTimestamp.put(subscriptionId, Instant.now());
+            retryCountMap.put(subscriptionId,0);
             logger.info("Pending subscription {} activated", subscriptions.get(subscriptionId));
             if (!dataReceived.containsKey(subscriptionId)) {
                 dataReceived(subscriptionId);
@@ -343,7 +350,14 @@ public class SubscriptionManager {
         return true;
     }
 
-
+    /**
+     * Checks if the subscription should be restarted, depending on restart time filled in subscription request
+     * If current time is after restart time AND subscription has been started before restart time => restart
+     * @param subscriptionId
+     * @return
+     * True : subscription should be restarted
+     * false : subscription should not be restarted
+     */
     public boolean isRestartTimePassed(String subscriptionId){
         SubscriptionSetup activeSubscription = subscriptions.get(subscriptionId);
 
@@ -357,13 +371,38 @@ public class SubscriptionManager {
                 // Allowing subscriptions to be restarted at specified time
                 ZonedDateTime restartTime = ZonedDateTime.of(LocalDate.now(), LocalTime.parse(activeSubscription.getRestartTime()), ZoneId.systemDefault());
 
+                //Current time is after restart time AND subscription has been activated before restart time
                 if (restartTime.isBefore(ZonedDateTime.now()) && activated.atZone(ZoneId.systemDefault()).isBefore(restartTime)) {
                     logger.info("Subscription [{}] configured for nightly restart at {}.", activeSubscription, restartTime);
+                    increaseTryCount(subscriptionId);
                     return true;
                 }
             }
         }
         return false;
+    }
+
+    /**
+     * Checks if the subscription should try to restart or not, depending on MAX_RESTART_TRIES set in this class
+     * @param subscriptionId
+     * @return
+     * true : current try nb is < MAX_RESTART_TRIES  : should try to restart
+     * false : current try nb is > MAX_RESTART_TRIES : no more try should be done
+     */
+    public boolean shouldTryRestart(String subscriptionId){
+        return retryCountMap.containsKey(subscriptionId) ? retryCountMap.get(subscriptionId) < MAX_RESTART_TRIES : true;
+    }
+
+
+    /**
+     * Increase the number of tries, for the subscription given as parameter
+     * @param subscriptionId
+     * @return
+     */
+    public void increaseTryCount(String subscriptionId){
+        Integer currentNbOfTries = retryCountMap.containsKey(subscriptionId) ? retryCountMap.get(subscriptionId) : 0 ;
+        retryCountMap.put(subscriptionId,currentNbOfTries+1);
+
     }
 
     public boolean isSubscriptionRegistered(String subscriptionId) {

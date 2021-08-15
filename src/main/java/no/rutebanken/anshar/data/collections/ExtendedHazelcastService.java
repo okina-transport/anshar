@@ -299,4 +299,9 @@ public class ExtendedHazelcastService extends HazelCastService {
     public IMap<String[], RequestorRefStats> getRequestorRefs() {
         return hazelcast.getMap("anshar.activity.requestorref");
     }
+
+    @Bean
+    public IMap<String, Integer> getRetryCountMap() {
+        return hazelcast.getMap("anshar.subscriptions.retry.count");
+    }
 }
