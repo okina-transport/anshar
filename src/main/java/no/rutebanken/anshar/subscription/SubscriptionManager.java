@@ -63,7 +63,7 @@ import static no.rutebanken.anshar.subscription.SiriDataType.VEHICLE_MONITORING;
 @Service
 public class SubscriptionManager {
 
-    static final int HEALTHCHECK_INTERVAL_FACTOR = 5;
+    static final int HEALTHCHECK_INTERVAL_FACTOR = 12;
     private final Logger logger = LoggerFactory.getLogger(SubscriptionManager.class);
 
     @Autowired
