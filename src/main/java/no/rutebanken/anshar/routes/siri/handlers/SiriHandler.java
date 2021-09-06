@@ -384,7 +384,7 @@ public class SiriHandler {
                 }
                 if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.VEHICLE_MONITORING)) {
                     List<VehicleMonitoringDeliveryStructure> vehicleMonitoringDeliveries = incoming.getServiceDelivery().getVehicleMonitoringDeliveries();
-                    logger.info("Got VM-delivery: Subscription [{}] {}", subscriptionSetup, subscriptionSetup.forwardPositionData() ? "- Position only":"");
+                    logger.debug("Got VM-delivery: Subscription [{}] {}", subscriptionSetup, subscriptionSetup.forwardPositionData() ? "- Position only":"");
 
                     List<VehicleActivityStructure> addedOrUpdated = new ArrayList<>();
                     if (vehicleMonitoringDeliveries != null) {
@@ -416,7 +416,7 @@ public class SiriHandler {
 
                     subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdated.size());
 
-                    logger.info("Active VM-elements: {}, current delivery: {}, {}", vehicleActivities.getSize(), addedOrUpdated.size(), subscriptionSetup);
+                    logger.debug("Active VM-elements: {}, current delivery: {}, {}", vehicleActivities.getSize(), addedOrUpdated.size(), subscriptionSetup);
                 }
                 if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.ESTIMATED_TIMETABLE)) {
                     List<EstimatedTimetableDeliveryStructure> estimatedTimetableDeliveries = incoming.getServiceDelivery().getEstimatedTimetableDeliveries();
@@ -456,7 +456,7 @@ public class SiriHandler {
                 // TODO MHI
                 if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
                     List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = incoming.getServiceDelivery().getStopMonitoringDeliveries();
-                    logger.info("Got SM-delivery: Subscription [{}] {}", subscriptionSetup);
+                    logger.debug("Got SM-delivery: Subscription [{}] {}", subscriptionSetup);
 
                     List<MonitoredStopVisit> addedOrUpdated = new ArrayList<>();
                     if (stopMonitoringDeliveries != null) {
@@ -481,7 +481,7 @@ public class SiriHandler {
 
                     subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdated.size());
 
-                    logger.info("Active SM-elements: {}, current delivery: {}, {}", monitoredStopVisits.getSize(), addedOrUpdated.size(), subscriptionSetup);
+                    logger.debug("Active SM-elements: {}, current delivery: {}, {}", monitoredStopVisits.getSize(), addedOrUpdated.size(), subscriptionSetup);
                 }
 
 

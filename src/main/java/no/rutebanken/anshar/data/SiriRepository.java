@@ -135,7 +135,7 @@ abstract class SiriRepository<T> {
     void markIdsAsUpdated(Set<SiriObjectStorageKey> changes) {
         if (!changes.isEmpty()) {
             dirtyChanges.addAll(changes);
-            logger.info("Added {} updates to {} dirty-buffer, now has {} pending updates", changes.size(), this.getClass().getSimpleName(), dirtyChanges.size());
+            logger.debug("Added {} updates to {} dirty-buffer, now has {} pending updates", changes.size(), this.getClass().getSimpleName(), dirtyChanges.size());
         }
     }
 
