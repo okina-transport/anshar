@@ -20,6 +20,7 @@ import org.junit.Ignore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import uk.org.siri.siri20.CallStatusEnumeration;
 import uk.org.siri.siri20.MonitoredCallStructure;
 import uk.org.siri.siri20.MonitoredStopVisit;
 import uk.org.siri.siri20.MonitoredVehicleJourneyStructure;
@@ -28,11 +29,13 @@ import uk.org.siri.siri20.Siri;
 
 import java.time.ZonedDateTime;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
 import static no.rutebanken.anshar.helpers.SleepUtil.sleep;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -107,6 +110,63 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
         //Verify that element added is vendor-specific
         assertEquals(previousSize + 2, monitoredStopVisits.getAll("test").size());
     }
+
+
+    @Test
+    public void testUpdatedMonitoredStopvisitWithMonitoredChanges() {
+        int previousSize = monitoredStopVisits.getAll().size();
+
+        //Add element
+        String stopReference = UUID.randomUUID().toString();
+        String itempIdentifier = UUID.randomUUID().toString();
+        ZonedDateTime arrivalTime = ZonedDateTime.now().plusMinutes(2);
+
+
+        //First call is created with monitored status  : false
+        MonitoredStopVisit element = createMonitoredStopVisit(arrivalTime, stopReference, itempIdentifier);
+        element.getMonitoredVehicleJourney().setMonitored(false);
+        MonitoredCallStructure monitoredCall = element.getMonitoredVehicleJourney().getMonitoredCall();
+        monitoredCall.setAimedArrivalTime(arrivalTime);
+        monitoredCall.setExpectedArrivalTime(arrivalTime);
+        monitoredCall.setAimedDepartureTime(arrivalTime);
+        monitoredCall.setExpectedDepartureTime(arrivalTime);
+        monitoredCall.setDepartureStatus(CallStatusEnumeration.ON_TIME);
+
+        monitoredStopVisits.add("test", element);
+        //Verify that element is added
+        assertEquals(previousSize + 1, monitoredStopVisits.getAll().size());
+
+        //Update element
+        //second call with exactly same hours but monitored status : true
+        //First call is created with monitored status  : false
+        MonitoredStopVisit element2 = createMonitoredStopVisit(arrivalTime, stopReference, itempIdentifier);
+
+        MonitoredCallStructure monitoredCall2 = element2.getMonitoredVehicleJourney().getMonitoredCall();
+        element2.getMonitoredVehicleJourney().setMonitored(true);
+        monitoredCall2.setAimedArrivalTime(arrivalTime);
+        monitoredCall2.setExpectedArrivalTime(arrivalTime);
+        monitoredCall2.setAimedDepartureTime(arrivalTime);
+        monitoredCall2.setExpectedDepartureTime(arrivalTime);
+        monitoredCall2.setDepartureStatus(CallStatusEnumeration.ON_TIME);
+
+        MonitoredStopVisit updatedMonitoredStopVisit = monitoredStopVisits.add("test", element2);
+
+        //Verify that activity is found as updated
+        assertNotNull(updatedMonitoredStopVisit);
+        //Verify that existing element is updated
+        assertEquals(previousSize + 1, monitoredStopVisits.getAll().size());
+
+        Collection<MonitoredStopVisit> allVisits = monitoredStopVisits.getAll();
+        MonitoredStopVisit first = allVisits.iterator().next();
+
+        //After second call, monitored status should be changed to true
+        assertTrue(first.getMonitoredVehicleJourney().isMonitored());
+
+
+    }
+
+
+
     @Test
     public void testGetUpdatesOnly() {
         int previousSize = monitoredStopVisits.getAll().size();

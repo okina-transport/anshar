@@ -400,9 +400,16 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
                     String existingChecksum = checksumCache.get(key);
 
                     boolean updated;
+                    MonitoredStopVisit existing = null;
                     if (existingChecksum != null && monitoredStopVisits.containsKey(key)) {
                         //Exists - compare values
-                        updated =  !(currentChecksum.equals(existingChecksum));
+
+                        existing = monitoredStopVisits.get(key);
+
+                        // if new visit's monitored status != old visit's status => update must be made
+                        // else, a look on checksum is made
+                        updated = existing.getMonitoredVehicleJourney().isMonitored() !=  monitoredStopVisit.getMonitoredVehicleJourney().isMonitored()
+                                                                                                 || !(currentChecksum.equals(existingChecksum));
                     } else {
                         //Does not exist
                         updated = true;
@@ -411,15 +418,8 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
                     if (updated) {
                         checksumCache.put(key, currentChecksum, 5, TimeUnit.MINUTES); //Keeping all checksums for at least 5 minutes to avoid stale data
 
-                        MonitoredStopVisit existing = monitoredStopVisits.get(key);
 
-                        boolean keep = (existing == null); //No existing data i.e. keep
-
-                        if (existing != null &&
-                                (monitoredStopVisit.getRecordedAtTime() != null && existing.getRecordedAtTime() != null)) {
-                            //Newer data has already been processed
-                            keep = monitoredStopVisit.getRecordedAtTime().isAfter(existing.getRecordedAtTime());
-                        }
+                        boolean keep = shouldKeepIncomingData(existing,monitoredStopVisit);
 
                         long expiration = getExpiration(monitoredStopVisit);
 
@@ -450,6 +450,32 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         markIdsAsUpdated(changes);
 
         return addedData;
+    }
+
+    /**
+     * Determine if incoming data (new data) must be kept or not
+     * @return
+     *   true : incoming data must be kept. It must replace the old data
+     *   false : incoming data should be ignored
+     */
+    private boolean shouldKeepIncomingData(MonitoredStopVisit oldData, MonitoredStopVisit newData){
+        if (oldData == null){
+            //No existing data => new data must be kept
+            return true;
+        }
+
+        if (oldData.getMonitoredVehicleJourney().isMonitored() != newData.getMonitoredVehicleJourney().isMonitored()){
+            //monitored status has changed => new data must be kept
+            return true;
+        }
+
+        if (newData.getRecordedAtTime() == null || oldData.getRecordedAtTime() == null){
+            // Inconsistent data => new data ignored
+            return false;
+        }
+
+        //new data only kept if more recent than old one
+        return  newData.getRecordedAtTime().isAfter(oldData.getRecordedAtTime());
     }
 
     @Override
