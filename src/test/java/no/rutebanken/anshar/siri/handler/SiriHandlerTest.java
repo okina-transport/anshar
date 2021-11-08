@@ -15,23 +15,30 @@
 
 package no.rutebanken.anshar.siri.handler;
 
+import no.rutebanken.anshar.data.Situations;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import uk.org.siri.siri20.PtSituationElement;
 import uk.org.siri.siri20.Siri;
 
 import javax.xml.bind.JAXBException;
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.UUID;
 
 import static junit.framework.TestCase.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class SiriHandlerTest extends SpringBootBaseTest {
 
@@ -40,6 +47,9 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
     @Autowired
     private SiriHandler handler;
+
+    @Autowired
+    private Situations situations;
 
     @Test
     public void testErrorInSXServiceDelivery() throws JAXBException {
@@ -155,6 +165,30 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         } catch (Throwable t) {
             fail("Handling empty response caused exception");
         }
+    }
+
+
+
+    @Test
+    /**
+     * Test to check that file given by cityway complies with okina management rules
+     */
+    public void testCitywaySxCompliance() throws JAXBException {
+
+        SubscriptionSetup sxSubscription = getSxSubscription();
+        subscriptionManager.addSubscription(sxSubscription.getSubscriptionId(), sxSubscription);
+        ClassLoader classLoader = getClass().getClassLoader();
+        File file = new File("src/test/resources/PT_EVENT_CG38_siri-sx_dynamic.xml");
+
+        try {
+            handler.handleIncomingSiri(sxSubscription.getSubscriptionId(), new ByteArrayInputStream(FileUtils.readFileToByteArray(file)));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        Collection<PtSituationElement> savedSituations = situations.getAll();
+        assertEquals(175,savedSituations.size());
+
     }
 
     private SubscriptionSetup getSxSubscription() {
