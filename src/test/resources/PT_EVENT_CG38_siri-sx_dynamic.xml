@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<siri:Siri xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:siri="http://www.siri.org.uk/siri">
-  <siril:ServiceDelivery xmlns:siril="http://www.siri.org.uk/siri">
-    <ResponseTimestamp xmlns="http://www.siri.org.uk/siri">2021-11-05T16:47:06.055412+01:00</ResponseTimestamp>
-    <ProducerRef xmlns="http://www.siri.org.uk/siri">CITYWAY</ProducerRef>
-    <SituationExchangeDelivery version="2.0" xmlns="http://www.siri.org.uk/siri">
+<Siri xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.siri.org.uk/siri">
+  <ServiceDelivery>
+    <ResponseTimestamp >2021-11-05T16:47:06.055412+01:00</ResponseTimestamp>
+    <ProducerRef >CITYWAY</ProducerRef>
+    <SituationExchangeDelivery version="2.0" >
       <ResponseTimestamp>2021-11-05T16:47:06.0554155+01:00</ResponseTimestamp>
       <Situations>
         <PtSituationElement>
@@ -7865,6 +7865,6 @@
         </PtSituationElement>
       </Situations>
     </SituationExchangeDelivery>
-  </siril:ServiceDelivery>
+  </ServiceDelivery>
   <Extensions />
-</siri:Siri>
+</Siri>
