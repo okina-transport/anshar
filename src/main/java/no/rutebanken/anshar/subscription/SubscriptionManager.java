@@ -182,12 +182,21 @@ public class SubscriptionManager {
     }
 
     public boolean touchSubscription(String subscriptionId) {
+    return touchSubscription(subscriptionId,null);
+    }
+
+    public boolean touchSubscription(String subscriptionId, String monitoredRef) {
         SubscriptionSetup setup = subscriptions.get(subscriptionId);
         hit(subscriptionId);
 
         boolean success = (setup != null);
 
-        logger.info("Touched subscription {}, success:{}", setup, success);
+        if (monitoredRef != null ){
+            logger.info("Touched subscription {}, monitoredObjects:{}, success:{}", setup,monitoredRef, success);
+        }else{
+            logger.info("Touched subscription {}, success:{}", setup, success);
+        }
+
         if (success) {
             lastActivity.put(subscriptionId, Instant.now());
         }
@@ -201,15 +210,16 @@ public class SubscriptionManager {
      * If not, subscription is removed to trigger reestablishing subscription
      * @param subscriptionId
      * @param serviceStartedTime
+     * @param monitoredRef
      * @return
      */
-    public boolean touchSubscription(String subscriptionId, ZonedDateTime serviceStartedTime) {
+    public boolean touchSubscription(String subscriptionId, ZonedDateTime serviceStartedTime, String monitoredRef) {
         SubscriptionSetup setup = subscriptions.get(subscriptionId);
         if (setup != null && serviceStartedTime != null) {
             Instant lastSubscriptionActivity = lastActivity.get(subscriptionId);
             if (lastSubscriptionActivity == null || serviceStartedTime.toInstant().isBefore(lastSubscriptionActivity)) {
                 logger.info("Remote Service startTime ({}) is before lastSubscriptionActivity ({}) for subscription [{}]",serviceStartedTime, lastSubscriptionActivity, setup);
-                return touchSubscription(subscriptionId);
+                return touchSubscription(subscriptionId, monitoredRef);
             } else {
                 logger.info("Remote service has been restarted, forcing subscription to be restarted [{}]", setup);
                 forceRestart(subscriptionId);
@@ -408,6 +418,22 @@ public class SubscriptionManager {
     public boolean isSubscriptionRegistered(String subscriptionId) {
 
         return subscriptions.containsKey(subscriptionId);
+    }
+
+
+    /**
+     * Indicates if a lineRef is available to request or not
+     * @param lineRef
+     * @return
+     * true: lineRef can be requested
+     * false : lineRef is not existing
+     */
+    public boolean isLineRefExistingInSubscriptions(String lineRef) {
+        for (SubscriptionSetup subscription : subscriptions.values()) {
+            if (subscription.getLineRefValue() != null && subscription.getLineRefValue().equals(lineRef))
+                return true;
+        }
+        return false;
     }
 
     public JSONObject buildStats() {
@@ -731,8 +757,9 @@ public class SubscriptionManager {
     public void dataReceived(String subscriptionId) {
         dataReceived(subscriptionId, 0);
     }
-    public void dataReceived(String subscriptionId, int receivedByteCount) {
-        touchSubscription(subscriptionId);
+
+    public void dataReceived(String subscriptionId, int receivedByteCount, String monitoredRef) {
+        touchSubscription(subscriptionId, monitoredRef);
         if (isActiveSubscription(subscriptionId)) {
             dataReceived.put(subscriptionId, Instant.now());
 
@@ -741,6 +768,11 @@ public class SubscriptionManager {
                         receivedBytes.getOrDefault(subscriptionId, 0L) + receivedByteCount);
             }
         }
+    }
+
+
+    public void dataReceived(String subscriptionId, int receivedByteCount) {
+        dataReceived(subscriptionId,receivedByteCount,null);
     }
 
     /**

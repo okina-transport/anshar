@@ -160,7 +160,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
         subscriptionManager.activatePendingSubscription(subscription.getSubscriptionId());
 
         ZonedDateTime serviceStartedTime = ZonedDateTime.now().minusMinutes(1);
-        boolean touched = subscriptionManager.touchSubscription(subscription.getSubscriptionId(), serviceStartedTime);
+        boolean touched = subscriptionManager.touchSubscription(subscription.getSubscriptionId(), serviceStartedTime,null);
         assertTrue(touched);
         assertTrue(subscriptionManager.isSubscriptionHealthy(subscription.getSubscriptionId()));
 

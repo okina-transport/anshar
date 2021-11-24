@@ -281,7 +281,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
             msgRef.setValue(requestorId);
             siri.getServiceDelivery().setRequestMessageRef(msgRef);
 
-            logger.info("Returning {}, {} left for requestorRef {}", sizeLimitedIds.size(), idSet.size(), requestorId);
+            logger.info("Results found before filtering {}, {} left for requestorRef {}", sizeLimitedIds.size(), idSet.size(), requestorId);
         }
 
         return siri;

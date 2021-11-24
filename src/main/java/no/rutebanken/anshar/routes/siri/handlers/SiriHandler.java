@@ -43,6 +43,7 @@ import uk.org.siri.siri20.ErrorCodeStructure;
 import uk.org.siri.siri20.ErrorDescriptionStructure;
 import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
 import uk.org.siri.siri20.EstimatedVehicleJourney;
+import uk.org.siri.siri20.InvalidDataReferencesErrorStructure;
 import uk.org.siri.siri20.LineRef;
 import uk.org.siri.siri20.MonitoredStopVisit;
 import uk.org.siri.siri20.MonitoringRefStructure;
@@ -75,6 +76,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getOriginalId;
 
@@ -221,14 +223,20 @@ public class SiriHandler {
                         filterMap.put(VehicleRef.class, vehicleRefList);
                     }
                 }
-                if (!filterMap.isEmpty()) {
-                    //Filter is specified - return data even if they have not changed
-                    requestorRef = null;
-                }
+
 
                 Siri siri = vehicleActivities.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize);
 
                 serviceResponse = SiriHelper.filterSiriPayload(siri, filterMap);
+                List<String> invalidDataReferences  = filterMap.get(LineRef.class).stream()
+                                                            .filter(lineRef -> !subscriptionManager.isLineRefExistingInSubscriptions(lineRef))
+                                                            .collect(Collectors.toList());
+
+
+                handleInvalidDataReferences(serviceResponse,invalidDataReferences);
+                String requestMsgRef = siri.getServiceDelivery().getRequestMessageRef().getValue();
+                logger.info("Filtering done. Returning :  {} for requestorRef {}", countVehicleActivityResults(serviceResponse), requestMsgRef);
+
             } else if (hasValues(serviceRequest.getEstimatedTimetableRequests())) {
                 dataType = SiriDataType.ESTIMATED_TIMETABLE;
                 Duration previewInterval = serviceRequest.getEstimatedTimetableRequests().get(0).getPreviewInterval();
@@ -276,6 +284,51 @@ public class SiriHandler {
         return null;
     }
 
+    /**
+     * Check if there are invalid references and write them to server response
+     * @param siri
+     *    the response that will be sent to client
+     * @param invalidDataReferences
+     *    list of invalid data references (invalid references are references requested by client that doesn't exist in subcriptions)
+     */
+    private void handleInvalidDataReferences(Siri siri, List<String> invalidDataReferences){
+        if (invalidDataReferences.isEmpty() || siri.getServiceDelivery().getVehicleMonitoringDeliveries().size() == 0)
+            return;
+
+        //Error references need to be inserted in server response to inform client
+        ServiceDeliveryErrorConditionElement errorCondition = new ServiceDeliveryErrorConditionElement();
+        InvalidDataReferencesErrorStructure invalidDataStruct = new InvalidDataReferencesErrorStructure();
+        invalidDataStruct.setErrorText("InvalidDataReferencesError");
+        errorCondition.setInvalidDataReferencesError(invalidDataStruct);
+        ErrorDescriptionStructure errorDesc = new ErrorDescriptionStructure();
+        errorDesc.setValue(invalidDataReferences.stream().collect(Collectors.joining(",")));
+        errorCondition.setDescription(errorDesc);
+        siri.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).setErrorCondition(errorCondition);
+        String requestMsgRef = siri.getServiceDelivery().getRequestMessageRef().getValue();
+        siri.getServiceDelivery().getVehicleMonitoringDeliveries().forEach(vm-> logger.info("requestorRef:"+requestMsgRef + " - " + getErrorContents(vm.getErrorCondition())));
+
+    }
+
+
+    /**
+     * Count the number of vehicleActivities existing in the response
+     * @param siri
+     * @return
+     * the number of vehicle activities
+     */
+    private int countVehicleActivityResults(Siri siri){
+        int nbOfResults = 0;
+        if (siri.getServiceDelivery() != null && siri.getServiceDelivery().getVehicleMonitoringDeliveries() != null){
+            for (VehicleMonitoringDeliveryStructure vehicleMonitoringDelivery : siri.getServiceDelivery().getVehicleMonitoringDeliveries()) {
+                if (vehicleMonitoringDelivery.getVehicleActivities() == null)
+                    continue;
+
+                nbOfResults = nbOfResults + vehicleMonitoringDelivery.getVehicleActivities().size();
+            }
+        }
+        return nbOfResults;
+    }
+
     private boolean hasValues(List list) {
         return (list != null && !list.isEmpty());
     }
@@ -310,7 +363,7 @@ public class SiriHandler {
                 logger.info("Heartbeat - {}", subscriptionSetup);
             } else if (incoming.getCheckStatusResponse() != null) {
                 logger.info("Incoming CheckStatusResponse [{}], reporting ServiceStartedTime: {}", subscriptionSetup, incoming.getCheckStatusResponse().getServiceStartedTime());
-                subscriptionManager.touchSubscription(subscriptionId, incoming.getCheckStatusResponse().getServiceStartedTime());
+                subscriptionManager.touchSubscription(subscriptionId, incoming.getCheckStatusResponse().getServiceStartedTime(),null);
             } else if (incoming.getSubscriptionResponse() != null) {
                 SubscriptionResponseStructure subscriptionResponse = incoming.getSubscriptionResponse();
                 subscriptionResponse.getResponseStatuses().forEach(responseStatus -> {
@@ -329,6 +382,9 @@ public class SiriHandler {
             } else if (incoming.getServiceDelivery() != null) {
                 boolean deliveryContainsData = false;
                 healthManager.dataReceived();
+
+                // used to store the object concerned by the incoming message (stop reference, line reference,etc)
+                String monitoredRef = null;
 
                 if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.SITUATION_EXCHANGE)) {
                     List<SituationExchangeDeliveryStructure> situationExchangeDeliveries = incoming.getServiceDelivery().getSituationExchangeDeliveries();
@@ -385,6 +441,7 @@ public class SiriHandler {
                 if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.VEHICLE_MONITORING)) {
                     List<VehicleMonitoringDeliveryStructure> vehicleMonitoringDeliveries = incoming.getServiceDelivery().getVehicleMonitoringDeliveries();
                     logger.debug("Got VM-delivery: Subscription [{}] {}", subscriptionSetup, subscriptionSetup.forwardPositionData() ? "- Position only":"");
+                    monitoredRef = getLineRef(incoming);
 
                     List<VehicleActivityStructure> addedOrUpdated = new ArrayList<>();
                     if (vehicleMonitoringDeliveries != null) {
@@ -457,6 +514,7 @@ public class SiriHandler {
                 if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
                     List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = incoming.getServiceDelivery().getStopMonitoringDeliveries();
                     logger.debug("Got SM-delivery: Subscription [{}] {}", subscriptionSetup);
+                    monitoredRef = getStopRefs(incoming);
 
                     List<MonitoredStopVisit> addedOrUpdated = new ArrayList<>();
                     if (stopMonitoringDeliveries != null) {
@@ -486,7 +544,7 @@ public class SiriHandler {
 
 
                 if (deliveryContainsData) {
-                    subscriptionManager.dataReceived(subscriptionId, receivedBytes);
+                    subscriptionManager.dataReceived(subscriptionId, receivedBytes, monitoredRef);
                 } else {
                     subscriptionManager.touchSubscription(subscriptionId);
                 }
@@ -500,6 +558,51 @@ public class SiriHandler {
         } else {
             logger.debug("ServiceDelivery for invalid subscriptionId [{}] ignored.", subscriptionId);
         }
+    }
+
+
+    /**
+     * Read incoming data to find the stopRefs (to identify which stops has received data)
+     * @param incomingData
+     *  incoming message
+     * @return
+     *  A string with all stops found in the incoming message
+     */
+    private String getStopRefs(Siri incomingData){
+        List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = incomingData.getServiceDelivery().getStopMonitoringDeliveries();
+        List<String> stopRefs = new ArrayList<>();
+
+
+        for (StopMonitoringDeliveryStructure stopMonitoringDelivery : stopMonitoringDeliveries) {
+            for (MonitoredStopVisit monitoredStopVisit : stopMonitoringDelivery.getMonitoredStopVisits()) {
+                stopRefs.add(monitoredStopVisit.getMonitoringRef().getValue());
+            }
+        }
+
+        return stopRefs.stream()
+                .distinct()
+                .collect(Collectors.joining(","));
+    }
+
+    /**
+     * Read incoming data to find the lineRef (to identify which line has received data)
+     * @param incomingData
+     *  incoming message
+     * @return
+     *  A string with all lines found in the incoming message
+     */
+    private String getLineRef(Siri incomingData){
+        List<VehicleMonitoringDeliveryStructure> vehicleDeliveries = incomingData.getServiceDelivery().getVehicleMonitoringDeliveries();
+        List<String> lineRefs = new ArrayList<>();
+
+        for (VehicleMonitoringDeliveryStructure vehicleDelivery : vehicleDeliveries) {
+            for (VehicleActivityStructure vehicleActivity : vehicleDelivery.getVehicleActivities()) {
+                lineRefs.add(vehicleActivity.getMonitoredVehicleJourney().getLineRef().getValue());
+            }
+        }
+        return lineRefs.stream()
+                        .distinct()
+                        .collect(Collectors.joining(","));
     }
 
     private Map<String, List<PtSituationElement>> splitSituationsByCodespace(
