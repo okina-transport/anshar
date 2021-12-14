@@ -199,16 +199,15 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
             return true;
         }
 
-        if(subscriptionManager.shouldTryRestart(subscriptionId) && subscriptionManager.isRestartTimePassed(subscriptionId)){
-            return true;
-        }
-
         if (config.isHealthcheckDisabled()){
             //Healthcheck is disabled : subscription must never be restarted
             return false;
         }
 
 
+        if(subscriptionManager.shouldTryRestart(subscriptionId) && subscriptionManager.isRestartTimePassed(subscriptionId)){
+            return true;
+        }
 
         boolean isActive = subscriptionManager.isActiveSubscription(subscriptionId);
         boolean isHealthy = subscriptionManager.isSubscriptionHealthy(subscriptionId);
