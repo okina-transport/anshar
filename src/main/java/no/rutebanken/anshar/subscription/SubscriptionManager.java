@@ -63,8 +63,10 @@ import static no.rutebanken.anshar.subscription.SiriDataType.VEHICLE_MONITORING;
 @Service
 public class SubscriptionManager {
 
-    static final int HEALTHCHECK_INTERVAL_FACTOR = 12;
     private final Logger logger = LoggerFactory.getLogger(SubscriptionManager.class);
+
+    @Value("${anshar.healthcheck.interval.factor:12}")
+    private int healthcheckIntervalFactor;
 
     @Autowired
     private AnsharConfiguration configuration;
@@ -323,7 +325,7 @@ public class SubscriptionManager {
     }
 
     public Boolean isSubscriptionHealthy(String subscriptionId) {
-        return isSubscriptionHealthy(subscriptionId, HEALTHCHECK_INTERVAL_FACTOR);
+        return isSubscriptionHealthy(subscriptionId, healthcheckIntervalFactor);
     }
     private Boolean isSubscriptionHealthy(String subscriptionId, int healthCheckIntervalFactor) {
         Instant instant = lastActivity.get(subscriptionId);
