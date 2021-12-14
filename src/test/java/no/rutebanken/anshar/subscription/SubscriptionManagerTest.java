@@ -20,6 +20,7 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -39,6 +40,9 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
 
     @Autowired
     private SubscriptionManager subscriptionManager;
+
+    @Value("${anshar.healthcheck.interval.factor:12}")
+    private int healthcheckIntervalFactor;
 
     @Test
     public void activeSubscriptionIsHealthy()  {
@@ -63,7 +67,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
 
         assertTrue(subscriptionManager.isSubscriptionHealthy(subscriptionId));
 
-        Thread.sleep(activeSubscription.getHeartbeatInterval().toMillis()*subscriptionManager.HEALTHCHECK_INTERVAL_FACTOR+150);
+        Thread.sleep(activeSubscription.getHeartbeatInterval().toMillis()* healthcheckIntervalFactor +150);
 
         assertFalse(subscriptionManager.isSubscriptionHealthy(subscriptionId));
     }
@@ -81,7 +85,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
 
         assertTrue(subscriptionManager.isSubscriptionHealthy(subscriptionId));
 
-        Thread.sleep(pendingSubscription.getHeartbeatInterval().toMillis()*subscriptionManager.HEALTHCHECK_INTERVAL_FACTOR+150);
+        Thread.sleep(pendingSubscription.getHeartbeatInterval().toMillis()* healthcheckIntervalFactor +150);
 
         assertFalse(subscriptionManager.isSubscriptionHealthy(subscriptionId));
     }
@@ -97,7 +101,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
 
         assertTrue(subscriptionManager.isSubscriptionHealthy(subscriptionId));
 
-        Thread.sleep(pendingSubscription.getHeartbeatInterval().toMillis()* subscriptionManager.HEALTHCHECK_INTERVAL_FACTOR + 150);
+        Thread.sleep(pendingSubscription.getHeartbeatInterval().toMillis()* healthcheckIntervalFactor + 150);
 
         assertTrue(subscriptionManager.isSubscriptionHealthy(subscriptionId));
     }
