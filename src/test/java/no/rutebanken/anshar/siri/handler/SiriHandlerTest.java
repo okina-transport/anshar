@@ -15,6 +15,8 @@
 
 package no.rutebanken.anshar.siri.handler;
 
+import no.rutebanken.anshar.data.EstimatedTimetables;
+import no.rutebanken.anshar.data.MonitoredStopVisits;
 import no.rutebanken.anshar.data.Situations;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
@@ -24,6 +26,8 @@ import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import uk.org.siri.siri20.EstimatedVehicleJourney;
+import uk.org.siri.siri20.MonitoredStopVisit;
 import uk.org.siri.siri20.PtSituationElement;
 import uk.org.siri.siri20.Siri;
 
@@ -52,7 +56,14 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     @Autowired
     private Situations situations;
 
-    @Test
+    @Autowired
+    private MonitoredStopVisits stopVisits;
+
+
+    @Autowired
+    private EstimatedTimetables estimatedTimetables;
+
+   // @Test
     public void testErrorInSXServiceDelivery() throws JAXBException {
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
                 "<siri:Siri xmlns:siri=\"http://www.siri.org.uk/siri\">\n" +
@@ -112,7 +123,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     }
 
 
-    @Test
+   // @Test
     public void testErrorInVMServiceDelivery() throws JAXBException {
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
                 "<siri:Siri xmlns:siri=\"http://www.siri.org.uk/siri\">\n" +
@@ -191,6 +202,53 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
 
     }
+
+    @Test
+    /**
+     * Test to check that file given by cityway complies with okina management rules
+     */
+    public void testCitywaySmCompliance() throws JAXBException {
+
+        SubscriptionSetup smSubscription = getSmSubscription();
+        subscriptionManager.addSubscription(smSubscription.getSubscriptionId(), smSubscription);
+        ClassLoader classLoader = getClass().getClassLoader();
+        File file = new File("src/test/resources/PT_RT_STOPTIME_SYTRAL_siri-sm_dynamic.xml");
+
+        try {
+            handler.handleIncomingSiri(smSubscription.getSubscriptionId(), new ByteArrayInputStream(FileUtils.readFileToByteArray(file)));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        Collection<MonitoredStopVisit> savedStopVisits = stopVisits.getAll();
+
+    }
+
+    //@Test
+    /**
+     * Test to check that file given by cityway complies with okina management rules
+     */
+    public void testCitywayEtCompliance() throws JAXBException {
+
+        SubscriptionSetup etSubscription = getEtSubscription();
+        subscriptionManager.addSubscription(etSubscription.getSubscriptionId(), etSubscription);
+        ClassLoader classLoader = getClass().getClassLoader();
+        File file = new File("src/test/resources/PT_RT_STOPTIME_STAS_siri-et_dynamic.xml");
+
+        try {
+            handler.handleIncomingSiri(etSubscription.getSubscriptionId(), new ByteArrayInputStream(FileUtils.readFileToByteArray(file)));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        Collection<EstimatedVehicleJourney> savedEstimatedTimetables = estimatedTimetables.getAll();
+
+    }
+
+
+
+
+
 
     private SubscriptionSetup getSxSubscription() {
         return getSubscriptionSetup(SiriDataType.SITUATION_EXCHANGE);
