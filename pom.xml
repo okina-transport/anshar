@@ -43,6 +43,8 @@
 
         <metrics.version>3.2.3</metrics.version>
         <okina.helpers.version>1.0.24-SNAPSHOT</okina.helpers.version>
+
+        <sonar.projectKey>mobi-iti-anshar</sonar.projectKey>
     </properties>
 
 
