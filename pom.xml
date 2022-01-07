@@ -46,16 +46,6 @@
     </properties>
 
 
-    <!-- Repository needs to be set up in nexus: repositories>
-        <repository>
-            <id>jclouds-snapshots</id>
-            <url>https://repository.apache.org/content/repositories/snapshots</url>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </repository>
-    </repositories -->
-
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -80,11 +70,6 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-<!--            <dependency>-->
-<!--                <groupId>org.entur.helpers</groupId>-->
-<!--                <artifactId>camel3-entur-google-pubsub</artifactId>-->
-<!--                <version>${okina.helpers.version}</version>-->
-<!--            </dependency>-->
             <dependency>
                 <groupId>com.okina.helpers</groupId>
                 <artifactId>hazelcast4-helper</artifactId>
@@ -113,10 +98,6 @@
             <groupId>com.okina.helpers</groupId>
             <artifactId>hazelcast4-helper</artifactId>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>com.okina.helpers</groupId>-->
-<!--            <artifactId>camel3-entur-google-pubsub</artifactId>-->
-<!--        </dependency>-->
         <dependency>
             <groupId>org.apache.camel</groupId>
             <artifactId>camel-core</artifactId>
