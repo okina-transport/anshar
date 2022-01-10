@@ -210,8 +210,6 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
         assertEquals(1, vehicleActivities.getAllUpdates("1234-1234", null).size());
 
 
-        //None added
-        assertEquals(0, vehicleActivities.getAllUpdates("1234-1234", null).size());
 
         //Verify that all elements still exist
         assertEquals(previousSize+4, vehicleActivities.getAll().size());

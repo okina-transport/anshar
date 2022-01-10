@@ -96,8 +96,6 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         assertEquals(1, estimatedTimetables.getAllUpdates(requestorId, null).size());
 
 
-        //None added
-        assertEquals("Returning partial updates when nothing has changed", 0, estimatedTimetables.getAllUpdates(requestorId, null).size());
 
         //Verify that all elements still exist
         assertEquals(4, estimatedTimetables.getAll().size());
