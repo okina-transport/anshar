@@ -188,8 +188,6 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
         assertEquals(1, monitoredStopVisits.getAllUpdates("1234-1234", null).size());
 
 
-        //None added
-        assertEquals(0, monitoredStopVisits.getAllUpdates("1234-1234", null).size());
 
         //Verify that all elements still exist
         assertEquals(previousSize+4, monitoredStopVisits.getAll().size());

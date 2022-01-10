@@ -62,6 +62,11 @@ public class VMRequestResponseTest extends BaseHttpTest {
 
         //Test SIRI Request
         Siri siriRequest = SiriObjectFactory.createServiceRequest(getSubscriptionSetup(SiriDataType.VEHICLE_MONITORING));
+        LineRef lineRef = new LineRef();
+        lineRef.setValue("TEST:Line:1");
+        siriRequest.getServiceRequest().getVehicleMonitoringRequests().forEach(vmStruct -> vmStruct.setLineRef(lineRef));
+
+
         given()
                 .when()
                     .contentType(ContentType.XML)
@@ -78,8 +83,12 @@ public class VMRequestResponseTest extends BaseHttpTest {
     @Test
     public void testVMRequestExcludedIds() throws Exception {
 
+        LineRef lineRef = new LineRef();
+        lineRef.setValue("TEST:Line:1");
+
         //Test SIRI Request
         Siri siriRequest = SiriObjectFactory.createServiceRequest(getSubscriptionSetup(SiriDataType.VEHICLE_MONITORING));
+        siriRequest.getServiceRequest().getVehicleMonitoringRequests().forEach(vmStruct -> vmStruct.setLineRef(lineRef));
         given()
                 .when()
                     .contentType(ContentType.XML)

@@ -25,6 +25,7 @@ import uk.org.siri.siri20.LocationStructure;
 import uk.org.siri.siri20.ProgressBetweenStopsStructure;
 import uk.org.siri.siri20.Siri;
 import uk.org.siri.siri20.VehicleActivityStructure;
+import uk.org.siri.siri20.VehicleMonitoringRefStructure;
 import uk.org.siri.siri20.VehicleRef;
 
 import java.math.BigDecimal;
@@ -55,7 +56,8 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
         int previousSize = vehicleActivities.getAll().size();
         VehicleActivityStructure element = createVehicleActivityStructure(
                                                     ZonedDateTime.now().plusMinutes(1), UUID.randomUUID().toString());
-
+        VehicleMonitoringRefStructure monitoringRef = new VehicleMonitoringRefStructure();
+        element.setVehicleMonitoringRef(monitoringRef);
         vehicleActivities.add("test", element);
         assertEquals("Vehicle not added", previousSize + 1, vehicleActivities.getAll().size());
     }
@@ -77,6 +79,11 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
         VehicleActivityStructure element = createVehicleActivityStructure(
                                                     ZonedDateTime.now().plusMinutes(1), vehicleReference);
 
+
+        VehicleMonitoringRefStructure monitoringRef = new VehicleMonitoringRefStructure();
+        monitoringRef.setValue("VEH1");
+        element.setVehicleMonitoringRef(monitoringRef);
+
         vehicleActivities.add("test", element);
         //Verify that element is added
         assertEquals(previousSize + 1, vehicleActivities.getAll().size());
@@ -84,7 +91,7 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
         //Update element
         VehicleActivityStructure element2 = createVehicleActivityStructure(
                                                     ZonedDateTime.now().plusMinutes(1), vehicleReference);
-
+        element2.setVehicleMonitoringRef(monitoringRef);
         VehicleActivityStructure updatedVehicle = vehicleActivities.add("test", element2);
 
         //Verify that activity is found as updated
@@ -95,6 +102,8 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
         //Add brand new element
         VehicleActivityStructure element3 = createVehicleActivityStructure(
                 ZonedDateTime.now().plusMinutes(1), UUID.randomUUID().toString());
+
+        element3.setVehicleMonitoringRef(monitoringRef);
 
         updatedVehicle = vehicleActivities.add("test", element3);
 
@@ -213,6 +222,10 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
         element.setRecordedAtTime(recordedAtTime);
         element.setValidUntilTime(recordedAtTime.plusMinutes(10));
 
+        VehicleMonitoringRefStructure monitoringRef = new VehicleMonitoringRefStructure();
+        monitoringRef.setValue("VEH1");
+        element.setVehicleMonitoringRef(monitoringRef);
+
         VehicleActivityStructure.MonitoredVehicleJourney vehicleJourney = new VehicleActivityStructure.MonitoredVehicleJourney();
         VehicleRef vRef = new VehicleRef();
         vRef.setValue(vehicleReference);
@@ -237,16 +250,24 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
 
         String prefix = "excludedOnly-";
 
+        VehicleMonitoringRefStructure monitoringRef = new VehicleMonitoringRefStructure();
+        monitoringRef.setValue("VEH1");
+
         VehicleActivityStructure activity_1 = createVehicleActivityStructure(ZonedDateTime.now(), prefix + "1234");
         activity_1.getMonitoredVehicleJourney().setDataSource("test1");
+        activity_1.setVehicleMonitoringRef(monitoringRef);
+
         vehicleActivities.add("test1", activity_1);
 
         VehicleActivityStructure activity_2 = createVehicleActivityStructure(ZonedDateTime.now(), prefix + "2345");
         activity_2.getMonitoredVehicleJourney().setDataSource("test2");
+        activity_2.setVehicleMonitoringRef(monitoringRef);
         vehicleActivities.add("test2", activity_2);
+
 
         VehicleActivityStructure activity_3 = createVehicleActivityStructure(ZonedDateTime.now(), prefix + "3456");
         activity_3.getMonitoredVehicleJourney().setDataSource("test3");
+        activity_3.setVehicleMonitoringRef(monitoringRef);
         vehicleActivities.add("test3", activity_3);
 
         assertExcludedId("test1");
