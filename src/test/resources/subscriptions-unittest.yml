@@ -19,3 +19,4 @@ anshar:
       filterPresets:
       idMappingPrefixes: AND
       active: false
+      lineRefValue: "TEST:Line:1"

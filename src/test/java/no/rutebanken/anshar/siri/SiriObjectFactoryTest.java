@@ -25,6 +25,8 @@ import uk.org.siri.siri20.EstimatedTimetableSubscriptionStructure;
 import uk.org.siri.siri20.Siri;
 import uk.org.siri.siri20.SituationExchangeRequestStructure;
 import uk.org.siri.siri20.SituationExchangeSubscriptionStructure;
+import uk.org.siri.siri20.StopMonitoringRequestStructure;
+import uk.org.siri.siri20.StopMonitoringSubscriptionStructure;
 import uk.org.siri.siri20.VehicleMonitoringRequestStructure;
 import uk.org.siri.siri20.VehicleMonitoringSubscriptionStructure;
 
@@ -120,8 +122,29 @@ public class SiriObjectFactoryTest {
 
     @Test
     public void testCreateSMSubscription(){
-        // TODO MHI
-        throw new NotImplementedException("");
+
+        SubscriptionSetup subscriptionSetup = createSubscriptionSetup(SiriDataType.STOP_MONITORING,
+                SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE,
+                UUID.randomUUID().toString());
+
+        Siri smSubscriptionRequest = SiriObjectFactory.createSubscriptionRequest(subscriptionSetup);
+        assertNotNull(smSubscriptionRequest.getSubscriptionRequest());
+
+        List<StopMonitoringSubscriptionStructure> subscriptionRequests = smSubscriptionRequest.getSubscriptionRequest().getStopMonitoringSubscriptionRequests();
+        assertNotNull(subscriptionRequests);
+
+        assertTrue(subscriptionRequests.size() == 1);
+
+        StopMonitoringSubscriptionStructure subscription = subscriptionRequests.get(0);
+        assertNotNull(subscription.getSubscriptionIdentifier());
+        assertNotNull(subscription.getSubscriptionIdentifier().getValue());
+        assertEquals(subscriptionSetup.getSubscriptionId(), subscription.getSubscriptionIdentifier().getValue());
+
+        ZonedDateTime initialTerminationTime = subscription.getInitialTerminationTime();
+
+        assertTrue("Initial terminationtime has not been calculated correctly", ZonedDateTime.now().plusHours(hoursUntilInitialTermination).minusMinutes(1).isBefore(initialTerminationTime));
+        assertTrue("Initial terminationtime has not been calculated correctly", ZonedDateTime.now().plusHours(hoursUntilInitialTermination).plusMinutes(1).isAfter(initialTerminationTime));
+
     }
 
     @Test
@@ -238,10 +261,26 @@ public class SiriObjectFactoryTest {
         assertNotNull(request);
     }
 
-    // TODO MHI
+
     @Test
     public void testCreateSMServiceRequest(){
-        throw new NotImplementedException("TODO MHI");
+
+        SubscriptionSetup subscriptionSetup = createSubscriptionSetup(SiriDataType.STOP_MONITORING,
+                SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE,
+                UUID.randomUUID().toString());
+
+        Siri smRequest = SiriObjectFactory.createServiceRequest(subscriptionSetup);
+        assertNull(smRequest.getSubscriptionRequest());
+
+        assertNotNull(smRequest.getServiceRequest());
+
+        List<StopMonitoringRequestStructure> smRequests = smRequest.getServiceRequest().getStopMonitoringRequests();
+        assertNotNull(smRequests);
+
+        assertTrue(smRequests.size() == 1);
+
+        StopMonitoringRequestStructure request = smRequests.get(0);
+        assertNotNull(request);
     }
 
     @Test

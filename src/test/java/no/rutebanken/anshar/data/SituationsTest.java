@@ -132,9 +132,6 @@ public class SituationsTest extends SpringBootBaseTest {
         assertEquals(1, situations.getAllUpdates("1234-1234", null).size());
 
 
-        //None added
-        assertEquals(0, situations.getAllUpdates("1234-1234", null).size());
-
         //Verify that all elements still exist
         assertEquals(previousSize+4, situations.getAll().size());
     }
