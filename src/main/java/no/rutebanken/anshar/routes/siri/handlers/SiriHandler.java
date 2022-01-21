@@ -26,6 +26,7 @@ import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.outbound.SiriHelper;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
+import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.routes.validation.SiriXmlValidator;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
@@ -406,8 +407,8 @@ public class SiriHandler {
                                                         List<PtSituationElement> addedSituations = new ArrayList();
 
                                                         addedSituations.addAll(situations.addAll(
-                                                            codespace,
-                                                            situationsByCodespace.get(codespace)
+                                                                codespace,
+                                                                situationsByCodespace.get(codespace)
                                                         ));
 
                                                         // Push updates to subscribers on this codespace
@@ -421,8 +422,8 @@ public class SiriHandler {
                                                 } else {
 
                                                     addedOrUpdated.addAll(situations.addAll(
-                                                        subscriptionSetup.getDatasetId(),
-                                                        sx.getSituations().getPtSituationElements()
+                                                            subscriptionSetup.getDatasetId(),
+                                                            sx.getSituations().getPtSituationElements()
                                                     ));
                                                     serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
                                                 }
@@ -560,15 +561,173 @@ public class SiriHandler {
         }
     }
 
+    /**
+     * Handling incoming requests from external servers
+     * @param subscriptionIds
+     * @param xml
+     * @param dataFormat
+     * @param dataSetId
+     * @throws XMLStreamException
+     */
+    public void processSiriClientRequestFromApis(List<String> subscriptionIds, InputStream xml, SiriDataType dataFormat, String dataSetId)
+            throws XMLStreamException {
+        List<SubscriptionSetup> subscriptionSetupList = subscriptionManager.getAll(subscriptionIds);
+
+        if (subscriptionSetupList.size() == 0) {
+            logger.debug("ServiceDelivery for invalid subscriptionIds [{}] ignored.", subscriptionIds);
+        } else {
+            int receivedBytes;
+            try {
+                receivedBytes = xml.available();
+            } catch (IOException e) {
+                receivedBytes = 0;
+            }
+
+            Siri originalInput = siriXmlValidator.parseXmlWithSubscriptionSetupList(subscriptionSetupList, xml);
+
+            List<ValueAdapter> subscriptionSetupListMappingAdapters = subscriptionSetupList
+                    .stream()
+                    .flatMap(subscriptionSetup -> subscriptionSetup.getMappingAdapters().stream())
+                    .collect(Collectors.toList());
+
+            Siri incoming = SiriValueTransformer.transform(originalInput, subscriptionSetupListMappingAdapters);
+
+            if (incoming.getServiceDelivery() == null) {
+                try {
+                    logger.info("Unsupported SIRI-request:" + SiriXml.toXml(incoming));
+                } catch (JAXBException e) {
+                    //Ignore
+                }
+            } else {
+                boolean deliveryContainsData = false;
+                healthManager.dataReceived();
+
+                // used to store the object concerned by the incoming message (stop reference, line reference,etc)
+                String monitoredRef = null;
+
+                if (dataFormat.equals(SiriDataType.SITUATION_EXCHANGE)) {
+                    List<SituationExchangeDeliveryStructure> situationExchangeDeliveries = incoming.getServiceDelivery().getSituationExchangeDeliveries();
+                    logger.info("Got SX-delivery: Subscription [{}]", subscriptionSetupList);
+
+                    List<PtSituationElement> addedOrUpdated = new ArrayList<>();
+                    if (situationExchangeDeliveries != null) {
+                        situationExchangeDeliveries.forEach(sx -> {
+                                    if (sx != null) {
+                                        if (sx.isStatus() != null && !sx.isStatus()) {
+                                            logger.info(getErrorContents(sx.getErrorCondition()));
+                                        } else {
+                                            if (sx.getSituations() != null && sx.getSituations().getPtSituationElements() != null) {
+                                                addedOrUpdated.addAll(situations.addAll(dataSetId, sx.getSituations().getPtSituationElements()));
+                                                serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, dataSetId);
+                                            }
+                                        }
+                                    }
+                                }
+                        );
+                    }
+                    deliveryContainsData = addedOrUpdated.size() > 0;
+
+                    for(SubscriptionSetup subscriptionSetup : subscriptionSetupList){
+                        subscriptionManager.incrementObjectCounter(subscriptionSetup, 1);
+                        logger.info("Active SX-elements: {}, current delivery: {}, {}", situations.getSize(), addedOrUpdated.size(), subscriptionSetup);
+                    }
+                }
+                if (dataFormat.equals(SiriDataType.ESTIMATED_TIMETABLE)) {
+                    List<EstimatedTimetableDeliveryStructure> estimatedTimetableDeliveries = incoming.getServiceDelivery().getEstimatedTimetableDeliveries();
+                    logger.info("Got ET-delivery: Subscription {}", subscriptionSetupList);
+
+                    List<EstimatedVehicleJourney> addedOrUpdated = new ArrayList<>();
+                    if (estimatedTimetableDeliveries != null) {
+                        estimatedTimetableDeliveries.forEach(et -> {
+                                    if (et != null) {
+                                        if (et.isStatus() != null && !et.isStatus()) {
+                                            logger.info(getErrorContents(et.getErrorCondition()));
+                                        } else {
+                                            if (et.getEstimatedJourneyVersionFrames() != null) {
+                                                et.getEstimatedJourneyVersionFrames().forEach(versionFrame -> {
+                                                    if (versionFrame != null && versionFrame.getEstimatedVehicleJourneies() != null) {
+                                                        addedOrUpdated.addAll(
+                                                                estimatedTimetables.addAll(dataSetId, versionFrame.getEstimatedVehicleJourneies())
+                                                        );
+                                                    }
+                                                });
+                                            }
+                                        }
+                                    }
+                                }
+                        );
+                    }
+
+                    deliveryContainsData = deliveryContainsData || (addedOrUpdated.size() > 0);
+
+                    serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, dataSetId);
+
+                    for(SubscriptionSetup subscriptionSetup : subscriptionSetupList) {
+                        List<EstimatedVehicleJourney> addedOrUpdatedBySubscription = addedOrUpdated
+                                .stream()
+                                .filter(estimatedVehicleJourney -> estimatedVehicleJourney.getLineRef().getValue().equals(subscriptionSetup.getLineRefValue()))
+                                .collect(Collectors.toList());
+                        subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdatedBySubscription.size());
+                        logger.info("Active ET-elements: {}, current delivery: {}, {}", estimatedTimetables.getSize(), addedOrUpdatedBySubscription.size(), subscriptionSetup);
+                    }
+                }
+
+                if (dataFormat.equals(SiriDataType.STOP_MONITORING)) {
+                    List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = incoming.getServiceDelivery().getStopMonitoringDeliveries();
+                    logger.debug("Got SM-delivery: Subscription [{}] {}", subscriptionSetupList);
+                    monitoredRef = getStopRefs(incoming);
+
+                    List<MonitoredStopVisit> addedOrUpdated = new ArrayList<>();
+                    if (stopMonitoringDeliveries != null) {
+                        stopMonitoringDeliveries.forEach(sm -> {
+                                    if (sm != null) {
+                                        if (sm.isStatus() != null && !sm.isStatus() || sm.getErrorCondition() != null) {
+                                            logger.info(getErrorContents(sm.getErrorCondition()));
+                                        } else {
+                                            if (sm.getMonitoredStopVisits() != null) {
+                                                addedOrUpdated.addAll(
+                                                        monitoredStopVisits.addAll(dataSetId, sm.getMonitoredStopVisits()));
+                                            }
+                                        }
+                                    }
+                                }
+                        );
+                    }
+
+                    deliveryContainsData = deliveryContainsData || (addedOrUpdated.size() > 0);
+
+                    serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, dataSetId);
+
+                    for(SubscriptionSetup subscriptionSetup : subscriptionSetupList) {
+                        List<MonitoredStopVisit> addedOrUpdatedBySubscription = addedOrUpdated
+                                .stream()
+                                .filter(monitoredStopVisit -> monitoredStopVisit.getMonitoringRef().getValue().equals(subscriptionSetup.getStopMonitoringRefValue()))
+                                .collect(Collectors.toList());
+                        subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdatedBySubscription.size());
+                        logger.info("Active SM-elements: {}, current delivery: {}, {}", monitoredStopVisits.getSize(), addedOrUpdatedBySubscription.size(), subscriptionSetup);
+                    }
+                }
+
+
+                for (SubscriptionSetup subscriptionSetup : subscriptionSetupList) {
+                    if (deliveryContainsData) {
+                        subscriptionManager.dataReceived(subscriptionSetup.getSubscriptionId(), receivedBytes, monitoredRef);
+                    } else {
+                        subscriptionManager.touchSubscription(subscriptionSetup.getSubscriptionId());
+                    }
+                }
+            }
+        }
+    }
+
 
     /**
      * Read incoming data to find the stopRefs (to identify which stops has received data)
-     * @param incomingData
-     *  incoming message
-     * @return
-     *  A string with all stops found in the incoming message
+     *
+     * @param incomingData incoming message
+     * @return A string with all stops found in the incoming message
      */
-    private String getStopRefs(Siri incomingData){
+    private String getStopRefs(Siri incomingData) {
         List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = incomingData.getServiceDelivery().getStopMonitoringDeliveries();
         List<String> stopRefs = new ArrayList<>();
 

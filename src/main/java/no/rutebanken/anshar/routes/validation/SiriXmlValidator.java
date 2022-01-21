@@ -238,9 +238,66 @@ public class SiriXmlValidator extends ApplicationContextHolder {
         return null;
     }
 
+    public Siri parseXmlWithSubscriptionSetupList(List<SubscriptionSetup> subscriptionSetupList, InputStream xml)
+            throws XMLStreamException {
+        try {
+            long parseStart = System.currentTimeMillis();
+            boolean validated = false;
+            Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
+
+            XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(xml);
+
+            SiriValidationEventHandler handler = new SiriValidationEventHandler();
+
+            if (configuration.isFullValidationEnabled()) {
+                validated = true;
+                unmarshaller.setSchema(schema);
+                unmarshaller.setEventHandler(handler);
+            }
+
+            Siri siri = unmarshaller.unmarshal(reader, Siri.class).getValue();
+
+            final String breadcrumbId = MDC.get("camel.breadcrumbId");
+
+            for (SubscriptionSetup subscriptionSetup : subscriptionSetupList) {
+                if (siri.getServiceDelivery() != null && configuration.isFullValidationEnabled()) {
+                    validated = true;
+                    validationExecutorService.execute(() -> {
+                        MDC.put("camel.breadcrumbId", breadcrumbId);
+                        performValidation(subscriptionSetup, xml, handler);
+                        MDC.remove("camel.breadcrumbId");
+                    });
+                }
+
+                if (siri.getServiceDelivery() != null && subscriptionSetup.isValidation()) {
+                    validated = true;
+                    // Validator is activated - produce complete report from formatted XML
+                    validationReportExecutorService.execute(() -> {
+                        MDC.put("camel.breadcrumbId", breadcrumbId);
+                        performValidation(subscriptionSetup, siri);
+                        MDC.remove("camel.breadcrumbId");
+                    });
+                }
+            }
+
+            long parseDone = System.currentTimeMillis();
+
+            logger.debug("Parsing XML took {} ms, validated: {} ", parseDone - parseStart, validated);
+
+            return siri;
+        } catch (XMLStreamException e) {
+            logger.warn("Caught exception when parsing", e);
+            throw e;
+        } catch (Exception e) {
+            logger.warn("Caught exception when parsing", e);
+        }
+        return null;
+    }
+
     private static AtomicInteger concurrentValidationThreads = new AtomicInteger();
+
     private boolean performValidation(
-        SubscriptionSetup subscriptionSetup, InputStream xml, SiriValidationEventHandler handler
+            SubscriptionSetup subscriptionSetup, InputStream xml, SiriValidationEventHandler handler
     ) {
         concurrentValidationThreads.incrementAndGet();
         long validationStart = System.currentTimeMillis();

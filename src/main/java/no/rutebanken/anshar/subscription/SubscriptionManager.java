@@ -240,6 +240,14 @@ public class SubscriptionManager {
         return subscriptions.get(subscriptionId);
     }
 
+    public List<SubscriptionSetup> getAll(List<String> subscriptionIds) {
+        List<SubscriptionSetup> subscriptionSetupList = new ArrayList<>();
+        for(String subscriptionId : subscriptionIds){
+            subscriptionSetupList.add(subscriptions.get(subscriptionId));
+        }
+        return subscriptionSetupList;
+    }
+
     public JSONObject getSubscriptionsForCodespace(String codespace) {
         JSONObject jsonSubscriptions = new JSONObject();
         JSONArray filteredSubscriptions = new JSONArray();

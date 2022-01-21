@@ -515,6 +515,10 @@ public class SubscriptionSetup implements Serializable {
         this.durationOfSubscription = Duration.ofHours(hours);
     }
 
+    public void setDurationOfSubscriptionMinutes(int minutes) {
+        this.durationOfSubscription = Duration.ofMinutes(minutes);
+    }
+
     public void setRequestorRef(String requestorRef) {
         this.requestorRef = requestorRef;
     }

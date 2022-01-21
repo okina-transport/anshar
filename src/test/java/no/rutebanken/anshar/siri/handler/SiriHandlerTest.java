@@ -42,8 +42,6 @@ import java.util.HashMap;
 import java.util.UUID;
 
 import static junit.framework.TestCase.fail;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class SiriHandlerTest extends SpringBootBaseTest {
 
@@ -58,7 +56,6 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
     @Autowired
     private MonitoredStopVisits stopVisits;
-
 
     @Autowired
     private EstimatedTimetables estimatedTimetables;
