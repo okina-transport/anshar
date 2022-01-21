@@ -438,6 +438,21 @@ public class SubscriptionManager {
         return false;
     }
 
+    /**
+     * Indicates if a subscription is available to request or not
+     * @param subscriptionId
+     * @return
+     * true: subscription is existing
+     * false : subscription is not existing
+     */
+    public boolean isSubscriptionExisting(String subscriptionId) {
+        for (SubscriptionSetup subscription : subscriptions.values()) {
+            if (subscription.getSubscriptionId()!= null && subscription.getSubscriptionId().equals(subscriptionId))
+                return true;
+        }
+        return false;
+    }
+
     public JSONObject buildStats() {
         logger.debug("Start building stats");
         JSONObject result = new JSONObject();

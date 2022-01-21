@@ -461,7 +461,6 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
 
     public long getExpiration(EstimatedVehicleJourney vehicleJourney) {
         ZonedDateTime expiryTimestamp = getLatestArrivalTime(vehicleJourney);
-
         if (expiryTimestamp != null) {
             return ZonedDateTime.now().until(expiryTimestamp.plus(configuration.getEtGraceperiodMinutes(), ChronoUnit.MINUTES), ChronoUnit.MILLIS);
         } else {
@@ -599,7 +598,6 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
                 } else {
                     outdatedCounter.increment();
                 }
-
             }
         });
 

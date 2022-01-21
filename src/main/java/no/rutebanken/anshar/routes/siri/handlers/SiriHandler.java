@@ -70,6 +70,7 @@ import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -137,7 +138,7 @@ public class SiriHandler {
      * @param xml SIRI-request as XML
      * @param datasetId Optional datasetId
      * @param outboundIdMappingPolicy Defines outbound idmapping-policy
-     * @return
+     * @return the siri response
      */
     public Siri handleIncomingSiri(String subscriptionId, InputStream xml, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String clientTrackingName) throws UnmarshalException {
         return handleIncomingSiri(subscriptionId, xml, datasetId, null, outboundIdMappingPolicy, maxSize, clientTrackingName);
@@ -162,9 +163,9 @@ public class SiriHandler {
     /**
      * Handling incoming requests from external clients
      *
-     * @param incoming
-     * @param excludedDatasetIdList
-     * @throws JAXBException
+     * @param incoming incoming message
+     * @param excludedDatasetIdList dataset to exclude
+     *
      */
     private Siri processSiriServerRequest(Siri incoming, String datasetId, List<String> excludedDatasetIdList, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String clientTrackingName) {
 
@@ -336,10 +337,8 @@ public class SiriHandler {
     /**
      * Handling incoming requests from external servers
      *
-     * @param subscriptionId
-     * @param xml
-     * @return
-     * @throws JAXBException
+     * @param subscriptionId the subscription's id
+     * @param xml the incoming message
      */
     private void processSiriClientRequest(String subscriptionId, InputStream xml)
         throws XMLStreamException {
@@ -456,9 +455,7 @@ public class SiriHandler {
                                                     addedOrUpdated.addAll(vm.getVehicleActivities());
                                                     logger.info("Forwarding VM positiondata for {} vehicles.", vm.getVehicleActivities().size());
                                                 } else {
-                                                    addedOrUpdated.addAll(
-                                                            vehicleActivities.addAll(subscriptionSetup.getDatasetId(), vm.getVehicleActivities())
-                                                    );
+                                                    addedOrUpdated.addAll(ingestVehicleActivities(subscriptionSetup.getDatasetId(), vm.getVehicleActivities()));
                                                 }
                                             }
                                         }
@@ -489,9 +486,7 @@ public class SiriHandler {
                                             if (et.getEstimatedJourneyVersionFrames() != null) {
                                                 et.getEstimatedJourneyVersionFrames().forEach(versionFrame -> {
                                                     if (versionFrame != null && versionFrame.getEstimatedVehicleJourneies() != null) {
-                                                        addedOrUpdated.addAll(
-                                                                estimatedTimetables.addAll(subscriptionSetup.getDatasetId(), versionFrame.getEstimatedVehicleJourneies())
-                                                        );
+                                                        addedOrUpdated.addAll(ingestEstimatedTimeTables(subscriptionSetup.getDatasetId(), versionFrame.getEstimatedVehicleJourneies()));
                                                     }
                                                 });
                                             }
@@ -513,7 +508,7 @@ public class SiriHandler {
                 // TODO MHI
                 if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
                     List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = incoming.getServiceDelivery().getStopMonitoringDeliveries();
-                    logger.debug("Got SM-delivery: Subscription [{}] {}", subscriptionSetup);
+                    logger.debug("Got SM-delivery: Subscription [{}] ", subscriptionSetup);
                     monitoredRef = getStopRefs(incoming);
 
                     List<MonitoredStopVisit> addedOrUpdated = new ArrayList<>();
@@ -558,6 +553,21 @@ public class SiriHandler {
         } else {
             logger.debug("ServiceDelivery for invalid subscriptionId [{}] ignored.", subscriptionId);
         }
+    }
+
+
+
+    public Collection<VehicleActivityStructure> ingestVehicleActivities(String subscriptionId, List<VehicleActivityStructure> incomingVehicleActivities) {
+        return vehicleActivities.addAll(subscriptionId, incomingVehicleActivities);
+    }
+
+
+    public Collection<EstimatedVehicleJourney> ingestEstimatedTimeTables(String subscriptionId, List<EstimatedVehicleJourney> incomingEstimatedTimeTables) {
+        return  estimatedTimetables.addAll(subscriptionId, incomingEstimatedTimeTables);
+    }
+
+    public Collection<PtSituationElement> ingestSituations(String subscriptionId, List<PtSituationElement> incomingSituations) {
+        return situations.addAll(subscriptionId, incomingSituations);
     }
 
 
@@ -632,8 +642,8 @@ public class SiriHandler {
     /**
      * Creates a json-string containing all potential errormessage-values
      *
-     * @param errorCondition
-     * @return
+     * @param errorCondition the error condition to filter
+     * @return the error contents
      */
     private String getErrorContents(ServiceDeliveryErrorConditionElement errorCondition) {
         String errorContents = "";

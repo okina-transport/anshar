@@ -45,6 +45,10 @@
         <okina.helpers.version>1.0.24-SNAPSHOT</okina.helpers.version>
 
         <sonar.projectKey>mobi-iti:anshar</sonar.projectKey>
+        <protobuf.version>3.19.3</protobuf.version>
+        <gtfs.realtime-bindings.version>0.0.4</gtfs.realtime-bindings.version>
+
+
     </properties>
 
 
@@ -289,6 +293,18 @@
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
             <version>20160212</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>${protobuf.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.transit</groupId>
+            <artifactId>gtfs-realtime-bindings</artifactId>
+            <version>${gtfs.realtime-bindings.version}</version>
         </dependency>
 
         <!-- testing -->
