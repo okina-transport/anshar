@@ -629,7 +629,7 @@ public class SiriHandler {
 
                     for(SubscriptionSetup subscriptionSetup : subscriptionSetupList){
                         subscriptionManager.incrementObjectCounter(subscriptionSetup, 1);
-                        logger.info("Active SX-elements: {}, current delivery: {}, {}", situations.getSize(), addedOrUpdated.size(), subscriptionSetup);
+//                        logger.info("Active SX-elements: {}, current delivery: {}, {}", situations.getSize(), addedOrUpdated.size(), subscriptionSetup);
                     }
                 }
                 if (dataFormat.equals(SiriDataType.ESTIMATED_TIMETABLE)) {
@@ -668,7 +668,7 @@ public class SiriHandler {
                                 .filter(estimatedVehicleJourney -> estimatedVehicleJourney.getLineRef().getValue().equals(subscriptionSetup.getLineRefValue()))
                                 .collect(Collectors.toList());
                         subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdatedBySubscription.size());
-                        logger.info("Active ET-elements: {}, current delivery: {}, {}", estimatedTimetables.getSize(), addedOrUpdatedBySubscription.size(), subscriptionSetup);
+//                        logger.info("Active ET-elements: {}, current delivery: {}, {}", estimatedTimetables.getSize(), addedOrUpdatedBySubscription.size(), subscriptionSetup);
                     }
                 }
 
@@ -704,7 +704,7 @@ public class SiriHandler {
                                 .filter(monitoredStopVisit -> monitoredStopVisit.getMonitoringRef().getValue().equals(subscriptionSetup.getStopMonitoringRefValue()))
                                 .collect(Collectors.toList());
                         subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdatedBySubscription.size());
-                        logger.info("Active SM-elements: {}, current delivery: {}, {}", monitoredStopVisits.getSize(), addedOrUpdatedBySubscription.size(), subscriptionSetup);
+//                        logger.info("Active SM-elements: {}, current delivery: {}, {}", monitoredStopVisits.getSize(), addedOrUpdatedBySubscription.size(), subscriptionSetup);
                     }
                 }
 
