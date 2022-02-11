@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.org.siri.siri20.PtSituationElement;
+import uk.org.siri.siri20.SituationNumber;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -83,6 +84,10 @@ public class AlertSwallower extends AbstractSwallower {
 
 
             PtSituationElement situation = AlertMapper.mapSituationFromAlert(feedEntity.getAlert());
+
+            SituationNumber situationNumber = new SituationNumber();
+            situationNumber.setValue(feedEntity.getId());
+            situation.setSituationNumber(situationNumber);
             situtations.add(situation);
         }
         return situtations;
