@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 import uk.org.siri.siri20.VehicleActivityStructure;
 
 
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -102,6 +103,8 @@ public class VehiclePositionSwallower extends AbstractSwallower {
                 continue;
 
             VehicleActivityStructure vehicleActivity = VehiclePositionMapper.mapVehicleActivityFromVehiclePosition(feedEntity.getVehicle());
+            ZonedDateTime dateTime = ZonedDateTime.now();
+            vehicleActivity.setValidUntilTime(dateTime.plusMinutes(10));
             vehicleActivities.add(vehicleActivity);
         }
         return vehicleActivities;
