@@ -47,6 +47,7 @@
         <sonar.projectKey>mobi-iti:anshar</sonar.projectKey>
         <protobuf.version>3.19.3</protobuf.version>
         <gtfs.realtime-bindings.version>0.0.4</gtfs.realtime-bindings.version>
+        <version.lombok>1.18.16</version.lombok>
 
 
     </properties>
@@ -167,6 +168,19 @@
             <groupId>org.apache.camel</groupId>
             <artifactId>camel-swagger-java</artifactId>
             <version>${camel-version}</version>
+
+            <exclusions>
+                <exclusion>
+                    <groupId>javax.ws.rs</groupId>
+                    <artifactId>jsr311-api</artifactId>
+                </exclusion>
+            </exclusions>
+
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${version.lombok}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.camel</groupId>
@@ -353,6 +367,17 @@
             <version>4.3.3</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.keycloak</groupId>
+            <artifactId>keycloak-admin-client</artifactId>
+            <version>17.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.resteasy</groupId>
+            <artifactId>jaxrs-api</artifactId>
+            <version>3.0.12.Final</version>
+        </dependency>
+
 
     </dependencies>
 
