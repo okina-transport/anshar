@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.routes.siri.handlers;
 
+import io.micrometer.core.instrument.util.StringUtils;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.EstimatedTimetables;
 import no.rutebanken.anshar.data.MonitoredStopVisits;
@@ -258,16 +259,24 @@ public class SiriHandler {
                     previewIntervalInMillis = previewInterval.getTimeInMillis(new Date());
                 }
 
+                String monitoringStringList = null;
                 for (StopMonitoringRequestStructure req : serviceRequest.getStopMonitoringRequests()) {
                     MonitoringRefStructure monitoringRef = req.getMonitoringRef();
                     if (monitoringRef != null) {
                         Set<String> monitoringRefs = filterMap.get(MonitoringRefStructure.class) != null ? filterMap.get(MonitoringRefStructure.class): new HashSet<>();
                         monitoringRefs.add(monitoringRef.getValue());
                         filterMap.put(MonitoringRefStructure.class, monitoringRefs);
+
+                        if (StringUtils.isEmpty(monitoringStringList)){
+                            monitoringStringList = monitoringRef.getValue();
+                        }else{
+                            monitoringStringList = monitoringStringList + "|" + monitoringRef.getValue();
+                        }
                     }
                 }
 
                 Siri siri = monitoredStopVisits.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize);
+                logger.info("Asking for service delivery for requestorId={}, monitoringRef={}, clientTrackingName={}", requestorRef, monitoringStringList, clientTrackingName);
                 serviceResponse = SiriHelper.filterSiriPayload(siri, filterMap);
             }
 

@@ -163,7 +163,6 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     // TODO MHI : copié collé, à revoir
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientTrackingName, List<String> excludedDatasetIds, int maxSize, long previewInterval) {
 
-        logger.info("Asking for service delivery for requestorId={}, datasetId={}, clientTrackingName={}", requestorId, datasetId, clientTrackingName);
         requestorRefRepository.touchRequestorRef(requestorId, datasetId, clientTrackingName, SiriDataType.STOP_MONITORING);
 
         int trackingPeriodMinutes = configuration.getTrackingPeriodMinutes();
