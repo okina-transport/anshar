@@ -228,15 +228,22 @@ public class SiriHandler {
                 }
 
 
-                Siri siri = vehicleActivities.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize);
+                Set<String> lineRefList = filterMap.get(LineRef.class) != null ? filterMap.get(LineRef.class): new HashSet<>();
+                Set<String> vehicleRefList = filterMap.get(VehicleRef.class) != null ? filterMap.get(VehicleRef.class): new HashSet<>();
 
-                serviceResponse = SiriHelper.filterSiriPayload(siri, filterMap);
-                List<String> invalidDataReferences  = filterMap.get(LineRef.class).stream()
-                                                            .filter(lineRef -> !subscriptionManager.isLineRefExistingInSubscriptions(lineRef))
-                                                            .collect(Collectors.toList());
+                Siri siri = vehicleActivities.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize,lineRefList,vehicleRefList);
+                serviceResponse = siri;
+
+                if (filterMap.get(LineRef.class) != null){
+                    List<String> invalidDataReferences  = filterMap.get(LineRef.class).stream()
+                            .filter(lineRef -> !subscriptionManager.isLineRefExistingInSubscriptions(lineRef))
+                            .collect(Collectors.toList());
 
 
-                handleInvalidDataReferences(serviceResponse,invalidDataReferences);
+                    handleInvalidDataReferences(serviceResponse,invalidDataReferences);
+                }
+
+
                 String requestMsgRef = siri.getServiceDelivery().getRequestMessageRef().getValue();
                 logger.info("Filtering done. Returning :  {} for requestorRef {}", countVehicleActivityResults(serviceResponse), requestMsgRef);
 
@@ -275,9 +282,9 @@ public class SiriHandler {
                     }
                 }
 
-                Siri siri = monitoredStopVisits.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize);
+                Set<String> monitoringRefs = filterMap.get(MonitoringRefStructure.class) != null ? filterMap.get(MonitoringRefStructure.class): new HashSet<>();
+                serviceResponse = monitoredStopVisits.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, monitoringRefs);
                 logger.info("Asking for service delivery for requestorId={}, monitoringRef={}, clientTrackingName={}", requestorRef, monitoringStringList, clientTrackingName);
-                serviceResponse = SiriHelper.filterSiriPayload(siri, filterMap);
             }
 
 
@@ -715,9 +722,9 @@ public class SiriHandler {
 
                 for (SubscriptionSetup subscriptionSetup : subscriptionSetupList) {
                     if (deliveryContainsData) {
-                        subscriptionManager.dataReceived(subscriptionSetup.getSubscriptionId(), receivedBytes, monitoredRef);
+                        subscriptionManager.dataReceived(subscriptionSetup.getSubscriptionId(), receivedBytes, monitoredRef, false);
                     } else {
-                        subscriptionManager.touchSubscription(subscriptionSetup.getSubscriptionId());
+                        subscriptionManager.touchSubscription(subscriptionSetup.getSubscriptionId(), null,false);
                     }
                 }
             }

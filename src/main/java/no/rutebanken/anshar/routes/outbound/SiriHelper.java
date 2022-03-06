@@ -294,7 +294,11 @@ public class SiriHelper {
         return (list != null && !list.isEmpty());
     }
 
+
     public static Siri filterSiriPayload(Siri siri, Map<Class, Set<String>> filter) {
+        return filterSiriPayload(siri,filter, true);
+    }
+    public static Siri filterSiriPayload(Siri siri, Map<Class, Set<String>> filter, boolean shouldPerformDeepCopy) {
         if (filter == null || filter.isEmpty()) {
             logger.debug("No filter to apply");
             return siri;
@@ -303,11 +307,16 @@ public class SiriHelper {
         if (siri.getServiceDelivery() != null) {
 
             Siri filtered;
-            try {
-                filtered = SiriObjectFactory.deepCopy(siri);
-            } catch (Exception e) {
-                return siri;
+            if (shouldPerformDeepCopy){
+                try {
+                    filtered = SiriObjectFactory.deepCopy(siri);
+                } catch (Exception e) {
+                    return siri;
+                }
+            }else{
+                filtered = siri;
             }
+
 
             if (containsValues(filtered.getServiceDelivery().getVehicleMonitoringDeliveries()) |
                     containsValues(filtered.getServiceDelivery().getEstimatedTimetableDeliveries())) {

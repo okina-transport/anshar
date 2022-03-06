@@ -84,28 +84,28 @@ public class ExtendedHazelcastService extends HazelCastService {
         return hazelcast;
     }
 
-    @Override
-    public List<SerializerConfig> getSerializerConfigs() {
-
-        return Arrays.asList(
-                new SerializerConfig()
-                    .setTypeClass(EstimatedVehicleJourney.class)
-                    .setImplementation(new KryoSerializer()),
-                new SerializerConfig()
-                    .setTypeClass(PtSituationElement.class)
-                    .setImplementation(new KryoSerializer()),
-                new SerializerConfig()
-                    .setTypeClass(VehicleActivityStructure.class)
-                    .setImplementation(new KryoSerializer()),
-                new SerializerConfig()
-                    .setTypeClass(MonitoredVehicleJourneyStructure.class)
-                    .setImplementation(new KryoSerializer()),
-                new SerializerConfig()
-                    .setTypeClass(JSONObject.class)
-                    .setImplementation(new KryoSerializer())
-
-        );
-    }
+//    @Override
+//    public List<SerializerConfig> getSerializerConfigs() {
+//
+//        return Arrays.asList(
+//                new SerializerConfig()
+//                    .setTypeClass(EstimatedVehicleJourney.class)
+//                    .setImplementation(new KryoSerializer()),
+//                new SerializerConfig()
+//                    .setTypeClass(PtSituationElement.class)
+//                    .setImplementation(new KryoSerializer()),
+//                new SerializerConfig()
+//                    .setTypeClass(VehicleActivityStructure.class)
+//                    .setImplementation(new KryoSerializer()),
+//                new SerializerConfig()
+//                    .setTypeClass(MonitoredVehicleJourneyStructure.class)
+//                    .setImplementation(new KryoSerializer()),
+//                new SerializerConfig()
+//                    .setTypeClass(JSONObject.class)
+//                    .setImplementation(new KryoSerializer())
+//
+//        );
+//    }
 
     @Bean
     public IMap<SiriObjectStorageKey, PtSituationElement> getSituationsMap(){

@@ -47,6 +47,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.MediaType;
 import javax.xml.bind.JAXBException;
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 
 import static no.rutebanken.anshar.routes.HttpParameter.PARAM_DATASET_ID;
@@ -305,7 +306,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
 //                    if (stopRef != null) {
 //                        response = monitoredStopVisits.createServiceDelivery(stopRef);
 //                    } else {
-                        response = monitoredStopVisits.createServiceDelivery(requestorId, datasetId, etClientName, excludedIdList, maxSize, previewIntervalMillis);
+                        response = monitoredStopVisits.createServiceDelivery(requestorId, datasetId, etClientName, excludedIdList, maxSize, previewIntervalMillis, new HashSet<>());
 //                    }
 
                     List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(

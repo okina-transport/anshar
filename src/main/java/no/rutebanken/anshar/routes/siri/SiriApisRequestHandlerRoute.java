@@ -9,6 +9,7 @@ import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import no.rutebanken.anshar.util.ZipFileUtils;
 import org.apache.commons.io.FileUtils;
+import org.joda.time.DateTime;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -47,6 +48,8 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
     @Value("${data.format.siri:test}")
     private String dataFormat;
 
+
+
     public SiriApisRequestHandlerRoute(AnsharConfiguration config, SubscriptionManager subscriptionManager) {
         super(config, subscriptionManager);
     }
@@ -60,6 +63,10 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
 
 
     private void createSubscriptionsFromApis() throws IOException, SAXException, ParserConfigurationException, XMLStreamException {
+
+
+        long startTime = DateTime.now().toInstant().getMillis();
+
         String[] providersList = providers.split(",");
         String[] dataFormatList = dataFormat.split(",");
 
@@ -83,6 +90,12 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
                 }
             }
         }
+
+
+        long endTime = DateTime.now().toInstant().getMillis();
+        long processTime = (endTime - startTime) / 1000;
+        log.info("Siri API completed in {} seconds",processTime);
+
     }
 
     public void createSubscriptionsFromFile(String dataFormat, File file, String url, String provider) throws IOException, SAXException, ParserConfigurationException, XMLStreamException {
