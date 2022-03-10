@@ -55,6 +55,8 @@ public class HazelCastService {
     @Value("${anshar.hazelcast.clusterName}")
     private String clusterName;
 
+    private static final int HC_PORT = 5702;
+
     /**
      * Create a networked hazelcast instance, or
      * @param kubernetesService A networked hazelcast instance is only set up if
@@ -199,7 +201,7 @@ public class HazelCastService {
     }
 
     private HazelcastInstance runHazelcast(String groupName) {
-        final int HC_PORT = 5702;
+
         log.info("Launching anshar with hazelcast clusterName: " + groupName);
         // configure Hazelcast instance
         final Config cfg = new Config()
@@ -282,6 +284,7 @@ public class HazelCastService {
 //                .setAutoDetectionConfig(new AutoDetectionConfig().setEnabled(false))
                 .setTcpIpConfig(new TcpIpConfig().setEnabled(false));
         NetworkConfig networkCfg = new NetworkConfig()
+                .setPort(HC_PORT)
                 .setJoin(joinCfg);
         networkCfg.getInterfaces()
                 .setEnabled(false);
