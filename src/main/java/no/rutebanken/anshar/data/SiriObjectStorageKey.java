@@ -7,6 +7,8 @@ import java.util.StringJoiner;
 
 public class SiriObjectStorageKey implements Serializable {
 
+    private static final long serialVersionUID = 6251469909676984750L;
+
     private final String codespaceId;
     private final String lineRef;
     private final String stopRef;
