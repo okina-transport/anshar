@@ -199,7 +199,7 @@ public class HazelCastService {
     }
 
     private HazelcastInstance runHazelcast(String groupName) {
-        final int HC_PORT = 5701;
+        final int HC_PORT = 5702;
         log.info("Launching anshar with hazelcast clusterName: " + groupName);
         // configure Hazelcast instance
         final Config cfg = new Config()
