@@ -29,6 +29,7 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.json.simple.JSONObject;
 import org.rutebanken.hazelcasthelper.service.KubernetesService;
+import org.rutebanken.hazelcasthelper.service.HazelCastService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
