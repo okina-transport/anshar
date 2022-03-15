@@ -4,21 +4,37 @@ import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
+@Service
 public final class TokenService {
     private static Keycloak keycloakClient;
     private static Logger log = LoggerFactory.getLogger(TokenService.class);
 
+    @Value("${iam.keycloak.admin.client}")
+    private String clientId;
+
+    @Value("${iam.keycloak.client.secret}")
+    private String clientSecret;
+
+    @Value("${keycloak.realm}")
+    private String realm;
+
+    @Value("${keycloak.auth-server-url}")
+    private String authServerUrl;
+
     private TokenService() {
+        log.info("Token service initialized");
+        log.info("clientId:" + clientId);
+        log.info("realm:" + realm);
+        log.info("authServerUrl:" + authServerUrl);
+
     }
 
-    public static String getToken() {
+    public String getToken() {
 
         if (keycloakClient == null ){
-            String clientId = getAndValidateProperty("iam.keycloak.admin.client");
-            String clientSecret = getAndValidateProperty("iam.keycloak.client.secret");
-            String realm = getAndValidateProperty("keycloak.realm");
-            String authServerUrl = getAndValidateProperty("keycloak.auth-server-url");
 
             keycloakClient = KeycloakBuilder.builder().clientId(clientId).clientSecret(clientSecret).realm(realm).serverUrl(authServerUrl).grantType("client_credentials").build();
         }
@@ -26,11 +42,5 @@ public final class TokenService {
         return keycloakClient.tokenManager().getAccessTokenString();
     }
 
-    private static String getAndValidateProperty(String propertyKey) {
-        String propertyValue = System.getProperty(propertyKey);
-        if (propertyValue == null) {
-            log.warn("Cannot read property " + propertyKey );
-        }
-        return propertyValue;
-    }
+
 }

@@ -38,7 +38,6 @@ import java.util.stream.Collectors;
 
 public class DisruptionRetriever {
 
-    private TokenService tokenService;
 
     private static final int DEFAULT_HEARTBEAT_SECONDS = 300;
     private static final String PREFIX = "OKINA_SX_";
@@ -60,6 +59,9 @@ public class DisruptionRetriever {
     @Value("${mobi.iti.disruption.api.url}")
     private String okinaDisruptionAPIUrl;
 
+    @Autowired
+    private TokenService tokenService;
+
     String disruptionURLAPI = "http://0.0.0.0:8081/Okina/REST/disruptions/allCurrentDisruptions";
 
     public void retrieveDisruptions() {
@@ -77,7 +79,7 @@ public class DisruptionRetriever {
             connection.setRequestMethod("GET");
             connection.setRequestProperty("Content-type", "application/json");
             connection.setDoOutput(true);
-            connection.setRequestProperty("Authorization", "Bearer " + TokenService.getToken());
+            connection.setRequestProperty("Authorization", "Bearer " + tokenService.getToken());
             InputStream inputStream = connection.getInputStream();
             String disruptionsString = new BufferedReader( new InputStreamReader(inputStream, StandardCharsets.UTF_8)).lines() .collect(Collectors.joining("\n"));
 
