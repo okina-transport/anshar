@@ -27,7 +27,7 @@ public final class TokenService {
     }
 
     private static String getAndValidateProperty(String propertyKey) {
-        String propertyValue = System.getenv(propertyKey);
+        String propertyValue = System.getProperty(propertyKey);
         if (propertyValue == null) {
             log.warn("Cannot read property " + propertyKey );
         }
