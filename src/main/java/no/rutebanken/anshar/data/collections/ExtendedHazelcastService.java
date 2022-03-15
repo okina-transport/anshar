@@ -28,8 +28,8 @@ import no.rutebanken.anshar.routes.outbound.OutboundSubscriptionSetup;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.json.simple.JSONObject;
-import org.rutebanken.hazelcasthelper.service.HazelCastService;
 import org.rutebanken.hazelcasthelper.service.KubernetesService;
+import org.rutebanken.hazelcasthelper.service.HazelCastService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -84,28 +84,28 @@ public class ExtendedHazelcastService extends HazelCastService {
         return hazelcast;
     }
 
-    @Override
-    public List<SerializerConfig> getSerializerConfigs() {
-
-        return Arrays.asList(
-                new SerializerConfig()
-                    .setTypeClass(EstimatedVehicleJourney.class)
-                    .setImplementation(new KryoSerializer()),
-                new SerializerConfig()
-                    .setTypeClass(PtSituationElement.class)
-                    .setImplementation(new KryoSerializer()),
-                new SerializerConfig()
-                    .setTypeClass(VehicleActivityStructure.class)
-                    .setImplementation(new KryoSerializer()),
-                new SerializerConfig()
-                    .setTypeClass(MonitoredVehicleJourneyStructure.class)
-                    .setImplementation(new KryoSerializer()),
-                new SerializerConfig()
-                    .setTypeClass(JSONObject.class)
-                    .setImplementation(new KryoSerializer())
-
-        );
-    }
+//    @Override
+//    public List<SerializerConfig> getSerializerConfigs() {
+//
+//        return Arrays.asList(
+//                new SerializerConfig()
+//                    .setTypeClass(EstimatedVehicleJourney.class)
+//                    .setImplementation(new KryoSerializer()),
+//                new SerializerConfig()
+//                    .setTypeClass(PtSituationElement.class)
+//                    .setImplementation(new KryoSerializer()),
+//                new SerializerConfig()
+//                    .setTypeClass(VehicleActivityStructure.class)
+//                    .setImplementation(new KryoSerializer()),
+//                new SerializerConfig()
+//                    .setTypeClass(MonitoredVehicleJourneyStructure.class)
+//                    .setImplementation(new KryoSerializer()),
+//                new SerializerConfig()
+//                    .setTypeClass(JSONObject.class)
+//                    .setImplementation(new KryoSerializer())
+//
+//        );
+//    }
 
     @Bean
     public IMap<SiriObjectStorageKey, PtSituationElement> getSituationsMap(){

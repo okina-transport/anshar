@@ -154,7 +154,7 @@ public class SubscriptionManager {
         if (setup.isActive()) {
             activatePendingSubscription(subscriptionId);
         }
-        logStats();
+      //  logStats();
     }
 
     public boolean removeSubscription(String subscriptionId) {
@@ -177,7 +177,7 @@ public class SubscriptionManager {
             addSubscription(subscriptionId, setup);
         }
 
-        logStats();
+     //   logStats();
 
         logger.info("Removed subscription {}, found: {}", (setup !=null ? setup.toString():subscriptionId), found);
         return found;
@@ -188,22 +188,28 @@ public class SubscriptionManager {
     }
 
     public boolean touchSubscription(String subscriptionId, String monitoredRef) {
+        return touchSubscription(subscriptionId,monitoredRef, true);
+    }
+
+    public boolean touchSubscription(String subscriptionId, String monitoredRef, boolean shouldLogSuccess) {
         SubscriptionSetup setup = subscriptions.get(subscriptionId);
         hit(subscriptionId);
 
         boolean success = (setup != null);
 
-        if (monitoredRef != null ){
-            logger.info("Touched subscription {}, monitoredObjects:{}, success:{}", setup,monitoredRef, success);
-        }else{
-            logger.info("Touched subscription {}, success:{}", setup, success);
+        if (shouldLogSuccess){
+            if (monitoredRef != null ){
+                logger.info("Touched subscription {}, monitoredObjects:{}, success:{}", setup,monitoredRef, success);
+            }else{
+                logger.info("Touched subscription {}, success:{}", setup, success);
+            }
         }
 
         if (success) {
             lastActivity.put(subscriptionId, Instant.now());
         }
 
-        logStats();
+        // logStats();
         return success;
     }
 
@@ -291,16 +297,23 @@ public class SubscriptionManager {
 
     public boolean activatePendingSubscription(String subscriptionId) {
         SubscriptionSetup subscriptionSetup = subscriptions.get(subscriptionId);
+
         if (subscriptionSetup != null) {
             subscriptionSetup.setActive(true);
+            boolean shouldLogSuccess = !subscriptionSetup.getVendor().contains("AURA-MULTITUD-CITYWAY-SIRI-");
             // Subscriptions are inserted as immutable - need to replace previous value
             subscriptions.put(subscriptionId, subscriptionSetup);
             lastActivity.put(subscriptionId, Instant.now());
             activatedTimestamp.put(subscriptionId, Instant.now());
             retryCountMap.put(subscriptionId,0);
-            logger.info("Pending subscription {} activated", subscriptions.get(subscriptionId));
+            if (shouldLogSuccess){
+                logger.info("Pending subscription {} activated", subscriptions.get(subscriptionId));
+            }
+
             if (!dataReceived.containsKey(subscriptionId)) {
-                dataReceived(subscriptionId);
+
+
+                dataReceived(subscriptionId,shouldLogSuccess);
             }
             if (!receivedBytes.containsKey(subscriptionId)) {
                 receivedBytes.set(subscriptionId, 0L);
@@ -783,8 +796,16 @@ public class SubscriptionManager {
         dataReceived(subscriptionId, 0);
     }
 
+    public void dataReceived(String subscriptionId, boolean shouldLogSuccess) {
+        dataReceived(subscriptionId, 0,null , shouldLogSuccess);
+    }
+
     public void dataReceived(String subscriptionId, int receivedByteCount, String monitoredRef) {
-        touchSubscription(subscriptionId, monitoredRef);
+        dataReceived( subscriptionId,  receivedByteCount,  monitoredRef, true);
+    }
+
+    public void dataReceived(String subscriptionId, int receivedByteCount, String monitoredRef, boolean shouldLogSuccess) {
+        touchSubscription(subscriptionId, monitoredRef, shouldLogSuccess);
         if (isActiveSubscription(subscriptionId)) {
             dataReceived.put(subscriptionId, Instant.now());
 

@@ -27,7 +27,7 @@
 
     <groupId>no.rutebanken.anshar</groupId>
     <artifactId>anshar</artifactId>
-    <version>1.1.0-mobi-iti-SNAPSHOT</version>
+    <version>1.1.1-mobi-iti-SNAPSHOT</version>
     <packaging>jar</packaging>
 
 
@@ -43,12 +43,10 @@
 
         <metrics.version>3.2.3</metrics.version>
         <okina.helpers.version>1.0.24-SNAPSHOT</okina.helpers.version>
-
         <sonar.projectKey>mobi-iti:anshar</sonar.projectKey>
         <protobuf.version>3.19.3</protobuf.version>
         <gtfs.realtime-bindings.version>0.0.4</gtfs.realtime-bindings.version>
         <version.lombok>1.18.16</version.lombok>
-
 
     </properties>
 
@@ -320,6 +318,16 @@
             <artifactId>gtfs-realtime-bindings</artifactId>
             <version>${gtfs.realtime-bindings.version}</version>
         </dependency>
+
+        <!-- Kryo zero configuration -->
+        <dependency>
+            <groupId>info.jerrinot</groupId>
+            <artifactId>subzero-all</artifactId>
+            <version>0.6</version>
+        </dependency>
+
+
+
 
         <!-- testing -->
         <dependency>

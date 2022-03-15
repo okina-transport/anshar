@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.routes.siri.handlers;
 
+import io.micrometer.core.instrument.util.StringUtils;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.EstimatedTimetables;
 import no.rutebanken.anshar.data.MonitoredStopVisits;
@@ -227,15 +228,22 @@ public class SiriHandler {
                 }
 
 
-                Siri siri = vehicleActivities.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize);
+                Set<String> lineRefList = filterMap.get(LineRef.class) != null ? filterMap.get(LineRef.class): new HashSet<>();
+                Set<String> vehicleRefList = filterMap.get(VehicleRef.class) != null ? filterMap.get(VehicleRef.class): new HashSet<>();
 
-                serviceResponse = SiriHelper.filterSiriPayload(siri, filterMap);
-                List<String> invalidDataReferences  = filterMap.get(LineRef.class).stream()
-                                                            .filter(lineRef -> !subscriptionManager.isLineRefExistingInSubscriptions(lineRef))
-                                                            .collect(Collectors.toList());
+                Siri siri = vehicleActivities.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize,lineRefList,vehicleRefList);
+                serviceResponse = siri;
+
+                if (filterMap.get(LineRef.class) != null){
+                    List<String> invalidDataReferences  = filterMap.get(LineRef.class).stream()
+                            .filter(lineRef -> !subscriptionManager.isLineRefExistingInSubscriptions(lineRef))
+                            .collect(Collectors.toList());
 
 
-                handleInvalidDataReferences(serviceResponse,invalidDataReferences);
+                    handleInvalidDataReferences(serviceResponse,invalidDataReferences);
+                }
+
+
                 String requestMsgRef = siri.getServiceDelivery().getRequestMessageRef().getValue();
                 logger.info("Filtering done. Returning :  {} for requestorRef {}", countVehicleActivityResults(serviceResponse), requestMsgRef);
 
@@ -258,17 +266,25 @@ public class SiriHandler {
                     previewIntervalInMillis = previewInterval.getTimeInMillis(new Date());
                 }
 
+                String monitoringStringList = null;
                 for (StopMonitoringRequestStructure req : serviceRequest.getStopMonitoringRequests()) {
                     MonitoringRefStructure monitoringRef = req.getMonitoringRef();
                     if (monitoringRef != null) {
                         Set<String> monitoringRefs = filterMap.get(MonitoringRefStructure.class) != null ? filterMap.get(MonitoringRefStructure.class): new HashSet<>();
                         monitoringRefs.add(monitoringRef.getValue());
                         filterMap.put(MonitoringRefStructure.class, monitoringRefs);
+
+                        if (StringUtils.isEmpty(monitoringStringList)){
+                            monitoringStringList = monitoringRef.getValue();
+                        }else{
+                            monitoringStringList = monitoringStringList + "|" + monitoringRef.getValue();
+                        }
                     }
                 }
 
-                Siri siri = monitoredStopVisits.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize);
-                serviceResponse = SiriHelper.filterSiriPayload(siri, filterMap);
+                Set<String> monitoringRefs = filterMap.get(MonitoringRefStructure.class) != null ? filterMap.get(MonitoringRefStructure.class): new HashSet<>();
+                serviceResponse = monitoredStopVisits.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, monitoringRefs);
+                logger.info("Asking for service delivery for requestorId={}, monitoringRef={}, clientTrackingName={}", requestorRef, monitoringStringList, clientTrackingName);
             }
 
 
@@ -706,9 +722,9 @@ public class SiriHandler {
 
                 for (SubscriptionSetup subscriptionSetup : subscriptionSetupList) {
                     if (deliveryContainsData) {
-                        subscriptionManager.dataReceived(subscriptionSetup.getSubscriptionId(), receivedBytes, monitoredRef);
+                        subscriptionManager.dataReceived(subscriptionSetup.getSubscriptionId(), receivedBytes, monitoredRef, false);
                     } else {
-                        subscriptionManager.touchSubscription(subscriptionSetup.getSubscriptionId());
+                        subscriptionManager.touchSubscription(subscriptionSetup.getSubscriptionId(), null,false);
                     }
                 }
             }

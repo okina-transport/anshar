@@ -228,8 +228,10 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
         return siriObjectFactory.createVMServiceDelivery(vehicleActivityStructures);
     }
 
-
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientName, List<String> excludedDatasetIds, int maxSize) {
+        return createServiceDelivery(requestorId,datasetId,clientName,excludedDatasetIds, maxSize, null, null);
+    }
+    public Siri createServiceDelivery(String requestorId, String datasetId, String clientName, List<String> excludedDatasetIds, int maxSize, Set<String> linerefSet, Set<String> vehicleRefSet) {
         requestorRefRepository.touchRequestorRef(requestorId, datasetId, clientName, SiriDataType.VEHICLE_MONITORING);
 
         int trackingPeriodMinutes = configuration.getTrackingPeriodMinutes();
@@ -242,13 +244,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
             isAdHocRequest = true;
         }
 
-        // Get all relevant ids
-        Set<SiriObjectStorageKey> allIds = new HashSet<>();
-        Set<SiriObjectStorageKey> idSet = changesMap.getOrDefault(requestorId, allIds);
-
-        if (idSet == allIds) {
-            idSet.addAll(monitoredVehicles.keySet());
-        }
+        Set<SiriObjectStorageKey> idSet = generateIdSet(requestorId, linerefSet, vehicleRefSet);
 
         Set<SiriObjectStorageKey> requestedIds = filterIdsByDataset(idSet, excludedDatasetIds, datasetId);
 
@@ -285,6 +281,73 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
         }
 
         return siri;
+    }
+
+
+    /**
+     * Generates a set of keys that must be recovered from cache, matching the user's request
+     * @param requestorId
+     *     user id
+     * @param linerefSet
+     *     Line filters
+     * @param vehicleRefSet
+     *     Vehicle v=filters
+     * @return
+     *     A set of keys that matches with line filters and vehicle filters
+     */
+    private  Set<SiriObjectStorageKey> generateIdSet(String requestorId, Set<String> linerefSet, Set<String> vehicleRefSet){
+        // Get all relevant ids
+        Set<SiriObjectStorageKey> allIds = new HashSet<>();
+        Set<SiriObjectStorageKey> idSet = new HashSet<>();
+
+        boolean isLineFilterActivated = linerefSet != null && linerefSet.size() > 0;
+        boolean isVehicleFilterActivated = vehicleRefSet != null && vehicleRefSet.size() > 0;
+
+        if (isLineFilterActivated || isVehicleFilterActivated){
+            idSet.addAll(monitoredVehicles.keySet(entry -> isKeyCompliantWithFilters(entry.getKey(), linerefSet, vehicleRefSet)));
+            return idSet;
+        }
+
+        idSet = changesMap.getOrDefault(requestorId, allIds);
+
+        if (idSet == allIds) {
+            idSet.addAll(monitoredVehicles.keySet());
+        }
+        return idSet;
+    }
+
+
+    /**
+     * Determines if a key is compliant or not with filters given as parameters
+     *
+     * @param key
+     *  The key to check
+     * @param linerefSet
+     *  The optional filters on lines
+     * @param vehicleRefSet
+     *  The optional filters on vehicles
+     * @return
+     *  true :the key is compliant with filters
+     *  false : the key is not compliant
+     */
+    private boolean isKeyCompliantWithFilters(SiriObjectStorageKey key, Set<String> linerefSet, Set<String> vehicleRefSet){
+
+        boolean isLineFilterActivated = linerefSet != null && linerefSet.size() > 0;
+        boolean isVehicleFilterActivated = vehicleRefSet != null && vehicleRefSet.size() > 0;
+
+        if (isLineFilterActivated && !isVehicleFilterActivated){
+            return linerefSet.contains(key.getLineRef());
+        }
+
+        if (!isLineFilterActivated && isVehicleFilterActivated){
+            return vehicleRefSet.contains(key.getKey());
+        }
+
+        if (isLineFilterActivated && isVehicleFilterActivated){
+            return linerefSet.contains(key.getLineRef()) && vehicleRefSet.contains(key.getKey());
+        }
+
+        return true;
     }
 
     public long getExpiration(VehicleActivityStructure a) {
@@ -482,7 +545,8 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
             key.append(vehicleRefvalue);
         }
 
-        return new SiriObjectStorageKey(datasetId, null, key.toString());
+        String lineRef = monitoredVehicleJourney.getLineRef() == null ? null :  monitoredVehicleJourney.getLineRef().getValue();
+        return new SiriObjectStorageKey(datasetId, lineRef, key.toString());
 
     }
 }

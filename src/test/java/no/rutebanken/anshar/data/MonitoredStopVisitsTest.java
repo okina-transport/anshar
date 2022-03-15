@@ -30,6 +30,7 @@ import uk.org.siri.siri20.Siri;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -241,7 +242,7 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
     }
 
     private void assertExcludedId(String excludedDatasetId) {
-        Siri serviceDelivery = monitoredStopVisits.createServiceDelivery(null, null, null, Arrays.asList(excludedDatasetId), 100, -1);
+        Siri serviceDelivery = monitoredStopVisits.createServiceDelivery(null, null, null, Arrays.asList(excludedDatasetId), 100, -1, new HashSet<>());
 
         List<MonitoredStopVisit> monitoredStopVisits = serviceDelivery.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits();
 
