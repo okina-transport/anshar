@@ -536,8 +536,7 @@ public class SiriHandler {
                                             logger.info(getErrorContents(sm.getErrorCondition()));
                                         } else {
                                             if (sm.getMonitoredStopVisits() != null) {
-                                                addedOrUpdated.addAll(
-                                                        monitoredStopVisits.addAll(subscriptionSetup.getDatasetId(), sm.getMonitoredStopVisits()));
+                                                addedOrUpdated.addAll(ingestStopVisits(subscriptionSetup.getDatasetId(), sm.getMonitoredStopVisits()));
                                             }
                                         }
                                     }
@@ -735,6 +734,10 @@ public class SiriHandler {
 
     public Collection<VehicleActivityStructure> ingestVehicleActivities(String subscriptionId, List<VehicleActivityStructure> incomingVehicleActivities) {
         return vehicleActivities.addAll(subscriptionId, incomingVehicleActivities);
+    }
+
+    public Collection<MonitoredStopVisit> ingestStopVisits(String subscriptionId, List<MonitoredStopVisit> incomingMonitoredStopVisits) {
+        return monitoredStopVisits.addAll(subscriptionId, incomingMonitoredStopVisits);
     }
 
 

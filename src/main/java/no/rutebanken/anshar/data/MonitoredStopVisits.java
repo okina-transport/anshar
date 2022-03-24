@@ -396,7 +396,6 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         smList.stream()
                 .filter(monitoredStopVisit -> monitoredStopVisit.getMonitoringRef() != null)
-                .filter(monitoredStopVisit -> monitoredStopVisit.getItemIdentifier() != null)
                 .filter(monitoredStopVisit -> monitoredStopVisit.getRecordedAtTime() != null)
                 .forEach(monitoredStopVisit -> {
 

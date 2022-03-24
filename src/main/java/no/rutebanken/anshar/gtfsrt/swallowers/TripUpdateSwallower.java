@@ -12,7 +12,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.org.siri.siri20.EstimatedVehicleJourney;
+import uk.org.siri.siri20.MonitoredStopVisit;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -35,12 +39,11 @@ public class TripUpdateSwallower extends AbstractSwallower {
     @Autowired
     private SiriHandler handler;
 
+    private static final String SUBSCRIPTION_ID = "GTFS-RT";
+
 
 
     public TripUpdateSwallower() {
-        prefix = "GTFS-RT_ET_";
-        dataType = SiriDataType.ESTIMATED_TIMETABLE;
-        requestType = RequestType.GET_ESTIMATED_TIMETABLE;
     }
 
 
@@ -51,17 +54,78 @@ public class TripUpdateSwallower extends AbstractSwallower {
      *      The complete message (GTFS-RT format)
      */
     public void ingestTripUpdateData(GtfsRealtime.FeedMessage completeGTFSRTMessage ){
-        List<EstimatedVehicleJourney> estimatedVehicleJourneys = buildEstimatedVehicleJourneyList(completeGTFSRTMessage);
-        List<String> subscriptionList = getSubscriptions(estimatedVehicleJourneys) ;
-        checkAndCreateSubscriptions(subscriptionList);
 
-        Collection<EstimatedVehicleJourney> ingestedEstimatedTimetables = handler.ingestEstimatedTimeTables("GTFS-RT", estimatedVehicleJourneys);
+        //// ESTIMATED TIME TABLES
+        List<EstimatedVehicleJourney> estimatedVehicleJourneys = buildEstimatedVehicleJourneyList(completeGTFSRTMessage);
+        List<String> etSubscriptionList = getSubscriptionsFromEstimatedTimeTables(estimatedVehicleJourneys) ;
+        checkAndCreateSubscriptions(etSubscriptionList, "GTFS-RT_ET_",SiriDataType.ESTIMATED_TIMETABLE, RequestType.GET_ESTIMATED_TIMETABLE);
+
+        Collection<EstimatedVehicleJourney> ingestedEstimatedTimetables = handler.ingestEstimatedTimeTables(SUBSCRIPTION_ID, estimatedVehicleJourneys);
 
         for (EstimatedVehicleJourney estimatedVehicleJourney : ingestedEstimatedTimetables) {
             subscriptionManager.touchSubscription(prefix + estimatedVehicleJourney.getDatedVehicleJourneyRef().getValue());
         }
 
-        logger.info("Ingested trip updates {} on {} ", ingestedEstimatedTimetables.size(), estimatedVehicleJourneys.size());
+        logger.info("Ingested estimated time tables {} on {} ", ingestedEstimatedTimetables.size(), estimatedVehicleJourneys.size());
+
+
+
+        //// STOP VISITS
+        List<MonitoredStopVisit> stopVisits = buildStopVisitList(completeGTFSRTMessage);
+        List<String> visitSubscriptionList = getSubscriptionsFromVisits(stopVisits) ;
+        checkAndCreateSubscriptions(visitSubscriptionList, "GTFS-RT_SM_", SiriDataType.STOP_MONITORING, RequestType.GET_STOP_MONITORING);
+
+        Collection<MonitoredStopVisit> ingestedVisits = handler.ingestStopVisits(SUBSCRIPTION_ID, stopVisits);
+
+        for (MonitoredStopVisit visit : ingestedVisits) {
+            subscriptionManager.touchSubscription("GTFS-RT_SM_" + visit.getMonitoringRef().getValue());
+        }
+
+        logger.info("Ingested stop Times {} on {} ", ingestedVisits.size(), stopVisits.size());
+    }
+
+
+    /**
+     * Read all stopVisit messages and build a list of subscriptions that must be checked(or created if not exists)
+     * @param stopVisits
+     *      The list of stop visits
+     * @return
+     *      The list of subscription ids build by reading the visits
+     */
+    private List<String> getSubscriptionsFromVisits(List<MonitoredStopVisit> stopVisits) {
+
+        return stopVisits.stream()
+                            .filter(visit -> visit.getMonitoringRef() != null &&  visit.getMonitoringRef().getValue() != null)
+                            .map(visit -> visit.getMonitoringRef().getValue())
+                            .collect(Collectors.toList());
+
+
+    }
+
+    /**
+     * Read the complete GTS-RT message and build a list of stop visits to integrate
+     * @param feedMessage
+     *         The complete message (GTFS-RT format)
+     * @return
+     *         A list of visits, build by mapping trip updates from GTFS-RT message
+     */
+    private List<MonitoredStopVisit> buildStopVisitList(GtfsRealtime.FeedMessage feedMessage) {
+        List<MonitoredStopVisit> stopVisits = new ArrayList<>();
+
+        long recordedAtTimeLong = feedMessage.getHeader().getTimestamp();
+        ZonedDateTime recordedAtTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(recordedAtTimeLong * 1000), ZoneId.systemDefault());
+
+        for (GtfsRealtime.FeedEntity feedEntity : feedMessage.getEntityList()) {
+            if (feedEntity.getTripUpdate() == null)
+                continue;
+
+            List<MonitoredStopVisit> currentStopVisitList = TripUpdateMapper.mapStopVisitFromTripUpdate(feedEntity.getTripUpdate());
+            stopVisits.addAll(currentStopVisitList);
+        }
+
+        stopVisits.forEach(stopVisit -> stopVisit.setRecordedAtTime(recordedAtTime));
+
+        return stopVisits;
 
     }
 
@@ -95,7 +159,7 @@ public class TripUpdateSwallower extends AbstractSwallower {
      * @return
      *      The list of subscription ids build by reading the estimated time tables
      */
-    private List<String> getSubscriptions(List<EstimatedVehicleJourney> estimatedVehicleJourneys) {
+    private List<String> getSubscriptionsFromEstimatedTimeTables(List<EstimatedVehicleJourney> estimatedVehicleJourneys) {
         return estimatedVehicleJourneys.stream()
                 .filter(estimatedVehicleJourney -> estimatedVehicleJourney.getDatedVehicleJourneyRef() != null &&  estimatedVehicleJourney.getDatedVehicleJourneyRef().getValue() != null)
                 .map(estimatedVehicleJourney -> estimatedVehicleJourney.getDatedVehicleJourneyRef().getValue())
@@ -106,26 +170,41 @@ public class TripUpdateSwallower extends AbstractSwallower {
     /***
      * Read the list of subscription ids and for each, check if it exists. If not, a new subscription is created
      * @param subscriptionsList
+     * @param customPrefix
      *  The list of subscription ids
      */
-    private void checkAndCreateSubscriptions(List<String> subscriptionsList) {
+    private void checkAndCreateSubscriptions(List<String> subscriptionsList, String customPrefix, SiriDataType dataType, RequestType requestType) {
 
-        for (String vehicleJourneyRef : subscriptionsList) {
-            if (subscriptionManager.isSubscriptionExisting(prefix + vehicleJourneyRef))
+        for (String subscriptionId : subscriptionsList) {
+            if (subscriptionManager.isSubscriptionExisting(customPrefix + subscriptionId))
                 //A subscription is already existing for this vehicle journey. No need to create one
                 continue;
-            createNewSubscriptionForVehicleJourneyRef(vehicleJourneyRef);
+            createNewSubscription(subscriptionId,customPrefix, dataType, requestType);
         }
     }
 
     /**
-     * Create a new subscription for the vehicleRef given in parameter
-     * @param vehicleJourneyRef
-     *      The vehicle journey for which a subscription must be created
+     * Create a new subscription for the ref given in parameter
+     * @param ref
+     *      The id for which a subscription must be created
+     * @param customPrefix
+     * @param dataType
+     * @param requestType
      */
-    private void createNewSubscriptionForVehicleJourneyRef(String vehicleJourneyRef){
-        SubscriptionSetup setup = createStandardSubscription(vehicleJourneyRef);
-        subscriptionManager.addSubscription(vehicleJourneyRef,setup);
+    private void createNewSubscription(String ref, String customPrefix, SiriDataType dataType, RequestType requestType){
+        SubscriptionSetup setup = createStandardSubscription(ref);
+        String subscriptionId = customPrefix + ref;
+        setup.setName(subscriptionId);
+        setup.setSubscriptionType(dataType);
+        setup.setSubscriptionId(subscriptionId);
+        setup.getUrlMap().clear();
+        setup.getUrlMap().put(requestType,url);
+        subscriptionManager.addSubscription(ref,setup);
     }
+
+
+
+
+
 
 }
