@@ -58,7 +58,7 @@ public class TripUpdateSwallower extends AbstractSwallower {
         Collection<EstimatedVehicleJourney> ingestedEstimatedTimetables = handler.ingestEstimatedTimeTables("GTFS-RT", estimatedVehicleJourneys);
 
         for (EstimatedVehicleJourney estimatedVehicleJourney : ingestedEstimatedTimetables) {
-            subscriptionManager.touchSubscription(prefix + estimatedVehicleJourney.getDatedVehicleJourneyRef().getValue());
+            subscriptionManager.touchSubscription(prefix + estimatedVehicleJourney.getDatedVehicleJourneyRef().getValue(), false);
         }
 
         logger.info("Ingested trip updates {} on {} ", ingestedEstimatedTimetables.size(), estimatedVehicleJourneys.size());

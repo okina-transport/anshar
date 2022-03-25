@@ -187,6 +187,11 @@ public class SubscriptionManager {
     return touchSubscription(subscriptionId,null);
     }
 
+    public boolean touchSubscription(String subscriptionId, boolean shouldLogSuccess) {
+        return touchSubscription(subscriptionId,null,shouldLogSuccess);
+    }
+
+
     public boolean touchSubscription(String subscriptionId, String monitoredRef) {
         return touchSubscription(subscriptionId,monitoredRef, true);
     }
@@ -300,7 +305,7 @@ public class SubscriptionManager {
 
         if (subscriptionSetup != null) {
             subscriptionSetup.setActive(true);
-            boolean shouldLogSuccess = !subscriptionSetup.getVendor().contains("AURA-MULTITUD-CITYWAY-SIRI-");
+            boolean shouldLogSuccess = !subscriptionSetup.getVendor().contains("AURA-MULTITUD-CITYWAY-SIRI-") && !subscriptionSetup.getContentType().equals("GTFS-RT");
             // Subscriptions are inserted as immutable - need to replace previous value
             subscriptions.put(subscriptionId, subscriptionSetup);
             lastActivity.put(subscriptionId, Instant.now());
