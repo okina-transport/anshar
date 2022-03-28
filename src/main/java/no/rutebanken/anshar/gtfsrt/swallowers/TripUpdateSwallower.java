@@ -78,7 +78,7 @@ public class TripUpdateSwallower extends AbstractSwallower {
         Collection<MonitoredStopVisit> ingestedVisits = handler.ingestStopVisits(SUBSCRIPTION_ID, stopVisits);
 
         for (MonitoredStopVisit visit : ingestedVisits) {
-            subscriptionManager.touchSubscription("GTFS-RT_SM_" + visit.getMonitoringRef().getValue());
+            subscriptionManager.touchSubscription("GTFS-RT_SM_" + visit.getMonitoringRef().getValue(),false);
         }
 
         logger.info("Ingested stop Times {} on {} ", ingestedVisits.size(), stopVisits.size());
