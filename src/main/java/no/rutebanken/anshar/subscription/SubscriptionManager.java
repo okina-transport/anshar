@@ -305,7 +305,7 @@ public class SubscriptionManager {
 
         if (subscriptionSetup != null) {
             subscriptionSetup.setActive(true);
-            boolean shouldLogSuccess = !subscriptionSetup.getVendor().contains("AURA-MULTITUD-CITYWAY-SIRI-") && !subscriptionSetup.getContentType().equals("GTFS-RT");
+            boolean shouldLogSuccess = !subscriptionSetup.getVendor().contains("AURA-MULTITUD-CITYWAY-SIRI-") && (subscriptionSetup.getContentType() == null || !subscriptionSetup.getContentType().equals("GTFS-RT"));
             // Subscriptions are inserted as immutable - need to replace previous value
             subscriptions.put(subscriptionId, subscriptionSetup);
             lastActivity.put(subscriptionId, Instant.now());
