@@ -81,7 +81,7 @@ public class VehiclePositionSwallower extends AbstractSwallower {
 
 
         for ( VehicleActivityStructure  vehicleActivity : ingestedVehicleJourneys) {
-            subscriptionManager.touchSubscription(prefix + vehicleActivity.getMonitoredVehicleJourney().getLineRef().getValue());
+            subscriptionManager.touchSubscription(prefix + vehicleActivity.getMonitoredVehicleJourney().getLineRef().getValue(), false);
         }
 
         logger.info("Ingested vehicle positions {} on {} ", ingestedVehicleJourneys.size(), availableActivities.size());

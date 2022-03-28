@@ -60,7 +60,7 @@ public class AlertSwallower extends AbstractSwallower {
 
 
         for (PtSituationElement situation : ingestedSituations) {
-            subscriptionManager.touchSubscription(prefix + getSituationSubscriptionId(situation));
+            subscriptionManager.touchSubscription(prefix + getSituationSubscriptionId(situation), false);
         }
 
         logger.info("Ingested alerts {} on {} ", ingestedSituations.size(), situations.size());

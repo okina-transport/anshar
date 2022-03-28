@@ -90,37 +90,37 @@ public class Situations extends SiriRepository<PtSituationElement> {
         situationElements.addEntryListener(new MapEntryListener<SiriObjectStorageKey, PtSituationElement>() {
             @Override
             public void mapEvicted(MapEvent mapEvent) {
-                logger.info("Map evicted - {} entries affected", mapEvent.getNumberOfEntriesAffected());
+                logger.debug("Map evicted - {} entries affected", mapEvent.getNumberOfEntriesAffected());
             }
 
             @Override
             public void mapCleared(MapEvent mapEvent) {
-                logger.info("Map cleared - {} entries affected", mapEvent.getNumberOfEntriesAffected());
+                logger.debug("Map cleared - {} entries affected", mapEvent.getNumberOfEntriesAffected());
             }
 
             @Override
             public void entryUpdated(EntryEvent<SiriObjectStorageKey, PtSituationElement> entryEvent) {
-                logger.info("Updated SX message with key {}", entryEvent.getKey().getKey());
+                logger.debug("Updated SX message with key {}", entryEvent.getKey().getKey());
             }
 
             @Override
             public void entryRemoved(EntryEvent<SiriObjectStorageKey, PtSituationElement> entryEvent) {
-                logger.info("Removed SX message with key {}", entryEvent.getKey().getKey());
+                logger.debug("Removed SX message with key {}", entryEvent.getKey().getKey());
             }
 
             @Override
             public void entryMerged(EntryEvent<SiriObjectStorageKey, PtSituationElement> entryEvent) {
-                logger.info("Merged SX message with key {}", entryEvent.getKey().getKey());
+                logger.debug("Merged SX message with key {}", entryEvent.getKey().getKey());
             }
 
             @Override
             public void entryEvicted(EntryEvent<SiriObjectStorageKey, PtSituationElement> entryEvent) {
-                logger.info("Evicted SX message with key {}", entryEvent.getKey().getKey());
+                logger.debug("Evicted SX message with key {}", entryEvent.getKey().getKey());
             }
 
             @Override
             public void entryAdded(EntryEvent<SiriObjectStorageKey, PtSituationElement> entryEvent) {
-                logger.info("Added SX message with key {}", entryEvent.getKey().getKey());
+                logger.debug("Added SX message with key {}", entryEvent.getKey().getKey());
             }
         }, false);
     }
