@@ -246,16 +246,24 @@
                         </xsl:element>
                     </xsl:when>
                     <xsl:otherwise>
-                        <xsl:element name="{concat('Get',substring-before(local-name(),'Request'))}"
-                                     namespace="{$operatorNamespace}">
+                        <xsl:element name="{concat('wsdl:Get',substring-before(local-name(),'Request'))}"
+                                     namespace="http://wsdl.siri.org.uk">
                             <xsl:element name="ServiceRequestInfo">
                                 <xsl:copy-of select="../siri:ServiceRequestContext" copy-namespaces="no"/>
-                                <xsl:copy-of select="../siri:RequestTimestamp" copy-namespaces="no"/>
                                 <xsl:copy-of select="../siri:Address" copy-namespaces="no"/>
-                                <xsl:copy-of select="../siri:RequestorRef" copy-namespaces="no"/>
-                                <xsl:copy-of select="../siri:MessageIdentifier" copy-namespaces="no"/>
+                                <xsl:element name="siri:RequestTimestamp">
+                                    <xsl:value-of select="../siri:RequestTimestamp"/>
+                                </xsl:element>
+                                <xsl:element name="siri:RequestorRef">
+                                    <xsl:value-of select="../siri:RequestorRef"/>
+                                </xsl:element>
+                                <xsl:element name="siri:MessageIdentifier">
+                                    <xsl:value-of select="../siri:MessageIdentifier"/>
+                                </xsl:element>
                                 <xsl:copy-of select="../siri:ConsumerAddress" copy-namespaces="no"/>
                             </xsl:element>
+
+
                             <xsl:element name="Request">
                                 <xsl:attribute name="version">
                                     <xsl:value-of select="/siri:Siri/@version"/>
