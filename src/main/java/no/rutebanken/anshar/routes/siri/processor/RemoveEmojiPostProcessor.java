@@ -76,13 +76,17 @@ public class RemoveEmojiPostProcessor extends ValueAdapter implements PostProces
                 String cleanedValue = "";
 
                 boolean characterRemoved = false;
-                for (char c : value.toCharArray()) {
-                    if (c <= 500 || specialCharactersToKeep.contains(c)) {
-                        cleanedValue += (char) c;
-                    } else {
-                        characterRemoved = true;
+                if (value != null){
+                    for (char c : value.toCharArray()) {
+                        if (c <= 500 || specialCharactersToKeep.contains(c)) {
+                            cleanedValue += (char) c;
+                        } else {
+                            characterRemoved = true;
+                        }
                     }
+
                 }
+
 
                 if (characterRemoved) {
                     logger.info("Removed emoji-like character from text [{}].", value);

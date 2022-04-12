@@ -396,6 +396,12 @@ public class Situations extends SiriRepository<PtSituationElement> {
         return addedData;
     }
 
+    public void removeSituation(String datasetId,PtSituationElement situation ){
+
+        SiriObjectStorageKey key = createKey(datasetId, situation);
+        situationElements.delete(key);
+        checksumCache.remove(key);
+    }
     private boolean keepByProgressStatus(PtSituationElement situation) {
         if (situation.getProgress() != null) {
             switch (situation.getProgress()) {

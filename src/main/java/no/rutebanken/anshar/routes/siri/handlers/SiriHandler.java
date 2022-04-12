@@ -749,6 +749,10 @@ public class SiriHandler {
         return situations.addAll(subscriptionId, incomingSituations);
     }
 
+    public void removeSituation(String datasetId,PtSituationElement situation ){
+        situations.removeSituation(datasetId, situation );
+    }
+
 
     /**
      * Read incoming data to find the stopRefs (to identify which stops has received data)

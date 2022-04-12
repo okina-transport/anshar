@@ -207,17 +207,25 @@ public class SiriObjectFactory {
         request.setRequestorRef(createRequestorRef(subscriptionSetup.getRequestorRef()));
 
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.SITUATION_EXCHANGE)) {
-            request.getSituationExchangeRequests().add(createSituationExchangeRequestStructure(subscriptionSetup.getPreviewInterval()));
+            SituationExchangeRequestStructure sxRequestStruct = createSituationExchangeRequestStructure(subscriptionSetup.getPreviewInterval());
+            request.setMessageIdentifier(sxRequestStruct.getMessageIdentifier());
+            request.getSituationExchangeRequests().add(sxRequestStruct);
 
         }
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.VEHICLE_MONITORING)) {
-            request.getVehicleMonitoringRequests().add(createVehicleMonitoringRequestStructure());
+            VehicleMonitoringRequestStructure vmRequestStruct = createVehicleMonitoringRequestStructure();
+            request.setMessageIdentifier(vmRequestStruct.getMessageIdentifier());
+            request.getVehicleMonitoringRequests().add(vmRequestStruct);
         }
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.ESTIMATED_TIMETABLE)) {
-            request.getEstimatedTimetableRequests().add(createEstimatedTimetableRequestStructure(subscriptionSetup.getPreviewInterval()));
+            EstimatedTimetableRequestStructure etRequestStruct = createEstimatedTimetableRequestStructure(subscriptionSetup.getPreviewInterval());
+            request.setMessageIdentifier(etRequestStruct.getMessageIdentifier());
+            request.getEstimatedTimetableRequests().add(etRequestStruct);
         }
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
-            request.getStopMonitoringRequests().add(createStopMonitoringRequestStructure(subscriptionSetup));
+            StopMonitoringRequestStructure smRequestStruct = createStopMonitoringRequestStructure(subscriptionSetup);
+            request.setMessageIdentifier(smRequestStruct.getMessageIdentifier());
+            request.getStopMonitoringRequests().add(smRequestStruct);
         }
 
         siri.setServiceRequest(request);

@@ -90,10 +90,25 @@ public class DisruptionRetriever {
 
             List<Disruption> disruptions = convertJSONtoObjects(disruptionsString);
 
-            List<PtSituationElement> situations = disruptions.stream()
+
+            List<Disruption> disruptionsToDelete = disruptions.stream()
+                                                              .filter(disruption -> disruption.getDeleteDateTime() != null)
+                                                               .collect(Collectors.toList());
+
+            List<Disruption> disruptionsToIngest = disruptions.stream()
+                                                            .filter(disruption -> disruption.getDeleteDateTime() == null)
+                                                            .collect(Collectors.toList());
+
+
+            List<PtSituationElement> situations = disruptionsToIngest.stream()
                                                              .map(SituationExchangeGenerator::createFromDisruption)
                                                              .collect(Collectors.toList());
 
+            List<PtSituationElement> situationsToDelete = disruptionsToDelete.stream()
+                                                                            .map(SituationExchangeGenerator::createFromDisruption)
+                                                                            .collect(Collectors.toList());
+
+            situationsToDelete.forEach(situationToDelete -> handler.removeSituation("OKINA-SX", situationToDelete));
 
             List<String> subscriptionList = getSubscriptions(situations) ;
 
@@ -107,7 +122,7 @@ public class DisruptionRetriever {
                 subscriptionManager.touchSubscription(PREFIX + situation.getSituationNumber());
             }
 
-            logger.info("Ingested alerts from Okina disruption service {} on {} ", ingestedSituations.size(), situations.size());
+            logger.info("Ingested alerts from Okina disruption service {} on {}. Deleted : {} ", ingestedSituations.size(), situations.size(), situationsToDelete.size());
 
 
         } catch (IOException e) {
