@@ -732,24 +732,24 @@ public class SiriHandler {
 
 
 
-    public Collection<VehicleActivityStructure> ingestVehicleActivities(String subscriptionId, List<VehicleActivityStructure> incomingVehicleActivities) {
-        return vehicleActivities.addAll(subscriptionId, incomingVehicleActivities);
+    public Collection<VehicleActivityStructure> ingestVehicleActivities(String datasetId, List<VehicleActivityStructure> incomingVehicleActivities) {
+        return vehicleActivities.addAll(datasetId, incomingVehicleActivities);
     }
 
-    public Collection<MonitoredStopVisit> ingestStopVisits(String subscriptionId, List<MonitoredStopVisit> incomingMonitoredStopVisits) {
-        return monitoredStopVisits.addAll(subscriptionId, incomingMonitoredStopVisits);
+    public Collection<MonitoredStopVisit> ingestStopVisits(String datasetId, List<MonitoredStopVisit> incomingMonitoredStopVisits) {
+        return monitoredStopVisits.addAll(datasetId, incomingMonitoredStopVisits);
     }
 
 
-    public Collection<EstimatedVehicleJourney> ingestEstimatedTimeTables(String subscriptionId, List<EstimatedVehicleJourney> incomingEstimatedTimeTables) {
-        return  estimatedTimetables.addAll(subscriptionId, incomingEstimatedTimeTables);
+    public Collection<EstimatedVehicleJourney> ingestEstimatedTimeTables(String datasetId, List<EstimatedVehicleJourney> incomingEstimatedTimeTables) {
+        return  estimatedTimetables.addAll(datasetId, incomingEstimatedTimeTables);
     }
 
-    public Collection<PtSituationElement> ingestSituations(String subscriptionId, List<PtSituationElement> incomingSituations) {
-        return situations.addAll(subscriptionId, incomingSituations);
+    public Collection<PtSituationElement> ingestSituations(String datasetId, List<PtSituationElement> incomingSituations) {
+        return situations.addAll(datasetId, incomingSituations);
     }
 
-    public void removeSituation(String datasetId,PtSituationElement situation ){
+    public void removeSituation(String datasetId, PtSituationElement situation ){
         situations.removeSituation(datasetId, situation );
     }
 

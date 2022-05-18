@@ -1,15 +1,14 @@
 package no.rutebanken.anshar.gtfsrt;
 
 import com.google.transit.realtime.GtfsRealtime;
+import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.gtfsrt.swallowers.AlertSwallower;
 import no.rutebanken.anshar.gtfsrt.swallowers.TripUpdateSwallower;
 import no.rutebanken.anshar.gtfsrt.swallowers.VehiclePositionSwallower;
-
-
+import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedInputStream;
@@ -22,10 +21,6 @@ public class GtfsRTDataRetriever {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 
-
-    @Value("${anshar.gtfs.rt.url.list}")
-    private String gtfsRTUrls;
-
     @Autowired
     private TripUpdateSwallower tripUpdateSwallower;
 
@@ -35,27 +30,28 @@ public class GtfsRTDataRetriever {
     @Autowired
     private AlertSwallower alertSwallower;
 
+    @Autowired
+    private SubscriptionConfig subscriptionConfig;
+
 
     public void getGTFSRTData() throws IOException {
         logger.info("Démarrage récupération des flux GTFS-RT");
 
-        String[] urlTab = gtfsRTUrls.split(",");
+        for (GtfsRTApi gtfsRTApi : subscriptionConfig.getGtfsRTApis()) {
+            logger.info("URL:" + gtfsRTApi.getUrl());
 
-        for (String url : urlTab) {
-            logger.info("URL:" + url);
-
-            URL url1 = new URL(url);
+            URL url1 = new URL(gtfsRTApi.getUrl());
             BufferedInputStream in = new BufferedInputStream(url1.openStream());
             GtfsRealtime.FeedMessage completeGTFsFeed = GtfsRealtime.FeedMessage.newBuilder().mergeFrom(in).build();
 
-            tripUpdateSwallower.setUrl(url);
-            tripUpdateSwallower.ingestTripUpdateData(completeGTFsFeed);
+            tripUpdateSwallower.setUrl(gtfsRTApi.getUrl());
+            tripUpdateSwallower.ingestTripUpdateData(gtfsRTApi.getDatasetId(), completeGTFsFeed);
 
-            vehiclePositionSwallower.setUrl(url);
-            vehiclePositionSwallower.ingestVehiclePositionData(completeGTFsFeed);
+            vehiclePositionSwallower.setUrl(gtfsRTApi.getUrl());
+            vehiclePositionSwallower.ingestVehiclePositionData(gtfsRTApi.getDatasetId(), completeGTFsFeed);
 
-            alertSwallower.setUrl(url);
-            alertSwallower.ingestAlertData(completeGTFsFeed);
+            alertSwallower.setUrl(gtfsRTApi.getUrl());
+            alertSwallower.ingestAlertData(gtfsRTApi.getDatasetId(), completeGTFsFeed);
         }
 
         logger.info("Intégration des flux GTFS-RT terminée");

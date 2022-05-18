@@ -1,9 +1,11 @@
 package no.rutebanken.anshar.routes.siri;
 
+import no.rutebanken.anshar.api.SiriApi;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.routes.BaseRouteBuilder;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
@@ -36,19 +38,15 @@ import static no.rutebanken.anshar.subscription.SubscriptionSetup.ServiceType.SO
 
 @Component
 public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
-    private final String dataSetId = "AURA";
+
     @Autowired
     private SiriHandler handler;
-    @Value("${providers.siri:test}")
-    private String providers;
-    @Value("${api.siri:http://test.fr}")
-    private String apiSiri;
+
     @Value("${cron.siri:0+0+0+1+1+?+2099}")
     private String cronSchedule;
-    @Value("${data.format.siri:test}")
-    private String dataFormat;
 
-
+    @Autowired
+    private SubscriptionConfig subscriptionConfig;
 
     public SiriApisRequestHandlerRoute(AnsharConfiguration config, SubscriptionManager subscriptionManager) {
         super(config, subscriptionManager);
@@ -63,38 +61,27 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
 
 
     private void createSubscriptionsFromApis() throws IOException, SAXException, ParserConfigurationException, XMLStreamException {
-
+        List<SiriApi> siriApis = subscriptionConfig.getSiriApis();
 
         long startTime = DateTime.now().toInstant().getMillis();
 
-        String[] providersList = providers.split(",");
-        String[] dataFormatList = dataFormat.split(",");
+        for (SiriApi siriApi : siriApis) {
+            File file = new File("/tmp/" + siriApi.getDatasetId() + "_" + siriApi.getType() + ".zip");
+            log.info("Get Siri file for siriApis : " + siriApi.getDatasetId() + " in data format : " + siriApi.getType());
+            String url = siriApi.getUrl();
+            log.info("URL : " + url);
+            FileUtils.copyURLToFile(new URL(url), file);
 
-        for (String provider : providersList) {
-            for (String dataFormat : dataFormatList) {
-                String auraDataType = "horaire-tr";
-                if (dataFormat.equals("siri-sx")) {
-                    auraDataType = "info-transport";
-                }
-                File file = new File("/tmp/" + provider + "_" + dataFormat + ".zip");
-                log.info("Get Siri file for provider : " + provider + " in data format : " + dataFormat);
-                String url = apiSiri + auraDataType + "/download?provider=" + provider + "&dataFormat=" + dataFormat + "&dataProfil=OPENDATA";
-                log.info("URL : " + url);
-                FileUtils.copyURLToFile(new URL(url), file);
-
-                if (file.length() > 0) {
-                    createSubscriptionsFromFile(dataFormat, file, url, provider);
-                }
-                else{
-                    log.error("No file returned for the provider " + provider);
-                }
+            if (file.length() > 0) {
+                createSubscriptionsFromFile(siriApi.getType(), file, url, siriApi.getDatasetId());
+            } else {
+                log.error("No file returned for the provider " + siriApi.getDatasetId());
             }
         }
 
-
         long endTime = DateTime.now().toInstant().getMillis();
         long processTime = (endTime - startTime) / 1000;
-        log.info("Siri API completed in {} seconds",processTime);
+        log.info("Siri API completed in {} seconds", processTime);
 
     }
 
@@ -104,7 +91,7 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
 
         List<SubscriptionSetup> subscriptionSetupList = new ArrayList<>();
         for (String monitoringId : monitoringIds) {
-            SubscriptionSetup subscriptionSetup = createSubscriptionSetup(dataFormat, monitoringId, url);
+            SubscriptionSetup subscriptionSetup = createSubscriptionSetup(dataFormat, monitoringId, url, provider);
             subscriptionManager.addSubscription(subscriptionSetup.getSubscriptionId(), subscriptionSetup);
             subscriptionSetupList.add(subscriptionSetup);
         }
@@ -125,7 +112,7 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
                 break;
         }
 
-        handler.processSiriClientRequestFromApis(ids, byteArrayInputStream, siriDataType, dataSetId);
+        handler.processSiriClientRequestFromApis(ids, byteArrayInputStream, siriDataType, provider);
         log.info("Subscriptions created for provider : " + provider + " in data format : " + dataFormat);
     }
 
@@ -140,10 +127,10 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
         return builder.parse(byteArrayInputStream);
     }
 
-    private SubscriptionSetup createSubscriptionSetup(String subscriptionType, String monitoringId, String url) {
+    private SubscriptionSetup createSubscriptionSetup(String subscriptionType, String monitoringId, String url, String provider) {
         SubscriptionSetup subscriptionSetup = new SubscriptionSetup();
         subscriptionSetup.setSubscriptionId(UUID.randomUUID().toString());
-        subscriptionSetup.setDatasetId(dataSetId);
+        subscriptionSetup.setDatasetId(provider);
         subscriptionSetup.setUrlMap(new HashMap<>());
         switch (subscriptionType) {
             case "siri-sm":

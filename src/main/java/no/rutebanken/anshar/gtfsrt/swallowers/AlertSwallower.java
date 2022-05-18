@@ -50,14 +50,12 @@ public class AlertSwallower extends AbstractSwallower {
      * @param completeGTFSRTMessage
      *      The complete message (GTFS-RT format)
      */
-    public void ingestAlertData(GtfsRealtime.FeedMessage completeGTFSRTMessage ){
+    public void ingestAlertData(String datasetId, GtfsRealtime.FeedMessage completeGTFSRTMessage ){
         List<PtSituationElement> situations = buildSituationList(completeGTFSRTMessage);
         List<String> subscriptionList = getSubscriptions(situations) ;
-        checkAndCreateSubscriptions(subscriptionList);
+        checkAndCreateSubscriptions(subscriptionList, datasetId);
 
-        Collection<PtSituationElement> ingestedSituations = handler.ingestSituations("GTFS-RT", situations);
-
-
+        Collection<PtSituationElement> ingestedSituations = handler.ingestSituations(datasetId, situations);
 
         for (PtSituationElement situation : ingestedSituations) {
             subscriptionManager.touchSubscription(prefix + getSituationSubscriptionId(situation), false);
@@ -129,13 +127,13 @@ public class AlertSwallower extends AbstractSwallower {
      * @param subscriptionsList
      *  The list of subscription ids
      */
-    private void checkAndCreateSubscriptions(List<String> subscriptionsList) {
+    private void checkAndCreateSubscriptions(List<String> subscriptionsList, String datasetId) {
 
         for (String subsId : subscriptionsList) {
             if (subscriptionManager.isSubscriptionExisting(prefix + subsId))
                 //A subscription is already existing for this situation. No need to create one
                 continue;
-            createNewSubscription(subsId);
+            createNewSubscription(subsId, datasetId);
         }
     }
 
@@ -144,8 +142,8 @@ public class AlertSwallower extends AbstractSwallower {
      * @param subscriptionId
      *      The id for which a subscription must be created
      */
-    private void createNewSubscription(String subscriptionId){
-        SubscriptionSetup setup = createStandardSubscription(subscriptionId);
+    private void createNewSubscription(String subscriptionId, String datasetId){
+        SubscriptionSetup setup = createStandardSubscription(subscriptionId, datasetId);
         subscriptionManager.addSubscription(subscriptionId,setup);
     }
 

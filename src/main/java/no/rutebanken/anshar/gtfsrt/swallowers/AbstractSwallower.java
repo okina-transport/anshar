@@ -22,9 +22,9 @@ public abstract class AbstractSwallower {
         this.url = url;
     }
 
-    protected SubscriptionSetup createStandardSubscription(String objectRef){
+    protected SubscriptionSetup createStandardSubscription(String objectRef, String datasetId){
         SubscriptionSetup setup = new SubscriptionSetup();
-        setup.setDatasetId("GTFS-RT");
+        setup.setDatasetId(datasetId);
         setup.setHeartbeatIntervalSeconds(DEFAULT_HEARTBEAT_SECONDS);
         setup.setRequestorRef("OKINA-GTFS-RT");
         setup.setAddress(url);

@@ -16,8 +16,8 @@
 package no.rutebanken.anshar.data;
 
 import com.hazelcast.map.IMap;
-import com.hazelcast.replicatedmap.ReplicatedMap;
 import com.hazelcast.query.Predicates;
+import com.hazelcast.replicatedmap.ReplicatedMap;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
@@ -227,18 +227,8 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
             isAdHocRequest = true;
         }
 
-        // Get all relevant ids
-        Set<SiriObjectStorageKey> allIds = new HashSet<>();
-        Set<SiriObjectStorageKey> idSet = changesMap.getOrDefault(requestorId, allIds);
-
-        if (idSet == allIds) {
-            idSet.addAll(timetableDeliveries
-                    .keySet(entry -> datasetId == null || ((SiriObjectStorageKey) entry.getKey()).getCodespaceId().equals(datasetId))
-            );
-        }
-
-        //Filter by datasetId
-        Set<SiriObjectStorageKey> requestedIds = filterIdsByDataset(idSet, excludedDatasetIds, datasetId);
+        // Filter by datasetId OR excludedDatasetIds
+        Set<SiriObjectStorageKey> requestedIds = generateIdSet(requestorId, datasetId, excludedDatasetIds);
 
         final ZonedDateTime previewExpiry = ZonedDateTime.now().plusSeconds(previewInterval / 1000);
 
@@ -247,8 +237,8 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
         if (previewInterval >= 0) {
             long t1 = System.currentTimeMillis();
             startTimes.addAll(idStartTimeMap
-                        .entrySet().stream()
-                        .filter(entry -> entry.getValue().isBefore(previewExpiry))
+                    .entrySet().stream()
+                    .filter(entry -> entry.getValue().isBefore(previewExpiry))
                         .map(Map.Entry::getKey)
                         .collect(Collectors.toSet()));
 
@@ -278,7 +268,7 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
 
         long t2 = System.currentTimeMillis();
         //Remove collected objects
-        sizeLimitedIds.forEach(idSet::remove);
+        sizeLimitedIds.forEach(requestedIds::remove);
 
         long t3 = System.currentTimeMillis();
 
@@ -305,22 +295,42 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
             msgRef.setValue(requestorId);
             siri.getServiceDelivery().setRequestMessageRef(msgRef);
 
-            if (idSet.size() > timetableDeliveries.size()) {
+            if (requestedIds.size() > timetableDeliveries.size()) {
                 //Remove outdated ids
-                idSet.removeIf(id -> !timetableDeliveries.containsKey(id));
+                requestedIds.removeIf(id -> !timetableDeliveries.containsKey(id));
             }
 
             //Update change-tracker
-            updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, idSet, trackingPeriodMinutes, TimeUnit.MINUTES);
+            updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, requestedIds, trackingPeriodMinutes, TimeUnit.MINUTES);
 
-            logger.info("Returning {}, {} left for requestorRef {}", sizeLimitedIds.size(), idSet.size(), requestorId);
+            logger.info("Returning {}, {} left for requestorRef {}", sizeLimitedIds.size(), requestedIds.size(), requestorId);
         }
 
         return siri;
     }
 
     /**
+     * Generates a set of keys that matches with user's request
+     *
+     * @param requestorId        user id
+     * @param datasetId          dataset id
+     * @param excludedDatasetIds dataset ids excluded
+     * @return a set of keys matching with filters
+     */
+    private Set<SiriObjectStorageKey> generateIdSet(String requestorId, String datasetId, List<String> excludedDatasetIds) {
+
+        // Get all relevant ids
+        Set<SiriObjectStorageKey> allIds = new HashSet<>();
+        Set<SiriObjectStorageKey> idSet = changesMap.getOrDefault(requestorId, allIds);
+
+        idSet.addAll(timetableDeliveries.keySet(entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, datasetId, excludedDatasetIds)));
+
+        return idSet;
+    }
+
+    /**
      * Returns true if EstimatedVehicleJourney has any cancellations or quay-changes
+     *
      * @param estimatedVehicleJourney
      * @return
      */

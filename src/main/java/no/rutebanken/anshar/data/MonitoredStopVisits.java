@@ -175,11 +175,8 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
             isAdHocRequest = true;
         }
 
-        Set<SiriObjectStorageKey> idSet = generateIdSet(requestorId, datasetId, searchedStopIds);
-        
-        
-        //Filter by datasetId
-        Set<SiriObjectStorageKey> requestedIds = filterIdsByDataset(idSet, excludedDatasetIds, datasetId);
+        // Filter by (datasetId and/or searchedStopIds) OR (excludedDatasetIds and/or searchedStopIds)
+        Set<SiriObjectStorageKey> requestedIds = generateIdSet(requestorId, datasetId, searchedStopIds, excludedDatasetIds);
 
         final ZonedDateTime previewExpiry = ZonedDateTime.now().plusSeconds(previewInterval / 1000);
 
@@ -222,7 +219,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         long t2 = System.currentTimeMillis();
 
         //Remove collected objects
-        sizeLimitedIds.forEach(idSet::remove);
+        sizeLimitedIds.forEach(requestedIds::remove);
 
         long t3 = System.currentTimeMillis();
 
@@ -247,13 +244,13 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
             msgRef.setValue(requestorId);
             siri.getServiceDelivery().setRequestMessageRef(msgRef);
 
-            if (idSet.size() > monitoredStopVisits.size()) {
+            if (requestedIds.size() > monitoredStopVisits.size()) {
                 //Remove outdated ids
-                idSet.removeIf(id -> !monitoredStopVisits.containsKey(id));
+                requestedIds.removeIf(id -> !monitoredStopVisits.containsKey(id));
             }
 
             //Update change-tracker
-            updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, idSet, trackingPeriodMinutes, TimeUnit.MINUTES);
+            updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, requestedIds, trackingPeriodMinutes, TimeUnit.MINUTES);
 
         }
 
@@ -268,13 +265,15 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
      *  dataset id
      * @param searchedStopRefs
      *   stop place ids filters
+     * @param excludedDatasetIds
+     *   dataset ids excluded
      * @return
      *  a set of keys matching with filters
      */
-    private  Set<SiriObjectStorageKey> generateIdSet(String requestorId, String datasetId, Set<String> searchedStopRefs){
+    private Set<SiriObjectStorageKey> generateIdSet(String requestorId, String datasetId, Set<String> searchedStopRefs, List<String> excludedDatasetIds){
         // Get all relevant ids
         Set<SiriObjectStorageKey> allIds = new HashSet<>();
-        Set<SiriObjectStorageKey> idSet = new HashSet<>();
+        Set<SiriObjectStorageKey> idSet;
 
         if ("SNCF".equals(requestorId)) {
             idSet = allIds;
@@ -282,18 +281,12 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
             idSet = changesMap.getOrDefault(requestorId, allIds);
         }
 
-        if (searchedStopRefs.size() > 0){
-            idSet.addAll(monitoredStopVisits.keySet(entry -> searchedStopRefs.contains(entry.getKey().getStopRef())));
-            return idSet;
-        }
+        idSet.addAll(monitoredStopVisits.keySet(entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, datasetId, excludedDatasetIds)));
 
-        if (idSet == allIds) {
-            idSet.addAll(monitoredStopVisits.keySet(entry -> datasetId == null || (entry.getKey()).getCodespaceId().equals(datasetId))
-            );
-        }
         return idSet;
-
     }
+
+
 
     @Override
     Collection<MonitoredStopVisit> getAllUpdates(String requestorId, String datasetId) {

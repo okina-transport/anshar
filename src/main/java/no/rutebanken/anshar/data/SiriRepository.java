@@ -283,4 +283,35 @@ abstract class SiriRepository<T> {
             return DatatypeConverter.printHexBinary(thedigest);
         }
     }
+
+    /**
+     * Determines if a key is compliant or not with filters given as parameters
+     *
+     * @param key                The key to check
+     * @param linerefSet         The optional filters on lines
+     * @param vehicleRefSet      The optional filters on vehicles
+     * @param datasetId          The optional filters on datasetId
+     * @param excludedDatasetIds The optional filters on excludedDatasetIds
+     * @return true :the key is compliant with filters
+     * false : the key is not compliant
+     */
+    boolean isKeyCompliantWithFilters(SiriObjectStorageKey key, Set<String> linerefSet, Set<String> vehicleRefSet, String datasetId, List<String> excludedDatasetIds) {
+        if (datasetId != null && !datasetId.equals(key.getCodespaceId())){
+            return false;
+        }
+
+        if (excludedDatasetIds != null && excludedDatasetIds.size() > 0 && excludedDatasetIds.contains(key.getCodespaceId())){
+            return false;
+        }
+
+        if (linerefSet != null && linerefSet.size() > 0 && !linerefSet.contains(key.getLineRef())){
+            return false;
+        }
+
+        if (vehicleRefSet != null && vehicleRefSet.size() > 0 && !vehicleRefSet.contains(key.getKey())){
+            return false;
+        }
+
+        return true;
+    }
 }
