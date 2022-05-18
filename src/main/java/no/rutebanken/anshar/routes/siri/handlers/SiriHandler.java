@@ -41,6 +41,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import uk.org.siri.siri20.AnnotatedLineRef;
+import uk.org.siri.siri20.AnnotatedStopPointStructure;
 import uk.org.siri.siri20.ErrorCodeStructure;
 import uk.org.siri.siri20.ErrorDescriptionStructure;
 import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
@@ -57,6 +59,7 @@ import uk.org.siri.siri20.Siri;
 import uk.org.siri.siri20.SituationExchangeDeliveryStructure;
 import uk.org.siri.siri20.StopMonitoringDeliveryStructure;
 import uk.org.siri.siri20.StopMonitoringRequestStructure;
+import uk.org.siri.siri20.StopPointRef;
 import uk.org.siri.siri20.SubscriptionResponseStructure;
 import uk.org.siri.siri20.TerminateSubscriptionRequestStructure;
 import uk.org.siri.siri20.TerminateSubscriptionResponseStructure;
@@ -297,9 +300,84 @@ public class SiriHandler {
                     false
                 );
             }
+        }else if (incoming.getStopPointsRequest() != null){
+            // stop discovery request
+            return getDiscoveryStopPoints();
+        }else if (incoming.getLinesRequest() != null){
+            // lines discovery request (for vehicle monitoring)
+            return getDiscoveryLines();
         }
 
         return null;
+    }
+
+
+    /**
+     * Creates a siri response with all lines existing in the cache, for vehicle Monitoring
+     * @return
+     *  the siri response with all points
+     */
+    private Siri getDiscoveryLines() {
+
+        List<AnnotatedLineRef> resultList = subscriptionManager.getAllSubscriptions(SiriDataType.VEHICLE_MONITORING).stream()
+                                                            .map(SubscriptionSetup::getLineRefValue)
+                                                            .filter(lineRef -> lineRef != null)
+                                                            .map(this::convertKeyToLineRef)
+                                                            .collect(Collectors.toList());
+
+        return siriObjectFactory.createLinesDiscoveryDelivery(resultList);
+
+
+    }
+
+    /**
+     * Creates a siri response with all points existing in the cache
+     * @return
+     *  the siri response with all points
+     */
+    public Siri getDiscoveryStopPoints(){
+
+        List<AnnotatedStopPointStructure> resultList = subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING).stream()
+                                                                            .map(SubscriptionSetup::getStopMonitoringRefValue)
+                                                                            .map(this::convertKeyToPointStructure)
+                                                                            .collect(Collectors.toList());
+
+        return siriObjectFactory.createStopPointsDiscoveryDelivery(resultList);
+    }
+
+
+    /**
+     * Converts a stop reference to an annotatedStopPointStructure
+     *
+     * @param stopRef
+     *      the stop reference
+     * @return
+     *      the annotated stop point structure that will be included in siri response
+     */
+    private AnnotatedStopPointStructure convertKeyToPointStructure(String stopRef){
+        AnnotatedStopPointStructure pointStruct = new AnnotatedStopPointStructure();
+        StopPointRef stopPointRef = new StopPointRef();
+        stopPointRef.setValue(stopRef);
+        pointStruct.setStopPointRef(stopPointRef);
+        pointStruct.setMonitored(true);
+        return pointStruct;
+    }
+
+    /**
+     * Converts a line reference to an annotatedLineRef
+     *
+     * @param lineRefStr
+     *      the line reference
+     * @return
+     *      the annotated lineref that will be included in siri response
+     */
+    private AnnotatedLineRef convertKeyToLineRef(String lineRefStr){
+        AnnotatedLineRef annotatedLineRef = new AnnotatedLineRef();
+        LineRef lineRefSiri = new LineRef();
+        lineRefSiri.setValue(lineRefStr);
+        annotatedLineRef.setMonitored(true);
+        annotatedLineRef.setLineRef(lineRefSiri);
+        return annotatedLineRef;
     }
 
     /**

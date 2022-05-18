@@ -65,7 +65,7 @@
     <xsl:template match="*"/>
 
     <xsl:template
-            match="*:NotifyVehicleMonitoring | *:NotifySituationExchange | *:NotifyEstimatedTimetable | *:NotifyStopMonitoring | *:NotifyHeartbeat | *:GetVehicleMonitoringResponse | *:GetSituationExchangeResponse | *:GetStopMonitoringResponse | *:GetEstimatedTimetableResponse | *:SubscribeResponse | *:DeleteSubscriptionResponse | *:HeartbeatNotification | *:SituationExchangeAnswer | *:VehicleMonitoringAnswer | *:CheckStatusResponse | *:DataSupplyResponse | *:GetStopMonitoring | *:GetVehicleMonitoring"> <!-- TODO add all conseptual types of requests -->
+            match="*:NotifyVehicleMonitoring | *:NotifySituationExchange | *:NotifyEstimatedTimetable | *:NotifyStopMonitoring | *:NotifyHeartbeat | *:GetVehicleMonitoringResponse | *:GetSituationExchangeResponse | *:GetStopMonitoringResponse | *:GetEstimatedTimetableResponse | *:SubscribeResponse | *:DeleteSubscriptionResponse | *:HeartbeatNotification | *:SituationExchangeAnswer | *:VehicleMonitoringAnswer | *:CheckStatusResponse | *:DataSupplyResponse | *:GetStopMonitoring | *:GetVehicleMonitoring | *:StopPointsDiscovery | *:LinesDiscovery"> <!-- TODO add all conseptual types of requests -->
 
         <xsl:choose>
             <xsl:when test="local-name()='SubscribeResponse'">
@@ -288,6 +288,50 @@
                         <xsl:element name="siril:SituationExchangeDelivery">
                             <xsl:copy-of select="Answer/SituationExchangeDelivery/*" copy-namespaces="no"/>
                         </xsl:element>
+                    </xsl:element>
+                </xsl:element>
+            </xsl:when>
+
+            <xsl:when test="local-name()='StopPointsDiscovery'">
+                <xsl:element name="siril:Siri">
+                    <xsl:element name="siril:Request">
+                        <xsl:for-each select="Request/siril:RequestorRef">
+                            <xsl:element name="siril:{local-name()}">
+                                <xsl:apply-templates select="* | node()"/>
+                            </xsl:element>
+                        </xsl:for-each>
+                        <xsl:for-each select="Request/siril:RequestTimestamp">
+                            <xsl:element name="siril:{local-name()}">
+                                <xsl:apply-templates select="* | node()"/>
+                            </xsl:element>
+                        </xsl:for-each>
+                    </xsl:element>
+
+                <xsl:element name="siril:StopPointsRequest">
+
+
+                </xsl:element>
+                </xsl:element>
+            </xsl:when>
+
+            <xsl:when test="local-name()='LinesDiscovery'">
+                <xsl:element name="siril:Siri">
+                    <xsl:element name="siril:Request">
+                        <xsl:for-each select="Request/siril:RequestorRef">
+                            <xsl:element name="siril:{local-name()}">
+                                <xsl:apply-templates select="* | node()"/>
+                            </xsl:element>
+                        </xsl:for-each>
+                        <xsl:for-each select="Request/siril:RequestTimestamp">
+                            <xsl:element name="siril:{local-name()}">
+                                <xsl:apply-templates select="* | node()"/>
+                            </xsl:element>
+                        </xsl:for-each>
+                    </xsl:element>
+
+                    <xsl:element name="siril:LinesRequest">
+
+
                     </xsl:element>
                 </xsl:element>
             </xsl:when>

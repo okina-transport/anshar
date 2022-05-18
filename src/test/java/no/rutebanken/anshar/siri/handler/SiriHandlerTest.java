@@ -26,6 +26,8 @@ import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import uk.org.siri.siri20.AnnotatedLineRef;
+import uk.org.siri.siri20.AnnotatedStopPointStructure;
 import uk.org.siri.siri20.EstimatedVehicleJourney;
 import uk.org.siri.siri20.MonitoredStopVisit;
 import uk.org.siri.siri20.PtSituationElement;
@@ -35,13 +37,16 @@ import javax.xml.bind.JAXBException;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.UUID;
 
-import static junit.framework.TestCase.fail;
+import static junit.framework.TestCase.*;
 
 public class SiriHandlerTest extends SpringBootBaseTest {
 
@@ -169,6 +174,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 "</siri:Siri>\n";
         try {
             SubscriptionSetup smSubscription = getSmSubscription();
+            smSubscription.setStopMonitoringRefValue("sp3");
             subscriptionManager.addSubscription(smSubscription.getSubscriptionId(), smSubscription);
             handler.handleIncomingSiri(smSubscription.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes()));
         } catch (Throwable t) {
@@ -207,6 +213,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     public void testCitywaySmCompliance() throws JAXBException {
 
         SubscriptionSetup smSubscription = getSmSubscription();
+        smSubscription.setStopMonitoringRefValue("sp4");
         subscriptionManager.addSubscription(smSubscription.getSubscriptionId(), smSubscription);
         ClassLoader classLoader = getClass().getClassLoader();
         File file = new File("src/test/resources/PT_RT_STOPTIME_SYTRAL_siri-sm_dynamic.xml");
@@ -241,6 +248,72 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         Collection<EstimatedVehicleJourney> savedEstimatedTimetables = estimatedTimetables.getAll();
 
     }
+
+    @Test
+    public void stopPointsDiscoveryTest() throws JAXBException, IOException {
+
+
+
+        SubscriptionSetup smSubscription1 = getSmSubscription();
+        smSubscription1.setStopMonitoringRefValue("sp1");
+        subscriptionManager.addSubscription(smSubscription1.getSubscriptionId(), smSubscription1);
+
+        SubscriptionSetup smSubscription2 = getSmSubscription();
+        smSubscription2.setStopMonitoringRefValue("sp2");
+        subscriptionManager.addSubscription(smSubscription2.getSubscriptionId(), smSubscription2);
+
+        ClassLoader classLoader = getClass().getClassLoader();
+        File file = new File("src/test/resources/discoveryTest/stop_points_discovery_test.xml");
+
+        try {
+            Siri result = handler.handleIncomingSiri(null, new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), null, null, null, -1, null);
+            assertNotNull(result.getStopPointsDelivery());
+            assertNotNull(result.getStopPointsDelivery().getAnnotatedStopPointReves());
+            assertEquals(result.getStopPointsDelivery().getAnnotatedStopPointReves().size(),4);
+            List<String> expectedPointRef = Arrays.asList("sp1", "sp2", "sp3", "sp4");
+            for (AnnotatedStopPointStructure annotatedStopPointReve : result.getStopPointsDelivery().getAnnotatedStopPointReves()) {
+                    assertTrue(expectedPointRef.contains(annotatedStopPointReve.getStopPointRef().getValue()));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+
+    @Test
+    public void linesDiscoveryTest() throws JAXBException, IOException {
+
+
+
+        SubscriptionSetup vmSubscription1 = getVmSubscription();
+        vmSubscription1.setLineRefValue("line1");
+        subscriptionManager.addSubscription(vmSubscription1.getSubscriptionId(), vmSubscription1);
+
+        SubscriptionSetup vmSubscription2 = getVmSubscription();
+        vmSubscription2.setLineRefValue("line2");
+        subscriptionManager.addSubscription(vmSubscription2.getSubscriptionId(), vmSubscription2);
+
+        ClassLoader classLoader = getClass().getClassLoader();
+        File file = new File("src/test/resources/discoveryTest/lines_discovery_test.xml");
+
+        try {
+            Siri result = handler.handleIncomingSiri(null, new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), null, null, null, -1, null);
+            assertNotNull(result.getLinesDelivery());
+            assertNotNull(result.getLinesDelivery().getAnnotatedLineReves());
+            assertEquals(result.getLinesDelivery().getAnnotatedLineReves().size(),3);
+            List<String> expectedLineRef = Arrays.asList("line1", "line2", "TEST:Line:1");
+
+            for (AnnotatedLineRef annotatedLineReve : result.getLinesDelivery().getAnnotatedLineReves()) {
+                assertTrue(expectedLineRef.contains(annotatedLineReve.getLineRef().getValue()));
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
 
 
 

@@ -148,6 +148,7 @@ public class VehiclePositionSwallower extends AbstractSwallower {
      */
     private void createNewSubscription(String objectRef){
         SubscriptionSetup setup = createStandardSubscription(objectRef);
+        setup.setLineRefValue(objectRef);
         subscriptionManager.addSubscription(objectRef,setup);
     }
 

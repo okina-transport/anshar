@@ -45,6 +45,30 @@
         <xsl:apply-templates/>
     </xsl:template>
 
+    <xsl:template match="siri:StopPointsDelivery">
+        <xsl:element name="soapenv:Envelope" namespace="{$soapEnvelopeNamespace}">
+            <xsl:element name="soapenv:Body" namespace="{$soapEnvelopeNamespace}">
+                <xsl:element name="StopPointsDiscoveryResponse">
+                    <xsl:copy-of select="./siri:AnnotatedStopPointRef" copy-namespaces="no">
+
+                    </xsl:copy-of>
+                </xsl:element>
+            </xsl:element>
+        </xsl:element>
+    </xsl:template>
+
+    <xsl:template match="siri:LinesDelivery">
+        <xsl:element name="soapenv:Envelope" namespace="{$soapEnvelopeNamespace}">
+            <xsl:element name="soapenv:Body" namespace="{$soapEnvelopeNamespace}">
+                <xsl:element name="LinesDiscoveryResponse">
+                    <xsl:copy-of select="./siri:AnnotatedLineRef" copy-namespaces="no">
+
+                    </xsl:copy-of>
+                </xsl:element>
+            </xsl:element>
+        </xsl:element>
+    </xsl:template>
+
 
     <xsl:template match="*"/>
 

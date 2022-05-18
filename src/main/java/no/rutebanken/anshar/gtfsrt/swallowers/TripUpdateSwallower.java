@@ -199,6 +199,7 @@ public class TripUpdateSwallower extends AbstractSwallower {
         setup.setSubscriptionId(subscriptionId);
         setup.getUrlMap().clear();
         setup.getUrlMap().put(requestType,url);
+        setup.setStopMonitoringRefValue(ref);
         subscriptionManager.addSubscription(ref,setup);
     }
 

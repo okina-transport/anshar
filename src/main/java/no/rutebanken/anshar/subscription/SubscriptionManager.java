@@ -259,6 +259,25 @@ public class SubscriptionManager {
         return subscriptionSetupList;
     }
 
+
+    /**
+     * Returns all subscriptions matching the type given as parameter     *
+     * @param type
+     *  the data type to search
+     * @return
+     *  the list of subscriptions matching the data type
+     */
+    public List<SubscriptionSetup> getAllSubscriptions(SiriDataType type) {
+
+        if (type == null){
+            throw new IllegalArgumentException("Type must be specified to search in subscriptions");
+        }
+
+        return subscriptions.values().stream()
+                                .filter(subscription -> type.equals(subscription.getSubscriptionType()))
+                                .collect(Collectors.toList());
+    }
+
     public JSONObject getSubscriptionsForCodespace(String codespace) {
         JSONObject jsonSubscriptions = new JSONObject();
         JSONArray filteredSubscriptions = new JSONArray();

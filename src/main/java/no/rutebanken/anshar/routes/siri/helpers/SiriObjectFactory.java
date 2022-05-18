@@ -31,6 +31,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import uk.org.siri.siri20.AnnotatedLineRef;
+import uk.org.siri.siri20.AnnotatedStopPointStructure;
 import uk.org.siri.siri20.CheckStatusRequestStructure;
 import uk.org.siri.siri20.CheckStatusResponseStructure;
 import uk.org.siri.siri20.DataReadyRequestStructure;
@@ -43,6 +45,7 @@ import uk.org.siri.siri20.EstimatedVersionFrameStructure;
 import uk.org.siri.siri20.HeartbeatNotificationStructure;
 import uk.org.siri.siri20.LineDirectionStructure;
 import uk.org.siri.siri20.LineRef;
+import uk.org.siri.siri20.LinesDeliveryStructure;
 import uk.org.siri.siri20.MessageQualifierStructure;
 import uk.org.siri.siri20.MonitoredStopVisit;
 import uk.org.siri.siri20.MonitoringRefStructure;
@@ -61,6 +64,7 @@ import uk.org.siri.siri20.SituationExchangeSubscriptionStructure;
 import uk.org.siri.siri20.StopMonitoringDeliveryStructure;
 import uk.org.siri.siri20.StopMonitoringRequestStructure;
 import uk.org.siri.siri20.StopMonitoringSubscriptionStructure;
+import uk.org.siri.siri20.StopPointsDeliveryStructure;
 import uk.org.siri.siri20.SubscriptionContextStructure;
 import uk.org.siri.siri20.SubscriptionQualifierStructure;
 import uk.org.siri.siri20.SubscriptionRequest;
@@ -616,6 +620,40 @@ public class SiriObjectFactory {
         siri.setServiceDelivery(delivery);
         return siri;
     }
+
+
+    /**
+     * Creates a SIRI response message with all points recovered from discovery service
+     *
+     * @param elements
+     *  the list of stopPoints from discovery service
+     * @return
+     *  the siri response with all points
+     */
+    public Siri createStopPointsDiscoveryDelivery(Collection<AnnotatedStopPointStructure> elements) {
+        Siri siri = createSiriObject();
+        StopPointsDeliveryStructure spDelStruct = new StopPointsDeliveryStructure();
+        spDelStruct.getAnnotatedStopPointReves().addAll(elements);
+        siri.setStopPointsDelivery(spDelStruct);
+        return siri;
+    }
+
+    /**
+     * Creates a SIRI response message with all lines recovered from discovery service
+     *
+     * @param elements
+     *  the list of lines from discovery service
+     * @return
+     *  the siri response with all lines
+     */
+    public Siri createLinesDiscoveryDelivery(Collection<AnnotatedLineRef> elements) {
+        Siri siri = createSiriObject();
+        LinesDeliveryStructure lineStruct = new LinesDeliveryStructure();
+        lineStruct.getAnnotatedLineReves().addAll(elements);
+        siri.setLinesDelivery(lineStruct);
+        return siri;
+    }
+
 
 
     private ServiceDelivery createServiceDelivery() {
