@@ -203,28 +203,19 @@ public class Situations extends SiriRepository<PtSituationElement> {
             isAdHocRequest = true;
         }
 
-        // Get all relevant ids
-        Set<SiriObjectStorageKey> allIds = new HashSet<>();
-        Set<SiriObjectStorageKey> idSet = changesMap.getOrDefault(requestorId, allIds);
+        // Filter by datasetId
+        Set<SiriObjectStorageKey> requestedIds = generateIdSet(requestorId, datasetId);
 
-        if (idSet == allIds) {
-            idSet.addAll(situationElements.keySet());
-        }
-
-        //Filter by datasetId
-        Set<SiriObjectStorageKey> requestedIds = idSet.stream()
-                .filter(key -> datasetId == null || key.getCodespaceId().equals(datasetId))
-                .collect(Collectors.toSet());
         long t1 = System.currentTimeMillis();
 
         Set<SiriObjectStorageKey> sizeLimitedIds = requestedIds.stream().limit(maxSize).collect(Collectors.toSet());
-        logger.info("Limiting size: {} ms", (System.currentTimeMillis()-t1));
+        logger.info("Limiting size: {} ms", (System.currentTimeMillis() - t1));
         t1 = System.currentTimeMillis();
 
         Boolean isMoreData = sizeLimitedIds.size() < requestedIds.size();
 
         //Remove collected objects
-        sizeLimitedIds.forEach(idSet::remove);
+        sizeLimitedIds.forEach(requestedIds::remove);
         logger.info("Limiting size: {} ms", (System.currentTimeMillis()-t1));
         t1 = System.currentTimeMillis();
 
@@ -246,19 +237,39 @@ public class Situations extends SiriRepository<PtSituationElement> {
             siri.getServiceDelivery().setRequestMessageRef(msgRef);
 
 
-            if (idSet.size() > situationElements.size()) {
+            if (requestedIds.size() > situationElements.size()) {
                 //Remove outdated ids
-                idSet.removeIf(id -> !situationElements.containsKey(id));
+                requestedIds.removeIf(id -> !situationElements.containsKey(id));
             }
 
             //Update change-tracker
-            updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, idSet, trackingPeriodMinutes, TimeUnit.MINUTES);
+            updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, requestedIds, trackingPeriodMinutes, TimeUnit.MINUTES);
 
-            logger.info("Returning {}, {} left for requestorRef {}", sizeLimitedIds.size(), idSet.size(), requestorId);
+            logger.info("Returning {}, {} left for requestorRef {}", sizeLimitedIds.size(), requestedIds.size(), requestorId);
         }
 
         return siri;
     }
+
+    /**
+     * Generates a set of keys that matches with user's request
+     *
+     * @param requestorId        user id
+     * @param datasetId          dataset id
+     * @return a set of keys matching with filters
+     */
+    private Set<SiriObjectStorageKey> generateIdSet(String requestorId, String datasetId) {
+
+        // Get all relevant ids
+        Set<SiriObjectStorageKey> allIds = new HashSet<>();
+        Set<SiriObjectStorageKey> idSet = changesMap.getOrDefault(requestorId, allIds);
+
+        idSet.addAll(situationElements.keySet(entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, datasetId, null)));
+
+        return idSet;
+    }
+
+
     /**
      * @return All vehicle activities that are still valid
      */

@@ -39,9 +39,6 @@ public class TripUpdateSwallower extends AbstractSwallower {
     @Autowired
     private SiriHandler handler;
 
-    private static final String SUBSCRIPTION_ID = "GTFS-RT";
-
-
 
     public TripUpdateSwallower() {
     }
@@ -53,14 +50,14 @@ public class TripUpdateSwallower extends AbstractSwallower {
      * @param completeGTFSRTMessage
      *      The complete message (GTFS-RT format)
      */
-    public void ingestTripUpdateData(GtfsRealtime.FeedMessage completeGTFSRTMessage ){
+    public void ingestTripUpdateData(String datasetId, GtfsRealtime.FeedMessage completeGTFSRTMessage ){
 
         //// ESTIMATED TIME TABLES
         List<EstimatedVehicleJourney> estimatedVehicleJourneys = buildEstimatedVehicleJourneyList(completeGTFSRTMessage);
         List<String> etSubscriptionList = getSubscriptionsFromEstimatedTimeTables(estimatedVehicleJourneys) ;
-        checkAndCreateSubscriptions(etSubscriptionList, "GTFS-RT_ET_",SiriDataType.ESTIMATED_TIMETABLE, RequestType.GET_ESTIMATED_TIMETABLE);
+        checkAndCreateSubscriptions(etSubscriptionList,"GTFS-RT_ET_", SiriDataType.ESTIMATED_TIMETABLE, RequestType.GET_ESTIMATED_TIMETABLE, datasetId);
 
-        Collection<EstimatedVehicleJourney> ingestedEstimatedTimetables = handler.ingestEstimatedTimeTables(SUBSCRIPTION_ID, estimatedVehicleJourneys);
+        Collection<EstimatedVehicleJourney> ingestedEstimatedTimetables = handler.ingestEstimatedTimeTables(datasetId, estimatedVehicleJourneys);
 
         for (EstimatedVehicleJourney estimatedVehicleJourney : ingestedEstimatedTimetables) {
             subscriptionManager.touchSubscription(prefix + estimatedVehicleJourney.getDatedVehicleJourneyRef().getValue(), false);
@@ -73,9 +70,9 @@ public class TripUpdateSwallower extends AbstractSwallower {
         //// STOP VISITS
         List<MonitoredStopVisit> stopVisits = buildStopVisitList(completeGTFSRTMessage);
         List<String> visitSubscriptionList = getSubscriptionsFromVisits(stopVisits) ;
-        checkAndCreateSubscriptions(visitSubscriptionList, "GTFS-RT_SM_", SiriDataType.STOP_MONITORING, RequestType.GET_STOP_MONITORING);
+        checkAndCreateSubscriptions(visitSubscriptionList, "GTFS-RT_SM_", SiriDataType.STOP_MONITORING, RequestType.GET_STOP_MONITORING, datasetId);
 
-        Collection<MonitoredStopVisit> ingestedVisits = handler.ingestStopVisits(SUBSCRIPTION_ID, stopVisits);
+        Collection<MonitoredStopVisit> ingestedVisits = handler.ingestStopVisits(datasetId, stopVisits);
 
         for (MonitoredStopVisit visit : ingestedVisits) {
             subscriptionManager.touchSubscription("GTFS-RT_SM_" + visit.getMonitoringRef().getValue(),false);
@@ -161,7 +158,7 @@ public class TripUpdateSwallower extends AbstractSwallower {
      */
     private List<String> getSubscriptionsFromEstimatedTimeTables(List<EstimatedVehicleJourney> estimatedVehicleJourneys) {
         return estimatedVehicleJourneys.stream()
-                .filter(estimatedVehicleJourney -> estimatedVehicleJourney.getDatedVehicleJourneyRef() != null &&  estimatedVehicleJourney.getDatedVehicleJourneyRef().getValue() != null)
+                .filter(estimatedVehicleJourney -> estimatedVehicleJourney.getDatedVehicleJourneyRef() != null && estimatedVehicleJourney.getDatedVehicleJourneyRef().getValue() != null)
                 .map(estimatedVehicleJourney -> estimatedVehicleJourney.getDatedVehicleJourneyRef().getValue())
                 .collect(Collectors.toList());
     }
@@ -173,13 +170,13 @@ public class TripUpdateSwallower extends AbstractSwallower {
      * @param customPrefix
      *  The list of subscription ids
      */
-    private void checkAndCreateSubscriptions(List<String> subscriptionsList, String customPrefix, SiriDataType dataType, RequestType requestType) {
+    private void checkAndCreateSubscriptions(List<String> subscriptionsList, String customPrefix, SiriDataType dataType, RequestType requestType, String datasetId) {
 
         for (String subscriptionId : subscriptionsList) {
             if (subscriptionManager.isSubscriptionExisting(customPrefix + subscriptionId))
                 //A subscription is already existing for this vehicle journey. No need to create one
                 continue;
-            createNewSubscription(subscriptionId,customPrefix, dataType, requestType);
+            createNewSubscription(subscriptionId, customPrefix, dataType, requestType, datasetId);
         }
     }
 
@@ -191,8 +188,8 @@ public class TripUpdateSwallower extends AbstractSwallower {
      * @param dataType
      * @param requestType
      */
-    private void createNewSubscription(String ref, String customPrefix, SiriDataType dataType, RequestType requestType){
-        SubscriptionSetup setup = createStandardSubscription(ref);
+    private void createNewSubscription(String ref, String customPrefix, SiriDataType dataType, RequestType requestType, String datasetId){
+        SubscriptionSetup setup = createStandardSubscription(ref, datasetId);
         String subscriptionId = customPrefix + ref;
         setup.setName(subscriptionId);
         setup.setSubscriptionType(dataType);

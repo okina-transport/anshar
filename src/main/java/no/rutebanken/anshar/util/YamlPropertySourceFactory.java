@@ -13,7 +13,7 @@
  * limitations under the Licence.
  */
 
-package no.rutebanken.anshar.subscription;
+package no.rutebanken.anshar.util;
 
 import org.springframework.boot.env.YamlPropertySourceLoader;
 import org.springframework.core.env.PropertySource;
@@ -27,7 +27,7 @@ import org.springframework.util.StringUtils;
 import java.io.IOException;
 import java.util.List;
 
-class YamlPropertySourceFactory implements PropertySourceFactory {
+public class YamlPropertySourceFactory implements PropertySourceFactory {
 
     @Override
     public PropertySource<?> createPropertySource(String name, EncodedResource resource) throws IOException {

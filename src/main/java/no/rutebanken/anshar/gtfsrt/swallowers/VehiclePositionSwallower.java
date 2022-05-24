@@ -53,7 +53,7 @@ public class VehiclePositionSwallower extends AbstractSwallower {
      * @param completeGTFSRTMessage
      *      The complete message (GTFS-RT format)
      */
-    public void ingestVehiclePositionData(GtfsRealtime.FeedMessage completeGTFSRTMessage ){
+    public void ingestVehiclePositionData(String datasetId, GtfsRealtime.FeedMessage completeGTFSRTMessage ){
         List<VehicleActivityStructure> vehicleActivities = buildVehicleActivityList(completeGTFSRTMessage);
         int totalVehicleActivities = vehicleActivities.size();
 
@@ -74,8 +74,8 @@ public class VehiclePositionSwallower extends AbstractSwallower {
         }
 
         List<String> subscriptionList = getSubscriptions(availableActivities);
-        checkAndCreateSubscriptions(subscriptionList);
-        Collection<VehicleActivityStructure> ingestedVehicleJourneys = handler.ingestVehicleActivities("GTFS-RT", availableActivities);
+        checkAndCreateSubscriptions(subscriptionList, datasetId);
+        Collection<VehicleActivityStructure> ingestedVehicleJourneys = handler.ingestVehicleActivities(datasetId, availableActivities);
 
 
 
@@ -131,13 +131,13 @@ public class VehiclePositionSwallower extends AbstractSwallower {
      * @param subscriptionsList
      *  The list of subscription ids
      */
-    private void checkAndCreateSubscriptions(List<String> subscriptionsList) {
+    private void checkAndCreateSubscriptions(List<String> subscriptionsList, String datasetId) {
 
         for (String subscriptionId : subscriptionsList) {
             if (subscriptionManager.isSubscriptionExisting(prefix + subscriptionId))
                 //A subscription is already existing for this Line. No need to create one
                 continue;
-            createNewSubscription(subscriptionId);
+            createNewSubscription(subscriptionId, datasetId);
         }
     }
 
@@ -146,10 +146,10 @@ public class VehiclePositionSwallower extends AbstractSwallower {
      * @param objectRef
      *      The object id for which a subscription must be created
      */
-    private void createNewSubscription(String objectRef){
-        SubscriptionSetup setup = createStandardSubscription(objectRef);
+    private void createNewSubscription(String objectRef, String datasetId){
+        SubscriptionSetup setup = createStandardSubscription(objectRef, datasetId);
         setup.setLineRefValue(objectRef);
-        subscriptionManager.addSubscription(objectRef,setup);
+        subscriptionManager.addSubscription(objectRef, setup);
     }
 
 }

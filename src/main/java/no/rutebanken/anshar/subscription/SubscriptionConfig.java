@@ -16,11 +16,15 @@
 package no.rutebanken.anshar.subscription;
 
 
+import no.rutebanken.anshar.api.GtfsRTApi;
+import no.rutebanken.anshar.api.SiriApi;
+import no.rutebanken.anshar.util.YamlPropertySourceFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -30,6 +34,10 @@ import java.util.stream.Collectors;
 public class SubscriptionConfig {
 
     private List<SubscriptionSetup> subscriptions;
+
+    private List<GtfsRTApi> gtfsRTApis = new ArrayList<>();
+
+    private List<SiriApi> siriApis = new ArrayList<>();
 
     @Value("${anshar.subscriptions.datatypes.filter:}")
     List<SiriDataType> dataTypes;
@@ -46,5 +54,21 @@ public class SubscriptionConfig {
 
     public void setSubscriptions(List<SubscriptionSetup> subscriptions) {
         this.subscriptions = subscriptions;
+    }
+
+    public List<GtfsRTApi> getGtfsRTApis() {
+        return gtfsRTApis;
+    }
+
+    public void setGtfsRTApis(List<GtfsRTApi> gtfsRTApis) {
+        this.gtfsRTApis = gtfsRTApis;
+    }
+
+    public List<SiriApi> getSiriApis() {
+        return siriApis;
+    }
+
+    public void setSiriApis(List<SiriApi> siriApis) {
+        this.siriApis = siriApis;
     }
 }
