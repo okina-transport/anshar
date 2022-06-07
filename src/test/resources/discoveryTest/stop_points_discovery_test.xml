@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Siri xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.siri.org.uk/siri">
+    <RequestTimestamp>2021-11-22T09:28:06.0735495+01:00</RequestTimestamp>
+    <RequestorRef>CITYWAY</RequestorRef>
+    <StopPointsRequest />     
+  <Extensions />
+</Siri>

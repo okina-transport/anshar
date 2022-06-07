@@ -1,0 +1,13 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsdl="http://wsdl.siri.org.uk" xmlns:siri="http://www.siri.org.uk/siri">
+    <soapenv:Header/>
+    <soapenv:Body>
+        <wsdl:StopPointsDiscovery>
+            <Request version="2.0">
+                <siri:RequestTimestamp>2022-04-06T12:29:51.185746+02:00</siri:RequestTimestamp>
+                <siri:RequestorRef>siriclientyelo</siri:RequestorRef>
+            </Request>
+            <RequestExtension>
+            </RequestExtension>
+        </wsdl:StopPointsDiscovery>
+    </soapenv:Body>
+</soapenv:Envelope>

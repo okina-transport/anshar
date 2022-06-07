@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Siri xmlns="http://www.siri.org.uk/siri" xmlns:ns2="http://www.ifopt.org.uk/acsb" xmlns:ns3="http://www.ifopt.org.uk/ifopt" xmlns:ns4="http://datex2.eu/schema/2_0RC1/2_0" version="2.0">
+    <LinesDelivery>
+        <AnnotatedLineRef>
+            <LineRef>N</LineRef>
+            <Monitored>true</Monitored>
+        </AnnotatedLineRef>
+        <AnnotatedLineRef>
+            <LineRef>L2</LineRef>
+            <Monitored>true</Monitored>
+        </AnnotatedLineRef>
+        <AnnotatedLineRef>
+            <LineRef>L1</LineRef>
+            <Monitored>true</Monitored>
+        </AnnotatedLineRef>
+    </LinesDelivery>
+</Siri>
+
