@@ -264,7 +264,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
         Set<SiriObjectStorageKey> allIds = new HashSet<>();
         Set<SiriObjectStorageKey> idSet = changesMap.getOrDefault(requestorId, allIds);
 
-        idSet.addAll(situationElements.keySet(entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, datasetId, null)));
+        idSet.addAll(situationElements.keySet(entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, null, datasetId, null)));
 
         return idSet;
     }

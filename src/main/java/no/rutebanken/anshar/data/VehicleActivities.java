@@ -303,7 +303,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
 
         idSet = changesMap.getOrDefault(requestorId, allIds);
 
-        idSet.addAll(monitoredVehicles.keySet(entry -> isKeyCompliantWithFilters(entry.getKey(), linerefSet, vehicleRefSet, datasetId, excludedDatasetIds)));
+        idSet.addAll(monitoredVehicles.keySet(entry -> isKeyCompliantWithFilters(entry.getKey(), linerefSet, vehicleRefSet, null, datasetId, excludedDatasetIds)));
 
         return idSet;
     }

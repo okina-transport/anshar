@@ -323,7 +323,7 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
         Set<SiriObjectStorageKey> allIds = new HashSet<>();
         Set<SiriObjectStorageKey> idSet = changesMap.getOrDefault(requestorId, allIds);
 
-        idSet.addAll(timetableDeliveries.keySet(entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, datasetId, excludedDatasetIds)));
+        idSet.addAll(timetableDeliveries.keySet(entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, null, datasetId, excludedDatasetIds)));
 
         return idSet;
     }

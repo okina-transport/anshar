@@ -281,7 +281,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
             idSet = changesMap.getOrDefault(requestorId, allIds);
         }
 
-        idSet.addAll(monitoredStopVisits.keySet(entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, datasetId, excludedDatasetIds)));
+        idSet.addAll(monitoredStopVisits.keySet(entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, searchedStopRefs, datasetId, excludedDatasetIds)));
 
         return idSet;
     }
