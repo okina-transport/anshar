@@ -302,10 +302,10 @@ public class SiriHandler {
             }
         }else if (incoming.getStopPointsRequest() != null){
             // stop discovery request
-            return getDiscoveryStopPoints();
+            return getDiscoveryStopPoints(datasetId);
         }else if (incoming.getLinesRequest() != null){
             // lines discovery request (for vehicle monitoring)
-            return getDiscoveryLines();
+            return getDiscoveryLines(datasetId);
         }
 
         return null;
@@ -317,9 +317,9 @@ public class SiriHandler {
      * @return
      *  the siri response with all points
      */
-    private Siri getDiscoveryLines() {
-
+    private Siri getDiscoveryLines(String datasetId) {
         List<AnnotatedLineRef> resultList = subscriptionManager.getAllSubscriptions(SiriDataType.VEHICLE_MONITORING).stream()
+                                                            .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))
                                                             .map(SubscriptionSetup::getLineRefValue)
                                                             .filter(lineRef -> lineRef != null)
                                                             .map(this::convertKeyToLineRef)
@@ -335,9 +335,10 @@ public class SiriHandler {
      * @return
      *  the siri response with all points
      */
-    public Siri getDiscoveryStopPoints(){
+    public Siri getDiscoveryStopPoints(String datasetId){
 
         List<AnnotatedStopPointStructure> resultList = subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING).stream()
+                                                                            .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))
                                                                             .map(SubscriptionSetup::getStopMonitoringRefValue)
                                                                             .map(this::convertKeyToPointStructure)
                                                                             .collect(Collectors.toList());
