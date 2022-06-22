@@ -20,6 +20,7 @@ import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.EstimatedTimetables;
 import no.rutebanken.anshar.data.MonitoredStopVisits;
 import no.rutebanken.anshar.data.Situations;
+import no.rutebanken.anshar.data.StopPlaceIdCache;
 import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.health.HealthManager;
@@ -83,6 +84,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getOriginalId;
 
@@ -123,6 +125,9 @@ public class SiriHandler {
 
     @Autowired
     private PrometheusMetricsService metrics;
+
+    @Autowired
+    private StopPlaceIdCache idCache;
 
 
     @Produce(uri = "direct:forward.position.data")
@@ -337,13 +342,33 @@ public class SiriHandler {
      */
     public Siri getDiscoveryStopPoints(String datasetId){
 
-        List<AnnotatedStopPointStructure> resultList = subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING).stream()
-                                                                            .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))
-                                                                            .map(SubscriptionSetup::getStopMonitoringRefValue)
-                                                                            .map(this::convertKeyToPointStructure)
-                                                                            .collect(Collectors.toList());
+
+        List<String> monitoringRefList = subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING).stream()
+                                                            .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))
+                                                            .map(SubscriptionSetup::getStopMonitoringRefValue)
+                                                            .collect(Collectors.toList());
+
+        traceUnknownStopPoints(monitoringRefList);
+
+        List<AnnotatedStopPointStructure> resultList = monitoringRefList.stream()
+                                                                        .map(this::convertKeyToPointStructure)
+                                                                        .collect(Collectors.toList());
 
         return siriObjectFactory.createStopPointsDiscoveryDelivery(resultList);
+    }
+
+    /**
+     * Function to trace the list of points that are unknown from theorical data
+     * @param stopPointList
+     *      The list of stop points id to check
+     */
+    private void traceUnknownStopPoints(List<String> stopPointList){
+        List<String> unknownPoints = stopPointList.stream()
+                                                .filter(stopPointId -> !idCache.isKnownImportedId(stopPointId))
+                                                .collect(Collectors.toList());
+
+        logger.warn("These points were received in real-time data but are unknown from theorical data :" + unknownPoints.stream().collect(Collectors.joining(",")));
+
     }
 
 
