@@ -31,11 +31,13 @@ public class Disruption implements Serializable {
 
     private LocalDateTime startDateTime;
 
-
     private LocalDateTime endDateTime;
 
-
     private LocalDateTime deleteDateTime;
+
+    private LocalDateTime publicationStartDateTime;
+
+    private LocalDateTime publicationEndDateTime;
 
     @Getter
     @Setter

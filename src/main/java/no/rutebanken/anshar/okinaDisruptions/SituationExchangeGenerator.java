@@ -195,6 +195,19 @@ public class SituationExchangeGenerator {
         ZonedDateTime creationTime = disruption.getCreationDateTime().atZone(zoneId);
         ptSituationElement.setCreationTime(creationTime);
 
+
+        if (disruption.getPublicationStartDateTime() != null){
+            HalfOpenTimestampOutputRangeStructure publicationWindow = new HalfOpenTimestampOutputRangeStructure();
+
+            ZonedDateTime startPublication = disruption.getPublicationStartDateTime().atZone(zoneId);
+            publicationWindow.setStartTime(startPublication);
+
+            if (disruption.getPublicationEndDateTime() != null){
+                ZonedDateTime endPublication = disruption.getPublicationEndDateTime().atZone(zoneId);
+                publicationWindow.setEndTime(endPublication);
+            }
+            ptSituationElement.setPublicationWindow(publicationWindow);
+        }
     }
 
     private static void mapDescription(PtSituationElement ptSituationElement, Disruption disruption) {
