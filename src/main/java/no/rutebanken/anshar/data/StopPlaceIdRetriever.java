@@ -96,7 +96,7 @@ public class StopPlaceIdRetriever {
             }
 
         }catch(Exception e){
-            logger.error("Unknown point in referential :" + stopPointId);
+            //do nothing
         }
     }
 
