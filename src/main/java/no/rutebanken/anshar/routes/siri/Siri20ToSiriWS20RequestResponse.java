@@ -72,20 +72,20 @@ public class Siri20ToSiriWS20RequestResponse extends SiriSubscriptionRouteBuilde
                 .setHeader("SOAPAction", simple(getSoapAction(subscriptionSetup))) // extract and compute SOAPAction (Microsoft requirement)
                 .setHeader("operatorNamespace", constant(subscriptionSetup.getOperatorNamespace())) // Need to make SOAP request with endpoint specific element namespace
                 .setHeader("endpointUrl", constant(endpointUrl)) // Need to make SOAP request with endpoint specific element namespace
-                .process(e -> log.info("========> Request Before transformed to soap siri : " + e.getIn().getBody(String.class)))
+                .process(e -> log.debug("========> Request Before transformed to soap siri : " + e.getIn().getBody(String.class)))
                 .to("xslt-saxon:xsl/siri_raw_soap.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Convert SIRI raw request to SOAP version
                 .to("xslt-saxon:xsl/siri_14_20.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Convert SIRI raw request to SOAP version
                 .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
-                .process(e -> log.info("========> Request transformed to soap siri : " + e.getIn().getBody(String.class)))
+                .process(e -> log.debug("========> Request transformed to soap siri : " + e.getIn().getBody(String.class)))
                 .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
                 .process(addCustomHeaders())
-                .to("log:request:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+             //   .to("log:request:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .doTry()
                 .to(getRequestUrl(subscriptionSetup) + httpOptions)
-                .to("log:response:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+               // .to("log:response:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .setHeader("CamelHttpPath", constant("/appContext" + subscriptionSetup.buildUrl(false)))
-                .log("Got response " + subscriptionSetup.toString())
+                //.log("Got response " + subscriptionSetup.toString())
                 .setHeader(TRANSFORM_SOAP, constant(TRANSFORM_SOAP))
                 .setHeader(PARAM_SUBSCRIPTION_ID, simple(subscriptionSetup.getSubscriptionId()))
                 .setHeader(INTERNAL_SIRI_DATA_TYPE, simple(subscriptionSetup.getSubscriptionType().name()))
