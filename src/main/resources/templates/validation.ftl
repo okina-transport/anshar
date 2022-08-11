@@ -122,29 +122,32 @@
                 <th>Type</th>
                 <th>Filter (optional)</th>
                 <th>Results</th>
-                <th>On/Off <sup><span class="glyphicon glyphicon-info-sign text-info"></sup></th>
+                <th>On/Off <sup><span class="glyphicon glyphicon-info-sign text-info" ></span></sup></th>
             </tr>
             </thead>
             <tbody>
                 <#list body.subscriptions?sort_by("name") as item>
                 <tr class="${item.healthy???then(item.healthy?then("success","danger"), "warning")}">
                     <th>${item?counter}</th>
-                    <td>${item.name}</td>
+                    <td>
+                        ${item.name}<br />
+                        <small>${item.description}</small>
+                    </td>
                     <td>${item.status!""}</td>
                     <td>${item.subscriptionType}</td>
                     <td>
                         <label>
-                            <input type="text" class="input-field" id="filterValue:${item.subscriptionId}" value="${item.validationFilter???then("${item.validationFilter}","")}" onchange="this.form.submit()">
+                            <input type="text" class="input-field" id="filterValue:${item.internalId?long?c}" value="${item.validationFilter???then("${item.validationFilter}","")}" onchange="this.form.submit()">
                         </label>
                     </td>
                     <td>
                         <label>
-                            <a href="report?subscriptionId=${item.subscriptionId}" target="_blank">Validation report</a>
+                            <a href="report?subscriptionId=${item.internalId?long?c}" target="_blank">Validation report</a>
                         </label>
                     </td>
                     <td>
                         <label class="switch">
-                            <input type="checkbox" ${item.validation?then("checked", "")} onchange="toggleValidation('${item.subscriptionId}')">
+                            <input type="checkbox" ${item.validation?then("checked", "")} onchange="toggleValidation(${item.internalId?long?c})">
                             <span class="slider round"></span>
                         </label>
                     </td>

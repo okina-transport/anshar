@@ -40,8 +40,8 @@ public abstract class NsrGenericIdValidator extends CustomValidator {
     public ValidationEvent isValid(Node node) {
         String nodeValue = getNodeValue(node);
 
-        if (nodeValue == null || !nodeValue.contains(":" + ID_PATTERN + ":")) {
-            return  createEvent(node, FIELDNAME, "CODESPACE:" + ID_PATTERN + ":ID", nodeValue, ValidationEvent.FATAL_ERROR);
+        if (!isValidGenericId(ID_PATTERN, nodeValue)) {
+            return  createEvent(node, FIELDNAME, "valid NeTEx-id formatted like CODESPACE:" + ID_PATTERN + ":ID", nodeValue, ValidationEvent.FATAL_ERROR);
         }
 
         return null;

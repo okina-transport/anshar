@@ -17,23 +17,25 @@ package no.rutebanken.anshar.validation.sx;
 
 import no.rutebanken.anshar.routes.validation.validators.sx.AffectedComponentValidator;
 import no.rutebanken.anshar.validation.CustomValidatorTest;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.w3c.dom.Node;
 import uk.org.ifopt.siri20.AccessibilityFeatureEnumeration;
 import uk.org.ifopt.siri20.StopPlaceComponentTypeEnumeration;
 
 import javax.xml.bind.ValidationEvent;
 
-import static junit.framework.TestCase.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class AffectedComponentValidatorTest extends CustomValidatorTest {
 
-    private static AffectedComponentValidator validator;
+    @Autowired
+    private AffectedComponentValidator validator;
     
-    @BeforeAll
-    public static void init() {
-        validator = new AffectedComponentValidator();
+    @BeforeEach
+    public void init() {
+        validator.prepareTestData("NSR:Quay:1234");
     }
 
     @Test

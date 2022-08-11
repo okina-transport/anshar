@@ -23,7 +23,6 @@ import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.Exchange;
 import org.apache.camel.Message;
-import org.apache.camel.http.common.HttpMethods;
 import org.apache.camel.model.rest.RestParamType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,6 +103,10 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder {
                     .description("Endpoint used for SIRI ServiceRequest limited to single dataprovider.")
                     .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.path).description("The id of the Codespace to limit data to").dataType("string").endParam()
 
+                // Endpoints that returned cached data
+                .post("/services-cache").to("direct:process.service.request.cache")
+                .post("/services-cache/{" + PARAM_DATASET_ID + "}").to("direct:process.service.request.cache")
+
 
                 .post("/subscribe").to("direct:process.subscription.request")
                         .description("Endpoint used for SIRI SubscriptionRequest.")
@@ -130,13 +133,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder {
                 .choice()
                     .when(e -> subscriptionExistsAndIsActive(e))
                         //Valid subscription
-                        .convertBodyTo(String.class)
-                        .process(p -> {
-                            p.getMessage().setBody(p.getIn().getBody());
-                            p.getMessage().setHeaders(p.getIn().getHeaders());
-                            p.getMessage().setHeader(INTERNAL_SIRI_DATA_TYPE, getSubscriptionDataType(p));
-                        })
-                        .to("direct:enqueue.message")
+                        .to("seda:async.process.request?waitForTaskToComplete=Never")
                         .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("200"))
                         .setBody(constant(null))
                     .endChoice()
@@ -150,6 +147,17 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder {
             .routeId("process.incoming")
                 ;
 
+        from("seda:async.process.request?concurrentConsumers=20")
+            .convertBodyTo(String.class)
+            .process(p -> {
+                p.getMessage().setBody(p.getIn().getBody());
+                p.getMessage().setHeaders(p.getIn().getHeaders());
+                p.getMessage().setHeader(INTERNAL_SIRI_DATA_TYPE, getSubscriptionDataType(p));
+            })
+            .to("direct:enqueue.message")
+            .routeId("async.process.incoming")
+        ;
+
         from("direct:process.subscription.request")
                 .to("log:subRequest:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true")
                 .choice()
@@ -157,28 +165,55 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder {
                     .to("direct:anshar.blocked.tracking.header.response")
                 .endChoice()
                 .when(e -> isTrackingHeaderAcceptable(e))
-                    .process(p -> {
-                        String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
-                        String clientTrackingName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
-
-                        InputStream xml = p.getIn().getBody(InputStream.class);
-
-                        Siri response = handler.handleIncomingSiri(null, xml, datasetId, SiriHandler.getIdMappingPolicy((String) p.getIn().getHeader(PARAM_USE_ORIGINAL_ID)), -1, clientTrackingName);
-                        if (response != null) {
-                            logger.info("Returning SubscriptionResponse");
-
-                            p.getOut().setBody(response);
-                        }
-
-                    })
-                    .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
-                    .to("log:subResponse:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                    .choice()
+                        .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:VehicleMonitoringSubscriptionRequest", ns)
+                        .to("direct:process.vm.subscription.request")
+                        .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:SituationExchangeSubscriptionRequest", ns)
+                        .to("direct:process.sx.subscription.request")
+                        .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:EstimatedTimetableSubscriptionRequest", ns)
+                        .to("direct:process.et.subscription.request")
+                        .when().xpath("/siri:Siri/siri:TerminateSubscriptionRequest", ns)
+                            // Forwarding TerminateRequest to all data-instances
+                            .wireTap("direct:process.et.subscription.request")
+                            .wireTap("direct:process.vm.subscription.request")
+                            .wireTap("direct:process.sx.subscription.request")
+                            .to("direct:internal.handle.subscription") //Build response
+                    .endChoice()
                 .otherwise()
                     .to("direct:anshar.invalid.tracking.header.response")
                 .routeId("process.subscription")
         ;
 
+        from("direct:internal.handle.subscription")
+                .process(p -> {
+                    String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
+                    String clientTrackingName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
+
+                    InputStream xml = p.getIn().getBody(InputStream.class);
+
+                    Siri response = handler.handleIncomingSiri(null, xml, datasetId, SiriHandler.getIdMappingPolicy((String) p.getIn().getHeader(PARAM_USE_ORIGINAL_ID)), -1, clientTrackingName);
+                    if (response != null) {
+                        logger.info("Returning SubscriptionResponse");
+
+                        p.getOut().setBody(response);
+                    }
+
+                })
+                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .to("log:subResponse:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+        ;
+
         from("direct:process.service.request")
+                .choice()
+                    .when().xpath("/siri:Siri/siri:ServiceRequest/siri:VehicleMonitoringRequest", ns)
+                        .to("direct:process.vm.service.request")
+                    .when().xpath("/siri:Siri/siri:ServiceRequest/siri:SituationExchangeRequest", ns)
+                        .to("direct:process.sx.service.request")
+                    .when().xpath("/siri:Siri/siri:ServiceRequest/siri:EstimatedTimetableRequest", ns)
+                        .to("direct:process.et.service.request.cache")
+                .endChoice()
+        ;
+        from("direct:internal.process.service.request")
                 .to("log:serRequest:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true&level=DEBUG")
                 .choice()
                 .when(e -> isTrackingHeaderAcceptable(e))
@@ -218,6 +253,37 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder {
                 .otherwise()
                     .to("direct:anshar.invalid.tracking.header.response")
                 .routeId("process.service")
+        ;
+
+        from("direct:process.service.request.cache")
+                .choice()
+                    .when().xpath("/siri:Siri/siri:ServiceRequest/siri:VehicleMonitoringRequest", ns)
+                        .to("direct:process.vm.service.request.cache")
+                    .when().xpath("/siri:Siri/siri:ServiceRequest/siri:SituationExchangeRequest", ns)
+                        .to("direct:process.sx.service.request.cache")
+                    .when().xpath("/siri:Siri/siri:ServiceRequest/siri:EstimatedTimetableRequest", ns)
+                        .to("direct:process.et.service.request.cache")
+                .endChoice()
+        ;
+
+        from("direct:internal.process.service.request.cache")
+            .to("log:serRequest:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true")
+            .process(p -> {
+                Message msg = p.getIn();
+
+                String datasetId = msg.getHeader(PARAM_DATASET_ID, String.class);
+                String clientTrackingName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
+
+                Siri response = handler.handleSiriCacheRequest(msg.getBody(InputStream.class), datasetId, clientTrackingName);
+                if (response != null) {
+                    logger.info("Found ServiceRequest-response, streaming response");
+                }
+                HttpServletResponse out = p.getIn().getBody(HttpServletResponse.class);
+
+                streamOutput(p, response, out);
+            })
+            .to("log:serResponse:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true")
+            .routeId("process.service.cache")
         ;
 
     }

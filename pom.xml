@@ -19,15 +19,15 @@
 
   <modelVersion>4.0.0</modelVersion>
   <parent>
-      <groupId>com.okina.springboot</groupId>
+      <groupId>org.rutebanken.superpom</groupId>
       <artifactId>superpom</artifactId>
-      <version>1.0.1-SNAPSHOT</version>
+      <version>1.0.11</version>
   </parent>
 
 
     <groupId>no.rutebanken.anshar</groupId>
     <artifactId>anshar</artifactId>
-    <version>1.1.7-mobi-iti-SNAPSHOT</version>
+    <version>0.0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
 
 
@@ -36,13 +36,14 @@
 
         <!-- versions for use in mvn plugins as we cannot inherit them from a BOM -->
         <docker.maven.plugin.version>0.21.0</docker.maven.plugin.version>
-        <spring-boot-plugin.version>2.4.1</spring-boot-plugin.version>
-        <spring-boot.version>2.4.1</spring-boot.version>
+        <spring-boot-plugin.version>2.6.6</spring-boot-plugin.version>
+        <spring-boot.version>2.6.6</spring-boot.version>
 
-        <camel-version>3.7.0</camel-version>
+        <camel-version>3.18.0</camel-version>
 
         <metrics.version>3.2.3</metrics.version>
         <okina.helpers.version>1.0.24</okina.helpers.version>
+        <geotools.version>27.0</geotools.version>
         <sonar.projectKey>mobi-iti:anshar</sonar.projectKey>
         <protobuf.version>3.19.3</protobuf.version>
         <gtfs.realtime-bindings.version>0.0.4</gtfs.realtime-bindings.version>
@@ -76,15 +77,39 @@
                 <scope>import</scope>
             </dependency>
             <dependency>
-                <groupId>com.okina.helpers</groupId>
+                <groupId>org.entur.helpers</groupId>
+                <artifactId>camel3-entur-google-pubsub</artifactId>
+                <version>${entur.helpers.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.entur.helpers</groupId>
                 <artifactId>hazelcast4-helper</artifactId>
-                <version>${okina.helpers.version}</version>
+                <version>${entur.helpers.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.entur.helpers</groupId>
+                <artifactId>gcp-storage</artifactId>
+                <version>${entur.helpers.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>javax.servlet</groupId>
+                        <artifactId>servlet-api</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>io.netty</groupId>
+                        <artifactId>netty-codec-http2</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>com.google.protobuf</groupId>
+                        <artifactId>protobuf-lite</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
         </dependencies>
     </dependencyManagement>
 
     <dependencies>
-        <dependency>
+        <dependency>j
             <groupId>net.logstash.logback</groupId>
             <artifactId>logstash-logback-encoder</artifactId>
             <version>6.3</version>
@@ -94,15 +119,16 @@
             <artifactId>janino</artifactId>
             <version>3.0.7</version>
         </dependency>
-
         <dependency>
             <groupId>org.apache.camel.springboot</groupId>
             <artifactId>camel-spring-boot-starter</artifactId>
+            <version>${camel-version}</version>
         </dependency>
         <dependency>
             <groupId>com.okina.helpers</groupId>
             <artifactId>hazelcast4-helper</artifactId>
         </dependency>
+
         <dependency>
             <groupId>org.apache.camel</groupId>
             <artifactId>camel-core</artifactId>
@@ -176,11 +202,6 @@
 
         </dependency>
         <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>${version.lombok}</version>
-        </dependency>
-        <dependency>
             <groupId>org.apache.camel</groupId>
             <artifactId>camel-paho</artifactId>
             <version>${camel-version}</version>
@@ -188,6 +209,11 @@
         <dependency>
             <groupId>org.apache.camel</groupId>
             <artifactId>camel-xslt-saxon</artifactId>
+            <version>${camel-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.camel</groupId>
+            <artifactId>camel-spring-security</artifactId>
             <version>${camel-version}</version>
         </dependency>
         <dependency>
@@ -203,6 +229,11 @@
         </dependency>
         <dependency>
             <groupId>org.apache.camel</groupId>
+            <artifactId>camel-jackson</artifactId>
+            <version>${camel-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.camel</groupId>
             <artifactId>camel-activemq</artifactId>
         </dependency>
 
@@ -214,10 +245,12 @@
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-core</artifactId>
+            <version>1.9.0</version>
         </dependency>
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
+            <version>1.9.0</version>
         </dependency>
 
         <dependency>
@@ -233,19 +266,19 @@
         <dependency>
             <groupId>com.hazelcast</groupId>
             <artifactId>hazelcast</artifactId>
-            <version>4.1.8</version>
+            <version>5.1.1</version>
         </dependency>
 
         <dependency>
             <groupId>org.entur</groupId>
             <artifactId>siri-java-model</artifactId>
-            <version>0.12</version>
+            <version>0.14</version>
         </dependency>
 
         <dependency>
             <groupId>org.entur</groupId>
             <artifactId>siri-protobuf-mapper</artifactId>
-            <version>0.6</version>
+            <version>0.9</version>
         </dependency>
         <dependency>
             <groupId>com.google.protobuf</groupId>
@@ -255,19 +288,32 @@
         <dependency>
             <groupId>org.entur</groupId>
             <artifactId>netex-java-model</artifactId>
-            <version>1.0.9</version>
+            <version>1.0.13</version>
+        </dependency>
+
+        <!-- Geotools needed for calculating speed between stops-->
+        <dependency>
+            <groupId>org.geotools</groupId>
+            <artifactId>gt-main</artifactId>
+            <version>${geotools.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.geotools</groupId>
+            <artifactId>gt-referencing</artifactId>
+            <version>${geotools.version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.9</version>
+            <version>3.12.0</version>
         </dependency>
 
         <dependency>
             <groupId>com.googlecode.json-simple</groupId>
             <artifactId>json-simple</artifactId>
-            <version>1.1</version>
+            <version>1.1.1</version>
         </dependency>
 
         <dependency>
@@ -298,13 +344,13 @@
         <dependency>
             <groupId>xerces</groupId>
             <artifactId>xercesImpl</artifactId>
-            <version>2.12.0</version>
+            <version>2.12.2</version>
         </dependency>
 
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20160212</version>
+            <version>20211205</version>
         </dependency>
 
         <dependency>
@@ -334,6 +380,7 @@
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
             <scope>test</scope>
+            <version>5.8.2</version>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
@@ -344,6 +391,10 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.camel</groupId>
@@ -360,19 +411,24 @@
         <dependency>
             <groupId>io.rest-assured</groupId>
             <artifactId>rest-assured</artifactId>
-            <version>4.3.3</version>
+            <version>4.5.1</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.rest-assured</groupId>
             <artifactId>json-path</artifactId>
-            <version>4.3.3</version>
+            <version>4.5.1</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.rest-assured</groupId>
             <artifactId>xml-path</artifactId>
-            <version>4.3.3</version>
+            <version>4.5.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.jayway.jsonpath</groupId>
+            <artifactId>json-path</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -394,7 +450,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.0</version>
+                <version>3.10.0</version>
                 <configuration>
                     <source>11</source>
                     <target>11</target>
@@ -533,6 +589,11 @@
             <id>github</id>
             <name>Entur Github package repo</name>
             <url>https://maven.pkg.github.com/entur/siri-protobuf-mapper</url>
+        </repository>
+        <repository>
+            <id>osgeo</id>
+            <name>Open Source Geospatial Foundation Repository</name>
+            <url>https://repo.osgeo.org/repository/release/</url>
         </repository>
     </repositories>
 </project>

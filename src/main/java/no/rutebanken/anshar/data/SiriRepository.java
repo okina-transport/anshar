@@ -15,7 +15,14 @@
 
 package no.rutebanken.anshar.data;
 
+import com.google.common.collect.Maps;
+import com.hazelcast.core.EntryEvent;
 import com.hazelcast.map.IMap;
+import com.hazelcast.map.listener.EntryAddedListener;
+import com.hazelcast.map.listener.EntryEvictedListener;
+import com.hazelcast.map.listener.EntryExpiredListener;
+import com.hazelcast.map.listener.EntryRemovedListener;
+import com.hazelcast.map.listener.EntryUpdatedListener;
 import com.hazelcast.query.Predicate;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
@@ -24,12 +31,13 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.SerializationUtils;
 
 import javax.xml.bind.DatatypeConverter;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
@@ -53,7 +61,11 @@ abstract class SiriRepository<T> {
     private IMap<String, Instant> lastUpdateRequested;
     private IMap<String, Set<SiriObjectStorageKey>> changesMap;
 
+    private final SiriDataType SIRI_DATA_TYPE;
+
     abstract Collection<T> getAll();
+
+    abstract Map<SiriObjectStorageKey, T> getAllAsMap();
 
     abstract int getSize();
 
@@ -74,6 +86,177 @@ abstract class SiriRepository<T> {
     final Set<SiriObjectStorageKey> dirtyChanges = Collections.synchronizedSet(new HashSet<>());
 
     private ScheduledExecutorService singleThreadScheduledExecutor;
+
+    @Autowired
+    protected RequestorRefRepository requestorRefRepository;
+
+    Map<SiriObjectStorageKey, T> cache = Maps.newConcurrentMap();
+
+    protected SiriRepository (SiriDataType siriDataType) {
+        this.SIRI_DATA_TYPE = siriDataType;
+    }
+
+    protected void enableCache(IMap<SiriObjectStorageKey, T> map) {
+        enableCache(map, null);
+    }
+
+    protected void enableCache(IMap<SiriObjectStorageKey, T> map, java.util.function.Predicate<T> includeInCachePredicate) {
+
+        // Entry added - new data
+        map.addEntryListener((EntryAddedListener<SiriObjectStorageKey, T>) entryEvent -> {
+
+            if (includeInCachePredicate == null || includeInCachePredicate.test(entryEvent.getValue())) {
+                cache.put(entryEvent.getKey(), entryEvent.getValue());
+            }
+        }, true);
+
+        // Entry updated - new version
+        map.addEntryListener((EntryUpdatedListener<SiriObjectStorageKey, T>) entryEvent -> {
+
+            if (includeInCachePredicate == null || includeInCachePredicate.test(entryEvent.getValue())) {
+                cache.put(entryEvent.getKey(), entryEvent.getValue());
+            }
+        }, true);
+
+        //Entry expired by TTL
+        map.addEntryListener((EntryExpiredListener<SiriObjectStorageKey, T>) entryEvent -> {
+
+            cache.remove(entryEvent.getKey());
+        }, false);
+
+        // Entry evicted
+        map.addEntryListener((EntryEvictedListener<SiriObjectStorageKey, T>) entryEvent -> {
+
+            cache.remove(entryEvent.getKey());
+        }, false);
+
+        // Entry removed - e.g. "delete all for codespace"
+        map.addEntryListener((EntryRemovedListener<SiriObjectStorageKey, T>) entryEvent -> {
+
+            cache.remove(entryEvent.getKey());
+        }, false);
+
+        // Initialize cache
+        long t1 = System.currentTimeMillis();
+
+        final Map<SiriObjectStorageKey, T> allAsMap = getAllAsMap();
+        if (includeInCachePredicate != null) {
+            for (Map.Entry<SiriObjectStorageKey, T> entry : allAsMap.entrySet()) {
+                if (includeInCachePredicate.test(entry.getValue())) {
+                    cache.put(entry.getKey(), entry.getValue());
+                }
+            }
+        } else {
+            cache.putAll(allAsMap);
+        }
+        logger.info("Cache initialized with {} elements in {} ms", cache.size(), (System.currentTimeMillis()-t1));
+    }
+
+    /**
+     * Links entries across provided Maps.
+     *
+     * TTL is set on main map, other maps are linked using EntryListeners:
+     *   When an object is removed/expired from the main map, it is also removed from the linked maps
+     *
+     * @param map
+     * @param linkedMaps
+     */
+    void linkEntriesTtl(IMap<SiriObjectStorageKey, T> map,  IMap<String, Set<SiriObjectStorageKey>> linkedChangeMap, Map<SiriObjectStorageKey, ? extends Object>... linkedMaps) {
+        {
+
+            // Entry added - new data
+            map.addEntryListener((EntryAddedListener<SiriObjectStorageKey, T>) entryEvent -> {
+                map.setTtl(entryEvent.getKey(), getExpiration(entryEvent.getValue()), TimeUnit.MILLISECONDS);
+            }, true);
+
+            // Entry updated - new version
+            map.addEntryListener((EntryUpdatedListener<SiriObjectStorageKey, T>) entryEvent -> {
+                map.setTtl(entryEvent.getKey(), getExpiration(entryEvent.getValue()), TimeUnit.MILLISECONDS);
+            }, true);
+
+            //Entry expired by TTL
+            map.addEntryListener((EntryExpiredListener<SiriObjectStorageKey, T>) entryEvent -> {
+                removeFromLinked(linkedChangeMap, entryEvent, linkedMaps);
+            }, false);
+
+            // Entry evicted
+            map.addEntryListener((EntryEvictedListener<SiriObjectStorageKey, T>) entryEvent -> {
+                removeFromLinked(linkedChangeMap, entryEvent, linkedMaps);
+            }, false);
+
+            // Entry removed - e.g. "delete all for codespace"
+            map.addEntryListener((EntryRemovedListener<SiriObjectStorageKey, T>) entryEvent -> {
+                removeFromLinked(linkedChangeMap, entryEvent, linkedMaps);
+            }, false);
+        }
+    }
+
+    private void removeFromLinked(IMap<String, Set<SiriObjectStorageKey>> linkedChangeMap, EntryEvent<SiriObjectStorageKey, T> entryEvent, Map<SiriObjectStorageKey, ?>[] linkedMaps) {
+        for (Map<SiriObjectStorageKey, ?> linkedMap : linkedMaps) {
+            linkedMap.remove(entryEvent.getKey());
+        }
+        for (Set<SiriObjectStorageKey> changes : linkedChangeMap.values()) {
+            changes.remove(entryEvent.getKey());
+        }
+    }
+
+    public Collection<T> getAllCachedUpdates(
+            String requestorId, String datasetId, String clientTrackingName
+    ) {
+        return getAllCachedUpdates(requestorId, datasetId, clientTrackingName, null);
+    }
+    public Collection<T> getAllCachedUpdates(
+            String requestorId, String datasetId, String clientTrackingName, Integer maxSize
+    ) {
+        if (maxSize == null) {
+            maxSize = Integer.MAX_VALUE;
+        }
+
+        if (requestorId != null) {
+            try {
+                requestorRefRepository.touchRequestorRef(requestorId,
+                    datasetId,
+                    clientTrackingName,
+                    SIRI_DATA_TYPE
+                );
+
+                if (changesMap.containsKey(requestorId)) {
+                    Set<SiriObjectStorageKey> changes = changesMap.get(requestorId);
+
+                    changes = changes.stream()
+                        .filter((k) -> datasetId == null || k.getCodespaceId().equals(datasetId))
+                        .limit(maxSize)
+                        .collect(Collectors.toSet());
+
+                    List<T> updates = new ArrayList<>();
+                    for (SiriObjectStorageKey key : changes) {
+                        final T element = cache.get(key);
+                        if (element != null) {
+                            updates.add(element);
+                        }
+                    }
+                    return updates;
+                }
+            } finally {
+                updateChangeTrackers(lastUpdateRequested,
+                    changesMap,
+                    requestorId,
+                    new HashSet<>(),
+                    2,
+                    TimeUnit.MINUTES
+                );
+            }
+        }
+
+        return cache
+            .entrySet()
+            .stream()
+            .filter((entry) -> entry.getValue() != null)
+            .filter((entry) -> datasetId == null || entry.getKey().getCodespaceId().equals(datasetId))
+            .limit(maxSize)
+            .map(Map.Entry::getValue)
+            .collect(Collectors.toList());
+    }
 
     void initBufferCommitter(ExtendedHazelcastService hazelcastService, IMap<String, Instant> lastUpdateRequested, IMap<String, Set<SiriObjectStorageKey>> changesMap, int commitFrequency) {
         this.lastUpdateRequested = lastUpdateRequested;
@@ -243,12 +426,13 @@ abstract class SiriRepository<T> {
 
     Predicate<SiriObjectStorageKey, T> createLineRefPredicate(String lineRef) {
         return entry -> {
+            String decodedLine = URLDecoder.decode(lineRef, StandardCharsets.UTF_8);
             if (entry.getKey().getLineRef() != null) {
                 final String ref = entry.getKey().getLineRef();
 
-                return ref.startsWith(lineRef + SEPARATOR) ||
-                        ref.endsWith(SEPARATOR + lineRef) ||
-                        ref.equalsIgnoreCase(lineRef);
+                return ref.startsWith(decodedLine + SEPARATOR) ||
+                        ref.endsWith(SEPARATOR + decodedLine) ||
+                        ref.equalsIgnoreCase(decodedLine);
             }
             return false;
         };
@@ -273,15 +457,11 @@ abstract class SiriRepository<T> {
         return false;
     }
 
-    static String getChecksum(Serializable object) throws IOException, NoSuchAlgorithmException {
-        try (  ByteArrayOutputStream baos = new ByteArrayOutputStream();
-               ObjectOutputStream oos = new ObjectOutputStream(baos); )
-        {
-            oos.writeObject(object);
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            byte[] thedigest = md.digest(baos.toByteArray());
-            return DatatypeConverter.printHexBinary(thedigest);
-        }
+    static String getChecksum(Serializable object) throws NoSuchAlgorithmException {
+        byte[] bytes = SerializationUtils.serialize(object);
+        MessageDigest md = MessageDigest.getInstance("MD5");
+        return DatatypeConverter.printHexBinary(md.digest(bytes));
+
     }
 
     /**

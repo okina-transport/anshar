@@ -15,6 +15,11 @@
 
 package no.rutebanken.anshar.routes.siri.processor.routedata;
 
+import org.rutebanken.netex.model.DatedServiceJourney;
+import org.rutebanken.netex.model.LocationStructure;
+import org.rutebanken.netex.model.OperatingDay;
+import org.rutebanken.netex.model.ServiceAlterationEnumeration;
+import org.rutebanken.netex.model.VehicleModeEnumeration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -62,6 +67,12 @@ public class NetexUpdaterService {
     private static Map<String, List<ServiceDate>> tripDates = new HashMap<>();
     private static Map<String, String> parentStops = new HashMap<>();
     private static Map<String, String> quayPublicCodes = new HashMap<>();
+    private static Map<String, List<DatedServiceJourney>> datedServiceJourneysForTrip = new HashMap<>();
+    private static Map<String, OperatingDay> operatingDayRefs = new HashMap<>();
+
+    //public for testing-purposes
+    public static Map<String, LocationStructure> locations = new HashMap<>();
+    public static Map<String, VehicleModeEnumeration> modes = new HashMap<>();
 
     public static boolean isStopIdOrParentMatch(String stop1, String stop2) {
         return stop1.equals(stop2) || parentStops.get(stop2).equals(parentStops.get(stop1));
@@ -94,12 +105,34 @@ public class NetexUpdaterService {
         return trainNumberTrips.containsKey(trainNumber);
     }
 
-    static Set<String> getServiceJourneys() {
-        return tripStops.keySet();
+    public static boolean isDsjCancelled(String serviceJourneyId, ServiceDate serviceDate) {
+        if (serviceJourneyId != null) {
+            if (datedServiceJourneysForTrip.containsKey(serviceJourneyId)) {
+                List<DatedServiceJourney> datedServiceJourneys = datedServiceJourneysForTrip.get(serviceJourneyId);
+                for (DatedServiceJourney dsj : datedServiceJourneys) {
+
+                    OperatingDay operatingDay = operatingDayRefs.get(dsj.getOperatingDayRef().getRef());
+                    if (isSameDate(operatingDay, serviceDate)) {
+                        return dsj.getServiceAlteration() != null && (
+                                dsj.getServiceAlteration() == ServiceAlterationEnumeration.CANCELLATION ||
+                                dsj.getServiceAlteration() == ServiceAlterationEnumeration.REPLACED
+                                );
+                    }
+                }
+            }
+        }
+        return false;
     }
 
-    static Set<String> getTrainNumbers() {
-        return trainNumberTrips.keySet();
+    private static boolean isSameDate(OperatingDay operatingDay, ServiceDate serviceDate) {
+        return (
+                operatingDay.getCalendarDate().getYear() == serviceDate.year &&
+                operatingDay.getCalendarDate().getMonthValue() == serviceDate.month &&
+                operatingDay.getCalendarDate().getDayOfMonth() == serviceDate.day);
+    }
+
+    public static boolean serviceJourneyIdExists(String serviceJourneyId) {
+        return serviceJourneyId != null && tripStops.containsKey(serviceJourneyId);
     }
 
     @PostConstruct
@@ -152,20 +185,29 @@ public class NetexUpdaterService {
         long start = System.currentTimeMillis();
         Map<String, List<StopTime>> tmpTripStops = new HashMap<>();
         Map<String, Set<String>> tmpTrainNumberTrips = new HashMap<>();
+        Map<String, List<DatedServiceJourney>> tmpDatedServiceJourneysForTrip = new HashMap<>();
         Map<String, List<ServiceDate>> tmpTripDates = new HashMap<>();
         Map<String, String> tmpParentStops = new HashMap<>();
         Map<String, String> tmpQuayPublicCodes = new HashMap<>();
+        Map<String, LocationStructure> tmpLocations = new HashMap<>();
+        Map<String, VehicleModeEnumeration> tmpModes = new HashMap<>();
+        Map<String, OperatingDay> tmpOperatingDayRefs = new HashMap<>();
 
         for (String path : paths) {
-            readNeTEx(path, tmpTripStops, tmpTrainNumberTrips, tmpTripDates, tmpParentStops, tmpQuayPublicCodes);
+            readNeTEx(path, tmpTripStops, tmpTrainNumberTrips, tmpDatedServiceJourneysForTrip, tmpTripDates, tmpParentStops, tmpQuayPublicCodes,
+                tmpLocations, tmpModes, tmpOperatingDayRefs);
         }
 
         // Swapping updated data
         tripStops = tmpTripStops;
         trainNumberTrips = tmpTrainNumberTrips;
+        datedServiceJourneysForTrip = tmpDatedServiceJourneysForTrip;
         tripDates = tmpTripDates;
         parentStops = tmpParentStops;
         quayPublicCodes = tmpQuayPublicCodes;
+        locations = tmpLocations;
+        modes = tmpModes;
+        operatingDayRefs = tmpOperatingDayRefs;
         logger.info("Read and merged {} NeTEx files in {} ms", paths.length, (System.currentTimeMillis()-start));
     }
 
@@ -209,17 +251,27 @@ public class NetexUpdaterService {
         return null;
     }
 
-    private static void readNeTEx(String path, Map<String, List<StopTime>> tripStops, Map<String, Set<String>> trainNumberTrips,
-                                  Map<String, List<ServiceDate>> tripDates, Map<String, String> parentStops, Map<String, String> quayPublicCodes) {
+    private static void readNeTEx(
+            String path, Map<String, List<StopTime>> tripStops,
+            Map<String, Set<String>> trainNumberTrips,
+            Map<String, List<DatedServiceJourney>> datedServiceJourneysForTrip,
+            Map<String, List<ServiceDate>> tripDates,
+            Map<String, String> parentStops, Map<String, String> quayPublicCodes,
+            Map<String, LocationStructure> locations, Map<String, VehicleModeEnumeration> tmpModes,
+            Map<String, OperatingDay> operatingDayRefs) {
         try {
 
             NetexProcessor netexProcessor = new NetexProcessor();
             netexProcessor.loadFiles(new File(path));
             tripStops.putAll(netexProcessor.getTripStops());
             trainNumberTrips.putAll(netexProcessor.getTrainNumberTrips());
+            datedServiceJourneysForTrip.putAll(netexProcessor.getDatedServiceJourneyForServiceJourneyId());
+            operatingDayRefs.putAll(netexProcessor.getOperatingDayRefs());
             tripDates.putAll(netexProcessor.getTripDates());
             parentStops.putAll(netexProcessor.getParentStops());
             quayPublicCodes.putAll(netexProcessor.getPublicCodeByQuayId());
+            locations.putAll(netexProcessor.getLocations());
+            tmpModes.putAll(netexProcessor.getModes());
         } catch (IOException e) {
             logger.error("Could not load NeTEx file from path {}", path);
         }

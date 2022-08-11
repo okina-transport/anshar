@@ -16,7 +16,37 @@
 package no.rutebanken.anshar.routes.siri.processor.routedata;
 
 import org.apache.commons.io.IOUtils;
-import org.rutebanken.netex.model.*;
+import org.rutebanken.netex.model.AllVehicleModesOfTransportEnumeration;
+import org.rutebanken.netex.model.Common_VersionFrameStructure;
+import org.rutebanken.netex.model.CompositeFrame;
+import org.rutebanken.netex.model.DatedServiceJourney;
+import org.rutebanken.netex.model.DayTypeAssignment;
+import org.rutebanken.netex.model.DayTypeRefStructure;
+import org.rutebanken.netex.model.JourneyPattern;
+import org.rutebanken.netex.model.JourneyPatternsInFrame_RelStructure;
+import org.rutebanken.netex.model.JourneyRefStructure;
+import org.rutebanken.netex.model.Journey_VersionStructure;
+import org.rutebanken.netex.model.JourneysInFrame_RelStructure;
+import org.rutebanken.netex.model.LocationStructure;
+import org.rutebanken.netex.model.OperatingDay;
+import org.rutebanken.netex.model.OperatingDayRefStructure;
+import org.rutebanken.netex.model.OperatingDaysInFrame_RelStructure;
+import org.rutebanken.netex.model.PassengerStopAssignment;
+import org.rutebanken.netex.model.PointInLinkSequence_VersionedChildStructure;
+import org.rutebanken.netex.model.PublicationDeliveryStructure;
+import org.rutebanken.netex.model.Quay;
+import org.rutebanken.netex.model.ServiceAlterationEnumeration;
+import org.rutebanken.netex.model.ServiceCalendarFrame;
+import org.rutebanken.netex.model.ServiceFrame;
+import org.rutebanken.netex.model.ServiceJourney;
+import org.rutebanken.netex.model.SiteFrame;
+import org.rutebanken.netex.model.StopAssignment_VersionStructure;
+import org.rutebanken.netex.model.StopAssignmentsInFrame_RelStructure;
+import org.rutebanken.netex.model.StopPlace;
+import org.rutebanken.netex.model.StopPointInJourneyPattern;
+import org.rutebanken.netex.model.TimetableFrame;
+import org.rutebanken.netex.model.TimetabledPassingTime;
+import org.rutebanken.netex.model.VehicleModeEnumeration;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBElement;
@@ -28,7 +58,13 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -38,7 +74,9 @@ public class NetexProcessor {
     private static JAXBContext jaxbContext;
 
     private Map<String, DayTypeAssignment> dayTypeAssignmentByDayTypeId = new HashMap<>();
+    private Map<String, OperatingDay> operatingDaysById = new HashMap<>();
     private Map<String, ServiceJourney> serviceJourneyById = new HashMap<>();
+    private Map<String, List<DatedServiceJourney>> datedServiceJourneyForServiceJourneyId = new HashMap<>();
     private Map<String, String> quayIdByStopPointRef = new HashMap<>();
     private Map<String, String> publicCodeByQuayId = new HashMap<>();
     private Map<String, String> journeyPatternIdByServiceJourneyId = new HashMap<>();
@@ -48,6 +86,8 @@ public class NetexProcessor {
     private Map<String, Set<String>> trainNumberTrips = new HashMap<>();
     private Map<String, List<ServiceDate>> tripDates = new HashMap<>();
     private static Map<String, String> parentStops = new HashMap<>();
+    private Map<String, LocationStructure> locations = new HashMap<>();
+    private Map<String, VehicleModeEnumeration> modes = new HashMap<>();
 
     static {
         try {
@@ -65,6 +105,13 @@ public class NetexProcessor {
         return trainNumberTrips;
     }
 
+    public Map<String, List<DatedServiceJourney>> getDatedServiceJourneyForServiceJourneyId() {
+        return datedServiceJourneyForServiceJourneyId;
+    }
+    public Map<String, OperatingDay> getOperatingDayRefs() {
+        return operatingDaysById;
+    }
+
     public Map<String, List<ServiceDate>> getTripDates() {
         return tripDates;
     }
@@ -75,6 +122,14 @@ public class NetexProcessor {
 
     public Map<String, String> getPublicCodeByQuayId() {
         return publicCodeByQuayId;
+    }
+
+    public Map<String, LocationStructure> getLocations() {
+        return locations;
+    }
+
+    public Map<String, VehicleModeEnumeration> getModes() {
+        return modes;
     }
 
     private Unmarshaller createUnmarshaller() throws JAXBException {
@@ -90,20 +145,38 @@ public class NetexProcessor {
     private void populateTrips() {
         for (ServiceJourney serviceJourney : serviceJourneyById.values()) {
             String serviceJourneyId = serviceJourney.getId();
-            ArrayList<ServiceDate> dates = new ArrayList<>();
-            List<JAXBElement<? extends DayTypeRefStructure>> dayTypeRefs = serviceJourney.getDayTypes().getDayTypeRef();
-            for (JAXBElement<? extends DayTypeRefStructure> dayTypeRef : dayTypeRefs) {
-                DayTypeAssignment dayTypeAssignment = dayTypeAssignmentByDayTypeId.get(dayTypeRef.getValue().getRef());
-                if (dayTypeAssignment != null) {
-                    LocalDateTime date = dayTypeAssignment.getDate();
-                    final ServiceDate d = new ServiceDate(date.getYear(),
-                        date.getMonthValue(),
-                        date.getDayOfMonth()
-                    );
-                    dates.add(d);
+            if (serviceJourney.getDayTypes() != null) {
+                ArrayList<ServiceDate> dates = new ArrayList<>();
+                List<JAXBElement<? extends DayTypeRefStructure>> dayTypeRefs = serviceJourney.getDayTypes().getDayTypeRef();
+                for (JAXBElement<? extends DayTypeRefStructure> dayTypeRef : dayTypeRefs) {
+                    DayTypeAssignment dayTypeAssignment = dayTypeAssignmentByDayTypeId.get(dayTypeRef.getValue().getRef());
+                    if (dayTypeAssignment != null) {
+                        LocalDateTime date = dayTypeAssignment.getDate();
+                        final ServiceDate d = new ServiceDate(date.getYear(),
+                                date.getMonthValue(),
+                                date.getDayOfMonth()
+                        );
+                        dates.add(d);
+                    }
                 }
+                tripDates.put(serviceJourneyId, dates);
+            } else if (datedServiceJourneyForServiceJourneyId.containsKey(serviceJourneyId)) {
+                List<DatedServiceJourney> datedServiceJourneys = datedServiceJourneyForServiceJourneyId.get(serviceJourneyId);
+                ArrayList<ServiceDate> dates = new ArrayList<>();
+                for (DatedServiceJourney dsj : datedServiceJourneys) {
+                    OperatingDayRefStructure operatingDayRef = dsj.getOperatingDayRef();
+                    OperatingDay operatingDay = operatingDaysById.get(operatingDayRef.getRef());
+                    if (operatingDay != null) {
+                        LocalDateTime date = operatingDay.getCalendarDate();
+                        final ServiceDate d = new ServiceDate(date.getYear(),
+                                date.getMonthValue(),
+                                date.getDayOfMonth()
+                        );
+                        dates.add(d);
+                    }
+                }
+                tripDates.put(serviceJourneyId, dates);
             }
-            tripDates.put(serviceJourneyId, dates);
         }
 
         for (Map.Entry<String, String> serviceJourneyIdAndJourneyPatternId : journeyPatternIdByServiceJourneyId.entrySet()) {
@@ -185,7 +258,7 @@ public class NetexProcessor {
         if (commonFrame.getValue() instanceof TimetableFrame) {
             TimetableFrame timetableFrame = (TimetableFrame) commonFrame.getValue();
             JourneysInFrame_RelStructure vehicleJourneys = timetableFrame.getVehicleJourneys();
-            List<Journey_VersionStructure> datedServiceJourneyOrDeadRunOrServiceJourney = vehicleJourneys.getDatedServiceJourneyOrDeadRunOrServiceJourney();
+            List<Journey_VersionStructure> datedServiceJourneyOrDeadRunOrServiceJourney = vehicleJourneys.getVehicleJourneyOrDatedVehicleJourneyOrNormalDatedVehicleJourney();
             for (Journey_VersionStructure jStructure : datedServiceJourneyOrDeadRunOrServiceJourney) {
                 if (jStructure instanceof ServiceJourney) {
                     ServiceJourney sj = (ServiceJourney) jStructure;
@@ -207,6 +280,19 @@ public class NetexProcessor {
                         }
                         serviceJourneyById.put(sj.getId(), sj);
                     }
+                } else if (jStructure instanceof DatedServiceJourney) {
+                    DatedServiceJourney dsj = (DatedServiceJourney) jStructure;
+
+                    Optional<JAXBElement<? extends JourneyRefStructure>> first = dsj.getJourneyRef().stream().findFirst();
+                    if (first.isPresent()) {
+                        JourneyRefStructure journeyRefStructure = first.get().getValue();
+                        String serviceJourneyRef = journeyRefStructure.getRef();
+
+                        List<DatedServiceJourney> datedServiceJourneys = datedServiceJourneyForServiceJourneyId.getOrDefault(serviceJourneyRef, new ArrayList<>());
+                        datedServiceJourneys.add(dsj);
+
+                        datedServiceJourneyForServiceJourneyId.put(serviceJourneyRef, datedServiceJourneys);
+                    }
                 }
             }
         }
@@ -215,10 +301,21 @@ public class NetexProcessor {
     private void loadServiceCalendarFrames(JAXBElement commonFrame) {
         if (commonFrame.getValue() instanceof ServiceCalendarFrame) {
             ServiceCalendarFrame scf = (ServiceCalendarFrame) commonFrame.getValue();
-            List<DayTypeAssignment> dayTypeAssignments = scf.getDayTypeAssignments().getDayTypeAssignment();
-            for (DayTypeAssignment dayTypeAssignment : dayTypeAssignments) {
-                String ref = dayTypeAssignment.getDayTypeRef().getValue().getRef();
-                dayTypeAssignmentByDayTypeId.put(ref, dayTypeAssignment);
+            if (scf.getDayTypeAssignments() != null) {
+                List<DayTypeAssignment> dayTypeAssignments = scf.getDayTypeAssignments().getDayTypeAssignment();
+                for (DayTypeAssignment dayTypeAssignment : dayTypeAssignments) {
+                    String ref = dayTypeAssignment.getDayTypeRef().getValue().getRef();
+                    dayTypeAssignmentByDayTypeId.put(ref, dayTypeAssignment);
+                }
+            } else if (scf.getOperatingDays() != null) {
+                OperatingDaysInFrame_RelStructure operatingDaysInFrame = scf.getOperatingDays();
+                if (operatingDaysInFrame != null && operatingDaysInFrame.getOperatingDay() != null) {
+                    List<OperatingDay> operatingDays = operatingDaysInFrame.getOperatingDay();
+                    for (OperatingDay operatingDay : operatingDays) {
+                        String id = operatingDay.getId();
+                        operatingDaysById.put(id, operatingDay);
+                    }
+                }
             }
         }
     }
@@ -265,14 +362,32 @@ public class NetexProcessor {
                 List<StopPlace> stopPlaces = sf.getStopPlaces().getStopPlace();
                 for (StopPlace stopPlace : stopPlaces) {
                     String parentId = stopPlace.getId();
+
+                    if (stopPlace.getCentroid() != null && stopPlace.getCentroid().getLocation() != null) {
+                        locations.put(stopPlace.getId(), stopPlace.getCentroid().getLocation());
+                    }
+                    VehicleModeEnumeration mode = null;
+                    if (stopPlace.getTransportMode() != null) {
+                         mode = stopPlace.getTransportMode();
+                         modes.put(stopPlace.getId(), mode);
+                    }
+
                     if (stopPlace.getQuays() != null) {
                         List<Object> quayRefOrQuay = stopPlace.getQuays().getQuayRefOrQuay();
                         for (Object o : quayRefOrQuay) {
                             if (o instanceof Quay) {
                                 Quay quay = (Quay) o;
                                 parentStops.put(quay.getId(), parentId);
+                                modes.put(quay.getId(), mode);
+
                                 if (quay.getPublicCode() != null && !quay.getPublicCode().isEmpty()) {
                                     publicCodeByQuayId.put(quay.getId(), quay.getPublicCode());
+                                }
+
+                                if (quay.getCentroid() != null && quay.getCentroid().getLocation() != null) {
+                                    locations.put(quay.getId(), quay.getCentroid().getLocation());
+                                } else {
+                                    System.err.println();
                                 }
                             }
                         }

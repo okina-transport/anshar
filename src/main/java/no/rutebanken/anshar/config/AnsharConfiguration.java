@@ -114,15 +114,14 @@ public class AnsharConfiguration {
     @Value("${anshar.message.queue.camel.route.prefix}")
     private String messageQueueCamelRoutePrefix;
 
-
-    @Value("${anshar.sirivm.position.forward.url:}")
-    private String siriVmPositionForwardingUrl;
-
     @Value("${anshar.admin.blocked.clients:}")
     private List<String> blockedEtClientNames;
 
     @Value("${anshar.disable.subscription.healthcheck:false}")
     boolean isHealthcheckDisabled;
+
+    @Value("${anshar.application.mode:}")
+    private List<AppMode> appModes;
 
     public String getHazelcastManagementUrl() {
         return hazelcastManagementUrl;
@@ -239,15 +238,27 @@ public class AnsharConfiguration {
         return messageQueueCamelRoutePrefix;
     }
 
-    public String getSiriVmPositionForwardingUrl() {
-        if (siriVmPositionForwardingUrl != null && siriVmPositionForwardingUrl.isEmpty()) {
-            siriVmPositionForwardingUrl = null;
-        }
-        return siriVmPositionForwardingUrl;
-    }
-
     public List<String> getBlockedEtClientNames() {
         return blockedEtClientNames;
+    }
+
+    public List<AppMode> getAppModes() {
+        return appModes;
+    }
+    public boolean processET() {
+        return (appModes.isEmpty() || appModes.contains(AppMode.DATA_ET));
+    }
+    public boolean processVM() {
+        return (appModes.isEmpty() || appModes.contains(AppMode.DATA_VM));
+    }
+    public boolean processSX() {
+        return (appModes.isEmpty() || appModes.contains(AppMode.DATA_SX));
+    }
+    public boolean processAdmin() {
+        return (appModes.isEmpty() || appModes.contains(AppMode.PROXY));
+    }
+    public boolean processData() {
+        return (appModes.isEmpty() || ((appModes.contains(AppMode.DATA_ET) | appModes.contains(AppMode.DATA_VM) | appModes.contains(AppMode.DATA_SX))));
     }
 
     public boolean isHealthcheckDisabled() {

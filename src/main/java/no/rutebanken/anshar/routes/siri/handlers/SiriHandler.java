@@ -129,11 +129,6 @@ public class SiriHandler {
     @Autowired
     private StopPlaceIdCache idCache;
 
-
-    @Produce(uri = "direct:forward.position.data")
-    ProducerTemplate positionForwardRoute;
-
-
     public Siri handleIncomingSiri(String subscriptionId, InputStream xml) throws UnmarshalException {
         return handleIncomingSiri(subscriptionId, xml, null, -1);
     }
@@ -170,6 +165,69 @@ public class SiriHandler {
         return null;
     }
 
+    public Siri handleSiriCacheRequest(
+        InputStream body, String datasetId, String clientTrackingName
+    ) throws XMLStreamException, JAXBException {
+
+        Siri incoming = SiriValueTransformer.parseXml(body);
+
+        if (incoming.getServiceRequest() != null) {
+            ServiceRequest serviceRequest = incoming.getServiceRequest();
+            String requestorRef = null;
+
+            Siri serviceResponse = null;
+
+            if (serviceRequest.getRequestorRef() != null) {
+                requestorRef = serviceRequest.getRequestorRef().getValue();
+            }
+
+            SiriDataType dataType = null;
+            if (hasValues(serviceRequest.getSituationExchangeRequests())) {
+                dataType = SiriDataType.SITUATION_EXCHANGE;
+
+                final Collection<PtSituationElement> elements = situations.getAllCachedUpdates(requestorRef,
+                    datasetId,
+                    clientTrackingName
+                );
+                logger.info("Returning {} elements from cache", elements.size());
+                serviceResponse =  siriObjectFactory.createSXServiceDelivery(elements);
+
+            } else if (hasValues(serviceRequest.getVehicleMonitoringRequests())) {
+                dataType = SiriDataType.VEHICLE_MONITORING;
+
+                final Collection<VehicleActivityStructure> elements = vehicleActivities.getAllCachedUpdates(
+                    requestorRef,
+                    datasetId,
+                    clientTrackingName
+                );
+                logger.info("Returning {} elements from cache", elements.size());
+                serviceResponse = siriObjectFactory.createVMServiceDelivery(elements);
+
+            } else if (hasValues(serviceRequest.getEstimatedTimetableRequests())) {
+                dataType = SiriDataType.ESTIMATED_TIMETABLE;
+
+                final Collection<EstimatedVehicleJourney> elements = estimatedTimetables.getAllCachedUpdates(requestorRef, datasetId, clientTrackingName);
+
+                logger.info("Returning {} elements from cache", elements.size());
+                serviceResponse = siriObjectFactory.createETServiceDelivery(elements);
+
+            }
+
+
+            if (serviceResponse != null) {
+                metrics.countOutgoingData(serviceResponse, SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE);
+                return SiriValueTransformer.transform(
+                    serviceResponse,
+                    MappingAdapterPresets.getOutboundAdapters(dataType, OutboundIdMappingPolicy.DEFAULT),
+                    false,
+                    false
+                );
+            }
+        }
+        return null;
+    }
+
+
     /**
      * Handling incoming requests from external clients
      *
@@ -197,8 +255,10 @@ public class SiriHandler {
             if (terminateSubscriptionRequest.getSubscriptionReves() != null && !terminateSubscriptionRequest.getSubscriptionReves().isEmpty()) {
                 String subscriptionRef = terminateSubscriptionRequest.getSubscriptionReves().get(0).getValue();
 
-                serverSubscriptionManager.terminateSubscription(subscriptionRef);
-                return siriObjectFactory.createTerminateSubscriptionResponse(subscriptionRef);
+                serverSubscriptionManager.terminateSubscription(subscriptionRef, configuration.processAdmin());
+                if (configuration.processAdmin()) {
+                    return siriObjectFactory.createTerminateSubscriptionResponse(subscriptionRef);
+                }
             }
         } else if (incoming.getCheckStatusRequest() != null) {
             logger.info("Handling checkStatusRequest...");
@@ -462,7 +522,7 @@ public class SiriHandler {
      * @param xml the incoming message
      */
     private void processSiriClientRequest(String subscriptionId, InputStream xml)
-        throws XMLStreamException {
+            throws XMLStreamException, JAXBException {
         SubscriptionSetup subscriptionSetup = subscriptionManager.get(subscriptionId);
 
         if (subscriptionSetup != null) {
@@ -473,10 +533,13 @@ public class SiriHandler {
             } catch (IOException e) {
                 receivedBytes = 0;
             }
-
-            Siri originalInput = siriXmlValidator.parseXml(subscriptionSetup, xml);
-
-            Siri incoming = SiriValueTransformer.transform(originalInput, subscriptionSetup.getMappingAdapters());
+long t1 = System.currentTimeMillis();
+            Siri incoming = SiriXml.parseXml(xml);
+long t2 = System.currentTimeMillis();
+            logger.info("Parsing XML took {} ms, {} bytes", (t2-t1), receivedBytes);
+            if (incoming == null) {
+                return;
+            }
 
             if (incoming.getHeartbeatNotification() != null) {
                 subscriptionManager.touchSubscription(subscriptionId);
@@ -487,7 +550,11 @@ public class SiriHandler {
             } else if (incoming.getSubscriptionResponse() != null) {
                 SubscriptionResponseStructure subscriptionResponse = incoming.getSubscriptionResponse();
                 subscriptionResponse.getResponseStatuses().forEach(responseStatus -> {
-                    if (responseStatus.isStatus() != null && responseStatus.isStatus()) {
+                    if (responseStatus.isStatus() == null ||
+                        (responseStatus.isStatus() != null && responseStatus.isStatus())) {
+
+                        // If no status is provided it is handled as "true"
+
                         subscriptionManager.activatePendingSubscription(subscriptionId);
                     }
                 });
@@ -518,7 +585,7 @@ public class SiriHandler {
                                             logger.info(getErrorContents(sx.getErrorCondition()));
                                         } else {
                                             if (sx.getSituations() != null && sx.getSituations().getPtSituationElements() != null) {
-                                                if (subscriptionSetup.isUseCodespaceFromParticipantRef()) {
+                                                if (subscriptionSetup.isUseProvidedCodespaceId()) {
                                                     Map<String, List<PtSituationElement>> situationsByCodespace = splitSituationsByCodespace(sx.getSituations().getPtSituationElements());
                                                     for (String codespace : situationsByCodespace.keySet()) {
 
@@ -571,10 +638,26 @@ public class SiriHandler {
                                             logger.info(getErrorContents(vm.getErrorCondition()));
                                         } else {
                                             if (vm.getVehicleActivities() != null) {
-                                                if (subscriptionSetup.forwardPositionData()) {
-                                                    positionForwardRoute.sendBody(incoming);
-                                                    addedOrUpdated.addAll(vm.getVehicleActivities());
-                                                    logger.info("Forwarding VM positiondata for {} vehicles.", vm.getVehicleActivities().size());
+                                                if (subscriptionSetup.isUseProvidedCodespaceId()) {
+                                                    Map<String, List<VehicleActivityStructure>> vehiclesByCodespace = splitVehicleMonitoringByCodespace(vm.getVehicleActivities());
+                                                    for (String codespace : vehiclesByCodespace.keySet()) {
+
+                                                        // List containing added situations for current codespace
+                                                        List<VehicleActivityStructure> addedVehicles = new ArrayList();
+
+                                                        addedVehicles.addAll(vehicleActivities.addAll(
+                                                                codespace,
+                                                                vehiclesByCodespace.get(codespace)
+                                                        ));
+
+                                                        // Push updates to subscribers on this codespace
+                                                        serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedVehicles, codespace);
+
+                                                        // Add to complete list of added situations
+                                                        addedOrUpdated.addAll(addedVehicles);
+
+                                                    }
+
                                                 } else {
                                                     addedOrUpdated.addAll(ingestVehicleActivities(subscriptionSetup.getDatasetId(), vm.getVehicleActivities()));
                                                 }
@@ -607,7 +690,29 @@ public class SiriHandler {
                                             if (et.getEstimatedJourneyVersionFrames() != null) {
                                                 et.getEstimatedJourneyVersionFrames().forEach(versionFrame -> {
                                                     if (versionFrame != null && versionFrame.getEstimatedVehicleJourneies() != null) {
-                                                        addedOrUpdated.addAll(ingestEstimatedTimeTables(subscriptionSetup.getDatasetId(), versionFrame.getEstimatedVehicleJourneies()));
+                                                        if (subscriptionSetup.isUseProvidedCodespaceId()) {
+                                                            Map<String, List<EstimatedVehicleJourney>> journeysByCodespace = splitEstimatedTimetablesByCodespace(versionFrame.getEstimatedVehicleJourneies());
+                                                            for (String codespace : journeysByCodespace.keySet()) {
+
+                                                                // List containing added situations for current codespace
+                                                                List<EstimatedVehicleJourney> addedJourneys = new ArrayList();
+
+                                                                addedJourneys.addAll(estimatedTimetables.addAll(
+                                                                        codespace,
+                                                                        journeysByCodespace.get(codespace)
+                                                                ));
+
+                                                                // Push updates to subscribers on this codespace
+                                                                serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedJourneys, codespace);
+
+                                                                // Add to complete list of added situations
+                                                                addedOrUpdated.addAll(addedJourneys);
+
+                                                            }
+
+                                                        } else {
+                                                            addedOrUpdated.addAll(ingestEstimatedTimeTables(subscriptionSetup.getDatasetId(), versionFrame.getEstimatedVehicleJourneies()));
+                                                        }
                                                     }
                                                 });
                                             }
@@ -924,6 +1029,61 @@ public class SiriHandler {
         }
         return result;
     }
+
+    private Map<String, List<VehicleActivityStructure>> splitVehicleMonitoringByCodespace(
+            List<VehicleActivityStructure> activityStructures
+    ) {
+        Map<String, List<VehicleActivityStructure>> result = new HashMap<>();
+        for (VehicleActivityStructure vmElement : activityStructures) {
+            if (vmElement.getMonitoredVehicleJourney() != null) {
+
+                final String dataSource = vmElement.getMonitoredVehicleJourney().getDataSource();
+                if (dataSource != null) {
+
+                    final String codespace = getOriginalId(dataSource);
+                    //Override mapped value if present
+                    vmElement.getMonitoredVehicleJourney().setDataSource(codespace);
+
+                    final List<VehicleActivityStructure> vehicles = result.getOrDefault(
+                            codespace,
+                            new ArrayList<>()
+                    );
+
+                    vehicles.add(vmElement);
+                    result.put(codespace, vehicles);
+                }
+            }
+        }
+        return result;
+    }
+
+    private Map<String, List<EstimatedVehicleJourney>> splitEstimatedTimetablesByCodespace(
+            List<EstimatedVehicleJourney> estimatedVehicleJourneys
+    ) {
+        Map<String, List<EstimatedVehicleJourney>> result = new HashMap<>();
+        for (EstimatedVehicleJourney etElement : estimatedVehicleJourneys) {
+            if (etElement.getDataSource() != null) {
+
+                final String dataSource = etElement.getDataSource();
+                if (dataSource != null) {
+
+                    final String codespace = getOriginalId(dataSource);
+                    //Override mapped value if present
+                    etElement.setDataSource(codespace);
+
+                    final List<EstimatedVehicleJourney> etJourneys = result.getOrDefault(
+                            codespace,
+                            new ArrayList<>()
+                    );
+
+                    etJourneys.add(etElement);
+                    result.put(codespace, etJourneys);
+                }
+            }
+        }
+        return result;
+    }
+
 
     /**
      * Creates a json-string containing all potential errormessage-values

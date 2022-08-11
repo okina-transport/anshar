@@ -22,7 +22,6 @@ import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
-import org.apache.camel.LoggingLevel;
 import org.apache.camel.component.http.HttpMethods;
 
 import static no.rutebanken.anshar.routes.HttpParameter.INTERNAL_SIRI_DATA_TYPE;
@@ -49,7 +48,7 @@ public class Siri20ToSiriRS20RequestResponse extends SiriSubscriptionRouteBuilde
         if (subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE |
                 subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.POLLING_FETCHED_DELIVERY) {
             releaseLeadershipOnError = true;
-            singletonFrom("quartz://anshar/monitor_" + subscriptionSetup.getRequestResponseRouteName() + "?fireNow=true&trigger.repeatInterval=" + heartbeatIntervalMillis,
+            singletonFrom("quartz://anshar/monitor_" + subscriptionSetup.getRequestResponseRouteName() + "?trigger.repeatInterval=" + heartbeatIntervalMillis,
                     monitoringRouteId)
                     .choice()
                     .when(p -> requestData(subscriptionSetup.getSubscriptionId(), p.getFromRouteId()))
@@ -60,8 +59,11 @@ public class Siri20ToSiriRS20RequestResponse extends SiriSubscriptionRouteBuilde
             releaseLeadershipOnError = false;
         }
 
+        String routeId = "request.rs.20." + subscriptionSetup.getSubscriptionType() + "." + subscriptionSetup.getVendor();
         from("direct:" + subscriptionSetup.getServiceRequestRouteName())
-            .log(LoggingLevel.DEBUG, "Retrieving data " + subscriptionSetup.toString())
+            .messageHistory()
+            .process(p -> requestStarted())
+            .log(LoggingLevel.DEBUG,"Retrieving data " + subscriptionSetup.toString())
             .bean(helper, "createSiriDataRequest")
             .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
             .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
@@ -71,7 +73,7 @@ public class Siri20ToSiriRS20RequestResponse extends SiriSubscriptionRouteBuilde
             .process(addCustomHeaders())
             .to("log:request:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
             .doTry()
-                .to(getRequestUrl(subscriptionSetup) + httpOptions)
+                .to(getRequestUrl(subscriptionSetup, httpOptions))
                 .setHeader("CamelHttpPath", constant("/appContext" + subscriptionSetup.buildUrl(false)))
                 .log(LoggingLevel.DEBUG, "Got response " + subscriptionSetup.toString())
                 .to("log:response:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
@@ -86,8 +88,26 @@ public class Siri20ToSiriRS20RequestResponse extends SiriSubscriptionRouteBuilde
                         releaseLeadership(monitoringRouteId);
                     }
                 })
+            .doFinally()
+                .process(p -> {
+                    requestFinished();
+                    List<MessageHistory> list = p.getProperty(Exchange.MESSAGE_HISTORY, List.class);
+                    long elapsed = 0;
+                    for (MessageHistory history : list) {
+                        if (history.getRouteId().equals(routeId)) {
+                            elapsed += history.getElapsed();
+                        }
+                    }
+                    log.info("Processing data took {} ms.", elapsed);
+                    if (elapsed > heartbeatIntervalMillis) {
+                        log.info("Processing took longer than {} ms - releasing leadership", heartbeatIntervalMillis);
+                        if (releaseLeadershipOnError) {
+                            releaseLeadership(monitoringRouteId);
+                        }
+                    }
+                })
             .endDoTry()
-            .routeId("request.rs.20." + subscriptionSetup.getSubscriptionType() + "." + subscriptionSetup.getVendor())
+            .routeId(routeId)
         ;
     }
 

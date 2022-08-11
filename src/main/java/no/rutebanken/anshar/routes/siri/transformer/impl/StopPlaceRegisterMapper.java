@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.INVALID_NSR_ID;
 import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.ORIGINAL_ID_TO_NSR;
 
 public class StopPlaceRegisterMapper extends ValueAdapter {
@@ -59,13 +60,25 @@ public class StopPlaceRegisterMapper extends ValueAdapter {
 
 
     public String apply(String id) {
-        if (id == null || id.isEmpty() || id.startsWith("NSR:")) {
-            return id;
-        }
         StopPlaceUpdaterService stopPlaceService = ApplicationContextHolder.getContext().getBean(StopPlaceUpdaterService.class);
 
         if (healthManager == null) {
             healthManager = ApplicationContextHolder.getContext().getBean(HealthManager.class);
+        }
+
+        if (id == null || id.isEmpty() || id.startsWith("NSR:")) {
+            if (!stopPlaceService.isKnownId(id)) {
+                if (unmappedAlreadyAdded.add(id)) {
+                    if (metricsEnabled) {
+                        getMetricsService().registerDataMapping(type, datasetId, INVALID_NSR_ID, 1);
+                    }
+                    healthManager.addUnmappedId(type, datasetId, id);
+                }
+            } else if (unmappedAlreadyAdded.contains(id)) {
+                healthManager.removeUnmappedId(type, datasetId, id);
+                unmappedAlreadyAdded.remove(id);
+            }
+            return id;
         }
 
         String mappedValue = null;

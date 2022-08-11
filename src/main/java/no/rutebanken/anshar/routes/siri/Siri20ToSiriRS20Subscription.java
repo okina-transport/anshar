@@ -19,17 +19,20 @@ import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.helpers.SiriRequestFactory;
+import no.rutebanken.anshar.subscription.OAuthConfigElement;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
+import org.apache.camel.Processor;
 import org.apache.camel.http.common.HttpMethods;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.net.ConnectException;
+import java.util.HashMap;
 import java.util.Map;
 
 import static no.rutebanken.anshar.routes.HttpParameter.PARAM_RESPONSE_CODE;
@@ -54,9 +57,31 @@ public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
         Map<RequestType, String> urlMap = subscriptionSetup.getUrlMap();
         SiriRequestFactory helper = new SiriRequestFactory(subscriptionSetup);
 
+        Map<OAuthConfigElement, String> oauthHeaders = new HashMap<>();
+        if (subscriptionSetup.getOauth2Config() != null) {
+            oauthHeaders.put(OAuthConfigElement.CLIENT_ID, subscriptionSetup.getOauth2Config().get(OAuthConfigElement.CLIENT_ID));
+            oauthHeaders.put(OAuthConfigElement.CLIENT_SECRET, subscriptionSetup.getOauth2Config().get(OAuthConfigElement.CLIENT_SECRET));
+            oauthHeaders.put(OAuthConfigElement.GRANT_TYPE, subscriptionSetup.getOauth2Config().get(OAuthConfigElement.GRANT_TYPE));
+            oauthHeaders.put(OAuthConfigElement.SERVER, subscriptionSetup.getOauth2Config().get(OAuthConfigElement.SERVER));
+            oauthHeaders.put(OAuthConfigElement.AUDIENCE, subscriptionSetup.getOauth2Config().get(OAuthConfigElement.AUDIENCE));
+        }
+
         //Start subscription
+        Processor oauthHeadersProcess = exchange -> {
+            if (!oauthHeaders.isEmpty()) {
+                logger.info("Configuring OAuth for subscription {}", subscriptionSetup);
+                exchange.getMessage().setHeader("oauth-client-id", oauthHeaders.get(OAuthConfigElement.CLIENT_ID));
+                exchange.getMessage().setHeader("oauth-client-secret", oauthHeaders.get(OAuthConfigElement.CLIENT_SECRET));
+                exchange.getMessage().setHeader("oauth-grant-type", oauthHeaders.get(OAuthConfigElement.GRANT_TYPE));
+                exchange.getMessage().setHeader("oauth-server", oauthHeaders.get(OAuthConfigElement.SERVER));
+                exchange.getMessage().setHeader("oauth-audience", oauthHeaders.get(OAuthConfigElement.AUDIENCE));
+            }
+        };
+
         from("direct:" + subscriptionSetup.getStartSubscriptionRouteName())
                 .log("Starting subscription " + subscriptionSetup.toString())
+                .process(oauthHeadersProcess)
+                .to("direct:oauth2.authorize")
                 .bean(helper, "createSiriSubscriptionRequest")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
                 .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
@@ -95,6 +120,8 @@ public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
         if (urlMap.get(RequestType.CHECK_STATUS) != null) {
             //Check status-request checks the server status - NOT the subscription
             from("direct:" + subscriptionSetup.getCheckStatusRouteName())
+                .process(oauthHeadersProcess)
+                .to("direct:oauth2.authorize")
                 .bean(helper, "createSiriCheckStatusRequest")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
                 .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
@@ -140,6 +167,8 @@ public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
         //Cancel subscription
         from("direct:" + subscriptionSetup.getCancelSubscriptionRouteName())
                 .log("Cancelling subscription " + subscriptionSetup.toString())
+                .process(oauthHeadersProcess)
+                .to("direct:oauth2.authorize")
                 .bean(helper, "createSiriTerminateSubscriptionRequest")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
                 .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response

@@ -17,20 +17,10 @@ package no.rutebanken.anshar.subscription;
 
 import com.google.common.base.Preconditions;
 import no.rutebanken.anshar.config.AnsharConfiguration;
-import no.rutebanken.anshar.routes.siri.Siri20ToSiriRS14Subscription;
-import no.rutebanken.anshar.routes.siri.Siri20ToSiriRS20RequestResponse;
-import no.rutebanken.anshar.routes.siri.Siri20ToSiriRS20Subscription;
-import no.rutebanken.anshar.routes.siri.Siri20ToSiriWS14RequestResponse;
-import no.rutebanken.anshar.routes.siri.Siri20ToSiriWS14Subscription;
-import no.rutebanken.anshar.routes.siri.Siri20ToSiriWS20RequestResponse;
-import no.rutebanken.anshar.routes.siri.Siri20ToSiriWS20Subscription;
+import no.rutebanken.anshar.routes.siri.*;
 import no.rutebanken.anshar.routes.siri.adapters.Mapping;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
-import no.rutebanken.anshar.routes.siri.processor.AddOrderToAllCallsPostProcessor;
-import no.rutebanken.anshar.routes.siri.processor.CodespaceProcessor;
-import no.rutebanken.anshar.routes.siri.processor.ExtraJourneyDestinationDisplayPostProcessor;
-import no.rutebanken.anshar.routes.siri.processor.RemovePersonalInformationProcessor;
-import no.rutebanken.anshar.routes.siri.processor.ReportTypeProcessor;
+import no.rutebanken.anshar.routes.siri.processor.*;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
@@ -44,13 +34,7 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.ServiceConfigurationError;
-import java.util.Set;
+import java.util.*;
 
 @Component
 public class SubscriptionInitializer implements CamelContextAware {
@@ -93,6 +77,9 @@ public class SubscriptionInitializer implements CamelContextAware {
         camelContext.setUseMDCLogging(true);
         camelContext.setUseBreadcrumb(true);
 
+        if (!configuration.getAppModes().isEmpty()) {
+            logger.info("App started with mode(s): {}", configuration.getAppModes());
+        }
 
         final Map<String, Object> mappingBeans = ApplicationContextHolder.getContext().getBeansWithAnnotation(Mapping.class);
         final Map<String, Class> mappingAdaptersById = new HashMap<>();
@@ -138,24 +125,29 @@ public class SubscriptionInitializer implements CamelContextAware {
                     throw new ServiceConfigurationError("InternalId is NOT unique for ID="+subscriptionSetup.getInternalId());
                 }
 
+                List<ValueAdapter> valueAdapters = new ArrayList<>();
 
                 if (mappingAdaptersById.containsKey(subscriptionSetup.getMappingAdapterId())) {
                     Class adapterClass = mappingAdaptersById.get(subscriptionSetup.getMappingAdapterId());
                     try {
-                        List<ValueAdapter> valueAdapters = (List<ValueAdapter>) adapterClass.getMethod("getValueAdapters", SubscriptionSetup.class).invoke(adapterClass.newInstance(), subscriptionSetup);
+                        valueAdapters.addAll((List<ValueAdapter>) adapterClass.getMethod("getValueAdapters", SubscriptionSetup.class).invoke(adapterClass.newInstance(), subscriptionSetup));
 
-                        //Is added to ALL subscriptions
-                        valueAdapters.add(new CodespaceProcessor(subscriptionSetup.getDatasetId()));
-                        valueAdapters.add(new ReportTypeProcessor(subscriptionSetup.getDatasetId()));
-                        valueAdapters.add(new RemovePersonalInformationProcessor());
-                        valueAdapters.add(new ExtraJourneyDestinationDisplayPostProcessor(subscriptionSetup.getDatasetId()));
-                        valueAdapters.add(new AddOrderToAllCallsPostProcessor(subscriptionSetup.getDatasetId()));
-
-                        subscriptionSetup.getMappingAdapters().addAll(valueAdapters);
                     } catch (Exception e) {
                         throw new ServiceConfigurationError("Invalid mappingAdapterId for subscription " + subscriptionSetup, e);
                     }
                 }
+                //Is added to ALL subscriptions AFTER subscription-specific adapters
+                valueAdapters.add(new CodespaceProcessor(subscriptionSetup.getDatasetId()));
+                valueAdapters.add(new ReportTypeProcessor(subscriptionSetup.getDatasetId()));
+                valueAdapters.add(new EnsureIncreasingTimesForCancelledStopsProcessor(subscriptionSetup.getDatasetId()));
+                valueAdapters.add(new RemovePersonalInformationProcessor());
+                valueAdapters.add(new ExtraJourneyDestinationDisplayPostProcessor(subscriptionSetup.getDatasetId()));
+                valueAdapters.add(new AddOrderToAllCallsPostProcessor(subscriptionSetup.getDatasetId()));
+
+                valueAdapters.add(new EnsureNonNullVehicleModePostProcessor());
+                valueAdapters.add(new ExtraJourneyPostProcessor(subscriptionSetup.getDatasetId()));
+
+                subscriptionSetup.getMappingAdapters().addAll(valueAdapters);
 
                 if (subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.FETCHED_DELIVERY |
                         subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.POLLING_FETCHED_DELIVERY) {
@@ -166,7 +158,6 @@ public class SubscriptionInitializer implements CamelContextAware {
                     subscriptionSetup.getUrlMap().putIfAbsent(RequestType.GET_ESTIMATED_TIMETABLE, url);
                     subscriptionSetup.getUrlMap().putIfAbsent(RequestType.GET_VEHICLE_MONITORING, url);
                     subscriptionSetup.getUrlMap().putIfAbsent(RequestType.GET_SITUATION_EXCHANGE, url);
-                    subscriptionSetup.getUrlMap().putIfAbsent(RequestType.GET_STOP_MONITORING, url);
                 }
 
                 SubscriptionSetup existingSubscription = subscriptionManager.getSubscriptionById(subscriptionSetup.getInternalId());
@@ -202,22 +193,23 @@ public class SubscriptionInitializer implements CamelContextAware {
                 }
 
             }
+            if (configuration.processAdmin()) {
+                // If not admin - do NOT add subscription-handlers
+                for (SubscriptionSetup subscriptionSetup : actualSubscriptionSetups) {
 
-            for (SubscriptionSetup subscriptionSetup : actualSubscriptionSetups) {
+                    try {
 
-                try {
+                        List<RouteBuilder> routeBuilder = getRouteBuilders(subscriptionSetup);
+                        //Adding all routes to current context
+                        for (RouteBuilder builder : routeBuilder) {
+                            camelContext.addRoutes(builder);
+                        }
 
-                    List<RouteBuilder> routeBuilder = getRouteBuilders(subscriptionSetup);
-                    //Adding all routes to current context
-                    for (RouteBuilder builder : routeBuilder) {
-                        camelContext.addRoutes(builder);
+                    } catch (Exception e) {
+                        logger.warn("Could not add subscription", e);
                     }
-
-                } catch (Exception e) {
-                    logger.warn("Could not add subscription", e);
                 }
             }
-
             for (SubscriptionSetup subscriptionSetup : actualSubscriptionSetups) {
                 if (!subscriptionManager.isSubscriptionRegistered(subscriptionSetup.getSubscriptionId())) {
                     subscriptionManager.addSubscription(subscriptionSetup.getSubscriptionId(), subscriptionSetup);
@@ -302,9 +294,6 @@ public class SubscriptionInitializer implements CamelContextAware {
                 Preconditions.checkNotNull(urlMap.get(RequestType.GET_VEHICLE_MONITORING), "GET_VEHICLE_MONITORING-url is missing. " + s);
             } else if (SiriDataType.ESTIMATED_TIMETABLE.equals(s.getSubscriptionType())) {
                 Preconditions.checkNotNull(urlMap.get(RequestType.GET_ESTIMATED_TIMETABLE), "GET_ESTIMATED_TIMETABLE-url is missing. " + s);
-            } else if (SiriDataType.STOP_MONITORING.equals(s.getSubscriptionType())) {
-                Preconditions.checkNotNull(urlMap.get(RequestType.GET_STOP_MONITORING), "GET_STOP_MONITORING-url is missing. " + s);
-                Preconditions.checkNotNull(s.getStopMonitoringRefValue(), "stopMonitoringRefValue is missing. " + s);
             } else {
                 Preconditions.checkArgument(false, "URLs not configured correctly");
             }
@@ -315,8 +304,6 @@ public class SubscriptionInitializer implements CamelContextAware {
                 Preconditions.checkNotNull(s.getPreviewInterval(), "PreviewInterval is not set");
             } else if (SiriDataType.SITUATION_EXCHANGE.equals(s.getSubscriptionType())) {
                 Preconditions.checkNotNull(s.getPreviewInterval(), "PreviewInterval is not set");
-            } else if (SiriDataType.STOP_MONITORING.equals(s.getSubscriptionType())) {
-//                Preconditions.checkNotNull(s.getStopMonitoringRefValue());
             }
 
             Preconditions.checkNotNull(urlMap.get(RequestType.SUBSCRIBE), "SUBSCRIBE-url is missing. " + s);

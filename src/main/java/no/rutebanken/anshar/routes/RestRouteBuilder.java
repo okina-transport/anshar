@@ -20,11 +20,25 @@ import org.apache.camel.Exchange;
 import org.apache.camel.InvalidPayloadException;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
+import org.apache.camel.support.builder.Namespaces;
+import org.apache.http.HttpHeaders;
+import org.entur.protobuf.mapper.SiriMapper;
+import org.rutebanken.siri20.util.SiriJson;
+import org.rutebanken.siri20.util.SiriXml;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.AccessDeniedException;
+import uk.org.siri.siri20.Siri;
 
+import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.core.MediaType;
+import javax.xml.bind.JAXBException;
 import javax.xml.bind.UnmarshalException;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.net.ConnectException;
 import java.util.HashMap;
 import java.util.Map;
@@ -33,8 +47,23 @@ public class RestRouteBuilder extends RouteBuilder {
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
+    protected Namespaces ns = new Namespaces("siri", "http://www.siri.org.uk/siri")
+            .add("xsd", "http://www.w3.org/2001/XMLSchema");
+
+
+    @Value("${anshar.data.handler.baseurl.vm:}")
+    protected String vmHandlerBaseUrl;
+
+    @Value("${anshar.data.handler.baseurl.et:}")
+    protected String etHandlerBaseUrl;
+
+    @Value("${anshar.data.handler.baseurl.sx:}")
+    protected String sxHandlerBaseUrl;
+
     @Autowired
     private AnsharConfiguration configuration;
+
+    private static boolean isDataHandlersInitialized = false;
 
     @Override
     public void configure() throws Exception {
@@ -59,10 +88,22 @@ public class RestRouteBuilder extends RouteBuilder {
                 .setBody(simple("Invalid XML"))
         ;
 
+        onException(AccessDeniedException.class)
+                .handled(true)
+                .setHeader("WWW-Authenticate", simple("Basic")) // Request login
+                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("401"))
+                .setBody(simple("Unauthorized"))
+        ;
+
         errorHandler(defaultErrorHandler()
                 .log(logger)
                 .loggingLevel(LoggingLevel.INFO)
         );
+
+        if (!isDataHandlersInitialized) {
+            isDataHandlersInitialized=true;
+            createClientRequestRoutes();
+        }
 
         from("direct:anshar.invalid.tracking.header.response")
                 .removeHeaders("*")
@@ -79,10 +120,204 @@ public class RestRouteBuilder extends RouteBuilder {
         ;
 
     }
+
+    /*
+     * Creates routes to handle routing of incoming requests based on the mode the instance is started with
+     *
+     * PROXY redirects requests to et/vm/sx-instances
+     */
+    protected void createClientRequestRoutes() {
+
+        if (configuration.processET()) {
+            from("direct:process.et.subscription.request")
+                    .to("direct:internal.handle.subscription")
+            ;
+            from("direct:process.et.service.request")
+                    .to("direct:internal.process.service.request")
+            ;
+            from("direct:process.et.service.request.cache")
+                    .to("direct:internal.process.service.request.cache")
+            ;
+            //REST
+            from("direct:anshar.rest.et")
+                    .to("direct:internal.anshar.rest.et")
+            ;
+            from("direct:anshar.rest.et.cached")
+                    .to("direct:internal.anshar.rest.et.cached")
+            ;
+            from("direct:anshar.rest.et.monitored")
+                    .to("direct:internal.anshar.rest.et.monitored")
+            ;
+            from("direct:anshar.rest.et.monitored.cached")
+                    .to("direct:internal.anshar.rest.et.monitored.cached")
+            ;
+        } else {
+            from("direct:process.et.subscription.request")
+                    .to("direct:redirect.request.et")
+            ;
+            from("direct:process.et.service.request")
+                    .to("direct:redirect.request.et")
+            ;
+            from("direct:process.et.service.request.cache")
+                    .to("direct:redirect.request.et")
+            ;
+            //REST
+            from("direct:anshar.rest.et")
+                    .to("direct:redirect.request.et")
+            ;
+            from("direct:anshar.rest.et.cached")
+                    .to("direct:redirect.request.et")
+            ;
+            from("direct:anshar.rest.et.monitored")
+                    .to("direct:redirect.request.et")
+            ;
+            from("direct:anshar.rest.et.monitored.cached")
+                    .to("direct:redirect.request.et")
+            ;
+            if (!configuration.processAdmin()) {
+                // Data-instances should never redirect requests
+                from("direct:redirect.request.et")
+                        .log("Ignore redirect")
+                        ;
+
+            } else {
+                from("direct:redirect.request.et")
+                        // Setting default encoding if none is set
+                        .choice().when(header("Content-Type").isEqualTo(""))
+                        .setHeader("Content-Type", simple(MediaType.APPLICATION_XML))
+                        .end()
+
+                        //Force forwarding parameters - if used in query
+                        .choice().when(header("CamelHttpQuery").isNull())
+                        .toD(etHandlerBaseUrl + "${header.CamelHttpUri}?Content-Type=${header.Content-Type}&bridgeEndpoint=true")
+                        .otherwise()
+                        .toD(etHandlerBaseUrl + "${header.CamelHttpUri}?Content-Type=${header.Content-Type}&bridgeEndpoint=true&${header.CamelHttpQuery}")
+                        .endChoice()
+                ;
+            }
+        }
+
+        if (configuration.processVM()) {
+            from("direct:process.vm.subscription.request")
+                    .to("direct:internal.handle.subscription")
+            ;
+            from("direct:process.vm.service.request")
+                    .to("direct:internal.process.service.request")
+            ;
+            from("direct:process.vm.service.request.cache")
+                    .to("direct:internal.process.service.request.cache")
+            ;
+            //REST
+            from("direct:anshar.rest.vm")
+                    .to("direct:internal.anshar.rest.vm")
+            ;
+            from("direct:anshar.rest.vm.cached")
+                    .to("direct:internal.anshar.rest.vm.cached")
+            ;
+
+        } else {
+            from("direct:process.vm.subscription.request")
+                    .to("direct:redirect.request.vm")
+            ;
+            from("direct:process.vm.service.request")
+                    .to("direct:redirect.request.vm")
+            ;
+            from("direct:process.vm.service.request.cache")
+                    .to("direct:redirect.request.vm")
+            ;
+            from("direct:anshar.rest.vm")
+                    .to("direct:redirect.request.vm")
+            ;
+            from("direct:anshar.rest.vm.cached")
+                    .to("direct:redirect.request.vm")
+            ;
+
+            if (!configuration.processAdmin()) {
+                // Data-instances should never redirect requests
+                from("direct:redirect.request.vm")
+                        .log("Ignore redirect")
+                ;
+
+            } else {
+                from("direct:redirect.request.vm")
+                        // Setting default encoding if none is set
+                        .choice().when(header("Content-Type").isEqualTo(""))
+                        .setHeader("Content-Type", simple(MediaType.APPLICATION_XML))
+                        .end()
+
+                        //Force forwarding parameters - if used in query
+                        .choice().when(header("CamelHttpQuery").isNull())
+                        .toD(vmHandlerBaseUrl + "${header.CamelHttpUri}?Content-Type=${header.Content-Type}&bridgeEndpoint=true")
+                        .otherwise()
+                        .toD(vmHandlerBaseUrl + "${header.CamelHttpUri}?Content-Type=${header.Content-Type}&bridgeEndpoint=true&${header.CamelHttpQuery}")
+                        .endChoice()
+                ;
+            }
+        }
+
+        if (configuration.processSX()) {
+            from("direct:process.sx.subscription.request")
+                    .to("direct:internal.handle.subscription")
+            ;
+            from("direct:process.sx.service.request")
+                    .to("direct:internal.process.service.request")
+            ;
+            from("direct:process.sx.service.request.cache")
+                    .to("direct:internal.process.service.request.cache")
+            ;
+
+            //REST
+            from("direct:anshar.rest.sx")
+                    .to("direct:internal.anshar.rest.sx")
+            ;
+            from("direct:anshar.rest.sx.cached")
+                    .to("direct:internal.anshar.rest.sx.cached")
+            ;
+        } else {
+            from("direct:process.sx.subscription.request")
+                    .to("direct:redirect.request.sx")
+            ;
+            from("direct:process.sx.service.request")
+                    .to("direct:redirect.request.sx")
+            ;
+            from("direct:process.sx.service.request.cache")
+                    .to("direct:redirect.request.sx")
+            ;
+            from("direct:anshar.rest.sx")
+                    .to("direct:redirect.request.sx")
+            ;
+            from("direct:anshar.rest.sx.cached")
+                    .to("direct:redirect.request.sx")
+            ;
+
+            if (!configuration.processAdmin()) {
+                // Data-instances should never redirect requests
+                from("direct:redirect.request.sx")
+                        .log("Ignore redirect")
+                ;
+
+            } else {
+                from("direct:redirect.request.sx")
+                        // Setting default encoding if none is set
+                        .choice().when(header("Content-Type").isEqualTo(""))
+                        .setHeader("Content-Type", simple(MediaType.APPLICATION_XML))
+                        .end()
+
+                        //Force forwarding parameters - if used in query
+                        .choice().when(header("CamelHttpQuery").isNull())
+                        .toD(sxHandlerBaseUrl + "${header.CamelHttpUri}?Content-Type=${header.Content-Type}&bridgeEndpoint=true")
+                        .otherwise()
+                        .toD(sxHandlerBaseUrl + "${header.CamelHttpUri}?Content-Type=${header.Content-Type}&bridgeEndpoint=true&${header.CamelHttpQuery}")
+                        .endChoice()
+                ;
+            }
+        }
+    }
+
     protected boolean isTrackingHeaderAcceptable(Exchange e) {
         String camelHttpMethod = (String) e.getIn().getHeader("CamelHttpMethod");
 
-        String header = (String) e.getIn().getHeader(configuration.getTrackingHeaderName());
+        String header = e.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
         if (header != null && configuration.getBlockedEtClientNames().contains(header)) {
             logger.info("Blocked request from {} = {}", configuration.getTrackingHeaderName(), header);
             return false;
@@ -156,6 +391,30 @@ public class RestRouteBuilder extends RouteBuilder {
         }
 
         return values;
+    }
+    protected void streamOutput(Exchange p, Siri response, HttpServletResponse out) throws IOException, JAXBException {
+
+        if (MediaType.APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE)) |
+            MediaType.APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
+            p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
+            SiriJson.toJson(response, out.getOutputStream());
+        } else if ("application/x-protobuf".equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE)) |
+            "application/x-protobuf".equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
+            try {
+                final byte[] bytes = SiriMapper.mapToPbf(response).toByteArray();
+                p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, "application/x-protobuf");
+                p.getMessage().setHeader(HttpHeaders.CONTENT_LENGTH, "" + bytes.length);
+                out.getOutputStream().write(bytes);
+            } catch (NullPointerException npe) {
+                File file = new File("ET-" + System.currentTimeMillis() + ".xml");
+                log.error("Caught NullPointerException, data written to " + file.getAbsolutePath(), npe);
+                SiriXml.toXml(response, null, new FileOutputStream(file));
+            }
+        } else {
+            p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_XML);
+            SiriXml.toXml(response, null, out.getOutputStream());
+        }
+        p.getMessage().setBody(out.getOutputStream());
     }
 
 }

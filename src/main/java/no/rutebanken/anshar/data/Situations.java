@@ -60,7 +60,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
 
     @Autowired
     @Qualifier("getSxChecksumMap")
-    private ReplicatedMap<SiriObjectStorageKey,String> checksumCache;
+    private IMap<SiriObjectStorageKey,String> checksumCache;
 
     @Autowired
     @Qualifier("getSituationChangesMap")
@@ -78,51 +78,19 @@ public class Situations extends SiriRepository<PtSituationElement> {
     private AnsharConfiguration configuration;
 
     @Autowired
-    private RequestorRefRepository requestorRefRepository;
-
-    @Autowired
     ExtendedHazelcastService hazelcastService;
+
+    protected Situations() {
+        super(SiriDataType.SITUATION_EXCHANGE);
+    }
 
     @PostConstruct
     private void initializeUpdateCommitter() {
         super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
 
-        situationElements.addEntryListener(new MapEntryListener<SiriObjectStorageKey, PtSituationElement>() {
-            @Override
-            public void mapEvicted(MapEvent mapEvent) {
-                logger.debug("Map evicted - {} entries affected", mapEvent.getNumberOfEntriesAffected());
-            }
+        enableCache(situationElements);
 
-            @Override
-            public void mapCleared(MapEvent mapEvent) {
-                logger.debug("Map cleared - {} entries affected", mapEvent.getNumberOfEntriesAffected());
-            }
-
-            @Override
-            public void entryUpdated(EntryEvent<SiriObjectStorageKey, PtSituationElement> entryEvent) {
-                logger.debug("Updated SX message with key {}", entryEvent.getKey().getKey());
-            }
-
-            @Override
-            public void entryRemoved(EntryEvent<SiriObjectStorageKey, PtSituationElement> entryEvent) {
-                logger.debug("Removed SX message with key {}", entryEvent.getKey().getKey());
-            }
-
-            @Override
-            public void entryMerged(EntryEvent<SiriObjectStorageKey, PtSituationElement> entryEvent) {
-                logger.debug("Merged SX message with key {}", entryEvent.getKey().getKey());
-            }
-
-            @Override
-            public void entryEvicted(EntryEvent<SiriObjectStorageKey, PtSituationElement> entryEvent) {
-                logger.debug("Evicted SX message with key {}", entryEvent.getKey().getKey());
-            }
-
-            @Override
-            public void entryAdded(EntryEvent<SiriObjectStorageKey, PtSituationElement> entryEvent) {
-                logger.debug("Added SX message with key {}", entryEvent.getKey().getKey());
-            }
-        }, false);
+        linkEntriesTtl(situationElements, changesMap, checksumCache);
     }
 
     /**
@@ -130,6 +98,10 @@ public class Situations extends SiriRepository<PtSituationElement> {
      */
     public Collection<PtSituationElement> getAll() {
         return situationElements.values();
+    }
+
+    public Map<SiriObjectStorageKey, PtSituationElement> getAllAsMap() {
+        return situationElements;
     }
 
     public int getSize() {
@@ -188,6 +160,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
         logger.error("Deleting all data - should only be used in test!!!");
         situationElements.clear();
         checksumCache.clear();
+        cache.clear();
     }
 
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientName, int maxSize) {
@@ -308,11 +281,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
                 //Remove returned ids
                 existingSet.removeAll(idSet);
 
-                //Remove outdated ids
-                existingSet.removeIf(id -> !situationElements.containsKey(id));
-
                 updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, existingSet, configuration.getTrackingPeriodMinutes(), TimeUnit.MINUTES);
-
 
                 logger.info("Returning {} changes to requestorRef {}", changes.size(), requestorId);
                 return changes;
@@ -344,7 +313,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
             }
         }
 
-        if (expiry != null) {
+        if (expiry != null && expiry.getYear() < 2100) {
             return ZonedDateTime.now().until(expiry.plus(configuration.getSxGraceperiodMinutes(), ChronoUnit.MINUTES), ChronoUnit.MILLIS);
         } else {
             // No expiration set - keep "forever"
@@ -353,22 +322,26 @@ public class Situations extends SiriRepository<PtSituationElement> {
     }
 
     public Collection<PtSituationElement> addAll(String datasetId, List<PtSituationElement> sxList) {
-        Set<SiriObjectStorageKey> changes = new HashSet<>();
-        Set<PtSituationElement> addedData = new HashSet<>();
+        Map<SiriObjectStorageKey, PtSituationElement> changes = new HashMap<>();
+        Map<SiriObjectStorageKey, String> checksumTmp = new HashMap<>();
 
         Counter alreadyExpiredCounter = new CounterImpl(0);
         Counter ignoredCounter = new CounterImpl(0);
         sxList.forEach(situation -> {
-            SiriObjectStorageKey key = createKey(datasetId, situation);
+            TimingTracer timingTracer = new TimingTracer("single-sx");
 
+            SiriObjectStorageKey key = createKey(datasetId, situation);
+            timingTracer.mark("createKey");
             String currentChecksum = null;
             try {
                 currentChecksum = getChecksum(situation);
+                timingTracer.mark("getChecksum");
             } catch (Exception e) {
                 //Ignore - data will be updated
             }
 
             String existingChecksum = checksumCache.get(key);
+            timingTracer.mark("checksumCache.get");
             boolean updated;
             if (existingChecksum != null && situationElements.containsKey(key)) { // Checksum not compared if actual situation does not exist
                 //Exists - compare values
@@ -377,18 +350,21 @@ public class Situations extends SiriRepository<PtSituationElement> {
                 //Does not exist
                 updated = true;
             }
+            timingTracer.mark("compareChecksum");
 
             if (keepByProgressStatus(situation) && updated) {
+                timingTracer.mark("keepByProgressStatus");
                 long expiration = getExpiration(situation);
+                timingTracer.mark("getExpiration");
                 if (expiration > 0) { //expiration < 0 => already expired
-                    situationElements.set(key, situation, expiration, TimeUnit.MILLISECONDS);
-                    checksumCache.put(key, currentChecksum, expiration, TimeUnit.MILLISECONDS);
-                    changes.add(key);
-                    addedData.add(situation);
+                    changes.put(key, situation);
+                    checksumTmp.put(key, currentChecksum);
                 } else if (situationElements.containsKey(key)) {
                     // Situation is no longer valid
                     situationElements.delete(key);
+                    timingTracer.mark("situationElements.delete");
                     checksumCache.remove(key);
+                    timingTracer.mark("checksumCache.remove");
                 }
                 if (expiration < 0) {
                     alreadyExpiredCounter.increment();
@@ -397,14 +373,31 @@ public class Situations extends SiriRepository<PtSituationElement> {
                 ignoredCounter.increment();
             }
 
+            long elapsed = timingTracer.getTotalTime();
+            if (elapsed > 500) {
+                logger.info("Adding SX-object with key {} took {} ms: {}", key, elapsed, timingTracer);
+            }
         });
+        TimingTracer timingTracer = new TimingTracer("all-sx [" + changes.size() + " changes]");
+
         logger.info("Updated {} (of {}) :: Already expired: {}, Unchanged: {}", changes.size(), sxList.size(), alreadyExpiredCounter.getValue(), ignoredCounter.getValue());
 
+        checksumCache.setAll(checksumTmp);
+        timingTracer.mark("checksumCache.setAll");
+        situationElements.setAll(changes);
+        timingTracer.mark("monitoredVehicles.setAll");
+
         markDataReceived(SiriDataType.SITUATION_EXCHANGE, datasetId, sxList.size(), changes.size(), alreadyExpiredCounter.getValue(), ignoredCounter.getValue());
+        timingTracer.mark("markDataReceived");
 
-        markIdsAsUpdated(changes);
+        markIdsAsUpdated(changes.keySet());
+        timingTracer.mark("markIdsAsUpdated");
 
-        return addedData;
+        if (timingTracer.getTotalTime() > 1000) {
+            logger.info(timingTracer.toString());
+        }
+
+        return changes.values();
     }
 
     public void removeSituation(String datasetId,PtSituationElement situation ){

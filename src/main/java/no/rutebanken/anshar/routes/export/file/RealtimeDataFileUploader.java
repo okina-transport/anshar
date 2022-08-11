@@ -56,19 +56,25 @@ public class RealtimeDataFileUploader extends BaseRouteBuilder {
         super(config, subscriptionManager);
     }
 
-    // @formatter:off
     @Override
     public void configure() throws Exception {
 
+        if (snapshotCronExpression == null || snapshotCronExpression.isEmpty()) {
+            log.info("Uploading snapshot disabled");
+            return;
+        }
 
         if (tmpFolder.endsWith("/")) {
             tmpFolder = tmpFolder.substring(0, tmpFolder.length() - 1);
         }
 
+        log.info("Uploading snapshot with cron-expression [{}], first upload at: {}.", snapshotCronExpression,
+                new CronExpression(snapshotCronExpression).getNextValidTimeAfter(new Date()));
 
-        singletonFrom("direct:anshar.export.snapshot", "anshar.export.snapshot")
-                .choice()
-                .when(p -> isLeader())
+        if (config.processAdmin() && config.processData()) {
+            singletonFrom("direct:anshar.export.snapshot", "anshar.export.snapshot")
+                    .choice()
+                    .when(p -> isLeader())
                     .setHeader(TMP_FOLDER, simple(tmpFolder))
                     .setHeader(ZIP_FILE, simple("SIRI-SNAPSHOT-${date:now:yyyyMMdd-HHmmss}.zip"))
                     .setHeader(ZIP_FILE_PATH, simple("${header." + TMP_FOLDER + "}/${header." + ZIP_FILE + "}"))
@@ -93,9 +99,11 @@ public class RealtimeDataFileUploader extends BaseRouteBuilder {
                     .to("direct:anshar.export.create.zip")
                     .to("direct:anshar.export.upload.zip")
                     .to("direct:anshar.export.delete.zip")
-                .end()
+                    .end()
 
-        ;
+            ;
+
+        }
 
         from("direct:anshar.export.snapshot.create.file")
                 .setHeader(FILE_NAME, simple("${header.siriDataType}.xml"))
@@ -138,12 +146,6 @@ public class RealtimeDataFileUploader extends BaseRouteBuilder {
 
     }
     // @formatter:on
-
-    private boolean isLeader() {
-        boolean isLeader = isLeader("anshar.export.snapshot");
-        log.info("Is leader: {}", isLeader);
-        return isLeader;
-    }
 
     private static void zipFilesInFolder(String folder, String targetFilePath) {
         try {

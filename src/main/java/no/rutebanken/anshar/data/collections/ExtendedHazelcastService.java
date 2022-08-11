@@ -17,6 +17,7 @@ package no.rutebanken.anshar.data.collections;
 
 import com.hazelcast.collection.ISet;
 import com.hazelcast.config.SerializerConfig;
+import com.hazelcast.core.DistributedObject;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.LifecycleEvent;
 import com.hazelcast.map.IMap;
@@ -27,17 +28,16 @@ import no.rutebanken.anshar.data.SiriObjectStorageKey;
 import no.rutebanken.anshar.routes.outbound.OutboundSubscriptionSetup;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
-import org.rutebanken.hazelcasthelper.service.KubernetesService;
 import org.rutebanken.hazelcasthelper.service.HazelCastService;
+import org.rutebanken.hazelcasthelper.service.KubernetesService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.MonitoredStopVisit;
-import uk.org.siri.siri20.MonitoredVehicleJourneyStructure;
 import uk.org.siri.siri20.PtSituationElement;
 import uk.org.siri.siri20.VehicleActivityStructure;
 
@@ -46,17 +46,21 @@ import java.math.BigInteger;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 @Service
+@Configuration
 public class ExtendedHazelcastService extends HazelCastService {
 
     private Logger logger = LoggerFactory.getLogger(ExtendedHazelcastService.class);
 
-    public ExtendedHazelcastService(@Autowired KubernetesService kubernetesService, @Autowired AnsharConfiguration cfg) {
+    public ExtendedHazelcastService(@Autowired KubernetesService kubernetesService,
+                                    @Value("${entur.hazelcast.backup.count.sync:2}") int backupCountSync) {
         super(kubernetesService);
+        setBackupCount(backupCountSync);
     }
 
     public void addBeforeShuttingDownHook(Runnable destroyFunction) {
@@ -138,23 +142,23 @@ public class ExtendedHazelcastService extends HazelCastService {
     }
 
     @Bean
-    public ReplicatedMap<SiriObjectStorageKey, String> getIdForPatternChangesMap() {
-        return hazelcast.getReplicatedMap("anshar.et.index.pattern");
+    public IMap<SiriObjectStorageKey, String> getIdForPatternChangesMap() {
+        return hazelcast.getMap("anshar.et.index.pattern");
     }
 
     @Bean
-    public ReplicatedMap<SiriObjectStorageKey, String> getSxChecksumMap() {
-        return hazelcast.getReplicatedMap("anshar.sx.checksum.cache");
+    public IMap<SiriObjectStorageKey, String> getSxChecksumMap() {
+        return hazelcast.getMap("anshar.sx.checksum.cache");
     }
 
     @Bean
-    public ReplicatedMap<SiriObjectStorageKey, String> getEtChecksumMap() {
-        return hazelcast.getReplicatedMap("anshar.et.checksum.cache");
+    public IMap<SiriObjectStorageKey, String> getEtChecksumMap() {
+        return hazelcast.getMap("anshar.et.checksum.cache");
     }
 
     @Bean
-    public ReplicatedMap<SiriObjectStorageKey, String> getVmChecksumMap() {
-        return hazelcast.getReplicatedMap("anshar.vm.checksum.cache");
+    public IMap<SiriObjectStorageKey, String> getVmChecksumMap() {
+        return hazelcast.getMap("anshar.vm.checksum.cache");
     }
 
     @Bean
@@ -163,8 +167,8 @@ public class ExtendedHazelcastService extends HazelCastService {
     }
 
     @Bean
-    public ReplicatedMap<SiriObjectStorageKey, ZonedDateTime> getIdStartTimeMap() {
-        return hazelcast.getReplicatedMap("anshar.et.index.startTime");
+    public IMap<SiriObjectStorageKey, ZonedDateTime> getIdStartTimeMap() {
+        return hazelcast.getMap("anshar.et.index.startTime");
     }
 
     @Bean
@@ -303,5 +307,44 @@ public class ExtendedHazelcastService extends HazelCastService {
     @Bean
     public IMap<String, Integer> getRetryCountMap() {
         return hazelcast.getMap("anshar.subscriptions.retry.count");
+    }
+
+    public String listNodes(boolean includeStats) {
+        JsonMapper jsonMapper = new JsonMapper();
+        JSONObject root = new JSONObject();
+        JSONArray clusterMembers = new JSONArray();
+        Cluster cluster = hazelcast.getCluster();
+        if (cluster != null) {
+            Set<Member> members = cluster.getMembers();
+            if (members != null && !members.isEmpty()) {
+                for (Member member : members) {
+
+                    JSONObject obj = new JSONObject();
+                    obj.put("uuid", member.getUuid().toString());
+                    obj.put("host", member.getAddress().getHost());
+                    obj.put("port", member.getAddress().getPort());
+                    obj.put("local", member.localMember());
+
+                    if (includeStats) {
+                        JSONObject stats = new JSONObject();
+                        Collection<DistributedObject> distributedObjects = hazelcast.getDistributedObjects();
+                        for (DistributedObject distributedObject : distributedObjects) {
+
+                            try {
+                                String jsonValue = jsonMapper.writeValueAsString(hazelcast.getMap(distributedObject.getName()).getLocalMapStats());
+                                stats.put(distributedObject.getName(), new org.json.JSONObject(jsonValue));
+                            } catch (JsonProcessingException e) {
+                                e.printStackTrace();
+                            }
+                        }
+
+                        obj.put("localmapstats", stats);
+                    }
+                    clusterMembers.add(obj);
+                }
+            }
+        }
+        root.put("members", clusterMembers);
+        return root.toString();
     }
 }

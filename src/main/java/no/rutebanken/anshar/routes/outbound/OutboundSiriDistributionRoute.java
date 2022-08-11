@@ -24,12 +24,12 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
 
         int timeout = 15000;
 
-
-//        onException(ConnectException.class)
-//                .maximumRedeliveries(3)
-//                .log("Failed to connect to recipient");
-
-        errorHandler(noErrorHandler());
+        onException(Exception.class)
+            .maximumRedeliveries(2)
+            .redeliveryDelay(3000) //milliseconds
+            .logRetryAttempted(true)
+            .log("Retry triggered")
+        ;
 
         from("direct:send.to.external.subscription")
                 .routeId("send.to.external.subscription")
@@ -41,11 +41,17 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
                 .setHeader("httpClient.socketTimeout", constant(timeout))
                 .setHeader("httpClient.connectTimeout", constant(timeout))
-                .to("log:push:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
+                .choice()
+                .when(header("showBody").isEqualTo(true))
+                        .to("log:push:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
+                .endChoice()
+                    .otherwise()
+                        .to("log:push:" + getClass().getSimpleName() + "?showAll=false&showExchangeId=true&showHeaders=true&showException=true&multiline=true&showBody=false")
+                .end()
+                .removeHeader("showBody")
                 .toD("${header.endpoint}")
                 .bean(subscriptionManager, "clearFailTracker(${header.SubscriptionId})")
-                .to("log:push-resp:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
-                .log(LoggingLevel.INFO, "POST complete ${header.SubscriptionId}");
+                .log(LoggingLevel.INFO, "POST complete ${header.SubscriptionId} - Response: [${header.CamelHttpResponseCode} ${header.CamelHttpResponseText}]");
 
     }
 }

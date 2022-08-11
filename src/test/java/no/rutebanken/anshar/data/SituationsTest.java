@@ -52,7 +52,7 @@ public class SituationsTest extends SpringBootBaseTest {
 
         situations.add("test", element);
 
-        assertEquals("Situation not added", previousSize + 1, situations.getAll().size());
+        assertEquals(previousSize + 1, situations.getAll().size(), "Situation not added");
     }
 
     @Test
@@ -64,7 +64,7 @@ public class SituationsTest extends SpringBootBaseTest {
 
         situations.add("test", element);
 
-        assertEquals("Draft-situation added", previousSize, situations.getAll().size());
+        assertEquals(previousSize, situations.getAll().size(), "Draft-situation added");
     }
 
     @Test
@@ -72,7 +72,7 @@ public class SituationsTest extends SpringBootBaseTest {
         int previousSize = situations.getAll().size();
         situations.add("test", null);
 
-        assertEquals("Null-situation added", previousSize, situations.getAll().size());
+        assertEquals(previousSize, situations.getAll().size(), "Null-situation added");
     }
 
     @Test
@@ -119,19 +119,55 @@ public class SituationsTest extends SpringBootBaseTest {
         situations.add("test", createPtSituationElement("ruter", prefix+"2345", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1)));
         situations.add("test", createPtSituationElement("ruter", prefix+"3456", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1)));
 
-        sleep(250);
+        sleep(50);
 
         // Added 3
         assertEquals(previousSize+3, situations.getAllUpdates("1234-1234", null).size());
 
         situations.add("test", createPtSituationElement("ruter", prefix+"4567", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1)));
 
-        sleep(250);
+        sleep(50);
 
         //Added one
         assertEquals(1, situations.getAllUpdates("1234-1234", null).size());
+        sleep(50);
 
+        //None added
+        assertEquals(0, situations.getAllUpdates("1234-1234", null).size());
+        sleep(50);
+        //Verify that all elements still exist
+        assertEquals(previousSize+4, situations.getAll().size());
+    }
 
+    @Test
+    public void testGetUpdatesOnlyFromCache() {
+
+        int previousSize = situations.getAll().size();
+
+        String prefix = "cache-updates-sx-";
+        String datasetId = "cache-sx-datasetid";
+
+        situations.add(datasetId, createPtSituationElement("ruter", prefix+"1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1)));
+        situations.add(datasetId, createPtSituationElement("ruter", prefix+"2345", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1)));
+        situations.add(datasetId, createPtSituationElement("ruter", prefix+"3456", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1)));
+
+        sleep(50);
+        // Added 3
+        assertEquals(previousSize+3, situations.getAllCachedUpdates("1234-1234-cache", datasetId,
+            null
+        ).size());
+
+        situations.add(datasetId, createPtSituationElement("ruter", prefix+"4567", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1)));
+
+        sleep(50);
+
+        //Added one
+        assertEquals(1, situations.getAllCachedUpdates("1234-1234-cache", datasetId, null).size());
+        sleep(50);
+
+        //None added
+        assertEquals(0, situations.getAllCachedUpdates("1234-1234-cache", datasetId, null).size());
+        sleep(50);
         //Verify that all elements still exist
         assertEquals(previousSize+4, situations.getAll().size());
     }

@@ -20,7 +20,6 @@ import com.hazelcast.map.IMap;
 import com.hazelcast.replicatedmap.ReplicatedMap;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.EstimatedTimetables;
-import no.rutebanken.anshar.data.MonitoredStopVisits;
 import no.rutebanken.anshar.data.RequestorRefRepository;
 import no.rutebanken.anshar.data.RequestorRefStats;
 import no.rutebanken.anshar.data.SiriObjectStorageKey;
@@ -57,7 +56,6 @@ import java.util.stream.Collectors;
 
 import static no.rutebanken.anshar.subscription.SiriDataType.ESTIMATED_TIMETABLE;
 import static no.rutebanken.anshar.subscription.SiriDataType.SITUATION_EXCHANGE;
-import static no.rutebanken.anshar.subscription.SiriDataType.STOP_MONITORING;
 import static no.rutebanken.anshar.subscription.SiriDataType.VEHICLE_MONITORING;
 
 @Service
@@ -539,7 +537,6 @@ public class SubscriptionManager {
         );
         logger.debug("Built SM stats");
 
-
         JSONObject etType = new JSONObject();
         etType.put("typeName", ""+ ESTIMATED_TIMETABLE);
         etType.put("subscriptions", etSubscriptions);
@@ -608,7 +605,7 @@ public class SubscriptionManager {
         count.put("sm", smDatasetSize.values().stream().mapToInt(Number::intValue).sum());
 
         logger.debug("Building distribution stats");
-        count.put("distribution", getCountPerDataset(etDatasetSize, vmDatasetSize, sxDatasetSize, smDatasetSize));
+        count.put("distribution", getCountPerDataset(etDatasetSize, vmDatasetSize, sxDatasetSize));
         logger.debug("Built distribution stats");
 
         result.put("elements", count);
@@ -743,24 +740,43 @@ public class SubscriptionManager {
     /**
      * Terminating all subscriptions - to be used before a full restart to
      */
-    public void terminateAllSubscriptions() {
-        logger.warn("Terminating ALL subscriptions");
-        for (String subscriptionId : subscriptions.keySet()) {
-            stopSubscription(subscriptionId);
+    public void terminateAllSubscriptions(SiriDataType type) {
+        logger.warn("Terminating ALL {}subscriptions", (type != null ? type + "-":""));
+        int counter = 0;
+        int inactiveCounter = 0;
+        for (SubscriptionSetup subscription : subscriptions.values()) {
+            if (type == null || subscription.getSubscriptionType().equals(type)) {
+                if (isActiveSubscription(subscription.getSubscriptionId())) {
+                    stopSubscription(subscription.getSubscriptionId());
+                    counter++;
+                } else {
+                    inactiveCounter++;
+                }
+            }
         }
+        logger.warn("Stopped {} subscriptions, {} inactive.", counter, inactiveCounter);
     }
 
 
     /**
      * Terminating all subscriptions - to be used before a full restart to
      */
-    public void triggerRestartAllActiveSubscriptions() {
-        logger.warn("Triggering restart of ALL active subscriptions");
-        for (String subscriptionId : subscriptions.keySet()) {
-            if (isActiveSubscription(subscriptionId)) {
-                forceRestart(subscriptionId);
+    public void triggerRestartAllActiveSubscriptions(SiriDataType type) {
+
+        logger.warn("Triggering restart of ALL active {}subscriptions", (type != null ? type + "-":""));
+        int counter = 0;
+        int inactiveCounter = 0;
+        for (SubscriptionSetup subscription : subscriptions.values()) {
+            if (type == null || subscription.getSubscriptionType().equals(type)) {
+                if (isActiveSubscription(subscription.getSubscriptionId())) {
+                    forceRestart(subscription.getSubscriptionId());
+                    counter++;
+                } else {
+                    inactiveCounter++;
+                }
             }
         }
+        logger.warn("Restarted {} subscriptions, {} inactive.", counter, inactiveCounter);
     }
 
     public void stopSubscription(String subscriptionId) {
@@ -828,15 +844,13 @@ public class SubscriptionManager {
         dataReceived( subscriptionId,  receivedByteCount,  monitoredRef, true);
     }
 
-    public void dataReceived(String subscriptionId, int receivedByteCount, String monitoredRef, boolean shouldLogSuccess) {
-        touchSubscription(subscriptionId, monitoredRef, shouldLogSuccess);
-        if (isActiveSubscription(subscriptionId)) {
-            dataReceived.put(subscriptionId, Instant.now());
+    public void dataReceived(String subscriptionId, int receivedByteCount) {
+        touchSubscription(subscriptionId);
+        dataReceived.put(subscriptionId, Instant.now());
 
-            if (receivedByteCount > 0) {
-                receivedBytes.set(subscriptionId,
-                        receivedBytes.getOrDefault(subscriptionId, 0L) + receivedByteCount);
-            }
+        if (receivedByteCount > 0) {
+            receivedBytes.set(subscriptionId,
+                    receivedBytes.getOrDefault(subscriptionId, 0L) + receivedByteCount);
         }
     }
 

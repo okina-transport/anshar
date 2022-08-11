@@ -77,7 +77,7 @@ public class EtFramedVehicleJourneyRefValidator extends CustomValidator {
         String datedVehicleJourneyRef = getChildNodeValue(node, "DatedVehicleJourneyRef");
         if (!isValidGenericId("ServiceJourney", datedVehicleJourneyRef)) {
 
-            validationEvents.addEvent(createEvent(node, "DatedVehicleJourneyRef", "CODESPACE:ServiceJourney:ID", datedVehicleJourneyRef, ValidationEvent.FATAL_ERROR));
+            validationEvents.addEvent(createEvent(node, "DatedVehicleJourneyRef", "valid NeTEx-ID - formatted like CODESPACE:ServiceJourney:ID", datedVehicleJourneyRef, ValidationEvent.FATAL_ERROR));
         }
 
         if (validationEvents.getEvents().isEmpty()) {
@@ -90,6 +90,10 @@ public class EtFramedVehicleJourneyRefValidator extends CustomValidator {
         try {
             format.parse(date);
         } catch (ParseException e) {
+            return false;
+        } catch (NumberFormatException e) {
+            // Happens sometimes without actually being wrong...
+            // Return false to flag for manual follow-up
             return false;
         }
 

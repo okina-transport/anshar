@@ -20,8 +20,8 @@ import no.rutebanken.anshar.validation.CustomValidatorTest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import static junit.framework.TestCase.assertNotNull;
-import static junit.framework.TestCase.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 public class MonitoredOperatorRefValidatorTest extends CustomValidatorTest {
 
@@ -34,12 +34,12 @@ public class MonitoredOperatorRefValidatorTest extends CustomValidatorTest {
     }
 
     @Test
-    public void testValidParticipant() {
-        assertNull("Valid "+fieldName+" flagged as invalid", validator.isValid(createXmlNode(fieldName, "ENT")));
+    public void testValidOperator() {
+        assertNull(validator.isValid(createXmlNode(fieldName, "ENT:Operator:123")), "Valid "+fieldName+" flagged as invalid");
     }
 
     @Test
-    public void testInvalidParticipant() {
-        assertNotNull("Invalid "+fieldName+" flagged as valid", validator.isValid(createXmlNode(fieldName, "Internettbussene")));
+    public void testInvalidOperatorRef() {
+        assertNotNull(validator.isValid(createXmlNode(fieldName, "ENT")), "Invalid "+fieldName+" flagged as valid");
     }
 }

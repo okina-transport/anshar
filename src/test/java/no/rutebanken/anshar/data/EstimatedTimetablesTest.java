@@ -81,7 +81,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         estimatedTimetables.add("test", createEstimatedVehicleJourney("3456-update", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
 
         estimatedTimetables.commitChanges();
-        sleep(250);
+        sleep(50);
 
         // Added 3
         String requestorId = UUID.randomUUID().toString();
@@ -91,11 +91,15 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         estimatedTimetables.add("test", createEstimatedVehicleJourney("4567-update", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
         estimatedTimetables.commitChanges();
 
-        sleep(250);
+        sleep(50);
         //Added one
         assertEquals(1, estimatedTimetables.getAllUpdates(requestorId, null).size());
+        sleep(50);
 
-
+        //None added
+        assertEquals(
+            0, estimatedTimetables.getAllUpdates(requestorId, null).size(),
+            "Returning partial updates when nothing has changed");
 
         //Verify that all elements still exist
         assertEquals(4, estimatedTimetables.getAll().size());
@@ -120,53 +124,55 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         estimatedTimetables.add(datasetId, createEstimatedVehicleJourney("2345-partialupdate", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
         estimatedTimetables.add(datasetId, createEstimatedVehicleJourney("3456-partialupdate", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
 
-        sleep(250);
 
         estimatedTimetables.commitChanges();
+        sleep(50);
 
         Siri siri = estimatedTimetables.createServiceDelivery(requestorId, null, 2);
+        sleep(50);
 
-
+        assertTrue(siri.getServiceDelivery().isMoreData());
         assertEquals(2, siri
                 .getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
                 .getEstimatedJourneyVersionFrames().get(0)
                 .getEstimatedVehicleJourneies().size());
 
         siri = estimatedTimetables.createServiceDelivery(requestorId, null, 2);
+        sleep(50);
 
         assertFalse(siri.getServiceDelivery().isMoreData());
-        assertEquals(2, siri
+        assertEquals(1, siri
                 .getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
                 .getEstimatedJourneyVersionFrames().get(0)
                 .getEstimatedVehicleJourneies().size());
 
         siri = estimatedTimetables.createServiceDelivery(requestorId, null, 2);
+        sleep(50);
 
         assertFalse(siri.getServiceDelivery().isMoreData());
-        assertEquals(2, siri
+        assertEquals(0, siri
                 .getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
                 .getEstimatedJourneyVersionFrames().get(0)
                 .getEstimatedVehicleJourneies().size());
 
         estimatedTimetables.add(datasetId, createEstimatedVehicleJourney("4567-partialupdate", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
 
-        sleep(250);
         estimatedTimetables.commitChanges();
+        sleep(50);
 
         siri = estimatedTimetables.createServiceDelivery(requestorId, null, 2);
 
         assertFalse(siri.getServiceDelivery().isMoreData());
-        assertEquals(2, siri
+        assertEquals(1, siri
                 .getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
                 .getEstimatedJourneyVersionFrames().get(0)
                 .getEstimatedVehicleJourneies().size());
 
         siri = estimatedTimetables.createServiceDelivery(requestorId, null, 2);
-
-        sleep(250);
+        sleep(50);
 
         assertFalse(siri.getServiceDelivery().isMoreData());
-        assertEquals(2, siri
+        assertEquals(0, siri
                 .getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
                 .getEstimatedJourneyVersionFrames().get(0)
                 .getEstimatedVehicleJourneies().size());
@@ -182,21 +188,30 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         ZonedDateTime departure = ZonedDateTime.now().plusHours(1);
         estimatedTimetables.add("test", createEstimatedVehicleJourney("12345", "4321", 0, 30, departure, true));
         int expectedSize = previousSize +1;
-        assertTrue("Adding Journey did not add element.", estimatedTimetables.getAll().size() == expectedSize);
+        assertTrue(
+            estimatedTimetables.getAll().size() == expectedSize,
+            "Adding Journey did not add element."
+        );
 
         estimatedTimetables.add("test", createEstimatedVehicleJourney("12345", "4321", 0, 30, departure, true));
-        assertTrue("Updating Journey added element.", estimatedTimetables.getAll().size() == expectedSize);
+        assertTrue(
+            estimatedTimetables.getAll().size() == expectedSize,
+            "Updating Journey added element."
+        );
 
         ZonedDateTime departure_2 = ZonedDateTime.now().plusHours(1);
         estimatedTimetables.add("test", createEstimatedVehicleJourney("54321", "4321", 0, 30, departure_2, true));
         expectedSize++;
-        assertTrue("Adding Journey did not add element.", estimatedTimetables.getAll().size() == expectedSize);
+        assertTrue(
+            estimatedTimetables.getAll().size() == expectedSize,
+            "Adding Journey did not add element."
+        );
 
         estimatedTimetables.add("test2", createEstimatedVehicleJourney("12345", "4321", 0, 30, departure_2, true));
         expectedSize++;
-        assertEquals("Adding Journey for other vendor did not add element.", expectedSize, estimatedTimetables.getAll().size());
-        assertEquals("Getting Journey for vendor did not return correct element-count.", previousSize+1, estimatedTimetables.getAll("test2").size());
-        assertEquals("Getting Journey for vendor did not return correct element-count.", expectedSize-1, estimatedTimetables.getAll("test").size());
+        assertEquals(expectedSize, estimatedTimetables.getAll().size(), "Adding Journey for other vendor did not add element.");
+        assertEquals(previousSize+1, estimatedTimetables.getAll("test2").size(), "Getting Journey for vendor did not return correct element-count.");
+        assertEquals(expectedSize-1, estimatedTimetables.getAll("test").size(), "Getting Journey for vendor did not return correct element-count.");
 
     }
 
@@ -212,23 +227,29 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
 
         estimatedTimetables.add("test", estimatedVehicleJourney);
         int expectedSize = previousSize +1;
-        assertTrue("Adding Journey did not add element.", estimatedTimetables.getAll().size() == expectedSize);
+        assertTrue(
+            estimatedTimetables.getAll().size() == expectedSize,
+            "Adding Journey did not add element."
+        );
 
         EstimatedVehicleJourney estimatedVehicleJourney1 = createEstimatedVehicleJourney(lineRefValue, "4321", 0, 20, departure, true);
         estimatedVehicleJourney1.setRecordedAtTime(ZonedDateTime.now());
         estimatedTimetables.add("test", estimatedVehicleJourney1);
 
-        assertTrue("Updating Journey added element.", estimatedTimetables.getAll().size() == expectedSize);
+        assertTrue(
+            estimatedTimetables.getAll().size() == expectedSize,
+            "Updating Journey added element."
+        );
 
         boolean checkedMatchingJourney = false;
         Collection<EstimatedVehicleJourney> all = estimatedTimetables.getAll();
         for (EstimatedVehicleJourney vehicleJourney : all) {
             if (lineRefValue.equals(vehicleJourney.getLineRef().getValue())) {
-                assertEquals("Older request should have been ignored.", firstRecordedAtTime, vehicleJourney.getRecordedAtTime());
+                assertEquals(firstRecordedAtTime, vehicleJourney.getRecordedAtTime(), "Older request should have been ignored.");
                 checkedMatchingJourney = true;
             }
         }
-        assertTrue("Did not check matching VehicleJourney", checkedMatchingJourney);
+        assertTrue(checkedMatchingJourney, "Did not check matching VehicleJourney");
     }
 
     @Test
@@ -295,7 +316,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
 
         EstimatedVehicleJourney estimatedVehicleJourney = createEstimatedVehicleJourney(lineRefValue, "4321", 0, numberOfEstimatedCalls, departure, true);
         estimatedTimetables.add("test", estimatedVehicleJourney);
-        assertEquals("Adding Journey did not add element.", previousSize+1, estimatedTimetables.getAll().size());
+        assertEquals(previousSize+1, estimatedTimetables.getAll().size(), "Adding Journey did not add element.");
 
         List<EstimatedCall> estimatedCalls = new ArrayList<>(estimatedVehicleJourney.getEstimatedCalls().getEstimatedCalls());
 
@@ -325,8 +346,8 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
 
                 int rcSize = recordedCallsList.size();
                 int etSize = estimatedCallsList.size();
-                assertEquals("List of EstimatedCalls have not been merged as expected.", numberOfEstimatedCalls-expectedNumberOfRecordedCallsAfterUpdate, etSize);
-                assertEquals("List of RecordedCalls have not been merged as expected.", expectedNumberOfRecordedCallsAfterUpdate, rcSize);
+                assertEquals(numberOfEstimatedCalls-expectedNumberOfRecordedCallsAfterUpdate, etSize, "List of EstimatedCalls have not been merged as expected.");
+                assertEquals(expectedNumberOfRecordedCallsAfterUpdate, rcSize, "List of RecordedCalls have not been merged as expected.");
 
                 EstimatedCall estimatedCall = estimatedCallsList.get(0);
                 assertEquals(e.getStopPointRef().getValue(), estimatedCall.getStopPointRef().getValue());
@@ -354,23 +375,23 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         assertNotNull(serviceDelivery_1.getServiceDelivery());
         assertNotNull(serviceDelivery_1.getServiceDelivery().getEstimatedTimetableDeliveries());
         assertTrue(serviceDelivery_1.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 2);
-
+        assertTrue(serviceDelivery_1.getServiceDelivery().isMoreData());
 
         Siri serviceDelivery_2 = estimatedTimetables.createServiceDelivery(requestorId, datasetId, 2, -1);
 
         assertNotNull(serviceDelivery_2);
         assertNotNull(serviceDelivery_2.getServiceDelivery());
         assertNotNull(serviceDelivery_2.getServiceDelivery().getEstimatedTimetableDeliveries());
-        //assertTrue(serviceDelivery_2.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 1);
-
+        assertTrue(serviceDelivery_2.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 1);
+        assertFalse(serviceDelivery_2.getServiceDelivery().isMoreData());
 
         Siri serviceDelivery_3 = estimatedTimetables.createServiceDelivery(requestorId, datasetId, 2, -1);
 
         assertNotNull(serviceDelivery_3);
         assertNotNull(serviceDelivery_3.getServiceDelivery());
         assertNotNull(serviceDelivery_3.getServiceDelivery().getEstimatedTimetableDeliveries());
-        //assertTrue(serviceDelivery_3.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 0);
-
+        assertTrue(serviceDelivery_3.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 0);
+        assertFalse(serviceDelivery_3.getServiceDelivery().isMoreData());
 
     }
 
@@ -382,20 +403,30 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         estimatedTimetables.add(datasetId, createEstimatedVehicleJourney("2345", "2", 0, 30, ZonedDateTime.now().plusMinutes(100), true));
 
         Siri serviceDelivery_1 = estimatedTimetables.createServiceDelivery(null, datasetId, 10, 20*60*1000);
+        sleep(50);
+
         assertNotNull(serviceDelivery_1);
         assertNotNull(serviceDelivery_1.getServiceDelivery());
         assertNotNull(serviceDelivery_1.getServiceDelivery().getEstimatedTimetableDeliveries());
-        assertTrue("Only first journey should have been returned", serviceDelivery_1.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
-                                                    .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 1);
+        assertTrue(
+            serviceDelivery_1.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
+                                                            .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 1,
+            "Only first journey should have been returned"
+        );
         assertFalse(serviceDelivery_1.getServiceDelivery().isMoreData());
 
 
         Siri serviceDelivery_10 = estimatedTimetables.createServiceDelivery(null, datasetId, 10, 110*60*1000);
+        sleep(50);
+
         assertNotNull(serviceDelivery_10);
         assertNotNull(serviceDelivery_10.getServiceDelivery());
         assertNotNull(serviceDelivery_10.getServiceDelivery().getEstimatedTimetableDeliveries());
-        assertTrue("Both journeys should have been returned", serviceDelivery_10.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
-                .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 2);
+        assertTrue(
+            serviceDelivery_10.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
+                        .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 2,
+            "Both journeys should have been returned"
+        );
 
         assertFalse(serviceDelivery_10.getServiceDelivery().isMoreData());
 
@@ -405,40 +436,54 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         estimatedTimetables.add(datasetId, estimatedVehicleJourneyWithCancellation);
 
         Siri serviceDelivery_30 = estimatedTimetables.createServiceDelivery(null, datasetId, 10, 110*60*1000);
+        sleep(50);
 
         assertNotNull(serviceDelivery_30);
         assertNotNull(serviceDelivery_30.getServiceDelivery());
         assertNotNull(serviceDelivery_30.getServiceDelivery().getEstimatedTimetableDeliveries());
-        assertTrue("Cancelled journey in the future should have been returned",serviceDelivery_30.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
-                .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 3);
+        assertTrue(serviceDelivery_30.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
+                        .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 3,
+            "Cancelled journey in the future should have been returned");
         assertFalse(serviceDelivery_30.getServiceDelivery().isMoreData());
 
         Siri serviceDelivery_3 = estimatedTimetables.createServiceDelivery(null, datasetId, 10, -1);
+        sleep(50);
 
         assertNotNull(serviceDelivery_3);
         assertNotNull(serviceDelivery_3.getServiceDelivery());
         assertNotNull(serviceDelivery_3.getServiceDelivery().getEstimatedTimetableDeliveries());
-        assertTrue("Default request should have returned all journeys",serviceDelivery_3.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
-                .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 3);
+        assertTrue(serviceDelivery_3.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
+                        .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 3,
+            "Default request should have returned all journeys");
 
         assertFalse(serviceDelivery_3.getServiceDelivery().isMoreData());
 
 
         String requestorId = UUID.randomUUID().toString();
         serviceDelivery_3 = estimatedTimetables.createServiceDelivery(requestorId, datasetId, 2, -1);
+        sleep(50);
 
         assertNotNull(serviceDelivery_3);
         assertNotNull(serviceDelivery_3.getServiceDelivery());
         assertNotNull(serviceDelivery_3.getServiceDelivery().getEstimatedTimetableDeliveries());
-        assertTrue("Default request should have returned all journeys",serviceDelivery_3.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
-                .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 2);
+        assertTrue(serviceDelivery_3.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
+                        .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 2,
+            "Default request should have returned all journeys");
 
+        assertTrue(serviceDelivery_3.getServiceDelivery().isMoreData());
 
         serviceDelivery_3 = estimatedTimetables.createServiceDelivery(requestorId, datasetId, 2, -1);
+        sleep(50);
 
         assertNotNull(serviceDelivery_3);
         assertNotNull(serviceDelivery_3.getServiceDelivery());
         assertNotNull(serviceDelivery_3.getServiceDelivery().getEstimatedTimetableDeliveries());
+        assertTrue(serviceDelivery_3.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
+                        .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 1,
+            "Default request should have returned all journeys");
+
+        assertFalse(serviceDelivery_3.getServiceDelivery().isMoreData());
+
     }
 
     @Test
@@ -488,23 +533,23 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         assertNotNull(monitoredTarget);
         Collection<EstimatedVehicleJourney> allMonitored = estimatedTimetables.getAllMonitored();
         assertNotNull(allMonitored);
-        TestCase.assertEquals(2, allMonitored.size());
+        assertEquals(2, allMonitored.size());
 
         boolean monitoredMatch = false;
         boolean cancelledMatch = false;
         for (EstimatedVehicleJourney estimatedVehicleJourney : allMonitored) {
             if (monitoredTarget.getVehicleRef().getValue().equals(estimatedVehicleJourney.getVehicleRef().getValue())) {
-                TestCase.assertFalse(monitoredTarget.isCancellation());
+                assertFalse(monitoredTarget.isCancellation());
                 monitoredMatch = true;
             }
             if (cancelledTarget.getVehicleRef().getValue().equals(estimatedVehicleJourney.getVehicleRef().getValue())) {
-                TestCase.assertFalse(cancelledTarget.isMonitored());
+                assertFalse(cancelledTarget.isMonitored());
                 cancelledMatch = true;
             }
         }
 
-        TestCase.assertTrue(monitoredMatch);
-        TestCase.assertTrue(cancelledMatch);
+        assertTrue(monitoredMatch);
+        assertTrue(cancelledMatch);
 
     }
 

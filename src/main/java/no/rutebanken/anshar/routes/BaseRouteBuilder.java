@@ -39,6 +39,7 @@ public abstract class BaseRouteBuilder extends SpringRouteBuilder {
     protected final SubscriptionManager subscriptionManager;
 
     protected final AnsharConfiguration config;
+    private boolean isRunning;
 
     protected BaseRouteBuilder(AnsharConfiguration config, SubscriptionManager subscriptionManager) {
         this.subscriptionManager = subscriptionManager;
@@ -62,13 +63,31 @@ public abstract class BaseRouteBuilder extends SpringRouteBuilder {
     }
 
 
+    protected void requestFinished() {
+        this.isRunning = false;
+    }
+
+    protected void requestStarted() {
+        this.isRunning = true;
+    }
+
     protected boolean requestData(String subscriptionId, String fromRouteId) {
         SubscriptionSetup subscriptionSetup = subscriptionManager.get(subscriptionId);
 
-        boolean isLeader = isLeader(fromRouteId);
-        log.debug("isActive: {}, isActivated {}, isLeader {}: {}", subscriptionSetup.isActive(), subscriptionManager.isActiveSubscription(subscriptionId), isLeader, subscriptionSetup);
+        if (subscriptionSetup != null) { // In case subscription has been deleted
+            boolean isLeader = isLeader(fromRouteId);
+            log.debug("isActive: {}, isActivated {}, isLeader {}, isRunning {}: {}", subscriptionSetup.isActive(), subscriptionManager.isActiveSubscription(subscriptionId), isLeader, isRunning, subscriptionSetup);
 
-        return (isLeader && subscriptionSetup.isActive() && subscriptionManager.isActiveSubscription(subscriptionId));
+            if (isLeader && subscriptionSetup.isActive() && subscriptionManager.isActiveSubscription(subscriptionId)) {
+                if (isRunning) {
+                    log.debug("Previous request still running - ignore polling-trigger for {}", subscriptionSetup);
+                    return false;
+                } else {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     protected boolean isLeader(String routeId) {
@@ -88,15 +107,17 @@ public abstract class BaseRouteBuilder extends SpringRouteBuilder {
         if (routePolicyList != null) {
             for (RoutePolicy routePolicy : routePolicyList) {
                 if (routePolicy instanceof InterruptibleHazelcastRoutePolicy) {
-                    ((InterruptibleHazelcastRoutePolicy) routePolicy).releaseLeadership();
-                    log.info("Leadership released: {}", routeId);
+                    if (isLeader(routeId)) {
+                        ((InterruptibleHazelcastRoutePolicy) routePolicy).releaseLeadership();
+                        log.info("Leadership released: {}", routeId);
+                    }
                 }
             }
         }
     }
 
 
-    protected String getRequestUrl(SubscriptionSetup subscriptionSetup) throws ServiceNotSupportedException {
+    protected String getRequestUrl(SubscriptionSetup subscriptionSetup, String parameters) throws ServiceNotSupportedException {
         Map<RequestType, String> urlMap = subscriptionSetup.getUrlMap();
         String url;
         if (subscriptionSetup.getSubscriptionType() == SiriDataType.ESTIMATED_TIMETABLE) {
@@ -110,7 +131,8 @@ public abstract class BaseRouteBuilder extends SpringRouteBuilder {
         } else {
             throw new ServiceNotSupportedException();
         }
-        return getCamelUrl(url);
+
+        return getCamelUrl(url, parameters);
     }
 
     protected String getSoapAction(SubscriptionSetup subscriptionSetup) throws ServiceNotSupportedException {

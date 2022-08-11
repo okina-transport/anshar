@@ -26,30 +26,30 @@
 
     <xsl:param name="operatorNamespace"/>
 
-    <!-- If not SOAP-envelope - copy all as-is-->
+    <!-- If not SOAP-envelope - copy all as-is-->     
     <xsl:template match="/siri:Siri">
         <xsl:element name="siri:Siri">
             <xsl:choose>
                 <xsl:when test="child::node()/local-name()='HeartbeatNotification'">
-                    <xsl:element name="siri:HeartbeatNotification">
+                    <xsl:element name="siri:HeartbeatNotification" >
                         <xsl:copy-of select="child::node()/*"/>
                     </xsl:element>
                 </xsl:when>
                 <xsl:otherwise>
-                    <xsl:copy-of select="*"/>
+                    <xsl:copy-of select="*" />
                 </xsl:otherwise>
             </xsl:choose>
         </xsl:element>
-    </xsl:template>
-
+    </xsl:template>        
+    
     <xsl:template match="/soapenv:Envelope">
         <xsl:apply-templates/>
     </xsl:template>
-
+    
     <xsl:template match="soapenv:Body">
         <xsl:apply-templates/>
     </xsl:template>
-
+    
     <xsl:template match="soapenv:Header"/>
 
     <xsl:template match="/soapenv2:Envelope">

@@ -15,9 +15,15 @@ anshar:
       soapenvNamespace:
       incrementalUpdates:
       urlMap:
-        GET_VEHICLE_MONITORING: https4://api.entur.io/realtime/v1/services
+        GET_VEHICLE_MONITORING: https://api.entur.io/realtime/v1/services
       customHeaders:
         ET-Client-Name: anshar-default-VM-client
+      oauth2Config:
+        SERVER: <oauth-server>
+        AUDIENCE: <audience>
+        GRANT_TYPE: client_credentials
+        CLIENT_ID: <client-id>
+        CLIENT_SECRET: <client-secret>
       version: 2.0
       contentType: text/xml;charset=UTF-8
       subscriptionId: anshar-example-${random.uuid}
@@ -26,7 +32,6 @@ anshar:
       mappingAdapterId: entur
       filterPresets:
       idMappingPrefixes:
-      restartTime: "01:30"
       active: false
     -
       internalId: 200
@@ -44,8 +49,8 @@ anshar:
       soapenvNamespace:
       incrementalUpdates:
       urlMap:
-        SUBSCRIBE: https4://api.entur.io/realtime/v1/subscribe
-        DELETE_SUBSCRIPTION: https4://api.entur.io/realtime/v1/subscribe
+        SUBSCRIBE: https://api.entur.io/realtime/v1/subscribe
+        DELETE_SUBSCRIPTION: https://api.entur.io/realtime/v1/subscribe
       customHeaders:
         ET-Client-Name: anshar-default-ET-client
       version: 2.0
@@ -56,7 +61,6 @@ anshar:
       mappingAdapterId: entur
       filterPresets:
       idMappingPrefixes:
-      restartTime:
       active: false
     -
       internalId: 300
@@ -74,8 +78,8 @@ anshar:
       soapenvNamespace:
       incrementalUpdates:
       urlMap:
-        SUBSCRIBE: https4://api.entur.io/realtime/v1/subscribe
-        DELETE_SUBSCRIPTION: https4://api.entur.io/realtime/v1/subscribe
+        SUBSCRIBE: https://api.entur.io/realtime/v1/subscribe
+        DELETE_SUBSCRIPTION: https://api.entur.io/realtime/v1/subscribe
       customHeaders:
         ET-Client-Name: anshar-default-SX-client
       version: 2.0

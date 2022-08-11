@@ -23,7 +23,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
@@ -38,7 +41,9 @@ public class StopPlaceUpdaterService {
 
     private static final Object LOCK = new Object();
 
-    private final ConcurrentMap<String, String> stopPlaceMappings = new ConcurrentHashMap<>();
+    private transient final ConcurrentMap<String, String> stopPlaceMappings = new ConcurrentHashMap<>();
+
+    private transient final Set<String> validNsrIds = new HashSet<>();
 
     @Autowired
     private StopPlaceRegisterMappingFetcher stopPlaceRegisterMappingFetcher;
@@ -48,6 +53,9 @@ public class StopPlaceUpdaterService {
 
     @Value("${anshar.mapping.stopplaces.gcs.path}")
     private String stopPlaceMappingPath;
+
+    @Value("${anshar.mapping.stopquayjson.gcs.path}")
+    private String stopPlaceQuayJsonPath;
 
     @Value("${anshar.mapping.stopplaces.update.frequency.min:60}")
     private int updateFrequency = 60;
@@ -66,6 +74,15 @@ public class StopPlaceUpdaterService {
         return stopPlaceMappings.get(id);
     }
 
+    /**
+     * Returns true if provided id is included in the latest dataset from NSR
+     * @param id
+     * @return
+     */
+    public boolean isKnownId(String id) {
+        return validNsrIds.isEmpty() || validNsrIds.contains(id);
+    }
+
     @PostConstruct
     private void initialize() {
 
@@ -81,6 +98,7 @@ public class StopPlaceUpdaterService {
         synchronized (LOCK) {
             updateStopPlaceMapping(quayMappingPath);
             updateStopPlaceMapping(stopPlaceMappingPath);
+            updateStopPlacesAndQuays(stopPlaceQuayJsonPath);
         }
     }
 
@@ -88,11 +106,41 @@ public class StopPlaceUpdaterService {
         logger.info("Fetching mapping data - start. Fetching mapping-data from {}", mappingUrl);
 
         stopPlaceMappings.putAll(stopPlaceRegisterMappingFetcher.fetchStopPlaceMapping(mappingUrl));
+        logger.info("Fetching mapping data - done.");
+    }
+
+    private void updateStopPlacesAndQuays(String url) {
+        logger.info("Fetching stops and quay data - start. Fetching mapping-data from {}", url);
+        final Map<String, Collection<String>> stopQuayMap = stopPlaceRegisterMappingFetcher.fetchStopPlaceQuayJson(url);
+        if (!stopQuayMap.isEmpty()) {
+            validNsrIds.clear();
+
+            int stopsCounter = stopQuayMap.size();
+            int quayCounter = 0;
+            for (String s : stopQuayMap.keySet()) {
+                // Add StopPlace-id
+                validNsrIds.add(s);
+
+                //Add quay-ids
+                final Collection<String> quayIds = stopQuayMap.get(s);
+                quayCounter += quayIds.size();
+                validNsrIds.addAll(quayIds);
+            }
+
+            logger.info("Fetching stops and quay data - done. Found {} stops, {} quays", stopsCounter, quayCounter);
+        } else {
+            logger.info("Fetching stops and quay data - done. No stops found");
+        }
     }
 
 
     //Called from tests
     public void addStopPlaceMappings(Map<String, String> stopPlaceMap) {
         this.stopPlaceMappings.putAll(stopPlaceMap);
+    }
+
+    //Called from tests
+    public void addStopQuays(Collection<String> stopQuays) {
+        this.validNsrIds.addAll(stopQuays);
     }
 }

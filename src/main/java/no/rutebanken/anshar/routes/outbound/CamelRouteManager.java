@@ -49,6 +49,9 @@ public class CamelRouteManager {
     @Autowired
     private SiriHelper siriHelper;
 
+    @Autowired
+    ServerSubscriptionManager subscriptionManager;
+
     @Value("${anshar.default.max.elements.per.delivery:1000}")
     private int maximumSizePerDelivery;
 
@@ -63,7 +66,7 @@ public class CamelRouteManager {
      * @param payload
      * @param subscriptionRequest
      */
-    void pushSiriData(Siri payload, OutboundSubscriptionSetup subscriptionRequest, ServerSubscriptionManager subscriptionManager) {
+    void pushSiriData(Siri payload, OutboundSubscriptionSetup subscriptionRequest, boolean logBody) {
         String consumerAddress = subscriptionRequest.getAddress();
         if (consumerAddress == null) {
             logger.info("ConsumerAddress is null - ignoring data.");
@@ -93,7 +96,7 @@ public class CamelRouteManager {
                 }
 
                 for (Siri siri : splitSiri) {
-                    postDataToSubscription(siri, subscriptionRequest);
+                    postDataToSubscription(siri, subscriptionRequest, logBody);
                 }
             } catch (Exception e) {
                 logger.info("Failed to push data for subscription {}: {}", subscriptionRequest, e);
@@ -152,7 +155,7 @@ public class CamelRouteManager {
         }
     }
 
-    private void postDataToSubscription(Siri payload, OutboundSubscriptionSetup subscription) {
+    private void postDataToSubscription(Siri payload, OutboundSubscriptionSetup subscription, boolean showBody) {
 
         if (serviceDeliveryContainsData(payload)) {
             String remoteEndPoint = subscription.getAddress();
@@ -161,6 +164,7 @@ public class CamelRouteManager {
             headers.put("breadcrumbId", MDC.get("camel.breadcrumbId"));
             headers.put("endpoint", remoteEndPoint);
             headers.put("SubscriptionId", subscription.getSubscriptionId());
+            headers.put("showBody", showBody);
             headers.put(OUTPUT_ADAPTERS_HEADER_NAME, subscription.getValueAdapters());
 
             siriSubscriptionProcessor.sendBodyAndHeaders(payload, headers);

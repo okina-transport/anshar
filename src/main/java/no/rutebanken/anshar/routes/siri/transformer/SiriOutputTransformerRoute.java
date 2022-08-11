@@ -51,8 +51,9 @@ public class SiriOutputTransformerRoute extends RouteBuilder {
                         false));
                     p.getOut().setHeaders(p.getIn().getHeaders());
                 })
+                .log(LoggingLevel.DEBUG, "Transformed SIRI")
                 .routeId("siri.transformer.route")
-                .log(LoggingLevel.DEBUG, "Transformed SIRI");
+                .log("Transformed SIRI");
     }
 
 }

@@ -74,21 +74,25 @@ public class SubscriptionSetup implements Serializable {
     private boolean validation;
     private String restartTime;
 
+    private Map<OAuthConfigElement, String> oauth2Config;
+
     private DataNotReceivedAction dataNotReceivedAction;
     private String validationFilter;
 
     private boolean forwardPositionData;
 
-    private boolean useCodespaceFromParticipantRef = false;
+    private boolean useProvidedCodespaceId = false;
 
-    public boolean isUseCodespaceFromParticipantRef() {
-        return useCodespaceFromParticipantRef;
+    private boolean enrichSiriData = false;
+
+    public boolean isUseProvidedCodespaceId() {
+        return useProvidedCodespaceId;
     }
 
-    public void setUseCodespaceFromParticipantRef(
-        boolean useCodespaceFromParticipantRef
+    public void setUseProvidedCodespaceId(
+        boolean useProvidedCodespaceId
     ) {
-        this.useCodespaceFromParticipantRef = useCodespaceFromParticipantRef;
+        this.useProvidedCodespaceId = useProvidedCodespaceId;
     }
 
     public DataNotReceivedAction getDataNotReceivedAction() {
@@ -260,6 +264,7 @@ public class SubscriptionSetup implements Serializable {
         obj.put("activated", isActive());
         obj.put("vendor", getVendor());
         obj.put("name", getName());
+        obj.put("description", createDescription());
         obj.put("datasetId", getDatasetId());
         obj.put("subscriptionId", getSubscriptionId());
         obj.put("serviceType", getServiceType().toString());
@@ -280,6 +285,27 @@ public class SubscriptionSetup implements Serializable {
         obj.put("forwardPositionData", forwardPositionData());
 
         return obj;
+    }
+
+    private String createDescription() {
+        String description = "";
+        if (subscriptionMode.equals(SubscriptionMode.SUBSCRIBE)) {
+            description = urlMap.getOrDefault(RequestType.SUBSCRIBE, "");
+        } else {
+            if (subscriptionType.equals(SiriDataType.ESTIMATED_TIMETABLE)) {
+                description = urlMap.getOrDefault(RequestType.GET_ESTIMATED_TIMETABLE, "");
+            }
+            if (subscriptionType.equals(SiriDataType.VEHICLE_MONITORING)) {
+                description = urlMap.getOrDefault(RequestType.GET_VEHICLE_MONITORING, "");
+            }
+            if (subscriptionType.equals(SiriDataType.SITUATION_EXCHANGE)) {
+                description = urlMap.getOrDefault(RequestType.GET_SITUATION_EXCHANGE, "");
+            }
+        }
+        if (description.contains("?")) {
+            description = description.substring(0, description.indexOf("?"));
+        }
+        return description;
     }
 
     public long getInternalId() {
@@ -409,6 +435,14 @@ public class SubscriptionSetup implements Serializable {
 
     public String getValidationFilter() {
         return validationFilter;
+    }
+
+    public boolean enrichSiriData() {
+        return enrichSiriData;
+    }
+
+    public void setEnrichSiriData(boolean enrichSiriData) {
+        this.enrichSiriData = enrichSiriData;
     }
 
     public enum ServiceType {SOAP, REST}
@@ -553,6 +587,13 @@ public class SubscriptionSetup implements Serializable {
 
     public void setForwardPositionData(boolean forwardPositionData) {
         this.forwardPositionData = forwardPositionData;
+    }
+
+    public void setOauth2Config(Map<OAuthConfigElement, String> oauth2Config) {
+        this.oauth2Config = oauth2Config;
+    }
+    public Map<OAuthConfigElement, String> getOauth2Config() {
+        return oauth2Config;
     }
 
     /**

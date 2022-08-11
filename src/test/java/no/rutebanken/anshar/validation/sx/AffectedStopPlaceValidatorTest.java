@@ -17,29 +17,35 @@ package no.rutebanken.anshar.validation.sx;
 
 import no.rutebanken.anshar.routes.validation.validators.sx.AffectedStopPlaceValidator;
 import no.rutebanken.anshar.validation.CustomValidatorTest;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.xml.bind.ValidationEvent;
 
-import static junit.framework.TestCase.assertNotNull;
-import static junit.framework.TestCase.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 public class AffectedStopPlaceValidatorTest extends CustomValidatorTest {
 
-    private static AffectedStopPlaceValidator validator;
+    @Autowired
+    private AffectedStopPlaceValidator validator;
     private final String fieldName = "StopPointRef";
 
-    @BeforeAll
-    public static void init() {
-        validator = new AffectedStopPlaceValidator();
+    @BeforeEach
+    public void init() {
+        validator.prepareTestData("NSR:Quay:1234");
+        validator.prepareTestData("NSR:StopPlace:1234");
     }
 
     @Test
     public void testEmptyStopPointRef() throws Exception{
         String xml = createXml(fieldName, "");
 
-        assertNotNull("Empty "+fieldName+ " flagged as valid", validator.isValid(createXmlNode(xml)));
+        assertNotNull(
+            validator.isValid(createXmlNode(xml)),
+            "Empty "+fieldName+ " flagged as valid"
+        );
     }
 
     @Test
@@ -47,7 +53,10 @@ public class AffectedStopPlaceValidatorTest extends CustomValidatorTest {
         String xml = createXml(fieldName, "NSR:Quay:1234");
 
         final ValidationEvent valid = validator.isValid(createXmlNode(xml));
-        assertNull("Valid "+fieldName+" flagged as invalid", valid);
+        assertNull(
+            valid,
+            "Valid "+fieldName+" flagged as invalid"
+        );
     }
 
     @Test
@@ -55,7 +64,10 @@ public class AffectedStopPlaceValidatorTest extends CustomValidatorTest {
         String xml = createXml(fieldName, "NSR:StopPlace:1234");
 
         final ValidationEvent valid = validator.isValid(createXmlNode(xml));
-        assertNull(fieldName+" with StopPlace flagged as invalid", valid);
+        assertNull(
+            valid,
+            fieldName+" with StopPlace flagged as invalid"
+        );
     }
 
     @Test
@@ -63,6 +75,9 @@ public class AffectedStopPlaceValidatorTest extends CustomValidatorTest {
         String xml = createXml(fieldName, "001234111");
 
         final ValidationEvent valid = validator.isValid(createXmlNode(xml));
-        assertNotNull(fieldName+" with StopPlace flagged as invalid", valid);
+        assertNotNull(
+            valid,
+            fieldName+" with StopPlace flagged as invalid"
+        );
     }
 }

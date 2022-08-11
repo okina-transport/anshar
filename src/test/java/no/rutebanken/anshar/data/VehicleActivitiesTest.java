@@ -35,10 +35,10 @@ import java.util.List;
 import java.util.UUID;
 
 import static no.rutebanken.anshar.helpers.SleepUtil.sleep;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class VehicleActivitiesTest extends SpringBootBaseTest {
 
@@ -59,7 +59,7 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
         VehicleMonitoringRefStructure monitoringRef = new VehicleMonitoringRefStructure();
         element.setVehicleMonitoringRef(monitoringRef);
         vehicleActivities.add("test", element);
-        assertEquals("Vehicle not added", previousSize + 1, vehicleActivities.getAll().size());
+        assertEquals(previousSize + 1, vehicleActivities.getAll().size(), "Vehicle not added");
     }
 
     @Test
@@ -67,7 +67,7 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
         int previousSize = vehicleActivities.getAll().size();
 
         vehicleActivities.add("test", null);
-        assertEquals("Null-element added", previousSize, vehicleActivities.getAll().size());
+        assertEquals(previousSize, vehicleActivities.getAll().size(), "Null-element added");
     }
 
     @Test
@@ -137,7 +137,7 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
 
         VehicleActivityStructure testOriginal = vehicleActivities.add("test", element);
 
-        assertEquals("VM has not been added.", BigDecimal.ONE, testOriginal.getProgressBetweenStops().getPercentage());
+        assertEquals(BigDecimal.ONE, testOriginal.getProgressBetweenStops().getPercentage(), "VM has not been added.");
 
         //Update element
         VehicleActivityStructure element2 = createVehicleActivityStructure(
@@ -152,7 +152,7 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
 
         VehicleActivityStructure test = vehicleActivities.add("test", element2);
 
-        assertEquals("VM has been wrongfully updated", BigDecimal.ONE, test.getProgressBetweenStops().getPercentage());
+        assertEquals(BigDecimal.ONE, test.getProgressBetweenStops().getPercentage(), "VM has been wrongfully updated");
     }
 
     @Test
@@ -172,7 +172,7 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
 
         VehicleActivityStructure testOriginal = vehicleActivities.add("test", element);
 
-        assertEquals("VM has not been added.", BigDecimal.ONE, testOriginal.getProgressBetweenStops().getPercentage());
+        assertEquals(BigDecimal.ONE, testOriginal.getProgressBetweenStops().getPercentage(), "VM has not been added.");
 
         //Update element
         VehicleActivityStructure element2 = createVehicleActivityStructure(
@@ -186,7 +186,7 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
 
         VehicleActivityStructure test = vehicleActivities.add("test", element2);
 
-        assertEquals("VM has been wrongfully updated", BigDecimal.ONE, test.getProgressBetweenStops().getPercentage());
+        assertEquals(BigDecimal.ONE, test.getProgressBetweenStops().getPercentage(), "VM has been wrongfully updated");
     }
 
     @Test
@@ -198,21 +198,54 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
         vehicleActivities.add("test", createVehicleActivityStructure(ZonedDateTime.now(), prefix+"2345"));
         vehicleActivities.add("test", createVehicleActivityStructure(ZonedDateTime.now(), prefix+"3456"));
 
-        sleep(250);
+        sleep(50);
 
         // Added 3
         assertEquals(previousSize+3, vehicleActivities.getAllUpdates("1234-1234", null).size());
 
         vehicleActivities.add("test", createVehicleActivityStructure(ZonedDateTime.now(), prefix+"4567"));
-        sleep(250);
+        sleep(50);
 
         //Added one
         assertEquals(1, vehicleActivities.getAllUpdates("1234-1234", null).size());
-
+        sleep(50);
 
 
         //Verify that all elements still exist
         assertEquals(previousSize+4, vehicleActivities.getAll().size());
+    }
+
+    @Test
+    public void testGetUpdatesOnlyFromCache() {
+        int previousSize = vehicleActivities.getAll().size();
+
+        String prefix = "cachedUpdateOnly-";
+        final String datasetId = "cache-vm-test";
+        final String requestorId = "cache-vm-1234-1234";
+
+        vehicleActivities.add(datasetId, createVehicleActivityStructure(ZonedDateTime.now(), prefix+"1234"));
+        vehicleActivities.add(datasetId, createVehicleActivityStructure(ZonedDateTime.now(), prefix+"2345"));
+        vehicleActivities.add(datasetId, createVehicleActivityStructure(ZonedDateTime.now(), prefix+"3456"));
+
+        sleep(50);
+
+        // Added 3
+        assertEquals(previousSize+3, vehicleActivities.getAllCachedUpdates(requestorId, null, null).size());
+
+        vehicleActivities.add(datasetId, createVehicleActivityStructure(ZonedDateTime.now(), prefix+"4567"));
+        sleep(50);
+
+        //Added one
+        assertEquals(1, vehicleActivities.getAllCachedUpdates(requestorId, null, null).size());
+        sleep(50);
+
+        //None added
+        assertEquals(0, vehicleActivities.getAllCachedUpdates(requestorId, null, null).size());
+        sleep(50);
+
+        //Verify that all elements still exist
+        assertEquals(previousSize+4, vehicleActivities.getAll().size());
+        assertEquals(previousSize+4, vehicleActivities.getAllCachedUpdates(null,null, null).size());
     }
 
     private VehicleActivityStructure createVehicleActivityStructure(ZonedDateTime recordedAtTime, String vehicleReference) {

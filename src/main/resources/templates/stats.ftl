@@ -7,9 +7,12 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
     <script>
-        function administerSubscription(operation,id) {
+        function administerSubscription(operation,id, type) {
 
             var uri = "?operation=" + operation + "&subscriptionId="+id;
+            if (type != undefined) {
+                uri += "&type=" + type
+            }
             var xhr = new XMLHttpRequest();
             xhr.open('PUT', uri, true);
             xhr.onreadystatechange = function() {
@@ -22,8 +25,16 @@
 <body>
 <div class="jumbotron text-center">
     <h2>Anshar status/statistics</h2>
-    <small>Server started ${body.serverStarted}</small>
-    <small>(${body.secondsSinceDataReceived}s)</small>
+    <#if body.vmServerStarted??>
+    <table align="center" >
+        <tr><td align="right"><small>Proxyserver started:&nbsp;</small></td><td><small>${body.serverStarted}</small></td></tr>
+        <tr><td align="right"><small>VM-server started:&nbsp;</small></td> <td><small>${body.vmServerStarted}</small></td></tr>
+        <tr><td align="right"><small>ET-server started:&nbsp;</small></td> <td><small>${body.etServerStarted}</small></td></tr>
+        <tr><td align="right"><small>SX-server started:&nbsp;</small></td> <td><small>${body.sxServerStarted}</small></td></tr>
+    </table>
+    <#else>
+        <small>Server started ${body.serverStarted}</small>
+    </#if>
     <br /><small>- ${body.environment} -</small>
 </div>
 <div class="container">
@@ -43,9 +54,6 @@
         </li>
         <li class="nav-item text-right">
             <a class="nav-link" id="admin-tab" data-toggle="tab" href="#admin" onclick="location.hash='admin'" role="tab" aria-controls="admin" aria-selected="false">Admin <span class="glyphicon glyphicon-wrench"></span></a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" id="map-tab" data-toggle="tab" href="#map" onclick="location.hash='map'" role="tab" aria-controls="map" aria-selected="false">Vehicles <span class="glyphicon glyphicon-globe"></span></a>
         </li>
     </ul>
 
@@ -269,6 +277,18 @@ Request count: ${item.requestCount}">${item.id}</span></td>
                     <tr><th colspan="2"><h4>Admin tools:</h4></th></tr>
                 </thead>
                 <tbody>
+                    <tr data-toggle="collapse" data-target="#accordion_admin_validate" style="cursor: pointer" class="clickable success">
+                        <td colspan="2">Validate ALL subscriptions</td>
+                    </tr>
+                    <tr id="accordion_admin_validate" class="collapse ">
+                        <td>
+                            CAUTION - validates ALL subscriptions!!! <br />
+                            Any previous validation reports will be deleted
+                        </td>
+                        <td>
+                            <p><button type="button" class="btn btn-danger"  onclick="administerSubscription('validateAll', '')"><span style="cursor: pointer"  class="glyphicon glyphicon-ok"></span> ALL</button> </p>
+                        </td>
+                    </tr>
                     <tr data-toggle="collapse" data-target="#accordion_admin_terminate" style="cursor: pointer" class="clickable danger">
                         <td colspan="2">Terminate ALL subscriptions</td>
                     </tr>
@@ -279,7 +299,10 @@ Request count: ${item.requestCount}">${item.id}</span></td>
                             Use case: Server is to be taken down controlled, and all subscriptions should be stopped.
                         </td>
                         <td>
-                            <span style="cursor: pointer"  class="glyphicon glyphicon-stop text-danger" onclick="administerSubscription('terminateAll', '')"></span>
+                            <p><button type="button" class="btn btn-danger"  onclick="administerSubscription('terminateAll', '')"><span style="cursor: pointer"  class="glyphicon glyphicon-stop"></span> ALL</button> </p>
+                            <p><button type="button" class="btn btn-danger"  onclick="administerSubscription('terminateAll', null, 'ESTIMATED_TIMETABLE')"><span style="cursor: pointer"  class="glyphicon glyphicon-stop"></span> ET</button></p>
+                            <p><button type="button" class="btn btn-danger"  onclick="administerSubscription('terminateAll', null, 'VEHICLE_MONITORING')"><span style="cursor: pointer"  class="glyphicon glyphicon-stop"></span> VM</button></p>
+                            <p><button type="button" class="btn btn-danger"  onclick="administerSubscription('terminateAll', null, 'SITUATION_EXCHANGE')"><span style="cursor: pointer"  class="glyphicon glyphicon-stop"></span> SX</button></p>
                         </td>
                     </tr>
 
@@ -292,34 +315,52 @@ Request count: ${item.requestCount}">${item.id}</span></td>
                             Use case: Server has just been started, and all subscriptions should be activated ASAP instead of waiting for health-trigger.
                         </td>
                         <td>
-                            <span style="cursor: pointer"  class="glyphicon glyphicon-refresh text-success" onclick="administerSubscription('startAll', '')"></span>
+                            <p><button type="button" class="btn btn-danger"  onclick="administerSubscription('startAll', '')"><span style="cursor: pointer"  class="glyphicon glyphicon-refresh"></span> ALL</button> </p>
+                            <p><button type="button" class="btn btn-danger"  onclick="administerSubscription('startAll', null, 'ESTIMATED_TIMETABLE')"><span style="cursor: pointer"  class="glyphicon glyphicon-refresh"></span> ET</button></p>
+                            <p><button type="button" class="btn btn-danger"  onclick="administerSubscription('startAll', null, 'VEHICLE_MONITORING')"><span style="cursor: pointer"  class="glyphicon glyphicon-refresh"></span> VM</button></p>
+                            <p><button type="button" class="btn btn-danger"  onclick="administerSubscription('startAll', null, 'SITUATION_EXCHANGE')"><span style="cursor: pointer"  class="glyphicon glyphicon-refresh"></span> SX</button></p>
                         </td>
                     </tr>
-                </tbody>
-            </table>
-        </div>
-        <div class="tab-pane" id="map" role="tabpanel" aria-labelledby="map-tab" align="center">
-            <table class="table table-striped">
-                <thead>
-                <tr><th colspan="2"><h4>Available vehicle maps</h4></th></tr>
-                <tr>
-                    <th >Environment</th>
-                    <th >URL</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr>
-                    <td >Dev</td>
-                    <td ><a href="https://vehicle-map.dev.entur.org/" target="_blank">https://vehicle-map.dev.entur.org/</a></td>
-                </tr>
-                <tr>
-                    <td >Staging</td>
-                    <td ><a href="https://vehicle-map.staging.entur.org/" target="_blank">https://vehicle-map.staging.entur.org/</a></td>
-                </tr>
-                <tr>
-                    <td >Production</td>
-                    <td ><a href="https://vehicle-map.entur.org/" target="_blank">https://vehicle-map.entur.org/</a></td>
-                </tr>
+
+                    <tr data-toggle="collapse" data-target="#accordion_admin_delete" style="cursor: pointer" class="clickable success">
+                        <td colspan="2">Delete subscriptions</td>
+                    </tr>
+                    <tr id="accordion_admin_delete" class="collapse ">
+                        <td  colspan="2">
+                            <table class="table">
+                                <tbody>
+                                <tr>
+                                    <td>
+                                        CAUTION - Actually deletes subscription!!<br />
+                                        Use case: Subscription has been removed from config, and has to be removed manually.<br />
+                                        <strong>Note: this removes the <i>record</i>, a redeploy is necessary to remove all traces.</strong>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <#list body.types as type>
+                                            <table class="table">
+                                                <tr><th colspan="4"><h4>${type.typeName}</h4></th></tr>
+                                                <#list type.subscriptions?sort_by("vendor") as item>
+                                                    <tr>
+                                                        <th style="vertical-align: middle">${item?counter}</th>
+                                                        <td style="vertical-align: middle">${item.name}</td>
+                                                        <td>${item.vendor}</td>
+                                                        <td>
+                                                            <div align="right">
+                                                                <span style="cursor: pointer"  class="glyphicon glyphicon-trash" onclick="administerSubscription('delete', '${item.subscriptionId}')"></span>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                </#list>
+                                            </table>
+                                        </#list>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
