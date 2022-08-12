@@ -46,7 +46,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
-
+import static junit.framework.TestCase.*;
 import static org.junit.jupiter.api.Assertions.fail;
 
 public class SiriHandlerTest extends SpringBootBaseTest {

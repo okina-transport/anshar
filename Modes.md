@@ -1,7 +1,7 @@
 # App-modes
 Anshar now supports being started in different _modes_ to allow separate instances for each datatype -  both for reducing the necessary data-synchronization between instances, and making it possible to scale parts of the application separately. 
 
-Possible modes are PROXY, DATA_ET, DATA_VM, DATA_SX (from enum `AppMode`) 
+Possible modes are PROXY, DATA_ET, DATA_VM, DATA_SX, DATA_SM (from enum `AppMode`) 
 
 Recommended (i.e. tested) usage is either all modes in one application, or separate instances for each mode. 
 

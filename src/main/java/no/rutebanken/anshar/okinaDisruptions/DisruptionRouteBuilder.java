@@ -33,7 +33,7 @@ public class DisruptionRouteBuilder extends BaseRouteBuilder {
         }
 
 
-        singletonFrom("quartz://anshar/retrieve_disruptions?fireNow=true&trigger.repeatInterval=" + INTERVAL_IN_MILLIS,
+        singletonFrom("quartz://anshar/retrieve_disruptions?trigger.repeatInterval=" + INTERVAL_IN_MILLIS,
                 "retrieveDisruptionsFromOkinaDB")
                 .bean(DisruptionRetriever.class, "retrieveDisruptions")
                 .end();

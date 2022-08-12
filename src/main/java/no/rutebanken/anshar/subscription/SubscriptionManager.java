@@ -20,6 +20,7 @@ import com.hazelcast.map.IMap;
 import com.hazelcast.replicatedmap.ReplicatedMap;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.EstimatedTimetables;
+import no.rutebanken.anshar.data.MonitoredStopVisits;
 import no.rutebanken.anshar.data.RequestorRefRepository;
 import no.rutebanken.anshar.data.RequestorRefStats;
 import no.rutebanken.anshar.data.SiriObjectStorageKey;
@@ -54,9 +55,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static no.rutebanken.anshar.subscription.SiriDataType.ESTIMATED_TIMETABLE;
-import static no.rutebanken.anshar.subscription.SiriDataType.SITUATION_EXCHANGE;
-import static no.rutebanken.anshar.subscription.SiriDataType.VEHICLE_MONITORING;
+import static no.rutebanken.anshar.subscription.SiriDataType.*;
 
 @Service
 public class SubscriptionManager {
@@ -605,7 +604,7 @@ public class SubscriptionManager {
         count.put("sm", smDatasetSize.values().stream().mapToInt(Number::intValue).sum());
 
         logger.debug("Building distribution stats");
-        count.put("distribution", getCountPerDataset(etDatasetSize, vmDatasetSize, sxDatasetSize));
+        count.put("distribution", getCountPerDataset(etDatasetSize, vmDatasetSize, sxDatasetSize,smDatasetSize));
         logger.debug("Built distribution stats");
 
         result.put("elements", count);
@@ -844,13 +843,16 @@ public class SubscriptionManager {
         dataReceived( subscriptionId,  receivedByteCount,  monitoredRef, true);
     }
 
-    public void dataReceived(String subscriptionId, int receivedByteCount) {
-        touchSubscription(subscriptionId);
-        dataReceived.put(subscriptionId, Instant.now());
+    public void dataReceived(String subscriptionId, int receivedByteCount, String monitoredRef, boolean shouldLogSuccess) {
 
-        if (receivedByteCount > 0) {
-            receivedBytes.set(subscriptionId,
-                    receivedBytes.getOrDefault(subscriptionId, 0L) + receivedByteCount);
+        touchSubscription(subscriptionId, monitoredRef, shouldLogSuccess);
+        if (isActiveSubscription(subscriptionId)) {
+            dataReceived.put(subscriptionId, Instant.now());
+
+            if (receivedByteCount > 0) {
+                receivedBytes.set(subscriptionId,
+                        receivedBytes.getOrDefault(subscriptionId, 0L) + receivedByteCount);
+            }
         }
     }
 

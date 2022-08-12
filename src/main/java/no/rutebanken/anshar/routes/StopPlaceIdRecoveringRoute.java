@@ -33,7 +33,7 @@ public class StopPlaceIdRecoveringRoute extends BaseRouteBuilder{
         if (stopPlaceApiURL.isEmpty()) {
             logger.info("Pas d'url API StopPlace définie");
         } else {
-            singletonFrom("quartz://anshar/stopPlaceIdRecovering?fireNow=true&trigger.repeatInterval=" + INTERVAL_IN_MILLIS,
+            singletonFrom("quartz://anshar/stopPlaceIdRecovering?trigger.repeatInterval=" + INTERVAL_IN_MILLIS,
                     "stopPlaceIdRecovering")
                     .bean(StopPlaceIdRetriever.class, "getStopPlaceIds")
                     .end();

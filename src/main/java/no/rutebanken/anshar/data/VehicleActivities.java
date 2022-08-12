@@ -15,31 +15,14 @@
 
 package no.rutebanken.anshar.data;
 
-import com.hazelcast.map.IMap;
-import com.hazelcast.replicatedmap.ReplicatedMap;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
-import no.rutebanken.anshar.routes.mqtt.SiriVmMqttHandler;
+
+import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
-import org.quartz.utils.counter.Counter;
-import org.quartz.utils.counter.CounterImpl;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Repository;
-import uk.org.siri.siri20.AbstractItemStructure;
-import uk.org.siri.siri20.CoordinatesStructure;
-import uk.org.siri.siri20.CourseOfJourneyRefStructure;
-import uk.org.siri.siri20.DirectionRefStructure;
-import uk.org.siri.siri20.LineRef;
-import uk.org.siri.siri20.LocationStructure;
-import uk.org.siri.siri20.MessageRefStructure;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.VehicleActivityStructure;
-import uk.org.siri.siri20.VehicleRef;
 
+import com.hazelcast.map.IMap;
 import javax.annotation.PostConstruct;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -57,6 +40,24 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Repository;
+import uk.org.siri.siri20.VehicleActivityStructure;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import uk.org.siri.siri20.AbstractItemStructure;
+import uk.org.siri.siri20.CoordinatesStructure;
+import uk.org.siri.siri20.CourseOfJourneyRefStructure;
+import uk.org.siri.siri20.DirectionRefStructure;
+import uk.org.siri.siri20.LineRef;
+import uk.org.siri.siri20.LocationStructure;
+import uk.org.siri.siri20.MessageRefStructure;
+import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri20.VehicleActivityStructure;
+import uk.org.siri.siri20.VehicleRef;
+import org.quartz.utils.counter.Counter;
+import org.quartz.utils.counter.CounterImpl;
 
 @Repository
 public class VehicleActivities extends SiriRepository<VehicleActivityStructure> {
@@ -304,9 +305,11 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
         Set<SiriObjectStorageKey> idSet;
 
         idSet = changesMap.getOrDefault(requestorId, allIds);
+        idSet = idSet.stream()
+                     .filter(key -> isKeyCompliantWithFilters(key, linerefSet, vehicleRefSet, null, datasetId, excludedDatasetIds))
+                     .collect(Collectors.toSet());
 
         idSet.addAll(monitoredVehicles.keySet(entry -> isKeyCompliantWithFilters(entry.getKey(), linerefSet, vehicleRefSet, null, datasetId, excludedDatasetIds)));
-
         return idSet;
     }
 
@@ -334,8 +337,8 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
                 .filter(activity -> activity.getMonitoredVehicleJourney() != null)
                 .forEach(activity -> {
                     TimingTracer timingTracer = new TimingTracer("single-vm");
-                    SiriObjectStorageKey key = createKey(datasetId, activity.getMonitoredVehicleJourney());
-                    timingTracer.mark("createKey");
+                    SiriObjectStorageKey key = createKey(datasetId, activity.getMonitoredVehicleJourney(),activity.getVehicleMonitoringRef().getValue());
+
                     String currentChecksum = null;
                     ZonedDateTime validUntilTime = activity.getValidUntilTime();
                     try {

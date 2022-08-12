@@ -74,9 +74,9 @@ public class RealtimeDataFileUploader extends BaseRouteBuilder {
         if (config.processAdmin() && config.processData()) {
             singletonFrom("direct:anshar.export.snapshot", "anshar.export.snapshot")
                     .choice()
-                    .when(p -> isLeader())
+                    .when(p -> isLeader("anshar.export.snapshot"))
                     .setHeader(TMP_FOLDER, simple(tmpFolder))
-                    .setHeader(ZIP_FILE, simple("SIRI-SNAPSHOT-${date:now:yyyyMMdd-HHmmss}.zip"))
+                    .setHeader(ZIP_FILE, simple("SIRI-SNAPSHOT-${date:now:yyyyMMdd-HHmm00}.zip"))
                     .setHeader(ZIP_FILE_PATH, simple("${header." + TMP_FOLDER + "}/${header." + ZIP_FILE + "}"))
                     .log("Exporting snapshot to ${header." + ZIP_FILE + "}")
 

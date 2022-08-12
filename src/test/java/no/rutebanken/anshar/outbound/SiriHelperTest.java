@@ -33,6 +33,7 @@ import uk.org.siri.siri20.VehicleRef;
 import java.time.Instant;
 import java.util.*;
 
+
 import static org.junit.jupiter.api.Assertions.*;
 
 public class SiriHelperTest {
@@ -272,7 +273,7 @@ public class SiriHelperTest {
         assertNotNull(filtered.getServiceDelivery().getStopMonitoringDeliveries());
         List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = filtered.getServiceDelivery().getStopMonitoringDeliveries();
         assertTrue(stopMonitoringDeliveries.size() == 1);
-        assertTrue("Only 1 of 4 points must be returned after filter",stopMonitoringDeliveries.get(0).getMonitoredStopVisits().size() == 1);
-        assertTrue("Only TESTPOINT1 must pass the filtering",stopMonitoringDeliveries.get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue().equals("TESTPOINT1"));
+        assertTrue(stopMonitoringDeliveries.get(0).getMonitoredStopVisits().size() == 1, "Only 1 of 4 points must be returned after filter");
+        assertTrue(stopMonitoringDeliveries.get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue().equals("TESTPOINT1"), "Only TESTPOINT1 must pass the filtering");
     }
 }

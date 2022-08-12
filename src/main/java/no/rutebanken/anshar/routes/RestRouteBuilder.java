@@ -60,6 +60,9 @@ public class RestRouteBuilder extends RouteBuilder {
     @Value("${anshar.data.handler.baseurl.sx:}")
     protected String sxHandlerBaseUrl;
 
+    @Value("${anshar.data.handler.baseurl.sm:}")
+    protected String smHandlerBaseUrl;
+
     @Autowired
     private AnsharConfiguration configuration;
 
@@ -308,6 +311,65 @@ public class RestRouteBuilder extends RouteBuilder {
                         .toD(sxHandlerBaseUrl + "${header.CamelHttpUri}?Content-Type=${header.Content-Type}&bridgeEndpoint=true")
                         .otherwise()
                         .toD(sxHandlerBaseUrl + "${header.CamelHttpUri}?Content-Type=${header.Content-Type}&bridgeEndpoint=true&${header.CamelHttpQuery}")
+                        .endChoice()
+                ;
+            }
+        }
+
+
+        if (configuration.processSM()) {
+            from("direct:process.sm.subscription.request")
+                    .to("direct:internal.handle.subscription")
+            ;
+            from("direct:process.sm.service.request")
+                    .to("direct:internal.process.service.request")
+            ;
+            from("direct:process.sm.service.request.cache")
+                    .to("direct:internal.process.service.request.cache")
+            ;
+            //REST
+            from("direct:anshar.rest.sm")
+                    .to("direct:internal.anshar.rest.sm")
+            ;
+            from("direct:anshar.rest.sm.cached")
+                    .to("direct:internal.anshar.rest.sm.cached")
+            ;
+
+        } else {
+            from("direct:process.sm.subscription.request")
+                    .to("direct:redirect.request.sm")
+            ;
+            from("direct:process.sm.service.request")
+                    .to("direct:redirect.request.sm")
+            ;
+            from("direct:process.sm.service.request.cache")
+                    .to("direct:redirect.request.sm")
+            ;
+            from("direct:anshar.rest.sm")
+                    .to("direct:redirect.request.sm")
+            ;
+            from("direct:anshar.rest.sm.cached")
+                    .to("direct:redirect.request.sm")
+            ;
+
+            if (!configuration.processAdmin()) {
+                // Data-instances should never redirect requests
+                from("direct:redirect.request.sm")
+                        .log("Ignore redirect")
+                ;
+
+            } else {
+                from("direct:redirect.request.sm")
+                        // Setting default encoding if none is set
+                        .choice().when(header("Content-Type").isEqualTo(""))
+                        .setHeader("Content-Type", simple(MediaType.APPLICATION_XML))
+                        .end()
+
+                        //Force forwarding parameters - if used in query
+                        .choice().when(header("CamelHttpQuery").isNull())
+                        .toD(smHandlerBaseUrl + "${header.CamelHttpUri}?Content-Type=${header.Content-Type}&bridgeEndpoint=true")
+                        .otherwise()
+                        .toD(smHandlerBaseUrl + "${header.CamelHttpUri}?Content-Type=${header.Content-Type}&bridgeEndpoint=true&${header.CamelHttpQuery}")
                         .endChoice()
                 ;
             }

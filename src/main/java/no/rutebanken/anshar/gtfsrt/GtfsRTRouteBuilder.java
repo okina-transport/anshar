@@ -27,7 +27,7 @@ public class GtfsRTRouteBuilder extends BaseRouteBuilder {
     public void configure() throws Exception {
 
         if (subscriptionConfig.getGtfsRTApis().size() > 0) {
-            singletonFrom("quartz://anshar/import_GTFSRT_DATA?fireNow=true&trigger.repeatInterval=" + INTERVAL_IN_MILLIS,
+            singletonFrom("quartz://anshar/import_GTFSRT_DATA?trigger.repeatInterval=" + INTERVAL_IN_MILLIS,
                     "import_GTFSRT_DATA")
                     .bean(GtfsRTDataRetriever.class, "getGTFSRTData")
                     .end();

@@ -254,6 +254,9 @@ public class AnsharConfiguration {
     public boolean processSX() {
         return (appModes.isEmpty() || appModes.contains(AppMode.DATA_SX));
     }
+    public boolean processSM() {
+        return (appModes.isEmpty() || appModes.contains(AppMode.DATA_SM));
+    }
     public boolean processAdmin() {
         return (appModes.isEmpty() || appModes.contains(AppMode.PROXY));
     }

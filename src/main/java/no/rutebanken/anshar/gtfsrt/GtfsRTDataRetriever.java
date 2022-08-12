@@ -2,6 +2,7 @@ package no.rutebanken.anshar.gtfsrt;
 
 import com.google.transit.realtime.GtfsRealtime;
 import no.rutebanken.anshar.api.GtfsRTApi;
+import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.gtfsrt.swallowers.AlertSwallower;
 import no.rutebanken.anshar.gtfsrt.swallowers.TripUpdateSwallower;
 import no.rutebanken.anshar.gtfsrt.swallowers.VehiclePositionSwallower;
@@ -33,6 +34,9 @@ public class GtfsRTDataRetriever {
     @Autowired
     private SubscriptionConfig subscriptionConfig;
 
+    @Autowired
+    private AnsharConfiguration configuration;
+
 
     public void getGTFSRTData() throws IOException {
         logger.info("Démarrage récupération des flux GTFS-RT");
@@ -47,11 +51,16 @@ public class GtfsRTDataRetriever {
             tripUpdateSwallower.setUrl(gtfsRTApi.getUrl());
             tripUpdateSwallower.ingestTripUpdateData(gtfsRTApi.getDatasetId(), completeGTFsFeed);
 
-            vehiclePositionSwallower.setUrl(gtfsRTApi.getUrl());
-            vehiclePositionSwallower.ingestVehiclePositionData(gtfsRTApi.getDatasetId(), completeGTFsFeed);
+            if (configuration.processVM()){
+                vehiclePositionSwallower.setUrl(gtfsRTApi.getUrl());
+                vehiclePositionSwallower.ingestVehiclePositionData(gtfsRTApi.getDatasetId(), completeGTFsFeed);
+            }
 
-            alertSwallower.setUrl(gtfsRTApi.getUrl());
-            alertSwallower.ingestAlertData(gtfsRTApi.getDatasetId(), completeGTFsFeed);
+            if (configuration.processSX()){
+                alertSwallower.setUrl(gtfsRTApi.getUrl());
+                alertSwallower.ingestAlertData(gtfsRTApi.getDatasetId(), completeGTFsFeed);
+            }
+
         }
 
         logger.info("Intégration des flux GTFS-RT terminée");

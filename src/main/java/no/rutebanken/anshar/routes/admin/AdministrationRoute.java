@@ -15,12 +15,19 @@
 
 package no.rutebanken.anshar.routes.admin;
 
+import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
+import no.rutebanken.anshar.routes.admin.auth.BasicAuthService;
 import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
+import no.rutebanken.anshar.routes.validation.SiriXmlValidator;
+import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
+import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import org.apache.camel.Exchange;
 import org.apache.commons.lang3.StringUtils;
+import com.google.common.net.HttpHeaders;
 import org.json.simple.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,12 +39,14 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static no.rutebanken.anshar.routes.admin.AdminRouteHelper.mergeJsonStats;
 import static no.rutebanken.anshar.routes.policy.SingletonRoutePolicyFactory.DEFAULT_LOCK_VALUE;
 
 @SuppressWarnings("unchecked")
@@ -344,6 +353,8 @@ public class AdministrationRoute extends RestRouteBuilder {
                         .toD(vmHandlerBaseUrl + "/anshar/stats?bridgeEndpoint=true&httpMethod=PUT&subscriptionId=${header.subscriptionId}")
                     .when(p -> !configuration.processSX() && p.getIn().getHeader("SiriDataType").equals(SiriDataType.SITUATION_EXCHANGE.name()))
                         .toD(sxHandlerBaseUrl + "/anshar/stats?bridgeEndpoint=true&httpMethod=PUT&subscriptionId=${header.subscriptionId}")
+                    .when(p -> !configuration.processSM() && p.getIn().getHeader("SiriDataType").equals(SiriDataType.STOP_MONITORING.name()))
+                        .toD(smHandlerBaseUrl + "/anshar/stats?bridgeEndpoint=true&httpMethod=PUT&subscriptionId=${header.subscriptionId}")
                     .otherwise()
                         .bean(helper, "flushDataFromSubscription(${header.subscriptionId})")
                 .endChoice()
@@ -371,6 +382,10 @@ public class AdministrationRoute extends RestRouteBuilder {
                     .choice()
                     .when(p -> !configuration.processSX())
                     .toD(sxHandlerBaseUrl + "/anshar/stats?bridgeEndpoint=true&httpMethod=PUT&subscriptionId=${header.subscriptionId}")
+                    .end()
+                    .choice()
+                    .when(p -> !configuration.processSM())
+                    .toD(smHandlerBaseUrl + "/anshar/stats?bridgeEndpoint=true&httpMethod=PUT&subscriptionId=${header.subscriptionId}")
                     .end()
                     .routeId("admin.internal.delete.subscription")
             ;

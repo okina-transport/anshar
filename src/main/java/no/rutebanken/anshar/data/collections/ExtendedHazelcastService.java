@@ -15,6 +15,10 @@
 
 package no.rutebanken.anshar.data.collections;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.hazelcast.cluster.Cluster;
+import com.hazelcast.cluster.Member;
 import com.hazelcast.collection.ISet;
 import com.hazelcast.config.SerializerConfig;
 import com.hazelcast.core.DistributedObject;
@@ -31,13 +35,15 @@ import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.rutebanken.hazelcasthelper.service.HazelCastService;
-import org.rutebanken.hazelcasthelper.service.KubernetesService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri20.EstimatedVehicleJourney;
+import uk.org.siri.siri20.MonitoredStopVisit;
 import uk.org.siri.siri20.PtSituationElement;
 import uk.org.siri.siri20.VehicleActivityStructure;
 
@@ -57,10 +63,9 @@ public class ExtendedHazelcastService extends HazelCastService {
 
     private Logger logger = LoggerFactory.getLogger(ExtendedHazelcastService.class);
 
-    public ExtendedHazelcastService(@Autowired KubernetesService kubernetesService,
-                                    @Value("${entur.hazelcast.backup.count.sync:2}") int backupCountSync) {
-        super(kubernetesService);
-        setBackupCount(backupCountSync);
+    public ExtendedHazelcastService(@Value("${entur.hazelcast.backup.count.sync:2}") int backupCountSync) {
+        super(null);
+       // setBackupCount(backupCountSync);
     }
 
     public void addBeforeShuttingDownHook(Runnable destroyFunction) {

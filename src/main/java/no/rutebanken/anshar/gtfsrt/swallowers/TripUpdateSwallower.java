@@ -1,6 +1,7 @@
 package no.rutebanken.anshar.gtfsrt.swallowers;
 
 import com.google.transit.realtime.GtfsRealtime;
+import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.gtfsrt.mappers.TripUpdateMapper;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -39,6 +40,9 @@ public class TripUpdateSwallower extends AbstractSwallower {
     @Autowired
     private SiriHandler handler;
 
+    @Autowired
+    private AnsharConfiguration configuration;
+
 
     public TripUpdateSwallower() {
     }
@@ -52,33 +56,38 @@ public class TripUpdateSwallower extends AbstractSwallower {
      */
     public void ingestTripUpdateData(String datasetId, GtfsRealtime.FeedMessage completeGTFSRTMessage ){
 
-        //// ESTIMATED TIME TABLES
-        List<EstimatedVehicleJourney> estimatedVehicleJourneys = buildEstimatedVehicleJourneyList(completeGTFSRTMessage);
-        List<String> etSubscriptionList = getSubscriptionsFromEstimatedTimeTables(estimatedVehicleJourneys) ;
-        checkAndCreateSubscriptions(etSubscriptionList,"GTFS-RT_ET_", SiriDataType.ESTIMATED_TIMETABLE, RequestType.GET_ESTIMATED_TIMETABLE, datasetId);
 
-        Collection<EstimatedVehicleJourney> ingestedEstimatedTimetables = handler.ingestEstimatedTimeTables(datasetId, estimatedVehicleJourneys);
+        if (configuration.processET()){
+            //// ESTIMATED TIME TABLES
+            List<EstimatedVehicleJourney> estimatedVehicleJourneys = buildEstimatedVehicleJourneyList(completeGTFSRTMessage);
+            List<String> etSubscriptionList = getSubscriptionsFromEstimatedTimeTables(estimatedVehicleJourneys) ;
+            checkAndCreateSubscriptions(etSubscriptionList,"GTFS-RT_ET_", SiriDataType.ESTIMATED_TIMETABLE, RequestType.GET_ESTIMATED_TIMETABLE, datasetId);
 
-        for (EstimatedVehicleJourney estimatedVehicleJourney : ingestedEstimatedTimetables) {
-            subscriptionManager.touchSubscription(prefix + estimatedVehicleJourney.getDatedVehicleJourneyRef().getValue(), false);
+            Collection<EstimatedVehicleJourney> ingestedEstimatedTimetables = handler.ingestEstimatedTimeTables(datasetId, estimatedVehicleJourneys);
+
+            for (EstimatedVehicleJourney estimatedVehicleJourney : ingestedEstimatedTimetables) {
+                subscriptionManager.touchSubscription(prefix + estimatedVehicleJourney.getDatedVehicleJourneyRef().getValue(), false);
+            }
+
+            logger.info("Ingested estimated time tables {} on {} ", ingestedEstimatedTimetables.size(), estimatedVehicleJourneys.size());
         }
 
-        logger.info("Ingested estimated time tables {} on {} ", ingestedEstimatedTimetables.size(), estimatedVehicleJourneys.size());
 
+        if (configuration.processSM()){
+            //// STOP VISITS
+            List<MonitoredStopVisit> stopVisits = buildStopVisitList(completeGTFSRTMessage);
+            List<String> visitSubscriptionList = getSubscriptionsFromVisits(stopVisits) ;
+            checkAndCreateSubscriptions(visitSubscriptionList, "GTFS-RT_SM_", SiriDataType.STOP_MONITORING, RequestType.GET_STOP_MONITORING, datasetId);
 
+            Collection<MonitoredStopVisit> ingestedVisits = handler.ingestStopVisits(datasetId, stopVisits);
 
-        //// STOP VISITS
-        List<MonitoredStopVisit> stopVisits = buildStopVisitList(completeGTFSRTMessage);
-        List<String> visitSubscriptionList = getSubscriptionsFromVisits(stopVisits) ;
-        checkAndCreateSubscriptions(visitSubscriptionList, "GTFS-RT_SM_", SiriDataType.STOP_MONITORING, RequestType.GET_STOP_MONITORING, datasetId);
+            for (MonitoredStopVisit visit : ingestedVisits) {
+                subscriptionManager.touchSubscription("GTFS-RT_SM_" + visit.getMonitoringRef().getValue(),false);
+            }
 
-        Collection<MonitoredStopVisit> ingestedVisits = handler.ingestStopVisits(datasetId, stopVisits);
-
-        for (MonitoredStopVisit visit : ingestedVisits) {
-            subscriptionManager.touchSubscription("GTFS-RT_SM_" + visit.getMonitoringRef().getValue(),false);
+            logger.info("Ingested stop Times {} on {} ", ingestedVisits.size(), stopVisits.size());
         }
 
-        logger.info("Ingested stop Times {} on {} ", ingestedVisits.size(), stopVisits.size());
     }
 
 

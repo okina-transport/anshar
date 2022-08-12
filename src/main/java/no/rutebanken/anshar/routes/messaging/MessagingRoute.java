@@ -7,21 +7,24 @@ import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.admin.AdminRouteHelper;
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
+import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
+import no.rutebanken.anshar.routes.validation.SiriXmlValidator;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.Predicate;
-import org.apache.camel.component.http.HttpMethods;
-import org.apache.camel.support.builder.Namespaces;
+
+import org.apache.commons.lang3.StringUtils;
+import org.rutebanken.siri20.util.SiriXml;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import uk.org.siri.siri20.Siri;
 
 import java.io.InputStream;
 
-import static no.rutebanken.anshar.routes.HttpParameter.INTERNAL_SIRI_DATA_TYPE;
-import static no.rutebanken.anshar.routes.HttpParameter.PARAM_USE_ORIGINAL_ID;
+import static no.rutebanken.anshar.routes.HttpParameter.*;
 import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_SOAP;
 import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_VERSION;
 
@@ -124,13 +127,16 @@ public class MessagingRoute extends RestRouteBuilder {
 
         from("direct:process.mapping")
                 .process(p -> {
-                    SubscriptionSetup subscriptionSetup = subscriptionManager.get(p.getIn().getHeader("subscriptionId", String.class));
-                    Siri originalInput = siriXmlValidator.parseXml(subscriptionSetup, p.getIn().getBody(String.class));
 
-                    Siri incoming = SiriValueTransformer.transform(originalInput, subscriptionSetup.getMappingAdapters(), false, true);
+                    String subscriptionId =  p.getIn().getHeader("subscriptionId", String.class);
+                    if (StringUtils.isNotEmpty(subscriptionId)){
+                        SubscriptionSetup subscriptionSetup = subscriptionManager.get(p.getIn().getHeader("subscriptionId", String.class));
+                        Siri originalInput = siriXmlValidator.parseXml(subscriptionSetup, p.getIn().getBody(String.class));
 
-                    p.getMessage().setHeaders(p.getIn().getHeaders());
-                    p.getMessage().setBody(SiriXml.toXml(incoming));
+                        Siri incoming = SiriValueTransformer.transform(originalInput, subscriptionSetup.getMappingAdapters(), false, true);
+                        p.getMessage().setHeaders(p.getIn().getHeaders());
+                        p.getMessage().setBody(SiriXml.toXml(incoming));
+                    }
                 })
         ;
 
@@ -187,15 +193,17 @@ public class MessagingRoute extends RestRouteBuilder {
             ;
         }
 
-        from(pubsubQueueSM + queueConsumerParameters)
-                .choice().when(readFromPubsub)
-                .to("direct:decompress.jaxb")
-                //.log("Processing data from " + pubsubQueueSM + ", size ${header.Content-Length}")
-                .wireTap("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
-                .endChoice()
-                .startupOrder(100001)
-                .routeId("incoming.transform.sm")
-        ;
+        if (configuration.processSM()) {
+            from(pubsubQueueSM + queueConsumerParameters)
+                    .choice().when(readFromPubsub)
+                    .to("direct:decompress.jaxb")
+                    //.log("Processing data from " + pubsubQueueSM + ", size ${header.Content-Length}")
+                    .wireTap("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
+                    .endChoice()
+                    .startupOrder(100001)
+                    .routeId("incoming.transform.sm")
+            ;
+        }
 
         from("direct:process.queue.default.async")
                 .wireTap("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)

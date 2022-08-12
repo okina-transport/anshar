@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.org.siri.siri20.PtSituationElement;
+import uk.org.siri.siri20.RequestorRef;
 import uk.org.siri.siri20.SituationNumber;
 
 import java.util.ArrayList;
@@ -52,6 +53,7 @@ public class AlertSwallower extends AbstractSwallower {
      */
     public void ingestAlertData(String datasetId, GtfsRealtime.FeedMessage completeGTFSRTMessage ){
         List<PtSituationElement> situations = buildSituationList(completeGTFSRTMessage);
+        updateParticipantRef(datasetId, situations);
         List<String> subscriptionList = getSubscriptions(situations) ;
         checkAndCreateSubscriptions(subscriptionList, datasetId);
 
@@ -63,6 +65,16 @@ public class AlertSwallower extends AbstractSwallower {
 
         logger.info("Ingested alerts {} on {} ", ingestedSituations.size(), situations.size());
 
+    }
+
+    private void updateParticipantRef(String datasetId,  List<PtSituationElement> situations){
+        for (PtSituationElement situation : situations) {
+            if (situation.getParticipantRef() == null){
+                RequestorRef requestorRef = new RequestorRef();
+                requestorRef.setValue(datasetId);
+                situation.setParticipantRef(requestorRef);
+            }
+        }
     }
 
     /**

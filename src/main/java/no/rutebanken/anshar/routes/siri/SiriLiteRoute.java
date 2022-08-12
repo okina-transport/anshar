@@ -17,6 +17,7 @@ package no.rutebanken.anshar.routes.siri;
 
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.EstimatedTimetables;
+import no.rutebanken.anshar.data.MonitoredStopVisits;
 import no.rutebanken.anshar.data.Situations;
 import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
@@ -29,32 +30,22 @@ import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
-import org.apache.camel.Exchange;
+
 import org.apache.camel.model.rest.RestParamType;
-import org.apache.http.HttpHeaders;
-import org.entur.protobuf.mapper.SiriMapper;
-import org.rutebanken.siri20.util.SiriJson;
-import org.rutebanken.siri20.util.SiriXml;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri20.VehicleActivityStructure;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.core.MediaType;
-import javax.xml.bind.JAXBException;
-import java.io.IOException;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 
-import static no.rutebanken.anshar.routes.HttpParameter.PARAM_DATASET_ID;
-import static no.rutebanken.anshar.routes.HttpParameter.PARAM_EXCLUDED_DATASET_ID;
-import static no.rutebanken.anshar.routes.HttpParameter.PARAM_LINE_REF;
-import static no.rutebanken.anshar.routes.HttpParameter.PARAM_MAX_SIZE;
-import static no.rutebanken.anshar.routes.HttpParameter.PARAM_PREVIEW_INTERVAL;
-import static no.rutebanken.anshar.routes.HttpParameter.PARAM_USE_ORIGINAL_ID;
-import static no.rutebanken.anshar.routes.HttpParameter.getParameterValuesAsList;
+import static no.rutebanken.anshar.routes.HttpParameter.*;
 
 @Service
 public class SiriLiteRoute extends RestRouteBuilder {
@@ -274,7 +265,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
                 .routeId("incoming.rest.et")
         ;
 
-        from("direct:anshar.rest.sm")
+        from("direct:internal.anshar.rest.sm")
                 .log("RequestTracer - Incoming request (SM)")
                 .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true")
                 .choice()

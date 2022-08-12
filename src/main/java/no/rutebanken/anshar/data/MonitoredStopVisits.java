@@ -67,11 +67,11 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
     @Autowired
     @Qualifier("getIdForPatternChangesMap")
-    private ReplicatedMap<SiriObjectStorageKey, String> idForPatternChanges;
+    private IMap<SiriObjectStorageKey, String> idForPatternChanges;
 
     @Autowired
     @Qualifier("getIdStartTimeMap")
-    private ReplicatedMap<SiriObjectStorageKey, ZonedDateTime> idStartTimeMap;
+    private IMap<SiriObjectStorageKey, ZonedDateTime> idStartTimeMap;
 
     @Autowired
     @Qualifier("getMonitoredStopVisitChangesMap")
@@ -93,6 +93,10 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     @Autowired
     ExtendedHazelcastService hazelcastService;
 
+    protected MonitoredStopVisits() {
+        super(SiriDataType.STOP_MONITORING);
+    }
+
     @PostConstruct
     private void initializeUpdateCommitter() {
         super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
@@ -101,6 +105,11 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     @Override
     public Collection<MonitoredStopVisit> getAll() {
         return monitoredStopVisits.values();
+    }
+
+    @Override
+    Map<SiriObjectStorageKey, MonitoredStopVisit> getAllAsMap() {
+        return monitoredStopVisits;
     }
 
     @Override

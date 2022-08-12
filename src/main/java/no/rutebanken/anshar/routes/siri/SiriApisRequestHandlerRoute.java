@@ -48,6 +48,9 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
     @Autowired
     private SubscriptionConfig subscriptionConfig;
 
+    @Autowired
+    private AnsharConfiguration configuration;
+
     public SiriApisRequestHandlerRoute(AnsharConfiguration config, SubscriptionManager subscriptionManager) {
         super(config, subscriptionManager);
     }
@@ -66,6 +69,11 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
         long startTime = DateTime.now().toInstant().getMillis();
 
         for (SiriApi siriApi : siriApis) {
+
+            if (!shouldSiriApiBeRecovered(siriApi.getType())){
+                continue;
+            }
+
             File file = new File("/tmp/" + siriApi.getDatasetId() + "_" + siriApi.getType() + ".zip");
             log.info("Get Siri file for siriApis : " + siriApi.getDatasetId() + " in data format : " + siriApi.getType());
             String url = siriApi.getUrl();
@@ -84,6 +92,36 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
         log.info("Siri API completed in {} seconds", processTime);
 
     }
+
+
+    /**
+     * Checks if the current anshar instance is allowed to get siri API data
+     *      e.g : if the current instance is running with DATA_SM app_mode, it is only allowed to recover siri-sm data
+     * @return
+     *      true : the current instance of anshar is allowed to get data from this siri api
+     *      false : the current instace of anshar must not recover data from this siri api
+     */
+    private boolean shouldSiriApiBeRecovered(String subscriptionType){
+
+        if ("siri-sm".equals(subscriptionType) && configuration.processSM()){
+            return true;
+        }
+
+        if ("siri-sx".equals(subscriptionType) && configuration.processSX()){
+            return true;
+        }
+
+        if ("siri-et".equals(subscriptionType) && configuration.processET()){
+            return true;
+        }
+
+        if ("siri-vm".equals(subscriptionType) && configuration.processVM()){
+            return true;
+        }
+
+        return false;
+    }
+
 
     public void createSubscriptionsFromFile(String dataFormat, File file, String url, String provider) throws IOException, SAXException, ParserConfigurationException, XMLStreamException {
         log.info("Subscriptions creating for provider : " + provider + " in data format : " + dataFormat);

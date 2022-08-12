@@ -19,9 +19,9 @@
 
   <modelVersion>4.0.0</modelVersion>
   <parent>
-      <groupId>org.rutebanken.superpom</groupId>
+      <groupId>com.okina.springboot</groupId>
       <artifactId>superpom</artifactId>
-      <version>1.0.11</version>
+      <version>1.0.1-SNAPSHOT</version>
   </parent>
 
 
@@ -84,7 +84,7 @@
             <dependency>
                 <groupId>org.entur.helpers</groupId>
                 <artifactId>hazelcast4-helper</artifactId>
-                <version>${entur.helpers.version}</version>
+                <version>${okina.helpers.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.entur.helpers</groupId>
@@ -109,7 +109,7 @@
     </dependencyManagement>
 
     <dependencies>
-        <dependency>j
+        <dependency>
             <groupId>net.logstash.logback</groupId>
             <artifactId>logstash-logback-encoder</artifactId>
             <version>6.3</version>
@@ -127,6 +127,7 @@
         <dependency>
             <groupId>com.okina.helpers</groupId>
             <artifactId>hazelcast4-helper</artifactId>
+            <version>${okina.helpers.version}</version>
         </dependency>
 
         <dependency>
@@ -200,6 +201,11 @@
                 </exclusion>
             </exclusions>
 
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${version.lombok}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.camel</groupId>
@@ -279,11 +285,6 @@
             <groupId>org.entur</groupId>
             <artifactId>siri-protobuf-mapper</artifactId>
             <version>0.9</version>
-        </dependency>
-        <dependency>
-            <groupId>com.google.protobuf</groupId>
-            <artifactId>protobuf-java</artifactId>
-            <version>3.13.0</version>
         </dependency>
         <dependency>
             <groupId>org.entur</groupId>

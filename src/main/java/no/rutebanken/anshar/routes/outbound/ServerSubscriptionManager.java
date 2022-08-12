@@ -36,9 +36,11 @@ import uk.org.siri.siri20.AbstractSubscriptionStructure;
 import uk.org.siri.siri20.CheckStatusRequestStructure;
 import uk.org.siri.siri20.EstimatedTimetableSubscriptionStructure;
 import uk.org.siri.siri20.EstimatedVehicleJourney;
+import uk.org.siri.siri20.MonitoredStopVisit;
 import uk.org.siri.siri20.PtSituationElement;
 import uk.org.siri.siri20.Siri;
 import uk.org.siri.siri20.SituationExchangeSubscriptionStructure;
+import uk.org.siri.siri20.StopMonitoringSubscriptionStructure;
 import uk.org.siri.siri20.SubscriptionRequest;
 import uk.org.siri.siri20.VehicleActivityStructure;
 import uk.org.siri.siri20.VehicleMonitoringSubscriptionStructure;
@@ -54,9 +56,10 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 import static java.time.temporal.ChronoUnit.MILLIS;
-import static no.rutebanken.anshar.routes.kafka.KafkaPublisher.CODESPACE_ID_KAFKA_HEADER_NAME;
+
 
 @SuppressWarnings("unchecked")
 @Service
@@ -64,6 +67,8 @@ import static no.rutebanken.anshar.routes.kafka.KafkaPublisher.CODESPACE_ID_KAFK
 public class ServerSubscriptionManager {
 
     private final Logger logger = LoggerFactory.getLogger(ServerSubscriptionManager.class);
+
+    public static final String CODESPACE_ID_KAFKA_HEADER_NAME = "codespaceId";
 
     @Autowired
     IMap<String, OutboundSubscriptionSetup> subscriptions;
@@ -516,7 +521,7 @@ public class ServerSubscriptionManager {
 
         ).forEach(subscription ->
 
-                camelRouteManager.pushSiriData(delivery, subscription, this)
+                camelRouteManager.pushSiriData(delivery, subscription, true)
         );
         MDC.remove("camel.breadcrumbId");
     }

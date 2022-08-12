@@ -294,6 +294,9 @@ public class SubscriptionInitializer implements CamelContextAware {
                 Preconditions.checkNotNull(urlMap.get(RequestType.GET_VEHICLE_MONITORING), "GET_VEHICLE_MONITORING-url is missing. " + s);
             } else if (SiriDataType.ESTIMATED_TIMETABLE.equals(s.getSubscriptionType())) {
                 Preconditions.checkNotNull(urlMap.get(RequestType.GET_ESTIMATED_TIMETABLE), "GET_ESTIMATED_TIMETABLE-url is missing. " + s);
+            } else if (SiriDataType.STOP_MONITORING.equals(s.getSubscriptionType())) {
+                Preconditions.checkNotNull(urlMap.get(RequestType.GET_STOP_MONITORING), "GET_STOP_MONITORING-url is missing. " + s);
+                Preconditions.checkNotNull(s.getStopMonitoringRefValue(), "stopMonitoringRefValue is missing. " + s);
             } else {
                 Preconditions.checkArgument(false, "URLs not configured correctly");
             }
@@ -304,6 +307,8 @@ public class SubscriptionInitializer implements CamelContextAware {
                 Preconditions.checkNotNull(s.getPreviewInterval(), "PreviewInterval is not set");
             } else if (SiriDataType.SITUATION_EXCHANGE.equals(s.getSubscriptionType())) {
                 Preconditions.checkNotNull(s.getPreviewInterval(), "PreviewInterval is not set");
+            } else if (SiriDataType.STOP_MONITORING.equals(s.getSubscriptionType())) {
+//                Preconditions.checkNotNull(s.getStopMonitoringRefValue());
             }
 
             Preconditions.checkNotNull(urlMap.get(RequestType.SUBSCRIBE), "SUBSCRIBE-url is missing. " + s);
