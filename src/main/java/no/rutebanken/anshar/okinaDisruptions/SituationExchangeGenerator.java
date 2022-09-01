@@ -40,8 +40,22 @@ public class SituationExchangeGenerator {
         mapPeriod(ptSituationElement, disruption);
         mapReasons(ptSituationElement, disruption);
         mapAffects(ptSituationElement, disruption);
-
+        mapImage(ptSituationElement, disruption);
         return ptSituationElement;
+    }
+
+    private static void mapImage(PtSituationElement ptSituationElement, Disruption disruption) {
+
+        if (disruption.getImgFileBinary() == null){
+            return;
+        }
+
+        PtSituationElement.Images imageList = new PtSituationElement.Images();
+        PtSituationElement.Images.Image disruptionImg = new PtSituationElement.Images.Image();
+        disruptionImg.setImageBinary(disruption.getImgFileBinary());
+        imageList.getImages().add(disruptionImg);
+        ptSituationElement.setImages(imageList);
+
 
     }
 

@@ -26,6 +26,8 @@ public class Disruption implements Serializable {
     @NotNull
     private String message;
     private String comment;
+    private String imgFileName;
+    private byte[] imgFileBinary;
 
     private LocalDateTime creationDateTime;
 
