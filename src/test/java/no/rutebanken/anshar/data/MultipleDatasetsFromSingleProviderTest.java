@@ -53,6 +53,20 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
     @Test
     public void testMultipleProvidersFromSingleVMDelivery() throws JAXBException {
         Siri siri = factory.createVMServiceDelivery(List.of(createVM("RUT"), createVM("RUT"), createVM("TST")));
+
+        for (VehicleMonitoringDeliveryStructure vehicleDelivery : siri.getServiceDelivery().getVehicleMonitoringDeliveries()) {
+            for (VehicleActivityStructure vehicleActivity : vehicleDelivery.getVehicleActivities()) {
+                LineRef lineRef = new LineRef();
+                lineRef.setValue("Line1");
+                vehicleActivity.getMonitoredVehicleJourney().setLineRef(lineRef);
+                VehicleMonitoringRefStructure vhRef = new VehicleMonitoringRefStructure();
+                vhRef.setValue("bus1");
+                vehicleActivity.setVehicleMonitoringRef(vhRef);
+
+            }
+        }
+
+
         String xml = SiriXml.toXml(siri);
 
         SubscriptionSetup subscriptionSetup = new SubscriptionSetup();
