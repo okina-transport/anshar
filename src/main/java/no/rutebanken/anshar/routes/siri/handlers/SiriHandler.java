@@ -352,7 +352,7 @@ public class SiriHandler {
 
                 Set<String> monitoringRefs = filterMap.get(MonitoringRefStructure.class) != null ? filterMap.get(MonitoringRefStructure.class): new HashSet<>();
                 serviceResponse = monitoredStopVisits.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, monitoringRefs);
-                logger.info("Asking for service delivery for requestorId={}, monitoringRef={}, clientTrackingName={}", requestorRef, monitoringStringList, clientTrackingName);
+                logger.info("Asking for service delivery for requestorId={}, monitoringRef={}, clientTrackingName={}, datasetId={}", requestorRef, monitoringStringList, clientTrackingName, datasetId);
             }
 
 
