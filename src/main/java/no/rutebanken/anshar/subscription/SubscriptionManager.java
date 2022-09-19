@@ -142,6 +142,8 @@ public class SubscriptionManager {
     @Qualifier("getRetryCountMap")
     private IMap<String, Integer> retryCountMap;
 
+    private Set<String> gtfsSubscriptions = new HashSet<>();
+
     private static Integer MAX_RESTART_TRIES = 3;
 
     public void addSubscription(String subscriptionId, SubscriptionSetup setup) {
@@ -478,6 +480,15 @@ public class SubscriptionManager {
                 return true;
         }
         return false;
+    }
+
+
+    public boolean isGTFSRTSubscriptionExisting(String subscriptionId) {
+        return gtfsSubscriptions.contains(subscriptionId);
+    }
+
+    public void addGTFSRTSubscription(String subscriptionId){
+        gtfsSubscriptions.add(subscriptionId);
     }
 
     /**

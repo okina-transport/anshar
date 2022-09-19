@@ -182,10 +182,11 @@ public class TripUpdateSwallower extends AbstractSwallower {
     private void checkAndCreateSubscriptions(List<String> subscriptionsList, String customPrefix, SiriDataType dataType, RequestType requestType, String datasetId) {
 
         for (String subscriptionId : subscriptionsList) {
-            if (subscriptionManager.isSubscriptionExisting(customPrefix + subscriptionId))
+            if (subscriptionManager.isGTFSRTSubscriptionExisting(customPrefix + subscriptionId))
                 //A subscription is already existing for this vehicle journey. No need to create one
                 continue;
             createNewSubscription(subscriptionId, customPrefix, dataType, requestType, datasetId);
+            subscriptionManager.addGTFSRTSubscription(subscriptionId);
         }
     }
 

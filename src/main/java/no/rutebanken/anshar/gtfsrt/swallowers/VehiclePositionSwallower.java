@@ -134,10 +134,11 @@ public class VehiclePositionSwallower extends AbstractSwallower {
     private void checkAndCreateSubscriptions(List<String> subscriptionsList, String datasetId) {
 
         for (String subscriptionId : subscriptionsList) {
-            if (subscriptionManager.isSubscriptionExisting(prefix + subscriptionId))
+            if (subscriptionManager.isGTFSRTSubscriptionExisting(prefix + subscriptionId))
                 //A subscription is already existing for this Line. No need to create one
                 continue;
             createNewSubscription(subscriptionId, datasetId);
+            subscriptionManager.addGTFSRTSubscription(subscriptionId);
         }
     }
 
