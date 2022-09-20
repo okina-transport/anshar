@@ -523,4 +523,10 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         return new SiriObjectStorageKey(datasetId, null, monitoredStopVisitIdentifier, monitoringRef);
     }
 
+    public void writeStatistics(List<String> datasetIds){
+        for (String datasetId : datasetIds) {
+            Set<SiriObjectStorageKey> idSet = monitoredStopVisits.keySet(entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, new HashSet<>(), datasetId, new ArrayList<>()));
+            logger.info("Okina-StopMonitoring " + datasetId + " : " +  idSet.size() + " MonitoredRefs");
+        }
+    }
 }
