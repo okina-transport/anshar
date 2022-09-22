@@ -88,8 +88,8 @@ public class AdministrationRoute extends RestRouteBuilder {
     @Value("${anshar.situations.debug.endpoint.enabled:false}")
     private boolean situationsDebugEndpoint;
 
-    @Autowired
-    private BasicAuthService basicAuthProcessor;
+//    @Autowired
+//    private BasicAuthService basicAuthProcessor;
 
     @Override
     public void configure() throws Exception {
@@ -179,7 +179,7 @@ public class AdministrationRoute extends RestRouteBuilder {
 
         if (configuration.processAdmin() && !configuration.processData()) {
             from(STATS_ROUTE)
-                    .process(basicAuthProcessor)
+          //          .process(basicAuthProcessor)
                     .setHeader(HttpHeaders.CONTENT_TYPE, simple(MediaType.APPLICATION_JSON))
                     .to(INTERNAL_STATS_ROUTE)
                     .removeHeader(HttpHeaders.CONTENT_TYPE)
@@ -207,7 +207,7 @@ public class AdministrationRoute extends RestRouteBuilder {
         } else {
             //either proxy or data-handler
             from(STATS_ROUTE)
-                    .process(basicAuthProcessor)
+          //          .process(basicAuthProcessor)
                     .setHeader(HttpHeaders.CONTENT_TYPE, simple(MediaType.APPLICATION_JSON))
                     .to(INTERNAL_STATS_ROUTE)
                     .to("direct:removeHeaders")
@@ -237,7 +237,7 @@ public class AdministrationRoute extends RestRouteBuilder {
 
         //Stop subscription
         from(OPERATION_ROUTE)
-            .process(basicAuthProcessor)
+      //      .process(basicAuthProcessor)
              .choice()
                 .when(header(operationHeaderName).isEqualTo("stop"))
                     .to("direct:stop")
@@ -267,14 +267,14 @@ public class AdministrationRoute extends RestRouteBuilder {
         ;
 
         from("direct:stop")
-                .process(basicAuthProcessor)
+           //     .process(basicAuthProcessor)
                 .bean(subscriptionManager, "stopSubscription(${header.subscriptionId})")
                 .routeId("admin.stop")
         ;
 
         //Start subscription
         from("direct:start")
-                .process(basicAuthProcessor)
+             //   .process(basicAuthProcessor)
                 .bean(subscriptionManager, "startSubscription(${header.subscriptionId})")
                 .routeId("admin.start")
         ;
@@ -282,7 +282,7 @@ public class AdministrationRoute extends RestRouteBuilder {
         if (!configuration.processData()) {
             //Return subscription status
             from("direct:terminate.outbound.subscription")
-                    .process(basicAuthProcessor)
+             //       .process(basicAuthProcessor)
                     .to("direct:redirect.request.et")
                     .to("direct:redirect.request.vm")
                     .to("direct:redirect.request.sx")
@@ -298,7 +298,7 @@ public class AdministrationRoute extends RestRouteBuilder {
 
         //Return subscription status
         from("direct:terminate.all.subscriptions")
-                .process(basicAuthProcessor)
+              //  .process(basicAuthProcessor)
                 .bean(subscriptionManager, "terminateAllSubscriptions(${header.type})")
                 .routeId("admin.terminate.all.subscriptions")
         ;
@@ -306,14 +306,14 @@ public class AdministrationRoute extends RestRouteBuilder {
 
         //Return subscription status
         from("direct:restart.all.subscriptions")
-                .process(basicAuthProcessor)
+              //  .process(basicAuthProcessor)
                 .bean(subscriptionManager, "triggerRestartAllActiveSubscriptions(${header.type})")
                 .routeId("admin.start.all.subscriptions")
         ;
 
         //Return subscription status
         from("direct:flush.data.from.subscription")
-                .process(basicAuthProcessor)
+             //   .process(basicAuthProcessor)
                 .process(p -> {
                     String subscriptionId = p.getIn().getHeader("subscriptionId", String.class);
                     SubscriptionSetup subscriptionSetup = subscriptionManager.get(subscriptionId);
@@ -328,7 +328,7 @@ public class AdministrationRoute extends RestRouteBuilder {
 
         //Return subscription status
         from("direct:validate.all.subscriptions")
-                .process(basicAuthProcessor)
+          //      .process(basicAuthProcessor)
                 .process(p -> {
                     Set<String> ids = subscriptionManager.subscriptions.keySet();
                     log.info("Enabling validation for {} subscriptions", ids.size());
@@ -364,7 +364,7 @@ public class AdministrationRoute extends RestRouteBuilder {
 
         //Return subscription status
         from("direct:delete.subscription")
-                .process(basicAuthProcessor)
+             //   .process(basicAuthProcessor)
                 .bean(helper, "deleteSubscription(${header.subscriptionId})")
                 .to("direct:internal.delete.subscription")
         ;
