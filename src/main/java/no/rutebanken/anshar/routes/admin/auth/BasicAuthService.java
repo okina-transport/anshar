@@ -1,8 +1,11 @@
 package no.rutebanken.anshar.routes.admin.auth;
 
+import no.rutebanken.anshar.config.TokenService;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.apache.commons.codec.binary.Base64;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -16,6 +19,8 @@ public class BasicAuthService implements Processor {
 
    @Value("${anshar.login.password:}")
    String password;
+
+   private static Logger log = LoggerFactory.getLogger(BasicAuthService.class);
 
    public void process(Exchange exchange) throws Exception {
       if (!exchange.getIn().getHeaders().containsKey("Authorization")) {
@@ -32,10 +37,12 @@ public class BasicAuthService implements Processor {
                  new UsernamePasswordAuthenticationToken(tokens[0], tokens[1]);
 
          if (!(authToken.getName().equals(username) & authToken.getCredentials().equals(password))) {
+             log.error("Access denied for user : " + username);
             throw new AccessDeniedException("username/password does not match");
          }
 
       } catch (Throwable t) {
+         log.error("Access denied for user : " + username);
          throw new AccessDeniedException("username/password does not match");
       }
    }
