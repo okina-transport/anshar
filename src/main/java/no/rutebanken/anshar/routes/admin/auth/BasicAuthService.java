@@ -37,12 +37,12 @@ public class BasicAuthService implements Processor {
                  new UsernamePasswordAuthenticationToken(tokens[0], tokens[1]);
 
          if (!(authToken.getName().equals(username) & authToken.getCredentials().equals(password))) {
-             log.error("Access denied for user : " + username);
+             log.error("Access denied for user : " + authToken.getName());
             throw new AccessDeniedException("username/password does not match");
          }
 
       } catch (Throwable t) {
-         log.error("Access denied for user : " + username);
+         log.error("Access denied  ");
          throw new AccessDeniedException("username/password does not match");
       }
    }
