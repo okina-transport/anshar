@@ -20,6 +20,8 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.hazelcast.cluster.Cluster;
 import com.hazelcast.cluster.Member;
 import com.hazelcast.collection.ISet;
+import com.hazelcast.config.CacheDeserializedValues;
+import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.SerializerConfig;
 import com.hazelcast.core.DistributedObject;
 import com.hazelcast.core.HazelcastInstance;
@@ -42,10 +44,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.MonitoredStopVisit;
-import uk.org.siri.siri20.PtSituationElement;
-import uk.org.siri.siri20.VehicleActivityStructure;
+import uk.org.siri.siri20.*;
 
 import javax.annotation.PreDestroy;
 import java.math.BigInteger;
@@ -93,28 +92,36 @@ public class ExtendedHazelcastService extends HazelCastService {
         return hazelcast;
     }
 
-//    @Override
-//    public List<SerializerConfig> getSerializerConfigs() {
-//
-//        return Arrays.asList(
-//                new SerializerConfig()
-//                    .setTypeClass(EstimatedVehicleJourney.class)
-//                    .setImplementation(new KryoSerializer()),
-//                new SerializerConfig()
-//                    .setTypeClass(PtSituationElement.class)
-//                    .setImplementation(new KryoSerializer()),
-//                new SerializerConfig()
-//                    .setTypeClass(VehicleActivityStructure.class)
-//                    .setImplementation(new KryoSerializer()),
-//                new SerializerConfig()
-//                    .setTypeClass(MonitoredVehicleJourneyStructure.class)
-//                    .setImplementation(new KryoSerializer()),
-//                new SerializerConfig()
-//                    .setTypeClass(JSONObject.class)
-//                    .setImplementation(new KryoSerializer())
-//
-//        );
-//    }
+    @Override
+    public void updateDefaultMapConfig(MapConfig defaultMapConfig) {
+        defaultMapConfig.setAsyncBackupCount(0);
+        defaultMapConfig.setBackupCount(0);
+        defaultMapConfig.setCacheDeserializedValues(CacheDeserializedValues.NEVER);
+
+    }
+
+    @Override
+    public List<SerializerConfig> getSerializerConfigs() {
+
+        return Arrays.asList(
+                new SerializerConfig()
+                    .setTypeClass(EstimatedVehicleJourney.class)
+                    .setImplementation(new KryoSerializer()),
+                new SerializerConfig()
+                    .setTypeClass(PtSituationElement.class)
+                    .setImplementation(new KryoSerializer()),
+                new SerializerConfig()
+                    .setTypeClass(VehicleActivityStructure.class)
+                    .setImplementation(new KryoSerializer()),
+                new SerializerConfig()
+                    .setTypeClass(MonitoredVehicleJourneyStructure.class)
+                    .setImplementation(new KryoSerializer()),
+                new SerializerConfig()
+                    .setTypeClass(JSONObject.class)
+                    .setImplementation(new KryoSerializer())
+
+        );
+    }
 
     @Bean
     public IMap<SiriObjectStorageKey, PtSituationElement> getSituationsMap(){
