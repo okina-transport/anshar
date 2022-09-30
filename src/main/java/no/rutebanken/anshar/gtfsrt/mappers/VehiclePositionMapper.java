@@ -6,17 +6,7 @@ import com.google.transit.realtime.GtfsRealtime;
 import io.micrometer.core.instrument.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri20.FramedVehicleJourneyRefStructure;
-import uk.org.siri.siri20.LineRef;
-import uk.org.siri.siri20.LocationStructure;
-import uk.org.siri.siri20.MonitoredCallStructure;
-import uk.org.siri.siri20.OccupancyEnumeration;
-import uk.org.siri.siri20.ProgressBetweenStopsStructure;
-import uk.org.siri.siri20.StopPointRef;
-import uk.org.siri.siri20.VehicleActivityStructure;
-import uk.org.siri.siri20.VehicleMonitoringRefStructure;
-import uk.org.siri.siri20.VehicleRef;
-
+import uk.org.siri.siri20.*;
 
 
 import java.math.BigDecimal;
@@ -60,10 +50,16 @@ public class VehiclePositionMapper {
 
         FramedVehicleJourneyRefStructure framedVehicleJourneyRefBuilder = new FramedVehicleJourneyRefStructure();
         framedVehicleJourneyRefBuilder.setDatedVehicleJourneyRef(tripDescriptor.getTripId());
+        DataFrameRefStructure dataFrameRef = new DataFrameRefStructure();
+        dataFrameRef.setValue("");
+        framedVehicleJourneyRefBuilder.setDataFrameRef(dataFrameRef);
 
         VehicleActivityStructure.MonitoredVehicleJourney monitoredVehiclejourney = new VehicleActivityStructure.MonitoredVehicleJourney();
 
         monitoredVehiclejourney.setFramedVehicleJourneyRef(framedVehicleJourneyRefBuilder);
+        monitoredVehiclejourney.setDataSource("MOBIITI");
+
+
 
 
         mapTridData(monitoredVehiclejourney, vehiclePosition.getTrip());

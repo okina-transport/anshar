@@ -1,17 +1,8 @@
 package no.rutebanken.anshar.gtfsrt.mappers;
 
 import com.google.transit.realtime.GtfsRealtime;
-import uk.org.siri.siri20.DatedVehicleJourneyRef;
-import uk.org.siri.siri20.EstimatedCall;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.FramedVehicleJourneyRefStructure;
-import uk.org.siri.siri20.LineRef;
-import uk.org.siri.siri20.MonitoredCallStructure;
-import uk.org.siri.siri20.MonitoredStopVisit;
-import uk.org.siri.siri20.MonitoredVehicleJourneyStructure;
-import uk.org.siri.siri20.MonitoringRefStructure;
-import uk.org.siri.siri20.StopPointRef;
-import uk.org.siri.siri20.VehicleRef;
+import uk.org.siri.siri20.*;
+
 import java.math.BigInteger;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -123,6 +114,10 @@ public class TripUpdateMapper {
         String tripId = tripUpdate.getTrip() != null ? tripUpdate.getTrip().getTripId() : "";
         FramedVehicleJourneyRefStructure vehicleJourneyRef = new FramedVehicleJourneyRefStructure();
         vehicleJourneyRef.setDatedVehicleJourneyRef(tripId);
+
+        DataFrameRefStructure dataFrameRef = new DataFrameRefStructure();
+        dataFrameRef.setValue(tripId);
+        vehicleJourneyRef.setDataFrameRef(dataFrameRef);
         return vehicleJourneyRef;
     }
 
@@ -170,9 +165,13 @@ public class TripUpdateMapper {
         EstimatedVehicleJourney journey = new EstimatedVehicleJourney();
 
 
-        DatedVehicleJourneyRef vehicleJourneyRef = new DatedVehicleJourneyRef();
-        vehicleJourneyRef.setValue(tripDescriptor.getTripId());
-        journey.setDatedVehicleJourneyRef(vehicleJourneyRef);
+        DatedVehicleJourneyRef datedVehicleJourneyRef = new DatedVehicleJourneyRef();
+        datedVehicleJourneyRef.setValue(tripDescriptor.getTripId());
+        journey.setDatedVehicleJourneyRef(datedVehicleJourneyRef);
+
+        FramedVehicleJourneyRefStructure vehicleJourneyRef = createVehicleJourneyRef(tripUpdate);
+        journey.setFramedVehicleJourneyRef(vehicleJourneyRef);
+        journey.setDataSource("MOBIITI");
 
 
         if (tripDescriptor.getRouteId() != null) {

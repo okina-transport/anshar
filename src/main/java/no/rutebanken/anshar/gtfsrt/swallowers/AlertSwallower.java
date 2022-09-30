@@ -11,9 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri20.PtSituationElement;
-import uk.org.siri.siri20.RequestorRef;
-import uk.org.siri.siri20.SituationNumber;
+import uk.org.siri.siri20.*;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -71,8 +69,15 @@ public class AlertSwallower extends AbstractSwallower {
         for (PtSituationElement situation : situations) {
             if (situation.getParticipantRef() == null){
                 RequestorRef requestorRef = new RequestorRef();
-                requestorRef.setValue(datasetId);
+                requestorRef.setValue("MOBIITI");
                 situation.setParticipantRef(requestorRef);
+
+                SituationSourceStructure sourceStruct = new SituationSourceStructure();
+                NaturalLanguageStringStructure langStruct = new NaturalLanguageStringStructure();
+                langStruct.setLang("FR");
+                langStruct.setValue(datasetId);
+                sourceStruct.setName(langStruct);
+                situation.setSource(sourceStruct);
             }
         }
     }

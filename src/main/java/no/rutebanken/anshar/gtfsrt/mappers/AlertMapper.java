@@ -252,9 +252,9 @@ public class AlertMapper {
             DefaultedTextStructure defaultedTextStructure = new DefaultedTextStructure();
             defaultedTextStructure.setValue(translationText);
 
-            if (translation.getLanguage() != null){
-                defaultedTextStructure.setLang("LANG_TYPE_" + translation.getLanguage().toUpperCase());
-            }
+            String lang = translation.getLanguage() == null || translation.getLanguage().equals("")  ? "FR" :  translation.getLanguage();
+
+            defaultedTextStructure.setLang(lang);
 
             siriTextStructures.add(defaultedTextStructure);
         }

@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.routes.pubsub;
 
+import org.apache.camel.ExchangePattern;
 import org.apache.camel.builder.RouteBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -41,10 +42,11 @@ public class PubsubTopicRoute extends RouteBuilder {
              * message to protobuf, and posts to Cloud Pubsub
              */
             from("direct:send.to.pubsub.topic.estimated_timetable")
+                    .setExchangePattern(ExchangePattern.InOnly)
                     .to("direct:siri.transform.data")
                     .to("xslt-saxon:xsl/splitAndFilterNotMonitored.xsl")
                     .split().tokenizeXML("Siri").streaming()
-                    .wireTap("direct:kafka.et.xml")
+               //     .wireTap("direct:kafka.et.xml")
                     .to("direct:map.jaxb.to.protobuf")
                     .wireTap("direct:log.pubsub.et.traffic")
                     .to(etTopic)
@@ -55,6 +57,7 @@ public class PubsubTopicRoute extends RouteBuilder {
              * message to protobuf, and posts to Cloud Pubsub
              */
             from("direct:send.to.pubsub.topic.vehicle_monitoring")
+                    .setExchangePattern(ExchangePattern.InOnly)
                     .to("direct:siri.transform.data")
                     .to("xslt-saxon:xsl/split.xsl")
                     .split().tokenizeXML("Siri").streaming()
@@ -68,10 +71,11 @@ public class PubsubTopicRoute extends RouteBuilder {
              * message to protobuf, and posts to Cloud Pubsub
              */
             from("direct:send.to.pubsub.topic.situation_exchange")
+                    .setExchangePattern(ExchangePattern.InOnly)
                     .to("direct:siri.transform.data")
                     .to("xslt-saxon:xsl/split.xsl")
                     .split().tokenizeXML("Siri").streaming()
-                    .wireTap("direct:kafka.sx.xml")
+                  //  .wireTap("direct:kafka.sx.xml")
                     .to("direct:map.jaxb.to.protobuf")
                     .wireTap("direct:log.pubsub.sx.traffic")
                     .to(sxTopic)
@@ -82,6 +86,7 @@ public class PubsubTopicRoute extends RouteBuilder {
              * message to protobuf, and posts to Cloud Pubsub
              */
             from("direct:send.to.pubsub.topic.stop_monitoring")
+                    .setExchangePattern(ExchangePattern.InOnly)
                     .to("direct:siri.transform.data")
                     .to("xslt-saxon:xsl/split.xsl")
                     .split().tokenizeXML("Siri").streaming()

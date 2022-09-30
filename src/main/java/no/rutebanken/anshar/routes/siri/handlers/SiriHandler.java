@@ -536,7 +536,7 @@ public class SiriHandler {
 long t1 = System.currentTimeMillis();
             Siri incoming = SiriXml.parseXml(xml);
 long t2 = System.currentTimeMillis();
-            logger.info("Parsing XML took {} ms, {} bytes", (t2-t1), receivedBytes);
+            logger.debug("Parsing XML took {} ms, {} bytes", (t2-t1), receivedBytes);
             if (incoming == null) {
                 return;
             }
@@ -942,20 +942,36 @@ long t2 = System.currentTimeMillis();
 
 
     public Collection<VehicleActivityStructure> ingestVehicleActivities(String datasetId, List<VehicleActivityStructure> incomingVehicleActivities) {
-        return vehicleActivities.addAll(datasetId, incomingVehicleActivities);
+        Collection<VehicleActivityStructure> result = vehicleActivities.addAll(datasetId, incomingVehicleActivities);
+        if (result.size() > 0){
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.VEHICLE_MONITORING, incomingVehicleActivities, datasetId);
+        }
+        return result;
     }
 
     public Collection<MonitoredStopVisit> ingestStopVisits(String datasetId, List<MonitoredStopVisit> incomingMonitoredStopVisits) {
-        return monitoredStopVisits.addAll(datasetId, incomingMonitoredStopVisits);
+        Collection<MonitoredStopVisit> result = monitoredStopVisits.addAll(datasetId, incomingMonitoredStopVisits);
+        if (result.size() > 0) {
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.STOP_MONITORING, incomingMonitoredStopVisits, datasetId);
+        }
+        return result;
     }
 
 
     public Collection<EstimatedVehicleJourney> ingestEstimatedTimeTables(String datasetId, List<EstimatedVehicleJourney> incomingEstimatedTimeTables) {
-        return  estimatedTimetables.addAll(datasetId, incomingEstimatedTimeTables);
+        Collection<EstimatedVehicleJourney> result = estimatedTimetables.addAll(datasetId, incomingEstimatedTimeTables);
+        if (result.size() > 0) {
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.ESTIMATED_TIMETABLE, incomingEstimatedTimeTables, datasetId);
+        }
+        return result;
     }
 
     public Collection<PtSituationElement> ingestSituations(String datasetId, List<PtSituationElement> incomingSituations) {
-        return situations.addAll(datasetId, incomingSituations);
+        Collection<PtSituationElement> result = situations.addAll(datasetId, incomingSituations);
+        if (result.size() > 0) {
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.SITUATION_EXCHANGE, incomingSituations, datasetId);
+        }
+        return result;
     }
 
     public void removeSituation(String datasetId, PtSituationElement situation ){
