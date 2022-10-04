@@ -1,6 +1,7 @@
 package no.rutebanken.anshar.routes.pubsub;
 
 import org.apache.camel.ExchangePattern;
+import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -108,7 +109,7 @@ public class PubsubTopicRoute extends RouteBuilder {
                     })
                     .choice()
                     .when(header("counter").isNotNull())
-                    .log("Pubsub: Published ${header.counter} et updates")
+                    .log(LoggingLevel.DEBUG,"Pubsub: Published ${header.counter} et updates")
                     .endChoice()
                     .end();
 
@@ -125,7 +126,7 @@ public class PubsubTopicRoute extends RouteBuilder {
                     })
                     .choice()
                     .when(header("counter").isNotNull())
-                    .log("Pubsub: Published ${header.counter} vm updates")
+                    .log(LoggingLevel.DEBUG,"Pubsub: Published ${header.counter} vm updates")
                     .endChoice()
                     .end();
 
@@ -142,11 +143,11 @@ public class PubsubTopicRoute extends RouteBuilder {
                     })
                     .choice()
                     .when(header("counter").isNotNull())
-                    .log("Pubsub: Published ${header.counter} sx updates")
+                    .log(LoggingLevel.DEBUG,"Pubsub: Published ${header.counter} sx updates")
                     .endChoice()
                     .end();
 
-            /**
+            /**content:
              * Logs sm traffic periodically
              */
             from("direct:log.pubsub.sm.traffic")
@@ -159,7 +160,7 @@ public class PubsubTopicRoute extends RouteBuilder {
                     })
                     .choice()
                     .when(header("counter").isNotNull())
-                    .log("Pubsub: Published ${header.counter} sm updates")
+                    .log(LoggingLevel.DEBUG,"Pubsub: Published ${header.counter} sm updates")
                     .endChoice()
                     .end();
         }
