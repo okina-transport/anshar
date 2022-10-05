@@ -37,10 +37,7 @@ import org.springframework.stereotype.Service;
 import javax.ws.rs.core.MediaType;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -60,6 +57,9 @@ public class AdministrationRoute extends RestRouteBuilder {
     private static final String CLUSTERSTATS_ROUTE = "direct:clusterstats";
     private static final String UNMAPPED_ROUTE = "direct:unmapped";
     private static final String SITUATIONS_ROUTE = "direct:situations";
+    private static final String SYNTHESIS_ROUTE = "direct:synthesis";
+    private static final String INTERNAL_SYNTHESIS_ROUTE = "direct:internal.synthesis";
+
 
     @Autowired
     private ExtendedHazelcastService extendedHazelcastService;
@@ -112,6 +112,7 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .get("/unmapped").produces(MediaType.TEXT_HTML).to(UNMAPPED_ROUTE)
                 .get("/unmapped/{datasetId}").produces(MediaType.TEXT_HTML).to(UNMAPPED_ROUTE)
                 .get("/situations/{datasetId}").produces(MediaType.TEXT_HTML).to(SITUATIONS_ROUTE)
+                .get("/synthesis").produces(MediaType.TEXT_HTML).to(SYNTHESIS_ROUTE)
         ;
 
         if (autoLockVerificationEnabled) {
@@ -177,6 +178,19 @@ public class AdministrationRoute extends RestRouteBuilder {
             .routeId("admin")
         ;
 
+        from(SYNTHESIS_ROUTE)
+                //.process(basicAuthProcessor)
+                .setHeader(HttpHeaders.CONTENT_TYPE, simple(MediaType.APPLICATION_JSON))
+                .to(INTERNAL_SYNTHESIS_ROUTE)
+                .to("direct:removeHeaders")
+                .setHeader(HttpHeaders.CONTENT_TYPE, simple(MediaType.TEXT_HTML))
+                .to("freemarker:templates/synthesis.ftl")
+                .routeId("admin.synthesis")
+        ;
+
+
+
+
         if (configuration.processAdmin() && !configuration.processData()) {
             from(STATS_ROUTE)
             //        .process(basicAuthProcessor)
@@ -231,6 +245,17 @@ public class AdministrationRoute extends RestRouteBuilder {
                     p.getMessage().setBody(stats.toJSONString());
                 }
             })
+        ;
+
+        from (INTERNAL_SYNTHESIS_ROUTE)
+                .process(p -> {
+                    JSONObject stats = helper.buildSynthesisData();
+                    if (MediaType.APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE, String.class))) {
+                        p.getMessage().setBody(stats);
+                    } else {
+                        p.getMessage().setBody(stats.toJSONString());
+                    }
+                })
         ;
 
         final String operationHeaderName = "operation";

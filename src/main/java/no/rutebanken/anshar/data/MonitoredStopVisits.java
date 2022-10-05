@@ -524,9 +524,37 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     }
 
     public void writeStatistics(List<String> datasetIds){
+        Map<String, Integer> results = getNbOfItemsByDataset(datasetIds);
+        for (Map.Entry<String, Integer> entry : results.entrySet()) {
+            logger.info("Okina-StopMonitoring " + entry.getKey() + " : " +  entry.getValue() + " MonitoredRefs");
+        }
+    }
+
+    public Map<String,Integer> getNbOfItemsByDataset(List<String> datasetIds){
+        Map<String,Integer> results = new HashMap<>();
+
         for (String datasetId : datasetIds) {
             Set<SiriObjectStorageKey> idSet = monitoredStopVisits.keySet(entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, new HashSet<>(), datasetId, new ArrayList<>()));
-            logger.info("Okina-StopMonitoring " + datasetId + " : " +  idSet.size() + " MonitoredRefs");
+            results.put(datasetId,idSet.size());
         }
+        return results;
+    }
+
+    public Map<String,Integer> getNbOfStopsByDataset(List<String> datasetIds){
+        Map<String,Integer> results = new HashMap<>();
+
+
+        for (String datasetId : datasetIds) {
+            Set<SiriObjectStorageKey> idSet = monitoredStopVisits.keySet(entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, new HashSet<>(), datasetId, new ArrayList<>()));
+            Set<String> stopSet = new HashSet();
+            for (SiriObjectStorageKey siriObjectStorageKey : idSet) {
+
+                if (!stopSet.contains(siriObjectStorageKey.getStopRef())){
+                    stopSet.add(siriObjectStorageKey.getStopRef());
+                }
+            }
+            results.put(datasetId,stopSet.size());
+        }
+        return results;
     }
 }

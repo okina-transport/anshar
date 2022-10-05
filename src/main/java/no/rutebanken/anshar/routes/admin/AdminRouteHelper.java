@@ -15,9 +15,7 @@
 
 package no.rutebanken.anshar.routes.admin;
 
-import no.rutebanken.anshar.data.EstimatedTimetables;
-import no.rutebanken.anshar.data.Situations;
-import no.rutebanken.anshar.data.VehicleActivities;
+import no.rutebanken.anshar.data.*;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
@@ -34,12 +32,10 @@ import uk.org.siri.siri20.DefaultedTextStructure;
 import uk.org.siri.siri20.HalfOpenTimestampOutputRangeStructure;
 import uk.org.siri.siri20.PtSituationElement;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 @Component
 public class AdminRouteHelper {
@@ -60,6 +56,10 @@ public class AdminRouteHelper {
 
     @Autowired
     private ExtendedHazelcastService hazelcastService;
+
+    @Autowired
+    private MonitoredStopVisits monitoredStopVisits;
+
 
     protected boolean shutdownTriggered;
 
@@ -408,6 +408,43 @@ public class AdminRouteHelper {
             }
         }
     }
+
+
+    public JSONObject buildSynthesisData(){
+        logger.debug("Start synthesis stats");
+        JSONObject result = new JSONObject();
+        JSONArray smStats = new JSONArray();
+
+        List<SubscriptionSetup> smSubscriptions = subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING);
+
+        List<String> datasetIds = smSubscriptions.stream()
+                                        .map(SubscriptionSetup::getDatasetId)
+                                        .distinct()
+                                        .collect(Collectors.toList());
+
+
+        Map<String, Integer> nbOfItemsByDataset = monitoredStopVisits.getNbOfItemsByDataset(datasetIds);
+
+        for (String datasetId : datasetIds) {
+
+            List<String> monitoringRefList = subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING).stream()
+                                                                .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))
+                                                                .map(SubscriptionSetup::getStopMonitoringRefValue)
+                                                                .collect(Collectors.toList());
+
+            JSONObject stat = new JSONObject();
+            stat.put("datasetId", datasetId);
+            stat.put("nbOfStops", monitoringRefList.size());
+            String status = !nbOfItemsByDataset.containsKey(datasetId) || nbOfItemsByDataset.get(datasetId) == 0 ? "KO" : "OK";
+            stat.put("status", status);
+            smStats.add(stat);
+        }
+
+        result.put("smStats", smStats);
+        return result;
+    }
+
+
 }
 class DataCounter {
     long vm, et, sx;
