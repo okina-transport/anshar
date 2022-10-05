@@ -30,15 +30,15 @@ public class StopPlaceIdRecoveringRoute extends BaseRouteBuilder{
     @Override
     public void configure() throws Exception {
 
-        if (stopPlaceApiURL.isEmpty()) {
-            logger.info("Pas d'url API StopPlace définie");
-        } else {
-            singletonFrom("quartz://anshar/stopPlaceIdRecovering?trigger.repeatInterval=" + INTERVAL_IN_MILLIS,
-                    "stopPlaceIdRecovering")
-                    .bean(StopPlaceIdRetriever.class, "getStopPlaceIds")
-                    .end();
-
-        }
+//        if (stopPlaceApiURL.isEmpty()) {
+//            logger.info("Pas d'url API StopPlace définie");
+//        } else {
+//            singletonFrom("quartz://anshar/stopPlaceIdRecovering?trigger.repeatInterval=" + INTERVAL_IN_MILLIS,
+//                    "stopPlaceIdRecovering")
+//                    .bean(StopPlaceIdRetriever.class, "getStopPlaceIds")
+//                    .end();
+//
+//        }
 
     }
 }
