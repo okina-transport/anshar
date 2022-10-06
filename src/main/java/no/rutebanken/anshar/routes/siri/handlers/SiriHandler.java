@@ -408,7 +408,7 @@ public class SiriHandler {
                                                             .map(SubscriptionSetup::getStopMonitoringRefValue)
                                                             .collect(Collectors.toList());
 
-        traceUnknownStopPoints(monitoringRefList);
+        //traceUnknownStopPoints(monitoringRefList);
 
         List<AnnotatedStopPointStructure> resultList = monitoringRefList.stream()
                                                                         .map(this::convertKeyToPointStructure)

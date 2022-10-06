@@ -47,12 +47,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static no.rutebanken.anshar.subscription.SiriDataType.*;
@@ -143,6 +138,7 @@ public class SubscriptionManager {
     private IMap<String, Integer> retryCountMap;
 
     private Set<String> gtfsSubscriptions = new HashSet<>();
+    private Map<String, String> siriAPISubscriptions = new HashMap<>();
 
     private static Integer MAX_RESTART_TRIES = 3;
 
@@ -489,6 +485,18 @@ public class SubscriptionManager {
 
     public void addGTFSRTSubscription(String subscriptionId){
         gtfsSubscriptions.add(subscriptionId);
+    }
+
+    public boolean isSiriAPISubscriptionExisting(String monitoringRef) {
+        return siriAPISubscriptions.containsKey(monitoringRef);
+    }
+
+    public void addSiriAPISubscription(String monitoringRef, String subcriptionId){
+        siriAPISubscriptions.put(monitoringRef, subcriptionId);
+    }
+
+    public String getSubscriptionForMonitoringRef(String monitoringRef){
+        return siriAPISubscriptions.get(monitoringRef);
     }
 
     /**

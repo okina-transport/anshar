@@ -128,14 +128,27 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
         List<String> monitoringIds = getMonitoringIds(dataFormat, file);
 
         List<SubscriptionSetup> subscriptionSetupList = new ArrayList<>();
+        List<String> ids = new ArrayList<>();
         for (String monitoringId : monitoringIds) {
-            SubscriptionSetup subscriptionSetup = createSubscriptionSetup(dataFormat, monitoringId, url, provider);
-            subscriptionManager.addSubscription(subscriptionSetup.getSubscriptionId(), subscriptionSetup);
-            subscriptionSetupList.add(subscriptionSetup);
+
+            String subId;
+            if (!subscriptionManager.isSiriAPISubscriptionExisting(provider + monitoringId)){
+                SubscriptionSetup subscriptionSetup = createSubscriptionSetup(dataFormat, monitoringId, url, provider);
+                subscriptionManager.addSubscription(subscriptionSetup.getSubscriptionId(), subscriptionSetup);
+                subscriptionSetupList.add(subscriptionSetup);
+                subId = subscriptionSetup.getSubscriptionId();
+                subscriptionManager.addSiriAPISubscription(provider + monitoringId, subId);
+            }else{
+                subId = subscriptionManager.getSubscriptionForMonitoringRef(provider + monitoringId);
+            }
+
+            if (!ids.contains(subId)){
+                ids.add(subId);
+            }
         }
 
         ByteArrayInputStream byteArrayInputStream = extractXMLFromZip(file);
-        List<String> ids = subscriptionSetupList.stream().map(SubscriptionSetup::getSubscriptionId).collect(Collectors.toList());
+
 
         SiriDataType siriDataType = null;
         switch (dataFormat) {
