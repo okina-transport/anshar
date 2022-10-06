@@ -434,7 +434,7 @@ public class AdminRouteHelper {
 
             JSONObject stat = new JSONObject();
             stat.put("datasetId", datasetId);
-            stat.put("nbOfStops", monitoringRefList.size());
+            stat.put("nbOfStops", String.valueOf(monitoringRefList.size()));
             String status = !nbOfItemsByDataset.containsKey(datasetId) || nbOfItemsByDataset.get(datasetId) == 0 ? "KO" : "OK";
             stat.put("status", status);
             smStats.add(stat);
