@@ -21,6 +21,7 @@ import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import no.rutebanken.anshar.util.StopMonitoringUtils;
 import org.quartz.utils.counter.Counter;
 import org.quartz.utils.counter.CounterImpl;
 import org.slf4j.Logger;
@@ -39,14 +40,7 @@ import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
@@ -387,7 +381,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
     // TODO MHI : copié / collé, à revoir
     @Override
-    public Collection<MonitoredStopVisit> addAll(String datasetId, List<MonitoredStopVisit> smList) {
+    public Collection<MonitoredStopVisit> addAll(String datasetId, List<MonitoredStopVisit> smList ) {
         Set<SiriObjectStorageKey> changes = new HashSet<>();
         Set<MonitoredStopVisit> addedData = new HashSet<>();
 
@@ -401,8 +395,11 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
                 .filter(monitoredStopVisit -> monitoredStopVisit.getRecordedAtTime() != null)
                 .forEach(monitoredStopVisit -> {
 
+                    String lineName = StopMonitoringUtils.getLineName(monitoredStopVisit).orElse(null);
+                    String vehicleJourneyName = StopMonitoringUtils.getVehicleJourneyName(monitoredStopVisit).orElse(null);
+
                     String keyCriteria = monitoredStopVisit.getItemIdentifier() != null ? monitoredStopVisit.getItemIdentifier() : monitoredStopVisit.getRecordedAtTime().format(DateTimeFormatter.ISO_DATE);
-                    SiriObjectStorageKey key = createKey(datasetId, keyCriteria,monitoredStopVisit.getMonitoringRef().getValue());
+                    SiriObjectStorageKey key = createKey(datasetId, keyCriteria,monitoredStopVisit.getMonitoringRef().getValue(), vehicleJourneyName, lineName);
 
                     String currentChecksum = null;
                     ZonedDateTime validUntilTime = monitoredStopVisit.getValidUntilTime();
@@ -498,8 +495,13 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         return  newData.getRecordedAtTime().isAfter(oldData.getRecordedAtTime());
     }
 
+
     @Override
     MonitoredStopVisit add(String datasetId, MonitoredStopVisit monitoredStopVisit) {
+        return add(datasetId, monitoredStopVisit, null,null );
+    }
+
+    MonitoredStopVisit add(String datasetId, MonitoredStopVisit monitoredStopVisit, String vehicleJourney, String line) {
         if (monitoredStopVisit == null || monitoredStopVisit.getMonitoringRef() == null) {
             return null;
         }
@@ -508,7 +510,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         addAll(datasetId, monitoredStopVisits);
 
         String monitoringRef = monitoredStopVisit.getMonitoringRef() == null ? null :  monitoredStopVisit.getMonitoringRef().getValue();
-        return this.monitoredStopVisits.get(createKey(datasetId, monitoredStopVisit.getItemIdentifier(), monitoringRef));
+        return this.monitoredStopVisits.get(createKey(datasetId,monitoredStopVisit.getItemIdentifier(), monitoringRef, vehicleJourney, line));
     }
 
 
@@ -519,8 +521,8 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
      * @param monitoredStopVisitIdentifier
      * @return
      */
-    private SiriObjectStorageKey createKey(String datasetId, String monitoredStopVisitIdentifier, String monitoringRef) {
-        return new SiriObjectStorageKey(datasetId, null, monitoredStopVisitIdentifier, monitoringRef);
+    private SiriObjectStorageKey createKey(String datasetId, String monitoredStopVisitIdentifier, String monitoringRef, String vehicleJourney, String line) {
+        return new SiriObjectStorageKey(datasetId, line, monitoredStopVisitIdentifier, monitoringRef, vehicleJourney);
     }
 
     public void writeStatistics(List<String> datasetIds){

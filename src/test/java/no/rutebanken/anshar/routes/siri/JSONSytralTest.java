@@ -22,18 +22,13 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.xml.sax.SAXException;
+
 import uk.org.siri.siri20.MonitoredStopVisit;
 
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.stream.XMLStreamException;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 class JSONSytralTest extends SpringBootBaseTest {
@@ -101,10 +96,12 @@ class JSONSytralTest extends SpringBootBaseTest {
             log.info("JSON integration completed  in {} seconds ", processTime);
 
 
-            Assert.assertFalse(false);
 
 
+            Set<String> searchedStopIds = new HashSet<>();
+            searchedStopIds.add("35998");
 
+          //  Siri siriResult = stopVisits.createServiceDelivery("requestorId", null, "track", null, 10000000, -10000, searchedStopIds);
 
 
 

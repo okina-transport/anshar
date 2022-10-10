@@ -5,16 +5,12 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import uk.org.siri.siri20.*;
 
-import java.math.BigInteger;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.*;
+
 
 public class SytralJSONMapper {
 
@@ -34,6 +30,7 @@ public class SytralJSONMapper {
             return resultList;
     }
 
+
     private static MonitoredStopVisit convertToSiriSm(JSONObject value) {
         MonitoredStopVisit sm = new MonitoredStopVisit();
         MonitoringRefStructure refStruct = new MonitoringRefStructure();
@@ -42,6 +39,8 @@ public class SytralJSONMapper {
 
         refStruct.setValue(stopPointId);
         sm.setMonitoringRef(refStruct);
+
+        sm.setItemIdentifier(String.valueOf(value.get("gid")));
 
         MonitoredVehicleJourneyStructure monitoredVehicleStruct = new MonitoredVehicleJourneyStructure();
         LineRef lineRef = new LineRef();
@@ -65,9 +64,6 @@ public class SytralJSONMapper {
         StopPointRef stopPointRef = new StopPointRef();
         stopPointRef.setValue(stopPointId);
         monitoredCallStructure.setStopPointRef(stopPointRef);
-
-
-
 
 
         ZonedDateTime aimedArrival = convertToZonedDateTime((String)value.get("heurepassage"));
