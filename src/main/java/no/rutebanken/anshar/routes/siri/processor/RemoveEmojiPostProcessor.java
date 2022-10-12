@@ -95,7 +95,7 @@ public class RemoveEmojiPostProcessor extends ValueAdapter implements PostProces
         }
 
         if (characterRemoved) {
-            logger.info("Removed unwanted characters from text [{}].", value);
+            logger.debug("Removed unwanted characters from text [{}].", value);
         }
         return cleanedValue;
     }
