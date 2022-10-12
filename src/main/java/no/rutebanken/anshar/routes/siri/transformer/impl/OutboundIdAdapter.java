@@ -16,9 +16,11 @@
 package no.rutebanken.anshar.routes.siri.transformer.impl;
 
 
+import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,6 +29,9 @@ public class OutboundIdAdapter extends ValueAdapter {
     private final Logger logger = LoggerFactory.getLogger(OutboundIdAdapter.class);
 
     private final OutboundIdMappingPolicy outboundIdMappingPolicy;
+
+    private IdProcessingParameters idProcessingParameters;
+
 
     public OutboundIdAdapter(Class clazz, OutboundIdMappingPolicy outboundIdMappingPolicy) {
         super(clazz);
@@ -42,14 +47,13 @@ public class OutboundIdAdapter extends ValueAdapter {
             if (text == null || text.isEmpty()) {
                 return text;
             }
-            if (text.contains(SiriValueTransformer.SEPARATOR)) {
-                if (outboundIdMappingPolicy == OutboundIdMappingPolicy.DEFAULT) {
-                    text = getMappedId(text);
-                }
-                else if (outboundIdMappingPolicy == OutboundIdMappingPolicy.ORIGINAL_ID) {
-                    text = getOriginalId(text);
-                }
+
+            if (outboundIdMappingPolicy == OutboundIdMappingPolicy.DEFAULT) {
+                text = getProcessedId(text);
+            } else if (outboundIdMappingPolicy == OutboundIdMappingPolicy.ORIGINAL_ID) {
+                text = getOriginalId(text);
             }
+
         } catch (NullPointerException npe) {
             logger.warn("Caught NullPointerException while mapping ID.", npe);
             logger.warn("Caught exception when mapping value '{}'", text);
@@ -70,6 +74,14 @@ public class OutboundIdAdapter extends ValueAdapter {
             return text.substring(text.indexOf(SiriValueTransformer.SEPARATOR) + 1);
         }
         return text;
+    }
+
+    public String getProcessedId(String text) {
+        return idProcessingParameters == null ? text : idProcessingParameters.applyTransformationToString(text);
+    }
+
+    public void setIdProcessingParameters(IdProcessingParameters idProcessingParameters) {
+        this.idProcessingParameters = idProcessingParameters;
     }
 
     @Override

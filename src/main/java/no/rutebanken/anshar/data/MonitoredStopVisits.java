@@ -281,14 +281,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
      */
     private Set<SiriObjectStorageKey> generateIdSet(String requestorId, String datasetId, Set<String> searchedStopRefs, List<String> excludedDatasetIds){
         // Get all relevant ids
-        Set<SiriObjectStorageKey> allIds = new HashSet<>();
-        Set<SiriObjectStorageKey> idSet;
-
-        if ("SNCF".equals(requestorId)) {
-            idSet = allIds;
-        } else {
-            idSet = changesMap.getOrDefault(requestorId, allIds);
-        }
+        Set<SiriObjectStorageKey> idSet = new HashSet<>();
 
         idSet.addAll(monitoredStopVisits.keySet(entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, searchedStopRefs, datasetId, excludedDatasetIds)));
 
