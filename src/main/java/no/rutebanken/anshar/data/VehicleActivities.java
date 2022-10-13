@@ -15,9 +15,11 @@
 
 package no.rutebanken.anshar.data;
 
+import com.hazelcast.query.Predicate;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 
+import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -43,19 +45,10 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
-import uk.org.siri.siri20.VehicleActivityStructure;
+import uk.org.siri.siri20.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri20.AbstractItemStructure;
-import uk.org.siri.siri20.CoordinatesStructure;
-import uk.org.siri.siri20.CourseOfJourneyRefStructure;
-import uk.org.siri.siri20.DirectionRefStructure;
-import uk.org.siri.siri20.LineRef;
-import uk.org.siri.siri20.LocationStructure;
-import uk.org.siri.siri20.MessageRefStructure;
-import uk.org.siri.siri20.Siri;
 import uk.org.siri.siri20.VehicleActivityStructure;
-import uk.org.siri.siri20.VehicleRef;
 import org.quartz.utils.counter.Counter;
 import org.quartz.utils.counter.CounterImpl;
 
@@ -309,7 +302,9 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
                      .filter(key -> isKeyCompliantWithFilters(key, linerefSet, vehicleRefSet, null, datasetId, excludedDatasetIds))
                      .collect(Collectors.toSet());
 
-        idSet.addAll(monitoredVehicles.keySet(entry -> isKeyCompliantWithFilters(entry.getKey(), linerefSet, vehicleRefSet, null, datasetId, excludedDatasetIds)));
+
+        Predicate<SiriObjectStorageKey, VehicleActivityStructure> predicate = SiriObjectStorageKeyUtil.getVehiclePredicate(linerefSet, vehicleRefSet, datasetId, excludedDatasetIds);
+        idSet.addAll(monitoredVehicles.keySet(predicate));
         return idSet;
     }
 

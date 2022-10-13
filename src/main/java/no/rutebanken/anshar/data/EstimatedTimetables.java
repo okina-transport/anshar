@@ -20,6 +20,7 @@ import com.hazelcast.replicatedmap.ReplicatedMap;
 import com.hazelcast.query.Predicates;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
+import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -30,14 +31,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
-import uk.org.siri.siri20.EstimatedCall;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.MessageRefStructure;
-import uk.org.siri.siri20.QuayRefStructure;
-import uk.org.siri.siri20.RecordedCall;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.StopAssignmentStructure;
-import uk.org.siri.siri20.StopPointRef;
+import uk.org.siri.siri20.*;
 
 import javax.annotation.PostConstruct;
 import java.time.Instant;
@@ -337,7 +331,8 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
         Set<SiriObjectStorageKey> allIds = new HashSet<>();
         Set<SiriObjectStorageKey> idSet = changesMap.getOrDefault(requestorId, allIds);
 
-        idSet.addAll(timetableDeliveries.keySet(entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, null, datasetId, excludedDatasetIds)));
+        com.hazelcast.query.Predicate<SiriObjectStorageKey, EstimatedVehicleJourney> predicate = SiriObjectStorageKeyUtil.getEstimateTimetablePredicate(null, null, datasetId, excludedDatasetIds);
+        idSet.addAll(timetableDeliveries.keySet(predicate));
 
         return idSet;
     }

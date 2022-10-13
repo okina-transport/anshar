@@ -38,6 +38,7 @@
             <th align="center">datasetId</th>
             <th align="center">Status</th>
             <th align="center">Nb of stops</th>
+            <th align="center">Nb of items</th>
         </thead>
         <tbody>
         <#list body.smStats as smStat>
@@ -58,6 +59,9 @@
            </td>
             <td align="center" style="vertical-align: middle; font-size: larger">
                 ${smStat.nbOfStops}
+            </td>
+            <td align="center" style="vertical-align: middle; font-size: larger">
+                ${smStat.nbOfMsg}
             </td>
         </tr>
         </#list>

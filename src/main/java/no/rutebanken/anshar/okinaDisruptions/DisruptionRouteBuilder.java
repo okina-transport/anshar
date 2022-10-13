@@ -6,6 +6,7 @@ import no.rutebanken.anshar.routes.BaseRouteBuilder;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -19,6 +20,9 @@ public class DisruptionRouteBuilder extends BaseRouteBuilder {
     @Value("${mobi.iti.disruption.api.url:}")
     private String okinaDisruptionAPIUrl;
 
+    @Autowired
+    private AnsharConfiguration configuration;
+
     protected DisruptionRouteBuilder(AnsharConfiguration config, SubscriptionManager subscriptionManager) {
         super(config, subscriptionManager);
     }
@@ -29,6 +33,11 @@ public class DisruptionRouteBuilder extends BaseRouteBuilder {
 
         if (StringUtils.isEmpty(okinaDisruptionAPIUrl)){
             logger.error("Aucune url d'API pour récupérer les disruptions n'a été définié");
+            return ;
+        }
+
+        if (configuration.processSX()){
+            logger.error("Application non paramétrée en mode SX. pas de récupération de perturbations");
             return ;
         }
 

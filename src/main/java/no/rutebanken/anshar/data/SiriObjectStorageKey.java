@@ -27,19 +27,19 @@ public class SiriObjectStorageKey implements Serializable {
         this.vehicleJourney = vehicleJourney;
     }
 
-    String getCodespaceId() {
+    public String getCodespaceId() {
         return codespaceId;
     }
 
-    String getLineRef() {
+    public String getLineRef() {
         return lineRef;
     }
 
-    String getKey() {
+    public String getKey() {
         return key;
     }
 
-    String getStopRef() {
+    public String getStopRef() {
         return stopRef;
     }
 

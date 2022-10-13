@@ -16,9 +16,11 @@
 package no.rutebanken.anshar.data;
 
 import com.hazelcast.map.IMap;
+import com.hazelcast.query.Predicate;
 import com.hazelcast.replicatedmap.ReplicatedMap;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
+import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.util.StopMonitoringUtils;
@@ -36,6 +38,8 @@ import uk.org.siri.siri20.MonitoredVehicleJourneyStructure;
 import uk.org.siri.siri20.Siri;
 
 import javax.annotation.PostConstruct;
+import java.io.Serializable;
+import java.lang.invoke.SerializedLambda;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -43,7 +47,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Predicate;
+
 import java.util.stream.Collectors;
 
 @Repository
@@ -53,6 +57,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     private final Logger logger = LoggerFactory.getLogger(MonitoredStopVisits.class);
 
     @Autowired
+    @Qualifier("getMonitoredStopVisits")
     private IMap<SiriObjectStorageKey, MonitoredStopVisit> monitoredStopVisits;
 
     @Autowired
@@ -199,7 +204,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         final AtomicInteger previewIntervalInclusionCounter = new AtomicInteger();
         final AtomicInteger previewIntervalExclusionCounter = new AtomicInteger();
-        Predicate<SiriObjectStorageKey> previewIntervalFilter = id -> {
+        java.util.function.Predicate<SiriObjectStorageKey> previewIntervalFilter = id -> {
 
             if (idForPatternChanges.containsKey(id) || startTimes.contains(id)) {
                 // Is valid in requested previewInterval
@@ -284,11 +289,16 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
             idSet = changesMap.getOrDefault(requestorId, allIds);
         }
 
-        idSet.addAll(monitoredStopVisits.keySet(entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, searchedStopRefs, datasetId, excludedDatasetIds)));
+        Predicate<SiriObjectStorageKey, MonitoredStopVisit> predicate = SiriObjectStorageKeyUtil.getStopPredicate(searchedStopRefs, datasetId, excludedDatasetIds);
+        idSet.addAll(monitoredStopVisits.keySet(predicate));
 
         return idSet;
     }
 
+
+//    private Predicate<SiriObjectStorageKey, MonitoredStopVisit> getpredicate(Set<String> searchedStopRefs, String datasetId, List<String> excludedDatasetIds){
+//        return entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, searchedStopRefs, datasetId, excludedDatasetIds);
+//    }
 
 
     @Override
@@ -532,11 +542,14 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         }
     }
 
+
     public Map<String,Integer> getNbOfItemsByDataset(List<String> datasetIds){
         Map<String,Integer> results = new HashMap<>();
 
         for (String datasetId : datasetIds) {
-            Set<SiriObjectStorageKey> idSet = monitoredStopVisits.keySet(entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, new HashSet<>(), datasetId, new ArrayList<>()));
+
+            Predicate<SiriObjectStorageKey, MonitoredStopVisit> predicate = SiriObjectStorageKeyUtil.getStopPredicate(null, datasetId, null);
+            Set<SiriObjectStorageKey> idSet = monitoredStopVisits.keySet(predicate);
             results.put(datasetId,idSet.size());
         }
         return results;
@@ -547,7 +560,8 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
 
         for (String datasetId : datasetIds) {
-            Set<SiriObjectStorageKey> idSet = monitoredStopVisits.keySet(entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, new HashSet<>(), datasetId, new ArrayList<>()));
+            Predicate<SiriObjectStorageKey, MonitoredStopVisit> predicate = SiriObjectStorageKeyUtil.getStopPredicate(null, datasetId, null);
+            Set<SiriObjectStorageKey> idSet = monitoredStopVisits.keySet(predicate);
             Set<String> stopSet = new HashSet();
             for (SiriObjectStorageKey siriObjectStorageKey : idSet) {
 

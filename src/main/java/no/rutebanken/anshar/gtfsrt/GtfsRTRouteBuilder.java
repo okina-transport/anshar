@@ -19,12 +19,21 @@ public class GtfsRTRouteBuilder extends BaseRouteBuilder {
     @Autowired
     private SubscriptionConfig subscriptionConfig;
 
+    @Autowired
+    private AnsharConfiguration configuration;
+
     protected GtfsRTRouteBuilder(AnsharConfiguration config, SubscriptionManager subscriptionManager) {
         super(config, subscriptionManager);
     }
 
     @Override
     public void configure() throws Exception {
+
+
+        if (!configuration.processSX() && !configuration.processVM() && !configuration.processSM() && !configuration.processET()){
+            logger.info("Application non paramétrée en SM/SX/ET/VM. Pas de récupération GTFS-RT");
+            return;
+        }
 
         if (subscriptionConfig.getGtfsRTApis().size() > 0) {
             singletonFrom("quartz://anshar/import_GTFSRT_DATA?trigger.repeatInterval=" + INTERVAL_IN_MILLIS,

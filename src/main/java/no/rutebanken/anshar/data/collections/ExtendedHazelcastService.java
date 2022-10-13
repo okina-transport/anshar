@@ -27,6 +27,7 @@ import com.hazelcast.core.DistributedObject;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.LifecycleEvent;
 import com.hazelcast.map.IMap;
+import com.hazelcast.query.Predicate;
 import com.hazelcast.replicatedmap.ReplicatedMap;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.RequestorRefStats;
@@ -47,14 +48,12 @@ import org.springframework.stereotype.Service;
 import uk.org.siri.siri20.*;
 
 import javax.annotation.PreDestroy;
+import java.lang.invoke.SerializedLambda;
 import java.math.BigInteger;
 import java.time.Instant;
 import java.time.ZonedDateTime;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+
 
 @Service
 @Configuration
@@ -62,9 +61,10 @@ public class ExtendedHazelcastService extends HazelCastService {
 
     private Logger logger = LoggerFactory.getLogger(ExtendedHazelcastService.class);
 
-    public ExtendedHazelcastService(@Value("${entur.hazelcast.backup.count.sync:2}") int backupCountSync) {
+
+    public ExtendedHazelcastService(@Value("${entur.hazelcast.backup.count.sync:2}") int backupCountSync, @Value("${anshar.hazelcast.members:}") List<String> members) {
         super(null);
-       // setBackupCount(backupCountSync);
+        // setBackupCount(backupCountSync);
     }
 
     public void addBeforeShuttingDownHook(Runnable destroyFunction) {
@@ -73,8 +73,7 @@ public class ExtendedHazelcastService extends HazelCastService {
             if (lifecycleEvent.getState().equals(LifecycleEvent.LifecycleState.SHUTTING_DOWN)) {
                 logger.info("Lifecycle: Shutting down - committing all changes.");
                 destroyFunction.run();
-            }
-            else {
+            } else {
                 logger.info("Lifecycle: Ignoring event {}", lifecycleEvent);
             }
         });
@@ -105,26 +104,27 @@ public class ExtendedHazelcastService extends HazelCastService {
 
         return Arrays.asList(
                 new SerializerConfig()
-                    .setTypeClass(EstimatedVehicleJourney.class)
-                    .setImplementation(new KryoSerializer()),
+                        .setTypeClass(EstimatedVehicleJourney.class)
+                        .setImplementation(new KryoSerializer()),
                 new SerializerConfig()
-                    .setTypeClass(PtSituationElement.class)
-                    .setImplementation(new KryoSerializer()),
+                        .setTypeClass(PtSituationElement.class)
+                        .setImplementation(new KryoSerializer()),
                 new SerializerConfig()
-                    .setTypeClass(VehicleActivityStructure.class)
-                    .setImplementation(new KryoSerializer()),
+                        .setTypeClass(VehicleActivityStructure.class)
+                        .setImplementation(new KryoSerializer()),
+
                 new SerializerConfig()
-                    .setTypeClass(MonitoredVehicleJourneyStructure.class)
-                    .setImplementation(new KryoSerializer()),
+                        .setTypeClass(MonitoredStopVisit.class)
+                        .setImplementation(new KryoSerializer()),
                 new SerializerConfig()
-                    .setTypeClass(JSONObject.class)
-                    .setImplementation(new KryoSerializer())
+                        .setTypeClass(JSONObject.class)
+                        .setImplementation(new KryoSerializer())
 
         );
     }
 
     @Bean
-    public IMap<SiriObjectStorageKey, PtSituationElement> getSituationsMap(){
+    public IMap<SiriObjectStorageKey, PtSituationElement> getSituationsMap() {
         return hazelcast.getMap("anshar.sx");
     }
 
@@ -134,7 +134,7 @@ public class ExtendedHazelcastService extends HazelCastService {
     }
 
     @Bean
-    public IMap<SiriObjectStorageKey, EstimatedVehicleJourney> getEstimatedTimetablesMap(){
+    public IMap<SiriObjectStorageKey, EstimatedVehicleJourney> getEstimatedTimetablesMap() {
         return hazelcast.getMap("anshar.et");
     }
 
@@ -144,7 +144,7 @@ public class ExtendedHazelcastService extends HazelCastService {
     }
 
     @Bean
-    public IMap<SiriObjectStorageKey, MonitoredStopVisit> getMonitoredStopVisits(){
+    public IMap<SiriObjectStorageKey, MonitoredStopVisit> getMonitoredStopVisits() {
         return hazelcast.getMap("anshar.sm");
     }
 
@@ -184,7 +184,7 @@ public class ExtendedHazelcastService extends HazelCastService {
     }
 
     @Bean
-    public IMap<SiriObjectStorageKey, VehicleActivityStructure> getVehiclesMap(){
+    public IMap<SiriObjectStorageKey, VehicleActivityStructure> getVehiclesMap() {
         return hazelcast.getMap("anshar.vm");
     }
 
@@ -194,12 +194,12 @@ public class ExtendedHazelcastService extends HazelCastService {
     }
 
     @Bean
-    public ReplicatedMap<String,SubscriptionSetup> getSubscriptionsMap() {
+    public ReplicatedMap<String, SubscriptionSetup> getSubscriptionsMap() {
         return hazelcast.getReplicatedMap("anshar.subscriptions.active");
     }
 
     @Bean
-    public ReplicatedMap<String,String> getValidationFilterMap() {
+    public ReplicatedMap<String, String> getValidationFilterMap() {
         return hazelcast.getReplicatedMap("anshar.validation.filter");
     }
 
@@ -294,23 +294,27 @@ public class ExtendedHazelcastService extends HazelCastService {
     public IMap<String, List<String>> getValidationResultRefMap() {
         return hazelcast.getMap("anshar.validation.results.ref");
     }
+
     @Bean
     public IMap<String, byte[]> getValidationResultSiriMap() {
         return hazelcast.getMap("anshar.validation.results.siri");
     }
+
     @Bean
     public IMap<String, JSONObject> getValidationResultJsonMap() {
         return hazelcast.getMap("anshar.validation.results.json");
     }
+
     @Bean
     public IMap<String, Long> getValidationSizeTracker() {
         return hazelcast.getMap("anshar.validation.results.size");
     }
 
     @Bean
-    public IMap<String,BigInteger> getObjectCounterMap() {
+    public IMap<String, BigInteger> getObjectCounterMap() {
         return hazelcast.getMap("anshar.activity.objectcount");
     }
+
     @Bean
     public IMap<String[], RequestorRefStats> getRequestorRefs() {
         return hazelcast.getMap("anshar.activity.requestorref");
@@ -326,37 +330,38 @@ public class ExtendedHazelcastService extends HazelCastService {
         JSONObject root = new JSONObject();
         JSONArray clusterMembers = new JSONArray();
         Cluster cluster = hazelcast.getCluster();
-        if (cluster != null) {
-            Set<Member> members = cluster.getMembers();
-            if (members != null && !members.isEmpty()) {
-                for (Member member : members) {
 
-                    JSONObject obj = new JSONObject();
-                    obj.put("uuid", member.getUuid().toString());
-                    obj.put("host", member.getAddress().getHost());
-                    obj.put("port", member.getAddress().getPort());
-                    obj.put("local", member.localMember());
+        Set<Member> members = cluster.getMembers();
+        if (!members.isEmpty()) {
+            for (Member member : members) {
 
-                    if (includeStats) {
-                        JSONObject stats = new JSONObject();
-                        Collection<DistributedObject> distributedObjects = hazelcast.getDistributedObjects();
-                        for (DistributedObject distributedObject : distributedObjects) {
+                JSONObject obj = new JSONObject();
+                obj.put("uuid", member.getUuid().toString());
+                obj.put("host", member.getAddress().getHost());
+                obj.put("port", member.getAddress().getPort());
+                obj.put("local", member.localMember());
 
-                            try {
-                                String jsonValue = jsonMapper.writeValueAsString(hazelcast.getMap(distributedObject.getName()).getLocalMapStats());
-                                stats.put(distributedObject.getName(), new org.json.JSONObject(jsonValue));
-                            } catch (JsonProcessingException e) {
-                                e.printStackTrace();
-                            }
+                if (includeStats) {
+                    JSONObject stats = new JSONObject();
+                    Collection<DistributedObject> distributedObjects = hazelcast.getDistributedObjects();
+                    for (DistributedObject distributedObject : distributedObjects) {
+
+                        try {
+                            String jsonValue = jsonMapper.writeValueAsString(hazelcast.getMap(distributedObject.getName()).getLocalMapStats());
+                            stats.put(distributedObject.getName(), new org.json.JSONObject(jsonValue));
+                        } catch (JsonProcessingException e) {
+                            e.printStackTrace();
                         }
-
-                        obj.put("localmapstats", stats);
                     }
-                    clusterMembers.add(obj);
+
+                    obj.put("localmapstats", stats);
                 }
+                clusterMembers.add(obj);
             }
         }
+
         root.put("members", clusterMembers);
         return root.toString();
+
     }
 }
