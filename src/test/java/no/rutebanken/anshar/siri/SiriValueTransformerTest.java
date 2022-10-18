@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.siri;
 
+import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.siri.adapters.NsrValueAdapters;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
@@ -41,6 +42,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -144,11 +146,58 @@ public class SiriValueTransformerTest extends SpringBootBaseTest {
         assertEquals(paddedLineRef, getLineRefFromSiriObj(siri), "LineRef has not been padded as expected");
         assertEquals(blockRefValue, getBlockRefFromSiriObj(siri), "BlockRef should not be padded");
 
-        Siri mappedIdSiri = SiriValueTransformer.transform(siri, MappingAdapterPresets.getOutboundAdapters(OutboundIdMappingPolicy.DEFAULT));
-        assertEquals(mappedLineRefValue, getLineRefFromSiriObj(mappedIdSiri), "Outbound adapters did not return mapped id");
+
 
         Siri originalIdSiri = SiriValueTransformer.transform(siri, MappingAdapterPresets.getOutboundAdapters(OutboundIdMappingPolicy.ORIGINAL_ID));
         assertEquals(lineRefValue, getLineRefFromSiriObj(originalIdSiri), "Outbound adapters did not return original id");
+
+    }
+
+    @Test
+    public void testOkinaMappingAdapters() throws JAXBException {
+        String lineRefValue = "123:4";
+        String blockRefValue = "";
+        String mappedLineRefValue = "TEST:Line:012304";
+        String stopRefValue = "OLDPREFIX:Stop:1234:SUFFIXTOREMOVE";
+
+
+        Siri siri = createSiriObject(lineRefValue, blockRefValue,stopRefValue,stopRefValue);
+
+        assertEquals(stopRefValue, getOriginFromSiriObj(siri));
+        assertEquals(stopRefValue, getDestinationfFromSiriObj(siri));
+
+
+
+        List<ValueAdapter> mappingAdapters = new ArrayList<>();
+        mappingAdapters.add(new RuterSubstringAdapter(LineRef.class, ':', '0', 2));
+        mappingAdapters.add(new LeftPaddingAdapter(LineRef.class, 6, '0'));
+        SubscriptionSetup subscriptionSetup = new SubscriptionSetup();
+        subscriptionSetup.setDatasetId("TEST");
+        subscriptionSetup.setSubscriptionType(SiriDataType.ESTIMATED_TIMETABLE);
+
+        mappingAdapters.addAll(new NsrValueAdapters().createIdPrefixAdapters(subscriptionSetup));
+
+        siri = SiriValueTransformer.transform(siri, mappingAdapters);
+
+
+
+
+
+        IdProcessingParameters idProcessingParameters = new IdProcessingParameters();
+        idProcessingParameters.setInputPrefixToRemove("OLDPREFIX:Stop:");
+        idProcessingParameters.setInputSuffixToRemove(":SUFFIXTOREMOVE");
+        idProcessingParameters.setOutputPrefixToAdd("NEWPREFFIX:");
+        idProcessingParameters.setOutputSuffixToAdd(":NEWSUFF");
+
+        Optional<IdProcessingParameters> stopIdProcessingParametersOpt = Optional.of(idProcessingParameters);
+
+        List<ValueAdapter> adapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.STOP_MONITORING, OutboundIdMappingPolicy.DEFAULT, stopIdProcessingParametersOpt);
+        Siri transformedSiri = SiriValueTransformer.transform(siri, adapters);
+
+
+        assertEquals("NEWPREFFIX:1234:NEWSUFF", getOriginFromSiriObj(transformedSiri));
+        assertEquals("NEWPREFFIX:1234:NEWSUFF", getDestinationfFromSiriObj(transformedSiri));
+
 
     }
 

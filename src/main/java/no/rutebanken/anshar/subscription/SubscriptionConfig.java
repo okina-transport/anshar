@@ -18,6 +18,8 @@ package no.rutebanken.anshar.subscription;
 
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.api.SiriApi;
+import no.rutebanken.anshar.config.IdProcessingParameters;
+import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.util.YamlPropertySourceFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -26,6 +28,7 @@ import org.springframework.context.annotation.PropertySource;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @PropertySource(value = "${anshar.subscriptions.config.path}", factory = YamlPropertySourceFactory.class)
@@ -38,6 +41,8 @@ public class SubscriptionConfig {
     private List<GtfsRTApi> gtfsRTApis = new ArrayList<>();
 
     private List<SiriApi> siriApis = new ArrayList<>();
+
+    private List<IdProcessingParameters> idProcessingParametrers = new ArrayList<>();
 
     @Value("${anshar.subscriptions.datatypes.filter:}")
     List<SiriDataType> dataTypes;
@@ -68,7 +73,20 @@ public class SubscriptionConfig {
         return siriApis;
     }
 
+    public List<IdProcessingParameters> getIdProcessingParameters() {
+        return idProcessingParametrers;
+    }
+
     public void setSiriApis(List<SiriApi> siriApis) {
         this.siriApis = siriApis;
+    }
+
+    public Optional<IdProcessingParameters> getIdParametersForDataset(String datasetId, ObjectType objectType){
+        for (IdProcessingParameters idProcessingParametrer : idProcessingParametrers) {
+            if (datasetId != null && datasetId.equals(idProcessingParametrer.getDatasetId()) && objectType != null && objectType.equals(idProcessingParametrer.getObjectType())) {
+                return Optional.of(idProcessingParametrer);
+            }
+        }
+        return Optional.empty();
     }
 }

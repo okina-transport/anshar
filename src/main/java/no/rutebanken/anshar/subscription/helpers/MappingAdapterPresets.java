@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.subscription.helpers;
 
+import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.processor.CodespaceOutboundProcessor;
 import no.rutebanken.anshar.routes.siri.processor.RemoveEmojiPostProcessor;
@@ -22,44 +23,75 @@ import no.rutebanken.anshar.routes.siri.processor.RuterOutboundDatedVehicleRefAd
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import no.rutebanken.anshar.subscription.SubscriptionConfig;
+import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.ifopt.siri20.StopPlaceRef;
 import uk.org.siri.siri20.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+
 
 public class MappingAdapterPresets {
 
     public static List<ValueAdapter> getOutboundAdapters(SiriDataType dataType, OutboundIdMappingPolicy outboundIdMappingPolicy) {
-        List<ValueAdapter> adapters = new ArrayList<>();
-        adapters.add(new OutboundIdAdapter(StopPointRef.class, outboundIdMappingPolicy));
-        adapters.add(new OutboundIdAdapter(LineRef.class, outboundIdMappingPolicy));
-        adapters.add(new CodespaceOutboundProcessor(outboundIdMappingPolicy));
-
-        switch (dataType) {
-            case ESTIMATED_TIMETABLE:
-                adapters.add(new OutboundIdAdapter(JourneyPlaceRefStructure.class, outboundIdMappingPolicy));
-                adapters.add(new OutboundIdAdapter(DestinationRef.class, outboundIdMappingPolicy));
-                break;
-            case VEHICLE_MONITORING:
-                adapters.add(new OutboundIdAdapter(JourneyPlaceRefStructure.class, outboundIdMappingPolicy));
-                adapters.add(new OutboundIdAdapter(DestinationRef.class, outboundIdMappingPolicy));
-                adapters.add(new OutboundIdAdapter(CourseOfJourneyRefStructure.class, outboundIdMappingPolicy));
-                adapters.add(new RuterOutboundDatedVehicleRefAdapter(MappingAdapterPresets.class, outboundIdMappingPolicy));
-                break;
-            case SITUATION_EXCHANGE:
-                adapters.add(new OutboundIdAdapter(RequestorRef.class, outboundIdMappingPolicy));
-                adapters.add(new OutboundIdAdapter(StopPlaceRef.class, outboundIdMappingPolicy));
-                adapters.add(new RemoveEmojiPostProcessor(outboundIdMappingPolicy));
-                break;
-            case STOP_MONITORING:
-                // TODO MHI
-                break;
-            default:
-                return getOutboundAdapters(outboundIdMappingPolicy);
-        }
-        return adapters;
+        return getOutboundAdapters(dataType, outboundIdMappingPolicy, Optional.empty());
     }
+
+    public static List<ValueAdapter> getOutboundAdapters(SiriDataType dataType, OutboundIdMappingPolicy outboundIdMappingPolicy, Optional<IdProcessingParameters> stopIdProcessingParametersOpt) {
+
+
+        OutboundIdAdapter stopIdAdapter = new OutboundIdAdapter(StopPointRef.class, outboundIdMappingPolicy);
+        OutboundIdAdapter monitoringRefAdapter = new OutboundIdAdapter(MonitoringRefStructure.class, outboundIdMappingPolicy);
+        OutboundIdAdapter destinationRefAdapter = new OutboundIdAdapter(DestinationRef.class, outboundIdMappingPolicy);
+        OutboundIdAdapter originRefAdapter = new OutboundIdAdapter(JourneyPlaceRefStructure.class, outboundIdMappingPolicy);
+
+        if (stopIdProcessingParametersOpt.isPresent()) {
+            IdProcessingParameters idProcessingParameters = stopIdProcessingParametersOpt.get();
+            stopIdAdapter.setIdProcessingParameters(idProcessingParameters);
+            monitoringRefAdapter.setIdProcessingParameters(idProcessingParameters);
+            destinationRefAdapter.setIdProcessingParameters(idProcessingParameters);
+            originRefAdapter.setIdProcessingParameters(idProcessingParameters);
+        }
+
+
+
+    List<ValueAdapter> adapters = new ArrayList<>();
+        adapters.add(stopIdAdapter);
+        adapters.add(monitoringRefAdapter);
+        adapters.add(destinationRefAdapter);
+        adapters.add(originRefAdapter);
+        adapters.add(new  OutboundIdAdapter(LineRef .class, outboundIdMappingPolicy));
+        adapters.add(new  CodespaceOutboundProcessor(outboundIdMappingPolicy));
+
+
+        switch(dataType)
+
+    {
+        case ESTIMATED_TIMETABLE:
+            adapters.add(new OutboundIdAdapter(JourneyPlaceRefStructure.class, outboundIdMappingPolicy));
+            adapters.add(new OutboundIdAdapter(DestinationRef.class, outboundIdMappingPolicy));
+            break;
+        case VEHICLE_MONITORING:
+          //  adapters.add(new OutboundIdAdapter(JourneyPlaceRefStructure.class, outboundIdMappingPolicy));
+            //adapters.add(new OutboundIdAdapter(DestinationRef.class, outboundIdMappingPolicy));
+            adapters.add(new OutboundIdAdapter(CourseOfJourneyRefStructure.class, outboundIdMappingPolicy));
+            adapters.add(new RuterOutboundDatedVehicleRefAdapter(MappingAdapterPresets.class, outboundIdMappingPolicy));
+            break;
+        case SITUATION_EXCHANGE:
+            adapters.add(new OutboundIdAdapter(RequestorRef.class, outboundIdMappingPolicy));
+            adapters.add(new OutboundIdAdapter(StopPlaceRef.class, outboundIdMappingPolicy));
+            adapters.add(new RemoveEmojiPostProcessor(outboundIdMappingPolicy));
+            break;
+        case STOP_MONITORING:
+            // TODO MHI
+            break;
+        default:
+            return getOutboundAdapters(outboundIdMappingPolicy);
+    }
+        return adapters;
+}
 
     public static List<ValueAdapter> getOutboundAdapters(OutboundIdMappingPolicy outboundIdMappingPolicy) {
         List<ValueAdapter> adapters = new ArrayList<>();

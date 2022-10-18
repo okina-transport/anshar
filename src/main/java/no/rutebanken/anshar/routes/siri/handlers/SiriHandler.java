@@ -17,6 +17,8 @@ package no.rutebanken.anshar.routes.siri.handlers;
 
 import io.micrometer.core.instrument.util.StringUtils;
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.config.IdProcessingParameters;
+import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.EstimatedTimetables;
 import no.rutebanken.anshar.data.MonitoredStopVisits;
 import no.rutebanken.anshar.data.Situations;
@@ -31,6 +33,7 @@ import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.routes.validation.SiriXmlValidator;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
@@ -75,14 +78,7 @@ import javax.xml.datatype.Duration;
 import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -129,6 +125,11 @@ public class SiriHandler {
     @Autowired
     private StopPlaceIdCache idCache;
 
+    @Autowired
+    private SubscriptionConfig subscriptionConfig;
+
+    private Map<String, String> datasetByLine = new HashMap<>();
+
     public Siri handleIncomingSiri(String subscriptionId, InputStream xml) throws UnmarshalException {
         return handleIncomingSiri(subscriptionId, xml, null, -1);
     }
@@ -138,10 +139,9 @@ public class SiriHandler {
     }
 
     /**
-     *
-     * @param subscriptionId SubscriptionId
-     * @param xml SIRI-request as XML
-     * @param datasetId Optional datasetId
+     * @param subscriptionId          SubscriptionId
+     * @param xml                     SIRI-request as XML
+     * @param datasetId               Optional datasetId
      * @param outboundIdMappingPolicy Defines outbound idmapping-policy
      * @return the siri response
      */
@@ -166,7 +166,7 @@ public class SiriHandler {
     }
 
     public Siri handleSiriCacheRequest(
-        InputStream body, String datasetId, String clientTrackingName
+            InputStream body, String datasetId, String clientTrackingName
     ) throws XMLStreamException, JAXBException {
 
         Siri incoming = SiriValueTransformer.parseXml(body);
@@ -186,19 +186,19 @@ public class SiriHandler {
                 dataType = SiriDataType.SITUATION_EXCHANGE;
 
                 final Collection<PtSituationElement> elements = situations.getAllCachedUpdates(requestorRef,
-                    datasetId,
-                    clientTrackingName
+                        datasetId,
+                        clientTrackingName
                 );
                 logger.info("Returning {} elements from cache", elements.size());
-                serviceResponse =  siriObjectFactory.createSXServiceDelivery(elements);
+                serviceResponse = siriObjectFactory.createSXServiceDelivery(elements);
 
             } else if (hasValues(serviceRequest.getVehicleMonitoringRequests())) {
                 dataType = SiriDataType.VEHICLE_MONITORING;
 
                 final Collection<VehicleActivityStructure> elements = vehicleActivities.getAllCachedUpdates(
-                    requestorRef,
-                    datasetId,
-                    clientTrackingName
+                        requestorRef,
+                        datasetId,
+                        clientTrackingName
                 );
                 logger.info("Returning {} elements from cache", elements.size());
                 serviceResponse = siriObjectFactory.createVMServiceDelivery(elements);
@@ -216,11 +216,12 @@ public class SiriHandler {
 
             if (serviceResponse != null) {
                 metrics.countOutgoingData(serviceResponse, SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE);
+
                 return SiriValueTransformer.transform(
-                    serviceResponse,
-                    MappingAdapterPresets.getOutboundAdapters(dataType, OutboundIdMappingPolicy.DEFAULT),
-                    false,
-                    false
+                        serviceResponse,
+                        MappingAdapterPresets.getOutboundAdapters(dataType, OutboundIdMappingPolicy.DEFAULT, subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.STOP)),
+                        false,
+                        false
                 );
             }
         }
@@ -231,9 +232,8 @@ public class SiriHandler {
     /**
      * Handling incoming requests from external clients
      *
-     * @param incoming incoming message
+     * @param incoming              incoming message
      * @param excludedDatasetIdList dataset to exclude
-     *
      */
     private Siri processSiriServerRequest(Siri incoming, String datasetId, List<String> excludedDatasetIdList, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String clientTrackingName) {
 
@@ -244,6 +244,8 @@ public class SiriHandler {
                 maxSize = Integer.MAX_VALUE;
             }
         }
+
+        List<ValueAdapter> valueAdapters = new ArrayList();
 
         if (incoming.getSubscriptionRequest() != null) {
             logger.info("Handling subscriptionrequest with ID-policy {}.", outboundIdMappingPolicy);
@@ -276,39 +278,43 @@ public class SiriHandler {
             SiriDataType dataType = null;
             if (hasValues(serviceRequest.getSituationExchangeRequests())) {
                 dataType = SiriDataType.SITUATION_EXCHANGE;
+                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy);
                 serviceResponse = situations.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize);
             } else if (hasValues(serviceRequest.getVehicleMonitoringRequests())) {
                 dataType = SiriDataType.VEHICLE_MONITORING;
+
                 Map<Class, Set<String>> filterMap = new HashMap<>();
                 for (VehicleMonitoringRequestStructure req : serviceRequest.getVehicleMonitoringRequests()) {
                     LineRef lineRef = req.getLineRef();
                     if (lineRef != null) {
-                        Set<String> linerefList = filterMap.get(LineRef.class) != null ? filterMap.get(LineRef.class): new HashSet<>();
+                        Set<String> linerefList = filterMap.get(LineRef.class) != null ? filterMap.get(LineRef.class) : new HashSet<>();
                         linerefList.add(lineRef.getValue());
                         filterMap.put(LineRef.class, linerefList);
                     }
                     VehicleRef vehicleRef = req.getVehicleRef();
                     if (vehicleRef != null) {
-                        Set<String> vehicleRefList = filterMap.get(VehicleRef.class) != null ? filterMap.get(VehicleRef.class): new HashSet<>();
+                        Set<String> vehicleRefList = filterMap.get(VehicleRef.class) != null ? filterMap.get(VehicleRef.class) : new HashSet<>();
                         vehicleRefList.add(vehicleRef.getValue());
                         filterMap.put(VehicleRef.class, vehicleRefList);
                     }
                 }
 
 
-                Set<String> lineRefList = filterMap.get(LineRef.class) != null ? filterMap.get(LineRef.class): new HashSet<>();
-                Set<String> vehicleRefList = filterMap.get(VehicleRef.class) != null ? filterMap.get(VehicleRef.class): new HashSet<>();
+                Set<String> lineRefList = filterMap.get(LineRef.class) != null ? filterMap.get(LineRef.class) : new HashSet<>();
+                Set<String> vehicleRefList = filterMap.get(VehicleRef.class) != null ? filterMap.get(VehicleRef.class) : new HashSet<>();
 
-                Siri siri = vehicleActivities.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize,lineRefList,vehicleRefList);
+                Optional<IdProcessingParameters> idParams = findStopIdProcessingParamsFromSearchedLines(datasetId, lineRefList, ObjectType.STOP);
+                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy,idParams);
+                Siri siri = vehicleActivities.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize, lineRefList, vehicleRefList);
                 serviceResponse = siri;
 
-                if (filterMap.get(LineRef.class) != null){
-                    List<String> invalidDataReferences  = filterMap.get(LineRef.class).stream()
+                if (filterMap.get(LineRef.class) != null) {
+                    List<String> invalidDataReferences = filterMap.get(LineRef.class).stream()
                             .filter(lineRef -> !subscriptionManager.isLineRefExistingInSubscriptions(lineRef))
                             .collect(Collectors.toList());
 
 
-                    handleInvalidDataReferences(serviceResponse,invalidDataReferences);
+                    handleInvalidDataReferences(serviceResponse, invalidDataReferences);
                 }
 
 
@@ -317,6 +323,7 @@ public class SiriHandler {
 
             } else if (hasValues(serviceRequest.getEstimatedTimetableRequests())) {
                 dataType = SiriDataType.ESTIMATED_TIMETABLE;
+                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy);
                 Duration previewInterval = serviceRequest.getEstimatedTimetableRequests().get(0).getPreviewInterval();
                 long previewIntervalInMillis = -1;
 
@@ -338,20 +345,26 @@ public class SiriHandler {
                 for (StopMonitoringRequestStructure req : serviceRequest.getStopMonitoringRequests()) {
                     MonitoringRefStructure monitoringRef = req.getMonitoringRef();
                     if (monitoringRef != null) {
-                        Set<String> monitoringRefs = filterMap.get(MonitoringRefStructure.class) != null ? filterMap.get(MonitoringRefStructure.class): new HashSet<>();
+                        Set<String> monitoringRefs = filterMap.get(MonitoringRefStructure.class) != null ? filterMap.get(MonitoringRefStructure.class) : new HashSet<>();
                         monitoringRefs.add(monitoringRef.getValue());
                         filterMap.put(MonitoringRefStructure.class, monitoringRefs);
 
-                        if (StringUtils.isEmpty(monitoringStringList)){
+                        if (StringUtils.isEmpty(monitoringStringList)) {
                             monitoringStringList = monitoringRef.getValue();
-                        }else{
+                        } else {
                             monitoringStringList = monitoringStringList + "|" + monitoringRef.getValue();
                         }
                     }
                 }
 
-                Set<String> monitoringRefs = filterMap.get(MonitoringRefStructure.class) != null ? filterMap.get(MonitoringRefStructure.class): new HashSet<>();
-                serviceResponse = monitoredStopVisits.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, monitoringRefs);
+
+                Set<String> originalMonitoringRefs = filterMap.get(MonitoringRefStructure.class) != null ? filterMap.get(MonitoringRefStructure.class) : new HashSet<>();
+                Optional<IdProcessingParameters> idParametersOpt = findStopIdProcessingParams(datasetId, originalMonitoringRefs, ObjectType.STOP);
+                Set<String> revertedMonitoringRefs = revertMonitoringRefs(originalMonitoringRefs, idParametersOpt);
+                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idParametersOpt);
+
+
+                serviceResponse = monitoredStopVisits.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, revertedMonitoringRefs);
                 logger.info("Asking for service delivery for requestorId={}, monitoringRef={}, clientTrackingName={}, datasetId={}", requestorRef, monitoringStringList, clientTrackingName, datasetId);
             }
 
@@ -359,16 +372,16 @@ public class SiriHandler {
             if (serviceResponse != null) {
                 metrics.countOutgoingData(serviceResponse, SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE);
                 return SiriValueTransformer.transform(
-                    serviceResponse,
-                    MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy),
-                    false,
-                    false
+                        serviceResponse,
+                        valueAdapters,
+                        false,
+                        false
                 );
             }
-        }else if (incoming.getStopPointsRequest() != null){
+        } else if (incoming.getStopPointsRequest() != null) {
             // stop discovery request
             return getDiscoveryStopPoints(datasetId);
-        }else if (incoming.getLinesRequest() != null){
+        } else if (incoming.getLinesRequest() != null) {
             // lines discovery request (for vehicle monitoring)
             return getDiscoveryLines(datasetId);
         }
@@ -378,17 +391,139 @@ public class SiriHandler {
 
 
     /**
-     * Creates a siri response with all lines existing in the cache, for vehicle Monitoring
+     * Revert searched Ids by user to go back to an original id
+     *
+     * @param originalMonitoringRefs the original ids that must be reverted
+     * @param idParametersOpt        id parameters to apply to go back to original ids
      * @return
-     *  the siri response with all points
+     */
+    private Set<String> revertMonitoringRefs(Set<String> originalMonitoringRefs, Optional<IdProcessingParameters> idParametersOpt) {
+        if (!idParametersOpt.isPresent()) {
+            return originalMonitoringRefs;
+        }
+
+        IdProcessingParameters idParams = idParametersOpt.get();
+        Set<String> revertedIds = new HashSet<>();
+
+        for (String originalMonitoringRef : originalMonitoringRefs) {
+
+            if (StringUtils.isNotEmpty(idParams.getOutputPrefixToAdd()) && originalMonitoringRef.startsWith(idParams.getOutputPrefixToAdd())) {
+                originalMonitoringRef = originalMonitoringRef.substring(idParams.getOutputPrefixToAdd().length());
+            }
+
+            if (StringUtils.isNotEmpty(idParams.getOutputSuffixToAdd()) && originalMonitoringRef.endsWith(idParams.getOutputSuffixToAdd())) {
+                originalMonitoringRef = originalMonitoringRef.substring(0, originalMonitoringRef.length() - idParams.getOutputSuffixToAdd().length());
+            }
+
+            if (StringUtils.isNotEmpty(idParams.getInputPrefixToRemove())) {
+                originalMonitoringRef = idParams.getInputPrefixToRemove() + originalMonitoringRef;
+            }
+
+            if (StringUtils.isNotEmpty(idParams.getInputSuffixToRemove())) {
+                originalMonitoringRef = originalMonitoringRef + idParams.getInputSuffixToRemove();
+            }
+            revertedIds.add(originalMonitoringRef);
+        }
+        return revertedIds;
+    }
+
+    private Optional<IdProcessingParameters> findStopIdProcessingParamsFromSearchedLines(String datasetId, Set<String> searchedLines, ObjectType objectType) {
+        if (StringUtils.isNotEmpty(datasetId)) {
+            //a datasetId has been specified by user, in the header. This dataset is used to recover id parameters
+            return subscriptionConfig.getIdParametersForDataset(datasetId, objectType);
+        } else {
+            // no datasetId has been specified by user. trying to guss parameters using searched ids
+            return guessIdParametersFromLineSubscriptions(searchedLines, objectType);
+        }
+    }
+
+    /**
+     * Recover stopId parameters
+     *
+     * @param datasetId      dataset specified by user in the header
+     * @param monitoringRefs set of ids that user searched
+     * @return the id processing parameters
+     */
+    private Optional<IdProcessingParameters> findStopIdProcessingParams(String datasetId, Set<String> monitoringRefs, ObjectType objectType) {
+        if (StringUtils.isNotEmpty(datasetId)) {
+            //a datasetId has been specified by user, in the header. This dataset is used to recover id parameters
+            return subscriptionConfig.getIdParametersForDataset(datasetId, objectType);
+        } else {
+            // no datasetId has been specified by user. trying to guss parameters using searched ids
+            return guessIdParametersFromSearch(monitoringRefs, objectType);
+        }
+    }
+
+
+    private Optional<IdProcessingParameters> guessIdParametersFromLineSubscriptions(Set<String> searchedIds, ObjectType objectType) {
+        Set<IdProcessingParameters> guessedParameters = new HashSet<>();
+
+        for (String searchedId : searchedIds) {
+
+            if (datasetByLine.containsKey(searchedId)){
+                String dataset = datasetByLine.get(searchedId);
+                Optional<IdProcessingParameters> idParamsOpt = subscriptionConfig.getIdParametersForDataset(dataset, objectType);
+                idParamsOpt.ifPresent(guessedParameters::add);
+            }else{
+
+                Optional<SubscriptionSetup> foundSubscription = subscriptionManager.getAllSubscriptions(SiriDataType.VEHICLE_MONITORING).stream()
+                                                                                    .filter(subscription ->subscription.getLineRefValue()!=null && subscription.getLineRefValue().equals(searchedId))
+                                                                                    .findFirst();
+
+                foundSubscription.ifPresent(subs -> {
+                    String datasetId = subs.getDatasetId();
+                    datasetByLine.put(searchedId, datasetId);
+                    Optional<IdProcessingParameters> idParamsOpt = subscriptionConfig.getIdParametersForDataset(datasetId, objectType);
+                    idParamsOpt.ifPresent(guessedParameters::add);
+                });
+            }
+        }
+
+        return guessedParameters.size() == 1 ? guessedParameters.stream().findFirst() : Optional.empty();
+
+    }
+
+
+    /**
+     * Guess idParameters that must be applied, based on the search made by user.
+     * e.g : if users searched : PROVIDER:Quay:xxxx  , we are looking for idParameters with outputprefixtoAdd = PROVIDER:Quay:
+     *
+     * @param searchedIds the id for which id parameters must be recovered
+     * @return the id parameters
+     */
+    private Optional<IdProcessingParameters> guessIdParametersFromSearch(Set<String> searchedIds, ObjectType objectType) {
+
+        Set<IdProcessingParameters> guessedParameters = new HashSet<>();
+
+        for (String searchedId : searchedIds) {
+
+            for (IdProcessingParameters idProcessingParameter : subscriptionConfig.getIdProcessingParameters()) {
+                if (objectType != null && objectType.equals(idProcessingParameter.getObjectType()) &&
+                        (idProcessingParameter.getOutputPrefixToAdd() == null || searchedId.startsWith(idProcessingParameter.getOutputPrefixToAdd()))
+                        &&
+                        (idProcessingParameter.getOutputSuffixToAdd() == null || searchedId.endsWith(idProcessingParameter.getOutputSuffixToAdd()))) {
+                    guessedParameters.add(idProcessingParameter);
+                }
+            }
+        }
+
+        return guessedParameters.size() == 1 ? guessedParameters.stream().findFirst() : Optional.empty();
+
+    }
+
+
+    /**
+     * Creates a siri response with all lines existing in the cache, for vehicle Monitoring
+     *
+     * @return the siri response with all points
      */
     private Siri getDiscoveryLines(String datasetId) {
         List<AnnotatedLineRef> resultList = subscriptionManager.getAllSubscriptions(SiriDataType.VEHICLE_MONITORING).stream()
-                                                            .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))
-                                                            .map(SubscriptionSetup::getLineRefValue)
-                                                            .filter(lineRef -> lineRef != null)
-                                                            .map(this::convertKeyToLineRef)
-                                                            .collect(Collectors.toList());
+                .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))
+                .map(SubscriptionSetup::getLineRefValue)
+                .filter(lineRef -> lineRef != null)
+                .map(this::convertKeyToLineRef)
+                .collect(Collectors.toList());
 
         return siriObjectFactory.createLinesDiscoveryDelivery(resultList);
 
@@ -397,35 +532,78 @@ public class SiriHandler {
 
     /**
      * Creates a siri response with all points existing in the cache
-     * @return
-     *  the siri response with all points
+     *
+     * @return the siri response with all points
      */
-    public Siri getDiscoveryStopPoints(String datasetId){
+    public Siri getDiscoveryStopPoints(String datasetId) {
 
 
-        List<String> monitoringRefList = subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING).stream()
-                                                            .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))
-                                                            .map(SubscriptionSetup::getStopMonitoringRefValue)
-                                                            .collect(Collectors.toList());
+        List<SubscriptionSetup> subscriptionList = subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING).stream()
+                                                                        .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))
+                                                                        .collect(Collectors.toList());
+
+        List<String> datasetList = subscriptionList.stream()
+                                                   .map(SubscriptionSetup::getDatasetId)
+                                                   .distinct()
+                                                   .collect(Collectors.toList());
+
+        Map<String, IdProcessingParameters> idProcessingMap = buildStopIdProcessingMap(datasetList);
+
+
+        List<String> monitoringRefList = subscriptionList.stream()
+                                                         .map(subscription -> extractAndTransformStopId(subscription, idProcessingMap))
+                                                         .collect(Collectors.toList());
 
         //traceUnknownStopPoints(monitoringRefList);
 
         List<AnnotatedStopPointStructure> resultList = monitoringRefList.stream()
-                                                                        .map(this::convertKeyToPointStructure)
-                                                                        .collect(Collectors.toList());
+                .map(this::convertKeyToPointStructure)
+                .collect(Collectors.toList());
 
         return siriObjectFactory.createStopPointsDiscoveryDelivery(resultList);
     }
 
     /**
-     * Function to trace the list of points that are unknown from theorical data
-     * @param stopPointList
-     *      The list of stop points id to check
+     * Extract a stopId from a subscriptionSetup and transforms it, with idProcessingParams
+     * @param subscriptionSetup
+     *      the subscriptionSetup for which the stop id must be recovered
+     * @param idProcessingMap
+     *      the map that associate datasetId to idProcessingParams
+     * @return
+     *      the transformed stop id
      */
-    private void traceUnknownStopPoints(List<String> stopPointList){
+    private String extractAndTransformStopId(SubscriptionSetup subscriptionSetup,  Map<String, IdProcessingParameters> idProcessingMap){
+            String stopId = subscriptionSetup.getStopMonitoringRefValue();
+            String datasetId = subscriptionSetup.getDatasetId();
+
+            return idProcessingMap.containsKey(datasetId) ? idProcessingMap.get(datasetId).applyTransformationToString(stopId) : stopId;
+    }
+
+    /**
+     * Builds a map with key = datasetId and value = idProcessingParams for this dataset and objectType = stop
+     * @param datasetList
+     *
+     * @return
+     */
+    private Map<String, IdProcessingParameters> buildStopIdProcessingMap(List<String> datasetList){
+        Map<String, IdProcessingParameters> resultMap = new HashMap<>();
+
+        for (String dataset : datasetList) {
+            Optional<IdProcessingParameters> idParamsOpt = subscriptionConfig.getIdParametersForDataset(dataset, ObjectType.STOP);
+            idParamsOpt.ifPresent(idParams -> resultMap.put(dataset, idParams));
+        }
+        return resultMap;
+    }
+
+    /**
+     * Function to trace the list of points that are unknown from theorical data
+     *
+     * @param stopPointList The list of stop points id to check
+     */
+    private void traceUnknownStopPoints(List<String> stopPointList) {
         List<String> unknownPoints = stopPointList.stream()
-                                                .filter(stopPointId -> !idCache.isKnownImportedId(stopPointId))
-                                                .collect(Collectors.toList());
+                .filter(stopPointId -> !idCache.isKnownImportedId(stopPointId))
+                .collect(Collectors.toList());
 
         logger.warn("These points were received in real-time data but are unknown from theorical data :" + unknownPoints.stream().collect(Collectors.joining(",")));
 
@@ -435,12 +613,10 @@ public class SiriHandler {
     /**
      * Converts a stop reference to an annotatedStopPointStructure
      *
-     * @param stopRef
-     *      the stop reference
-     * @return
-     *      the annotated stop point structure that will be included in siri response
+     * @param stopRef the stop reference
+     * @return the annotated stop point structure that will be included in siri response
      */
-    private AnnotatedStopPointStructure convertKeyToPointStructure(String stopRef){
+    private AnnotatedStopPointStructure convertKeyToPointStructure(String stopRef) {
         AnnotatedStopPointStructure pointStruct = new AnnotatedStopPointStructure();
         StopPointRef stopPointRef = new StopPointRef();
         stopPointRef.setValue(stopRef);
@@ -452,12 +628,10 @@ public class SiriHandler {
     /**
      * Converts a line reference to an annotatedLineRef
      *
-     * @param lineRefStr
-     *      the line reference
-     * @return
-     *      the annotated lineref that will be included in siri response
+     * @param lineRefStr the line reference
+     * @return the annotated lineref that will be included in siri response
      */
-    private AnnotatedLineRef convertKeyToLineRef(String lineRefStr){
+    private AnnotatedLineRef convertKeyToLineRef(String lineRefStr) {
         AnnotatedLineRef annotatedLineRef = new AnnotatedLineRef();
         LineRef lineRefSiri = new LineRef();
         lineRefSiri.setValue(lineRefStr);
@@ -468,12 +642,11 @@ public class SiriHandler {
 
     /**
      * Check if there are invalid references and write them to server response
-     * @param siri
-     *    the response that will be sent to client
-     * @param invalidDataReferences
-     *    list of invalid data references (invalid references are references requested by client that doesn't exist in subcriptions)
+     *
+     * @param siri                  the response that will be sent to client
+     * @param invalidDataReferences list of invalid data references (invalid references are references requested by client that doesn't exist in subcriptions)
      */
-    private void handleInvalidDataReferences(Siri siri, List<String> invalidDataReferences){
+    private void handleInvalidDataReferences(Siri siri, List<String> invalidDataReferences) {
         if (invalidDataReferences.isEmpty() || siri.getServiceDelivery().getVehicleMonitoringDeliveries().size() == 0)
             return;
 
@@ -487,20 +660,20 @@ public class SiriHandler {
         errorCondition.setDescription(errorDesc);
         siri.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).setErrorCondition(errorCondition);
         String requestMsgRef = siri.getServiceDelivery().getRequestMessageRef().getValue();
-        siri.getServiceDelivery().getVehicleMonitoringDeliveries().forEach(vm-> logger.info("requestorRef:"+requestMsgRef + " - " + getErrorContents(vm.getErrorCondition())));
+        siri.getServiceDelivery().getVehicleMonitoringDeliveries().forEach(vm -> logger.info("requestorRef:" + requestMsgRef + " - " + getErrorContents(vm.getErrorCondition())));
 
     }
 
 
     /**
      * Count the number of vehicleActivities existing in the response
+     *
      * @param siri
-     * @return
-     * the number of vehicle activities
+     * @return the number of vehicle activities
      */
-    private int countVehicleActivityResults(Siri siri){
+    private int countVehicleActivityResults(Siri siri) {
         int nbOfResults = 0;
-        if (siri.getServiceDelivery() != null && siri.getServiceDelivery().getVehicleMonitoringDeliveries() != null){
+        if (siri.getServiceDelivery() != null && siri.getServiceDelivery().getVehicleMonitoringDeliveries() != null) {
             for (VehicleMonitoringDeliveryStructure vehicleMonitoringDelivery : siri.getServiceDelivery().getVehicleMonitoringDeliveries()) {
                 if (vehicleMonitoringDelivery.getVehicleActivities() == null)
                     continue;
@@ -519,7 +692,7 @@ public class SiriHandler {
      * Handling incoming requests from external servers
      *
      * @param subscriptionId the subscription's id
-     * @param xml the incoming message
+     * @param xml            the incoming message
      */
     private void processSiriClientRequest(String subscriptionId, InputStream xml)
             throws XMLStreamException, JAXBException {
@@ -533,10 +706,10 @@ public class SiriHandler {
             } catch (IOException e) {
                 receivedBytes = 0;
             }
-long t1 = System.currentTimeMillis();
+            long t1 = System.currentTimeMillis();
             Siri incoming = SiriXml.parseXml(xml);
-long t2 = System.currentTimeMillis();
-            logger.debug("Parsing XML took {} ms, {} bytes", (t2-t1), receivedBytes);
+            long t2 = System.currentTimeMillis();
+            logger.debug("Parsing XML took {} ms, {} bytes", (t2 - t1), receivedBytes);
             if (incoming == null) {
                 return;
             }
@@ -546,12 +719,12 @@ long t2 = System.currentTimeMillis();
                 logger.info("Heartbeat - {}", subscriptionSetup);
             } else if (incoming.getCheckStatusResponse() != null) {
                 logger.info("Incoming CheckStatusResponse [{}], reporting ServiceStartedTime: {}", subscriptionSetup, incoming.getCheckStatusResponse().getServiceStartedTime());
-                subscriptionManager.touchSubscription(subscriptionId, incoming.getCheckStatusResponse().getServiceStartedTime(),null);
+                subscriptionManager.touchSubscription(subscriptionId, incoming.getCheckStatusResponse().getServiceStartedTime(), null);
             } else if (incoming.getSubscriptionResponse() != null) {
                 SubscriptionResponseStructure subscriptionResponse = incoming.getSubscriptionResponse();
                 subscriptionResponse.getResponseStatuses().forEach(responseStatus -> {
                     if (responseStatus.isStatus() == null ||
-                        (responseStatus.isStatus() != null && responseStatus.isStatus())) {
+                            (responseStatus.isStatus() != null && responseStatus.isStatus())) {
 
                         // If no status is provided it is handled as "true"
 
@@ -627,7 +800,7 @@ long t2 = System.currentTimeMillis();
                 }
                 if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.VEHICLE_MONITORING)) {
                     List<VehicleMonitoringDeliveryStructure> vehicleMonitoringDeliveries = incoming.getServiceDelivery().getVehicleMonitoringDeliveries();
-                    logger.debug("Got VM-delivery: Subscription [{}] {}", subscriptionSetup, subscriptionSetup.forwardPositionData() ? "- Position only":"");
+                    logger.debug("Got VM-delivery: Subscription [{}] {}", subscriptionSetup, subscriptionSetup.forwardPositionData() ? "- Position only" : "");
                     monitoredRef = getLineRef(incoming);
 
                     List<VehicleActivityStructure> addedOrUpdated = new ArrayList<>();
@@ -782,6 +955,7 @@ long t2 = System.currentTimeMillis();
 
     /**
      * Handling incoming requests from external servers
+     *
      * @param subscriptionIds
      * @param xml
      * @param dataFormat
@@ -846,7 +1020,7 @@ long t2 = System.currentTimeMillis();
                     }
                     deliveryContainsData = addedOrUpdated.size() > 0;
 
-                    for(SubscriptionSetup subscriptionSetup : subscriptionSetupList){
+                    for (SubscriptionSetup subscriptionSetup : subscriptionSetupList) {
                         subscriptionManager.incrementObjectCounter(subscriptionSetup, 1);
 //                        logger.info("Active SX-elements: {}, current delivery: {}, {}", situations.getSize(), addedOrUpdated.size(), subscriptionSetup);
                     }
@@ -881,7 +1055,7 @@ long t2 = System.currentTimeMillis();
 
                     serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, dataSetId);
 
-                    for(SubscriptionSetup subscriptionSetup : subscriptionSetupList) {
+                    for (SubscriptionSetup subscriptionSetup : subscriptionSetupList) {
                         List<EstimatedVehicleJourney> addedOrUpdatedBySubscription = addedOrUpdated
                                 .stream()
                                 .filter(estimatedVehicleJourney -> estimatedVehicleJourney.getLineRef().getValue().equals(subscriptionSetup.getLineRefValue()))
@@ -917,7 +1091,7 @@ long t2 = System.currentTimeMillis();
 
                     serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, dataSetId);
 
-                    for(SubscriptionSetup subscriptionSetup : subscriptionSetupList) {
+                    for (SubscriptionSetup subscriptionSetup : subscriptionSetupList) {
                         List<MonitoredStopVisit> addedOrUpdatedBySubscription = addedOrUpdated
                                 .stream()
                                 .filter(monitoredStopVisit -> monitoredStopVisit.getMonitoringRef().getValue().equals(subscriptionSetup.getStopMonitoringRefValue()))
@@ -932,7 +1106,7 @@ long t2 = System.currentTimeMillis();
                     if (deliveryContainsData) {
                         subscriptionManager.dataReceived(subscriptionSetup.getSubscriptionId(), receivedBytes, monitoredRef, false);
                     } else {
-                        subscriptionManager.touchSubscription(subscriptionSetup.getSubscriptionId(), null,false);
+                        subscriptionManager.touchSubscription(subscriptionSetup.getSubscriptionId(), null, false);
                     }
                 }
             }
@@ -940,10 +1114,9 @@ long t2 = System.currentTimeMillis();
     }
 
 
-
     public Collection<VehicleActivityStructure> ingestVehicleActivities(String datasetId, List<VehicleActivityStructure> incomingVehicleActivities) {
         Collection<VehicleActivityStructure> result = vehicleActivities.addAll(datasetId, incomingVehicleActivities);
-        if (result.size() > 0){
+        if (result.size() > 0) {
             serverSubscriptionManager.pushUpdatesAsync(SiriDataType.VEHICLE_MONITORING, incomingVehicleActivities, datasetId);
         }
         return result;
@@ -974,8 +1147,8 @@ long t2 = System.currentTimeMillis();
         return result;
     }
 
-    public void removeSituation(String datasetId, PtSituationElement situation ){
-        situations.removeSituation(datasetId, situation );
+    public void removeSituation(String datasetId, PtSituationElement situation) {
+        situations.removeSituation(datasetId, situation);
     }
 
 
@@ -1003,12 +1176,11 @@ long t2 = System.currentTimeMillis();
 
     /**
      * Read incoming data to find the lineRef (to identify which line has received data)
-     * @param incomingData
-     *  incoming message
-     * @return
-     *  A string with all lines found in the incoming message
+     *
+     * @param incomingData incoming message
+     * @return A string with all lines found in the incoming message
      */
-    private String getLineRef(Siri incomingData){
+    private String getLineRef(Siri incomingData) {
         List<VehicleMonitoringDeliveryStructure> vehicleDeliveries = incomingData.getServiceDelivery().getVehicleMonitoringDeliveries();
         List<String> lineRefs = new ArrayList<>();
 
@@ -1018,12 +1190,12 @@ long t2 = System.currentTimeMillis();
             }
         }
         return lineRefs.stream()
-                        .distinct()
-                        .collect(Collectors.joining(","));
+                .distinct()
+                .collect(Collectors.joining(","));
     }
 
     private Map<String, List<PtSituationElement>> splitSituationsByCodespace(
-        List<PtSituationElement> ptSituationElements
+            List<PtSituationElement> ptSituationElements
     ) {
         Map<String, List<PtSituationElement>> result = new HashMap<>();
         for (PtSituationElement ptSituationElement : ptSituationElements) {
@@ -1035,8 +1207,8 @@ long t2 = System.currentTimeMillis();
                 participantRef.setValue(codespace);
 
                 final List<PtSituationElement> situations = result.getOrDefault(
-                    codespace,
-                    new ArrayList<>()
+                        codespace,
+                        new ArrayList<>()
                 );
 
                 situations.add(ptSituationElement);
@@ -1129,22 +1301,54 @@ long t2 = System.currentTimeMillis();
 
             String description = getDescriptionText(errorCondition.getDescription());
 
-            if (accessNotAllowed != null) {errorMap.put("accessNotAllowed", accessNotAllowed);}
-            if (allowedResourceUsageExceeded != null) {errorMap.put("allowedResourceUsageExceeded", allowedResourceUsageExceeded);}
-            if (beyondDataHorizon != null) {errorMap.put("beyondDataHorizon", beyondDataHorizon);}
-            if (capabilityNotSupportedError != null) {errorMap.put("capabilityNotSupportedError", capabilityNotSupportedError);}
-            if (endpointDeniedAccessError != null) {errorMap.put("endpointDeniedAccessError", endpointDeniedAccessError);}
-            if (endpointNotAvailableAccessError != null) {errorMap.put("endpointNotAvailableAccessError", endpointNotAvailableAccessError);}
-            if (invalidDataReferencesError != null) {errorMap.put("invalidDataReferencesError", invalidDataReferencesError);}
-            if (parametersIgnoredError != null) {errorMap.put("parametersIgnoredError", parametersIgnoredError);}
-            if (serviceNotAvailableError != null) {errorMap.put("serviceNotAvailableError", serviceNotAvailableError);}
-            if (unapprovedKeyAccessError != null) {errorMap.put("unapprovedKeyAccessError", unapprovedKeyAccessError);}
-            if (unknownEndpointError != null) {errorMap.put("unknownEndpointError", unknownEndpointError);}
-            if (unknownExtensionsError != null) {errorMap.put("unknownExtensionsError", unknownExtensionsError);}
-            if (unknownParticipantError != null) {errorMap.put("unknownParticipantError", unknownParticipantError);}
-            if (noInfoForTopicError != null) {errorMap.put("noInfoForTopicError", noInfoForTopicError);}
-            if (otherError != null) {errorMap.put("otherError", otherError);}
-            if (description != null) {errorMap.put("description", description);}
+            if (accessNotAllowed != null) {
+                errorMap.put("accessNotAllowed", accessNotAllowed);
+            }
+            if (allowedResourceUsageExceeded != null) {
+                errorMap.put("allowedResourceUsageExceeded", allowedResourceUsageExceeded);
+            }
+            if (beyondDataHorizon != null) {
+                errorMap.put("beyondDataHorizon", beyondDataHorizon);
+            }
+            if (capabilityNotSupportedError != null) {
+                errorMap.put("capabilityNotSupportedError", capabilityNotSupportedError);
+            }
+            if (endpointDeniedAccessError != null) {
+                errorMap.put("endpointDeniedAccessError", endpointDeniedAccessError);
+            }
+            if (endpointNotAvailableAccessError != null) {
+                errorMap.put("endpointNotAvailableAccessError", endpointNotAvailableAccessError);
+            }
+            if (invalidDataReferencesError != null) {
+                errorMap.put("invalidDataReferencesError", invalidDataReferencesError);
+            }
+            if (parametersIgnoredError != null) {
+                errorMap.put("parametersIgnoredError", parametersIgnoredError);
+            }
+            if (serviceNotAvailableError != null) {
+                errorMap.put("serviceNotAvailableError", serviceNotAvailableError);
+            }
+            if (unapprovedKeyAccessError != null) {
+                errorMap.put("unapprovedKeyAccessError", unapprovedKeyAccessError);
+            }
+            if (unknownEndpointError != null) {
+                errorMap.put("unknownEndpointError", unknownEndpointError);
+            }
+            if (unknownExtensionsError != null) {
+                errorMap.put("unknownExtensionsError", unknownExtensionsError);
+            }
+            if (unknownParticipantError != null) {
+                errorMap.put("unknownParticipantError", unknownParticipantError);
+            }
+            if (noInfoForTopicError != null) {
+                errorMap.put("noInfoForTopicError", noInfoForTopicError);
+            }
+            if (otherError != null) {
+                errorMap.put("otherError", otherError);
+            }
+            if (description != null) {
+                errorMap.put("description", description);
+            }
 
             errorContents = JSONObject.toJSONString(errorMap);
         }
@@ -1157,6 +1361,7 @@ long t2 = System.currentTimeMillis();
         }
         return null;
     }
+
     private String getDescriptionText(ErrorDescriptionStructure description) {
         if (description != null) {
             return description.getValue();
