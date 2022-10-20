@@ -16,6 +16,7 @@
 package no.rutebanken.anshar.subscription.helpers;
 
 import no.rutebanken.anshar.config.IdProcessingParameters;
+import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.processor.CodespaceOutboundProcessor;
 import no.rutebanken.anshar.routes.siri.processor.RemoveEmojiPostProcessor;
@@ -28,33 +29,49 @@ import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.ifopt.siri20.StopPlaceRef;
 import uk.org.siri.siri20.*;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 
 public class MappingAdapterPresets {
 
     public static List<ValueAdapter> getOutboundAdapters(SiriDataType dataType, OutboundIdMappingPolicy outboundIdMappingPolicy) {
-        return getOutboundAdapters(dataType, outboundIdMappingPolicy, Optional.empty());
+        return getOutboundAdapters(dataType, outboundIdMappingPolicy, new HashMap<>());
     }
 
-    public static List<ValueAdapter> getOutboundAdapters(SiriDataType dataType, OutboundIdMappingPolicy outboundIdMappingPolicy, Optional<IdProcessingParameters> stopIdProcessingParametersOpt) {
+    public static List<ValueAdapter> getOutboundAdapters(SiriDataType dataType, OutboundIdMappingPolicy outboundIdMappingPolicy, Map<ObjectType, Optional<IdProcessingParameters>> idProcessingMap) {
 
 
         OutboundIdAdapter stopIdAdapter = new OutboundIdAdapter(StopPointRef.class, outboundIdMappingPolicy);
         OutboundIdAdapter monitoringRefAdapter = new OutboundIdAdapter(MonitoringRefStructure.class, outboundIdMappingPolicy);
         OutboundIdAdapter destinationRefAdapter = new OutboundIdAdapter(DestinationRef.class, outboundIdMappingPolicy);
         OutboundIdAdapter originRefAdapter = new OutboundIdAdapter(JourneyPlaceRefStructure.class, outboundIdMappingPolicy);
+        OutboundIdAdapter lineRefAdapter = new  OutboundIdAdapter(LineRef .class, outboundIdMappingPolicy);
+        RuterOutboundDatedVehicleRefAdapter datedVjRefAdapter = new  RuterOutboundDatedVehicleRefAdapter(MappingAdapterPresets .class, outboundIdMappingPolicy);
+        OutboundIdAdapter operatorRefAdapter = new  OutboundIdAdapter(OperatorRefStructure .class, outboundIdMappingPolicy);
 
-        if (stopIdProcessingParametersOpt.isPresent()) {
-            IdProcessingParameters idProcessingParameters = stopIdProcessingParametersOpt.get();
+
+        if (idProcessingMap.containsKey(ObjectType.STOP) && idProcessingMap.get(ObjectType.STOP).isPresent()) {
+            IdProcessingParameters idProcessingParameters = idProcessingMap.get(ObjectType.STOP).get();
             stopIdAdapter.setIdProcessingParameters(idProcessingParameters);
             monitoringRefAdapter.setIdProcessingParameters(idProcessingParameters);
             destinationRefAdapter.setIdProcessingParameters(idProcessingParameters);
             originRefAdapter.setIdProcessingParameters(idProcessingParameters);
         }
 
+        if (idProcessingMap.containsKey(ObjectType.LINE) && idProcessingMap.get(ObjectType.LINE).isPresent()) {
+            IdProcessingParameters lineIdProcessingParameters = idProcessingMap.get(ObjectType.LINE).get();
+            lineRefAdapter.setIdProcessingParameters(lineIdProcessingParameters);
+        }
+
+        if (idProcessingMap.containsKey(ObjectType.VEHICLE_JOURNEY) && idProcessingMap.get(ObjectType.VEHICLE_JOURNEY).isPresent()) {
+            IdProcessingParameters vehicleIdProcessingParameters = idProcessingMap.get(ObjectType.VEHICLE_JOURNEY).get();
+            datedVjRefAdapter.setIdProcessingParameters(vehicleIdProcessingParameters);
+        }
+
+        if (idProcessingMap.containsKey(ObjectType.OPERATOR) && idProcessingMap.get(ObjectType.OPERATOR).isPresent()) {
+            IdProcessingParameters operatorIdParams = idProcessingMap.get(ObjectType.OPERATOR).get();
+            operatorRefAdapter.setIdProcessingParameters(operatorIdParams);
+        }
 
 
     List<ValueAdapter> adapters = new ArrayList<>();
@@ -62,7 +79,9 @@ public class MappingAdapterPresets {
         adapters.add(monitoringRefAdapter);
         adapters.add(destinationRefAdapter);
         adapters.add(originRefAdapter);
-        adapters.add(new  OutboundIdAdapter(LineRef .class, outboundIdMappingPolicy));
+        adapters.add(lineRefAdapter);
+        adapters.add(datedVjRefAdapter);
+        adapters.add(operatorRefAdapter);
         adapters.add(new  CodespaceOutboundProcessor(outboundIdMappingPolicy));
 
 
@@ -77,7 +96,7 @@ public class MappingAdapterPresets {
           //  adapters.add(new OutboundIdAdapter(JourneyPlaceRefStructure.class, outboundIdMappingPolicy));
             //adapters.add(new OutboundIdAdapter(DestinationRef.class, outboundIdMappingPolicy));
             adapters.add(new OutboundIdAdapter(CourseOfJourneyRefStructure.class, outboundIdMappingPolicy));
-            adapters.add(new RuterOutboundDatedVehicleRefAdapter(MappingAdapterPresets.class, outboundIdMappingPolicy));
+       //     adapters.add(new RuterOutboundDatedVehicleRefAdapter(MappingAdapterPresets.class, outboundIdMappingPolicy));
             break;
         case SITUATION_EXCHANGE:
             adapters.add(new OutboundIdAdapter(RequestorRef.class, outboundIdMappingPolicy));

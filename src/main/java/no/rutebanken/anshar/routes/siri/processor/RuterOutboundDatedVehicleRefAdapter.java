@@ -16,6 +16,7 @@
 package no.rutebanken.anshar.routes.siri.processor;
 
 
+import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
@@ -29,6 +30,8 @@ import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapte
 public class RuterOutboundDatedVehicleRefAdapter extends ValueAdapter implements PostProcessor {
 
     private final OutboundIdMappingPolicy outboundIdMappingPolicy;
+
+    private IdProcessingParameters idProcessingParameters;
 
     public RuterOutboundDatedVehicleRefAdapter(Class clazz, OutboundIdMappingPolicy outboundIdMappingPolicy) {
         super(clazz);
@@ -78,6 +81,28 @@ public class RuterOutboundDatedVehicleRefAdapter extends ValueAdapter implements
                     }
                 }
             }
+
+
+            List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = siri.getServiceDelivery().getStopMonitoringDeliveries();
+            if (stopMonitoringDeliveries != null) {
+                for (StopMonitoringDeliveryStructure stopMonitoringDelivery : stopMonitoringDeliveries) {
+
+                    List<MonitoredStopVisit> stopVisits = stopMonitoringDelivery.getMonitoredStopVisits();
+                    if (stopVisits != null) {
+                        for (MonitoredStopVisit stopVisit : stopVisits) {
+
+                            MonitoredVehicleJourneyStructure monitoredVehicleJourney = stopVisit.getMonitoredVehicleJourney();
+                            if (monitoredVehicleJourney.getFramedVehicleJourneyRef() != null) {
+                                String datedVehicleJourneyRef = monitoredVehicleJourney.getFramedVehicleJourneyRef().getDatedVehicleJourneyRef();
+                                if (datedVehicleJourneyRef != null) {
+                                    monitoredVehicleJourney.getFramedVehicleJourneyRef().setDatedVehicleJourneyRef(apply(datedVehicleJourneyRef));
+                                }
+                            }
+                        }
+                    }
+
+                }
+            }
         }
     }
 
@@ -85,15 +110,14 @@ public class RuterOutboundDatedVehicleRefAdapter extends ValueAdapter implements
         if (text == null || text.isEmpty()) {
             return text;
         }
-        if (text.contains(SiriValueTransformer.SEPARATOR)) {
-            switch (outboundIdMappingPolicy) {
-                case ORIGINAL_ID:
-                    return getOriginalId(text);
-                default:
-                    return getMappedId(text);
-            }
+
+        switch (outboundIdMappingPolicy) {
+            case ORIGINAL_ID:
+                return getOriginalId(text);
+            default:
+                return getProcessedId(text);
         }
-        return text;
+
     }
 
     @Override
@@ -107,4 +131,14 @@ public class RuterOutboundDatedVehicleRefAdapter extends ValueAdapter implements
         return outboundIdMappingPolicy == that.outboundIdMappingPolicy;
 
     }
+
+
+    public String getProcessedId(String text) {
+        return idProcessingParameters == null ? text : idProcessingParameters.applyTransformationToString(text);
+    }
+
+    public void setIdProcessingParameters(IdProcessingParameters idProcessingParameters) {
+        this.idProcessingParameters = idProcessingParameters;
+    }
+
 }

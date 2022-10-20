@@ -2,5 +2,7 @@ package no.rutebanken.anshar.config;
 
 public enum ObjectType {
     STOP,
-    LINE
+    LINE,
+    VEHICLE_JOURNEY,
+    OPERATOR
 }

@@ -36,7 +36,7 @@ public class DisruptionRouteBuilder extends BaseRouteBuilder {
             return ;
         }
 
-        if (configuration.processSX()){
+        if (!configuration.processSX()){
             logger.error("Application non paramétrée en mode SX. pas de récupération de perturbations");
             return ;
         }

@@ -16,6 +16,7 @@
 package no.rutebanken.anshar.siri;
 
 import no.rutebanken.anshar.config.IdProcessingParameters;
+import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.siri.adapters.NsrValueAdapters;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
@@ -40,9 +41,7 @@ import uk.org.siri.siri20.Siri;
 import javax.xml.bind.JAXBException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -155,7 +154,7 @@ public class SiriValueTransformerTest extends SpringBootBaseTest {
 
     @Test
     public void testOkinaMappingAdapters() throws JAXBException {
-        String lineRefValue = "123:4";
+        String lineRefValue = "OLDLINEPREF::123:4:OLDLINESUFF";
         String blockRefValue = "";
         String mappedLineRefValue = "TEST:Line:012304";
         String stopRefValue = "OLDPREFIX:Stop:1234:SUFFIXTOREMOVE";
@@ -165,38 +164,54 @@ public class SiriValueTransformerTest extends SpringBootBaseTest {
 
         assertEquals(stopRefValue, getOriginFromSiriObj(siri));
         assertEquals(stopRefValue, getDestinationfFromSiriObj(siri));
+        assertEquals(lineRefValue, getLineRefFromSiriObj(siri));
+
+
+//
+//        List<ValueAdapter> mappingAdapters = new ArrayList<>();
+//        mappingAdapters.add(new RuterSubstringAdapter(LineRef.class, ':', '0', 2));
+//        mappingAdapters.add(new LeftPaddingAdapter(LineRef.class, 6, '0'));
+//        SubscriptionSetup subscriptionSetup = new SubscriptionSetup();
+//        subscriptionSetup.setDatasetId("TEST");
+//        subscriptionSetup.setSubscriptionType(SiriDataType.ESTIMATED_TIMETABLE);
+//
+//        mappingAdapters.addAll(new NsrValueAdapters().createIdPrefixAdapters(subscriptionSetup));
+//
+//        siri = SiriValueTransformer.transform(siri, mappingAdapters);
 
 
 
-        List<ValueAdapter> mappingAdapters = new ArrayList<>();
-        mappingAdapters.add(new RuterSubstringAdapter(LineRef.class, ':', '0', 2));
-        mappingAdapters.add(new LeftPaddingAdapter(LineRef.class, 6, '0'));
-        SubscriptionSetup subscriptionSetup = new SubscriptionSetup();
-        subscriptionSetup.setDatasetId("TEST");
-        subscriptionSetup.setSubscriptionType(SiriDataType.ESTIMATED_TIMETABLE);
-
-        mappingAdapters.addAll(new NsrValueAdapters().createIdPrefixAdapters(subscriptionSetup));
-
-        siri = SiriValueTransformer.transform(siri, mappingAdapters);
 
 
+        IdProcessingParameters stopIddProcessingParameters = new IdProcessingParameters();
+        stopIddProcessingParameters.setInputPrefixToRemove("OLDPREFIX:Stop:");
+        stopIddProcessingParameters.setInputSuffixToRemove(":SUFFIXTOREMOVE");
+        stopIddProcessingParameters.setOutputPrefixToAdd("NEWPREFFIX:");
+        stopIddProcessingParameters.setOutputSuffixToAdd(":NEWSUFF");
+
+        Optional<IdProcessingParameters> stopIdProcessingParametersOpt = Optional.of(stopIddProcessingParameters);
 
 
+        IdProcessingParameters lineIddProcessingParameters = new IdProcessingParameters();
+        lineIddProcessingParameters.setInputPrefixToRemove("OLDLINEPREF::");
+        lineIddProcessingParameters.setInputSuffixToRemove(":OLDLINESUFF");
+        lineIddProcessingParameters.setOutputPrefixToAdd("NEWLINEPREFFIX:");
+        lineIddProcessingParameters.setOutputSuffixToAdd(":NEWLINESUFF");
 
-        IdProcessingParameters idProcessingParameters = new IdProcessingParameters();
-        idProcessingParameters.setInputPrefixToRemove("OLDPREFIX:Stop:");
-        idProcessingParameters.setInputSuffixToRemove(":SUFFIXTOREMOVE");
-        idProcessingParameters.setOutputPrefixToAdd("NEWPREFFIX:");
-        idProcessingParameters.setOutputSuffixToAdd(":NEWSUFF");
+        Optional<IdProcessingParameters> lineIdProcessingParametersOpt = Optional.of(lineIddProcessingParameters);
 
-        Optional<IdProcessingParameters> stopIdProcessingParametersOpt = Optional.of(idProcessingParameters);
+        Map<ObjectType, Optional<IdProcessingParameters>> idMap = new HashMap<>();
+        idMap.put(ObjectType.STOP, stopIdProcessingParametersOpt);
+        idMap.put(ObjectType.LINE, lineIdProcessingParametersOpt);
 
-        List<ValueAdapter> adapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.STOP_MONITORING, OutboundIdMappingPolicy.DEFAULT, stopIdProcessingParametersOpt);
+
+        List<ValueAdapter> adapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.STOP_MONITORING, OutboundIdMappingPolicy.DEFAULT,idMap);
         Siri transformedSiri = SiriValueTransformer.transform(siri, adapters);
 
 
         assertEquals("NEWPREFFIX:1234:NEWSUFF", getOriginFromSiriObj(transformedSiri));
         assertEquals("NEWPREFFIX:1234:NEWSUFF", getDestinationfFromSiriObj(transformedSiri));
+        assertEquals("NEWLINEPREFFIX:123:4:NEWLINESUFF", getLineRefFromSiriObj(transformedSiri));
 
 
     }

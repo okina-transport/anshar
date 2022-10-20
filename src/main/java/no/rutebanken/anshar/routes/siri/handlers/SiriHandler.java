@@ -27,7 +27,6 @@ import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
-import no.rutebanken.anshar.routes.outbound.SiriHelper;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
@@ -37,8 +36,6 @@ import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
-import org.apache.camel.Produce;
-import org.apache.camel.ProducerTemplate;
 import org.json.simple.JSONObject;
 import org.rutebanken.siri20.util.SiriXml;
 import org.slf4j.Logger;
@@ -80,7 +77,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getOriginalId;
 
@@ -217,15 +213,26 @@ public class SiriHandler {
             if (serviceResponse != null) {
                 metrics.countOutgoingData(serviceResponse, SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE);
 
+
+
                 return SiriValueTransformer.transform(
                         serviceResponse,
-                        MappingAdapterPresets.getOutboundAdapters(dataType, OutboundIdMappingPolicy.DEFAULT, subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.STOP)),
+                        MappingAdapterPresets.getOutboundAdapters(dataType, OutboundIdMappingPolicy.DEFAULT, buildIdProcessingParamsFromDataset(datasetId)),
                         false,
                         false
                 );
             }
         }
         return null;
+    }
+
+    private Map<ObjectType, Optional<IdProcessingParameters>> buildIdProcessingParamsFromDataset(String datasetId){
+        Map<ObjectType, Optional<IdProcessingParameters>> resultmap = new HashMap<>();
+        resultmap.put(ObjectType.STOP, subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.STOP));
+        resultmap.put(ObjectType.LINE, subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.LINE));
+        resultmap.put(ObjectType.VEHICLE_JOURNEY, subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.VEHICLE_JOURNEY));
+        resultmap.put(ObjectType.OPERATOR, subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.OPERATOR));
+        return resultmap;
     }
 
 
@@ -303,13 +310,21 @@ public class SiriHandler {
                 Set<String> lineRefList = filterMap.get(LineRef.class) != null ? filterMap.get(LineRef.class) : new HashSet<>();
                 Set<String> vehicleRefList = filterMap.get(VehicleRef.class) != null ? filterMap.get(VehicleRef.class) : new HashSet<>();
 
-                Optional<IdProcessingParameters> idParams = findStopIdProcessingParamsFromSearchedLines(datasetId, lineRefList, ObjectType.STOP);
-                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy,idParams);
-                Siri siri = vehicleActivities.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize, lineRefList, vehicleRefList);
+
+//                Map<ObjectType, Optional<IdProcessingParameters>> idProcessingMap = new HashMap<>();
+//                idProcessingMap.put(ObjectType.STOP, findIdProcessingParamsFromSearchedLines(datasetId, lineRefList, ObjectType.STOP));
+//                idProcessingMap.put(ObjectType.LINE, findIdProcessingParamsFromSearchedLines(datasetId, lineRefList, ObjectType.LINE));
+
+
+                Map<ObjectType, Optional<IdProcessingParameters>> idMap = buildIdProcessingParams(datasetId,lineRefList, ObjectType.LINE);
+                Set<String> revertedLineRefs = revertMonitoringRefs(lineRefList, idMap.get(ObjectType.LINE));
+
+                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy,idMap);
+                Siri siri = vehicleActivities.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize, revertedLineRefs, vehicleRefList);
                 serviceResponse = siri;
 
-                if (filterMap.get(LineRef.class) != null) {
-                    List<String> invalidDataReferences = filterMap.get(LineRef.class).stream()
+                if (revertedLineRefs.size() > 0) {
+                    List<String> invalidDataReferences = revertedLineRefs.stream()
                             .filter(lineRef -> !subscriptionManager.isLineRefExistingInSubscriptions(lineRef))
                             .collect(Collectors.toList());
 
@@ -359,9 +374,9 @@ public class SiriHandler {
 
 
                 Set<String> originalMonitoringRefs = filterMap.get(MonitoringRefStructure.class) != null ? filterMap.get(MonitoringRefStructure.class) : new HashSet<>();
-                Optional<IdProcessingParameters> idParametersOpt = findStopIdProcessingParams(datasetId, originalMonitoringRefs, ObjectType.STOP);
-                Set<String> revertedMonitoringRefs = revertMonitoringRefs(originalMonitoringRefs, idParametersOpt);
-                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idParametersOpt);
+                Map<ObjectType, Optional<IdProcessingParameters>> idMap = buildIdProcessingParams(datasetId,originalMonitoringRefs, ObjectType.STOP);
+                Set<String> revertedMonitoringRefs = revertMonitoringRefs(originalMonitoringRefs, idMap.get(ObjectType.STOP));
+                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idMap);
 
 
                 serviceResponse = monitoredStopVisits.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, revertedMonitoringRefs);
@@ -387,6 +402,40 @@ public class SiriHandler {
         }
 
         return null;
+    }
+
+    private Map<ObjectType, Optional<IdProcessingParameters>> buildIdProcessingParams(String datasetId,   Set<String> originalMonitoringRefs, ObjectType objectType){
+
+        if(StringUtils.isEmpty(datasetId)){
+            datasetId = findDatasetFromSearch(originalMonitoringRefs, objectType).orElse(null);
+        }
+
+        return buildIdProcessingParamsFromDataset(datasetId);
+    }
+
+    private Optional<String> findDatasetFromSearch(Set<String> searchedIds, ObjectType objectType){
+
+        Set<String> guessedDatasets = new HashSet<>();
+
+        for (String searchedId : searchedIds) {
+
+            for (IdProcessingParameters idProcessingParameter : subscriptionConfig.getIdProcessingParameters()) {
+
+                if (StringUtils.isEmpty(idProcessingParameter.getOutputPrefixToAdd()) && StringUtils.isEmpty(idProcessingParameter.getOutputSuffixToAdd())){
+                    continue;
+                }
+
+                if (objectType != null && objectType.equals(idProcessingParameter.getObjectType()) &&
+                        (StringUtils.isEmpty(idProcessingParameter.getOutputPrefixToAdd())|| searchedId.startsWith(idProcessingParameter.getOutputPrefixToAdd()))
+                        &&
+                        (StringUtils.isEmpty(idProcessingParameter.getOutputSuffixToAdd())|| searchedId.endsWith(idProcessingParameter.getOutputSuffixToAdd()))) {
+                    guessedDatasets.add(idProcessingParameter.getDatasetId());
+                }
+            }
+        }
+
+        return guessedDatasets.size() == 1 ? guessedDatasets.stream().findFirst() : Optional.empty();
+
     }
 
 
@@ -427,89 +476,6 @@ public class SiriHandler {
         return revertedIds;
     }
 
-    private Optional<IdProcessingParameters> findStopIdProcessingParamsFromSearchedLines(String datasetId, Set<String> searchedLines, ObjectType objectType) {
-        if (StringUtils.isNotEmpty(datasetId)) {
-            //a datasetId has been specified by user, in the header. This dataset is used to recover id parameters
-            return subscriptionConfig.getIdParametersForDataset(datasetId, objectType);
-        } else {
-            // no datasetId has been specified by user. trying to guss parameters using searched ids
-            return guessIdParametersFromLineSubscriptions(searchedLines, objectType);
-        }
-    }
-
-    /**
-     * Recover stopId parameters
-     *
-     * @param datasetId      dataset specified by user in the header
-     * @param monitoringRefs set of ids that user searched
-     * @return the id processing parameters
-     */
-    private Optional<IdProcessingParameters> findStopIdProcessingParams(String datasetId, Set<String> monitoringRefs, ObjectType objectType) {
-        if (StringUtils.isNotEmpty(datasetId)) {
-            //a datasetId has been specified by user, in the header. This dataset is used to recover id parameters
-            return subscriptionConfig.getIdParametersForDataset(datasetId, objectType);
-        } else {
-            // no datasetId has been specified by user. trying to guss parameters using searched ids
-            return guessIdParametersFromSearch(monitoringRefs, objectType);
-        }
-    }
-
-
-    private Optional<IdProcessingParameters> guessIdParametersFromLineSubscriptions(Set<String> searchedIds, ObjectType objectType) {
-        Set<IdProcessingParameters> guessedParameters = new HashSet<>();
-
-        for (String searchedId : searchedIds) {
-
-            if (datasetByLine.containsKey(searchedId)){
-                String dataset = datasetByLine.get(searchedId);
-                Optional<IdProcessingParameters> idParamsOpt = subscriptionConfig.getIdParametersForDataset(dataset, objectType);
-                idParamsOpt.ifPresent(guessedParameters::add);
-            }else{
-
-                Optional<SubscriptionSetup> foundSubscription = subscriptionManager.getAllSubscriptions(SiriDataType.VEHICLE_MONITORING).stream()
-                                                                                    .filter(subscription ->subscription.getLineRefValue()!=null && subscription.getLineRefValue().equals(searchedId))
-                                                                                    .findFirst();
-
-                foundSubscription.ifPresent(subs -> {
-                    String datasetId = subs.getDatasetId();
-                    datasetByLine.put(searchedId, datasetId);
-                    Optional<IdProcessingParameters> idParamsOpt = subscriptionConfig.getIdParametersForDataset(datasetId, objectType);
-                    idParamsOpt.ifPresent(guessedParameters::add);
-                });
-            }
-        }
-
-        return guessedParameters.size() == 1 ? guessedParameters.stream().findFirst() : Optional.empty();
-
-    }
-
-
-    /**
-     * Guess idParameters that must be applied, based on the search made by user.
-     * e.g : if users searched : PROVIDER:Quay:xxxx  , we are looking for idParameters with outputprefixtoAdd = PROVIDER:Quay:
-     *
-     * @param searchedIds the id for which id parameters must be recovered
-     * @return the id parameters
-     */
-    private Optional<IdProcessingParameters> guessIdParametersFromSearch(Set<String> searchedIds, ObjectType objectType) {
-
-        Set<IdProcessingParameters> guessedParameters = new HashSet<>();
-
-        for (String searchedId : searchedIds) {
-
-            for (IdProcessingParameters idProcessingParameter : subscriptionConfig.getIdProcessingParameters()) {
-                if (objectType != null && objectType.equals(idProcessingParameter.getObjectType()) &&
-                        (idProcessingParameter.getOutputPrefixToAdd() == null || searchedId.startsWith(idProcessingParameter.getOutputPrefixToAdd()))
-                        &&
-                        (idProcessingParameter.getOutputSuffixToAdd() == null || searchedId.endsWith(idProcessingParameter.getOutputSuffixToAdd()))) {
-                    guessedParameters.add(idProcessingParameter);
-                }
-            }
-        }
-
-        return guessedParameters.size() == 1 ? guessedParameters.stream().findFirst() : Optional.empty();
-
-    }
 
 
     /**
@@ -518,12 +484,32 @@ public class SiriHandler {
      * @return the siri response with all points
      */
     private Siri getDiscoveryLines(String datasetId) {
-        List<AnnotatedLineRef> resultList = subscriptionManager.getAllSubscriptions(SiriDataType.VEHICLE_MONITORING).stream()
-                .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))
-                .map(SubscriptionSetup::getLineRefValue)
-                .filter(lineRef -> lineRef != null)
-                .map(this::convertKeyToLineRef)
-                .collect(Collectors.toList());
+
+
+        List<SubscriptionSetup> subscriptionList =  subscriptionManager.getAllSubscriptions(SiriDataType.VEHICLE_MONITORING).stream()
+                                                                       .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))
+                                                                        .collect(Collectors.toList());
+
+
+        List<String> datasetList = subscriptionList.stream()
+                                                    .map(SubscriptionSetup::getDatasetId)
+                                                    .distinct()
+                                                    .collect(Collectors.toList());
+
+
+
+        Map<String, IdProcessingParameters> idProcessingMap = buildIdProcessingMap(datasetList, ObjectType.LINE);
+
+
+        List<String> lineRefList = subscriptionList.stream()
+                                            .map(subscription -> extractAndTransformLineId(subscription, idProcessingMap))
+                                            .filter(lineRef -> lineRef != null)
+                                            .collect(Collectors.toList());
+
+
+        List<AnnotatedLineRef> resultList = lineRefList.stream()
+                                                    .map(this::convertKeyToLineRef)
+                                                    .collect(Collectors.toList());
 
         return siriObjectFactory.createLinesDiscoveryDelivery(resultList);
 
@@ -547,7 +533,7 @@ public class SiriHandler {
                                                    .distinct()
                                                    .collect(Collectors.toList());
 
-        Map<String, IdProcessingParameters> idProcessingMap = buildStopIdProcessingMap(datasetList);
+        Map<String, IdProcessingParameters> idProcessingMap = buildIdProcessingMap(datasetList, ObjectType.STOP);
 
 
         List<String> monitoringRefList = subscriptionList.stream()
@@ -580,16 +566,32 @@ public class SiriHandler {
     }
 
     /**
+     * Extract a lineId from a subscriptionSetup and transforms it, with idProcessingParams
+     * @param subscriptionSetup
+     *      the subscriptionSetup for which the stop id must be recovered
+     * @param idProcessingMap
+     *      the map that associate datasetId to idProcessingParams
+     * @return
+     *      the transformed line id
+     */
+    private String extractAndTransformLineId(SubscriptionSetup subscriptionSetup,  Map<String, IdProcessingParameters> idProcessingMap){
+        String lineId = subscriptionSetup.getLineRefValue();
+        String datasetId = subscriptionSetup.getDatasetId();
+
+        return idProcessingMap.containsKey(datasetId) ? idProcessingMap.get(datasetId).applyTransformationToString(lineId) : lineId;
+    }
+
+    /**
      * Builds a map with key = datasetId and value = idProcessingParams for this dataset and objectType = stop
      * @param datasetList
      *
      * @return
      */
-    private Map<String, IdProcessingParameters> buildStopIdProcessingMap(List<String> datasetList){
+    private Map<String, IdProcessingParameters> buildIdProcessingMap(List<String> datasetList, ObjectType objectType){
         Map<String, IdProcessingParameters> resultMap = new HashMap<>();
 
         for (String dataset : datasetList) {
-            Optional<IdProcessingParameters> idParamsOpt = subscriptionConfig.getIdParametersForDataset(dataset, ObjectType.STOP);
+            Optional<IdProcessingParameters> idParamsOpt = subscriptionConfig.getIdParametersForDataset(dataset, objectType);
             idParamsOpt.ifPresent(idParams -> resultMap.put(dataset, idParams));
         }
         return resultMap;
