@@ -285,7 +285,8 @@ public class SiriHandler {
             SiriDataType dataType = null;
             if (hasValues(serviceRequest.getSituationExchangeRequests())) {
                 dataType = SiriDataType.SITUATION_EXCHANGE;
-                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy);
+                Map<ObjectType, Optional<IdProcessingParameters>> idMap = buildIdProcessingParamsFromDataset(datasetId);
+                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy,idMap);
                 serviceResponse = situations.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize);
             } else if (hasValues(serviceRequest.getVehicleMonitoringRequests())) {
                 dataType = SiriDataType.VEHICLE_MONITORING;

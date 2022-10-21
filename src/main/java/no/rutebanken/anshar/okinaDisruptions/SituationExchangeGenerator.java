@@ -230,7 +230,7 @@ public class SituationExchangeGenerator {
         requestor.setValue("Okina");
         ptSituationElement.setParticipantRef(requestor);
         SituationNumber situationNumber = new SituationNumber();
-        situationNumber.setValue(getOrganisationName(disruption) + "-" + disruption.getId());
+        situationNumber.setValue(disruption.getOrganization() + "-" + disruption.getId());
         ptSituationElement.setSituationNumber(situationNumber);
         SituationVersion situationVersion = new SituationVersion();
         situationVersion.setValue(BigInteger.valueOf(1));
@@ -244,56 +244,17 @@ public class SituationExchangeGenerator {
         //Map of message summary
         DefaultedTextStructure summary = new DefaultedTextStructure();
         summary.setValue(disruption.getMessage());
-        summary.setLang("LANG_TYPE_FR");
+        summary.setLang("FR");
         ptSituationElement.getSummaries().add(summary);
 
         //Map of message comment
         DefaultedTextStructure comment = new DefaultedTextStructure();
         comment.setValue(disruption.getComment());
-        comment.setLang("LANG_TYPE_FR");
+        comment.setLang("FR");
         ptSituationElement.getDescriptions().add(comment);
 
     }
 
-    private static String getOrganisationName(Disruption disruption) {
-        if (disruption.getLines().size() > 0) {
-            for (OkinaLine line : disruption.getLines()) {
-                String[] splittedObjectId = line.getObjectId().split(":");
-                if (splittedObjectId.length == 3) {
-                    return splittedObjectId[0];
-                }
-            }
-        }
-
-        if (disruption.getCourses().size() > 0) {
-            for (OkinaVehicleJourney course : disruption.getCourses()) {
-                String[] splittedObjectId = course.getObjectId().split(":");
-                if (splittedObjectId.length == 3) {
-                    return splittedObjectId[0];
-                }
-            }
-        }
-
-        if (disruption.getStopAreas().size() > 0) {
-            for (OkinaStopArea stopArea : disruption.getStopAreas()) {
-                String[] splittedObjectId = stopArea.getObjectId().split(":");
-                if (splittedObjectId.length == 3) {
-                    return splittedObjectId[0];
-                }
-            }
-        }
-
-        if (disruption.getJourneys().size() > 0) {
-            for (JourneyPattern journeyPattern: disruption.getJourneys()) {
-                String[] splittedObjectId = journeyPattern.getObjectId().split(":");
-                if (splittedObjectId.length == 3) {
-                    return splittedObjectId[0];
-                }
-            }
-        }
-
-        return "";
-    }
 
 
 }

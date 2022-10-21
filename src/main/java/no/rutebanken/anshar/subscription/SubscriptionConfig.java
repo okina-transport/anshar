@@ -83,7 +83,7 @@ public class SubscriptionConfig {
 
     public Optional<IdProcessingParameters> getIdParametersForDataset(String datasetId, ObjectType objectType){
         for (IdProcessingParameters idProcessingParametrer : idProcessingParametrers) {
-            if (datasetId != null && datasetId.equals(idProcessingParametrer.getDatasetId()) && objectType != null && objectType.equals(idProcessingParametrer.getObjectType())) {
+            if (datasetId != null && datasetId.equalsIgnoreCase(idProcessingParametrer.getDatasetId()) && objectType != null && objectType.equals(idProcessingParametrer.getObjectType())) {
                 return Optional.of(idProcessingParametrer);
             }
         }

@@ -4,6 +4,7 @@ import com.hazelcast.query.Predicate;
 import no.rutebanken.anshar.data.SiriObjectStorageKey;
 import uk.org.siri.siri20.EstimatedVehicleJourney;
 import uk.org.siri.siri20.MonitoredStopVisit;
+import uk.org.siri.siri20.PtSituationElement;
 import uk.org.siri.siri20.VehicleActivityStructure;
 
 import java.util.List;
@@ -24,6 +25,10 @@ public class SiriObjectStorageKeyUtil {
         return entry -> isKeyCompliantWithFilters(entry.getKey(), linerefSet, vehicleRefSet, null, datasetId, excludedDatasetIds);
     }
 
+    public static Predicate<SiriObjectStorageKey, PtSituationElement> getSituationExchangePredicate(String datasetId){
+        return entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, null, datasetId, null);
+    }
+
 
 
 
@@ -40,7 +45,7 @@ public class SiriObjectStorageKeyUtil {
      * false : the key is not compliant
      */
     public static boolean isKeyCompliantWithFilters(SiriObjectStorageKey key, Set<String> linerefSet, Set<String> vehicleRefSet, Set<String> stopRefSet, String datasetId, List<String> excludedDatasetIds) {
-        if (datasetId != null && !datasetId.equals(key.getCodespaceId())){
+        if (datasetId != null && !datasetId.equalsIgnoreCase(key.getCodespaceId())){
             return false;
         }
 

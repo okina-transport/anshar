@@ -18,9 +18,11 @@ package no.rutebanken.anshar.data;
 import com.hazelcast.core.EntryEvent;
 import com.hazelcast.map.IMap;
 import com.hazelcast.map.MapEvent;
+import com.hazelcast.query.Predicate;
 import com.hazelcast.replicatedmap.ReplicatedMap;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
+import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -238,7 +240,8 @@ public class Situations extends SiriRepository<PtSituationElement> {
         Set<SiriObjectStorageKey> allIds = new HashSet<>();
         Set<SiriObjectStorageKey> idSet = changesMap.getOrDefault(requestorId, allIds);
 
-        idSet.addAll(situationElements.keySet(entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, null, datasetId, null)));
+        Predicate<SiriObjectStorageKey, PtSituationElement> predicate = SiriObjectStorageKeyUtil.getSituationExchangePredicate(datasetId);
+        idSet.addAll(situationElements.keySet(predicate));
 
         return idSet;
     }
