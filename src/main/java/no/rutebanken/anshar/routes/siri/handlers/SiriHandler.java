@@ -26,6 +26,7 @@ import no.rutebanken.anshar.data.StopPlaceIdCache;
 import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.health.HealthManager;
+import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
@@ -36,6 +37,7 @@ import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
+import no.rutebanken.anshar.util.IDUtils;
 import org.json.simple.JSONObject;
 import org.rutebanken.siri20.util.SiriXml;
 import org.slf4j.Logger;
@@ -123,6 +125,9 @@ public class SiriHandler {
 
     @Autowired
     private SubscriptionConfig subscriptionConfig;
+
+    @Autowired
+    private StopPlaceUpdaterService stopPlaceUpdaterService;
 
     private Map<String, String> datasetByLine = new HashMap<>();
 
@@ -217,7 +222,7 @@ public class SiriHandler {
 
                 return SiriValueTransformer.transform(
                         serviceResponse,
-                        MappingAdapterPresets.getOutboundAdapters(dataType, OutboundIdMappingPolicy.DEFAULT, buildIdProcessingParamsFromDataset(datasetId)),
+                        MappingAdapterPresets.getOutboundAdapters(dataType, OutboundIdMappingPolicy.DEFAULT, subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId)),
                         false,
                         false
                 );
@@ -226,14 +231,7 @@ public class SiriHandler {
         return null;
     }
 
-    private Map<ObjectType, Optional<IdProcessingParameters>> buildIdProcessingParamsFromDataset(String datasetId){
-        Map<ObjectType, Optional<IdProcessingParameters>> resultmap = new HashMap<>();
-        resultmap.put(ObjectType.STOP, subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.STOP));
-        resultmap.put(ObjectType.LINE, subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.LINE));
-        resultmap.put(ObjectType.VEHICLE_JOURNEY, subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.VEHICLE_JOURNEY));
-        resultmap.put(ObjectType.OPERATOR, subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.OPERATOR));
-        return resultmap;
-    }
+
 
 
     /**
@@ -285,7 +283,7 @@ public class SiriHandler {
             SiriDataType dataType = null;
             if (hasValues(serviceRequest.getSituationExchangeRequests())) {
                 dataType = SiriDataType.SITUATION_EXCHANGE;
-                Map<ObjectType, Optional<IdProcessingParameters>> idMap = buildIdProcessingParamsFromDataset(datasetId);
+                Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);
                 valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy,idMap);
                 serviceResponse = situations.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize);
             } else if (hasValues(serviceRequest.getVehicleMonitoringRequests())) {
@@ -317,8 +315,8 @@ public class SiriHandler {
 //                idProcessingMap.put(ObjectType.LINE, findIdProcessingParamsFromSearchedLines(datasetId, lineRefList, ObjectType.LINE));
 
 
-                Map<ObjectType, Optional<IdProcessingParameters>> idMap = buildIdProcessingParams(datasetId,lineRefList, ObjectType.LINE);
-                Set<String> revertedLineRefs = revertMonitoringRefs(lineRefList, idMap.get(ObjectType.LINE));
+                Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParams(datasetId,lineRefList, ObjectType.LINE);
+                Set<String> revertedLineRefs = IDUtils.revertMonitoringRefs(lineRefList, idMap.get(ObjectType.LINE));
 
                 valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy,idMap);
                 Siri siri = vehicleActivities.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize, revertedLineRefs, vehicleRefList);
@@ -375,8 +373,10 @@ public class SiriHandler {
 
 
                 Set<String> originalMonitoringRefs = filterMap.get(MonitoringRefStructure.class) != null ? filterMap.get(MonitoringRefStructure.class) : new HashSet<>();
-                Map<ObjectType, Optional<IdProcessingParameters>> idMap = buildIdProcessingParams(datasetId,originalMonitoringRefs, ObjectType.STOP);
-                Set<String> revertedMonitoringRefs = revertMonitoringRefs(originalMonitoringRefs, idMap.get(ObjectType.STOP));
+                Set<String> importedIds = OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy) ? convertToImportedIds(originalMonitoringRefs, datasetId) : originalMonitoringRefs;
+
+                Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParams(datasetId,importedIds, ObjectType.STOP);
+                Set<String> revertedMonitoringRefs = IDUtils.revertMonitoringRefs(importedIds, idMap.get(ObjectType.STOP));
                 valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idMap);
 
 
@@ -396,7 +396,7 @@ public class SiriHandler {
             }
         } else if (incoming.getStopPointsRequest() != null) {
             // stop discovery request
-            return getDiscoveryStopPoints(datasetId);
+            return getDiscoveryStopPoints(datasetId, outboundIdMappingPolicy);
         } else if (incoming.getLinesRequest() != null) {
             // lines discovery request (for vehicle monitoring)
             return getDiscoveryLines(datasetId);
@@ -405,77 +405,23 @@ public class SiriHandler {
         return null;
     }
 
-    private Map<ObjectType, Optional<IdProcessingParameters>> buildIdProcessingParams(String datasetId,   Set<String> originalMonitoringRefs, ObjectType objectType){
-
-        if(StringUtils.isEmpty(datasetId)){
-            datasetId = findDatasetFromSearch(originalMonitoringRefs, objectType).orElse(null);
-        }
-
-        return buildIdProcessingParamsFromDataset(datasetId);
-    }
-
-    private Optional<String> findDatasetFromSearch(Set<String> searchedIds, ObjectType objectType){
-
-        Set<String> guessedDatasets = new HashSet<>();
-
-        for (String searchedId : searchedIds) {
-
-            for (IdProcessingParameters idProcessingParameter : subscriptionConfig.getIdProcessingParameters()) {
-
-                if (StringUtils.isEmpty(idProcessingParameter.getOutputPrefixToAdd()) && StringUtils.isEmpty(idProcessingParameter.getOutputSuffixToAdd())){
-                    continue;
-                }
-
-                if (objectType != null && objectType.equals(idProcessingParameter.getObjectType()) &&
-                        (StringUtils.isEmpty(idProcessingParameter.getOutputPrefixToAdd())|| searchedId.startsWith(idProcessingParameter.getOutputPrefixToAdd()))
-                        &&
-                        (StringUtils.isEmpty(idProcessingParameter.getOutputSuffixToAdd())|| searchedId.endsWith(idProcessingParameter.getOutputSuffixToAdd()))) {
-                    guessedDatasets.add(idProcessingParameter.getDatasetId());
-                }
-            }
-        }
-
-        return guessedDatasets.size() == 1 ? guessedDatasets.stream().findFirst() : Optional.empty();
-
-    }
-
 
     /**
-     * Revert searched Ids by user to go back to an original id
+     * Converts netex Ids (MOBIITI:Quay:xxx) to imported Ids prefixed by producer (PROD123:Quay:xxx)
      *
-     * @param originalMonitoringRefs the original ids that must be reverted
-     * @param idParametersOpt        id parameters to apply to go back to original ids
-     * @return
+     * @param originalMonitoringRefs
+     * @return the converted ids
      */
-    private Set<String> revertMonitoringRefs(Set<String> originalMonitoringRefs, Optional<IdProcessingParameters> idParametersOpt) {
-        if (!idParametersOpt.isPresent()) {
-            return originalMonitoringRefs;
-        }
+    private Set<String> convertToImportedIds(Set<String> originalMonitoringRefs, String datasetId) {
 
-        IdProcessingParameters idParams = idParametersOpt.get();
-        Set<String> revertedIds = new HashSet<>();
-
-        for (String originalMonitoringRef : originalMonitoringRefs) {
-
-            if (StringUtils.isNotEmpty(idParams.getOutputPrefixToAdd()) && originalMonitoringRef.startsWith(idParams.getOutputPrefixToAdd())) {
-                originalMonitoringRef = originalMonitoringRef.substring(idParams.getOutputPrefixToAdd().length());
-            }
-
-            if (StringUtils.isNotEmpty(idParams.getOutputSuffixToAdd()) && originalMonitoringRef.endsWith(idParams.getOutputSuffixToAdd())) {
-                originalMonitoringRef = originalMonitoringRef.substring(0, originalMonitoringRef.length() - idParams.getOutputSuffixToAdd().length());
-            }
-
-            if (StringUtils.isNotEmpty(idParams.getInputPrefixToRemove())) {
-                originalMonitoringRef = idParams.getInputPrefixToRemove() + originalMonitoringRef;
-            }
-
-            if (StringUtils.isNotEmpty(idParams.getInputSuffixToRemove())) {
-                originalMonitoringRef = originalMonitoringRef + idParams.getInputSuffixToRemove();
-            }
-            revertedIds.add(originalMonitoringRef);
-        }
-        return revertedIds;
+        return originalMonitoringRefs.stream()
+                              .map(id -> StringUtils.isNotEmpty(id) && stopPlaceUpdaterService.canBeReverted(id, datasetId) ? stopPlaceUpdaterService.getReverse(id, datasetId) : id)
+                              .collect(Collectors.toSet());
     }
+
+
+
+
 
 
 
@@ -522,7 +468,7 @@ public class SiriHandler {
      *
      * @return the siri response with all points
      */
-    public Siri getDiscoveryStopPoints(String datasetId) {
+    public Siri getDiscoveryStopPoints(String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy) {
 
 
         List<SubscriptionSetup> subscriptionList = subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING).stream()
@@ -541,7 +487,15 @@ public class SiriHandler {
                                                          .map(subscription -> extractAndTransformStopId(subscription, idProcessingMap))
                                                          .collect(Collectors.toList());
 
-        //traceUnknownStopPoints(monitoringRefList);
+        if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)){
+            monitoringRefList = monitoringRefList.stream()
+                                                 .map(id -> stopPlaceUpdaterService.isKnownId(id) ? stopPlaceUpdaterService.get(id) : id)
+                                                 .collect(Collectors.toList());
+
+        }
+
+
+      //  traceUnknownStopPoints(monitoringRefList);
 
         List<AnnotatedStopPointStructure> resultList = monitoringRefList.stream()
                 .map(this::convertKeyToPointStructure)
@@ -601,11 +555,11 @@ public class SiriHandler {
     /**
      * Function to trace the list of points that are unknown from theorical data
      *
-     * @param stopPointList The list of stop points id to check
+     * @param stopPointList The list of sto points id to check
      */
     private void traceUnknownStopPoints(List<String> stopPointList) {
         List<String> unknownPoints = stopPointList.stream()
-                .filter(stopPointId -> !idCache.isKnownImportedId(stopPointId))
+                .filter(stopPointId -> stopPointId.startsWith("MOBIITI:Quay:"))
                 .collect(Collectors.toList());
 
         logger.warn("These points were received in real-time data but are unknown from theorical data :" + unknownPoints.stream().collect(Collectors.joining(",")));

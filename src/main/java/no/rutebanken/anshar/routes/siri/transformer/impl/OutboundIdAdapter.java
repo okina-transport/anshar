@@ -17,7 +17,9 @@ package no.rutebanken.anshar.routes.siri.transformer.impl;
 
 
 import no.rutebanken.anshar.config.IdProcessingParameters;
+import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
+import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import org.apache.commons.lang3.StringUtils;
@@ -32,10 +34,19 @@ public class OutboundIdAdapter extends ValueAdapter {
 
     private IdProcessingParameters idProcessingParameters;
 
+    private boolean shouldConvertToNetexId = false;
+
+    private StopPlaceUpdaterService stopPlaceService;
 
     public OutboundIdAdapter(Class clazz, OutboundIdMappingPolicy outboundIdMappingPolicy) {
         super(clazz);
         this.outboundIdMappingPolicy = outboundIdMappingPolicy;
+    }
+
+    public OutboundIdAdapter(Class clazz, OutboundIdMappingPolicy outboundIdMappingPolicy, boolean shouldConvertToNetexId) {
+        super(clazz);
+        this.outboundIdMappingPolicy = outboundIdMappingPolicy;
+        this.shouldConvertToNetexId = shouldConvertToNetexId;
     }
 
     public static String createCombinedId(String originalId, String mappedId) {
@@ -48,18 +59,23 @@ public class OutboundIdAdapter extends ValueAdapter {
                 return text;
             }
 
-            if (outboundIdMappingPolicy == OutboundIdMappingPolicy.DEFAULT) {
-                text = getProcessedId(text);
-            } else if (outboundIdMappingPolicy == OutboundIdMappingPolicy.ORIGINAL_ID) {
-                text = getOriginalId(text);
-            }
+            text = getProcessedId(text);
 
         } catch (NullPointerException npe) {
             logger.warn("Caught NullPointerException while mapping ID.", npe);
             logger.warn("Caught exception when mapping value '{}'", text);
             throw npe;
         }
-        return text;
+        return shouldConvertToNetexId && outboundIdMappingPolicy == OutboundIdMappingPolicy.DEFAULT ? convertToNetexId(text) : text;
+    }
+
+    private String convertToNetexId(String text) {
+
+        if (stopPlaceService == null){
+            stopPlaceService = ApplicationContextHolder.getContext().getBean(StopPlaceUpdaterService.class);
+        }
+
+        return StringUtils.isEmpty(text) || !stopPlaceService.isKnownId(text) ? text : stopPlaceService.get(text);
     }
 
     public static String getOriginalId(String text) {

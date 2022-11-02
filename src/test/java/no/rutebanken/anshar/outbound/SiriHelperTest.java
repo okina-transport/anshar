@@ -16,6 +16,7 @@
 package no.rutebanken.anshar.outbound;
 
 import no.rutebanken.anshar.routes.outbound.SiriHelper;
+import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -255,7 +256,7 @@ public class SiriHelperTest {
         subscriptionRequest.getStopMonitoringSubscriptionRequests().add(smSubscription);
 
 
-        Map<Class, Set<String>>  filter = siriHelper.getFilter(subscriptionRequest);
+        Map<Class, Set<String>>  filter = siriHelper.getFilter(subscriptionRequest, OutboundIdMappingPolicy.DEFAULT, "datId");
 
         List<MonitoredStopVisit> vmElements = new ArrayList<>();
 

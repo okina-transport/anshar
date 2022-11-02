@@ -15,13 +15,19 @@
 
 package no.rutebanken.anshar.routes.outbound;
 
+import no.rutebanken.anshar.config.IdProcessingParameters;
+import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.EstimatedTimetables;
 import no.rutebanken.anshar.data.MonitoredStopVisits;
 import no.rutebanken.anshar.data.Situations;
 import no.rutebanken.anshar.data.VehicleActivities;
+import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
+import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
+import no.rutebanken.anshar.subscription.SubscriptionConfig;
+import no.rutebanken.anshar.util.IDUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,13 +57,7 @@ import uk.org.siri.siri20.VehicleMonitoringRequestStructure;
 import uk.org.siri.siri20.VehicleMonitoringSubscriptionStructure;
 import uk.org.siri.siri20.VehicleRef;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @SuppressWarnings("unchecked")
 @Component
@@ -78,6 +78,12 @@ public class SiriHelper {
     @Autowired
     private MonitoredStopVisits monitoredStopVisits;
 
+    @Autowired
+    private StopPlaceUpdaterService stopPlaceUpdaterService;
+
+    @Autowired
+    private SubscriptionConfig subscriptionConfig;
+
     private final SiriObjectFactory siriObjectFactory;
 
     public SiriHelper(@Autowired SiriObjectFactory siriObjectFactory) {
@@ -85,7 +91,7 @@ public class SiriHelper {
     }
 
 
-    public Map<Class, Set<String>> getFilter(SubscriptionRequest subscriptionRequest) {
+    public Map<Class, Set<String>> getFilter(SubscriptionRequest subscriptionRequest, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
         if (containsValues(subscriptionRequest.getSituationExchangeSubscriptionRequests())) {
             return getFilter(subscriptionRequest.getSituationExchangeSubscriptionRequests().get(0));
         } else if (containsValues(subscriptionRequest.getVehicleMonitoringSubscriptionRequests())) {
@@ -93,7 +99,7 @@ public class SiriHelper {
         } else if (containsValues(subscriptionRequest.getEstimatedTimetableSubscriptionRequests())) {
             return getFilter(subscriptionRequest.getEstimatedTimetableSubscriptionRequests().get(0));
         } else if (containsValues(subscriptionRequest.getStopMonitoringSubscriptionRequests())) {
-            return getFilter(subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0));
+            return getFilter(subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0), outboundIdMappingPolicy, datasetId);
         }
 
         return new HashMap<>();
@@ -160,22 +166,51 @@ public class SiriHelper {
 
     /**
      * Returns optional filters for stopMonitoringSubscription
-     * TODO MHI
      *
      * @param stopMonitoringSubscription
      * @return
      */
-    private Map<Class, Set<String>> getFilter(StopMonitoringSubscriptionStructure stopMonitoringSubscription) {
+    public Map<Class, Set<String>> getFilter(StopMonitoringSubscriptionStructure stopMonitoringSubscription, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
         Map<Class, Set<String>> filterMap = new HashMap<>();
         Set<String> stopPointRefValues = new HashSet<>();
-        stopPointRefValues.add(stopMonitoringSubscription.getStopMonitoringRequest().getMonitoringRef().getValue());
 
-        if (!stopPointRefValues.isEmpty()) {
+
+        String requestedId = stopMonitoringSubscription.getStopMonitoringRequest().getMonitoringRef().getValue();
+        if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)){
+            requestedId = stopPlaceUpdaterService.canBeReverted(requestedId, datasetId) ? stopPlaceUpdaterService.getReverse(requestedId, datasetId) : requestedId;
+        }
+
+        HashSet<String> requestedIds = new HashSet<>(Arrays.asList(requestedId));
+
+        Map<ObjectType, Optional<IdProcessingParameters>> idProcessingParams = subscriptionConfig.buildIdProcessingParams(null, requestedIds, ObjectType.STOP);
+
+        Set<String> revertedMonitoringRefs = IDUtils.revertMonitoringRefs(requestedIds, idProcessingParams.get(ObjectType.STOP));
+
+        if (!revertedMonitoringRefs.isEmpty()) {
+            stopPointRefValues.add(revertedMonitoringRefs.iterator().next());
             filterMap.put(MonitoringRefStructure.class, stopPointRefValues);
         }
 
         return filterMap;
     }
+
+
+    public Map<ObjectType, Optional<IdProcessingParameters>> getIdProcessingParamsFromSubscription(StopMonitoringSubscriptionStructure stopMonitoringSubscription, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
+        Map<Class, Set<String>> filterMap = new HashMap<>();
+        Set<String> stopPointRefValues = new HashSet<>();
+
+
+        String requestedId = stopMonitoringSubscription.getStopMonitoringRequest().getMonitoringRef().getValue();
+        if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)){
+            requestedId = stopPlaceUpdaterService.canBeReverted(requestedId, datasetId) ? stopPlaceUpdaterService.getReverse(requestedId, datasetId) : requestedId;
+        }
+
+        HashSet<String> requestedIds = new HashSet<>(Arrays.asList(requestedId));
+
+        return subscriptionConfig.buildIdProcessingParams(null, requestedIds, ObjectType.STOP);
+    }
+
+
 
     Siri findInitialDeliveryData(OutboundSubscriptionSetup subscriptionRequest) {
         Siri delivery = null;

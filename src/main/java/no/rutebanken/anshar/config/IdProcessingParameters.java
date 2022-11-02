@@ -2,9 +2,11 @@ package no.rutebanken.anshar.config;
 
 import org.apache.commons.lang3.StringUtils;
 
+import java.io.Serializable;
 import java.util.Objects;
 
-public class IdProcessingParameters {
+
+public class IdProcessingParameters implements Serializable {
 
     private String datasetId;
     private ObjectType objectType;

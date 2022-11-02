@@ -23,10 +23,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
@@ -42,6 +39,8 @@ public class StopPlaceUpdaterService {
     private static final Object LOCK = new Object();
 
     private transient final ConcurrentMap<String, String> stopPlaceMappings = new ConcurrentHashMap<>();
+
+    private transient final ConcurrentMap<String, List<String>> reverseStopPlaceMappings = new ConcurrentHashMap<>();
 
     private transient final Set<String> validNsrIds = new HashSet<>();
 
@@ -74,13 +73,47 @@ public class StopPlaceUpdaterService {
         return stopPlaceMappings.get(id);
     }
 
+    public String getReverse(String id, String datasetId) {
+        if (reverseStopPlaceMappings.isEmpty()) {
+            // Avoid multiple calls at the same time.
+            // Could have used a timed lock here.
+            synchronized (LOCK) {
+                // Check again.
+                if (reverseStopPlaceMappings.isEmpty()) {
+                    updateIdMapping();
+                }
+            }
+        }
+
+        return reverseStopPlaceMappings.get(id).stream()
+                                                .filter(provId -> provId.startsWith(datasetId))
+                                                .findFirst()
+                                                .get();
+    }
+
     /**
      * Returns true if provided id is included in the latest dataset from NSR
      * @param id
      * @return
      */
     public boolean isKnownId(String id) {
-        return validNsrIds.isEmpty() || validNsrIds.contains(id);
+        return validNsrIds.contains(id);
+    }
+
+    /**
+     * Returns true if provided id can be reverted to producer id
+     * @param id
+     * @return
+     */
+    public boolean canBeReverted(String id, String datasetId) {
+        if (!reverseStopPlaceMappings.containsKey(id)){
+            return false;
+        }
+
+        List<String> mappings = reverseStopPlaceMappings.get(id);
+
+        return mappings.stream()
+                        .anyMatch(provId -> provId.startsWith(datasetId));
     }
 
     @PostConstruct
@@ -105,7 +138,23 @@ public class StopPlaceUpdaterService {
     private void updateStopPlaceMapping(String mappingUrl) {
         logger.info("Fetching mapping data - start. Fetching mapping-data from {}", mappingUrl);
 
-        stopPlaceMappings.putAll(stopPlaceRegisterMappingFetcher.fetchStopPlaceMapping(mappingUrl));
+        Map<String, String> foundMappings = stopPlaceRegisterMappingFetcher.fetchStopPlaceMapping(mappingUrl);
+        stopPlaceMappings.putAll(foundMappings);
+        validNsrIds.addAll(stopPlaceMappings.keySet());
+
+        for (Map.Entry<String, String> mappingEntry : foundMappings.entrySet()) {
+
+            List<String> providerIds;
+            if (reverseStopPlaceMappings.containsKey(mappingEntry.getValue())){
+                providerIds = reverseStopPlaceMappings.get(mappingEntry.getValue());
+            }else{
+                providerIds = new ArrayList<>();
+                reverseStopPlaceMappings.put(mappingEntry.getValue(), providerIds );
+            }
+
+            providerIds.add(mappingEntry.getKey());
+        }
+
         logger.info("Fetching mapping data - done.");
     }
 

@@ -92,6 +92,9 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .post("/anshar/subscribe").to("direct:process.subscription.request")
                 .description("Backwards compatible endpoint used for SIRI SubscriptionRequest.")
 
+                .post("/anshar/ws/subscribe").to("direct:process.soap.subscription.request")
+                .description("Backwards compatible endpoint used for SIRI SubscriptionRequest.")
+
                 .post("/anshar/subscribe/{" + PARAM_DATASET_ID + "}").to("direct:process.subscription.request")
                 .description("Backwards compatible endpoint used for SIRI SubscriptionRequest limited to single dataprovider.")
                 .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.path).description("The id of the Codespace to limit data to").dataType("string").endParam()
@@ -166,6 +169,13 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .routeId("async.process.incoming")
         ;
 
+        from("direct:process.soap.subscription.request")
+                .process(e -> e.getIn().setHeader(TRANSFORM_SOAP, TRANSFORM_SOAP))
+                .to("direct:transform.siri")
+                .process(e -> log.info(" transformé:" + e.getIn().getBody(String.class)))
+                .to("direct:process.subscription.request");
+
+
         from("direct:process.subscription.request")
                 .to("log:subRequest:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true")
                 .choice()
@@ -180,11 +190,14 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .to("direct:process.sx.subscription.request")
                 .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:EstimatedTimetableSubscriptionRequest", ns)
                 .to("direct:process.et.subscription.request")
+                .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:StopMonitoringSubscriptionRequest", ns)
+                .to("direct:process.sm.subscription.request")
                 .when().xpath("/siri:Siri/siri:TerminateSubscriptionRequest", ns)
                 // Forwarding TerminateRequest to all data-instances
                 .wireTap("direct:process.et.subscription.request")
                 .wireTap("direct:process.vm.subscription.request")
                 .wireTap("direct:process.sx.subscription.request")
+                .wireTap("direct:process.sm.subscription.request")
                 .to("direct:internal.handle.subscription") //Build response
                 .endChoice()
                 .otherwise()
