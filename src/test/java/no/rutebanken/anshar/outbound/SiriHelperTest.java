@@ -266,13 +266,7 @@ public class SiriHelperTest  extends SpringBootBaseTest {
         sMRequest.setMonitoringRef(monitoringRef);
         smSubscription.setStopMonitoringRequest(sMRequest);
         subscriptionRequest.getStopMonitoringSubscriptionRequests().add(smSubscription);
-        ApplicationContextHolder applicationContextHolder = new ApplicationContextHolder();
-        ApplicationContext applicationContext = Mockito.mock(ApplicationContext.class);
-        applicationContextHolder.setApplicationContext(applicationContext);
 
-        StopPlaceUpdaterService stopPlaceUpdaterService = Mockito.mock(StopPlaceUpdaterService.class);
-
-        Mockito.when(applicationContext.getBean(StopPlaceUpdaterService.class)).thenReturn(stopPlaceUpdaterService);
 
         Map<Class, Set<String>>  filter = siriHelper.getFilter(subscriptionRequest, OutboundIdMappingPolicy.DEFAULT, "datId");
 
