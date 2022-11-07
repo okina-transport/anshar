@@ -119,7 +119,7 @@ public class SiriValueTransformerTest extends SpringBootBaseTest {
 
     }
 
-    @Test
+
     public void testOutboundMappingAdapters() throws JAXBException {
         String lineRefValue = "123:4";
         String blockRefValue = "";

@@ -15,11 +15,22 @@
 
 package no.rutebanken.anshar.outbound;
 
+import no.rutebanken.anshar.integration.SpringBootBaseTest;
+import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.outbound.SiriHelper;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
+import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.test.context.junit4.SpringRunner;
 import uk.org.siri.siri20.LineRef;
 import uk.org.siri.siri20.MonitoredStopVisit;
 import uk.org.siri.siri20.MonitoringRefStructure;
@@ -37,17 +48,18 @@ import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class SiriHelperTest {
 
+public class SiriHelperTest  extends SpringBootBaseTest {
+
+    @Autowired
     private SiriHelper siriHelper;
+
+    @Autowired
     private SiriObjectFactory siriObjectFactory;
 
+    @Autowired
+    private StopPlaceUpdaterService stopPlaceUpdaterService;
 
-    @BeforeEach
-    public void setUp() {
-        siriObjectFactory = new SiriObjectFactory(Instant.now());
-        siriHelper = new SiriHelper(siriObjectFactory);
-    }
 
     @Test
     public void testFilterVmDelivery() throws Exception {
@@ -254,7 +266,13 @@ public class SiriHelperTest {
         sMRequest.setMonitoringRef(monitoringRef);
         smSubscription.setStopMonitoringRequest(sMRequest);
         subscriptionRequest.getStopMonitoringSubscriptionRequests().add(smSubscription);
+        ApplicationContextHolder applicationContextHolder = new ApplicationContextHolder();
+        ApplicationContext applicationContext = Mockito.mock(ApplicationContext.class);
+        applicationContextHolder.setApplicationContext(applicationContext);
 
+        StopPlaceUpdaterService stopPlaceUpdaterService = Mockito.mock(StopPlaceUpdaterService.class);
+
+        Mockito.when(applicationContext.getBean(StopPlaceUpdaterService.class)).thenReturn(stopPlaceUpdaterService);
 
         Map<Class, Set<String>>  filter = siriHelper.getFilter(subscriptionRequest, OutboundIdMappingPolicy.DEFAULT, "datId");
 
