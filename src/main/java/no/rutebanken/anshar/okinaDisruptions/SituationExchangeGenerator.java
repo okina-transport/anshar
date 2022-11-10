@@ -28,6 +28,7 @@ import java.math.BigInteger;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 public class SituationExchangeGenerator {
@@ -131,7 +132,7 @@ public class SituationExchangeGenerator {
 
             AffectedStopPointStructure stopPoint = new AffectedStopPointStructure();
             StopPointRef stopPointRef = new StopPointRef();
-            stopPointRef.setValue(stopArea.getObjectId());
+            stopPointRef.setValue(disruption.getOrganization().toUpperCase(Locale.ROOT)  + ":Quay:" + stopArea.getObjectId());
             stopPoint.setStopPointRef(stopPointRef);
             stopPoints.getAffectedStopPoints().add(stopPoint);
         }
