@@ -113,6 +113,7 @@ public class StopPlaceUpdaterService {
         List<String> mappings = reverseStopPlaceMappings.get(id);
 
         return mappings.stream()
+                        .filter(provId -> provId != null)
                         .anyMatch(provId -> provId.startsWith(datasetId));
     }
 
