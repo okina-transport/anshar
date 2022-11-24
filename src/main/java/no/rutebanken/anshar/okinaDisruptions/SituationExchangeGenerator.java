@@ -6,23 +6,7 @@ import no.rutebanken.anshar.okinaDisruptions.model.OkinaLine;
 import no.rutebanken.anshar.okinaDisruptions.model.OkinaNetwork;
 import no.rutebanken.anshar.okinaDisruptions.model.OkinaStopArea;
 import no.rutebanken.anshar.okinaDisruptions.model.OkinaVehicleJourney;
-import uk.org.siri.siri20.AffectedLineStructure;
-import uk.org.siri.siri20.AffectedStopPointStructure;
-import uk.org.siri.siri20.AffectedVehicleJourneyStructure;
-import uk.org.siri.siri20.AffectsScopeStructure;
-import uk.org.siri.siri20.DefaultedTextStructure;
-import uk.org.siri.siri20.FramedVehicleJourneyRefStructure;
-import uk.org.siri.siri20.HalfOpenTimestampOutputRangeStructure;
-import uk.org.siri.siri20.LineRef;
-import uk.org.siri.siri20.MiscellaneousReasonEnumeration;
-import uk.org.siri.siri20.NaturalLanguageStringStructure;
-import uk.org.siri.siri20.NetworkRefStructure;
-import uk.org.siri.siri20.PtSituationElement;
-import uk.org.siri.siri20.RequestorRef;
-import uk.org.siri.siri20.SituationNumber;
-import uk.org.siri.siri20.SituationSourceStructure;
-import uk.org.siri.siri20.SituationVersion;
-import uk.org.siri.siri20.StopPointRef;
+import uk.org.siri.siri20.*;
 
 import java.math.BigInteger;
 import java.time.ZoneId;
@@ -186,7 +170,32 @@ public class SituationExchangeGenerator {
     }
 
     private static void mapReasons(PtSituationElement ptSituationElement, Disruption disruption) {
-        ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.UNKNOWN);
+
+        if (disruption.getCategory() == null){
+            ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.UNKNOWN);
+            return;
+        }
+
+        switch(disruption.getCategory()){
+            case "MiscellaneousReason":
+                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.valueOf(disruption.getReason()));
+                break;
+            case "EquipmentReason":
+                ptSituationElement.setEquipmentReason(EquipmentReasonEnumeration.valueOf(disruption.getReason()));
+                break;
+            case "PersonnelReason":
+                ptSituationElement.setPersonnelReason(PersonnelReasonEnumeration.valueOf(disruption.getReason()));
+                break;
+            case "EnvironmentReason":
+                ptSituationElement.setEnvironmentReason(EnvironmentReasonEnumeration.valueOf(disruption.getReason()));
+                break;
+            default:
+                //Ignore
+        }
+
+
+
+
     }
 
     private static void mapPeriod(PtSituationElement ptSituationElement, Disruption disruption) {

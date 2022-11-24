@@ -42,6 +42,9 @@ public class Disruption implements Serializable {
 
     private LocalDateTime publicationEndDateTime;
 
+    private String category;
+    private String reason;
+
     @Getter
     @Setter
     private List<OkinaLine> lines = new ArrayList<OkinaLine>(0);

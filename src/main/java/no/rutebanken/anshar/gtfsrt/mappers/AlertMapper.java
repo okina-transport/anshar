@@ -165,7 +165,7 @@ public class AlertMapper {
 
         switch(alert.getCause()){
             case WEATHER:
-                ptSituationElement.setEnvironmentReason(EnvironmentReasonEnumeration.UNKNOWN);
+                ptSituationElement.setEnvironmentReason(EnvironmentReasonEnumeration.UNDEFINED_ENVIRONMENTAL_PROBLEM);
                 break;
             case CONSTRUCTION:
                 ptSituationElement.setEquipmentReason(EquipmentReasonEnumeration.CONSTRUCTION_WORK);
@@ -177,6 +177,8 @@ public class AlertMapper {
                 ptSituationElement.setPersonnelReason(PersonnelReasonEnumeration.INDUSTRIAL_ACTION);
                 break;
             case OTHER_CAUSE:
+                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.UNDEFINED_PROBLEM);
+                break;
             case UNKNOWN_CAUSE:
                 ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.UNKNOWN);
                 break;
@@ -187,13 +189,13 @@ public class AlertMapper {
                 ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.DEMONSTRATION);
                 break;
             case MEDICAL_EMERGENCY:
-                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.FATALITY);
+                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.INCIDENT);
                 break;
             case POLICE_ACTIVITY:
                 ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.POLICE_ACTIVITY);
                 break;
             case TECHNICAL_PROBLEM:
-                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.INCIDENT);
+                ptSituationElement.setEquipmentReason(EquipmentReasonEnumeration.TECHNICAL_PROBLEM);
                 break;
             case HOLIDAY:
                 ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.HOLIDAY);
