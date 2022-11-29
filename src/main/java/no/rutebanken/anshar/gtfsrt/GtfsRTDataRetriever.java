@@ -48,6 +48,12 @@ public class GtfsRTDataRetriever {
             BufferedInputStream in = new BufferedInputStream(url1.openStream());
             GtfsRealtime.FeedMessage completeGTFsFeed = GtfsRealtime.FeedMessage.newBuilder().mergeFrom(in).build();
 
+            if (completeGTFsFeed.getEntityList().size() == 0){
+                logger.info("Flux vide détecté sur le datasetId :" +  gtfsRTApi.getDatasetId());
+                continue;
+            }
+
+
             tripUpdateSwallower.setUrl(gtfsRTApi.getUrl());
             tripUpdateSwallower.ingestTripUpdateData(gtfsRTApi.getDatasetId(), completeGTFsFeed);
 
