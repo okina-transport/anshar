@@ -19,6 +19,7 @@ public class PerformanceTimingService {
 
     public static void createNewTracer (String name){
         TimingTracer tracer = new TimingTracer(name);
+        tracer.mark("initialization");
         tracerCache.put(name, tracer);
     }
 

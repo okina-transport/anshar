@@ -1,14 +1,20 @@
 package no.rutebanken.anshar.routes.outbound;
 
+import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
+import no.rutebanken.anshar.util.PerformanceTimingService;
 import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import uk.org.siri.siri20.MonitoringRefStructure;
 
 import javax.ws.rs.core.MediaType;
+import java.util.Collection;
+import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class OutboundSiriDistributionRoute extends RouteBuilder {
@@ -50,6 +56,30 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
                 .end()
                 .removeHeader("showBody")
                 .toD("${header.endpoint}")
+                .process(e->{
+
+
+                    if (!e.getIn().getBody(String.class).contains("HeartbeatNotification")){
+                        String subsId = e.getIn().getHeader("SubscriptionId", String.class);
+
+                        Optional<OutboundSubscriptionSetup> outboundSubOpt = subscriptionManager.getSubscriptions().stream()
+                                .filter(sub -> ((OutboundSubscriptionSetup) sub).getSubscriptionId().equals(subsId))
+                                .findFirst();
+
+
+                        if (outboundSubOpt.isPresent()){
+                            OutboundSubscriptionSetup outboundSub = outboundSubOpt.get();
+                            Set<String> filter = outboundSub.getFilterMap().get(MonitoringRefStructure.class);
+                            String monitoringRef = filter.iterator().next();
+                            TimingTracer tracer = PerformanceTimingService.getTracer(monitoringRef);
+                            tracer.mark("Data sent to output");
+                            log.info(tracer.toString());
+                        }
+                    }
+
+
+
+                })
                 .bean(subscriptionManager, "clearFailTracker(${header.SubscriptionId})")
                 .log(LoggingLevel.INFO, "POST complete ${header.SubscriptionId} - Response: [${header.CamelHttpResponseCode} ${header.CamelHttpResponseText}]");
 

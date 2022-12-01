@@ -75,7 +75,6 @@ public class MessagingRoute extends RestRouteBuilder {
 
         from("direct:enqueue.message")
                 .convertBodyTo(String.class)
-                .log("enqueMess")
                 .to("direct:transform.siri")
                 .choice()
                     .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.ESTIMATED_TIMETABLE.name()))

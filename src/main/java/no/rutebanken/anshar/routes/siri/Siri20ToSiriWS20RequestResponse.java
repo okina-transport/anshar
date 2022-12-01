@@ -20,6 +20,7 @@ import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
 import no.rutebanken.anshar.routes.siri.helpers.SiriRequestFactory;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import no.rutebanken.anshar.util.PerformanceTimingService;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.MessageHistory;
@@ -95,6 +96,12 @@ public class Siri20ToSiriWS20RequestResponse extends SiriSubscriptionRouteBuilde
                     .setHeader(TRANSFORM_SOAP, constant(TRANSFORM_SOAP))
                     .setHeader(PARAM_SUBSCRIPTION_ID, simple(subscriptionSetup.getSubscriptionId()))
                     .setHeader(INTERNAL_SIRI_DATA_TYPE, simple(subscriptionSetup.getSubscriptionType().name()))
+                    .process(e -> {
+
+                        String monitoringRef = subscriptionSetup.getStopMonitoringRefValue();
+                        PerformanceTimingService.createNewTracer(monitoringRef);
+
+                    })
                     .to("direct:process.message.synchronous")
                 .doCatch(Exception.class)
                     .log("Caught exception - releasing leadership: " + subscriptionSetup.toString())
