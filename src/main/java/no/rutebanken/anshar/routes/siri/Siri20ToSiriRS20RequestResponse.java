@@ -20,11 +20,13 @@ import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
 import no.rutebanken.anshar.routes.siri.helpers.SiriRequestFactory;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import no.rutebanken.anshar.util.PerformanceTimingService;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.MessageHistory;
 import org.apache.camel.component.http.HttpMethods;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 
@@ -32,6 +34,7 @@ import static no.rutebanken.anshar.routes.HttpParameter.INTERNAL_SIRI_DATA_TYPE;
 import static no.rutebanken.anshar.routes.HttpParameter.PARAM_SUBSCRIPTION_ID;
 
 public class Siri20ToSiriRS20RequestResponse extends SiriSubscriptionRouteBuilder {
+
 
     public Siri20ToSiriRS20RequestResponse(AnsharConfiguration config, SubscriptionSetup subscriptionSetup, SubscriptionManager subscriptionManager) {
         super(config, subscriptionManager);
@@ -79,7 +82,10 @@ public class Siri20ToSiriRS20RequestResponse extends SiriSubscriptionRouteBuilde
             .doTry()
                 .to(getRequestUrl(subscriptionSetup, httpOptions))
                 .setHeader("CamelHttpPath", constant("/appContext" + subscriptionSetup.buildUrl(false)))
-                .log(LoggingLevel.DEBUG, "Got response " + subscriptionSetup.toString())
+                .log(LoggingLevel.DEBUG, "======>Incoming data for:  " + subscriptionSetup.toString())
+                .process(e-> {
+                    PerformanceTimingService.createNewTracer(subscriptionSetup.toString());
+                })
                 .to("log:response:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .setHeader(PARAM_SUBSCRIPTION_ID, simple(subscriptionSetup.getSubscriptionId()))
                 .setHeader(INTERNAL_SIRI_DATA_TYPE, simple(subscriptionSetup.getSubscriptionType().name()))

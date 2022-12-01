@@ -75,6 +75,7 @@ public class MessagingRoute extends RestRouteBuilder {
 
         from("direct:enqueue.message")
                 .convertBodyTo(String.class)
+                .log("enqueMess")
                 .to("direct:transform.siri")
                 .choice()
                     .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.ESTIMATED_TIMETABLE.name()))
@@ -197,7 +198,7 @@ public class MessagingRoute extends RestRouteBuilder {
             from(pubsubQueueSM + queueConsumerParameters)
                     .choice().when(readFromPubsub)
                     .to("direct:decompress.jaxb")
-                    //.log("Processing data from " + pubsubQueueSM + ", size ${header.Content-Length}")
+                    .log("messProcSM")
                     .wireTap("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
                     .endChoice()
                     .startupOrder(100001)
