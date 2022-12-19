@@ -237,7 +237,7 @@ public class SituationExchangeGenerator {
     private static void mapDescription(PtSituationElement ptSituationElement, Disruption disruption) {
 
         RequestorRef requestor = new RequestorRef();
-        requestor.setValue("Okina");
+        requestor.setValue("MOBIITI");
         ptSituationElement.setParticipantRef(requestor);
         SituationNumber situationNumber = new SituationNumber();
         situationNumber.setValue(disruption.getOrganization() + "-" + disruption.getId());
