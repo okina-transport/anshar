@@ -2,10 +2,12 @@ package no.rutebanken.anshar.routes.messaging;
 
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
+import no.rutebanken.anshar.okinaDisruptions.DisruptionRetriever;
 import no.rutebanken.anshar.routes.CamelRouteNames;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.admin.AdminRouteHelper;
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
+import no.rutebanken.anshar.routes.external.ExternalDataHandler;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.validation.SiriXmlValidator;
@@ -27,6 +29,8 @@ import java.io.InputStream;
 import static no.rutebanken.anshar.routes.HttpParameter.*;
 import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_SOAP;
 import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_VERSION;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASET_ID_HEADER_NAME;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.URL_HEADER_NAME;
 
 @Service
 public class MessagingRoute extends RestRouteBuilder {
@@ -57,15 +61,48 @@ public class MessagingRoute extends RestRouteBuilder {
         String queueConsumerParameters = "?concurrentConsumers="+configuration.getConcurrentConsumers();
 
 
+
         final String pubsubQueueSX = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_SX;
         final String pubsubQueueVM = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_VM;
         final String pubsubQueueET = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_ET;
         final String pubsubQueueSM = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_SM;
         final String pubsubQueueDefault = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_DEFAULT;
 
+        final String externalSiriSMQueue = messageQueueCamelRoutePrefix + "anshar.external.siri.sm.data";
+        final String externalSiriSXQueue = messageQueueCamelRoutePrefix + "anshar.external.siri.sx.data";
+
         if (messageQueueCamelRoutePrefix.contains("direct")) {
             queueConsumerParameters = "";
         }
+
+
+        from(externalSiriSMQueue)
+                .process(e->{
+                    String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
+                    e.getIn().setHeader(DATASET_ID_HEADER_NAME,datasetId );
+
+                    String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
+                    e.getIn().setHeader(URL_HEADER_NAME,url );
+                })
+                .to("direct:transform.siri")
+                .bean(ExternalDataHandler.class, "processIncomingSiriSM")
+                ;
+
+        from(externalSiriSXQueue)
+                .process(e->{
+                    String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
+                    e.getIn().setHeader(DATASET_ID_HEADER_NAME,datasetId );
+
+                    String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
+                    e.getIn().setHeader(URL_HEADER_NAME,url );
+                })
+                .to("direct:transform.siri")
+                .bean(ExternalDataHandler.class, "processIncomingSiriSX")
+        ;
+
+
+
+
 
         from("direct:process.message.synchronous")
                 .convertBodyTo(String.class)

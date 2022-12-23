@@ -47,6 +47,9 @@ public class Constants {
     public static final String MONITORED_VEHICLE_JOURNEY =  VEHICLE_ACTIVITY + "/MonitoredVehicleJourney";
     public static final String MONITORED_CALL_STRUCTURE =  MONITORED_VEHICLE_JOURNEY + "/MonitoredCall";
 
+    public static final String DATASET_ID_HEADER_NAME = "datasetId";
+    public static final String URL_HEADER_NAME = "URL";
+
     // TODO MHI : implement validators for SM
 
     private Constants() {

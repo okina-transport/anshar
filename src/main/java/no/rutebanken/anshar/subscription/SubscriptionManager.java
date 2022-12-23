@@ -499,6 +499,16 @@ public class SubscriptionManager {
         return siriAPISubscriptions.get(monitoringRef);
     }
 
+    public boolean isStopMonitoringSubscriptionExisting(String stopMonitoringRef, String datasetId){
+        return getAllSubscriptions(SiriDataType.STOP_MONITORING).stream()
+                                                                .anyMatch(subscription -> subscription.getStopMonitoringRefValue().equals(stopMonitoringRef) && datasetId.equals(subscription.getDatasetId()));
+    }
+
+    public boolean isSituationExchangeSubscriptionExisting(String situationNumber, String datasetId){
+        return getAllSubscriptions(SITUATION_EXCHANGE).stream()
+                .anyMatch(subscription -> subscription.getSubscriptionId().equals(situationNumber) && datasetId.equals(subscription.getDatasetId()));
+    }
+
     /**
      * Indicates if a subscription is available to request or not
      * @param subscriptionId
