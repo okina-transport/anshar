@@ -146,7 +146,7 @@ public class ExternalDataHandler {
         String subscriptionId = siri.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue();
 
 
-        if (!subscriptionManager.isSituationExchangeSubscriptionExisting(subscriptionId, datasetId)){
+        if (!subscriptionManager.isStopMonitoringSubscriptionExisting(subscriptionId, datasetId)){
 
             //there is no subscription for this stop. Need to create one
             SubscriptionSetup setup = new SubscriptionSetup();
