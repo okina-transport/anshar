@@ -115,7 +115,7 @@ public class ExternalDataHandler {
         return subscriptionId;
     }
 
-    }
+
 
     private List<PtSituationElement> collectSituations(Siri siri) {
         List<PtSituationElement> resultList = new ArrayList<>();
