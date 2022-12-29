@@ -43,6 +43,9 @@ public class TripUpdateSwallower extends AbstractSwallower {
     @Autowired
     private AnsharConfiguration configuration;
 
+    @Autowired
+    private TripUpdateMapper tripUpdateMapper;
+
 
     public TripUpdateSwallower() {
     }
@@ -75,7 +78,7 @@ public class TripUpdateSwallower extends AbstractSwallower {
 
         if (configuration.processSM()){
             //// STOP VISITS
-            List<MonitoredStopVisit> stopVisits = buildStopVisitList(completeGTFSRTMessage);
+            List<MonitoredStopVisit> stopVisits = buildStopVisitList(completeGTFSRTMessage, datasetId);
             List<String> visitSubscriptionList = getSubscriptionsFromVisits(stopVisits) ;
             checkAndCreateSubscriptions(visitSubscriptionList, "GTFS-RT_SM_", SiriDataType.STOP_MONITORING, RequestType.GET_STOP_MONITORING, datasetId);
 
@@ -112,10 +115,11 @@ public class TripUpdateSwallower extends AbstractSwallower {
      * Read the complete GTS-RT message and build a list of stop visits to integrate
      * @param feedMessage
      *         The complete message (GTFS-RT format)
+     * @param datasetId
      * @return
      *         A list of visits, build by mapping trip updates from GTFS-RT message
      */
-    private List<MonitoredStopVisit> buildStopVisitList(GtfsRealtime.FeedMessage feedMessage) {
+    private List<MonitoredStopVisit> buildStopVisitList(GtfsRealtime.FeedMessage feedMessage, String datasetId) {
         List<MonitoredStopVisit> stopVisits = new ArrayList<>();
 
         long recordedAtTimeLong = feedMessage.getHeader().getTimestamp();
@@ -125,7 +129,7 @@ public class TripUpdateSwallower extends AbstractSwallower {
             if (feedEntity.getTripUpdate() == null)
                 continue;
 
-            List<MonitoredStopVisit> currentStopVisitList = TripUpdateMapper.mapStopVisitFromTripUpdate(feedEntity.getTripUpdate());
+            List<MonitoredStopVisit> currentStopVisitList = tripUpdateMapper.mapStopVisitFromTripUpdate(feedEntity.getTripUpdate(), datasetId);
             stopVisits.addAll(currentStopVisitList);
         }
 
@@ -150,7 +154,7 @@ public class TripUpdateSwallower extends AbstractSwallower {
             if (feedEntity.getTripUpdate() == null)
                 continue;
 
-            EstimatedVehicleJourney estimatedVehicleJourney = TripUpdateMapper.mapVehicleJourneyFromTripUpdate(feedEntity.getTripUpdate());
+            EstimatedVehicleJourney estimatedVehicleJourney = tripUpdateMapper.mapVehicleJourneyFromTripUpdate(feedEntity.getTripUpdate());
             estimatedVehicleJourneys.add(estimatedVehicleJourney);
         }
         return estimatedVehicleJourneys;

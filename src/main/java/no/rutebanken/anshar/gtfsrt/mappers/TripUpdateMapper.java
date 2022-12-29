@@ -1,6 +1,12 @@
 package no.rutebanken.anshar.gtfsrt.mappers;
 
 import com.google.transit.realtime.GtfsRealtime;
+import net.logstash.logback.encoder.org.apache.commons.lang3.StringUtils;
+import no.rutebanken.anshar.routes.mapping.StopTimesService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import uk.org.siri.siri20.*;
 
 import java.math.BigInteger;
@@ -14,36 +20,47 @@ import java.util.List;
 /***
  * Utility class to convert Trip Update (GTFS RT)  to estimated time table (SIRI)
  */
-
+@Component
 public class TripUpdateMapper {
+
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
+    @Autowired
+    StopTimesService stopTimesService;
 
 
     /**
      * Read a tripUpdate and creates siri objects
      * @param tripUpdate
      *      GTFS-RT object to read
+     * @param datasetId
      * @return
      *      A list of siri objects
      */
-    public static List<MonitoredStopVisit> mapStopVisitFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate) {
+    public List<MonitoredStopVisit> mapStopVisitFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate, String datasetId) {
         List<MonitoredStopVisit> stopVisitList = new ArrayList<>();
 
 
         LineRef lineRef = createLineRef(tripUpdate);
         FramedVehicleJourneyRefStructure vehicleJourneyRef = createVehicleJourneyRef(tripUpdate);
 
-
+        String tripId = tripUpdate.getTrip().getTripId();
 
         for (GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate : tripUpdate.getStopTimeUpdateList()) {
             MonitoredStopVisit stopVisit = new MonitoredStopVisit();
-            mapMonitoringRef(stopVisit, stopTimeUpdate);
+
+            String stopId = getStopId(stopTimeUpdate,datasetId,tripId);
+            if (StringUtils.isEmpty(stopId)){
+                logger.error("Unable to determine stopId for dataset:{}, tripId:{}, stopSequence:{}, stopId:{}",datasetId,tripId,stopTimeUpdate.getStopSequence(),stopTimeUpdate.getStopId());
+            }
+            mapMonitoringRef(stopVisit, stopId);
             MonitoredVehicleJourneyStructure monitoredVehicleStruct = new MonitoredVehicleJourneyStructure();
             monitoredVehicleStruct.setLineRef(lineRef);
             monitoredVehicleStruct.setFramedVehicleJourneyRef(vehicleJourneyRef);
             monitoredVehicleStruct.setMonitored(true);
             MonitoredCallStructure monitoredCallStructure = new MonitoredCallStructure();
             StopPointRef stopPointRef = new StopPointRef();
-            stopPointRef.setValue(stopTimeUpdate.getStopId());
+            stopPointRef.setValue(stopId);
             monitoredCallStructure.setStopPointRef(stopPointRef);
             monitoredCallStructure.setOrder(BigInteger.valueOf(stopTimeUpdate.getStopSequence()));
             mapArrival(monitoredCallStructure, stopTimeUpdate);
@@ -137,15 +154,18 @@ public class TripUpdateMapper {
         return lineRef;
     }
 
-
-
-    private static void mapMonitoringRef(MonitoredStopVisit stopVisit, GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate) {
-        if (!stopTimeUpdate.hasStopId()){
-            return;
+    private String getStopId( GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate, String datasetId, String tripId){
+        if (stopTimeUpdate.hasStopId()){
+            return stopTimeUpdate.getStopId();
         }
 
+        return stopTimesService.getStopId(datasetId,tripId,stopTimeUpdate.getStopSequence()).orElse(null);
+    }
+
+    private void mapMonitoringRef(MonitoredStopVisit stopVisit, String stopId) {
+
         MonitoringRefStructure monitoringRefStruct = new MonitoringRefStructure();
-        monitoringRefStruct.setValue(stopTimeUpdate.getStopId());
+        monitoringRefStruct.setValue(stopId);
         stopVisit.setMonitoringRef(monitoringRefStruct);
     }
 
