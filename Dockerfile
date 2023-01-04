@@ -1,4 +1,4 @@
-FROM adoptopenjdk:11-jre-hotspot as builder
+FROM openjdk:11-jdk as builder
 
 ARG JAR_FILE
 
@@ -16,6 +16,6 @@ RUN apt-get install -y locales
 RUN locale-gen fr_FR.utf8
 ENV LANG fr_FR.UTF-8
 ENV LANGUAGE fr_FR:fr
-ENV LC_ALL fr_FR.UTF
+ENV LC_ALL fr_FR.UTF-8
 
 ENTRYPOINT ["java", "org.springframework.boot.loader.JarLauncher"]
