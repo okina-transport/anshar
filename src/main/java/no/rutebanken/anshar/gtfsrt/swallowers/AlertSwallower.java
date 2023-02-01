@@ -94,7 +94,7 @@ public class AlertSwallower extends AbstractSwallower {
 
 
         for (GtfsRealtime.FeedEntity feedEntity : feedMessage.getEntityList()) {
-            if (feedEntity.getAlert() == null)
+            if (isEmptyAlert(feedEntity.getAlert()))
                 continue;
 
 
@@ -106,6 +106,14 @@ public class AlertSwallower extends AbstractSwallower {
             situtations.add(situation);
         }
         return situtations;
+
+    }
+
+    private boolean isEmptyAlert(GtfsRealtime.Alert alert){
+
+     return alert == null || alert.getInformedEntityCount() == 0 ||
+             alert.getHeaderText() == null ||  alert.getHeaderText().getTranslationList().size() == 0 ||
+             alert.getDescriptionText() == null || alert.getDescriptionText().getTranslationList().size() == 0;
 
     }
 
