@@ -1,14 +1,10 @@
 package no.rutebanken.anshar.okinaDisruptions;
 
-import no.rutebanken.anshar.okinaDisruptions.model.Disruption;
-import no.rutebanken.anshar.okinaDisruptions.model.JourneyPattern;
-import no.rutebanken.anshar.okinaDisruptions.model.OkinaLine;
-import no.rutebanken.anshar.okinaDisruptions.model.OkinaNetwork;
-import no.rutebanken.anshar.okinaDisruptions.model.OkinaStopArea;
-import no.rutebanken.anshar.okinaDisruptions.model.OkinaVehicleJourney;
+import no.rutebanken.anshar.okinaDisruptions.model.*;
 import uk.org.siri.siri20.*;
 
 import java.math.BigInteger;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
@@ -202,18 +198,15 @@ public class SituationExchangeGenerator {
         HalfOpenTimestampOutputRangeStructure validityPeriod = new HalfOpenTimestampOutputRangeStructure();
         ZoneId zoneId = ZoneId.systemDefault();
 
-        if (disruption.getStartDateTime() != null) {
-            ZonedDateTime startDateTime = disruption.getStartDateTime().atZone(zoneId);
-            validityPeriod.setStartTime(startDateTime);
-        }
 
-        if (disruption.getEndDateTime() != null) {
-            ZonedDateTime endDateTime = disruption.getEndDateTime().atZone(zoneId);
-            validityPeriod.setEndTime(endDateTime);
-        }
+        if (disruption.getPeriods() == null){
+            addValidityPeriodToSituation(ptSituationElement, disruption.getStartDateTime(), disruption.getEndDateTime());
 
-        if (disruption.getStartDateTime() != null || disruption.getEndDateTime() != null) {
-            ptSituationElement.getValidityPeriods().add(validityPeriod);
+        }else{
+
+            for (DisruptionPeriod period : disruption.getPeriods()) {
+                addValidityPeriodToSituation(ptSituationElement, period.getStartDate(), period.getEndDate());
+            }
         }
 
         ZonedDateTime creationTime = disruption.getCreationDateTime().atZone(zoneId);
@@ -232,6 +225,27 @@ public class SituationExchangeGenerator {
             }
             ptSituationElement.setPublicationWindow(publicationWindow);
         }
+    }
+
+
+    private static void addValidityPeriodToSituation(PtSituationElement ptSituationElement, LocalDateTime startDate, LocalDateTime endDate){
+        ZoneId zoneId = ZoneId.systemDefault();
+        HalfOpenTimestampOutputRangeStructure validityPeriod = new HalfOpenTimestampOutputRangeStructure();
+
+        if (startDate != null) {
+            ZonedDateTime startDateTime = startDate.atZone(zoneId);
+            validityPeriod.setStartTime(startDateTime);
+        }
+
+        if (endDate != null) {
+            ZonedDateTime endDateTime = endDate.atZone(zoneId);
+            validityPeriod.setEndTime(endDateTime);
+        }
+
+        if (startDate != null || endDate != null) {
+            ptSituationElement.getValidityPeriods().add(validityPeriod);
+        }
+
     }
 
     private static void mapDescription(PtSituationElement ptSituationElement, Disruption disruption) {

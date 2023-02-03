@@ -68,6 +68,10 @@ public class Disruption implements Serializable {
     @Setter
     private List<OkinaStopArea> stopAreas = new ArrayList<OkinaStopArea>(0);
 
+    @Getter
+    @Setter
+    private List<DisruptionPeriod> periods = new ArrayList<DisruptionPeriod>(0);
+
 
 
 
