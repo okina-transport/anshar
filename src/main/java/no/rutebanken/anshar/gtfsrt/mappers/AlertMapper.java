@@ -5,20 +5,7 @@ import com.google.transit.realtime.GtfsRealtime;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri20.AffectedOperatorStructure;
-import uk.org.siri.siri20.AffectedStopPointStructure;
-import uk.org.siri.siri20.AffectedVehicleJourneyStructure;
-import uk.org.siri.siri20.AffectsScopeStructure;
-import uk.org.siri.siri20.DefaultedTextStructure;
-import uk.org.siri.siri20.EnvironmentReasonEnumeration;
-import uk.org.siri.siri20.EquipmentReasonEnumeration;
-import uk.org.siri.siri20.HalfOpenTimestampOutputRangeStructure;
-import uk.org.siri.siri20.LineRef;
-import uk.org.siri.siri20.MiscellaneousReasonEnumeration;
-import uk.org.siri.siri20.OperatorRefStructure;
-import uk.org.siri.siri20.PersonnelReasonEnumeration;
-import uk.org.siri.siri20.PtSituationElement;
-import uk.org.siri.siri20.StopPointRef;
+import uk.org.siri.siri20.*;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -26,6 +13,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
@@ -71,7 +59,7 @@ public class AlertMapper {
         AffectsScopeStructure.Operators operators = new AffectsScopeStructure.Operators();
         AffectsScopeStructure.StopPoints stopPoints = new AffectsScopeStructure.StopPoints();
         AffectsScopeStructure.VehicleJourneys vehicleJourneys = new AffectsScopeStructure.VehicleJourneys();
-
+        AffectsScopeStructure.Networks networks =  new AffectsScopeStructure.Networks();
 
 
 
@@ -81,6 +69,7 @@ public class AlertMapper {
             operators.getAffectedOperators().addAll(getOperators(informedEntity));
             stopPoints.getAffectedStopPoints().addAll(getStopPoints(informedEntity));
             vehicleJourneys.getAffectedVehicleJourneies().addAll(getVehicleJourneys(informedEntity));
+            networks.getAffectedNetworks().addAll(getNetworks(informedEntity));
 
         }
 
@@ -88,9 +77,29 @@ public class AlertMapper {
         affectStruct.setStopPoints(stopPoints);
         affectStruct.setVehicleJourneys(vehicleJourneys);
 
+        affectStruct.setNetworks(networks);
+
 
         ptSituationElement.setAffects(affectStruct);
 
+
+    }
+
+    private static  List<AffectsScopeStructure.Networks.AffectedNetwork> getNetworks(GtfsRealtime.EntitySelector informedEntity) {
+
+        AffectsScopeStructure.Networks networks = new AffectsScopeStructure.Networks();
+
+
+        if (StringUtils.isNotEmpty(informedEntity.getRouteId())){
+            AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork = new AffectsScopeStructure.Networks.AffectedNetwork();
+            AffectedLineStructure affecteLine = new AffectedLineStructure();
+            LineRef lineRef = new LineRef();
+            lineRef.setValue(informedEntity.getRouteId());
+            affecteLine.setLineRef(lineRef);
+            affectedNetwork.getAffectedLines().add(affecteLine);
+            networks.getAffectedNetworks().add(affectedNetwork);
+        }
+        return networks.getAffectedNetworks();
 
     }
 
