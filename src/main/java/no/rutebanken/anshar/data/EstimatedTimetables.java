@@ -97,12 +97,12 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
     @PostConstruct
     private void initializeUpdateCommitter() {
         super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
-        enableCache(timetableDeliveries,
-            // Only cache monitored/cancelled/extra trips
-            value -> (Boolean.TRUE.equals(value.isMonitored()) |
-                Boolean.TRUE.equals(value.isCancellation()) |
-                Boolean.TRUE.equals(value.isExtraJourney()))
-        );
+//        enableCache(timetableDeliveries,
+//            // Only cache monitored/cancelled/extra trips
+//            value -> (Boolean.TRUE.equals(value.isMonitored()) |
+//                Boolean.TRUE.equals(value.isCancellation()) |
+//                Boolean.TRUE.equals(value.isExtraJourney()))
+        //);
         linkEntriesTtl(timetableDeliveries, changesMap, checksumCache, idStartTimeMap);
     }
 
@@ -622,6 +622,7 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
                         }
                     }
 
+                    cache.put(key, et);
                     changes.put(key, et);
                     timingTracer.mark("changes.put");
 
