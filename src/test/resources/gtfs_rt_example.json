@@ -1,0 +1,165 @@
+{
+  "header": {
+    "gtfs_realtime_version": "2.0",
+    "incrementality": "FULL_DATASET",
+    "timestamp": "1676459701"
+  },
+  "entity": [
+    {
+      "id": "1",
+      "alert": {
+        "active_period": [
+          {
+            "start": "1658283241"
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "16230"
+          }
+        ],
+        "cause": "CONSTRUCTION",
+        "effect": "DETOUR",
+        "url": {
+          "translation": [
+            {
+              "text": "http://www.sometransitagency/alerts",
+              "language": "en"
+            }
+          ]
+        },
+        "header_text": {
+          "translation": [
+            {
+              "text": "Stop at Elm street is closed, temporary stop at Oak street",
+              "language": "en"
+            }
+          ]
+        },
+        "description_text": {
+          "translation": [
+            {
+              "text": "Due to construction at Elm street the stop is closed. The temporary stop can be found 300 meters north at Oak street",
+              "language": "en"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "2",
+      "alert": {
+        "active_period": [
+          {
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "16230"
+          }
+        ],
+        "cause": "CONSTRUCTION",
+        "effect": "DETOUR",
+        "url": {
+          "translation": [
+            {
+              "text": "http://www.sometransitagency/alerts",
+              "language": "en"
+            }
+          ]
+        },
+        "header_text": {
+          "translation": [
+            {
+              "text": "Stop at Elm street is closed, temporary stop at Oak street",
+              "language": "en"
+            }
+          ]
+        },
+        "description_text": {
+          "translation": [
+            {
+              "text": "Due to construction at Elm street the stop is closed. The temporary stop can be found 300 meters north at Oak street",
+              "language": "en"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "3",
+      "alert": {
+        "active_period": [
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "16230"
+          }
+        ],
+        "cause": "CONSTRUCTION",
+        "effect": "DETOUR",
+        "url": {
+          "translation": [
+            {
+              "text": "http://www.sometransitagency/alerts",
+              "language": "en"
+            }
+          ]
+        },
+        "header_text": {
+          "translation": [
+            {
+              "text": "Stop at Elm street is closed, temporary stop at Oak street",
+              "language": "en"
+            }
+          ]
+        },
+        "description_text": {
+          "translation": [
+            {
+              "text": "Due to construction at Elm street the stop is closed. The temporary stop can be found 300 meters north at Oak street",
+              "language": "en"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "4",
+      "alert": {
+        "informed_entity": [
+          {
+            "stop_id": "16230"
+          }
+        ],
+        "cause": "CONSTRUCTION",
+        "effect": "DETOUR",
+        "url": {
+          "translation": [
+            {
+              "text": "http://www.sometransitagency/alerts",
+              "language": "en"
+            }
+          ]
+        },
+        "header_text": {
+          "translation": [
+            {
+              "text": "Stop at Elm street is closed, temporary stop at Oak street",
+              "language": "en"
+            }
+          ]
+        },
+        "description_text": {
+          "translation": [
+            {
+              "text": "Due to construction at Elm street the stop is closed. The temporary stop can be found 300 meters north at Oak street",
+              "language": "en"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
+

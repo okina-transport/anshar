@@ -29,6 +29,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri20.AnnotatedLineRef;
 import uk.org.siri.siri20.AnnotatedStopPointStructure;
 import uk.org.siri.siri20.EstimatedVehicleJourney;
+import uk.org.siri.siri20.HalfOpenTimestampOutputRangeStructure;
 import uk.org.siri.siri20.MonitoredStopVisit;
 import uk.org.siri.siri20.PtSituationElement;
 import uk.org.siri.siri20.Siri;
@@ -37,7 +38,6 @@ import javax.xml.bind.JAXBException;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,6 +47,9 @@ import java.util.List;
 import java.util.UUID;
 
 import static junit.framework.TestCase.*;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 public class SiriHandlerTest extends SpringBootBaseTest {
@@ -67,7 +70,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     private EstimatedTimetables estimatedTimetables;
 
    // @Test
-    public void testErrorInSXServiceDelivery() throws JAXBException {
+    public void testErrorInSXServiceDelivery() {
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
                 "<siri:Siri xmlns:siri=\"http://www.siri.org.uk/siri\">\n" +
                 "  <siril:ServiceDelivery xmlns:siril=\"http://www.siri.org.uk/siri\">\n" +
@@ -89,7 +92,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         try {
             SubscriptionSetup sxSubscription = getSxSubscription();
             subscriptionManager.addSubscription(sxSubscription.getSubscriptionId(), sxSubscription);
-            Siri siri = handler.handleIncomingSiri(sxSubscription.getSubscriptionId(),new ByteArrayInputStream(xml.getBytes()));
+            handler.handleIncomingSiri(sxSubscription.getSubscriptionId(),new ByteArrayInputStream(xml.getBytes()));
         } catch (Throwable t) {
             fail("Handling empty response caused exception");
         }
@@ -97,7 +100,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
 
     @Test
-    public void testErrorInETServiceDelivery() throws JAXBException {
+    public void testErrorInETServiceDelivery() {
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
                 "<siri:Siri xmlns:siri=\"http://www.siri.org.uk/siri\">\n" +
                 "  <siril:ServiceDelivery xmlns:siril=\"http://www.siri.org.uk/siri\">\n" +
@@ -127,7 +130,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
 
    // @Test
-    public void testErrorInVMServiceDelivery() throws JAXBException {
+    public void testErrorInVMServiceDelivery() {
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
                 "<siri:Siri xmlns:siri=\"http://www.siri.org.uk/siri\">\n" +
                 "  <siril:ServiceDelivery xmlns:siril=\"http://www.siri.org.uk/siri\">\n" +
@@ -155,7 +158,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testErrorInSMServiceDelivery() throws JAXBException {
+    public void testErrorInSMServiceDelivery() {
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
                 "<siri:Siri xmlns:siri=\"http://www.siri.org.uk/siri\">\n" +
                 "  <siril:ServiceDelivery xmlns:siril=\"http://www.siri.org.uk/siri\">\n" +
@@ -184,13 +187,12 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     }
 
 
-
-    @Test
     /**
      * Test to check that file given by cityway complies with okina management rules
+     * @throws JAXBException
      */
+    @Test
     public void testCitywaySxCompliance() throws JAXBException {
-
         SubscriptionSetup sxSubscription = getSxSubscription();
         subscriptionManager.addSubscription(sxSubscription.getSubscriptionId(), sxSubscription);
         ClassLoader classLoader = getClass().getClassLoader();
@@ -207,12 +209,12 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
     }
 
-    @Test
     /**
      * Test to check that file given by cityway complies with okina management rules
+     * @throws JAXBException
      */
+    @Test
     public void testCitywaySmCompliance() throws JAXBException {
-
         SubscriptionSetup smSubscription = getSmSubscription();
         smSubscription.setStopMonitoringRefValue("sp4");
         subscriptionManager.addSubscription(smSubscription.getSubscriptionId(), smSubscription);
@@ -229,10 +231,11 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
     }
 
-    //@Test
     /**
      * Test to check that file given by cityway complies with okina management rules
+     * @throws JAXBException
      */
+//    @Test
     public void testCitywayEtCompliance() throws JAXBException {
 
         SubscriptionSetup etSubscription = getEtSubscription();
@@ -252,9 +255,6 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
     @Test
     public void stopPointsDiscoveryTest() throws JAXBException, IOException {
-
-
-
         SubscriptionSetup smSubscription1 = getSmSubscription();
         smSubscription1.setStopMonitoringRefValue("sp1");
         subscriptionManager.addSubscription(smSubscription1.getSubscriptionId(), smSubscription1);
@@ -284,9 +284,6 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
     @Test
     public void linesDiscoveryTest() throws JAXBException, IOException {
-
-
-
         SubscriptionSetup vmSubscription1 = getVmSubscription();
         vmSubscription1.setLineRefValue("line1");
         subscriptionManager.addSubscription(vmSubscription1.getSubscriptionId(), vmSubscription1);
@@ -314,6 +311,37 @@ public class SiriHandlerTest extends SpringBootBaseTest {
             throw e;
         }
     }
+
+    /**
+     * Test to check sx with and without validity period and start time
+     * @throws JAXBException
+     */
+    @Test
+    public void testSxValidityPeriodStartTime() throws JAXBException {
+        SubscriptionSetup sxSubscription = getSxSubscription();
+        subscriptionManager.addSubscription(sxSubscription.getSubscriptionId(), sxSubscription);
+        File file = new File("src/test/resources/siri-sx_validity_period_start_time.xml");
+
+        try {
+            handler.handleIncomingSiri(sxSubscription.getSubscriptionId(), new ByteArrayInputStream(FileUtils.readFileToByteArray(file)));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        Collection<PtSituationElement> savedSituations = situations.getAll();
+
+        assertTrue(4 == savedSituations.size());
+
+        for(PtSituationElement savedSituation :  savedSituations) {
+            assertNotNull(savedSituation.getValidityPeriods());
+            assertNotEquals(savedSituation.getValidityPeriods().size(), 0);
+            for(HalfOpenTimestampOutputRangeStructure validityPeriod : savedSituation.getValidityPeriods()){
+                assertNotNull(validityPeriod.getStartTime());
+            }
+        }
+    }
+
+
 
 
 

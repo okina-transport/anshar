@@ -2,25 +2,11 @@ package no.rutebanken.anshar.gtfsRT;
 
 import com.google.transit.realtime.GtfsRealtime;
 import no.rutebanken.anshar.gtfsrt.mappers.AlertMapper;
-import no.rutebanken.anshar.gtfsrt.mappers.TripUpdateMapper;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
-import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
-import no.rutebanken.anshar.subscription.SubscriptionManager;
-import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
 import uk.org.siri.siri20.PtSituationElement;
 
-import java.io.BufferedInputStream;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertNull;
 
 
 public class GTFSRTMapperTest extends SpringBootBaseTest {
@@ -29,9 +15,8 @@ public class GTFSRTMapperTest extends SpringBootBaseTest {
     private static final int DEFAULT_HEARTBEAT_SECONDS = 300;
 
 
-
     @Test
-    public void testGTFSRTAlertMapperTest()  {
+    public void testGTFSRTAlertMapperTest() {
         GtfsRealtime.Alert.Builder alertBuilder = GtfsRealtime.Alert.newBuilder();
 
         GtfsRealtime.TranslatedString.Translation.Builder translation = GtfsRealtime.TranslatedString.Translation.newBuilder();
@@ -51,23 +36,23 @@ public class GTFSRTMapperTest extends SpringBootBaseTest {
         PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build());
 
 
-        assertEquals("headerText",situation.getSummaries().get(0).getValue());
-        assertEquals("desc",situation.getDescriptions().get(0).getValue());
+        assertEquals("headerText", situation.getSummaries().get(0).getValue());
+        assertEquals("desc", situation.getDescriptions().get(0).getValue());
 
 
     }
 
     @Test
-    public void testGTFSRTTripUpdateMapperTest(){
+    public void testGTFSRTTripUpdateMapperTest() {
         // TODO Ecrire un test qui vérifie le mapping des trip Update
 
     }
+
     @Test
-    public void testGTFSRTVehiclePositionMapperTest(){
+    public void testGTFSRTVehiclePositionMapperTest() {
         // TODO Ecrire un test qui vérifie le mapping des vehiclePosition
 
     }
-
 
 
 }

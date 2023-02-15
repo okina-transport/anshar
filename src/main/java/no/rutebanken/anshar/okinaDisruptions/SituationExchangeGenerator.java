@@ -4,6 +4,7 @@ import no.rutebanken.anshar.okinaDisruptions.model.*;
 import uk.org.siri.siri20.*;
 
 import java.math.BigInteger;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -27,7 +28,7 @@ public class SituationExchangeGenerator {
 
     private static void mapImage(PtSituationElement ptSituationElement, Disruption disruption) {
 
-        if (disruption.getImgFileBinary() == null){
+        if (disruption.getImgFileBinary() == null) {
             return;
         }
 
@@ -94,7 +95,7 @@ public class SituationExchangeGenerator {
             }
         }
 
-        if (networks.getAffectedNetworks().size() > 0){
+        if (networks.getAffectedNetworks().size() > 0) {
             affectStruct.setNetworks(networks);
         }
 
@@ -112,7 +113,7 @@ public class SituationExchangeGenerator {
 
             AffectedStopPointStructure stopPoint = new AffectedStopPointStructure();
             StopPointRef stopPointRef = new StopPointRef();
-            stopPointRef.setValue(disruption.getOrganization().toUpperCase(Locale.ROOT)  + ":Quay:" + stopArea.getObjectId());
+            stopPointRef.setValue(disruption.getOrganization().toUpperCase(Locale.ROOT) + ":Quay:" + stopArea.getObjectId());
             stopPoint.setStopPointRef(stopPointRef);
             stopPoints.getAffectedStopPoints().add(stopPoint);
         }
@@ -167,12 +168,12 @@ public class SituationExchangeGenerator {
 
     private static void mapReasons(PtSituationElement ptSituationElement, Disruption disruption) {
 
-        if (disruption.getCategory() == null){
+        if (disruption.getCategory() == null) {
             ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.UNKNOWN);
             return;
         }
 
-        switch(disruption.getCategory()){
+        switch (disruption.getCategory()) {
             case "MiscellaneousReason":
                 ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.valueOf(disruption.getReason()));
                 break;
@@ -190,20 +191,16 @@ public class SituationExchangeGenerator {
         }
 
 
-
-
     }
 
     private static void mapPeriod(PtSituationElement ptSituationElement, Disruption disruption) {
-        HalfOpenTimestampOutputRangeStructure validityPeriod = new HalfOpenTimestampOutputRangeStructure();
         ZoneId zoneId = ZoneId.systemDefault();
 
 
-        if (disruption.getPeriods() == null){
+        if (disruption.getPeriods() == null) {
             addValidityPeriodToSituation(ptSituationElement, disruption.getStartDateTime(), disruption.getEndDateTime());
 
-        }else{
-
+        } else {
             for (DisruptionPeriod period : disruption.getPeriods()) {
                 addValidityPeriodToSituation(ptSituationElement, period.getStartDate(), period.getEndDate());
             }
@@ -213,13 +210,13 @@ public class SituationExchangeGenerator {
         ptSituationElement.setCreationTime(creationTime);
 
 
-        if (disruption.getPublicationStartDateTime() != null){
+        if (disruption.getPublicationStartDateTime() != null) {
             HalfOpenTimestampOutputRangeStructure publicationWindow = new HalfOpenTimestampOutputRangeStructure();
 
             ZonedDateTime startPublication = disruption.getPublicationStartDateTime().atZone(zoneId);
             publicationWindow.setStartTime(startPublication);
 
-            if (disruption.getPublicationEndDateTime() != null){
+            if (disruption.getPublicationEndDateTime() != null) {
                 ZonedDateTime endPublication = disruption.getPublicationEndDateTime().atZone(zoneId);
                 publicationWindow.setEndTime(endPublication);
             }
@@ -228,13 +225,16 @@ public class SituationExchangeGenerator {
     }
 
 
-    private static void addValidityPeriodToSituation(PtSituationElement ptSituationElement, LocalDateTime startDate, LocalDateTime endDate){
+    private static void addValidityPeriodToSituation(PtSituationElement ptSituationElement, LocalDateTime startDate, LocalDateTime endDate) {
         ZoneId zoneId = ZoneId.systemDefault();
         HalfOpenTimestampOutputRangeStructure validityPeriod = new HalfOpenTimestampOutputRangeStructure();
 
         if (startDate != null) {
             ZonedDateTime startDateTime = startDate.atZone(zoneId);
             validityPeriod.setStartTime(startDateTime);
+        } else {
+            ZonedDateTime timestamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(Long.MIN_VALUE), zoneId);
+            validityPeriod.setStartTime(timestamp);
         }
 
         if (endDate != null) {
@@ -278,7 +278,6 @@ public class SituationExchangeGenerator {
         ptSituationElement.getDescriptions().add(comment);
 
     }
-
 
 
 }

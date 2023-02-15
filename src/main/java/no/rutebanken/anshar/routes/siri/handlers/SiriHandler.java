@@ -50,6 +50,7 @@ import uk.org.siri.siri20.ErrorCodeStructure;
 import uk.org.siri.siri20.ErrorDescriptionStructure;
 import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
 import uk.org.siri.siri20.EstimatedVehicleJourney;
+import uk.org.siri.siri20.HalfOpenTimestampOutputRangeStructure;
 import uk.org.siri.siri20.InvalidDataReferencesErrorStructure;
 import uk.org.siri.siri20.LineRef;
 import uk.org.siri.siri20.MonitoredStopVisit;
@@ -77,6 +78,9 @@ import javax.xml.datatype.Duration;
 import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -715,6 +719,8 @@ public class SiriHandler {
                                             logger.info(getErrorContents(sx.getErrorCondition()));
                                         } else {
                                             if (sx.getSituations() != null && sx.getSituations().getPtSituationElements() != null) {
+                                                setValidityPeriodAndStartTimeIfNull(sx.getSituations().getPtSituationElements(), subscriptionSetup.getDatasetId());
+
                                                 if (subscriptionSetup.isUseProvidedCodespaceId()) {
                                                     Map<String, List<PtSituationElement>> situationsByCodespace = splitSituationsByCodespace(sx.getSituations().getPtSituationElements());
                                                     for (String codespace : situationsByCodespace.keySet()) {
@@ -907,6 +913,28 @@ public class SiriHandler {
             }
         } else {
             logger.debug("ServiceDelivery for invalid subscriptionId [{}] ignored.", subscriptionId);
+        }
+    }
+
+    private void setValidityPeriodAndStartTimeIfNull(List<PtSituationElement> situationExchangeDeliveries, String datasetId) {
+        for(PtSituationElement situationElement : situationExchangeDeliveries) {
+            ZoneId zoneId = ZoneId.systemDefault();
+            for(HalfOpenTimestampOutputRangeStructure validityPeriod : situationElement.getValidityPeriods()){
+                if(validityPeriod.getStartTime() == null){
+                    ZonedDateTime timestamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(Long.MIN_VALUE), zoneId);
+                    validityPeriod.setStartTime(timestamp);
+                    logger.info("PtSituationElement without start time and/or validity period for datasetId : " + datasetId +
+                            " with situation element id : " + situationElement.getSituationNumber().getValue());
+                }
+            }
+            if(situationElement.getValidityPeriods().isEmpty()){
+                HalfOpenTimestampOutputRangeStructure validityPeriod = new HalfOpenTimestampOutputRangeStructure();
+                ZonedDateTime timestamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(Long.MIN_VALUE), zoneId);
+                validityPeriod.setStartTime(timestamp);
+                situationElement.getValidityPeriods().add(validityPeriod);
+                logger.info("PtSituationElement without start time and/or validity period with datasetId : " + datasetId +
+                        " with situation element id : " + situationElement.getSituationNumber().getValue());
+            }
         }
     }
 
