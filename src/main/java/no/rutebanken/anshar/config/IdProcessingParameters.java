@@ -86,11 +86,11 @@ public class IdProcessingParameters implements Serializable {
             text = text.substring(0,text.length() - inputSuffixToRemove.length());
         }
 
-        if (outputPrefixToAdd != null){
+        if (outputPrefixToAdd != null && !text.startsWith(outputPrefixToAdd)){
             text = outputPrefixToAdd + text;
         }
 
-        if (outputSuffixToAdd != null){
+        if (outputSuffixToAdd != null && !text.endsWith(outputSuffixToAdd)){
             text = text + outputSuffixToAdd;
         }
         return text;
