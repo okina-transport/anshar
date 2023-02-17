@@ -231,7 +231,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .when().xpath("/siri:Siri/siri:ServiceRequest/siri:SituationExchangeRequest", ns)
                 .to("direct:process.sx.service.request")
                 .when().xpath("/siri:Siri/siri:ServiceRequest/siri:EstimatedTimetableRequest", ns)
-                .to("direct:process.et.service.request.cache")
+                .to("direct:process.et.service.request")
                 .when().xpath("/siri:Siri/siri:ServiceRequest/siri:StopMonitoringRequest", ns)
                 .to("direct:process.sm.service.request")
                 .when().xpath("/siri:Siri/siri:StopPointsRequest", ns)

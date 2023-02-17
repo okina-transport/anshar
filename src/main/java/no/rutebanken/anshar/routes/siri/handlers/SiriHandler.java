@@ -337,7 +337,9 @@ public class SiriHandler {
 
             } else if (hasValues(serviceRequest.getEstimatedTimetableRequests())) {
                 dataType = SiriDataType.ESTIMATED_TIMETABLE;
-                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy);
+                Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);
+                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idMap);
+
                 Duration previewInterval = serviceRequest.getEstimatedTimetableRequests().get(0).getPreviewInterval();
                 long previewIntervalInMillis = -1;
 
