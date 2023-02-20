@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Siri xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.siri.org.uk/siri">
+  <ServiceDelivery>
+    <ResponseTimestamp>2021-11-22T09:28:06.0735495+01:00</ResponseTimestamp>
+    <ProducerRef>CITYWAY</ProducerRef>
+    <SituationExchangeDelivery version="2.0">
+      <ResponseTimestamp>2021-11-22T09:28:06.0735519+01:00</ResponseTimestamp>
+      <Situations>
+        <PtSituationElement>
+          <CreationTime>2021-11-22T09:26:02.803</CreationTime>
+          <ParticipantRef>CG38</ParticipantRef>
+          <SituationNumber>CG38:1</SituationNumber>
+          <ValidityPeriod>
+            <StartTime>2021-11-22T09:00:00</StartTime>
+            <EndTime>2021-11-26T16:00:00</EndTime>
+          </ValidityPeriod>
+          <Summary xml:lang="FR">N481 : réparation de glissière de sécurité du 22 au 26 novembre </Summary>
+          <Summary xml:lang="EN">N481 : réparation de glissière de sécurité du 22 au 26 novembre </Summary>
+          <Detail xml:lang="FR">&lt;p&gt;Du lundi 22 au vendredi 26 novembre 2021, aura lieu une r&amp;eacute;paration de glissi&amp;egrave;res de s&amp;eacute;curit&amp;eacute; sur l&amp;rsquo;ensemble de l&amp;rsquo;axe de la N87 dans les deux sens de circulation.&lt;/p&gt;
+&lt;p&gt;Les voies de circulation et/ou des bretelles seront neutralis&amp;eacute;es selon les besoins du chantier.&lt;/p&gt;</Detail>
+          <Detail xml:lang="EN">&lt;p&gt;Du lundi 22 au vendredi 26 novembre 2021, aura lieu une r&amp;eacute;paration de glissi&amp;egrave;res de s&amp;eacute;curit&amp;eacute; sur l&amp;rsquo;ensemble de l&amp;rsquo;axe de la N87 dans les deux sens de circulation.&lt;/p&gt;
+&lt;p&gt;Les voies de circulation et/ou des bretelles seront neutralis&amp;eacute;es selon les besoins du chantier.&lt;/p&gt;</Detail>
+          <Affects>
+            <Operators />
+            <StopPoints />
+          </Affects>
+        </PtSituationElement>
+        <PtSituationElement>
+          <CreationTime>2021-11-22T09:26:02.803</CreationTime>
+          <ParticipantRef>CG38</ParticipantRef>
+          <SituationNumber>CG38:2</SituationNumber>
+          <ValidityPeriod>
+            <StartTime></StartTime>
+            <EndTime></EndTime>
+          </ValidityPeriod>
+          <Summary xml:lang="FR">N85 : hydrocurage à Champagnier du 22 au 26 novembre</Summary>
+          <Summary xml:lang="EN">N85 : hydrocurage à Champagnier du 22 au 26 novembre</Summary>
+          <Detail xml:lang="FR">&lt;p&gt;Du lundi 22 vendredi 26 novembre 2021, aura lieu des travaux d'hydrocurage sur la N85 &amp;agrave; Champagnier dans les deux sens de circulation.&lt;/p&gt;
+            &lt;p&gt;Les voies de circulation et/ou de l&amp;rsquo;accotement seront neutralis&amp;eacute;s selon les besoins du chantier.&lt;/p&gt;</Detail>
+          <Detail xml:lang="EN">&lt;p&gt;Du lundi 22 vendredi 26 novembre 2021, aura lieu des travaux d'hydrocurage sur la N85 &amp;agrave; Champagnier dans les deux sens de circulation.&lt;/p&gt;
+            &lt;p&gt;Les voies de circulation et/ou de l&amp;rsquo;accotement seront neutralis&amp;eacute;s selon les besoins du chantier.&lt;/p&gt;</Detail>
+          <Affects>
+            <Operators />
+            <StopPoints />
+          </Affects>
+        </PtSituationElement>
+        <PtSituationElement>
+          <CreationTime>2021-11-22T09:26:02.803</CreationTime>
+          <ParticipantRef>CG38</ParticipantRef>
+          <SituationNumber>CG38:3</SituationNumber>
+          <ValidityPeriod>
+            <EndTime></EndTime>
+          </ValidityPeriod>
+          <Summary xml:lang="FR">N85 : hydrocurage à Champagnier du 22 au 26 novembre</Summary>
+          <Summary xml:lang="EN">N85 : hydrocurage à Champagnier du 22 au 26 novembre</Summary>
+          <Detail xml:lang="FR">&lt;p&gt;Du lundi 22 vendredi 26 novembre 2021, aura lieu des travaux d'hydrocurage sur la N85 &amp;agrave; Champagnier dans les deux sens de circulation.&lt;/p&gt;
+            &lt;p&gt;Les voies de circulation et/ou de l&amp;rsquo;accotement seront neutralis&amp;eacute;s selon les besoins du chantier.&lt;/p&gt;</Detail>
+          <Detail xml:lang="EN">&lt;p&gt;Du lundi 22 vendredi 26 novembre 2021, aura lieu des travaux d'hydrocurage sur la N85 &amp;agrave; Champagnier dans les deux sens de circulation.&lt;/p&gt;
+            &lt;p&gt;Les voies de circulation et/ou de l&amp;rsquo;accotement seront neutralis&amp;eacute;s selon les besoins du chantier.&lt;/p&gt;</Detail>
+          <Affects>
+            <Operators />
+            <StopPoints />
+          </Affects>
+        </PtSituationElement>
+        <PtSituationElement>
+          <CreationTime>2021-11-22T09:26:02.803</CreationTime>
+          <ParticipantRef>CG38</ParticipantRef>
+          <SituationNumber>CG38:4</SituationNumber>
+          <ValidityPeriod>
+          </ValidityPeriod>
+          <Summary xml:lang="FR">N85 : hydrocurage à Champagnier du 22 au 26 novembre</Summary>
+          <Summary xml:lang="EN">N85 : hydrocurage à Champagnier du 22 au 26 novembre</Summary>
+          <Detail xml:lang="FR">&lt;p&gt;Du lundi 22 vendredi 26 novembre 2021, aura lieu des travaux d'hydrocurage sur la N85 &amp;agrave; Champagnier dans les deux sens de circulation.&lt;/p&gt;
+            &lt;p&gt;Les voies de circulation et/ou de l&amp;rsquo;accotement seront neutralis&amp;eacute;s selon les besoins du chantier.&lt;/p&gt;</Detail>
+          <Detail xml:lang="EN">&lt;p&gt;Du lundi 22 vendredi 26 novembre 2021, aura lieu des travaux d'hydrocurage sur la N85 &amp;agrave; Champagnier dans les deux sens de circulation.&lt;/p&gt;
+            &lt;p&gt;Les voies de circulation et/ou de l&amp;rsquo;accotement seront neutralis&amp;eacute;s selon les besoins du chantier.&lt;/p&gt;</Detail>
+          <Affects>
+            <Operators />
+            <StopPoints />
+          </Affects>
+        </PtSituationElement>
+        <PtSituationElement>
+          <CreationTime>2021-11-22T09:26:02.803</CreationTime>
+          <ParticipantRef>CG38</ParticipantRef>
+          <SituationNumber>CG38:5</SituationNumber>
+          <Summary xml:lang="FR">N85 : hydrocurage à Champagnier du 22 au 26 novembre</Summary>
+          <Summary xml:lang="EN">N85 : hydrocurage à Champagnier du 22 au 26 novembre</Summary>
+          <Detail xml:lang="FR">&lt;p&gt;Du lundi 22 vendredi 26 novembre 2021, aura lieu des travaux d'hydrocurage sur la N85 &amp;agrave; Champagnier dans les deux sens de circulation.&lt;/p&gt;
+            &lt;p&gt;Les voies de circulation et/ou de l&amp;rsquo;accotement seront neutralis&amp;eacute;s selon les besoins du chantier.&lt;/p&gt;</Detail>
+          <Detail xml:lang="EN">&lt;p&gt;Du lundi 22 vendredi 26 novembre 2021, aura lieu des travaux d'hydrocurage sur la N85 &amp;agrave; Champagnier dans les deux sens de circulation.&lt;/p&gt;
+            &lt;p&gt;Les voies de circulation et/ou de l&amp;rsquo;accotement seront neutralis&amp;eacute;s selon les besoins du chantier.&lt;/p&gt;</Detail>
+          <Affects>
+            <Operators />
+            <StopPoints />
+          </Affects>
+        </PtSituationElement>
+      </Situations>
+    </SituationExchangeDelivery>
+  </ServiceDelivery>
+  <Extensions />
+</Siri>

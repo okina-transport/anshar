@@ -13,7 +13,6 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
@@ -213,24 +212,33 @@ public class AlertMapper {
     }
 
     private static void mapPeriod(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert) {
+        ZoneId zoneId = ZoneId.systemDefault();
+
+        if(alert.getActivePeriodList().isEmpty()){
+            HalfOpenTimestampOutputRangeStructure validityPeriod = new HalfOpenTimestampOutputRangeStructure();
+            ZonedDateTime timestamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(Long.MIN_VALUE), zoneId);
+            validityPeriod.setStartTime(timestamp);
+            ptSituationElement.getValidityPeriods().add(validityPeriod);
+        }
 
         for (GtfsRealtime.TimeRange timeRange : alert.getActivePeriodList()) {
 
             HalfOpenTimestampOutputRangeStructure validityPeriod = new HalfOpenTimestampOutputRangeStructure();
 
-            if (timeRange.hasStart()){
-                ZonedDateTime timestamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timeRange.getStart() * 1000), ZoneId.systemDefault());
+            if (timeRange.hasStart()) {
+                ZonedDateTime timestamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timeRange.getStart() * 1000), zoneId);
+                validityPeriod.setStartTime(timestamp);
+            } else {
+                ZonedDateTime timestamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(Long.MIN_VALUE), zoneId);
                 validityPeriod.setStartTime(timestamp);
             }
 
             if (timeRange.hasEnd()){
-                ZonedDateTime timestamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timeRange.getEnd() * 1000), ZoneId.systemDefault());
+                ZonedDateTime timestamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timeRange.getEnd() * 1000), zoneId);
                 validityPeriod.setEndTime(timestamp);
             }
 
-            if (timeRange.hasStart() || timeRange.hasEnd()){
-                ptSituationElement.getValidityPeriods().add(validityPeriod);
-            }
+            ptSituationElement.getValidityPeriods().add(validityPeriod);
         }
     }
 
