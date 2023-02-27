@@ -934,7 +934,7 @@ public class SiriHandler {
                 ZonedDateTime timestamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(Long.MIN_VALUE), zoneId);
                 validityPeriod.setStartTime(timestamp);
                 situationElement.getValidityPeriods().add(validityPeriod);
-                logger.info("PtSituationElement without start time and/or validity period with datasetId : " + datasetId +
+                logger.info("PtSituationElement without start time and/or validity period for datasetId : " + datasetId +
                         " with situation element id : " + situationElement.getSituationNumber().getValue());
             }
         }
