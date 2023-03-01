@@ -18,13 +18,11 @@ package no.rutebanken.anshar.routes.siri.processor;
 
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
-import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import uk.org.siri.siri20.*;
 
 import java.util.List;
 
-import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getMappedId;
 import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getOriginalId;
 
 public class RuterOutboundDatedVehicleRefAdapter extends ValueAdapter implements PostProcessor {

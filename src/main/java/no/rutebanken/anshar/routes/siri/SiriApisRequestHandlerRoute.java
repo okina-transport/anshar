@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import static no.rutebanken.anshar.subscription.SubscriptionSetup.ServiceType.SOAP;
 
@@ -138,7 +137,7 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
                 subscriptionSetupList.add(subscriptionSetup);
                 subId = subscriptionSetup.getSubscriptionId();
                 subscriptionManager.addSiriAPISubscription(provider + monitoringId, subId);
-            }else{
+            } else{
                 subId = subscriptionManager.getSubscriptionForMonitoringRef(provider + monitoringId);
             }
 
@@ -160,6 +159,9 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
                 break;
             case "siri-sx":
                 siriDataType = SiriDataType.SITUATION_EXCHANGE;
+                break;
+            case "siri-vm":
+                siriDataType = SiriDataType.VEHICLE_MONITORING;
                 break;
         }
 
@@ -207,6 +209,13 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
                 subscriptionSetup.setVendor("AURA-MULTITUD-CITYWAY-SIRI-SX");
                 subscriptionSetup.setName("AURA-MULTITUD-CITYWAY-SIRI-SX");
                 break;
+            case "siri-vm":
+                subscriptionSetup.setSubscriptionType(SiriDataType.VEHICLE_MONITORING);
+                subscriptionSetup.getUrlMap().put(RequestType.GET_VEHICLE_MONITORING, url);
+                subscriptionSetup.setRequestorRef("AURA_OKINA_VM");
+                subscriptionSetup.setVendor("AURA-MULTITUD-CITYWAY-SIRI-VM");
+                subscriptionSetup.setName("AURA-MULTITUD-CITYWAY-SIRI-VM");
+                break;
         }
         subscriptionSetup.setSubscriptionMode(SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE);
         subscriptionSetup.setServiceType(SOAP);
@@ -230,6 +239,9 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
                 break;
             case "siri-sx":
                 tagName = "SituationNumber";
+                break;
+            case "siri-vm":
+                tagName = "VehicleMonitoringRef";
                 break;
         }
         NodeList idLists = document.getElementsByTagName(tagName);

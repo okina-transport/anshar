@@ -101,14 +101,14 @@ public class OutboundSubscriptionTest extends SpringBootBaseTest {
         assertNotNull(siriSX);
         assertNotNull(siriET);
 
-        assertTrue(siriSX.getSubscriptionResponse() != null);
-        assertTrue(siriSX.getSubscriptionResponse().getResponseStatuses() != null);
-        assertTrue(siriSX.getSubscriptionResponse().getResponseStatuses().get(0).isStatus() != null);
+        assertNotNull(siriSX.getSubscriptionResponse());
+        assertNotNull(siriSX.getSubscriptionResponse().getResponseStatuses());
+        assertNotNull(siriSX.getSubscriptionResponse().getResponseStatuses().get(0).isStatus());
         assertTrue(siriSX.getSubscriptionResponse().getResponseStatuses().get(0).isStatus());
 
-        assertTrue(siriET.getSubscriptionResponse() != null);
-        assertTrue(siriET.getSubscriptionResponse().getResponseStatuses() != null);
-        assertTrue(siriET.getSubscriptionResponse().getResponseStatuses().get(0).isStatus() != null);
+        assertNotNull(siriET.getSubscriptionResponse());
+        assertNotNull(siriET.getSubscriptionResponse().getResponseStatuses());
+        assertNotNull(siriET.getSubscriptionResponse().getResponseStatuses().get(0).isStatus());
         assertFalse(siriET.getSubscriptionResponse().getResponseStatuses().get(0).isStatus());
 
         serverSubscriptionManager.terminateSubscription(subscriptionId, true);

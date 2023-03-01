@@ -26,6 +26,7 @@ import no.rutebanken.anshar.data.StopPlaceIdCache;
 import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.health.HealthManager;
+import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
@@ -133,7 +134,9 @@ public class SiriHandler {
     @Autowired
     private StopPlaceUpdaterService stopPlaceUpdaterService;
 
-    private Map<String, String> datasetByLine = new HashMap<>();
+    @Autowired
+    private ExternalIdsService externalIdsService;
+
 
     public Siri handleIncomingSiri(String subscriptionId, InputStream xml) throws UnmarshalException {
         return handleIncomingSiri(subscriptionId, xml, null, -1);
@@ -313,16 +316,19 @@ public class SiriHandler {
                 Set<String> lineRefList = filterMap.get(LineRef.class) != null ? filterMap.get(LineRef.class) : new HashSet<>();
                 Set<String> vehicleRefList = filterMap.get(VehicleRef.class) != null ? filterMap.get(VehicleRef.class) : new HashSet<>();
 
+                Set<String> lineRefOriginalList;
+                if(OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy)){
+                    lineRefOriginalList = convertFromAltIdsToImportedIdsLine(lineRefList, datasetId);
+                }
+                else{
+                    lineRefOriginalList = lineRefList;
+                }
 
-//                Map<ObjectType, Optional<IdProcessingParameters>> idProcessingMap = new HashMap<>();
-//                idProcessingMap.put(ObjectType.STOP, findIdProcessingParamsFromSearchedLines(datasetId, lineRefList, ObjectType.STOP));
-//                idProcessingMap.put(ObjectType.LINE, findIdProcessingParamsFromSearchedLines(datasetId, lineRefList, ObjectType.LINE));
 
+                Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParams(datasetId, lineRefOriginalList, ObjectType.LINE);
+                Set<String> revertedLineRefs = IDUtils.revertMonitoringRefs(lineRefOriginalList, idMap.get(ObjectType.LINE));
 
-                Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParams(datasetId,lineRefList, ObjectType.LINE);
-                Set<String> revertedLineRefs = IDUtils.revertMonitoringRefs(lineRefList, idMap.get(ObjectType.LINE));
-
-                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy,idMap);
+                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idMap);
                 Siri siri = vehicleActivities.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize, revertedLineRefs, vehicleRefList);
                 serviceResponse = siri;
 
@@ -379,9 +385,19 @@ public class SiriHandler {
 
 
                 Set<String> originalMonitoringRefs = filterMap.get(MonitoringRefStructure.class) != null ? filterMap.get(MonitoringRefStructure.class) : new HashSet<>();
-                Set<String> importedIds = OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy) ? convertToImportedIds(originalMonitoringRefs, datasetId) : originalMonitoringRefs;
+                Set<String> importedIds;
+                if(OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)){
+                    importedIds = convertToImportedIds(originalMonitoringRefs, datasetId);
+                }
+                else if(OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy)){
+                    importedIds = convertFromAltIdsToImportedIdsStop(originalMonitoringRefs, datasetId);
+                }
+                else{
+                    importedIds = originalMonitoringRefs;
+                }
 
-                Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParams(datasetId,importedIds, ObjectType.STOP);
+
+                Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParams(datasetId, importedIds, ObjectType.STOP);
                 Set<String> revertedMonitoringRefs = IDUtils.revertMonitoringRefs(importedIds, idMap.get(ObjectType.STOP));
                 valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idMap);
 
@@ -423,6 +439,21 @@ public class SiriHandler {
         return originalMonitoringRefs.stream()
                               .map(id -> StringUtils.isNotEmpty(id) && stopPlaceUpdaterService.canBeReverted(id, datasetId) ? stopPlaceUpdaterService.getReverse(id, datasetId) : id)
                               .collect(Collectors.toSet());
+    }
+
+    private Set<String> convertFromAltIdsToImportedIdsStop(Set<String> originalMonitoringRefs, String datasetId) {
+
+        return originalMonitoringRefs.stream()
+                .map(id -> StringUtils.isNotEmpty(id) && externalIdsService.getReverseAltIdStop(datasetId, id).isPresent() ? externalIdsService.getReverseAltIdStop(datasetId, id).get() : id)
+                .collect(Collectors.toSet());
+    }
+
+
+    private Set<String> convertFromAltIdsToImportedIdsLine(Set<String> originalMonitoringRefs, String datasetId) {
+
+        return originalMonitoringRefs.stream()
+                .map(id -> StringUtils.isNotEmpty(id) && externalIdsService.getReverseAltIdLine(datasetId, id).isPresent() ? externalIdsService.getReverseAltIdLine(datasetId, id).get() : id)
+                .collect(Collectors.toSet());
     }
 
 
@@ -1087,6 +1118,40 @@ public class SiriHandler {
 //                        logger.info("Active SM-elements: {}, current delivery: {}, {}", monitoredStopVisits.getSize(), addedOrUpdatedBySubscription.size(), subscriptionSetup);
                     }
                 }
+                if (dataFormat.equals(SiriDataType.VEHICLE_MONITORING)) {
+                    List<VehicleMonitoringDeliveryStructure> vehicleMonitoringDeliveries = incoming.getServiceDelivery().getVehicleMonitoringDeliveries();
+                    logger.debug("Got VM-delivery: Subscription [{}] {}", subscriptionSetupList);
+                    monitoredRef = getVehicleRefs(incoming);
+
+                    List<VehicleActivityStructure> addedOrUpdated = new ArrayList<>();
+                    if (vehicleMonitoringDeliveries != null) {
+                        vehicleMonitoringDeliveries.forEach(vm -> {
+                                    if (vm != null) {
+                                        if (vm.isStatus() != null && !vm.isStatus() || vm.getErrorCondition() != null) {
+                                            logger.info(getErrorContents(vm.getErrorCondition()));
+                                        } else {
+                                            if (vm.getVehicleActivities() != null) {
+                                                addedOrUpdated.addAll(
+                                                        vehicleActivities.addAll(dataSetId, vm.getVehicleActivities()));
+                                            }
+                                        }
+                                    }
+                                }
+                        );
+                    }
+
+                    deliveryContainsData = deliveryContainsData || (addedOrUpdated.size() > 0);
+
+                    serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, dataSetId);
+
+                    for (SubscriptionSetup subscriptionSetup : subscriptionSetupList) {
+                        List<VehicleActivityStructure> addedOrUpdatedBySubscription = addedOrUpdated
+                                .stream()
+                                .filter(vehicleActivityStructure -> vehicleActivityStructure.getVehicleMonitoringRef().getValue().equals(subscriptionSetup.getVehicleMonitoringRefValue()))
+                                .collect(Collectors.toList());
+                        subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdatedBySubscription.size());
+                    }
+                }
 
 
                 for (SubscriptionSetup subscriptionSetup : subscriptionSetupList) {
@@ -1177,6 +1242,21 @@ public class SiriHandler {
             }
         }
         return lineRefs.stream()
+                .distinct()
+                .collect(Collectors.joining(","));
+    }
+
+    private String getVehicleRefs(Siri incomingData) {
+        List<VehicleMonitoringDeliveryStructure> vehicleMonitoringDeliveries = incomingData.getServiceDelivery().getVehicleMonitoringDeliveries();
+        List<String> vehicleRefs = new ArrayList<>();
+
+        for (VehicleMonitoringDeliveryStructure vehicleMonitoringDelivery : vehicleMonitoringDeliveries) {
+            for (VehicleActivityStructure vehicleActivity : vehicleMonitoringDelivery.getVehicleActivities()) {
+                vehicleRefs.add(vehicleActivity.getVehicleMonitoringRef().getValue());
+            }
+        }
+
+        return vehicleRefs.stream()
                 .distinct()
                 .collect(Collectors.joining(","));
     }
@@ -1356,10 +1436,17 @@ public class SiriHandler {
         return null;
     }
 
-    public static OutboundIdMappingPolicy getIdMappingPolicy(String useOriginalId) {
+    public static OutboundIdMappingPolicy getIdMappingPolicy(String useOriginalId, String altId) {
         OutboundIdMappingPolicy outboundIdMappingPolicy = OutboundIdMappingPolicy.DEFAULT;
+
+        if (altId != null) {
+            if (Boolean.parseBoolean(altId)) {
+                outboundIdMappingPolicy = OutboundIdMappingPolicy.ALT_ID;
+            }
+        }
+
         if (useOriginalId != null) {
-            if (Boolean.valueOf(useOriginalId)) {
+            if (Boolean.parseBoolean(useOriginalId)) {
                 outboundIdMappingPolicy = OutboundIdMappingPolicy.ORIGINAL_ID;
             }
         }

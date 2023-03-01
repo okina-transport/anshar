@@ -1,0 +1,30 @@
+<Siri xmlns="http://www.siri.org.uk/siri">
+    <ServiceDelivery>
+        <ResponseTimestamp>2022-01-14T16:07:16.4355766+01:00</ResponseTimestamp>
+        <ProducerRef>TEST</ProducerRef>
+        <StopMonitoringDelivery version="2.0">
+            <ResponseTimestamp>2122-01-14T16:07:16.4355832+01:00</ResponseTimestamp>
+            <MonitoredStopVisit>
+                <RecordedAtTime>2122-01-14T16:05:01</RecordedAtTime>
+                <ItemIdentifier>637777732364355844</ItemIdentifier>
+                <MonitoringRef>TEST:StopPoint:SP:12:LOC</MonitoringRef>
+                <MonitoredVehicleJourney>
+                    <LineRef>TEST:Line:43</LineRef>
+                    <FramedVehicleJourneyRef>
+                        <DatedVehicleJourneyRef>TEST:VehicleJourney:43A-040AM:2:1:26</DatedVehicleJourneyRef>
+                    </FramedVehicleJourneyRef>
+                    <VehicleMode>BUS</VehicleMode>
+                    <OperatorRef>TEST</OperatorRef>
+                    <Monitored>true</Monitored>
+                    <MonitoredCall>
+                        <StopPointRef>TEST:StopPoint:SP:12:LOC</StopPointRef>
+                        <Order>36</Order>
+                        <ExpectedArrivalTime>2024-02-25T16:07:24</ExpectedArrivalTime>
+                        <ExpectedDepartureTime>2024-02-26T16:07:24</ExpectedDepartureTime>
+                    </MonitoredCall>
+                </MonitoredVehicleJourney>
+            </MonitoredStopVisit>
+        </StopMonitoringDelivery>
+    </ServiceDelivery>
+    <Extensions/>
+</Siri>

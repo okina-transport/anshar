@@ -81,18 +81,21 @@ public class SiriLiteRoute extends RestRouteBuilder {
                 .get("/sx").to("direct:anshar.rest.sx")
                         .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
                         .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
+                        .param().required(false).name(PARAM_USE_ALT_ID).type(RestParamType.query).description("Option to return alternative Ids").dataType("boolean").endParam()
                         .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
 
                 .get("/vm").to("direct:anshar.rest.vm")
                         .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
                         .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response").dataType("string").endParam()
                         .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
+                        .param().required(false).name(PARAM_USE_ALT_ID).type(RestParamType.query).description("Option to return alternative Ids").dataType("boolean").endParam()
                         .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
 
                 .get("/et").to("direct:anshar.rest.et")
                         .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
                         .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response").dataType("string").endParam()
                         .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
+                        .param().required(false).name(PARAM_USE_ALT_ID).type(RestParamType.query).description("Option to return alternative Ids").dataType("boolean").endParam()
                         .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
 
                 .get("/et-monitored").to("direct:anshar.rest.et.monitored")
@@ -104,6 +107,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
                         .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
                         .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response").dataType("string").endParam()
                         .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
+                        .param().required(false).name(PARAM_USE_ALT_ID).type(RestParamType.query).description("Option to return alternative Ids").dataType("boolean").endParam()
                         .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
         ;
 
@@ -120,6 +124,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
                         String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
                         String originalId = p.getIn().getHeader(PARAM_USE_ORIGINAL_ID, String.class);
+                        String altId = p.getIn().getHeader(PARAM_USE_ALT_ID, String.class);
                         Integer maxSizeStr = p.getIn().getHeader(PARAM_MAX_SIZE, Integer.class);
                         String etClientName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
                         int maxSize = datasetId != null ? Integer.MAX_VALUE:configuration.getDefaultMaxSize();
@@ -132,7 +137,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
                         List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.SITUATION_EXCHANGE,
-                            SiriHandler.getIdMappingPolicy(originalId)
+                            SiriHandler.getIdMappingPolicy(originalId, altId)
                         );
                         if ("test".equals(originalId)) {
                             outboundAdapters = null;
@@ -160,6 +165,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
                         String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
                         String originalId = p.getIn().getHeader(PARAM_USE_ORIGINAL_ID, String.class);
+                        String altId = p.getIn().getHeader(PARAM_USE_ALT_ID, String.class);
                         String maxSizeStr = p.getIn().getHeader(PARAM_MAX_SIZE, String.class);
                         String lineRef = p.getIn().getHeader(PARAM_LINE_REF, String.class);
                         String etClientName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
@@ -185,7 +191,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
                         List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.VEHICLE_MONITORING,
-                            SiriHandler.getIdMappingPolicy(originalId)
+                            SiriHandler.getIdMappingPolicy(originalId, altId)
                         );
                         if ("test".equals(originalId)) {
                             outboundAdapters = null;
@@ -215,6 +221,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
                         String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
                         String originalId = p.getIn().getHeader(PARAM_USE_ORIGINAL_ID, String.class);
+                        String altId = p.getIn().getHeader(PARAM_USE_ALT_ID, String.class);
                         String maxSizeStr = p.getIn().getHeader(PARAM_MAX_SIZE, String.class);
                         String lineRef = p.getIn().getHeader(PARAM_LINE_REF, String.class);
                         String etClientName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
@@ -246,7 +253,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
                         List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.ESTIMATED_TIMETABLE,
-                            SiriHandler.getIdMappingPolicy(originalId)
+                            SiriHandler.getIdMappingPolicy(originalId, altId)
                         );
                         if ("test".equals(originalId)) {
                             outboundAdapters = null;
@@ -275,6 +282,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
                     String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
                     String originalId = p.getIn().getHeader(PARAM_USE_ORIGINAL_ID, String.class);
+                    String altId = p.getIn().getHeader(PARAM_USE_ALT_ID, String.class);
                     String maxSizeStr = p.getIn().getHeader(PARAM_MAX_SIZE, String.class);
                     String stopRef = p.getIn().getHeader(PARAM_STOP_REF, String.class);
                     String etClientName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
@@ -307,7 +315,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
                     List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.STOP_MONITORING,
-                            SiriHandler.getIdMappingPolicy(originalId)
+                            SiriHandler.getIdMappingPolicy(originalId, altId)
                     );
                     if ("test".equals(originalId)) {
                         outboundAdapters = null;

@@ -29,6 +29,7 @@ public class HttpParameter {
     public static final String PARAM_EXCLUDED_DATASET_ID      = "excludedDatasetIds";
     public static final String PARAM_MAX_SIZE        = "maxSize";
     public static final String PARAM_USE_ORIGINAL_ID = "useOriginalId";
+    public static final String PARAM_USE_ALT_ID = "useAltId";
     public static final String PARAM_LINE_REF        = "lineRef";
     public static final String PARAM_STOP_REF        = "stopRef";
     public static final String PARAM_PREVIEW_INTERVAL   = "previewIntervalMinutes";

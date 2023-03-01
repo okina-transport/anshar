@@ -24,8 +24,6 @@ import no.rutebanken.anshar.routes.siri.processor.RuterOutboundDatedVehicleRefAd
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
-import no.rutebanken.anshar.subscription.SubscriptionConfig;
-import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.ifopt.siri20.StopPlaceRef;
 import uk.org.siri.siri20.*;
 
@@ -45,7 +43,7 @@ public class MappingAdapterPresets {
         OutboundIdAdapter monitoringRefAdapter = new OutboundIdAdapter(MonitoringRefStructure.class, outboundIdMappingPolicy, true);
         OutboundIdAdapter destinationRefAdapter = new OutboundIdAdapter(DestinationRef.class, outboundIdMappingPolicy, true);
         OutboundIdAdapter originRefAdapter = new OutboundIdAdapter(JourneyPlaceRefStructure.class, outboundIdMappingPolicy, true);
-        OutboundIdAdapter lineRefAdapter = new  OutboundIdAdapter(LineRef .class, outboundIdMappingPolicy);
+        OutboundIdAdapter lineRefAdapter = new  OutboundIdAdapter(LineRef.class, outboundIdMappingPolicy, true);
         RuterOutboundDatedVehicleRefAdapter datedVjRefAdapter = new  RuterOutboundDatedVehicleRefAdapter(MappingAdapterPresets .class, outboundIdMappingPolicy);
         OutboundIdAdapter operatorRefAdapter = new  OutboundIdAdapter(OperatorRefStructure .class, outboundIdMappingPolicy);
 
@@ -82,7 +80,7 @@ public class MappingAdapterPresets {
         adapters.add(lineRefAdapter);
         adapters.add(datedVjRefAdapter);
         adapters.add(operatorRefAdapter);
-        adapters.add(new  CodespaceOutboundProcessor(outboundIdMappingPolicy));
+        adapters.add(new CodespaceOutboundProcessor(outboundIdMappingPolicy));
 
 
         switch(dataType)
