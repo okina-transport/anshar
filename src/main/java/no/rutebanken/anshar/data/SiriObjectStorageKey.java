@@ -14,17 +14,20 @@ public class SiriObjectStorageKey implements Serializable {
     private final String stopRef;
     private final String key;
     private final String vehicleJourney;
+    private final String type;
 
 
     public SiriObjectStorageKey(String codespaceId, String lineRef, String key) {
-        this(codespaceId, lineRef, key, null,null);
+        this(codespaceId, lineRef, key, null,null, null);
     }
-    public SiriObjectStorageKey(String codespaceId, String lineRef, String key, String stopRef, String vehicleJourney) {
+    public SiriObjectStorageKey(String codespaceId, String lineRef, String key, String stopRef, String vehicleJourney, String type) {
         this.codespaceId = codespaceId;
         this.lineRef = lineRef;
         this.key = key;
         this.stopRef = stopRef;
         this.vehicleJourney = vehicleJourney;
+        this.type = type;
+
     }
 
     public String getCodespaceId() {
@@ -47,10 +50,9 @@ public class SiriObjectStorageKey implements Serializable {
         return vehicleJourney;
     }
 
-
-
-
-
+    public String getType() {
+        return type;
+    }
 
     @Override
     public String toString() {

@@ -35,18 +35,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.AbstractSubscriptionStructure;
-import uk.org.siri.siri20.CheckStatusRequestStructure;
-import uk.org.siri.siri20.EstimatedTimetableSubscriptionStructure;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.MonitoredStopVisit;
-import uk.org.siri.siri20.PtSituationElement;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.SituationExchangeSubscriptionStructure;
-import uk.org.siri.siri20.StopMonitoringSubscriptionStructure;
-import uk.org.siri.siri20.SubscriptionRequest;
-import uk.org.siri.siri20.VehicleActivityStructure;
-import uk.org.siri.siri20.VehicleMonitoringSubscriptionStructure;
+import uk.org.siri.siri20.*;
 
 import javax.xml.datatype.Duration;
 import java.time.Instant;
@@ -256,6 +245,8 @@ public class ServerSubscriptionManager {
             return SiriDataType.ESTIMATED_TIMETABLE;
         } else if (SiriHelper.containsValues(subscriptionRequest.getStopMonitoringSubscriptionRequests())) {
             return SiriDataType.STOP_MONITORING;
+        } else if (SiriHelper.containsValues(subscriptionRequest.getGeneralMessageSubscriptionRequests())) {
+            return SiriDataType.GENERAL_MESSAGE;
         }
         return null;
     }
@@ -314,6 +305,11 @@ public class ServerSubscriptionManager {
                     subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0);
 
             return getSubscriptionIdentifier(stopMonitoringSubscriptionStructure);
+        } else if (SiriHelper.containsValues(subscriptionRequest.getGeneralMessageSubscriptionRequests())) {
+
+            GeneralMessageSubscriptionStructure generalMessageSubscriptionStructure = subscriptionRequest.getGeneralMessageSubscriptionRequests().get(0);
+
+            return getSubscriptionIdentifier(generalMessageSubscriptionStructure);
         }
         return null;
     }
@@ -338,6 +334,9 @@ public class ServerSubscriptionManager {
         } else if (SiriHelper.containsValues(subscriptionRequest.getStopMonitoringSubscriptionRequests())) {
 
             return subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0).getInitialTerminationTime();
+        } else if (SiriHelper.containsValues(subscriptionRequest.getGeneralMessageSubscriptionRequests())) {
+
+            return subscriptionRequest.getGeneralMessageSubscriptionRequests().get(0).getInitialTerminationTime();
         }
         return null;
     }
@@ -381,6 +380,9 @@ public class ServerSubscriptionManager {
                 break;
             case STOP_MONITORING:
                 executorService.submit(() -> pushUpdatedStopMonitoring(updates, datasetId, breadcrumbId));
+                break;
+            case GENERAL_MESSAGE:
+                executorService.submit(() -> pushUpdatedGeneralMessages(updates, datasetId, breadcrumbId));
                 break;
             default:
                 // Ignore
@@ -459,6 +461,44 @@ public class ServerSubscriptionManager {
 
             )
             .collect(Collectors.toList());
+
+        boolean logFullContents = true;
+        for (OutboundSubscriptionSetup recipient : recipients) {
+            camelRouteManager.pushSiriData(delivery, recipient, logFullContents);
+            logFullContents = false;
+        }
+
+        MDC.remove("camel.breadcrumbId");
+    }
+
+    private void pushUpdatedGeneralMessages(
+            List<GeneralMessage> addedOrUpdated, String datasetId, String breadcrumbId
+    ) {
+        MDC.put("camel.breadcrumbId", breadcrumbId);
+
+        if (addedOrUpdated == null || addedOrUpdated.isEmpty()) {
+            return;
+        }
+        Siri delivery = siriObjectFactory.createGMServiceDelivery(addedOrUpdated);
+
+
+
+        final List<OutboundSubscriptionSetup> recipients = subscriptions
+                .values()
+                .stream()
+                .filter(subscriptionRequest -> (
+                                subscriptionRequest.getSubscriptionType().equals(SiriDataType.GENERAL_MESSAGE)
+                                        && (
+                                        subscriptionRequest.getDatasetId() == null || (
+                                                subscriptionRequest
+                                                        .getDatasetId()
+                                                        .equals(datasetId)
+                                        )
+                                )
+                        )
+
+                )
+                .collect(Collectors.toList());
 
         boolean logFullContents = true;
         for (OutboundSubscriptionSetup recipient : recipients) {

@@ -319,6 +319,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     @Test
     public void testSxValidityPeriodStartTime() throws JAXBException {
         SubscriptionSetup sxSubscription = getSxSubscription();
+        situations.clearAll();
         subscriptionManager.addSubscription(sxSubscription.getSubscriptionId(), sxSubscription);
         File file = new File("src/test/resources/siri-sx_validity_period_start_time.xml");
 

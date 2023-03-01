@@ -19,11 +19,8 @@ import io.micrometer.core.instrument.util.StringUtils;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
-import no.rutebanken.anshar.data.EstimatedTimetables;
-import no.rutebanken.anshar.data.MonitoredStopVisits;
-import no.rutebanken.anshar.data.Situations;
-import no.rutebanken.anshar.data.StopPlaceIdCache;
-import no.rutebanken.anshar.data.VehicleActivities;
+import no.rutebanken.anshar.data.*;
+import no.rutebanken.anshar.data.util.GeneralMessageMapper;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
@@ -44,33 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.AnnotatedLineRef;
-import uk.org.siri.siri20.AnnotatedStopPointStructure;
-import uk.org.siri.siri20.ErrorCodeStructure;
-import uk.org.siri.siri20.ErrorDescriptionStructure;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.HalfOpenTimestampOutputRangeStructure;
-import uk.org.siri.siri20.InvalidDataReferencesErrorStructure;
-import uk.org.siri.siri20.LineRef;
-import uk.org.siri.siri20.MonitoredStopVisit;
-import uk.org.siri.siri20.MonitoringRefStructure;
-import uk.org.siri.siri20.PtSituationElement;
-import uk.org.siri.siri20.RequestorRef;
-import uk.org.siri.siri20.ServiceDeliveryErrorConditionElement;
-import uk.org.siri.siri20.ServiceRequest;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.SituationExchangeDeliveryStructure;
-import uk.org.siri.siri20.StopMonitoringDeliveryStructure;
-import uk.org.siri.siri20.StopMonitoringRequestStructure;
-import uk.org.siri.siri20.StopPointRef;
-import uk.org.siri.siri20.SubscriptionResponseStructure;
-import uk.org.siri.siri20.TerminateSubscriptionRequestStructure;
-import uk.org.siri.siri20.TerminateSubscriptionResponseStructure;
-import uk.org.siri.siri20.VehicleActivityStructure;
-import uk.org.siri.siri20.VehicleMonitoringDeliveryStructure;
-import uk.org.siri.siri20.VehicleMonitoringRequestStructure;
-import uk.org.siri.siri20.VehicleRef;
+import uk.org.siri.siri20.*;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.UnmarshalException;
@@ -99,6 +70,9 @@ public class SiriHandler {
 
     @Autowired
     private Situations situations;
+
+    @Autowired
+    private GeneralMessages generalMessages;
 
     @Autowired
     private VehicleActivities vehicleActivities;
@@ -288,7 +262,7 @@ public class SiriHandler {
             if (hasValues(serviceRequest.getSituationExchangeRequests())) {
                 dataType = SiriDataType.SITUATION_EXCHANGE;
                 Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);
-                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy,idMap);
+                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idMap);
                 serviceResponse = situations.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize);
             } else if (hasValues(serviceRequest.getVehicleMonitoringRequests())) {
                 dataType = SiriDataType.VEHICLE_MONITORING;
@@ -319,10 +293,10 @@ public class SiriHandler {
 //                idProcessingMap.put(ObjectType.LINE, findIdProcessingParamsFromSearchedLines(datasetId, lineRefList, ObjectType.LINE));
 
 
-                Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParams(datasetId,lineRefList, ObjectType.LINE);
+                Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParams(datasetId, lineRefList, ObjectType.LINE);
                 Set<String> revertedLineRefs = IDUtils.revertMonitoringRefs(lineRefList, idMap.get(ObjectType.LINE));
 
-                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy,idMap);
+                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idMap);
                 Siri siri = vehicleActivities.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize, revertedLineRefs, vehicleRefList);
                 serviceResponse = siri;
 
@@ -381,14 +355,24 @@ public class SiriHandler {
                 Set<String> originalMonitoringRefs = filterMap.get(MonitoringRefStructure.class) != null ? filterMap.get(MonitoringRefStructure.class) : new HashSet<>();
                 Set<String> importedIds = OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy) ? convertToImportedIds(originalMonitoringRefs, datasetId) : originalMonitoringRefs;
 
-                Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParams(datasetId,importedIds, ObjectType.STOP);
+                Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParams(datasetId, importedIds, ObjectType.STOP);
                 Set<String> revertedMonitoringRefs = IDUtils.revertMonitoringRefs(importedIds, idMap.get(ObjectType.STOP));
                 valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idMap);
 
 
                 serviceResponse = monitoredStopVisits.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, revertedMonitoringRefs);
                 logger.info("Asking for service delivery for requestorId={}, monitoringRef={}, clientTrackingName={}, datasetId={}", requestorRef, monitoringStringList, clientTrackingName, datasetId);
+            } else if (hasValues(serviceRequest.getGeneralMessageRequests())) {
+                dataType = SiriDataType.GENERAL_MESSAGE;
+                Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);
+
+                GeneralMessageRequestStructure request = serviceRequest.getGeneralMessageRequests().get(0);
+                List<InfoChannelRefStructure> requestedChannels = request.getInfoChannelReves();
+                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idMap);
+                serviceResponse = generalMessages.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, requestedChannels);
+
             }
+
 
 
             if (serviceResponse != null) {
@@ -730,10 +714,8 @@ public class SiriHandler {
                                                         // List containing added situations for current codespace
                                                         List<PtSituationElement> addedSituations = new ArrayList();
 
-                                                        addedSituations.addAll(situations.addAll(
-                                                                codespace,
-                                                                situationsByCodespace.get(codespace)
-                                                        ));
+                                                        Collection<PtSituationElement> ingested = ingestSituations(codespace, situationsByCodespace.get(codespace));
+                                                        addedSituations.addAll(ingested);
 
                                                         // Push updates to subscribers on this codespace
                                                         serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedSituations, codespace);
@@ -744,11 +726,8 @@ public class SiriHandler {
                                                     }
 
                                                 } else {
-
-                                                    addedOrUpdated.addAll(situations.addAll(
-                                                            subscriptionSetup.getDatasetId(),
-                                                            sx.getSituations().getPtSituationElements()
-                                                    ));
+                                                    Collection<PtSituationElement> ingested = ingestSituations(subscriptionSetup.getDatasetId(), sx.getSituations().getPtSituationElements());
+                                                    addedOrUpdated.addAll(ingested);
                                                     serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
                                                 }
                                             }
@@ -900,6 +879,26 @@ public class SiriHandler {
                     logger.debug("Active SM-elements: {}, current delivery: {}, {}", monitoredStopVisits.getSize(), addedOrUpdated.size(), subscriptionSetup);
                 }
 
+                if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.GENERAL_MESSAGE)) {
+                    List<GeneralMessageDeliveryStructure> generalDeliveries = incoming.getServiceDelivery().getGeneralMessageDeliveries();
+                    logger.debug("Got GM-delivery: Subscription [{}] ", subscriptionSetup);
+                    monitoredRef = getStopRefs(incoming);
+
+                    List<GeneralMessage> addedOrUpdated = new ArrayList<>();
+
+                    for (GeneralMessageDeliveryStructure generalDelivery : generalDeliveries) {
+                        addedOrUpdated.addAll( generalMessages.addAll(subscriptionSetup.getDatasetId(),generalDelivery.getGeneralMessages()));
+                    }
+
+
+                    deliveryContainsData = deliveryContainsData || (addedOrUpdated.size() > 0);
+
+                    serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
+                    subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdated.size());
+                    logger.debug("Active GM-elements: {}, current delivery: {}, {}", generalMessages.getSize(), addedOrUpdated.size(), subscriptionSetup);
+                }
+
+
 
                 if (deliveryContainsData) {
                     subscriptionManager.dataReceived(subscriptionId, receivedBytes, monitoredRef);
@@ -997,7 +996,8 @@ public class SiriHandler {
                                             logger.info(getErrorContents(sx.getErrorCondition()));
                                         } else {
                                             if (sx.getSituations() != null && sx.getSituations().getPtSituationElements() != null) {
-                                                addedOrUpdated.addAll(situations.addAll(dataSetId, sx.getSituations().getPtSituationElements()));
+                                                Collection<PtSituationElement> ingested = ingestSituations(dataSetId, sx.getSituations().getPtSituationElements());
+                                                addedOrUpdated.addAll(ingested);
                                                 serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, dataSetId);
                                             }
                                         }
@@ -1131,7 +1131,28 @@ public class SiriHandler {
         if (result.size() > 0) {
             serverSubscriptionManager.pushUpdatesAsync(SiriDataType.SITUATION_EXCHANGE, incomingSituations, datasetId);
         }
+
+        convertToGeneralMessageAndIngest(datasetId, incomingSituations);
         return result;
+    }
+
+    /**
+     * Convert a list of situations to a list of generalMessages and ingest them
+     * @param datasetId
+     *  the dataset on which the general messages must be ingested
+     * @param incomingSituations
+     *  the situations that must be converted to GeneralMessages and must be ingested
+     */
+    private void convertToGeneralMessageAndIngest(String datasetId, List<PtSituationElement> incomingSituations) {
+
+        List<GeneralMessage> incomingMessages = incomingSituations.stream()
+                            .map(GeneralMessageMapper::mapToGeneralMessage)
+                            .collect(Collectors.toList());
+
+        Collection<GeneralMessage> added = generalMessages.addAll(datasetId, incomingMessages);
+
+        serverSubscriptionManager.pushUpdatesAsync(SiriDataType.GENERAL_MESSAGE,new ArrayList(added),datasetId);
+
     }
 
     public void removeSituation(String datasetId, PtSituationElement situation) {

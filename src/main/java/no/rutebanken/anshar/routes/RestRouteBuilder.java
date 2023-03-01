@@ -16,6 +16,7 @@
 package no.rutebanken.anshar.routes;
 
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.data.util.CustomSiriXml;
 import org.apache.camel.Exchange;
 import org.apache.camel.InvalidPayloadException;
 import org.apache.camel.LoggingLevel;
@@ -24,7 +25,6 @@ import org.apache.camel.support.builder.Namespaces;
 import org.apache.http.HttpHeaders;
 import org.entur.protobuf.mapper.SiriMapper;
 import org.rutebanken.siri20.util.SiriJson;
-import org.rutebanken.siri20.util.SiriXml;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,7 +47,7 @@ public class RestRouteBuilder extends RouteBuilder {
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    protected Namespaces ns = new Namespaces("siri", "http://www.siri.org.uk/siri")
+    protected Namespaces nameSpace = new Namespaces("siri", "http://www.siri.org.uk/siri")
             .add("xsd", "http://www.w3.org/2001/XMLSchema");
 
 
@@ -62,6 +62,9 @@ public class RestRouteBuilder extends RouteBuilder {
 
     @Value("${anshar.data.handler.baseurl.sm:}")
     protected String smHandlerBaseUrl;
+
+    @Value("${anshar.data.handler.baseurl.gm:}")
+    protected String gmHandlerBaseUrl;
 
     @Autowired
     private AnsharConfiguration configuration;
@@ -109,6 +112,7 @@ public class RestRouteBuilder extends RouteBuilder {
         }
 
         from("direct:anshar.invalid.tracking.header.response")
+                .log("invalid")
                 .removeHeaders("*")
                 .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("400")) //400 Bad request
                 .setBody(constant("Missing required header (" + configuration.getTrackingHeaderName() + ")"))
@@ -260,6 +264,7 @@ public class RestRouteBuilder extends RouteBuilder {
 
         if (configuration.processSX()) {
             from("direct:process.sx.subscription.request")
+                    .log("sx direct")
                     .to("direct:internal.handle.subscription")
             ;
             from("direct:process.sx.service.request")
@@ -374,6 +379,67 @@ public class RestRouteBuilder extends RouteBuilder {
                 ;
             }
         }
+
+
+        if (configuration.processGM()) {
+            from("direct:process.gm.subscription.request")
+                    .log("process GM direct")
+                    .to("direct:internal.handle.subscription")
+            ;
+            from("direct:process.gm.service.request")
+                    .to("direct:internal.process.service.request")
+            ;
+            from("direct:process.gm.service.request.cache")
+                    .to("direct:internal.process.service.request.cache")
+            ;
+            //REST
+            from("direct:anshar.rest.gm")
+                    .to("direct:internal.anshar.rest.gm")
+            ;
+            from("direct:anshar.rest.gm.cached")
+                    .to("direct:internal.anshar.rest.gm.cached")
+            ;
+
+        } else {
+            from("direct:process.gm.subscription.request")
+                    .log("process GM redir")
+                    .to("direct:redirect.request.gm")
+            ;
+            from("direct:process.gm.service.request")
+                    .to("direct:redirect.request.gm")
+            ;
+            from("direct:process.gm.service.request.cache")
+                    .to("direct:redirect.request.gm")
+            ;
+            from("direct:anshar.rest.gm")
+                    .to("direct:redirect.request.gm")
+            ;
+            from("direct:anshar.rest.gm.cached")
+                    .to("direct:redirect.request.gm")
+            ;
+
+            if (!configuration.processAdmin()) {
+                // Data-instances should never redirect requests
+                from("direct:redirect.request.gm")
+                        .log("Ignore redirect")
+                ;
+
+            } else {
+                from("direct:redirect.request.gm")
+                        // Setting default encoding if none is set
+                        .choice().when(header("Content-Type").isEqualTo(""))
+                        .setHeader("Content-Type", simple(MediaType.APPLICATION_XML))
+                        .end()
+
+                        //Force forwarding parameters - if used in query
+                        .choice().when(header("CamelHttpQuery").isNull())
+                        .toD(gmHandlerBaseUrl + "${header.CamelHttpUri}?Content-Type=${header.Content-Type}&bridgeEndpoint=true")
+                        .otherwise()
+                        .toD(gmHandlerBaseUrl + "${header.CamelHttpUri}?Content-Type=${header.Content-Type}&bridgeEndpoint=true&${header.CamelHttpQuery}")
+                        .endChoice()
+                ;
+            }
+        }
     }
 
     protected boolean isTrackingHeaderAcceptable(Exchange e) {
@@ -470,11 +536,12 @@ public class RestRouteBuilder extends RouteBuilder {
             } catch (NullPointerException npe) {
                 File file = new File("ET-" + System.currentTimeMillis() + ".xml");
                 log.error("Caught NullPointerException, data written to " + file.getAbsolutePath(), npe);
-                SiriXml.toXml(response, null, new FileOutputStream(file));
+                CustomSiriXml.toXml(response, null, new FileOutputStream(file));
             }
         } else {
             p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_XML);
-            SiriXml.toXml(response, null, out.getOutputStream());
+            CustomSiriXml.toXml(response, null, out.getOutputStream());
+
         }
         p.getMessage().setBody(out.getOutputStream());
     }

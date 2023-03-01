@@ -5,6 +5,7 @@ import com.google.transit.realtime.GtfsRealtime;
 import no.rutebanken.anshar.data.Situations;
 import no.rutebanken.anshar.gtfsrt.swallowers.AlertSwallower;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri20.HalfOpenTimestampOutputRangeStructure;
@@ -27,6 +28,11 @@ public class AlertSwallowerTest extends SpringBootBaseTest {
 
     @Autowired
     private Situations situations;
+
+    @BeforeEach
+    public void init() {
+        situations.clearAll();
+    }
 
     @Test
     void ingestAlertData() throws IOException {

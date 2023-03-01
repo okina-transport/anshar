@@ -16,6 +16,7 @@
 package no.rutebanken.anshar.routes.outbound;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import no.rutebanken.anshar.data.util.CustomSiriXml;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
 import org.slf4j.Logger;
@@ -24,12 +25,7 @@ import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.ServiceDelivery;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.SituationExchangeDeliveryStructure;
-import uk.org.siri.siri20.StopMonitoringDeliveryStructure;
-import uk.org.siri.siri20.VehicleMonitoringDeliveryStructure;
+import uk.org.siri.siri20.*;
 
 import java.net.SocketException;
 import java.util.ArrayList;
@@ -202,6 +198,10 @@ public class CamelRouteManager {
                 StopMonitoringDeliveryStructure deliveryStructure = serviceDelivery.getStopMonitoringDeliveries().get(0);
                 return (SiriHelper.containsValues(deliveryStructure.getMonitoredStopVisits()) &&
                         deliveryStructure.getMonitoredStopVisits().get(0).getMonitoredVehicleJourney() != null);
+            }
+            if (SiriHelper.containsValues(serviceDelivery.getGeneralMessageDeliveries())) {
+                GeneralMessageDeliveryStructure deliveryStructure = serviceDelivery.getGeneralMessageDeliveries().get(0);
+                return (SiriHelper.containsValues(deliveryStructure.getGeneralMessages()));
             }
         }
         return true;

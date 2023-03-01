@@ -2,11 +2,9 @@ package no.rutebanken.anshar.routes.messaging;
 
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
-import no.rutebanken.anshar.okinaDisruptions.DisruptionRetriever;
 import no.rutebanken.anshar.routes.CamelRouteNames;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.admin.AdminRouteHelper;
-import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
 import no.rutebanken.anshar.routes.external.ExternalDataHandler;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
@@ -66,6 +64,7 @@ public class MessagingRoute extends RestRouteBuilder {
         final String pubsubQueueVM = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_VM;
         final String pubsubQueueET = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_ET;
         final String pubsubQueueSM = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_SM;
+        final String pubsubQueueGM = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_GM;
         final String pubsubQueueDefault = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_DEFAULT;
 
         final String externalSiriSMQueue = messageQueueCamelRoutePrefix + "anshar.external.siri.sm.data";
@@ -126,9 +125,12 @@ public class MessagingRoute extends RestRouteBuilder {
                     .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.STOP_MONITORING.name()))
                         .setHeader("target_topic", simple(pubsubQueueSM))
                     .endChoice()
+                    .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.GENERAL_MESSAGE.name()))
+                    .setHeader("target_topic", simple(pubsubQueueGM))
+                    .endChoice()
                     .otherwise()
                         // DataReadyNotification is processed immediately
-                        .when().xpath("/siri:Siri/siri:DataReadyNotification", ns)
+                        .when().xpath("/siri:Siri/siri:DataReadyNotification", nameSpace)
                             .setHeader("target_topic", simple("direct:"+CamelRouteNames.FETCHED_DELIVERY_QUEUE))
                         .endChoice()
                         .otherwise()
@@ -239,6 +241,18 @@ public class MessagingRoute extends RestRouteBuilder {
                     .endChoice()
                     .startupOrder(100001)
                     .routeId("incoming.transform.sm")
+            ;
+        }
+
+
+        if (configuration.processGM()) {
+            from(pubsubQueueGM + queueConsumerParameters)
+                    .choice().when(readFromPubsub)
+                    .to("direct:decompress.jaxb")
+                    .wireTap("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
+                    .endChoice()
+                    .startupOrder(100005)
+                    .routeId("incoming.transform.gm")
             ;
         }
 

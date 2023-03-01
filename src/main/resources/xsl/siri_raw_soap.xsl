@@ -222,6 +222,31 @@
                                                     copy-namespaces="no"/>
                                         </xsl:element>
                                     </xsl:when>
+
+                                    <xsl:when
+                                            test="/siri:Siri/siri:SubscriptionRequest/siri:GeneralMessageSubscriptionRequest">
+                                        <xsl:element name="siri:GeneralMessageSubscriptionRequest">
+                                            <xsl:copy-of
+                                                    select="siri:GeneralMessageSubscriptionRequest/siri:SubscriptionIdentifier"
+                                                    copy-namespaces="no"/>
+                                            <xsl:copy-of
+                                                    select="siri:GeneralMessageSubscriptionRequest/siri:InitialTerminationTime"
+                                                    copy-namespaces="no"/>
+
+                                            <xsl:element name="siri:GeneralMessageRequest">
+                                                <xsl:attribute name="version">
+                                                    <xsl:value-of select="1.4"/>
+                                                </xsl:attribute>
+                                                <xsl:copy-of
+                                                        select="siri:GeneralMessageSubscriptionRequest/siri:GeneralMessageRequest/*"
+                                                        copy-namespaces="no"/>
+                                            </xsl:element>
+
+                                        </xsl:element>
+                                    </xsl:when>
+
+
+
                                 </xsl:choose>
                             </xsl:element>
 
@@ -370,6 +395,55 @@
 
     </xsl:template>
 
+
+    <xsl:template
+            match="siri:GeneralMessageDelivery"> <!-- TODO add all conceptual types of responses -->
+        <xsl:element name="soapenv:Envelope" namespace="{$soapEnvelopeNamespace}">
+            <xsl:element name="soapenv:Header" namespace="{$soapEnvelopeNamespace}"/>
+            <xsl:element name="soapenv:Body" namespace="{$soapEnvelopeNamespace}">
+
+                <xsl:element name="{concat('Get',substring-before(local-name(),'Delivery'), 'Response')}"
+                             namespace="{$siriSoapNamespace}">
+
+                    <xsl:element name="ServiceDeliveryInfo">
+                        <xsl:copy-of select="../siri:ServiceRequestContext" copy-namespaces="no"/>
+                        <xsl:copy-of select="../siri:ResponseTimestamp" copy-namespaces="no"/>
+                        <xsl:copy-of select="../siri:Address" copy-namespaces="no"/>
+                        <xsl:copy-of select="../siri:ProducerRef" copy-namespaces="no"/>
+                        <xsl:copy-of select="../siri:MessageIdentifier" copy-namespaces="no"/>
+                        <xsl:copy-of select="../siri:RequestMessageRef" copy-namespaces="no"/>
+                        <xsl:copy-of select="../siri:ConsumerAddress" copy-namespaces="no"/>
+                        <xsl:copy-of select="../siri:ResponseMessageIdentifier" copy-namespaces="no"/>
+                        <xsl:copy-of select="../siri:ErrorCondition" copy-namespaces="no"/>
+                    </xsl:element>
+
+                    <xsl:element name="Answer">
+
+                        <xsl:if test="local-name()='GeneralMessageDelivery'">
+                            <xsl:element name="siri:GeneralMessageDelivery">
+                                <xsl:attribute name="version">
+                                    <xsl:value-of select="/siri:Siri/@version"/>
+                                </xsl:attribute>
+                                <xsl:element name="siri:ResponseTimestamp">
+                                    <xsl:value-of select="../siri:ResponseTimestamp"/>
+                                </xsl:element>
+                                <xsl:element name="siri:RequestMessageRef">
+                                    <xsl:value-of select="../siri:RequestMessageRef"/>
+                                </xsl:element>
+                                <xsl:copy-of select="./siri:GeneralMessage" copy-namespaces="no">
+                                </xsl:copy-of>
+                                <xsl:copy-of select="./siri:ErrorCondition" copy-namespaces="no"/>
+                            </xsl:element>
+                        </xsl:if>
+
+                    </xsl:element>
+                </xsl:element>
+            </xsl:element>
+        </xsl:element>
+
+
+    </xsl:template>
+
     <!-- Siri to Soap response -->
     <xsl:template
             match="siri:VehicleMonitoringDelivery"> <!-- TODO add all conceptual types of responses -->
@@ -382,6 +456,8 @@
 
                 <xsl:element name="{concat('Get',substring-before(local-name(),'Delivery'), 'Response')}"
                              namespace="{$siriSoapNamespace}">
+
+
                     <xsl:element name="ServiceDeliveryInfo">
                         <xsl:copy-of select="../siri:ServiceRequestContext" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:ResponseTimestamp" copy-namespaces="no"/>
@@ -496,11 +572,8 @@
                     </xsl:element>
 
                     <xsl:element name="siri:Status">
-                        <xsl:value-of  select="siri:ResponseStatus/siri:Status"/>
+                        <xsl:value-of select="siri:ResponseStatus/siri:Status"/>
                     </xsl:element>
-
-
-
 
 
                 </xsl:element>

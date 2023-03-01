@@ -151,6 +151,18 @@ public class SiriObjectFactory {
                     subscriptionSetup.getChangeBeforeUpdates(),
                     subscriptionSetup.getStopMonitoringRefValue());
         }
+
+        if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.GENERAL_MESSAGE)) {
+            request = createGeneralMessageSubscriptionRequest(
+                    subscriptionSetup.getRequestorRef(),
+                    subscriptionSetup.getSubscriptionId(),
+                    subscriptionSetup.getHeartbeatInterval(),
+                    subscriptionSetup.buildUrl(),
+                    subscriptionSetup.getDurationOfSubscription(),
+                    subscriptionSetup.getAddressFieldName());
+        }
+        siri.setSubscriptionRequest(request);
+
         siri.setSubscriptionRequest(request);
 
         return siri;
@@ -185,7 +197,11 @@ public class SiriObjectFactory {
             request.setMessageIdentifier(smRequestStruct.getMessageIdentifier());
             request.getStopMonitoringRequests().add(smRequestStruct);
         }
-
+        if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.GENERAL_MESSAGE)) {
+            GeneralMessageRequestStructure gmRequestStruct = createGeneralMessageRequestStructure(subscriptionSetup);
+            request.setMessageIdentifier(gmRequestStruct.getMessageIdentifier());
+            request.getGeneralMessageRequests().add(gmRequestStruct);
+        }
         siri.setServiceRequest(request);
 
         return siri;
@@ -262,6 +278,15 @@ public class SiriObjectFactory {
             smRequest.setMonitoringRef(monitoringRefStructure);
         }
         return smRequest;
+    }
+
+    private static GeneralMessageRequestStructure createGeneralMessageRequestStructure(SubscriptionSetup subscriptionSetup) {
+        GeneralMessageRequestStructure gmRequest = new GeneralMessageRequestStructure();
+        gmRequest.setRequestTimestamp(ZonedDateTime.now());
+        gmRequest.setVersion(SIRI_VERSION);
+        gmRequest.setMessageIdentifier(createMessageIdentifier());
+
+        return gmRequest;
     }
 
     private static SubscriptionRequest createSituationExchangeSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap, String addressFieldName, Boolean incrementalUpdates, Duration previewInterval) {
@@ -352,7 +377,27 @@ public class SiriObjectFactory {
 
         return request;
     }
+    private static SubscriptionRequest createGeneralMessageSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address,
+                                                                               Duration subscriptionDuration,     String addressFieldName ) {
 
+
+        SubscriptionRequest request = createSubscriptionRequest(requestorRef, heartbeatInterval, address, addressFieldName);
+        GeneralMessageRequestStructure gmRequest = new GeneralMessageRequestStructure();
+
+        gmRequest.setRequestTimestamp(ZonedDateTime.now());
+        gmRequest.setVersion(SIRI_VERSION);
+
+
+
+        GeneralMessageSubscriptionStructure gmSubscriptionReq = new GeneralMessageSubscriptionStructure();
+        gmSubscriptionReq.setGeneralMessageRequest(gmRequest);
+
+        gmSubscriptionReq.setSubscriptionIdentifier(createSubscriptionIdentifier(subscriptionId));
+        gmSubscriptionReq.setInitialTerminationTime(ZonedDateTime.now().plusSeconds(subscriptionDuration.getSeconds()));
+        gmSubscriptionReq.setSubscriberRef(request.getRequestorRef());
+        request.getGeneralMessageSubscriptionRequests().add(gmSubscriptionReq);
+        return request;
+    }
     private static SubscriptionRequest createStopMonitoringSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap, String addressFieldName, Boolean incrementalUpdates, Duration previewInterval, Duration changeBeforeUpdates, String stopMonitoringRefValue) {
         SubscriptionRequest request = createSubscriptionRequest(requestorRef, heartbeatInterval, address, addressFieldName);
 
@@ -571,6 +616,18 @@ public class SiriObjectFactory {
         deliveryStructure.getMonitoredStopVisits().addAll(elements);
         deliveryStructure.setResponseTimestamp(ZonedDateTime.now());
         delivery.getStopMonitoringDeliveries().add(deliveryStructure);
+        siri.setServiceDelivery(delivery);
+        return siri;
+    }
+
+    public Siri createGMServiceDelivery(Collection<GeneralMessage> elements) {
+        Siri siri = createSiriObject();
+        ServiceDelivery delivery = createServiceDelivery();
+        GeneralMessageDeliveryStructure deliveryStructure = new GeneralMessageDeliveryStructure();
+        deliveryStructure.setVersion(SIRI_VERSION);
+        deliveryStructure.getGeneralMessages().addAll(elements);
+        deliveryStructure.setResponseTimestamp(ZonedDateTime.now());
+        delivery.getGeneralMessageDeliveries().add(deliveryStructure);
         siri.setServiceDelivery(delivery);
         return siri;
     }

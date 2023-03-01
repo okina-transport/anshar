@@ -17,10 +17,7 @@ package no.rutebanken.anshar.routes.outbound;
 
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
-import no.rutebanken.anshar.data.EstimatedTimetables;
-import no.rutebanken.anshar.data.MonitoredStopVisits;
-import no.rutebanken.anshar.data.Situations;
-import no.rutebanken.anshar.data.VehicleActivities;
+import no.rutebanken.anshar.data.*;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
@@ -32,32 +29,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri20.AffectedLineStructure;
-import uk.org.siri.siri20.AffectsScopeStructure;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.EstimatedTimetableRequestStructure;
-import uk.org.siri.siri20.EstimatedTimetableSubscriptionStructure;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.EstimatedVersionFrameStructure;
-import uk.org.siri.siri20.LineDirectionStructure;
-import uk.org.siri.siri20.LineRef;
-import uk.org.siri.siri20.MonitoredStopVisit;
-import uk.org.siri.siri20.MonitoringRefStructure;
-import uk.org.siri.siri20.PtSituationElement;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.SituationExchangeDeliveryStructure;
-import uk.org.siri.siri20.SituationExchangeRequestStructure;
-import uk.org.siri.siri20.SituationExchangeSubscriptionStructure;
-import uk.org.siri.siri20.StopMonitoringDeliveryStructure;
-import uk.org.siri.siri20.StopMonitoringSubscriptionStructure;
-import uk.org.siri.siri20.SubscriptionRequest;
-import uk.org.siri.siri20.VehicleActivityStructure;
-import uk.org.siri.siri20.VehicleMonitoringDeliveryStructure;
-import uk.org.siri.siri20.VehicleMonitoringRequestStructure;
-import uk.org.siri.siri20.VehicleMonitoringSubscriptionStructure;
-import uk.org.siri.siri20.VehicleRef;
+import uk.org.siri.siri20.*;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @SuppressWarnings("unchecked")
 @Component
@@ -77,6 +52,9 @@ public class SiriHelper {
 
     @Autowired
     private MonitoredStopVisits monitoredStopVisits;
+
+    @Autowired
+    private GeneralMessages generalMessages;
 
     @Autowired
     private StopPlaceUpdaterService stopPlaceUpdaterService;
@@ -100,9 +78,35 @@ public class SiriHelper {
             return getFilter(subscriptionRequest.getEstimatedTimetableSubscriptionRequests().get(0));
         } else if (containsValues(subscriptionRequest.getStopMonitoringSubscriptionRequests())) {
             return getFilter(subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0), outboundIdMappingPolicy, datasetId);
+        }else if (containsValues(subscriptionRequest.getGeneralMessageSubscriptionRequests())) {
+            return getFilter(subscriptionRequest.getGeneralMessageSubscriptionRequests().get(0), outboundIdMappingPolicy, datasetId);
         }
 
         return new HashMap<>();
+    }
+
+    private Map<Class, Set<String>> getFilter(GeneralMessageSubscriptionStructure generalMessageSubscriptionStructure, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
+
+        Map<Class, Set<String>> filterMap = new HashMap<>();
+
+        List<InfoChannelRefStructure> requestedChennels = generalMessageSubscriptionStructure.getGeneralMessageRequest().getInfoChannelReves();
+
+
+        Set<String> requestedChannels = requestedChennels.stream()
+                                                .map(InfoChannelRefStructure::getValue)
+                                                .collect(Collectors.toSet());
+
+        Map<ObjectType, Optional<IdProcessingParameters>> idProcessingParams = subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);
+
+
+
+        if (!requestedChannels.isEmpty()) {
+            filterMap.put(InfoChannel.class, requestedChannels);
+        }
+
+        return filterMap;
+
+
     }
 
     private Map<Class, Set<String>> getFilter(SituationExchangeSubscriptionStructure subscriptionStructure) {
@@ -240,6 +244,14 @@ public class SiriHelper {
                 logger.info("Initial SM-delivery: {} elements", stopVisits.size());
                 delivery = siriObjectFactory.createSMServiceDelivery(stopVisits);
                 break;
+
+            case GENERAL_MESSAGE:
+                Collection<GeneralMessage> messages = generalMessages.getAll(subscriptionRequest.getDatasetId());
+                logger.info("Initial GM-delivery: {} elements", messages.size());
+                delivery = siriObjectFactory.createGMServiceDelivery(messages);
+                break;
+
+
         }
         return delivery;
     }
@@ -302,6 +314,18 @@ public class SiriHelper {
             for (List<MonitoredStopVisit> list : etList) {
                 siriList.add(siriObjectFactory.createSMServiceDelivery(list));
             }
+        }else if (containsValues(payload.getServiceDelivery().getGeneralMessageDeliveries())) {
+
+            List<GeneralMessage> generalMsgList = payload.getServiceDelivery()
+                                    .getGeneralMessageDeliveries().get(0)
+                                    .getGeneralMessages();
+
+            List<List> gmList = splitList(generalMsgList, maximumSizePerDelivery);
+
+            for (List<GeneralMessage> list : gmList) {
+                siriList.add(siriObjectFactory.createGMServiceDelivery(list));
+            }
+
         }
 
         return siriList;
@@ -360,10 +384,35 @@ public class SiriHelper {
                 return applyMultipleMatchFilter(filtered, filter);
             } else if (containsValues(filtered.getServiceDelivery().getStopMonitoringDeliveries())) {
                 return applySingleMatchFilter(filtered, filter);
+            } else if (containsValues(filtered.getServiceDelivery().getGeneralMessageDeliveries())){
+                return applyGeneralMessageFilter(filtered, filter);
             }
         }
 
         return siri;
+    }
+
+    private static Siri applyGeneralMessageFilter(Siri filtered, Map<Class, Set<String>> filter) {
+
+        Set<String> channels = filter.get(InfoChannel.class);
+        if (channels == null || channels.isEmpty()) {
+            return filtered;
+        }
+
+        for (GeneralMessageDeliveryStructure generalMessageDelivery : filtered.getServiceDelivery().getGeneralMessageDeliveries()) {
+
+            List<GeneralMessage> filteredGeneralMessages = new ArrayList<>();
+            for (GeneralMessage generalMessage : generalMessageDelivery.getGeneralMessages()) {
+
+                if (channels.contains(generalMessage.getInfoChannelRef().getValue())){
+                    filteredGeneralMessages.add(generalMessage);
+                }
+            }
+
+            generalMessageDelivery.getGeneralMessages().clear();
+            generalMessageDelivery.getGeneralMessages().addAll(filteredGeneralMessages);
+        }
+        return filtered;
     }
 
     /*

@@ -16,12 +16,12 @@
 package no.rutebanken.anshar.routes.siri;
 
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.data.util.CustomSiriXml;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
-import org.apache.camel.CamelContext;
 import org.apache.camel.CamelContextAware;
 import org.apache.camel.Exchange;
 import org.apache.camel.Message;
@@ -36,6 +36,7 @@ import uk.org.siri.siri20.Siri;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.MediaType;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.List;
 
@@ -184,20 +185,23 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .endChoice()
                 .when(e -> isTrackingHeaderAcceptable(e))
                 .choice()
-                .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:VehicleMonitoringSubscriptionRequest", ns)
+                .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:VehicleMonitoringSubscriptionRequest", nameSpace)
                 .to("direct:process.vm.subscription.request")
-                .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:SituationExchangeSubscriptionRequest", ns)
+                .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:SituationExchangeSubscriptionRequest", nameSpace)
                 .to("direct:process.sx.subscription.request")
-                .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:EstimatedTimetableSubscriptionRequest", ns)
+                .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:EstimatedTimetableSubscriptionRequest", nameSpace)
                 .to("direct:process.et.subscription.request")
-                .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:StopMonitoringSubscriptionRequest", ns)
+                .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:StopMonitoringSubscriptionRequest", nameSpace)
                 .to("direct:process.sm.subscription.request")
-                .when().xpath("/siri:Siri/siri:TerminateSubscriptionRequest", ns)
+                .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:GeneralMessageSubscriptionRequest", nameSpace)
+                .to("direct:process.gm.subscription.request")
+                .when().xpath("/siri:Siri/siri:TerminateSubscriptionRequest", nameSpace)
                 // Forwarding TerminateRequest to all data-instances
                 .wireTap("direct:process.et.subscription.request")
                 .wireTap("direct:process.vm.subscription.request")
                 .wireTap("direct:process.sx.subscription.request")
                 .wireTap("direct:process.sm.subscription.request")
+                .wireTap("direct:process.gm.subscription.request")
                 .to("direct:internal.handle.subscription") //Build response
                 .endChoice()
                 .otherwise()
@@ -226,17 +230,19 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
 
         from("direct:process.service.request")
                 .choice()
-                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:VehicleMonitoringRequest", ns)
+                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:VehicleMonitoringRequest", nameSpace)
                 .to("direct:process.vm.service.request")
-                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:SituationExchangeRequest", ns)
+                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:SituationExchangeRequest", nameSpace)
                 .to("direct:process.sx.service.request")
-                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:EstimatedTimetableRequest", ns)
+                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:EstimatedTimetableRequest", nameSpace)
                 .to("direct:process.et.service.request")
-                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:StopMonitoringRequest", ns)
+                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:StopMonitoringRequest", nameSpace)
                 .to("direct:process.sm.service.request")
-                .when().xpath("/siri:Siri/siri:StopPointsRequest", ns)
+                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:GeneralMessageRequest", nameSpace)
+                .to("direct:process.gm.service.request")
+                .when().xpath("/siri:Siri/siri:StopPointsRequest", nameSpace)
                 .to("direct:process.sm.service.request")
-                .when().xpath("/siri:Siri/siri:LinesRequest", ns)
+                .when().xpath("/siri:Siri/siri:LinesRequest", nameSpace)
                 .to("direct:process.vm.service.request")
                 .endChoice()
         ;
@@ -264,10 +270,13 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                     Siri response = handler.handleIncomingSiri(null, msg.getBody(InputStream.class), datasetId, excludedIdList, SiriHandler.getIdMappingPolicy(useOriginalId), maxSize, clientTrackingName);
                     if (response != null) {
                         logger.debug("Found ServiceRequest-response, streaming response");
-                        p.getOut().setBody(response);
+
+                        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+
+                        CustomSiriXml.toXml(response,null, byteArrayOutputStream);
+                        p.getOut().setBody(byteArrayOutputStream.toString());
                     }
                 })
-                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
                 .choice()
                 .when(e -> TRANSFORM_SOAP.equals(e.getIn().getHeader(TRANSFORM_SOAP)))
                 .to("xslt-saxon:xsl/siri_raw_soap.xsl") // Convert SIRI raw request to SOAP version
@@ -284,13 +293,13 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
 
         from("direct:process.service.request.cache")
                 .choice()
-                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:VehicleMonitoringRequest", ns)
+                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:VehicleMonitoringRequest", nameSpace)
                 .to("direct:process.vm.service.request.cache")
-                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:SituationExchangeRequest", ns)
+                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:SituationExchangeRequest", nameSpace)
                 .to("direct:process.sx.service.request.cache")
-                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:EstimatedTimetableRequest", ns)
+                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:EstimatedTimetableRequest", nameSpace)
                 .to("direct:process.et.service.request.cache")
-                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:StopMonitoringRequest", ns)
+                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:StopMonitoringRequest", nameSpace)
                 .to("direct:process.sm.service.request.cache")
                 .endChoice()
         ;

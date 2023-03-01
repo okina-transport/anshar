@@ -525,7 +525,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
      * @return
      */
     private SiriObjectStorageKey createKey(String datasetId, String monitoredStopVisitIdentifier, String monitoringRef, String vehicleJourney, String line) {
-        return new SiriObjectStorageKey(datasetId, line, monitoredStopVisitIdentifier, monitoringRef, vehicleJourney);
+        return new SiriObjectStorageKey(datasetId, line, monitoredStopVisitIdentifier, monitoringRef, vehicleJourney,null);
     }
 
     public void writeStatistics(List<String> datasetIds){

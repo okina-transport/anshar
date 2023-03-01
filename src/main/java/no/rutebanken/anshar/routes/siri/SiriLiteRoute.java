@@ -16,10 +16,7 @@
 package no.rutebanken.anshar.routes.siri;
 
 import no.rutebanken.anshar.config.AnsharConfiguration;
-import no.rutebanken.anshar.data.EstimatedTimetables;
-import no.rutebanken.anshar.data.MonitoredStopVisits;
-import no.rutebanken.anshar.data.Situations;
-import no.rutebanken.anshar.data.VehicleActivities;
+import no.rutebanken.anshar.data.*;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
@@ -72,6 +69,9 @@ public class SiriLiteRoute extends RestRouteBuilder {
     @Autowired
     private SiriObjectFactory siriObjectFactory;
 
+    @Autowired
+    private GeneralMessages generalMessages;
+
     @Override
     public void configure() throws Exception {
         super.configure();
@@ -101,6 +101,11 @@ public class SiriLiteRoute extends RestRouteBuilder {
                 .get("/vm-cache").to("direct:anshar.rest.vm.cached")
 
                 .get("/sm").to("direct:anshar.rest.sm")
+                        .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
+                        .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response").dataType("string").endParam()
+                        .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
+                        .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
+                .get("/gm").to("direct:anshar.rest.gm")
                         .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
                         .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response").dataType("string").endParam()
                         .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
@@ -355,6 +360,49 @@ public class SiriLiteRoute extends RestRouteBuilder {
                 .otherwise()
                 .to("direct:anshar.invalid.tracking.header.response")
                 .routeId("incoming.rest.et.monitored")
+        ;
+
+        // Dataproviders
+        from("direct:internal.anshar.rest.gm")
+                .log("RequestTracer - Incoming request (GM)")
+                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true")
+                .choice()
+                .when(e -> isTrackingHeaderAcceptable(e))
+                .process(p -> {
+                    p.getOut().setHeaders(p.getIn().getHeaders());
+
+                    String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
+
+                    String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
+                    String originalId = p.getIn().getHeader(PARAM_USE_ORIGINAL_ID, String.class);
+                    Integer maxSizeStr = p.getIn().getHeader(PARAM_MAX_SIZE, Integer.class);
+                    String etClientName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
+                    int maxSize = datasetId != null ? Integer.MAX_VALUE:configuration.getDefaultMaxSize();
+
+                    if (maxSizeStr != null) {
+                        maxSize = maxSizeStr.intValue();
+                    }
+
+                    Siri response = generalMessages.createServiceDelivery(requestorId, datasetId, etClientName, maxSize,null);
+
+                    List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
+                            SiriDataType.GENERAL_MESSAGE,
+                            SiriHandler.getIdMappingPolicy(originalId)
+                    );
+                    if ("test".equals(originalId)) {
+                        outboundAdapters = null;
+                    }
+                    response = SiriValueTransformer.transform(response, outboundAdapters, false, false);
+
+                    metrics.countOutgoingData(response, SubscriptionSetup.SubscriptionMode.LITE);
+
+                    HttpServletResponse out = p.getIn().getBody(HttpServletResponse.class);
+                    streamOutput(p, response, out);
+                })
+                .log("RequestTracer - Request done (GM)")
+                .otherwise()
+                .to("direct:anshar.invalid.tracking.header.response")
+                .routeId("incoming.rest.gm")
         ;
 
         from("direct:internal.anshar.rest.sx.cached")

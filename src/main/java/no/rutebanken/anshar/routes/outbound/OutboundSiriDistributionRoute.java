@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.routes.outbound;
 
+import no.rutebanken.anshar.data.util.CustomSiriXml;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
 import org.apache.camel.Exchange;
@@ -7,8 +8,11 @@ import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import uk.org.siri.siri20.Siri;
 
+import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.MediaType;
+import java.io.ByteArrayOutputStream;
 
 @Service
 public class OutboundSiriDistributionRoute extends RouteBuilder {
@@ -38,7 +42,12 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
                 .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.APPLICATION_XML))
                 .bean(metrics, "countOutgoingData(${body}, SUBSCRIBE)")
                 .to("direct:siri.transform.data")
-                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .process(p->{
+                    Siri response = p.getIn().getBody(Siri.class);
+                    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                    CustomSiriXml.toXml(response,null, byteArrayOutputStream);
+                    p.getIn().setBody(byteArrayOutputStream.toString());
+                })
                 .setHeader("httpClient.socketTimeout", constant(timeout))
                 .setHeader("httpClient.connectTimeout", constant(timeout))
                 .choice()
