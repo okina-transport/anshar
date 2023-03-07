@@ -395,7 +395,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
                     List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.GENERAL_MESSAGE,
-                            SiriHandler.getIdMappingPolicy(originalId)
+                            SiriHandler.getIdMappingPolicy(originalId,null)
                     );
                     if ("test".equals(originalId)) {
                         outboundAdapters = null;
