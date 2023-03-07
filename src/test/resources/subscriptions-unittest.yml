@@ -20,3 +20,17 @@ anshar:
       idMappingPrefixes: AND
       active: false
       lineRefValue: "TEST:Line:1"
+
+  idProcessingParameters:
+    - datasetId: TEST
+      objectType: STOP
+      inputPrefixToRemove:
+      inputSuffixToRemove:
+      outputPrefixToAdd:
+      outputSuffixToAdd:
+    - datasetId: TEST
+      objectType: LINE
+      inputPrefixToRemove:
+      inputSuffixToRemove:
+      outputPrefixToAdd:
+      outputSuffixToAdd:

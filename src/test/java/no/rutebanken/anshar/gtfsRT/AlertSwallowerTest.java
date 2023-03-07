@@ -17,9 +17,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class AlertSwallowerTest extends SpringBootBaseTest {
 
@@ -45,7 +45,7 @@ public class AlertSwallowerTest extends SpringBootBaseTest {
 
         Collection<PtSituationElement> savedSituations = situations.getAll();
 
-        assertTrue(4 == savedSituations.size());
+        assertEquals(savedSituations.size(), 4);
 
         for(PtSituationElement savedSituation :  savedSituations) {
             assertNotNull(savedSituation.getValidityPeriods());

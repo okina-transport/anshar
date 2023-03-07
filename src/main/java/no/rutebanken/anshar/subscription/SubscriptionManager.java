@@ -30,6 +30,7 @@ import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.slf4j.Logger;
@@ -766,7 +767,7 @@ public class SubscriptionManager {
     }
 
     /**
-     * Terminating all subscriptions - to be used before a full restart to
+     * Terminating all subscriptions by SiriDataType - to be used before a full restart to
      */
     public void terminateAllSubscriptions(SiriDataType type) {
         logger.warn("Terminating ALL {}subscriptions", (type != null ? type + "-":""));
@@ -896,5 +897,13 @@ public class SubscriptionManager {
      */
     public void updateSubscription(SubscriptionSetup subscriptionSetup) {
         subscriptions.put(subscriptionSetup.getSubscriptionId(), subscriptionSetup);
+    }
+
+    public Set<String> getAllDatasetIds(){
+        return subscriptions.values()
+                .stream()
+                .map(SubscriptionSetup::getDatasetId)
+                .filter(StringUtils::isNotEmpty)
+                .collect(Collectors.toSet());
     }
 }

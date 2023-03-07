@@ -17,6 +17,8 @@ package no.rutebanken.anshar.routes.siri.transformer.impl;
 
 
 import no.rutebanken.anshar.config.IdProcessingParameters;
+import no.rutebanken.anshar.config.ObjectType;
+import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
@@ -37,6 +39,8 @@ public class OutboundIdAdapter extends ValueAdapter {
     private boolean shouldConvertToNetexId = false;
 
     private StopPlaceUpdaterService stopPlaceService;
+
+    private ExternalIdsService externalIdsService;
 
     public OutboundIdAdapter(Class clazz, OutboundIdMappingPolicy outboundIdMappingPolicy) {
         super(clazz);
@@ -66,7 +70,19 @@ public class OutboundIdAdapter extends ValueAdapter {
             logger.warn("Caught exception when mapping value '{}'", text);
             throw npe;
         }
-        return shouldConvertToNetexId && outboundIdMappingPolicy == OutboundIdMappingPolicy.DEFAULT ? convertToNetexId(text) : text;
+
+        if(shouldConvertToNetexId){
+            if(OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)){
+                return convertToNetexId(text);
+            }
+            if(OutboundIdMappingPolicy.ORIGINAL_ID.equals(outboundIdMappingPolicy)){
+                return text;
+            }
+            if(OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy)){
+                return convertToAltId(idProcessingParameters.getDatasetId(), text, idProcessingParameters.getObjectType());
+            }
+        }
+        return text;
     }
 
     private String convertToNetexId(String text) {
@@ -76,6 +92,14 @@ public class OutboundIdAdapter extends ValueAdapter {
         }
 
         return StringUtils.isEmpty(text) || !stopPlaceService.isKnownId(text) ? text : stopPlaceService.get(text);
+    }
+
+    private String convertToAltId(String datasetId, String text, ObjectType objectType) {
+        if (externalIdsService == null){
+            externalIdsService = ApplicationContextHolder.getContext().getBean(ExternalIdsService.class);
+        }
+
+        return StringUtils.isEmpty(text) || externalIdsService.getAltId(datasetId, text, objectType).isEmpty() ? text : externalIdsService.getAltId(datasetId, text, objectType).get();
     }
 
     public static String getOriginalId(String text) {

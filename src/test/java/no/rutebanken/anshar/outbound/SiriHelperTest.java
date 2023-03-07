@@ -16,21 +16,11 @@
 package no.rutebanken.anshar.outbound;
 
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
-import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.outbound.SiriHelper;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
-import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.ApplicationContext;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
-import org.springframework.test.context.junit4.SpringRunner;
 import uk.org.siri.siri20.LineRef;
 import uk.org.siri.siri20.MonitoredStopVisit;
 import uk.org.siri.siri20.MonitoringRefStructure;
@@ -42,7 +32,6 @@ import uk.org.siri.siri20.SubscriptionRequest;
 import uk.org.siri.siri20.VehicleActivityStructure;
 import uk.org.siri.siri20.VehicleRef;
 
-import java.time.Instant;
 import java.util.*;
 
 
@@ -57,12 +46,9 @@ public class SiriHelperTest  extends SpringBootBaseTest {
     @Autowired
     private SiriObjectFactory siriObjectFactory;
 
-    @Autowired
-    private StopPlaceUpdaterService stopPlaceUpdaterService;
-
 
     @Test
-    public void testFilterVmDelivery() throws Exception {
+    public void testFilterVmDelivery() {
         List<VehicleActivityStructure> vmElements = new ArrayList<>();
         String filterMatchingLineRef_1 = "1234";
         String filterMatchingVehicleRef_1 = "22";
@@ -256,7 +242,7 @@ public class SiriHelperTest  extends SpringBootBaseTest {
     }
 
     @Test
-    public void testStopMonitoringFilter() throws Exception {
+    public void testStopMonitoringFilter() {
         SubscriptionRequest subscriptionRequest = new SubscriptionRequest();
         StopMonitoringSubscriptionStructure smSubscription = new StopMonitoringSubscriptionStructure();
         StopMonitoringRequestStructure sMRequest = new StopMonitoringRequestStructure();
@@ -268,7 +254,7 @@ public class SiriHelperTest  extends SpringBootBaseTest {
         subscriptionRequest.getStopMonitoringSubscriptionRequests().add(smSubscription);
 
 
-        Map<Class, Set<String>>  filter = siriHelper.getFilter(subscriptionRequest, OutboundIdMappingPolicy.DEFAULT, "datId");
+        Map<Class, Set<String>>  filter = siriHelper.getFilter(subscriptionRequest, OutboundIdMappingPolicy.ORIGINAL_ID, "datId");
 
         List<MonitoredStopVisit> vmElements = new ArrayList<>();
 
@@ -285,8 +271,8 @@ public class SiriHelperTest  extends SpringBootBaseTest {
         assertNotNull(filtered.getServiceDelivery());
         assertNotNull(filtered.getServiceDelivery().getStopMonitoringDeliveries());
         List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = filtered.getServiceDelivery().getStopMonitoringDeliveries();
-        assertTrue(stopMonitoringDeliveries.size() == 1);
-        assertTrue(stopMonitoringDeliveries.get(0).getMonitoredStopVisits().size() == 1, "Only 1 of 4 points must be returned after filter");
-        assertTrue(stopMonitoringDeliveries.get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue().equals("TESTPOINT1"), "Only TESTPOINT1 must pass the filtering");
+        assertEquals(stopMonitoringDeliveries.size(), 1);
+        assertEquals(stopMonitoringDeliveries.get(0).getMonitoredStopVisits().size(), 1, "Only 1 of 4 points must be returned after filter");
+        assertEquals(stopMonitoringDeliveries.get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue(), "TESTPOINT1", "Only TESTPOINT1 must pass the filtering");
     }
 }

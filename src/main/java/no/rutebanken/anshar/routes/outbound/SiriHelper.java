@@ -117,9 +117,7 @@ public class SiriHelper {
         if (lineReves != null) {
             Set<String> linerefValues = new HashSet<>();
 
-            lineReves.forEach(ref ->
-                            linerefValues.add(ref.getValue())
-            );
+            lineReves.forEach(ref -> linerefValues.add(ref.getValue()));
 
             filterMap.put(LineRef.class, linerefValues);
         }

@@ -1,0 +1,80 @@
+<Siri xmlns="http://www.siri.org.uk/siri">
+    <ServiceDelivery>
+        <ResponseTimestamp>2022-01-14T16:07:16.4355766+01:00</ResponseTimestamp>
+        <ProducerRef>TEST</ProducerRef>
+        <VehicleMonitoringDelivery version="2.0">
+            <ResponseTimestamp>2122-01-14T16:07:16.4355832+01:00</ResponseTimestamp>
+            <VehicleActivity xmlns="http://www.siri.org.uk/siri">
+                <RecordedAtTime>2024-02-28T10:30:44.753Z</RecordedAtTime>
+                <ItemIdentifier>2292</ItemIdentifier>
+                <ValidUntilTime>2024-02-28T10:31:14.753Z</ValidUntilTime>
+                <VehicleMonitoringRef>TEST:VehicleJourney::23:LOC</VehicleMonitoringRef>
+                <ProgressBetweenStops>
+                    <LinkDistance>485</LinkDistance>
+                    <Percentage>45.360824742268</Percentage>
+                </ProgressBetweenStops>
+                <MonitoredVehicleJourney>
+                    <LineRef>TEST::Line::1:LOC</LineRef>
+                    <FramedVehicleJourneyRef>
+                        <DataFrameRef>TEST:DataFrame::315:LOC</DataFrameRef>
+                        <DatedVehicleJourneyRef>TEST:VehicleJourney::23:LOC</DatedVehicleJourneyRef>
+                    </FramedVehicleJourneyRef>
+                    <JourneyPatternRef>TEST:JourneyPattern::317156:LOC</JourneyPatternRef>
+                    <JourneyPatternName xml:lang="FR">SC01-JV01</JourneyPatternName>
+                    <VehicleMode>tram</VehicleMode>
+                    <RouteRef>TEST:Route::1740928:LOC</RouteRef>
+                    <PublishedLineName xml:lang="FR">T1</PublishedLineName>
+                    <DirectionName xml:lang="FR">1</DirectionName>
+                    <OriginRef>TEST:StopPoint:BP:SC01:LOC</OriginRef>
+                    <OriginName xml:lang="FR">Hérouville-Saint-Clair Saint-Clair</OriginName>
+                    <DestinationRef>TEST:StopPoint:BP:JV01:LOC</DestinationRef>
+                    <DestinationName xml:lang="FR">Ifs Jean Vilar</DestinationName>
+                    <VehicleJourneyName xml:lang="FR">5153946</VehicleJourneyName>
+                    <OriginAimedDepartureTime>2024-02-28T10:04:08Z</OriginAimedDepartureTime>
+                    <DestinationAimedArrivalTime>2024-02-28T10:43:27Z</DestinationAimedArrivalTime>
+                    <Monitored>true</Monitored>
+                    <DataSource>TEST</DataSource>
+                    <VehicleLocation id="_x003F__x003F__x003F_" srsName="EPSG:4326">
+                        <Longitude>-0.346036791801453</Longitude>
+                        <Latitude>49.1753997802734</Latitude>
+                    </VehicleLocation>
+                    <Bearing>120.0</Bearing>
+                    <Delay>PT52S</Delay>
+                    <MonitoredCall>
+                        <StopPointRef>TEST:StopPoint:BP:BL01:LOC</StopPointRef>
+                        <Order>18</Order>
+                        <StopPointName xml:lang="FR">Caen Leroy</StopPointName>
+                        <DestinationDisplay xml:lang="FR">IFS Jean Vilar</DestinationDisplay>
+                        <AimedArrivalTime>2024-02-28T10:31:06Z</AimedArrivalTime>
+                        <ExpectedArrivalTime>2024-02-28T10:31:58Z</ExpectedArrivalTime>
+                        <ArrivalStatus>onTime</ArrivalStatus>
+                        <ArrivalStopAssignment/>
+                        <AimedDepartureTime>2024-02-28T10:31:21Z</AimedDepartureTime>
+                        <ExpectedDepartureTime>2024-02-28T10:32:13Z</ExpectedDepartureTime>
+                        <DepartureStatus>onTime</DepartureStatus>
+                        <DepartureBoardingActivity>boarding</DepartureBoardingActivity>
+                        <DistanceFromStop>265</DistanceFromStop>
+                        <NumberOfStopsAway>0</NumberOfStopsAway>
+                    </MonitoredCall>
+                    <OnwardCalls>
+                        <OnwardCall>
+                            <StopPointRef>TEST:StopPoint:BP:VL01:LOC</StopPointRef>
+                            <Order>19</Order>
+                            <StopPointName xml:lang="FR">Caen Lux-Lépine</StopPointName>
+                            <AimedArrivalTime>2024-02-28T10:32:10Z</AimedArrivalTime>
+                            <ExpectedArrivalTime>2023-02-28T10:33:02Z</ExpectedArrivalTime>
+                            <ArrivalStatus>onTime</ArrivalStatus>
+                            <AimedDepartureTime>2024-02-28T10:32:25Z</AimedDepartureTime>
+                            <ExpectedDepartureTime>2024-02-28T10:33:17Z</ExpectedDepartureTime>
+                            <DepartureStatus>onTime</DepartureStatus>
+                            <DepartureBoardingActivity>boarding</DepartureBoardingActivity>
+                            <DistanceFromStop>572</DistanceFromStop>
+                            <NumberOfStopsAway>1</NumberOfStopsAway>
+                        </OnwardCall>
+                    </OnwardCalls>
+                </MonitoredVehicleJourney>
+            </VehicleActivity>
+        </VehicleMonitoringDelivery>
+    </ServiceDelivery>
+    <Extensions/>
+</Siri>

@@ -2,7 +2,7 @@ package no.rutebanken.anshar.routes.mapping;
 
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
-import org.apache.commons.csv.CSVFormat;
+import no.rutebanken.anshar.util.CSVUtils;
 import org.apache.commons.csv.CSVRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,7 +121,7 @@ public class StopTimesService {
     private void feedCacheWithFile(File fileToRead, String datasetId) {
 
         try{
-            Iterable<CSVRecord> records = getRecords(fileToRead);
+            Iterable<CSVRecord> records = CSVUtils.getRecords(fileToRead);
 
             Map<String, Map<Integer,String>> currentDatasetCache;
 
@@ -186,38 +186,5 @@ public class StopTimesService {
 
            return Optional.of(tripMap.get(stopSequence));
     }
-
-    /**
-     * Read a csv file and builds a collection of records
-     * @param file
-     *  the file to read
-     * @return
-     *  a collection of records
-     * @throws IOException
-     */
-    public static Iterable<CSVRecord> getRecords(File file) throws IOException {
-        InputStream targetStream = new FileInputStream(file);
-
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        byte[] buffer = new byte[1024];
-        int len;
-        while ((len = targetStream.read(buffer)) > -1) {
-            baos.write(buffer, 0, len);
-        }
-        baos.flush();
-
-        InputStream is2 = new ByteArrayInputStream(baos.toByteArray());
-
-        Reader reader = new InputStreamReader(is2);
-
-        return CSVFormat.DEFAULT
-                .builder()
-                .setHeader()
-                .setSkipHeaderRecord(false)
-                .setDelimiter(",")
-                .build()
-                .parse(reader);
-    }
-
 
 }

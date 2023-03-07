@@ -269,9 +269,10 @@ public class MessagingRoute extends RestRouteBuilder {
 
                     InputStream xml = p.getIn().getBody(InputStream.class);
                     String useOriginalId = p.getIn().getHeader(PARAM_USE_ORIGINAL_ID, String.class);
+                    String useAltId = p.getIn().getHeader(PARAM_USE_ALT_ID, String.class);
                     String clientTrackingName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
 
-                    handler.handleIncomingSiri(subscriptionId, xml, datasetId, SiriHandler.getIdMappingPolicy(useOriginalId), -1, clientTrackingName);
+                    handler.handleIncomingSiri(subscriptionId, xml, datasetId, SiriHandler.getIdMappingPolicy(useOriginalId, useAltId), -1, clientTrackingName);
 
                 })
                 .routeId("incoming.processor.default")
