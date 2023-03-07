@@ -906,4 +906,12 @@ public class SubscriptionManager {
                 .filter(StringUtils::isNotEmpty)
                 .collect(Collectors.toSet());
     }
+
+    /**
+     * TEST USAGE ONLY
+     * Remove all subscriptions
+     */
+    public void clearAllSubscriptions(){
+        subscriptions.clear();
+    }
 }

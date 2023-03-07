@@ -28,6 +28,7 @@ import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.xml.sax.SAXException;
@@ -87,6 +88,12 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
     @Autowired
     private SiriApisRequestHandlerRoute siriApisRequestHandlerRoute;
+
+
+    @BeforeEach
+    public void init() {
+        subscriptionManager.clearAllSubscriptions();
+    }
 
 
 //    @Test
@@ -290,7 +297,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
             Siri result = handler.handleIncomingSiri(null, new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), null, null, null, -1, null);
             assertNotNull(result.getStopPointsDelivery());
             assertNotNull(result.getStopPointsDelivery().getAnnotatedStopPointReves());
-            assertEquals(result.getStopPointsDelivery().getAnnotatedStopPointReves().size(),4);
+            assertEquals(2,result.getStopPointsDelivery().getAnnotatedStopPointReves().size());
             List<String> expectedPointRef = Arrays.asList("sp1", "sp2", "sp3", "sp4");
             for (AnnotatedStopPointStructure annotatedStopPointReve : result.getStopPointsDelivery().getAnnotatedStopPointReves()) {
                     assertTrue(expectedPointRef.contains(annotatedStopPointReve.getStopPointRef().getValue()));
@@ -319,8 +326,8 @@ public class SiriHandlerTest extends SpringBootBaseTest {
             Siri result = handler.handleIncomingSiri(null, new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), null, null, null, -1, null);
             assertNotNull(result.getLinesDelivery());
             assertNotNull(result.getLinesDelivery().getAnnotatedLineReves());
-            assertEquals(result.getLinesDelivery().getAnnotatedLineReves().size(),3);
-            List<String> expectedLineRef = Arrays.asList("line1", "line2", "TEST:Line:1");
+            assertEquals(2,result.getLinesDelivery().getAnnotatedLineReves().size());
+            List<String> expectedLineRef = Arrays.asList("line1", "line2");
 
             for (AnnotatedLineRef annotatedLineReve : result.getLinesDelivery().getAnnotatedLineReves()) {
                 assertTrue(expectedLineRef.contains(annotatedLineReve.getLineRef().getValue()));
