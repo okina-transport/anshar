@@ -35,6 +35,7 @@ import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
+import no.rutebanken.anshar.util.GeneralMessageHelper;
 import no.rutebanken.anshar.util.IDUtils;
 import org.json.simple.JSONObject;
 import org.rutebanken.siri20.util.SiriXml;
@@ -386,6 +387,7 @@ public class SiriHandler {
                 List<InfoChannelRefStructure> requestedChannels = request.getInfoChannelReves();
                 valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idMap);
                 serviceResponse = generalMessages.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, requestedChannels);
+                GeneralMessageHelper.applyTransformationsInContent(serviceResponse,idMap);
 
             }
 

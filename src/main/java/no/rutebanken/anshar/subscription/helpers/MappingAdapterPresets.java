@@ -102,6 +102,7 @@ public class MappingAdapterPresets {
             adapters.add(new RemoveEmojiPostProcessor(outboundIdMappingPolicy));
             break;
         case STOP_MONITORING:
+        case GENERAL_MESSAGE:
             // TODO MHI
             break;
         default:
