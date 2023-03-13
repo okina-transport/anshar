@@ -31,12 +31,12 @@
         <xsl:element name="siri:Siri">
             <xsl:choose>
                 <xsl:when test="child::node()/local-name()='HeartbeatNotification'">
-                    <xsl:element name="siri:HeartbeatNotification" >
+                    <xsl:element name="siri:HeartbeatNotification">
                         <xsl:copy-of select="child::node()/*"/>
                     </xsl:element>
                 </xsl:when>
                 <xsl:otherwise>
-                    <xsl:copy-of select="*" />
+                    <xsl:copy-of select="*"/>
                 </xsl:otherwise>
             </xsl:choose>
         </xsl:element>
@@ -65,7 +65,7 @@
     <xsl:template match="*"/>
 
     <xsl:template
-            match="*:NotifyVehicleMonitoring | *:NotifySituationExchange | *:NotifyEstimatedTimetable | *:NotifyStopMonitoring | *:NotifyHeartbeat | *:GetVehicleMonitoringResponse | *:GetSituationExchangeResponse | *:GetStopMonitoringResponse | *:GetEstimatedTimetableResponse | *:SubscribeResponse | *:DeleteSubscriptionResponse | *:HeartbeatNotification | *:SituationExchangeAnswer | *:VehicleMonitoringAnswer | *:CheckStatusResponse | *:DataSupplyResponse | *:GetStopMonitoring | *:GetVehicleMonitoring | *:StopPointsDiscovery | *:LinesDiscovery | *:GetSituationExchange | *:GetGeneralMessage | *:GetGeneralMessageResponse  | *:Subscribe" > <!-- TODO add all conseptual types of requests -->
+            match="*:NotifyVehicleMonitoring | *:NotifySituationExchange | *:NotifyEstimatedTimetable | *:NotifyStopMonitoring | *:NotifyHeartbeat | *:GetVehicleMonitoringResponse | *:GetSituationExchangeResponse | *:GetStopMonitoringResponse | *:GetEstimatedTimetableResponse | *:SubscribeResponse | *:DeleteSubscriptionResponse | *:HeartbeatNotification | *:SituationExchangeAnswer | *:VehicleMonitoringAnswer | *:CheckStatusResponse | *:DataSupplyResponse | *:GetStopMonitoring | *:GetVehicleMonitoring | *:StopPointsDiscovery | *:LinesDiscovery | *:GetSituationExchange | *:GetGeneralMessage | *:GetGeneralMessageResponse  | *:Subscribe | *:CheckStatus"> <!-- TODO add all conseptual types of requests -->
 
         <xsl:choose>
             <xsl:when test="local-name()='SubscribeResponse'">
@@ -347,6 +347,27 @@
                 </xsl:element>
             </xsl:when>
 
+            <xsl:when test="local-name()='CheckStatus'">
+                <xsl:element name="siril:Siri">
+                    <xsl:element name="siril:CheckStatusRequest">
+
+                        <xsl:for-each select="Request/siril:RequestorRef">
+                            <xsl:element name="siril:RequestorRef">
+                                    <xsl:apply-templates select="* | node()"/>
+                            </xsl:element>
+                        </xsl:for-each>
+
+
+                        <xsl:for-each select="Request/siril:MessageIdentifier">
+                            <xsl:element name="siril:MessageIdentifier">
+                                    <xsl:apply-templates select="* | node()"/>
+                            </xsl:element>
+                        </xsl:for-each>
+
+                    </xsl:element>
+                </xsl:element>
+            </xsl:when>
+
 
             <xsl:when test="local-name()='GetGeneralMessage'">
                 <xsl:element name="siril:Siri">
@@ -425,7 +446,7 @@
 
             <xsl:when test="local-name()='Subscribe'">
                 <xsl:element name="Siri" namespace="http://www.siri.org.uk/siri">
-                    <xsl:element name="SubscriptionRequest"  namespace="http://www.siri.org.uk/siri">
+                    <xsl:element name="SubscriptionRequest" namespace="http://www.siri.org.uk/siri">
 
 
                         <xsl:for-each select="SubscriptionRequestInfo/siril:RequestorRef">
@@ -450,12 +471,14 @@
 
 
                         <xsl:element name="SubscriptionContext" namespace="http://www.siri.org.uk/siri">
-                              <xsl:copy-of select="SubscriptionRequestInfo/siril:SubscriptionContext/*" copy-namespaces="no"/>
+                            <xsl:copy-of select="SubscriptionRequestInfo/siril:SubscriptionContext/*"
+                                         copy-namespaces="no"/>
                         </xsl:element>
 
 
                         <xsl:for-each select="Request/siril:StopMonitoringSubscriptionRequest">
-                            <xsl:element name="StopMonitoringSubscriptionRequest" namespace="http://www.siri.org.uk/siri">
+                            <xsl:element name="StopMonitoringSubscriptionRequest"
+                                         namespace="http://www.siri.org.uk/siri">
 
                                 <xsl:for-each select="siril:SubscriptionIdentifier">
                                     <xsl:element name="{local-name()}" namespace="http://www.siri.org.uk/siri">
@@ -471,7 +494,7 @@
 
                                 <xsl:for-each select="siril:StopMonitoringRequest">
                                     <xsl:element name="StopMonitoringRequest" namespace="http://www.siri.org.uk/siri">
-                                         <xsl:copy-of select="*" copy-namespaces="no"/>
+                                        <xsl:copy-of select="*" copy-namespaces="no"/>
                                     </xsl:element>
                                 </xsl:for-each>
 
@@ -483,7 +506,8 @@
 
 
                         <xsl:for-each select="Request/siril:GeneralMessageSubscriptionRequest">
-                            <xsl:element name="GeneralMessageSubscriptionRequest" namespace="http://www.siri.org.uk/siri">
+                            <xsl:element name="GeneralMessageSubscriptionRequest"
+                                         namespace="http://www.siri.org.uk/siri">
 
                                 <xsl:for-each select="siril:SubscriptionIdentifier">
                                     <xsl:element name="{local-name()}" namespace="http://www.siri.org.uk/siri">

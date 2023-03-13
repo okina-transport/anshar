@@ -695,12 +695,27 @@ public class SiriObjectFactory {
         return siri;
     }
 
-    public Siri createCheckStatusResponse() {
+    public Siri createCheckStatusResponse(CheckStatusRequestStructure checkStatusRequest) {
         Siri siri = createSiriObject();
         CheckStatusResponseStructure response = new CheckStatusResponseStructure();
         response.setStatus(true);
         response.setServiceStartedTime(serverStartTime.atZone(ZoneId.systemDefault()));
         response.setShortestPossibleCycle(createDataTypeFactory().newDuration(60000));
+        response.setResponseTimestamp(ZonedDateTime.now());
+        RequestorRef prodRef = new RequestorRef();
+        prodRef.setValue("MOBIITI");
+        response.setProducerRef(prodRef);
+
+        MessageQualifierStructure respId = new MessageQualifierStructure();
+        respId.setValue(UUID.randomUUID().toString());
+        response.setResponseMessageIdentifier(respId);
+
+        if (checkStatusRequest.getMessageIdentifier() != null){
+            MessageRefStructure requestRef = new MessageRefStructure();
+            requestRef.setValue(checkStatusRequest.getMessageIdentifier().getValue());
+            response.setRequestMessageRef(requestRef);
+        }
+
         siri.setCheckStatusResponse(response);
         return siri;
     }

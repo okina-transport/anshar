@@ -359,7 +359,7 @@ public class ServerSubscriptionManager {
     }
 
     public Siri handleCheckStatusRequest(CheckStatusRequestStructure checkStatusRequest) {
-        return siriObjectFactory.createCheckStatusResponse();
+        return siriObjectFactory.createCheckStatusResponse(checkStatusRequest);
     }
 
 
