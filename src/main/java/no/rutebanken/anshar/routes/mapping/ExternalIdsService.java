@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.routes.mapping;
 
+import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
@@ -129,6 +130,9 @@ public class ExternalIdsService {
      */
     public void feedCacheStopWithFile(File fileToRead, String datasetId) {
 
+
+        Optional<IdProcessingParameters> idParametersOpt = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.STOP);
+
         try {
             Iterable<CSVRecord> records = CSVUtils.getRecords(fileToRead);
 
@@ -144,6 +148,7 @@ public class ExternalIdsService {
             for (CSVRecord record : records) {
                 String stopId = record.get("stop_id");
                 String stopAltId = record.get("stop_alt_id");
+                stopId = removePrefixAndSuffix(stopId, idParametersOpt);
                 currentStopAltStopCache.put(stopId, stopAltId);
             }
             logger.info("Feeding cache with stops_mapping file: " + fileToRead.getAbsolutePath() + " completed");
@@ -153,6 +158,37 @@ public class ExternalIdsService {
         }
     }
 
+    private String removePrefixAndSuffix(String text, Optional<IdProcessingParameters> idParametersOpt) {
+        if (idParametersOpt.isEmpty() || text == null){
+            return text;
+        }
+
+        IdProcessingParameters parameters = idParametersOpt.get();
+        String inputPrefixToRemove = parameters.getInputPrefixToRemove();
+        String inputSuffixToRemove = parameters.getInputSuffixToRemove();
+        String outputPrefixToAdd = parameters.getOutputPrefixToAdd();
+        String outputSuffixToAdd = parameters.getOutputSuffixToAdd();
+
+
+        if (inputPrefixToRemove != null && text.startsWith(inputPrefixToRemove)){
+            text = text.substring(inputPrefixToRemove.length());
+        }
+
+        if (inputSuffixToRemove != null && text.endsWith(inputSuffixToRemove)){
+            text = text.substring(0,text.length() - inputSuffixToRemove.length());
+        }
+
+        if (outputPrefixToAdd != null && !text.startsWith(outputPrefixToAdd)){
+            text = outputPrefixToAdd + text;
+        }
+
+        if (outputSuffixToAdd != null && !text.endsWith(outputSuffixToAdd)){
+            text = text + outputSuffixToAdd;
+        }
+
+        return text;
+    }
+
     /**
      * Refresh the cache for a particular file/datasetId
      *
@@ -160,6 +196,9 @@ public class ExternalIdsService {
      * @param datasetId  the datasetId
      */
     public void feedCacheLineWithFile(File fileToRead, String datasetId) {
+
+
+        Optional<IdProcessingParameters> idParametersOpt = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.LINE);
 
         try {
             Iterable<CSVRecord> records = CSVUtils.getRecords(fileToRead);
@@ -176,6 +215,7 @@ public class ExternalIdsService {
             for (CSVRecord record : records) {
                 String lineId = record.get("line_id");
                 String lineAltId = record.get("line_alt_id");
+                lineId = removePrefixAndSuffix(lineId, idParametersOpt);
                 currentLineAltLineCache.put(lineId, lineAltId);
             }
             logger.info("Feeding cache with lines_mapping file: " + fileToRead.getAbsolutePath() + " completed");

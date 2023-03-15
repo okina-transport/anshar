@@ -266,7 +266,7 @@ public class SiriHandler {
             if (hasValues(serviceRequest.getSituationExchangeRequests())) {
                 dataType = SiriDataType.SITUATION_EXCHANGE;
                 Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);
-                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy,idMap);
+                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idMap);
                 serviceResponse = situations.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize);
             } else if (hasValues(serviceRequest.getVehicleMonitoringRequests())) {
                 dataType = SiriDataType.VEHICLE_MONITORING;
@@ -292,10 +292,9 @@ public class SiriHandler {
                 Set<String> vehicleRefList = filterMap.get(VehicleRef.class) != null ? filterMap.get(VehicleRef.class) : new HashSet<>();
 
                 Set<String> lineRefOriginalList;
-                if(OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy)){
+                if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy)) {
                     lineRefOriginalList = convertFromAltIdsToImportedIdsLine(lineRefList, datasetId);
-                }
-                else{
+                } else {
                     lineRefOriginalList = lineRefList;
                 }
 
@@ -361,13 +360,11 @@ public class SiriHandler {
 
                 Set<String> originalMonitoringRefs = filterMap.get(MonitoringRefStructure.class) != null ? filterMap.get(MonitoringRefStructure.class) : new HashSet<>();
                 Set<String> importedIds;
-                if(OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)){
+                if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)) {
                     importedIds = convertToImportedIds(originalMonitoringRefs, datasetId);
-                }
-                else if(OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy)){
+                } else if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy)) {
                     importedIds = convertFromAltIdsToImportedIdsStop(originalMonitoringRefs, datasetId);
-                }
-                else{
+                } else {
                     importedIds = originalMonitoringRefs;
                 }
 
@@ -387,10 +384,9 @@ public class SiriHandler {
                 List<InfoChannelRefStructure> requestedChannels = request.getInfoChannelReves();
                 valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idMap);
                 serviceResponse = generalMessages.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, requestedChannels);
-                GeneralMessageHelper.applyTransformationsInContent(serviceResponse,idMap);
+                GeneralMessageHelper.applyTransformationsInContent(serviceResponse, idMap);
 
             }
-
 
 
             if (serviceResponse != null) {
@@ -407,7 +403,7 @@ public class SiriHandler {
             return getDiscoveryStopPoints(datasetId, outboundIdMappingPolicy);
         } else if (incoming.getLinesRequest() != null) {
             // lines discovery request (for vehicle monitoring)
-            return getDiscoveryLines(datasetId);
+            return getDiscoveryLines(datasetId, outboundIdMappingPolicy);
         }
 
         return null;
@@ -423,8 +419,8 @@ public class SiriHandler {
     private Set<String> convertToImportedIds(Set<String> originalMonitoringRefs, String datasetId) {
 
         return originalMonitoringRefs.stream()
-                              .map(id -> StringUtils.isNotEmpty(id) && stopPlaceUpdaterService.canBeReverted(id, datasetId) ? stopPlaceUpdaterService.getReverse(id, datasetId) : id)
-                              .collect(Collectors.toSet());
+                .map(id -> StringUtils.isNotEmpty(id) && stopPlaceUpdaterService.canBeReverted(id, datasetId) ? stopPlaceUpdaterService.getReverse(id, datasetId) : id)
+                .collect(Collectors.toSet());
     }
 
     private Set<String> convertFromAltIdsToImportedIdsStop(Set<String> originalMonitoringRefs, String datasetId) {
@@ -453,33 +449,38 @@ public class SiriHandler {
      *
      * @return the siri response with all points
      */
-    private Siri getDiscoveryLines(String datasetId) {
+    private Siri getDiscoveryLines(String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy) {
 
 
-        List<SubscriptionSetup> subscriptionList =  subscriptionManager.getAllSubscriptions(SiriDataType.VEHICLE_MONITORING).stream()
-                                                                       .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))
-                                                                        .collect(Collectors.toList());
+        List<SubscriptionSetup> subscriptionList = subscriptionManager.getAllSubscriptions(SiriDataType.VEHICLE_MONITORING).stream()
+                .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))
+                .collect(Collectors.toList());
 
 
         List<String> datasetList = subscriptionList.stream()
-                                                    .map(SubscriptionSetup::getDatasetId)
-                                                    .distinct()
-                                                    .collect(Collectors.toList());
-
+                .map(SubscriptionSetup::getDatasetId)
+                .distinct()
+                .collect(Collectors.toList());
 
 
         Map<String, IdProcessingParameters> idProcessingMap = buildIdProcessingMap(datasetList, ObjectType.LINE);
 
 
         List<String> lineRefList = subscriptionList.stream()
-                                            .map(subscription -> extractAndTransformLineId(subscription, idProcessingMap))
-                                            .filter(lineRef -> lineRef != null)
-                                            .collect(Collectors.toList());
+                .map(subscription -> extractAndTransformLineId(subscription, idProcessingMap))
+                .filter(lineRef -> lineRef != null)
+                .collect(Collectors.toList());
+
+        if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy) && datasetId != null) {
+            lineRefList = lineRefList.stream()
+                    .map(id -> externalIdsService.getAltId(datasetId, id, ObjectType.LINE).orElse(id))
+                    .collect(Collectors.toList());
+        }
 
 
         List<AnnotatedLineRef> resultList = lineRefList.stream()
-                                                    .map(this::convertKeyToLineRef)
-                                                    .collect(Collectors.toList());
+                .map(this::convertKeyToLineRef)
+                .collect(Collectors.toList());
 
         return siriObjectFactory.createLinesDiscoveryDelivery(resultList);
 
@@ -495,30 +496,34 @@ public class SiriHandler {
 
 
         List<SubscriptionSetup> subscriptionList = subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING).stream()
-                                                                        .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))
-                                                                        .collect(Collectors.toList());
+                .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))
+                .collect(Collectors.toList());
 
         List<String> datasetList = subscriptionList.stream()
-                                                   .map(SubscriptionSetup::getDatasetId)
-                                                   .distinct()
-                                                   .collect(Collectors.toList());
+                .map(SubscriptionSetup::getDatasetId)
+                .distinct()
+                .collect(Collectors.toList());
 
         Map<String, IdProcessingParameters> idProcessingMap = buildIdProcessingMap(datasetList, ObjectType.STOP);
 
 
         List<String> monitoringRefList = subscriptionList.stream()
-                                                         .map(subscription -> extractAndTransformStopId(subscription, idProcessingMap))
-                                                         .collect(Collectors.toList());
+                .map(subscription -> extractAndTransformStopId(subscription, idProcessingMap))
+                .collect(Collectors.toList());
 
-        if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)){
+        if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)) {
             monitoringRefList = monitoringRefList.stream()
-                                                 .map(id -> stopPlaceUpdaterService.isKnownId(id) ? stopPlaceUpdaterService.get(id) : id)
-                                                 .collect(Collectors.toList());
+                    .map(id -> stopPlaceUpdaterService.isKnownId(id) ? stopPlaceUpdaterService.get(id) : id)
+                    .collect(Collectors.toList());
 
+        } else if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy) && datasetId != null) {
+            monitoringRefList = monitoringRefList.stream()
+                    .map(id -> externalIdsService.getAltId(datasetId, id, ObjectType.STOP).orElse(id))
+                    .collect(Collectors.toList());
         }
 
 
-      //  traceUnknownStopPoints(monitoringRefList);
+        //  traceUnknownStopPoints(monitoringRefList);
 
         List<AnnotatedStopPointStructure> resultList = monitoringRefList.stream()
                 .map(this::convertKeyToPointStructure)
@@ -529,30 +534,26 @@ public class SiriHandler {
 
     /**
      * Extract a stopId from a subscriptionSetup and transforms it, with idProcessingParams
-     * @param subscriptionSetup
-     *      the subscriptionSetup for which the stop id must be recovered
-     * @param idProcessingMap
-     *      the map that associate datasetId to idProcessingParams
-     * @return
-     *      the transformed stop id
+     *
+     * @param subscriptionSetup the subscriptionSetup for which the stop id must be recovered
+     * @param idProcessingMap   the map that associate datasetId to idProcessingParams
+     * @return the transformed stop id
      */
-    private String extractAndTransformStopId(SubscriptionSetup subscriptionSetup,  Map<String, IdProcessingParameters> idProcessingMap){
-            String stopId = subscriptionSetup.getStopMonitoringRefValue();
-            String datasetId = subscriptionSetup.getDatasetId();
+    private String extractAndTransformStopId(SubscriptionSetup subscriptionSetup, Map<String, IdProcessingParameters> idProcessingMap) {
+        String stopId = subscriptionSetup.getStopMonitoringRefValue();
+        String datasetId = subscriptionSetup.getDatasetId();
 
-            return idProcessingMap.containsKey(datasetId) ? idProcessingMap.get(datasetId).applyTransformationToString(stopId) : stopId;
+        return idProcessingMap.containsKey(datasetId) ? idProcessingMap.get(datasetId).applyTransformationToString(stopId) : stopId;
     }
 
     /**
      * Extract a lineId from a subscriptionSetup and transforms it, with idProcessingParams
-     * @param subscriptionSetup
-     *      the subscriptionSetup for which the stop id must be recovered
-     * @param idProcessingMap
-     *      the map that associate datasetId to idProcessingParams
-     * @return
-     *      the transformed line id
+     *
+     * @param subscriptionSetup the subscriptionSetup for which the stop id must be recovered
+     * @param idProcessingMap   the map that associate datasetId to idProcessingParams
+     * @return the transformed line id
      */
-    private String extractAndTransformLineId(SubscriptionSetup subscriptionSetup,  Map<String, IdProcessingParameters> idProcessingMap){
+    private String extractAndTransformLineId(SubscriptionSetup subscriptionSetup, Map<String, IdProcessingParameters> idProcessingMap) {
         String lineId = subscriptionSetup.getLineRefValue();
         String datasetId = subscriptionSetup.getDatasetId();
 
@@ -561,11 +562,11 @@ public class SiriHandler {
 
     /**
      * Builds a map with key = datasetId and value = idProcessingParams for this dataset and objectType = stop
-     * @param datasetList
      *
+     * @param datasetList
      * @return
      */
-    private Map<String, IdProcessingParameters> buildIdProcessingMap(List<String> datasetList, ObjectType objectType){
+    private Map<String, IdProcessingParameters> buildIdProcessingMap(List<String> datasetList, ObjectType objectType) {
         Map<String, IdProcessingParameters> resultMap = new HashMap<>();
 
         for (String dataset : datasetList) {
@@ -920,7 +921,7 @@ public class SiriHandler {
                     List<GeneralMessage> addedOrUpdated = new ArrayList<>();
 
                     for (GeneralMessageDeliveryStructure generalDelivery : generalDeliveries) {
-                        addedOrUpdated.addAll( generalMessages.addAll(subscriptionSetup.getDatasetId(),generalDelivery.getGeneralMessages()));
+                        addedOrUpdated.addAll(generalMessages.addAll(subscriptionSetup.getDatasetId(), generalDelivery.getGeneralMessages()));
                     }
 
 
@@ -930,7 +931,6 @@ public class SiriHandler {
                     subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdated.size());
                     logger.debug("Active GM-elements: {}, current delivery: {}, {}", generalMessages.getSize(), addedOrUpdated.size(), subscriptionSetup);
                 }
-
 
 
                 if (deliveryContainsData) {
@@ -951,17 +951,17 @@ public class SiriHandler {
     }
 
     private void setValidityPeriodAndStartTimeIfNull(List<PtSituationElement> situationExchangeDeliveries, String datasetId) {
-        for(PtSituationElement situationElement : situationExchangeDeliveries) {
+        for (PtSituationElement situationElement : situationExchangeDeliveries) {
             ZoneId zoneId = ZoneId.systemDefault();
-            for(HalfOpenTimestampOutputRangeStructure validityPeriod : situationElement.getValidityPeriods()){
-                if(validityPeriod.getStartTime() == null){
+            for (HalfOpenTimestampOutputRangeStructure validityPeriod : situationElement.getValidityPeriods()) {
+                if (validityPeriod.getStartTime() == null) {
                     ZonedDateTime timestamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(Long.MIN_VALUE), zoneId);
                     validityPeriod.setStartTime(timestamp);
                     logger.info("PtSituationElement without start time and/or validity period for datasetId : " + datasetId +
                             " with situation element id : " + situationElement.getSituationNumber().getValue());
                 }
             }
-            if(situationElement.getValidityPeriods().isEmpty()){
+            if (situationElement.getValidityPeriods().isEmpty()) {
                 HalfOpenTimestampOutputRangeStructure validityPeriod = new HalfOpenTimestampOutputRangeStructure();
                 ZonedDateTime timestamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(Long.MIN_VALUE), zoneId);
                 validityPeriod.setStartTime(timestamp);
@@ -1205,20 +1205,19 @@ public class SiriHandler {
 
     /**
      * Convert a list of situations to a list of generalMessages and ingest them
-     * @param datasetId
-     *  the dataset on which the general messages must be ingested
-     * @param incomingSituations
-     *  the situations that must be converted to GeneralMessages and must be ingested
+     *
+     * @param datasetId          the dataset on which the general messages must be ingested
+     * @param incomingSituations the situations that must be converted to GeneralMessages and must be ingested
      */
     private void convertToGeneralMessageAndIngest(String datasetId, List<PtSituationElement> incomingSituations) {
 
         List<GeneralMessage> incomingMessages = incomingSituations.stream()
-                            .map(GeneralMessageMapper::mapToGeneralMessage)
-                            .collect(Collectors.toList());
+                .map(GeneralMessageMapper::mapToGeneralMessage)
+                .collect(Collectors.toList());
 
         Collection<GeneralMessage> added = generalMessages.addAll(datasetId, incomingMessages);
 
-        serverSubscriptionManager.pushUpdatesAsync(SiriDataType.GENERAL_MESSAGE,new ArrayList(added),datasetId);
+        serverSubscriptionManager.pushUpdatesAsync(SiriDataType.GENERAL_MESSAGE, new ArrayList(added), datasetId);
 
     }
 
