@@ -1,12 +1,16 @@
 package no.rutebanken.anshar.gtfsrt;
 
+import com.google.protobuf.ByteString;
+import com.google.protobuf.util.JsonFormat;
 import com.google.transit.realtime.GtfsRealtime;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.config.GTFSRTType;
 import no.rutebanken.anshar.gtfsrt.swallowers.AlertSwallower;
 import no.rutebanken.anshar.gtfsrt.swallowers.TripUpdateSwallower;
 import no.rutebanken.anshar.gtfsrt.swallowers.VehiclePositionSwallower;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
+import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.charset.Charset;
 
 
 @Service
@@ -43,28 +48,24 @@ public class GtfsRTDataRetriever {
 
         for (GtfsRTApi gtfsRTApi : subscriptionConfig.getGtfsRTApis()) {
             logger.info("URL:" + gtfsRTApi.getUrl());
-
-            URL url1 = new URL(gtfsRTApi.getUrl());
-            BufferedInputStream in = new BufferedInputStream(url1.openStream());
-            GtfsRealtime.FeedMessage completeGTFsFeed = GtfsRealtime.FeedMessage.newBuilder().mergeFrom(in).build();
-
-            if (completeGTFsFeed.getEntityList().size() == 0){
-                logger.info("Flux vide détecté sur le datasetId :" +  gtfsRTApi.getDatasetId());
+            GtfsRealtime.FeedMessage completeGTFSFeed = buildMessageFromApi(gtfsRTApi);
+            if (completeGTFSFeed.getEntityList().size() == 0) {
+                logger.info("Flux vide détecté sur le datasetId :" + gtfsRTApi.getDatasetId());
                 continue;
             }
 
 
             tripUpdateSwallower.setUrl(gtfsRTApi.getUrl());
-            tripUpdateSwallower.ingestTripUpdateData(gtfsRTApi.getDatasetId(), completeGTFsFeed);
+            tripUpdateSwallower.ingestTripUpdateData(gtfsRTApi.getDatasetId(), completeGTFSFeed);
 
-            if (configuration.processVM()){
+            if (configuration.processVM()) {
                 vehiclePositionSwallower.setUrl(gtfsRTApi.getUrl());
-                vehiclePositionSwallower.ingestVehiclePositionData(gtfsRTApi.getDatasetId(), completeGTFsFeed);
+                vehiclePositionSwallower.ingestVehiclePositionData(gtfsRTApi.getDatasetId(), completeGTFSFeed);
             }
 
-            if (configuration.processSX()){
+            if (configuration.processSX()) {
                 alertSwallower.setUrl(gtfsRTApi.getUrl());
-                alertSwallower.ingestAlertData(gtfsRTApi.getDatasetId(), completeGTFsFeed);
+                alertSwallower.ingestAlertData(gtfsRTApi.getDatasetId(), completeGTFSFeed);
             }
 
         }
@@ -73,7 +74,27 @@ public class GtfsRTDataRetriever {
 
     }
 
+    /**
+     * Creates a GTFSRT feed message object from an URL
+     * @param gtfsRTApi
+     *     parameters of the API  : url, type (json or protobuf), dataset
+     * @return
+     *      a GTFSRT FeedMessage object
+     * @throws IOException
+     */
+    private GtfsRealtime.FeedMessage buildMessageFromApi(GtfsRTApi gtfsRTApi) throws IOException {
+        URL url1 = new URL(gtfsRTApi.getUrl());
 
 
+        if (gtfsRTApi.getType() == null || GTFSRTType.PROTOBUF.equals(gtfsRTApi.getType())) {
+            BufferedInputStream in = new BufferedInputStream(url1.openStream());
+            return GtfsRealtime.FeedMessage.newBuilder().mergeFrom(in).build();
+        }
 
+
+        GtfsRealtime.FeedMessage.Builder structBuilder = GtfsRealtime.FeedMessage.newBuilder();
+        String json = IOUtils.toString(url1, Charset.forName("UTF-8"));
+        JsonFormat.parser().ignoringUnknownFields().merge(json, structBuilder);
+        return structBuilder.build();
+    }
 }
