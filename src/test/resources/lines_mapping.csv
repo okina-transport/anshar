@@ -1,2 +1,5 @@
-line_id;line_alt_id
-TEST::Line::1:LOC;A
+line_id;line_alt_id;route_direction
+TEST::Line::1:LOC;12;A
+TEST::Line::2:LOC;12;R
+TEST::Line::3:LOC;34;R
+TEST::Line::4:LOC;34;A

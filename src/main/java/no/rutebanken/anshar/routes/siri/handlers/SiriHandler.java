@@ -432,15 +432,10 @@ public class SiriHandler {
 
 
     private Set<String> convertFromAltIdsToImportedIdsLine(Set<String> originalMonitoringRefs, String datasetId) {
-
         return originalMonitoringRefs.stream()
-                .map(id -> StringUtils.isNotEmpty(id) && externalIdsService.getReverseAltIdLine(datasetId, id).isPresent() ? externalIdsService.getReverseAltIdLine(datasetId, id).get() : id)
+                .flatMap(id -> externalIdsService.getReverseAltIdLines(datasetId, id).stream().flatMap(String::lines))
                 .collect(Collectors.toSet());
     }
-
-
-
-
 
 
 
