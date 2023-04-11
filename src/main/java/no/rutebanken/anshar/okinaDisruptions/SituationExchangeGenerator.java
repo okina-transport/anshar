@@ -23,6 +23,10 @@ public class SituationExchangeGenerator {
         mapReasons(ptSituationElement, disruption);
         mapAffects(ptSituationElement, disruption);
         mapImage(ptSituationElement, disruption);
+        if (disruption.getSeverity() != null){
+            ptSituationElement.setSeverity(SeverityEnumeration.valueOf(disruption.getSeverity()));
+        }
+
         return ptSituationElement;
     }
 

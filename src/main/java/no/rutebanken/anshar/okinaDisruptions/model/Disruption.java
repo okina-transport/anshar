@@ -44,6 +44,7 @@ public class Disruption implements Serializable {
 
     private String category;
     private String reason;
+    private String severity;
 
     @Getter
     @Setter
