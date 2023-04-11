@@ -17,7 +17,9 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -53,7 +55,7 @@ public class ExternalIdsService {
     SubscriptionManager subscriptionManager;
 
     private final Map<String, Map<String, String>> stopsCache = new HashMap();
-    private final Map<String, Map<String, String>> linesCache = new HashMap();
+    private final Map<String, Map<String, List<String>>> linesCache = new HashMap();
 
 
     @PostConstruct
@@ -203,7 +205,7 @@ public class ExternalIdsService {
         try {
             Iterable<CSVRecord> records = CSVUtils.getRecords(fileToRead);
 
-            Map<String, String> currentLineAltLineCache;
+            Map<String, List<String>> currentLineAltLineCache;
 
             if (linesCache.containsKey(datasetId)) {
                 currentLineAltLineCache = linesCache.get(datasetId);
@@ -216,7 +218,14 @@ public class ExternalIdsService {
                 String lineId = record.get("line_id");
                 String lineAltId = record.get("line_alt_id");
                 lineId = removePrefixAndSuffix(lineId, idParametersOpt);
-                currentLineAltLineCache.put(lineId, lineAltId);
+                List<String> lineIdList;
+                if (currentLineAltLineCache.containsKey(lineAltId)) {
+                    lineIdList = currentLineAltLineCache.get(lineAltId);
+                } else {
+                    lineIdList = new ArrayList<>();
+                }
+                lineIdList.add(lineId);
+                currentLineAltLineCache.put(lineAltId, lineIdList);
             }
             logger.info("Feeding cache with lines_mapping file: " + fileToRead.getAbsolutePath() + " completed");
 
@@ -228,9 +237,9 @@ public class ExternalIdsService {
 
     public Optional<String> getAltId(String datasetId, String id, ObjectType objectType) {
         if (ObjectType.STOP.equals(objectType)) {
-            return getAltIdFromCache(datasetId, id, stopsCache);
+            return getAltIdFromCacheStops(datasetId, id, stopsCache);
         } else if (ObjectType.LINE.equals(objectType)) {
-            return getAltIdFromCache(datasetId, id, linesCache);
+            return getAltIdFromCacheLines(datasetId, id, linesCache);
         } else {
             return Optional.empty();
         }
@@ -238,7 +247,7 @@ public class ExternalIdsService {
 
     }
 
-    private Optional<String> getAltIdFromCache(String datasetId, String id, Map<String, Map<String, String>> cache) {
+    private Optional<String> getAltIdFromCacheStops(String datasetId, String id, Map<String, Map<String, String>> cache) {
         if (!cache.containsKey(datasetId)) {
             return Optional.empty();
         }
@@ -252,16 +261,31 @@ public class ExternalIdsService {
         return Optional.of(datasetMap.get(id));
     }
 
+    private Optional<String> getAltIdFromCacheLines(String datasetId, String id, Map<String, Map<String, List<String>>> cache) {
+        if (!cache.containsKey(datasetId)) {
+            return Optional.empty();
+        }
+
+        Map<String, List<String>> datasetMap = cache.get(datasetId);
+        for(String originalLineId : datasetMap.keySet()){
+            List<String> altLineIds = datasetMap.get(originalLineId);
+            if(altLineIds.contains(id)){
+                return Optional.of(originalLineId);
+            }
+        }
+        return Optional.empty();
+    }
+
     public Optional<String> getReverseAltIdStop(String datasetId, String stopId) {
-        return getRevertAltId(datasetId, stopId, stopsCache);
+        return getRevertAltIdStops(datasetId, stopId, stopsCache);
 
     }
 
-    public Optional<String> getReverseAltIdLine(String datasetId, String lineId) {
-        return getRevertAltId(datasetId, lineId, linesCache);
+    public List<String> getReverseAltIdLines(String datasetId, String lineId) {
+        return getRevertAltIdLines(datasetId, lineId, linesCache);
     }
 
-    private Optional<String> getRevertAltId(String datasetId, String id, Map<String, Map<String, String>> cache) {
+    private Optional<String> getRevertAltIdStops(String datasetId, String id, Map<String, Map<String, String>> cache) {
         if (!cache.containsKey(datasetId)) {
             return Optional.empty();
         }
@@ -280,5 +304,13 @@ public class ExternalIdsService {
                 .findFirst();
     }
 
+    private List<String> getRevertAltIdLines(String datasetId, String id, Map<String, Map<String, List<String>>> cache) {
+        if (!cache.containsKey(datasetId)) {
+            return new ArrayList<>();
+        }
 
+        Map<String, List<String>> datasetMap = cache.get(datasetId);
+
+        return datasetMap.get(id);
+    }
 }
