@@ -39,6 +39,7 @@ import uk.org.siri.siri20.HalfOpenTimestampOutputRangeStructure;
 import uk.org.siri.siri20.MonitoredStopVisit;
 import uk.org.siri.siri20.PtSituationElement;
 import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri20.VehicleActivityStructure;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.parsers.ParserConfigurationException;
@@ -52,6 +53,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
@@ -435,29 +437,65 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         assertFalse(vehicleActivities.getAll().isEmpty());
 
 
-        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+        String stringXmlLineRef12 = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
                 "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
                 "    <ServiceRequest>\n" +
                 "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
                 "           <VehicleMonitoringRequest version=\"2.0\">\n" +
-                "               <LineRef>A</LineRef>\n" +
+                "               <LineRef>12</LineRef>\n" +
                 "           </VehicleMonitoringRequest>\n" +
                 "    </ServiceRequest>\n" +
                 "</Siri>";
 
 
-        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);;
+        InputStream xmlLineRef12 = IOUtils.toInputStream(stringXmlLineRef12, StandardCharsets.UTF_8);;
 
-        Siri response = handler.handleIncomingSiri(null, xml, "TEST", SiriHandler.getIdMappingPolicy("false", "true"), -1, null);
-        assertNotNull(response);
-        assertNotNull(response.getServiceDelivery());
-        assertFalse(response.getServiceDelivery().getVehicleMonitoringDeliveries().isEmpty());
-        assertFalse(response.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().isEmpty());
-        assertNotNull(response.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getVehicleMonitoringRef());
-        assertNotNull(response.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getVehicleMonitoringRef());
-        assertNotNull(response.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getVehicleMonitoringRef().getValue());
-        assertEquals(response.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getVehicleMonitoringRef().getValue(), "TEST:VehicleJourney::23:LOC");
-        assertEquals(response.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getMonitoredVehicleJourney().getLineRef().getValue(), "A");
+        Siri responseLineRef12 = handler.handleIncomingSiri(null, xmlLineRef12, "TEST", SiriHandler.getIdMappingPolicy("false", "true"), -1, null);
+        assertNotNull(responseLineRef12);
+        assertNotNull(responseLineRef12.getServiceDelivery());
+        assertFalse(responseLineRef12.getServiceDelivery().getVehicleMonitoringDeliveries().isEmpty());
+        assertFalse(responseLineRef12.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().isEmpty());
+        assertNotNull(responseLineRef12.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getVehicleMonitoringRef());
+        assertNotNull(responseLineRef12.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getVehicleMonitoringRef());
+        assertNotNull(responseLineRef12.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getVehicleMonitoringRef().getValue());
+        assertEquals(responseLineRef12.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getVehicleMonitoringRef().getValue(), "TEST:VehicleJourney::23:LOC");
+        assertEquals(responseLineRef12.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getMonitoredVehicleJourney().getLineRef().getValue(), "12");
+
+        String stringXmlLineRef34 = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "           <VehicleMonitoringRequest version=\"2.0\">\n" +
+                "               <LineRef>34</LineRef>\n" +
+                "           </VehicleMonitoringRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+
+        InputStream xmlLineRef34 = IOUtils.toInputStream(stringXmlLineRef34, StandardCharsets.UTF_8);;
+
+        Siri responseLineRef34 = handler.handleIncomingSiri(null, xmlLineRef34, "TEST", SiriHandler.getIdMappingPolicy("false", "true"), -1, null);
+        assertNotNull(responseLineRef34);
+        assertNotNull(responseLineRef34.getServiceDelivery());
+        assertFalse(responseLineRef34.getServiceDelivery().getVehicleMonitoringDeliveries().isEmpty());
+        assertFalse(responseLineRef34.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().isEmpty());
+
+        List<VehicleActivityStructure> vehicleActivityStructures = responseLineRef34.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities();
+        Comparator<VehicleActivityStructure> vehicleActivityStructureComparator
+                = Comparator.comparing(vehicleActivityStructure -> vehicleActivityStructure.getVehicleMonitoringRef().getValue());
+        vehicleActivityStructures.sort(vehicleActivityStructureComparator);
+
+        assertNotNull(vehicleActivityStructures.get(0).getVehicleMonitoringRef());
+        assertNotNull(vehicleActivityStructures.get(0).getVehicleMonitoringRef());
+        assertNotNull(vehicleActivityStructures.get(0).getVehicleMonitoringRef().getValue());
+        assertEquals(vehicleActivityStructures.get(0).getVehicleMonitoringRef().getValue(), "TEST:VehicleJourney::232:LOC");
+        assertEquals(vehicleActivityStructures.get(0).getMonitoredVehicleJourney().getLineRef().getValue(), "34");
+
+        assertNotNull(vehicleActivityStructures.get(1).getVehicleMonitoringRef());
+        assertNotNull(vehicleActivityStructures.get(1).getVehicleMonitoringRef());
+        assertNotNull(vehicleActivityStructures.get(1).getVehicleMonitoringRef().getValue());
+        assertEquals(vehicleActivityStructures.get(1).getVehicleMonitoringRef().getValue(), "TEST:VehicleJourney::233:LOC");
+        assertEquals(vehicleActivityStructures.get(1).getMonitoredVehicleJourney().getLineRef().getValue(), "34");
     }
 
 
