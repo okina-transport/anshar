@@ -47,7 +47,7 @@ public class GtfsRTDataRetriever {
         logger.info("Démarrage récupération des flux GTFS-RT");
 
         for (GtfsRTApi gtfsRTApi : subscriptionConfig.getGtfsRTApis()) {
-            logger.info("URL:" + gtfsRTApi.getUrl());
+            logger.info("======> Reading GTFS-RT for datasetId:" + gtfsRTApi.getDatasetId() + " and  URL:" + gtfsRTApi.getUrl());
             Optional<GtfsRealtime.FeedMessage> completeGTFSFeedOpt = buildMessageFromApi(gtfsRTApi);
             if (completeGTFSFeedOpt.isEmpty()){
                 continue;
