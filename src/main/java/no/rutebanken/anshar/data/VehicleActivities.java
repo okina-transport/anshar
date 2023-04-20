@@ -523,7 +523,6 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
     private SiriObjectStorageKey createKey(String datasetId, VehicleActivityStructure.MonitoredVehicleJourney monitoredVehicleJourney, String vehicleRefvalue) {
         StringBuilder key = new StringBuilder();
 
-
         if (monitoredVehicleJourney.getVehicleRef() != null) {
             VehicleRef vehicleRef = monitoredVehicleJourney.getVehicleRef();
             key.append(vehicleRef.getValue());
@@ -531,8 +530,9 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
             key.append(vehicleRefvalue);
         }
 
-        String lineRef = monitoredVehicleJourney.getLineRef() == null ? null :  monitoredVehicleJourney.getLineRef().getValue();
-        return new SiriObjectStorageKey(datasetId, lineRef, key.toString());
+        String vehicleJourney = monitoredVehicleJourney.getFramedVehicleJourneyRef() == null ? null : monitoredVehicleJourney.getFramedVehicleJourneyRef().getDatedVehicleJourneyRef();
 
+        String lineRef = monitoredVehicleJourney.getLineRef() == null ? null :  monitoredVehicleJourney.getLineRef().getValue();
+        return new SiriObjectStorageKey(datasetId, lineRef, key.toString(), null, vehicleJourney, null );
     }
 }
