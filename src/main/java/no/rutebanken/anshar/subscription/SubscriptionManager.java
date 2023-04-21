@@ -510,6 +510,11 @@ public class SubscriptionManager {
                 .anyMatch(subscription -> subscription.getSubscriptionId().equals(situationNumber) && datasetId.equals(subscription.getDatasetId()));
     }
 
+    public boolean isVehicleMonitoringSubscriptionExisting(String vehicleMonitoringRef, String datasetId){
+        return getAllSubscriptions(VEHICLE_MONITORING).stream()
+                .anyMatch(subscription -> subscription.getSubscriptionId().equals(vehicleMonitoringRef) && datasetId.equals(subscription.getDatasetId()));
+    }
+
     /**
      * Indicates if a subscription is available to request or not
      * @param subscriptionId

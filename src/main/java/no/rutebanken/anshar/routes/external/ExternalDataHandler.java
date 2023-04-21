@@ -84,6 +84,30 @@ public class ExternalDataHandler {
         }
     }
 
+    public void processIncomingSiriVM(Exchange e) {
+        InputStream xml = e.getIn().getBody(InputStream.class);
+        try {
+            Siri siri = SiriValueTransformer.parseXml(xml);
+            String datasetId = e.getIn().getHeader(DATASET_ID_HEADER_NAME, String.class);
+            String url = e.getIn().getHeader(URL_HEADER_NAME, String.class);
+
+            if (StringUtils.isEmpty(datasetId)){
+                logger.error("No datasetId were specified in external VM data");
+                return;
+            }
+
+            String subscriptionId = checkAndCreateVMSubscription(siri, datasetId, url);
+            List<VehicleActivityStructure> vehicleActivitiesToIngest = collectVehicleActivities(siri);
+
+            if (vehicleActivitiesToIngest.size() > 0){
+                handler.ingestVehicleActivities(datasetId, vehicleActivitiesToIngest);
+            }
+
+        } catch (JAXBException | XMLStreamException jaxbException) {
+            logger.error("Error while unmarshalling siri message from external", e);
+        }
+    }
+
     private String checkAndCreateSXSubscription(Siri siri, String datasetId, String url) {
         String subscriptionId = siri.getServiceDelivery().getSituationExchangeDeliveries().get(0).getSituations().getPtSituationElements().get(0).getSituationNumber().getValue();
 
@@ -115,6 +139,37 @@ public class ExternalDataHandler {
         return subscriptionId;
     }
 
+    private String checkAndCreateVMSubscription(Siri siri, String datasetId, String url) {
+        String subscriptionId = siri.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getVehicleMonitoringRef().getValue();
+
+        if (!subscriptionManager.isVehicleMonitoringSubscriptionExisting(subscriptionId, datasetId)){
+
+            //there is no subscription for this stop. Need to create one
+            SubscriptionSetup setup = new SubscriptionSetup();
+            setup.setDatasetId(datasetId);
+            setup.setHeartbeatIntervalSeconds(DEFAULT_HEARTBEAT_SECONDS);
+            setup.setRequestorRef("OKINA-EXTERNAL-SIRI");
+            setup.setAddress(url);
+            setup.setServiceType(SubscriptionSetup.ServiceType.REST);
+            setup.setSubscriptionMode(SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE);
+            setup.setDurationOfSubscriptionHours(24);
+            setup.setVendor("OKINA");
+            setup.setContentType("ExternalSiri");
+            setup.setActive(true);
+
+            setup.setName(subscriptionId);
+            setup.setSubscriptionType(SiriDataType.VEHICLE_MONITORING);
+            setup.setSubscriptionId(subscriptionId);
+            Map<RequestType, String> urlMap = new HashMap<>();
+            urlMap.put(RequestType.GET_VEHICLE_MONITORING, url);
+            setup.setUrlMap(urlMap);
+
+            subscriptionManager.addSubscription(subscriptionId, setup);
+
+        }
+        return subscriptionId;
+    }
+
 
 
     private List<PtSituationElement> collectSituations(Siri siri) {
@@ -134,6 +189,17 @@ public class ExternalDataHandler {
 
             for (StopMonitoringDeliveryStructure stopMonitoringDelivery : siri.getServiceDelivery().getStopMonitoringDeliveries()) {
                 resultList.addAll(stopMonitoringDelivery.getMonitoredStopVisits());
+            }
+        }
+        return resultList;
+    }
+
+    private List<VehicleActivityStructure> collectVehicleActivities(Siri siri) {
+        List<VehicleActivityStructure> resultList = new ArrayList<>();
+        if (siri.getServiceDelivery() != null && siri.getServiceDelivery().getVehicleMonitoringDeliveries() != null){
+
+            for (VehicleMonitoringDeliveryStructure monitoringDeliveryStructure : siri.getServiceDelivery().getVehicleMonitoringDeliveries()) {
+                resultList.addAll(monitoringDeliveryStructure.getVehicleActivities());
             }
         }
         return resultList;
@@ -166,7 +232,7 @@ public class ExternalDataHandler {
             setup.setSubscriptionType(SiriDataType.STOP_MONITORING);
             setup.setSubscriptionId(subscriptionId);
             Map<RequestType, String> urlMap = new HashMap<>();
-            urlMap.put(RequestType.GET_STOP_MONITORING,url);
+            urlMap.put(RequestType.GET_STOP_MONITORING, url);
             setup.setUrlMap(urlMap);
 
             subscriptionManager.addSubscription(subscriptionId,setup);

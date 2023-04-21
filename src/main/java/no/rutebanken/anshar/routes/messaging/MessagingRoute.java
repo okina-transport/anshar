@@ -69,6 +69,7 @@ public class MessagingRoute extends RestRouteBuilder {
 
         final String externalSiriSMQueue = messageQueueCamelRoutePrefix + "anshar.external.siri.sm.data";
         final String externalSiriSXQueue = messageQueueCamelRoutePrefix + "anshar.external.siri.sx.data";
+        final String externalSiriVMQueue = messageQueueCamelRoutePrefix + "anshar.external.siri.vm.data";
 
         if (messageQueueCamelRoutePrefix.contains("direct")) {
             queueConsumerParameters = "";
@@ -78,10 +79,10 @@ public class MessagingRoute extends RestRouteBuilder {
         from(externalSiriSMQueue)
                 .process(e->{
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
-                    e.getIn().setHeader(DATASET_ID_HEADER_NAME,datasetId );
+                    e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
 
                     String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
-                    e.getIn().setHeader(URL_HEADER_NAME,url );
+                    e.getIn().setHeader(URL_HEADER_NAME, url);
                 })
                 .to("direct:transform.siri")
                 .bean(ExternalDataHandler.class, "processIncomingSiriSM")
@@ -90,13 +91,25 @@ public class MessagingRoute extends RestRouteBuilder {
         from(externalSiriSXQueue)
                 .process(e->{
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
+                    e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
+
+                    String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
+                    e.getIn().setHeader(URL_HEADER_NAME, url);
+                })
+                .to("direct:transform.siri")
+                .bean(ExternalDataHandler.class, "processIncomingSiriSX")
+        ;
+
+        from(externalSiriVMQueue)
+                .process(e->{
+                    String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME,datasetId );
 
                     String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
                     e.getIn().setHeader(URL_HEADER_NAME,url );
                 })
                 .to("direct:transform.siri")
-                .bean(ExternalDataHandler.class, "processIncomingSiriSX")
+                .bean(ExternalDataHandler.class, "processIncomingSiriVM")
         ;
 
 
