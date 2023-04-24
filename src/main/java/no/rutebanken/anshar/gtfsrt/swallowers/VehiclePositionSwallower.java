@@ -55,27 +55,16 @@ public class VehiclePositionSwallower extends AbstractSwallower {
      */
     public void ingestVehiclePositionData(String datasetId, GtfsRealtime.FeedMessage completeGTFSRTMessage ){
         List<VehicleActivityStructure> vehicleActivities = buildVehicleActivityList(completeGTFSRTMessage);
-        int totalVehicleActivities = vehicleActivities.size();
 
 
-        long emptyVehicleMonitoringRef = vehicleActivities.stream().filter(vehicleAct -> StringUtils.isEmpty(vehicleAct.getVehicleMonitoringRef().getValue())).count();
-
-        if (emptyVehicleMonitoringRef > 0){
-            logger.info("Skipping empty vehicleMonitoringRefs: " + emptyVehicleMonitoringRef + "/" + totalVehicleActivities);
-        }
-
-        List<VehicleActivityStructure> availableActivities = vehicleActivities.stream()
-                                                                            .filter(vehicleAct -> StringUtils.isNotEmpty(vehicleAct.getVehicleMonitoringRef().getValue()))
-                                                                            .collect(Collectors.toList());
-
-        if (availableActivities.size() == 0){
+        if (vehicleActivities.size() == 0){
             logger.info("No vehicle activities in GTFS RT feed");
             return;
         }
 
-        List<String> subscriptionList = getSubscriptions(availableActivities);
+        List<String> subscriptionList = getSubscriptions(vehicleActivities);
         checkAndCreateSubscriptions(subscriptionList, datasetId);
-        Collection<VehicleActivityStructure> ingestedVehicleJourneys = handler.ingestVehicleActivities(datasetId, availableActivities);
+        Collection<VehicleActivityStructure> ingestedVehicleJourneys = handler.ingestVehicleActivities(datasetId, vehicleActivities);
 
 
 
@@ -84,7 +73,7 @@ public class VehiclePositionSwallower extends AbstractSwallower {
             subscriptionManager.touchSubscription(prefix + vehicleActivity.getMonitoredVehicleJourney().getLineRef().getValue(), false);
         }
 
-        logger.info("Ingested vehicle positions {} on {} ", ingestedVehicleJourneys.size(), availableActivities.size());
+        logger.info("Ingested vehicle positions {} on {} ", ingestedVehicleJourneys.size(), vehicleActivities.size());
     }
 
     /**
