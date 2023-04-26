@@ -101,6 +101,55 @@ public class RuterOutboundDatedVehicleRefAdapter extends ValueAdapter implements
 
                 }
             }
+
+            List<SituationExchangeDeliveryStructure> situationExchangeDeliveries = siri.getServiceDelivery().getSituationExchangeDeliveries();
+            if (situationExchangeDeliveries != null) {
+                applyTransformationsInSituationExchanges(situationExchangeDeliveries);
+            }
+        }
+    }
+
+    private void applyTransformationsInSituationExchanges(List<SituationExchangeDeliveryStructure> situationExchangeDeliveries) {
+        for (SituationExchangeDeliveryStructure situationExchangeDelivery : situationExchangeDeliveries){
+            SituationExchangeDeliveryStructure.Situations situations = situationExchangeDelivery.getSituations();
+            if (situations != null && situations.getPtSituationElements() != null && situations.getPtSituationElements().size() > 0){
+                applyTransformationsInPtSituationElements(situations.getPtSituationElements());
+            }
+        }
+    }
+
+    private void applyTransformationsInPtSituationElements(List<PtSituationElement> ptSituationElements) {
+        for (PtSituationElement ptSituation : ptSituationElements){
+            if (ptSituation.getAffects() != null && ptSituation.getAffects().getVehicleJourneys() != null && ptSituation.getAffects().getVehicleJourneys().getAffectedVehicleJourneies() != null){
+                appyTransformationsInAffectedVehicleJourneies(ptSituation.getAffects().getVehicleJourneys().getAffectedVehicleJourneies());
+            }
+        }
+    }
+
+    private void appyTransformationsInAffectedVehicleJourneies(List<AffectedVehicleJourneyStructure> affectedVehicleJourneies) {
+        for (AffectedVehicleJourneyStructure affectedVJStruct : affectedVehicleJourneies){
+            if (affectedVJStruct.getDatedVehicleJourneyReves() != null && affectedVJStruct.getDatedVehicleJourneyReves().size() > 0){
+                applyTransformationsInVehicleJourneyReves(affectedVJStruct.getDatedVehicleJourneyReves());
+            }
+
+            if (affectedVJStruct.getFramedVehicleJourneyRef() != null){
+                applyTransformationInFramedVehicleJourneyRef(affectedVJStruct.getFramedVehicleJourneyRef());
+            }
+        }
+    }
+
+    private void applyTransformationInFramedVehicleJourneyRef(FramedVehicleJourneyRefStructure framedVehicleJourneyRef) {
+
+        if (framedVehicleJourneyRef.getDatedVehicleJourneyRef() != null){
+            framedVehicleJourneyRef.setDatedVehicleJourneyRef(apply(framedVehicleJourneyRef.getDatedVehicleJourneyRef()));
+        }
+    }
+
+    private void applyTransformationsInVehicleJourneyReves(List<DatedVehicleJourneyRef> datedVehicleJourneyReves) {
+        for (DatedVehicleJourneyRef datedVehicleJourneyRef : datedVehicleJourneyReves) {
+            if (datedVehicleJourneyRef.getValue() != null){
+                datedVehicleJourneyRef.setValue(apply(datedVehicleJourneyRef.getValue()));
+            }
         }
     }
 
