@@ -46,6 +46,7 @@ public class MappingAdapterPresets {
         OutboundIdAdapter lineRefAdapter = new  OutboundIdAdapter(LineRef.class, outboundIdMappingPolicy, true);
         RuterOutboundDatedVehicleRefAdapter datedVjRefAdapter = new  RuterOutboundDatedVehicleRefAdapter(MappingAdapterPresets .class, outboundIdMappingPolicy);
         OutboundIdAdapter operatorRefAdapter = new  OutboundIdAdapter(OperatorRefStructure .class, outboundIdMappingPolicy);
+        OutboundIdAdapter networkRefAdapter = new  OutboundIdAdapter(NetworkRefStructure.class, outboundIdMappingPolicy);
 
 
         if (idProcessingMap.containsKey(ObjectType.STOP) && idProcessingMap.get(ObjectType.STOP).isPresent()) {
@@ -71,8 +72,14 @@ public class MappingAdapterPresets {
             operatorRefAdapter.setIdProcessingParameters(operatorIdParams);
         }
 
+        if (idProcessingMap.containsKey(ObjectType.NETWORK) && idProcessingMap.get(ObjectType.NETWORK).isPresent()) {
+            IdProcessingParameters networkIdParams = idProcessingMap.get(ObjectType.NETWORK).get();
+            networkRefAdapter.setIdProcessingParameters(networkIdParams);
+        }
 
-    List<ValueAdapter> adapters = new ArrayList<>();
+
+
+        List<ValueAdapter> adapters = new ArrayList<>();
         adapters.add(stopIdAdapter);
         adapters.add(monitoringRefAdapter);
         adapters.add(destinationRefAdapter);
@@ -80,6 +87,7 @@ public class MappingAdapterPresets {
         adapters.add(lineRefAdapter);
         adapters.add(datedVjRefAdapter);
         adapters.add(operatorRefAdapter);
+        adapters.add(networkRefAdapter);
         adapters.add(new CodespaceOutboundProcessor(outboundIdMappingPolicy));
 
 

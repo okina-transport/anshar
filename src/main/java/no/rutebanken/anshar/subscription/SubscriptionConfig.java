@@ -129,6 +129,7 @@ public class SubscriptionConfig {
         resultmap.put(ObjectType.LINE, getIdParametersForDataset(datasetId, ObjectType.LINE));
         resultmap.put(ObjectType.VEHICLE_JOURNEY, getIdParametersForDataset(datasetId, ObjectType.VEHICLE_JOURNEY));
         resultmap.put(ObjectType.OPERATOR, getIdParametersForDataset(datasetId, ObjectType.OPERATOR));
+        resultmap.put(ObjectType.NETWORK, getIdParametersForDataset(datasetId, ObjectType.NETWORK));
         return resultmap;
     }
 }

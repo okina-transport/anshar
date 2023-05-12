@@ -4,5 +4,6 @@ public enum ObjectType {
     STOP,
     LINE,
     VEHICLE_JOURNEY,
-    OPERATOR
+    OPERATOR,
+    NETWORK
 }
