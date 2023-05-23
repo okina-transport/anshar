@@ -40,15 +40,20 @@ public class OutboundSubscriptionSetup implements Serializable {
     private String datasetId;
     private String clientTrackingName;
     private long changeBeforeUpdates;
+    private boolean incrementalUpdates;
+    private long updateInterval;
 
     public OutboundSubscriptionSetup(ZonedDateTime requestTimestamp, SiriDataType subscriptionType, String address, long heartbeatInterval,
-                                     long changeBeforeUpdates, Map<Class, Set<String>> filterMap, List<ValueAdapter> valueAdapters,
+                                     boolean incrementalUpdates, long changeBeforeUpdates, long updateInterval,
+                                     Map<Class, Set<String>> filterMap, List<ValueAdapter> valueAdapters,
                                      String subscriptionId, String requestorRef, ZonedDateTime initialTerminationTime, String datasetId, String clientTrackingName) {
         this.requestTimestamp = requestTimestamp;
         this.subscriptionType = subscriptionType;
         this.address = address;
         this.heartbeatInterval = heartbeatInterval;
+        this.incrementalUpdates = incrementalUpdates;
         this.changeBeforeUpdates = changeBeforeUpdates;
+        this.updateInterval = updateInterval;
         this.filterMap = filterMap;
         this.valueAdapters = valueAdapters;
         this.subscriptionId = subscriptionId;
@@ -92,6 +97,14 @@ public class OutboundSubscriptionSetup implements Serializable {
 
     public long getChangeBeforeUpdates() {
         return changeBeforeUpdates;
+    }
+
+    public boolean getIncrementalUpdates() {
+        return incrementalUpdates;
+    }
+
+    public long getUpdateInterval() {
+        return updateInterval;
     }
 
     public Map<Class, Set<String>> getFilterMap() {

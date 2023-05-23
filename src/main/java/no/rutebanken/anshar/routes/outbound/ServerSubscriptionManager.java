@@ -211,7 +211,9 @@ public class ServerSubscriptionManager {
                 getSubscriptionType(subscriptionRequest),
                 subscriptionRequest.getConsumerAddress() != null ? subscriptionRequest.getConsumerAddress():subscriptionRequest.getAddress(),
                 getHeartbeatInterval(subscriptionRequest),
+                getIncrementalUpdates(subscriptionRequest),
                 getChangeBeforeUpdates(subscriptionRequest),
+                getUpdateInterval(subscriptionRequest),
                 siriHelper.getFilter(subscriptionRequest, outboundIdMappingPolicy, datasetId),
                 mappers,
                 findSubscriptionIdentifier(subscriptionRequest),
@@ -251,11 +253,25 @@ public class ServerSubscriptionManager {
         return null;
     }
 
+    private boolean getIncrementalUpdates(SubscriptionRequest subscriptionRequest) {
+        if (SiriHelper.containsValues(subscriptionRequest.getVehicleMonitoringSubscriptionRequests())) {
+            return subscriptionRequest.getVehicleMonitoringSubscriptionRequests().get(0).isIncrementalUpdates();
+        }
+        return true;
+    }
+
     private int getChangeBeforeUpdates(SubscriptionRequest subscriptionRequest) {
         if (SiriHelper.containsValues(subscriptionRequest.getVehicleMonitoringSubscriptionRequests())) {
             return getMilliSeconds(subscriptionRequest.getVehicleMonitoringSubscriptionRequests().get(0).getChangeBeforeUpdates());
         } else if (SiriHelper.containsValues(subscriptionRequest.getEstimatedTimetableSubscriptionRequests())) {
             return getMilliSeconds(subscriptionRequest.getEstimatedTimetableSubscriptionRequests().get(0).getChangeBeforeUpdates());
+        }
+        return 0;
+    }
+
+    private long getUpdateInterval(SubscriptionRequest subscriptionRequest) {
+        if (SiriHelper.containsValues(subscriptionRequest.getVehicleMonitoringSubscriptionRequests())) {
+            return subscriptionRequest.getVehicleMonitoringSubscriptionRequests().get(0).getUpdateInterval().getTimeInMillis(new Date(0));
         }
         return 0;
     }
@@ -390,9 +406,7 @@ public class ServerSubscriptionManager {
         }
     }
 
-    private void pushUpdatedVehicleActivities(
-        List<VehicleActivityStructure> addedOrUpdated, String datasetId, String breadcrumbId
-    ) {
+    private void pushUpdatedVehicleActivities(List<VehicleActivityStructure> addedOrUpdated, String datasetId, String breadcrumbId) {
         MDC.put("camel.breadcrumbId", breadcrumbId);
 
         if (addedOrUpdated == null || addedOrUpdated.isEmpty()) {

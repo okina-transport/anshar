@@ -16,7 +16,7 @@
 package no.rutebanken.anshar.routes.outbound;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import no.rutebanken.anshar.data.util.CustomSiriXml;
+import no.rutebanken.anshar.data.VehicleActivities;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
 import org.slf4j.Logger;
@@ -29,6 +29,7 @@ import uk.org.siri.siri20.*;
 
 import java.net.SocketException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,8 +58,15 @@ public class CamelRouteManager {
     @Produce(uri = "direct:send.to.external.subscription")
     protected ProducerTemplate siriSubscriptionProcessor;
 
+    @Autowired
+    ScheduledOutboundSubscriptionConfig scheduledOutboundSubscriptionConfig;
+
+    @Autowired
+    private VehicleActivities vehicleActivities;
+
     /**
      * Splits SIRI-data if applicable, and pushes data to external subscription
+     *
      * @param payload
      * @param subscriptionRequest
      */
@@ -91,8 +99,23 @@ public class CamelRouteManager {
                     logger.info("Object split into {} deliveries for subscription {}.", splitSiri.size(), subscriptionRequest);
                 }
 
+                // On ne notifie pas les abonnés si (temps estimé (TR) - temps attendu (TH)) < changeBeforeUpdates de l'abonnement
+                if(subscriptionRequest.getChangeBeforeUpdates() > 0){
+                    removeVehicleMonitoringIfChangeBeforeUpdates(splitSiri, subscriptionRequest);
+                }
+
+                // On remplace les données partielles reçues par l'intégralité de la donnée si incrementalUpdate de l'abonnement est à false
+                if (!subscriptionRequest.getIncrementalUpdates()) {
+                    splitSiri = replaceByCompleteData(subscriptionRequest);
+                }
+
                 for (Siri siri : splitSiri) {
-                    postDataToSubscription(siri, subscriptionRequest, logBody);
+                    // On crée des déclencheurs pour ne notifier les abonnés que tous les x moments définis par l'updateInterval
+                    if (subscriptionRequest.getUpdateInterval() > 0) {
+                        scheduledOutboundSubscriptionConfig.createScheduledOutboundSubscription(siri, subscriptionRequest);
+                    } else {
+                        postDataToSubscription(siri, subscriptionRequest, logBody);
+                    }
                 }
             } catch (Exception e) {
                 logger.info("Failed to push data for subscription {}: {}", subscriptionRequest, e);
@@ -115,12 +138,28 @@ public class CamelRouteManager {
         });
     }
 
+    private List<Siri> replaceByCompleteData(OutboundSubscriptionSetup subscriptionRequest) {
+        return Collections.singletonList(vehicleActivities.createServiceDelivery(subscriptionRequest.getRequestorRef(), subscriptionRequest.getDatasetId(), subscriptionRequest.getClientTrackingName(),
+                null, Integer.MAX_VALUE, subscriptionRequest.getFilterMap().get(LineRef.class), subscriptionRequest.getFilterMap().get(VehicleRef.class)));
+    }
+
+
+    private void removeVehicleMonitoringIfChangeBeforeUpdates(List<Siri> splitSiri, OutboundSubscriptionSetup subscriptionRequest) {
+        splitSiri.stream()
+                .flatMap(siri -> siri.getServiceDelivery().getVehicleMonitoringDeliveries().stream())
+                .forEach(monitoringDeliveryStructure -> monitoringDeliveryStructure.getVehicleActivities()
+                        .removeIf(vehicleActivityStructure ->
+                                ifChangeBeforeUpdates(vehicleActivityStructure, subscriptionRequest)
+                        ));
+    }
+
     Map<String, ExecutorService> threadFactoryMap = new HashMap<>();
+
     private ExecutorService getOrCreateExecutorService(OutboundSubscriptionSetup subscriptionRequest) {
 
         final String subscriptionId = subscriptionRequest.getSubscriptionId();
         if (!threadFactoryMap.containsKey(subscriptionId)) {
-            ThreadFactory factory = new ThreadFactoryBuilder().setNameFormat("outbound"+subscriptionId).build();
+            ThreadFactory factory = new ThreadFactoryBuilder().setNameFormat("outbound" + subscriptionId).build();
 
             threadFactoryMap.put(subscriptionId, Executors.newSingleThreadExecutor(factory));
         }
@@ -131,6 +170,7 @@ public class CamelRouteManager {
 
     /**
      * Clean up dead ExecutorServices
+     *
      * @param subscriptionManager
      */
     private void removeDeadSubscriptionExecutors(ServerSubscriptionManager subscriptionManager) {
@@ -151,7 +191,7 @@ public class CamelRouteManager {
         }
     }
 
-    private void postDataToSubscription(Siri payload, OutboundSubscriptionSetup subscription, boolean showBody) {
+    public void postDataToSubscription(Siri payload, OutboundSubscriptionSetup subscription, boolean showBody) {
 
         if (serviceDeliveryContainsData(payload)) {
             String remoteEndPoint = subscription.getAddress();
@@ -169,6 +209,7 @@ public class CamelRouteManager {
 
     /**
      * Returns false if payload contains an empty ServiceDelivery (i.e. no actual SIRI-data), otherwise it returns false
+     *
      * @param payload
      * @return
      */
@@ -205,5 +246,17 @@ public class CamelRouteManager {
             }
         }
         return true;
+    }
+
+    private boolean ifChangeBeforeUpdates(VehicleActivityStructure vehicleActivityStructure, OutboundSubscriptionSetup outboundSubscriptionSetup) {
+        if (vehicleActivityStructure.getMonitoredVehicleJourney().getMonitoredCall() != null
+                && vehicleActivityStructure.getMonitoredVehicleJourney().getMonitoredCall().getExpectedDepartureTime() != null
+                && vehicleActivityStructure.getMonitoredVehicleJourney().getMonitoredCall().getAimedDepartureTime() != null) {
+            long expectedDepartureTime = vehicleActivityStructure.getMonitoredVehicleJourney().getMonitoredCall().getExpectedDepartureTime().toInstant().toEpochMilli();
+            long aimedDepartureTime = vehicleActivityStructure.getMonitoredVehicleJourney().getMonitoredCall().getAimedDepartureTime().toInstant().toEpochMilli();
+
+            return (expectedDepartureTime - aimedDepartureTime) > outboundSubscriptionSetup.getChangeBeforeUpdates();
+        }
+        return false;
     }
 }
