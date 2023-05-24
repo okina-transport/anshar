@@ -139,6 +139,8 @@ public class ServerSubscriptionManager {
 
     public Siri handleSubscriptionRequest(SubscriptionRequest subscriptionRequest, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName) {
 
+        logger.info("===> handleSubscriptionRequest , datasetId:" +datasetId + " subscriptionRequest :" );
+
         OutboundSubscriptionSetup subscription = createSubscription(subscriptionRequest, datasetId, outboundIdMappingPolicy, clientTrackingName);
 
         boolean hasError = false;
