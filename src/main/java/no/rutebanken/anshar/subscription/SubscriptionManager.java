@@ -159,6 +159,8 @@ public class SubscriptionManager {
     }
 
     public boolean removeSubscription(String subscriptionId, boolean force) {
+
+        logger.info("=======> removeSubscription : " + subscriptionId);
         SubscriptionSetup setup = subscriptions.remove(subscriptionId);
 
         boolean found = (setup != null);
