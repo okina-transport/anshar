@@ -90,6 +90,7 @@ public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
                 .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
                 .process(addCustomHeaders())
+                .process(e -> log.info(" demande envoyée:" + e.getIn().getBody(String.class)))
                 .to("log:sent request:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .doTry()
                     .to(getCamelUrl(urlMap.get(RequestType.SUBSCRIBE), getTimeout()))
