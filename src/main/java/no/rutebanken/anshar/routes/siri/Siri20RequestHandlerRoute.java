@@ -356,6 +356,10 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
         for (SubscriptionSetup subscription : subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING)) {
             log.info("subscription existant : " + subscription.getSubscriptionId());
         }
+
+        for (SubscriptionSetup subscription : subscriptionManager.getAllSubscriptions(SiriDataType.VEHICLE_MONITORING)) {
+            log.info("subscription existant : " + subscription.getSubscriptionId());
+        }
         SubscriptionSetup subscriptionSetup = subscriptionManager.get(subscriptionId);
 
         if (subscriptionSetup == null) {
