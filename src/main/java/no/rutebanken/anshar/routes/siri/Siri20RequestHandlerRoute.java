@@ -345,12 +345,15 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
 
     private boolean subscriptionExistsAndIsActive(Exchange e) {
         String subscriptionId = e.getIn().getHeader(PARAM_SUBSCRIPTION_ID, String.class);
+
+        log.info("subscriptionExistsAndIsActive -  subscriptionId :" + subscriptionId);
         if (subscriptionId == null || subscriptionId.isEmpty()) {
             return false;
         }
         SubscriptionSetup subscriptionSetup = subscriptionManager.get(subscriptionId);
 
         if (subscriptionSetup == null) {
+            log.info("subscriptionSetup null");
             return false;
         }
 
