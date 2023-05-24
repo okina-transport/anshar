@@ -147,11 +147,13 @@ public class ServerSubscriptionManager {
         String errorText = null;
 
         if (subscription.getAddress() == null) {
+            logger.info("===> null address" );
             hasError = true;
             errorText = errorConsumerAddressMissing;
         } else if (subscription.getInitialTerminationTime() == null || subscription.getInitialTerminationTime().isBefore(ZonedDateTime.now())) {
             //Subscription has already expired
             hasError = true;
+            logger.info("===> null initial time" );
             errorText = initialTerminationTimePassed;
         }
 
@@ -161,6 +163,7 @@ public class ServerSubscriptionManager {
 
             if (subscription.getSubscriptionType() != subscriptionSetup.getSubscriptionType()) {
                 hasError = true;
+                logger.info("===> Diff type" );
                 errorText = "A different subscription with id=" + subscription.getSubscriptionId() + " already exists";
             }
         }

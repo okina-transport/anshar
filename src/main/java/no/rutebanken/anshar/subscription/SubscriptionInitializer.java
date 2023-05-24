@@ -104,6 +104,8 @@ public class SubscriptionInitializer implements CamelContextAware {
             // Validation and consistency-verification
             for (SubscriptionSetup subscriptionSetup : subscriptionSetups) {
 
+                logger.info("========>> init "+  subscriptionSetup.getSubscriptionId());
+
                 subscriptionSetup.setAddress(configuration.getInboundUrl());
 
                 if (!isValid(subscriptionSetup)) {
@@ -162,7 +164,10 @@ public class SubscriptionInitializer implements CamelContextAware {
 
                 SubscriptionSetup existingSubscription = subscriptionManager.getSubscriptionById(subscriptionSetup.getInternalId());
 
+                logger.info("========>> existing  : "+  existingSubscription);
+
                 if (existingSubscription != null) {
+                    logger.info("========>> existing "+  existingSubscription.getSubscriptionId());
                     if (!existingSubscription.equals(subscriptionSetup)) {
                         logger.info("Subscription with internalId={} is updated - reinitializing. {}", subscriptionSetup.getInternalId(), subscriptionSetup);
 
