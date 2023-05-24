@@ -145,8 +145,9 @@ public class SubscriptionManager {
 
     public void addSubscription(String subscriptionId, SubscriptionSetup setup) {
 
+
         subscriptions.put(subscriptionId, setup);
-        logger.trace("Added subscription {}", setup);
+        logger.info("Added subscription {}", setup);
         if (setup.isActive()) {
             activatePendingSubscription(subscriptionId);
         }

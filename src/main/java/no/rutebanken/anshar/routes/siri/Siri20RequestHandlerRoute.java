@@ -20,6 +20,7 @@ import no.rutebanken.anshar.data.util.CustomSiriXml;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
+import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.CamelContextAware;
@@ -349,6 +350,11 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
         log.info("subscriptionExistsAndIsActive -  subscriptionId :" + subscriptionId);
         if (subscriptionId == null || subscriptionId.isEmpty()) {
             return false;
+        }
+
+
+        for (SubscriptionSetup subscription : subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING)) {
+            log.info("subscription existant : " + subscription.getSubscriptionId());
         }
         SubscriptionSetup subscriptionSetup = subscriptionManager.get(subscriptionId);
 
