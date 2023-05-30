@@ -56,6 +56,13 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
 
     @Override
     public void configure() throws Exception {
+
+        if (!configuration.isCurrentInstanceLeader()){
+            log.info("Instance non leader. Pas de récupération SIRI par API");
+            return;
+        }
+
+
         singletonFrom("quartz://anshar/SiriApiQuartz?cron=" + cronSchedule + "&trigger.timeZone=Europe/Paris", "monitor.siri.api")
                 .log("Starting Siri from API")
                 .process(p -> createSubscriptionsFromApis());
