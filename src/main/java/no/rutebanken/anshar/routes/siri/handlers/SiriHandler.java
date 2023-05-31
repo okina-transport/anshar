@@ -384,7 +384,7 @@ public class SiriHandler {
                 List<InfoChannelRefStructure> requestedChannels = request.getInfoChannelReves();
                 valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idMap);
                 serviceResponse = generalMessages.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, requestedChannels);
-                GeneralMessageHelper.applyTransformationsInContent(serviceResponse, idMap);
+                GeneralMessageHelper.applyTransformationsInContent(serviceResponse,valueAdapters, idMap);
 
             }
 
