@@ -17,19 +17,26 @@ package no.rutebanken.anshar.validation;
 
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.validation.validators.CustomValidator;
+import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.Test;
+import org.rutebanken.siri20.util.SiriXml;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import uk.org.siri.siri20.Siri;
 
+import javax.xml.bind.JAXBException;
 import javax.xml.bind.ValidationEvent;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.stream.XMLStreamException;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
@@ -115,5 +122,16 @@ public class CustomValidatorTest extends SpringBootBaseTest {
 
     protected NodeList getMatchingNodelist(Document xmlDocument, String ruteXpath) throws XPathExpressionException {
         return (NodeList) xpath.evaluate(ruteXpath, xmlDocument, XPathConstants.NODESET);
+    }
+
+    @Test
+    public void testUnmarshalling() throws IOException, XMLStreamException, JAXBException {
+        File file = new File("src/test/resources/siri-et-gir-npe.xml");
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(FileUtils.readFileToByteArray(file));
+
+
+        Siri incoming = SiriXml.parseXml(inputStream);
+        assertNotNull(incoming);
+
     }
 }
