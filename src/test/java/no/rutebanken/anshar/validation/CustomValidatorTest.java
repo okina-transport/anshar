@@ -15,11 +15,15 @@
 
 package no.rutebanken.anshar.validation;
 
+import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
+import no.rutebanken.anshar.routes.validation.SiriXmlValidator;
 import no.rutebanken.anshar.routes.validation.validators.CustomValidator;
+import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.Test;
 import org.rutebanken.siri20.util.SiriXml;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -46,6 +50,12 @@ public class CustomValidatorTest extends SpringBootBaseTest {
 
     XPathFactory xpathFactory = XPathFactory.newInstance();
     XPath xpath = xpathFactory.newXPath();
+
+    @Autowired
+    private SiriXmlValidator siriXmlValidator;
+
+    @Autowired
+    private AnsharConfiguration configuration;
 
     protected String createXml(String fieldName, String value) {
         return "<" + fieldName + ">" + value + "</" + fieldName + ">";
@@ -129,9 +139,7 @@ public class CustomValidatorTest extends SpringBootBaseTest {
         File file = new File("src/test/resources/siri-et-gir-npe.xml");
         ByteArrayInputStream inputStream = new ByteArrayInputStream(FileUtils.readFileToByteArray(file));
 
-
-        Siri incoming = SiriXml.parseXml(inputStream);
+        Siri incoming = siriXmlValidator.parseXml(null, inputStream);
         assertNotNull(incoming);
-
     }
 }
