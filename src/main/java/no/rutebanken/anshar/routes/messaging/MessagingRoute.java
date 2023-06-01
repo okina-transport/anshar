@@ -1,6 +1,11 @@
 package no.rutebanken.anshar.routes.messaging;
 
+import com.sun.xml.bind.v2.schemagen.xmlschema.SchemaTop;
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.gtfsrt.ingesters.EstimatedTimetableIngester;
+import no.rutebanken.anshar.gtfsrt.ingesters.SituationExchangeIngester;
+import no.rutebanken.anshar.gtfsrt.ingesters.StopMonitoringIngester;
+import no.rutebanken.anshar.gtfsrt.ingesters.VehicleMonitoringIngester;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.CamelRouteNames;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
@@ -27,8 +32,7 @@ import java.io.InputStream;
 import static no.rutebanken.anshar.routes.HttpParameter.*;
 import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_SOAP;
 import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_VERSION;
-import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASET_ID_HEADER_NAME;
-import static no.rutebanken.anshar.routes.validation.validators.Constants.URL_HEADER_NAME;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
 
 @Service
 public class MessagingRoute extends RestRouteBuilder {
@@ -71,10 +75,67 @@ public class MessagingRoute extends RestRouteBuilder {
         final String externalSiriSXQueue = messageQueueCamelRoutePrefix + "anshar.external.siri.sx.data";
         final String externalSiriVMQueue = messageQueueCamelRoutePrefix + "anshar.external.siri.vm.data";
 
+
         if (messageQueueCamelRoutePrefix.contains("direct")) {
             queueConsumerParameters = "";
         }
 
+
+        from(messageQueueCamelRoutePrefix + GTFSRT_ET_QUEUE)
+                .threads(2)
+                .process(e->{
+                    String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
+                    e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
+
+                    String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
+                    e.getIn().setHeader(URL_HEADER_NAME, url);
+
+                })
+                .to("direct:transform.siri")
+                .bean(EstimatedTimetableIngester.class, "processIncomingETFromGTFSRT")
+        ;
+
+        from(messageQueueCamelRoutePrefix + GTFSRT_SM_QUEUE)
+                .threads(3)
+                .process(e->{
+                    String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
+                    e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
+
+                    String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
+                    e.getIn().setHeader(URL_HEADER_NAME, url);
+
+                })
+                .to("direct:transform.siri")
+                .bean(StopMonitoringIngester.class, "processIncomingSMFromGTFSRT")
+        ;
+
+        from(messageQueueCamelRoutePrefix + GTFSRT_SX_QUEUE)
+                .threads(2)
+                .process(e->{
+                    String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
+                    e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
+
+                    String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
+                    e.getIn().setHeader(URL_HEADER_NAME, url);
+
+                })
+                .to("direct:transform.siri")
+                .bean(SituationExchangeIngester.class, "processIncomingSXFromGTFSRT")
+        ;
+
+        from(messageQueueCamelRoutePrefix + GTFSRT_VM_QUEUE)
+                .threads(3)
+                .process(e->{
+                    String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
+                    e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
+
+                    String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
+                    e.getIn().setHeader(URL_HEADER_NAME, url);
+
+                })
+                .to("direct:transform.siri")
+                .bean(VehicleMonitoringIngester.class, "processIncomingVMFromGTFSRT")
+        ;
 
         from(externalSiriSMQueue)
                 .process(e->{

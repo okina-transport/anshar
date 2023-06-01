@@ -1,12 +1,17 @@
-package no.rutebanken.anshar.gtfsrt.swallowers;
+package no.rutebanken.anshar.gtfsrt.readers;
 
 
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
+import org.apache.camel.ProducerTemplate;
+import uk.org.siri.siri20.Siri;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASET_ID_HEADER_NAME;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.URL_HEADER_NAME;
 
 
 public abstract class AbstractSwallower {
@@ -45,5 +50,12 @@ public abstract class AbstractSwallower {
 
 
         return setup;
+    }
+
+    protected void sendToRealTimeServer(ProducerTemplate producerTemplate, Siri siriToSend, String datasetId) {
+        Map<String, Object> headers = new HashMap<>();
+        headers.put(DATASET_ID_HEADER_NAME, datasetId);
+        headers.put(URL_HEADER_NAME,url);
+        producerTemplate.asyncRequestBodyAndHeaders(producerTemplate.getDefaultEndpoint(), siriToSend, headers);
     }
 }

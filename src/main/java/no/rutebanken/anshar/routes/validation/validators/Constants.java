@@ -50,6 +50,16 @@ public class Constants {
     public static final String DATASET_ID_HEADER_NAME = "datasetId";
     public static final String URL_HEADER_NAME = "URL";
 
+    public final static String GTFSRT_ET_PREFIX = "GTFS-RT_ET_";
+    public final static String GTFSRT_SM_PREFIX = "GTFS-RT_SM_";
+    public final static String GTFSRT_VM_PREFIX = "GTFS-RT_VM_";
+    public final static String GTFSRT_SX_PREFIX = "GTFS-RT_SX_";
+
+    public final static String GTFSRT_ET_QUEUE = "gtfsrt.estimated.timetable";
+    public final static String GTFSRT_SM_QUEUE = "gtfsrt.stop.monitoring";
+    public final static String GTFSRT_SX_QUEUE = "gtfsrt.situation.exchange";
+    public final static String GTFSRT_VM_QUEUE = "gtfsrt.vehicle.monitoring";
+
     // TODO MHI : implement validators for SM
 
     private Constants() {

@@ -5,9 +5,9 @@ import com.google.transit.realtime.GtfsRealtime;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.GTFSRTType;
-import no.rutebanken.anshar.gtfsrt.swallowers.AlertSwallower;
-import no.rutebanken.anshar.gtfsrt.swallowers.TripUpdateSwallower;
-import no.rutebanken.anshar.gtfsrt.swallowers.VehiclePositionSwallower;
+import no.rutebanken.anshar.gtfsrt.readers.AlertReader;
+import no.rutebanken.anshar.gtfsrt.readers.TripUpdateReader;
+import no.rutebanken.anshar.gtfsrt.readers.VehiclePositionReader;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
@@ -28,13 +28,13 @@ public class GtfsRTDataRetriever {
 
 
     @Autowired
-    private TripUpdateSwallower tripUpdateSwallower;
+    private TripUpdateReader tripUpdateReader;
 
     @Autowired
-    private VehiclePositionSwallower vehiclePositionSwallower;
+    private VehiclePositionReader vehiclePositionReader;
 
     @Autowired
-    private AlertSwallower alertSwallower;
+    private AlertReader alertReader;
 
     @Autowired
     private SubscriptionConfig subscriptionConfig;
@@ -60,18 +60,19 @@ public class GtfsRTDataRetriever {
             }
 
 
-            tripUpdateSwallower.setUrl(gtfsRTApi.getUrl());
-            tripUpdateSwallower.ingestTripUpdateData(gtfsRTApi.getDatasetId(), completeGTFSFeed);
+            tripUpdateReader.setUrl(gtfsRTApi.getUrl());
+            tripUpdateReader.ingestTripUpdateData(gtfsRTApi.getDatasetId(), completeGTFSFeed);
 
             if (configuration.processVM()) {
-                vehiclePositionSwallower.setUrl(gtfsRTApi.getUrl());
-                vehiclePositionSwallower.ingestVehiclePositionData(gtfsRTApi.getDatasetId(), completeGTFSFeed);
+                vehiclePositionReader.setUrl(gtfsRTApi.getUrl());
+                vehiclePositionReader.ingestVehiclePositionData(gtfsRTApi.getDatasetId(), completeGTFSFeed);
             }
 
             if (configuration.processSX()) {
-                alertSwallower.setUrl(gtfsRTApi.getUrl());
-                alertSwallower.ingestAlertData(gtfsRTApi.getDatasetId(), completeGTFSFeed);
+                alertReader.setUrl(gtfsRTApi.getUrl());
+                alertReader.ingestAlertData(gtfsRTApi.getDatasetId(), completeGTFSFeed);
             }
+            logger.info("GTFS-RT Reading completed for datasetId:" + gtfsRTApi.getDatasetId() + " and  URL:" + gtfsRTApi.getUrl());
 
         }
 

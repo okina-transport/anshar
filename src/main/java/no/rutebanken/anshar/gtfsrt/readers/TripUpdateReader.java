@@ -1,4 +1,4 @@
-package no.rutebanken.anshar.gtfsrt.swallowers;
+package no.rutebanken.anshar.gtfsrt.readers;
 
 import com.google.transit.realtime.GtfsRealtime;
 import no.rutebanken.anshar.config.AnsharConfiguration;
@@ -8,21 +8,24 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
+import org.apache.camel.Produce;
+import org.apache.camel.ProducerTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.MonitoredStopVisit;
+import uk.org.siri.siri20.*;
 
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 import java.util.stream.Collectors;
+
+import static no.rutebanken.anshar.routes.validation.validators.Constants.GTFSRT_ET_PREFIX;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.GTFSRT_SM_PREFIX;
 
 /**
  * Class to handle and ingest tripUpdate data
@@ -30,7 +33,7 @@ import java.util.stream.Collectors;
  */
 
 @Component
-public class TripUpdateSwallower extends AbstractSwallower {
+public class TripUpdateReader extends AbstractSwallower {
 
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -46,8 +49,14 @@ public class TripUpdateSwallower extends AbstractSwallower {
     @Autowired
     private TripUpdateMapper tripUpdateMapper;
 
+    @Produce(uri = "direct:send.et.to.realtime.server")
+    protected ProducerTemplate gtfsrtEtProducer;
 
-    public TripUpdateSwallower() {
+    @Produce(uri = "direct:send.sm.to.realtime.server")
+    protected ProducerTemplate gtfsrtSmProducer;
+
+
+    public TripUpdateReader() {
     }
 
 
@@ -64,15 +73,9 @@ public class TripUpdateSwallower extends AbstractSwallower {
             //// ESTIMATED TIME TABLES
             List<EstimatedVehicleJourney> estimatedVehicleJourneys = buildEstimatedVehicleJourneyList(completeGTFSRTMessage);
             List<String> etSubscriptionList = getSubscriptionsFromEstimatedTimeTables(estimatedVehicleJourneys) ;
-            checkAndCreateSubscriptions(etSubscriptionList,"GTFS-RT_ET_", SiriDataType.ESTIMATED_TIMETABLE, RequestType.GET_ESTIMATED_TIMETABLE, datasetId);
+            checkAndCreateSubscriptions(etSubscriptionList,GTFSRT_ET_PREFIX, SiriDataType.ESTIMATED_TIMETABLE, RequestType.GET_ESTIMATED_TIMETABLE, datasetId);
+            buildSiriAndSend(estimatedVehicleJourneys, datasetId);
 
-            Collection<EstimatedVehicleJourney> ingestedEstimatedTimetables = handler.ingestEstimatedTimeTables(datasetId, estimatedVehicleJourneys);
-
-            for (EstimatedVehicleJourney estimatedVehicleJourney : ingestedEstimatedTimetables) {
-                subscriptionManager.touchSubscription(prefix + estimatedVehicleJourney.getDatedVehicleJourneyRef().getValue(), false);
-            }
-
-            logger.info("Ingested estimated time tables {} on {} ", ingestedEstimatedTimetables.size(), estimatedVehicleJourneys.size());
         }
 
 
@@ -80,17 +83,32 @@ public class TripUpdateSwallower extends AbstractSwallower {
             //// STOP VISITS
             List<MonitoredStopVisit> stopVisits = buildStopVisitList(completeGTFSRTMessage, datasetId);
             List<String> visitSubscriptionList = getSubscriptionsFromVisits(stopVisits) ;
-            checkAndCreateSubscriptions(visitSubscriptionList, "GTFS-RT_SM_", SiriDataType.STOP_MONITORING, RequestType.GET_STOP_MONITORING, datasetId);
-
-            Collection<MonitoredStopVisit> ingestedVisits = handler.ingestStopVisits(datasetId, stopVisits);
-
-            for (MonitoredStopVisit visit : ingestedVisits) {
-                subscriptionManager.touchSubscription("GTFS-RT_SM_" + visit.getMonitoringRef().getValue(),false);
-            }
-
-            logger.info("Ingested stop Times {} on {} ", ingestedVisits.size(), stopVisits.size());
+            checkAndCreateSubscriptions(visitSubscriptionList, GTFSRT_SM_PREFIX, SiriDataType.STOP_MONITORING, RequestType.GET_STOP_MONITORING, datasetId);
+            buildSiriSMAndSend(stopVisits, datasetId);
         }
 
+    }
+
+    private void buildSiriSMAndSend(List<MonitoredStopVisit> stopVisits, String datasetId) {
+        Siri siri = new Siri();
+        ServiceDelivery serviceDel = new ServiceDelivery();
+        StopMonitoringDeliveryStructure stopDelStruct = new StopMonitoringDeliveryStructure();
+        stopDelStruct.getMonitoredStopVisits().addAll(stopVisits);
+        serviceDel.getStopMonitoringDeliveries().add(stopDelStruct);
+        siri.setServiceDelivery(serviceDel);
+        sendToRealTimeServer(gtfsrtSmProducer,siri, datasetId);
+    }
+
+    private void buildSiriAndSend(List<EstimatedVehicleJourney> estimatedVehicleJourneys, String datasetId) {
+        Siri siri = new Siri();
+        ServiceDelivery serviceDel = new ServiceDelivery();
+        EstimatedTimetableDeliveryStructure estimatedDelStruct = new EstimatedTimetableDeliveryStructure();
+        EstimatedVersionFrameStructure estimatedFrame = new EstimatedVersionFrameStructure();
+        estimatedFrame.getEstimatedVehicleJourneies().addAll(estimatedVehicleJourneys);
+        estimatedDelStruct.getEstimatedJourneyVersionFrames().add(estimatedFrame);
+        serviceDel.getEstimatedTimetableDeliveries().add(estimatedDelStruct);
+        siri.setServiceDelivery(serviceDel);
+        sendToRealTimeServer(gtfsrtEtProducer,siri, datasetId);
     }
 
 

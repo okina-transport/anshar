@@ -1,4 +1,4 @@
-package no.rutebanken.anshar.gtfsrt.swallowers;
+package no.rutebanken.anshar.gtfsrt.readers;
 
 import com.google.transit.realtime.GtfsRealtime;
 import no.rutebanken.anshar.gtfsrt.mappers.AlertMapper;
@@ -7,6 +7,8 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
+import org.apache.camel.Produce;
+import org.apache.camel.ProducerTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,13 +20,15 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static no.rutebanken.anshar.routes.validation.validators.Constants.GTFSRT_SX_PREFIX;
+
 /**
  * Class to handle and ingest alert data
  * alert (GTFS-RT) = situation exchange (SIRI)
  */
 
 @Component
-public class AlertSwallower extends AbstractSwallower {
+public class AlertReader extends AbstractSwallower {
 
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -34,10 +38,13 @@ public class AlertSwallower extends AbstractSwallower {
     @Autowired
     private SiriHandler handler;
 
+    @Produce(uri = "direct:send.sx.to.realtime.server")
+    protected ProducerTemplate gtfsrtSxProducer;
 
 
-    public AlertSwallower() {
-        prefix = "GTFS-RT_SX_";
+
+    public AlertReader() {
+        prefix = GTFSRT_SX_PREFIX;
         dataType = SiriDataType.SITUATION_EXCHANGE;
         requestType = RequestType.GET_SITUATION_EXCHANGE;
     }
@@ -54,15 +61,25 @@ public class AlertSwallower extends AbstractSwallower {
         updateParticipantRef(datasetId, situations);
         List<String> subscriptionList = getSubscriptions(situations) ;
         checkAndCreateSubscriptions(subscriptionList, datasetId);
+        buildSiriAndSend(situations, datasetId);
+    }
 
-        Collection<PtSituationElement> ingestedSituations = handler.ingestSituations(datasetId, situations);
+    private void buildSiriAndSend(List<PtSituationElement> situations, String datasetId) {
 
-        for (PtSituationElement situation : ingestedSituations) {
-            subscriptionManager.touchSubscription(prefix + getSituationSubscriptionId(situation), false);
+        if (situations.isEmpty()){
+            logger.info("no situations to ingest");
+            return;
         }
 
-        logger.info("Ingested alerts {} on {} ", ingestedSituations.size(), situations.size());
-
+        Siri siri = new Siri();
+        ServiceDelivery serviceDel = new ServiceDelivery();
+        SituationExchangeDeliveryStructure delStruct = new SituationExchangeDeliveryStructure();
+        SituationExchangeDeliveryStructure.Situations sitStruct = new SituationExchangeDeliveryStructure.Situations();
+        sitStruct.getPtSituationElements().addAll(situations);
+        delStruct.setSituations(sitStruct);
+        serviceDel.getSituationExchangeDeliveries().add(delStruct);
+        siri.setServiceDelivery(serviceDel);
+        sendToRealTimeServer(gtfsrtSxProducer,siri, datasetId);
     }
 
     private void updateParticipantRef(String datasetId,  List<PtSituationElement> situations){

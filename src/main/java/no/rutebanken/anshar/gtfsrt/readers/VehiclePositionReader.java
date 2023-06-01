@@ -1,20 +1,21 @@
-package no.rutebanken.anshar.gtfsrt.swallowers;
+package no.rutebanken.anshar.gtfsrt.readers;
 
 import com.google.transit.realtime.GtfsRealtime;
 
-import io.micrometer.core.instrument.util.StringUtils;
 import no.rutebanken.anshar.gtfsrt.mappers.VehiclePositionMapper;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
+import org.apache.camel.Produce;
+import org.apache.camel.ProducerTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import uk.org.siri.siri20.VehicleActivityStructure;
+import uk.org.siri.siri20.*;
 
 
 import java.time.ZonedDateTime;
@@ -23,13 +24,15 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static no.rutebanken.anshar.routes.validation.validators.Constants.GTFSRT_VM_PREFIX;
+
 /**
  * Class to handle and ingest vehicleposition data
  * vehicleposition (GTFS-RT) = VehicleActivity (SIRI)
  */
 
 @Component
-public class VehiclePositionSwallower extends AbstractSwallower {
+public class VehiclePositionReader extends AbstractSwallower {
 
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -40,9 +43,12 @@ public class VehiclePositionSwallower extends AbstractSwallower {
     @Autowired
     private SiriHandler handler;
 
+    @Produce(uri = "direct:send.vm.to.realtime.server")
+    protected ProducerTemplate gtfsrtVmProducer;
 
-    public VehiclePositionSwallower() {
-        prefix = "GTFS-RT_VM_";
+
+    public VehiclePositionReader() {
+        prefix = GTFSRT_VM_PREFIX;
         dataType = SiriDataType.VEHICLE_MONITORING;
         requestType = RequestType.GET_VEHICLE_MONITORING;
     }
@@ -64,16 +70,22 @@ public class VehiclePositionSwallower extends AbstractSwallower {
 
         List<String> subscriptionList = getSubscriptions(vehicleActivities);
         checkAndCreateSubscriptions(subscriptionList, datasetId);
-        Collection<VehicleActivityStructure> ingestedVehicleJourneys = handler.ingestVehicleActivities(datasetId, vehicleActivities);
+        buildSiriAndSend(vehicleActivities, datasetId);
+    }
 
-
-
-
-        for ( VehicleActivityStructure  vehicleActivity : ingestedVehicleJourneys) {
-            subscriptionManager.touchSubscription(prefix + vehicleActivity.getMonitoredVehicleJourney().getLineRef().getValue(), false);
+    private void buildSiriAndSend(List<VehicleActivityStructure> vehicleActivities, String datasetId) {
+        if (vehicleActivities.isEmpty()){
+            logger.info("no vehicleActivities to ingest");
+            return;
         }
 
-        logger.info("Ingested vehicle positions {} on {} ", ingestedVehicleJourneys.size(), vehicleActivities.size());
+        Siri siri = new Siri();
+        ServiceDelivery serviceDel = new ServiceDelivery();
+        VehicleMonitoringDeliveryStructure vehicleMonStruct = new VehicleMonitoringDeliveryStructure();
+        vehicleMonStruct.getVehicleActivities().addAll(vehicleActivities);
+        serviceDel.getVehicleMonitoringDeliveries().add(vehicleMonStruct);
+        siri.setServiceDelivery(serviceDel);
+        sendToRealTimeServer(gtfsrtVmProducer,siri, datasetId);
     }
 
     /**

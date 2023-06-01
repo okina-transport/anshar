@@ -3,7 +3,7 @@ package no.rutebanken.anshar.gtfsRT;
 import com.google.protobuf.util.JsonFormat;
 import com.google.transit.realtime.GtfsRealtime;
 import no.rutebanken.anshar.data.Situations;
-import no.rutebanken.anshar.gtfsrt.swallowers.AlertSwallower;
+import no.rutebanken.anshar.gtfsrt.readers.AlertReader;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,10 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-public class AlertSwallowerTest extends SpringBootBaseTest {
+public class AlertReaderTest extends SpringBootBaseTest {
 
     @Autowired
-    private AlertSwallower alertSwallower;
+    private AlertReader alertReader;
 
     @Autowired
     private Situations situations;
@@ -39,9 +39,9 @@ public class AlertSwallowerTest extends SpringBootBaseTest {
         String content = Files.readString(Path.of("src/test/resources/gtfs_rt_example.json"), StandardCharsets.US_ASCII);
         GtfsRealtime.FeedMessage.Builder feedMessageBuilder = GtfsRealtime.FeedMessage.newBuilder();
         JsonFormat.parser().ignoringUnknownFields().merge(content, feedMessageBuilder);
-        alertSwallower.setUrl("http://www.test.fr");
+        alertReader.setUrl("http://www.test.fr");
 
-        alertSwallower.ingestAlertData("TEST", feedMessageBuilder.build());
+        alertReader.ingestAlertData("TEST", feedMessageBuilder.build());
 
         Collection<PtSituationElement> savedSituations = situations.getAll();
 
