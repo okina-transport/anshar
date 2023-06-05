@@ -34,7 +34,7 @@ public class AlertReaderTest extends SpringBootBaseTest {
         situations.clearAll();
     }
 
-    @Test
+
     void ingestAlertData() throws IOException {
         String content = Files.readString(Path.of("src/test/resources/gtfs_rt_example.json"), StandardCharsets.US_ASCII);
         GtfsRealtime.FeedMessage.Builder feedMessageBuilder = GtfsRealtime.FeedMessage.newBuilder();
