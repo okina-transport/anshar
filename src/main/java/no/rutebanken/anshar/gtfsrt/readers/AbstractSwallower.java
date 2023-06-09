@@ -52,10 +52,10 @@ public abstract class AbstractSwallower {
         return setup;
     }
 
-    protected void sendToRealTimeServer(ProducerTemplate producerTemplate, Siri siriToSend, String datasetId) {
+    protected void sendToRealTimeServer(ProducerTemplate producerTemplate, Object objectToSend, String datasetId) {
         Map<String, Object> headers = new HashMap<>();
         headers.put(DATASET_ID_HEADER_NAME, datasetId);
         headers.put(URL_HEADER_NAME,url);
-        producerTemplate.asyncRequestBodyAndHeaders(producerTemplate.getDefaultEndpoint(), siriToSend, headers);
+        producerTemplate.asyncRequestBodyAndHeaders(producerTemplate.getDefaultEndpoint(), objectToSend, headers);
     }
 }

@@ -21,6 +21,7 @@ import com.hazelcast.replicatedmap.ReplicatedMap;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
+import no.rutebanken.anshar.data.util.SiriUtils;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.util.StopMonitoringUtils;
@@ -355,36 +356,16 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
     @Override
     long getExpiration(MonitoredStopVisit monitoredStopVisit) {
-        MonitoredVehicleJourneyStructure monitoredVehicleJourney = monitoredStopVisit.getMonitoredVehicleJourney();
-
-        ZonedDateTime expiryTimestamp = null;
-        if (monitoredVehicleJourney.getMonitoredCall() != null) {
-            MonitoredCallStructure estimatedCalls = monitoredVehicleJourney.getMonitoredCall();
-
-            if (estimatedCalls.getAimedArrivalTime() != null) {
-                expiryTimestamp = estimatedCalls.getAimedArrivalTime();
-            }
-            if (estimatedCalls.getAimedDepartureTime() != null) {
-                expiryTimestamp = estimatedCalls.getAimedDepartureTime();
-            }
-            if (estimatedCalls.getExpectedArrivalTime() != null) {
-                expiryTimestamp = estimatedCalls.getExpectedArrivalTime();
-            }
-            if (estimatedCalls.getExpectedDepartureTime() != null) {
-                expiryTimestamp = estimatedCalls.getExpectedDepartureTime();
-            }
-        }
-
-        if (expiryTimestamp != null) {
-            return ZonedDateTime.now().until(expiryTimestamp.plus(configuration.getSmGraceperiodMinutes(), ChronoUnit.MINUTES), ChronoUnit.MILLIS);
-        }
-
-        return -1;
+        return SiriUtils.getExpiration(monitoredStopVisit, configuration.getSmGraceperiodMinutes());
     }
 
     // TODO MHI : copié / collé, à revoir
     @Override
-    public Collection<MonitoredStopVisit> addAll(String datasetId, List<MonitoredStopVisit> smList ) {
+    public Collection<MonitoredStopVisit> addAll(String datasetId, List<MonitoredStopVisit> smList) {
+        return addAll(datasetId, smList);
+    }
+
+    public Collection<MonitoredStopVisit> addAll(String datasetId, List<MonitoredStopVisit> smList, boolean silentInsert) {
         Set<SiriObjectStorageKey> changes = new HashSet<>();
         Set<MonitoredStopVisit> addedData = new HashSet<>();
 
@@ -463,7 +444,9 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
                 });
 
-        logger.info("Updated {} (of {}) :: Ignored elements - Missing location:{}, Missing values: {}, Expired: {}, Not updated: {}", changes.size(), smList.size(), invalidLocationCounter.getValue(), notMeaningfulCounter.getValue(), outdatedCounter.getValue(), notUpdatedCounter.getValue());
+        if (!silentInsert){
+            logger.info("Updated {} (of {}) :: Ignored elements - Missing location:{}, Missing values: {}, Expired: {}, Not updated: {}", changes.size(), smList.size(), invalidLocationCounter.getValue(), notMeaningfulCounter.getValue(), outdatedCounter.getValue(), notUpdatedCounter.getValue());
+        }
 
         markDataReceived(SiriDataType.STOP_MONITORING, datasetId, smList.size(), changes.size(), outdatedCounter.getValue(), (invalidLocationCounter.getValue() + notMeaningfulCounter.getValue() + notUpdatedCounter.getValue()));
 

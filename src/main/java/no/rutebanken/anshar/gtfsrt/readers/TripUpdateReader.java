@@ -2,6 +2,7 @@ package no.rutebanken.anshar.gtfsrt.readers;
 
 import com.google.transit.realtime.GtfsRealtime;
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.data.util.SiriUtils;
 import no.rutebanken.anshar.gtfsrt.mappers.TripUpdateMapper;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -19,6 +20,7 @@ import uk.org.siri.siri20.*;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -92,12 +94,31 @@ public class TripUpdateReader extends AbstractSwallower {
     private void buildSiriSMAndSend(List<MonitoredStopVisit> stopVisits, String datasetId) {
         Siri siri = new Siri();
         ServiceDelivery serviceDel = new ServiceDelivery();
+        List<MonitoredStopVisit> filteredStopVisits = filterOutdatedStopVisits(stopVisits);
+
+        int outdatedVisit = stopVisits.size() - filteredStopVisits.size();
+        if (outdatedVisit > 0){
+            logger.info("GTFSRT - skipping outdated visits:" + outdatedVisit);
+        }
         StopMonitoringDeliveryStructure stopDelStruct = new StopMonitoringDeliveryStructure();
-        stopDelStruct.getMonitoredStopVisits().addAll(stopVisits);
+        stopDelStruct.getMonitoredStopVisits().addAll(filteredStopVisits);
         serviceDel.getStopMonitoringDeliveries().add(stopDelStruct);
         siri.setServiceDelivery(serviceDel);
-        sendToRealTimeServer(gtfsrtSmProducer,siri, datasetId);
+
+        for (MonitoredStopVisit stopVisitToSend : filteredStopVisits) {
+            sendToRealTimeServer(gtfsrtSmProducer,stopVisitToSend, datasetId);
+        }
+
     }
+
+    private List<MonitoredStopVisit> filterOutdatedStopVisits(List<MonitoredStopVisit> stopVisits) {
+        long gracePeriod = configuration.getSmGraceperiodMinutes();
+
+        return stopVisits.stream()
+                .filter(stopVisit ->  SiriUtils.getExpiration(stopVisit,gracePeriod) > 0)
+                .collect(Collectors.toList());
+    }
+
 
     private void buildSiriAndSend(List<EstimatedVehicleJourney> estimatedVehicleJourneys, String datasetId) {
         Siri siri = new Siri();

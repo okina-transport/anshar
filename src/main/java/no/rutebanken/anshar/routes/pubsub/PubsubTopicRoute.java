@@ -44,7 +44,7 @@ public class PubsubTopicRoute extends RouteBuilder {
              */
             from("direct:send.to.pubsub.topic.estimated_timetable")
                     .setExchangePattern(ExchangePattern.InOnly)
-                    .to("direct:siri.transform.data")
+                 //   .to("direct:siri.transform.data")
                     .to("xslt-saxon:xsl/splitAndFilterNotMonitored.xsl")
                     .split().tokenizeXML("Siri").streaming()
                //     .wireTap("direct:kafka.et.xml")
@@ -59,7 +59,7 @@ public class PubsubTopicRoute extends RouteBuilder {
              */
             from("direct:send.to.pubsub.topic.vehicle_monitoring")
                     .setExchangePattern(ExchangePattern.InOnly)
-                    .to("direct:siri.transform.data")
+                  //  .to("direct:siri.transform.data")
                     .to("xslt-saxon:xsl/split.xsl")
                     .split().tokenizeXML("Siri").streaming()
                     .to("direct:map.jaxb.to.protobuf")
@@ -73,7 +73,7 @@ public class PubsubTopicRoute extends RouteBuilder {
              */
             from("direct:send.to.pubsub.topic.situation_exchange")
                     .setExchangePattern(ExchangePattern.InOnly)
-                    .to("direct:siri.transform.data")
+                   // .to("direct:siri.transform.data")
                     .to("xslt-saxon:xsl/split.xsl")
                     .split().tokenizeXML("Siri").streaming()
                   //  .wireTap("direct:kafka.sx.xml")
@@ -88,7 +88,7 @@ public class PubsubTopicRoute extends RouteBuilder {
              */
             from("direct:send.to.pubsub.topic.stop_monitoring")
                     .setExchangePattern(ExchangePattern.InOnly)
-                    .to("direct:siri.transform.data")
+                 //   .to("direct:siri.transform.data")
                     .to("xslt-saxon:xsl/split.xsl")
                     .split().tokenizeXML("Siri").streaming()
                     .to("direct:map.jaxb.to.protobuf")
