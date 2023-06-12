@@ -81,6 +81,11 @@ public class SubscriptionInitializer implements CamelContextAware {
             logger.info("App started with mode(s): {}", configuration.getAppModes());
         }
 
+        if (!configuration.isCurrentInstanceLeader()){
+            logger.info("===> Current instance not leader. Not launching subscriptions");
+            return;
+        }
+
         final Map<String, Object> mappingBeans = ApplicationContextHolder.getContext().getBeansWithAnnotation(Mapping.class);
         final Map<String, Class> mappingAdaptersById = new HashMap<>();
         for (final Object myFoo : mappingBeans.values()) {
