@@ -22,6 +22,7 @@ import com.esotericsoftware.kryo.io.Output;
 import com.esotericsoftware.kryo.pool.KryoFactory;
 import com.esotericsoftware.kryo.pool.KryoPool;
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.data.FacilityMonitoring;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.commons.lang3.NotImplementedException;
@@ -161,6 +162,17 @@ public class SiriObjectFactory {
                     subscriptionSetup.getDurationOfSubscription(),
                     subscriptionSetup.getAddressFieldName());
         }
+
+        //todo definir les champs nécessaires
+        if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.FACILITY_MONITORING)) {
+            request = createGeneralMessageSubscriptionRequest(
+                    subscriptionSetup.getRequestorRef(),
+                    subscriptionSetup.getSubscriptionId(),
+                    subscriptionSetup.getHeartbeatInterval(),
+                    subscriptionSetup.buildUrl(),
+                    subscriptionSetup.getDurationOfSubscription(),
+                    subscriptionSetup.getAddressFieldName());
+        }
         siri.setSubscriptionRequest(request);
 
         siri.setSubscriptionRequest(request);
@@ -201,6 +213,11 @@ public class SiriObjectFactory {
             GeneralMessageRequestStructure gmRequestStruct = createGeneralMessageRequestStructure(subscriptionSetup);
             request.setMessageIdentifier(gmRequestStruct.getMessageIdentifier());
             request.getGeneralMessageRequests().add(gmRequestStruct);
+        }
+        if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.FACILITY_MONITORING)) {
+            FacilityMonitoringRequestStructure fmRequestStruct = createFacilityMonitoringRequestStructure(subscriptionSetup);
+            request.setMessageIdentifier(fmRequestStruct.getMessageIdentifier());
+            request.getFacilityMonitoringRequests().add(fmRequestStruct);
         }
         siri.setServiceRequest(request);
 
@@ -287,6 +304,15 @@ public class SiriObjectFactory {
         gmRequest.setMessageIdentifier(createMessageIdentifier());
 
         return gmRequest;
+    }
+
+//todo vérifier les champs
+    private static FacilityMonitoringRequestStructure createFacilityMonitoringRequestStructure(SubscriptionSetup subscriptionSetup) {
+        FacilityMonitoringRequestStructure fmRequest = new FacilityMonitoringRequestStructure();
+        fmRequest.setRequestTimestamp(ZonedDateTime.now());
+        fmRequest.setVersion(SIRI_VERSION);
+        fmRequest.setMessageIdentifier(createMessageIdentifier());
+        return fmRequest;
     }
 
     private static SubscriptionRequest createSituationExchangeSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap, String addressFieldName, Boolean incrementalUpdates, Duration previewInterval) {
@@ -396,6 +422,26 @@ public class SiriObjectFactory {
         gmSubscriptionReq.setInitialTerminationTime(ZonedDateTime.now().plusSeconds(subscriptionDuration.getSeconds()));
         gmSubscriptionReq.setSubscriberRef(request.getRequestorRef());
         request.getGeneralMessageSubscriptionRequests().add(gmSubscriptionReq);
+        return request;
+    }
+
+    //todo les champs ne sont pas définis encore
+    private static SubscriptionRequest createFacilityMonitoringSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address,
+                                                                               Duration subscriptionDuration,     String addressFieldName ) {
+
+        SubscriptionRequest request = createSubscriptionRequest(requestorRef, heartbeatInterval, address, addressFieldName);
+        FacilityMonitoringRequestStructure fmRequest = new FacilityMonitoringRequestStructure();
+
+        fmRequest.setRequestTimestamp(ZonedDateTime.now());
+        fmRequest.setVersion(SIRI_VERSION);
+
+        FacilityMonitoringSubscriptionStructure fmSubscriptionReq = new FacilityMonitoringSubscriptionStructure();
+        fmSubscriptionReq.setFacilityMonitoringRequest(fmRequest);
+
+        fmSubscriptionReq.setSubscriptionIdentifier(createSubscriptionIdentifier(subscriptionId));
+        fmSubscriptionReq.setInitialTerminationTime(ZonedDateTime.now().plusSeconds(subscriptionDuration.getSeconds()));
+        fmSubscriptionReq.setSubscriberRef(request.getRequestorRef());
+        request.getFacilityMonitoringSubscriptionRequests().add(fmSubscriptionReq);
         return request;
     }
     private static SubscriptionRequest createStopMonitoringSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap, String addressFieldName, Boolean incrementalUpdates, Duration previewInterval, Duration changeBeforeUpdates, String stopMonitoringRefValue) {
@@ -587,6 +633,18 @@ public class SiriObjectFactory {
         deliveryStructure.getVehicleActivities().addAll(elements);
         deliveryStructure.setResponseTimestamp(ZonedDateTime.now());
         delivery.getVehicleMonitoringDeliveries().add(deliveryStructure);
+        siri.setServiceDelivery(delivery);
+        return siri;
+    }
+
+    public Siri createFMServiceDelivery(Collection<FacilityConditionStructure> elements) {
+        Siri siri = createSiriObject();
+        ServiceDelivery delivery = createServiceDelivery();
+        FacilityMonitoringDeliveryStructure deliveryStructure = new FacilityMonitoringDeliveryStructure();
+        deliveryStructure.setVersion(SIRI_VERSION);
+        deliveryStructure.getFacilityConditions().addAll(elements);
+        deliveryStructure.setResponseTimestamp(ZonedDateTime.now());
+        delivery.getFacilityMonitoringDeliveries().add(deliveryStructure);
         siri.setServiceDelivery(delivery);
         return siri;
     }

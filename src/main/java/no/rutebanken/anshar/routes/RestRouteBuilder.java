@@ -66,6 +66,9 @@ public class RestRouteBuilder extends RouteBuilder {
     @Value("${anshar.data.handler.baseurl.gm:}")
     protected String gmHandlerBaseUrl;
 
+    @Value("${anshar.data.handler.baseurl.fm:}")
+    protected String fmHandlerBaseUrl;
+
     @Autowired
     private AnsharConfiguration configuration;
 
@@ -436,6 +439,66 @@ public class RestRouteBuilder extends RouteBuilder {
                         .toD(gmHandlerBaseUrl + "${header.CamelHttpUri}?Content-Type=${header.Content-Type}&bridgeEndpoint=true")
                         .otherwise()
                         .toD(gmHandlerBaseUrl + "${header.CamelHttpUri}?Content-Type=${header.Content-Type}&bridgeEndpoint=true&${header.CamelHttpQuery}")
+                        .endChoice()
+                ;
+            }
+        }
+
+        if (configuration.processFM()) {
+            from("direct:process.fm.subscription.request")
+                    .log("process FM direct")
+                    .to("direct:internal.handle.subscription")
+            ;
+            from("direct:process.fm.service.request")
+                    .to("direct:internal.process.service.request")
+            ;
+            from("direct:process.fm.service.request.cache")
+                    .to("direct:internal.process.service.request.cache")
+            ;
+            //REST
+            from("direct:anshar.rest.fm")
+                    .to("direct:internal.anshar.rest.fm")
+            ;
+            from("direct:anshar.rest.fm.cached")
+                    .to("direct:internal.anshar.rest.fm.cached")
+            ;
+
+        } else {
+            from("direct:process.fm.subscription.request")
+                    .log("process FM redir")
+                    .to("direct:redirect.request.fm")
+            ;
+            from("direct:process.fm.service.request")
+                    .to("direct:redirect.request.fm")
+            ;
+            from("direct:process.fm.service.request.cache")
+                    .to("direct:redirect.request.fm")
+            ;
+            from("direct:anshar.rest.fm")
+                    .to("direct:redirect.request.fm")
+            ;
+            from("direct:anshar.rest.fm.cached")
+                    .to("direct:redirect.request.fm")
+            ;
+
+            if (!configuration.processAdmin()) {
+                // Data-instances should never redirect requests
+                from("direct:redirect.request.fm")
+                        .log("Ignore redirect")
+                ;
+
+            } else {
+                from("direct:redirect.request.fm")
+                        // Setting default encoding if none is set
+                        .choice().when(header("Content-Type").isEqualTo(""))
+                        .setHeader("Content-Type", simple(MediaType.APPLICATION_XML))
+                        .end()
+
+                        //Force forwarding parameters - if used in query
+                        .choice().when(header("CamelHttpQuery").isNull())
+                        .toD(fmHandlerBaseUrl + "${header.CamelHttpUri}?Content-Type=${header.Content-Type}&bridgeEndpoint=true")
+                        .otherwise()
+                        .toD(fmHandlerBaseUrl + "${header.CamelHttpUri}?Content-Type=${header.Content-Type}&bridgeEndpoint=true&${header.CamelHttpQuery}")
                         .endChoice()
                 ;
             }

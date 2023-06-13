@@ -69,6 +69,7 @@ public class MessagingRoute extends RestRouteBuilder {
         final String pubsubQueueET = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_ET;
         final String pubsubQueueSM = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_SM;
         final String pubsubQueueGM = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_GM;
+        final String pubsubQueueFM = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_FM;
         final String pubsubQueueDefault = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_DEFAULT;
 
         final String externalSiriSMQueue = messageQueueCamelRoutePrefix + "anshar.external.siri.sm.data";
@@ -202,6 +203,9 @@ public class MessagingRoute extends RestRouteBuilder {
                     .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.GENERAL_MESSAGE.name()))
                     .setHeader("target_topic", simple(pubsubQueueGM))
                     .endChoice()
+                    .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.FACILITY_MONITORING.name()))
+                    .setHeader("target_topic", simple(pubsubQueueFM))
+                    .endChoice()
                     .otherwise()
                         // DataReadyNotification is processed immediately
                         .when().xpath("/siri:Siri/siri:DataReadyNotification", nameSpace)
@@ -327,6 +331,17 @@ public class MessagingRoute extends RestRouteBuilder {
                     .endChoice()
                     .startupOrder(100005)
                     .routeId("incoming.transform.gm")
+            ;
+        }
+
+        if (configuration.processFM()) {
+            from(pubsubQueueFM + queueConsumerParameters)
+                    .choice().when(readFromPubsub)
+                    .to("direct:decompress.jaxb")
+                    .wireTap("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
+                    .endChoice()
+                    .startupOrder(100006)
+                    .routeId("incoming.transform.fm")
             ;
         }
 

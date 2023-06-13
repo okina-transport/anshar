@@ -2,8 +2,11 @@ package no.rutebanken.anshar.data.util;
 
 import com.hazelcast.query.Predicate;
 import no.rutebanken.anshar.data.SiriObjectStorageKey;
+import uk.org.ifopt.siri13.StopPlaceRef;
+import uk.org.ifopt.siri20.StopPlaceComponentRefStructure;
 import uk.org.siri.siri20.*;
 
+import javax.sound.sampled.Line;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -13,19 +16,19 @@ public class SiriObjectStorageKeyUtil {
 
 
     public static Predicate<SiriObjectStorageKey, MonitoredStopVisit> getStopPredicate(Set<String> searchedStopRefs, String datasetId, List<String> excludedDatasetIds) {
-        return entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, searchedStopRefs, datasetId, excludedDatasetIds, null);
+        return entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, searchedStopRefs, datasetId, excludedDatasetIds, null, null);
     }
 
     public static Predicate<SiriObjectStorageKey, VehicleActivityStructure> getVehiclePredicate(Set<String> linerefSet, Set<String> vehicleRefSet, String datasetId, List<String> excludedDatasetIds) {
-        return entry -> isKeyCompliantWithFilters(entry.getKey(), linerefSet, vehicleRefSet, null, datasetId, excludedDatasetIds, null);
+        return entry -> isKeyCompliantWithFilters(entry.getKey(), linerefSet, vehicleRefSet, null, datasetId, excludedDatasetIds, null, null);
     }
 
     public static Predicate<SiriObjectStorageKey, EstimatedVehicleJourney> getEstimateTimetablePredicate(Set<String> linerefSet, Set<String> vehicleRefSet, String datasetId, List<String> excludedDatasetIds) {
-        return entry -> isKeyCompliantWithFilters(entry.getKey(), linerefSet, vehicleRefSet, null, datasetId, excludedDatasetIds, null);
+        return entry -> isKeyCompliantWithFilters(entry.getKey(), linerefSet, vehicleRefSet, null, datasetId, excludedDatasetIds, null, null);
     }
 
     public static Predicate<SiriObjectStorageKey, PtSituationElement> getSituationExchangePredicate(String datasetId) {
-        return entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, null, datasetId, null, null);
+        return entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, null, datasetId, null, null, null);
     }
 
     public static Predicate<SiriObjectStorageKey, GeneralMessage> getGeneralMessagePredicate(String datasetId, List<InfoChannelRefStructure> requestedChannels) {
@@ -39,7 +42,13 @@ public class SiriObjectStorageKeyUtil {
         }
 
 
-        return entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, null, datasetId, null, typeList);
+        return entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, null, datasetId, null, typeList, null);
+    }
+
+    public static Predicate<SiriObjectStorageKey, FacilityConditionStructure> getFacilityMonitoringPredicate(String datasetId, Set<String> requestedFacilities,
+                  Set<String> requestedLineRef, Set<String> requestedVehicleRef, Set<String> requestedStopPoints, List<String> excludeData) {
+
+        return entry -> isKeyCompliantWithFilters(entry.getKey(), requestedLineRef, requestedVehicleRef, requestedStopPoints, datasetId, excludeData, null, requestedFacilities);
     }
 
 
@@ -55,7 +64,8 @@ public class SiriObjectStorageKeyUtil {
      * @return true :the key is compliant with filters
      * false : the key is not compliant
      */
-    public static boolean isKeyCompliantWithFilters(SiriObjectStorageKey key, Set<String> linerefSet, Set<String> vehicleRefSet, Set<String> stopRefSet, String datasetId, List<String> excludedDatasetIds, List<String> types) {
+    public static boolean isKeyCompliantWithFilters(SiriObjectStorageKey key, Set<String> linerefSet, Set<String> vehicleRefSet, Set<String> stopRefSet, String datasetId, List<String> excludedDatasetIds, List<String> types,
+                                                    Set<String> facilityRefSet) {
         if (datasetId != null && !datasetId.equalsIgnoreCase(key.getCodespaceId())) {
             return false;
         }
@@ -72,6 +82,10 @@ public class SiriObjectStorageKeyUtil {
             return false;
         }
 
+        if (facilityRefSet != null && facilityRefSet.size() > 0 && !facilityRefSet.contains(key.getFacilityRef())) {
+            return false;
+        }
+
         if (stopRefSet != null && stopRefSet.size() > 0 && !stopRefSet.contains(key.getStopRef())) {
             return false;
         }
@@ -83,4 +97,6 @@ public class SiriObjectStorageKeyUtil {
 
         return true;
     }
+
+
 }

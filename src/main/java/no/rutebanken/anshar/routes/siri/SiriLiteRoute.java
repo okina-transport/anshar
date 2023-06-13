@@ -72,6 +72,9 @@ public class SiriLiteRoute extends RestRouteBuilder {
     @Autowired
     private GeneralMessages generalMessages;
 
+    @Autowired
+    private FacilityMonitoring facilityMonitoring;
+
     @Override
     public void configure() throws Exception {
         super.configure();
@@ -110,6 +113,11 @@ public class SiriLiteRoute extends RestRouteBuilder {
                         .param().required(false).name(PARAM_USE_ALT_ID).type(RestParamType.query).description("Option to return alternative Ids").dataType("boolean").endParam()
                         .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
                 .get("/gm").to("direct:anshar.rest.gm")
+                        .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
+                        .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response").dataType("string").endParam()
+                        .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
+                        .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
+                .get("/fm").to("direct:anshar.rest.fm")
                         .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
                         .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response").dataType("string").endParam()
                         .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
@@ -411,6 +419,48 @@ public class SiriLiteRoute extends RestRouteBuilder {
                 .otherwise()
                 .to("direct:anshar.invalid.tracking.header.response")
                 .routeId("incoming.rest.gm")
+        ;
+
+        // Dataproviders
+        from("direct:internal.anshar.rest.fm")
+                .log("RequestTracer - Incoming request (FM)")
+                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true")
+                .choice()
+                .when(e -> isTrackingHeaderAcceptable(e))
+                .process(p -> {
+                    p.getOut().setHeaders(p.getIn().getHeaders());
+
+                    String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
+
+                    String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
+                    String originalId = p.getIn().getHeader(PARAM_USE_ORIGINAL_ID, String.class);
+                    Integer maxSizeStr = p.getIn().getHeader(PARAM_MAX_SIZE, Integer.class);
+                    String etClientName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
+                    int maxSize = datasetId != null ? Integer.MAX_VALUE:configuration.getDefaultMaxSize();
+
+                    if (maxSizeStr != null) {
+                        maxSize = maxSizeStr.intValue();
+                    }
+                    Siri response = facilityMonitoring.createServiceDelivery(requestorId, datasetId, etClientName, null, maxSize,null,null,null,null);
+
+                    List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
+                            SiriDataType.FACILITY_MONITORING,
+                            SiriHandler.getIdMappingPolicy(originalId,null)
+                    );
+                    if ("test".equals(originalId)) {
+                        outboundAdapters = null;
+                    }
+                    response = SiriValueTransformer.transform(response, outboundAdapters, false, false);
+
+                    metrics.countOutgoingData(response, SubscriptionSetup.SubscriptionMode.LITE);
+
+                    HttpServletResponse out = p.getIn().getBody(HttpServletResponse.class);
+                    streamOutput(p, response, out);
+                })
+                .log("RequestTracer - Request done (FM)")
+                .otherwise()
+                .to("direct:anshar.invalid.tracking.header.response")
+                .routeId("incoming.rest.fm")
         ;
 
         from("direct:internal.anshar.rest.sx.cached")

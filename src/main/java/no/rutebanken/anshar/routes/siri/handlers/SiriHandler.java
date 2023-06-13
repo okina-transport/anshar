@@ -38,11 +38,14 @@ import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import no.rutebanken.anshar.util.GeneralMessageHelper;
 import no.rutebanken.anshar.util.IDUtils;
 import org.json.simple.JSONObject;
+import org.rutebanken.netex.model.SiteRefStructure;
 import org.rutebanken.siri20.util.SiriXml;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import uk.org.ifopt.siri20.StopPlaceComponentRefStructure;
+import uk.org.ifopt.siri20.StopPlaceRef;
 import uk.org.siri.siri20.*;
 
 import javax.xml.bind.JAXBException;
@@ -75,6 +78,9 @@ public class SiriHandler {
 
     @Autowired
     private GeneralMessages generalMessages;
+
+    @Autowired
+    private FacilityMonitoring facilityMonitoring;
 
     @Autowired
     private VehicleActivities vehicleActivities;
@@ -384,6 +390,82 @@ public class SiriHandler {
                 List<InfoChannelRefStructure> requestedChannels = request.getInfoChannelReves();
                 valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idMap);
                 serviceResponse = generalMessages.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, requestedChannels);
+                GeneralMessageHelper.applyTransformationsInContent(serviceResponse,valueAdapters, idMap);
+
+            } else if (hasValues(serviceRequest.getFacilityMonitoringRequests())) {
+                dataType = SiriDataType.FACILITY_MONITORING;
+
+                Map<Class, Set<String>> filterMap = new HashMap<>();
+                for (FacilityMonitoringRequestStructure req : serviceRequest.getFacilityMonitoringRequests()) {
+                    List<FacilityRef> facilityReves = req.getFacilityReves();
+                    if (facilityReves != null && !facilityReves.isEmpty()) {
+                        Set<String> facilityRevesList = filterMap.get(FacilityRef.class) != null ? filterMap.get(FacilityRef.class) : new HashSet<>();
+                        facilityRevesList.addAll(facilityReves.stream().map(facilityRef -> facilityRef.getValue()).collect(Collectors.toSet()));
+                        filterMap.put(FacilityRef.class, facilityRevesList);
+                    }
+                    LineRef lineRef = req.getLineRef();
+                    if (lineRef != null) {
+                        Set<String> linerefList = filterMap.get(LineRef.class) != null ? filterMap.get(LineRef.class) : new HashSet<>();
+                        linerefList.add(lineRef.getValue());
+                        filterMap.put(LineRef.class, linerefList);
+                    }
+                    StopPointRef stopPointRef = req.getStopPointRef();
+                    if (stopPointRef != null) {
+                        Set<String> stopPointRefList = filterMap.get(StopPointRef.class) != null ? filterMap.get(StopPointRef.class) : new HashSet<>();
+                        stopPointRefList.add(stopPointRef.getValue());
+                        filterMap.put(StopPointRef.class, stopPointRefList);
+                    }
+                    VehicleRef vehicleRef = req.getVehicleRef();
+                    if (vehicleRef != null) {
+                        Set<String> vehicleRefList = filterMap.get(VehicleRef.class) != null ? filterMap.get(VehicleRef.class) : new HashSet<>();
+                        vehicleRefList.add(vehicleRef.getValue());
+                        filterMap.put(VehicleRef.class, vehicleRefList);
+                    }
+                    //todo upgrade pour avoir les siteRef
+/*                    SiteRefStructure siteRef = req.getSiteRef;
+                    if (stopPlaceComponentRef != null) {
+                        Set<String> stopPlaceComponentRefList = filterMap.get(StopPlaceComponentRefStructure.class) != null ? filterMap.get(StopPlaceComponentRefStructure.class) : new HashSet<>();
+                        stopPlaceComponentRefList.add(stopPlaceComponentRef.getValue());
+                        filterMap.put(StopPlaceComponentRefStructure.class, stopPlaceComponentRefList);
+                    }*/
+
+                }
+
+                Set<String> lineRefList = filterMap.get(LineRef.class) != null ? filterMap.get(LineRef.class) : new HashSet<>();
+                Set<String> stopPointRefList = filterMap.get(StopPointRef.class) != null ? filterMap.get(StopPointRef.class) : new HashSet<>();
+                Set<String> facilityRefList = filterMap.get(FacilityRef.class) != null ? filterMap.get(FacilityRef.class) : new HashSet<>();
+                Set<String> vehicleRefList = filterMap.get(VehicleRef.class) != null ? filterMap.get(VehicleRef.class) : new HashSet<>();
+                //todo ajouter quand on aura les siteRef
+                //Set<String> siteRefList = filterMap.get(SiteRef.class) != null ? filterMap.get(SiteRef.class) : new HashSet<>();
+
+                Set<String> lineRefOriginalList;
+                if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy)) {
+                    lineRefOriginalList = convertFromAltIdsToImportedIdsLine(lineRefList, datasetId);
+                } else {
+                    lineRefOriginalList = lineRefList;
+                }
+
+
+                Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParams(datasetId, lineRefOriginalList, ObjectType.LINE);
+                Set<String> revertedLineRefs = IDUtils.revertMonitoringRefs(lineRefOriginalList, idMap.get(ObjectType.LINE));
+
+
+                if (revertedLineRefs.size() > 0) {
+                    List<String> invalidDataReferences = revertedLineRefs.stream()
+                            .filter(lineRef -> !subscriptionManager.isLineRefExistingInSubscriptions(lineRef))
+                            .collect(Collectors.toList());
+
+                    handleInvalidDataReferences(serviceResponse, invalidDataReferences);
+                }
+
+                Siri siri = facilityMonitoring.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize,
+                        revertedLineRefs, facilityRefList, vehicleRefList, stopPointRefList);
+                serviceResponse = siri;
+                String requestMsgRef = siri.getServiceDelivery().getRequestMessageRef().getValue();
+                logger.info("Filtering done. Returning :  {} for requestorRef {}", countVehicleActivityResults(serviceResponse), requestMsgRef);
+
+
+                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idMap);
                 GeneralMessageHelper.applyTransformationsInContent(serviceResponse,valueAdapters, idMap);
 
             }

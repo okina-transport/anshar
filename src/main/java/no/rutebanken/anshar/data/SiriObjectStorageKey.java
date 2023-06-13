@@ -15,18 +15,25 @@ public class SiriObjectStorageKey implements Serializable {
     private final String key;
     private final String vehicleJourney;
     private final String type;
+    private final String facilityRef;
 
 
     public SiriObjectStorageKey(String codespaceId, String lineRef, String key) {
-        this(codespaceId, lineRef, key, null,null, null);
+        this(codespaceId, lineRef, key, null,null, null, null);
     }
     public SiriObjectStorageKey(String codespaceId, String lineRef, String key, String stopRef, String vehicleJourney, String type) {
+        this(codespaceId, lineRef, key, stopRef,vehicleJourney, type, null);
+    }
+
+    public SiriObjectStorageKey(String codespaceId, String lineRef, String key, String stopRef, String vehicleJourney, String type,
+                                String facilityRef) {
         this.codespaceId = codespaceId;
         this.lineRef = lineRef;
         this.key = key;
         this.stopRef = stopRef;
         this.vehicleJourney = vehicleJourney;
         this.type = type;
+        this.facilityRef = facilityRef;
 
     }
 
@@ -46,6 +53,10 @@ public class SiriObjectStorageKey implements Serializable {
         return stopRef;
     }
 
+    public String getFacilityRef() {
+        return stopRef;
+    }
+
     String getVehicleJourney() {
         return vehicleJourney;
     }
@@ -61,6 +72,7 @@ public class SiriObjectStorageKey implements Serializable {
                 .add("lineRef='" + lineRef + "'")
                 .add("vehicleJourney='" + vehicleJourney + "'")
                 .add("stopRef='" + stopRef + "'")
+                .add("facilityRef='" + facilityRef + "'")
                 .add("key='" + key + "'")
                 .toString();
     }
@@ -76,6 +88,7 @@ public class SiriObjectStorageKey implements Serializable {
         SiriObjectStorageKey that = (SiriObjectStorageKey) o;
         return Objects.equal(codespaceId, that.codespaceId) &&
                 Objects.equal(stopRef, that.stopRef) &&
+                Objects.equal(facilityRef, that.facilityRef) &&
                 Objects.equal(vehicleJourney, that.vehicleJourney) &&
                 Objects.equal(lineRef, that.lineRef) &&
                 Objects.equal(key, that.key);
@@ -83,6 +96,6 @@ public class SiriObjectStorageKey implements Serializable {
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(codespaceId, lineRef, key, stopRef, vehicleJourney);
+        return Objects.hashCode(codespaceId, lineRef, key, stopRef, vehicleJourney, facilityRef);
     }
 }

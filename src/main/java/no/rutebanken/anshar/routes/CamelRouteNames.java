@@ -31,6 +31,7 @@ public class CamelRouteNames {
     public static final String TRANSFORM_QUEUE_ET = QUEUE_PREFIX + ".transform.et";
     public static final String TRANSFORM_QUEUE_SM = QUEUE_PREFIX + ".transform.sm";
     public static final String TRANSFORM_QUEUE_GM = QUEUE_PREFIX + ".transform.gm";
+    public static final String TRANSFORM_QUEUE_FM = QUEUE_PREFIX + ".transform.fm";
 
     public static final String PROCESSOR_QUEUE_DEFAULT = QUEUE_PREFIX + ".process";
 

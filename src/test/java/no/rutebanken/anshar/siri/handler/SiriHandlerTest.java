@@ -15,10 +15,7 @@
 
 package no.rutebanken.anshar.siri.handler;
 
-import no.rutebanken.anshar.data.EstimatedTimetables;
-import no.rutebanken.anshar.data.MonitoredStopVisits;
-import no.rutebanken.anshar.data.Situations;
-import no.rutebanken.anshar.data.VehicleActivities;
+import no.rutebanken.anshar.data.*;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
 import no.rutebanken.anshar.routes.siri.SiriApisRequestHandlerRoute;
@@ -69,6 +66,9 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
     @Autowired
     private SubscriptionManager subscriptionManager;
+
+    @Autowired
+    private FacilityMonitoring facilityMonitoring;
 
     @Autowired
     private SiriHandler handler;
@@ -210,6 +210,36 @@ public class SiriHandlerTest extends SpringBootBaseTest {
             smSubscription.setStopMonitoringRefValue("sp3");
             subscriptionManager.addSubscription(smSubscription.getSubscriptionId(), smSubscription);
             handler.handleIncomingSiri(smSubscription.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes()));
+        } catch (Throwable t) {
+            fail("Handling empty response caused exception");
+        }
+    }
+
+    @Test
+    public void testErrorInFMServiceDelivery() {
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+                "<siri:Siri xmlns:siri=\"http://www.siri.org.uk/siri\">\n" +
+                "  <siril:ServiceDelivery xmlns:siril=\"http://www.siri.org.uk/siri\">\n" +
+                "    <ResponseTimestamp xmlns=\"http://www.siri.org.uk/siri\">2016-11-10T04:27:15.9028457+01:00</ResponseTimestamp>\n" +
+                "    <ProducerRef xmlns=\"http://www.siri.org.uk/siri\">ATB</ProducerRef>\n" +
+                "    <ResponseMessageIdentifier xmlns=\"http://www.siri.org.uk/siri\">R_</ResponseMessageIdentifier>\n" +
+                "    <FacilityMonitoringDelivery xmlns=\"http://www.siri.org.uk/siri\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"                                 xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"                                 xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"                                 version=\"2.0\">\n" +
+                "      <ResponseTimestamp>2016-11-10T04:27:15.9028457+01:00</ResponseTimestamp>\n" +
+                "      <RequestMessageRef>e1995179-cc74-4354-84b2-dbb9850c1b9a</RequestMessageRef>\n" +
+                "      <Status>false</Status>\n" +
+                "      <ErrorCondition>\n" +
+                "        <NoInfoForTopicError/>\n" +
+                "        <Description>Unable to connect to the remote server</Description>\n" +
+                "      </ErrorCondition>\n" +
+                "    </FacilityMonitoringDelivery>\n" +
+                "  </siril:ServiceDelivery>\n" +
+                "</siri:Siri>\n";
+
+        try {
+            SubscriptionSetup fmSubscription = getFmSubscription();
+            fmSubscription.setStopMonitoringRefValue("sp3");
+            subscriptionManager.addSubscription(fmSubscription.getSubscriptionId(), fmSubscription);
+            handler.handleIncomingSiri(fmSubscription.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes()));
         } catch (Throwable t) {
             fail("Handling empty response caused exception");
         }
@@ -519,6 +549,9 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     }
 
     private SubscriptionSetup getSmSubscription() { return getSubscriptionSetup(SiriDataType.STOP_MONITORING);
+    }
+
+    private SubscriptionSetup getFmSubscription() { return getSubscriptionSetup(SiriDataType.FACILITY_MONITORING);
     }
 
     private SubscriptionSetup getSubscriptionSetup(SiriDataType type) {
