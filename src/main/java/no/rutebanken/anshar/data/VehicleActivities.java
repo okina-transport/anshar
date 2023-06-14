@@ -23,6 +23,18 @@ import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
+import uk.org.siri.siri21.AbstractItemStructure;
+import uk.org.siri.siri21.CoordinatesStructure;
+import uk.org.siri.siri21.LocationStructure;
+import uk.org.siri.siri21.MessageRefStructure;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.VehicleActivityStructure;
+import uk.org.siri.siri21.VehicleRef;
 
 import com.hazelcast.map.IMap;
 import javax.annotation.PostConstruct;
@@ -41,6 +53,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -52,7 +65,7 @@ import uk.org.siri.siri20.VehicleActivityStructure;
 import org.quartz.utils.counter.Counter;
 import org.quartz.utils.counter.CounterImpl;
 
-@Repository
+@Component
 public class VehicleActivities extends SiriRepository<VehicleActivityStructure> {
     private final Logger logger = LoggerFactory.getLogger(VehicleActivities.class);
 
@@ -312,9 +325,19 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
 
         ZonedDateTime validUntil = a.getValidUntilTime();
         if (validUntil != null) {
-            return ZonedDateTime.now().until(validUntil.plus(configuration.getVmGraceperiodMinutes(), ChronoUnit.MINUTES), ChronoUnit.MILLIS);
+
+            if (validUntil.getYear() > ZonedDateTime.now().getYear()) {
+                // Handle cornercase when validity is set too far ahead - e.g. year 9999
+                validUntil = validUntil.withYear(ZonedDateTime.now().getYear()+1);
+            }
+
+            return ZonedDateTime.now().until(
+                    validUntil.plus(configuration.getVmGraceperiodMinutes(), ChronoUnit.MINUTES),
+                    ChronoUnit.MILLIS
+            );
         }
 
+        // No to-validity set - ignore as this is a required field
         return -1;
     }
 
@@ -323,10 +346,10 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
         Map<SiriObjectStorageKey, VehicleActivityStructure> changes = new HashMap<>();
         Map<SiriObjectStorageKey, String> checksumCacheTmp = new HashMap<>();
 
-        Counter invalidLocationCounter = new CounterImpl(0);
-        Counter notMeaningfulCounter = new CounterImpl(0);
-        Counter outdatedCounter = new CounterImpl(0);
-        Counter notUpdatedCounter = new CounterImpl(0);
+        AtomicInteger invalidLocationCounter = new AtomicInteger(0);
+        AtomicInteger notMeaningfulCounter = new AtomicInteger(0);
+        AtomicInteger outdatedCounter = new AtomicInteger(0);
+        AtomicInteger notUpdatedCounter = new AtomicInteger(0);
 
         vmList.stream()
                 .filter(activity -> activity.getMonitoredVehicleJourney() != null)
@@ -382,7 +405,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
                             changes.put(key, activity);
                             checksumCacheTmp.put(key, currentChecksum);
                         } else {
-                            outdatedCounter.increment();
+                            outdatedCounter.incrementAndGet();
 
                             //Keeping all checksums for at least 5 minutes to avoid stale data
                             checksumCache.set(key, currentChecksum, 5, TimeUnit.MINUTES);
@@ -390,7 +413,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
 
                         }
 
-                        if (!isLocationValid(activity)) {invalidLocationCounter.increment();}
+                        if (!isLocationValid(activity)) {invalidLocationCounter.incrementAndGet();}
                         timingTracer.mark("isLocationValid");
 
                         // Skip this check for now
@@ -398,7 +421,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
 //                        timingTracer.mark("isActivityMeaningful");
 
                     } else {
-                        notUpdatedCounter.increment();
+                        notUpdatedCounter.incrementAndGet();
                     }
 
                     long elapsed = timingTracer.getTotalTime();
@@ -414,9 +437,9 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
         monitoredVehicles.setAll(changes);
         timingTracer.mark("monitoredVehicles.setAll");
 
-        logger.info("Updated {} (of {}) :: Ignored elements - Missing location:{}, Missing values: {}, Expired: {}, Not updated: {}", changes.size(), vmList.size(), invalidLocationCounter.getValue(), notMeaningfulCounter.getValue(), outdatedCounter.getValue(), notUpdatedCounter.getValue());
+        logger.info("Updated {} (of {}) :: Ignored elements - Missing location:{}, Missing values: {}, Expired: {}, Not updated: {}", changes.size(), vmList.size(), invalidLocationCounter.get(), notMeaningfulCounter.get(), outdatedCounter.get(), notUpdatedCounter.get());
 
-        markDataReceived(SiriDataType.VEHICLE_MONITORING, datasetId, vmList.size(), changes.size(), outdatedCounter.getValue(), (invalidLocationCounter.getValue() + notMeaningfulCounter.getValue() + notUpdatedCounter.getValue()));
+        markDataReceived(SiriDataType.VEHICLE_MONITORING, datasetId, vmList.size(), changes.size(), outdatedCounter.get(), (invalidLocationCounter.get() + notMeaningfulCounter.get() + notUpdatedCounter.get()));
 
         timingTracer.mark("markDataReceived");
         markIdsAsUpdated(changes.keySet());
@@ -497,19 +520,10 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
     private boolean isActivityMeaningful(VehicleActivityStructure activity) {
         boolean keep = true;
 
-        VehicleActivityStructure.MonitoredVehicleJourney monitoredVehicleJourney = activity.getMonitoredVehicleJourney();
-        if (monitoredVehicleJourney != null) {
-            LineRef lineRef = monitoredVehicleJourney.getLineRef();
-            CourseOfJourneyRefStructure courseOfJourneyRef = monitoredVehicleJourney.getCourseOfJourneyRef();
-            DirectionRefStructure directionRef = monitoredVehicleJourney.getDirectionRef();
-            if (lineRef == null && courseOfJourneyRef == null && directionRef == null) {
-                keep = false;
-                logger.trace("Assumed meaningless VehicleActivity skipped - LineRef, CourseOfJourney and DirectionRef is null.");
-            }
-
-        } else {
-            keep = false;
+        if (activity.getValidUntilTime() == null) {
+            return false;
         }
+
         return keep;
     }
 
@@ -522,6 +536,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
      */
     private SiriObjectStorageKey createKey(String datasetId, VehicleActivityStructure.MonitoredVehicleJourney monitoredVehicleJourney, String vehicleRefvalue) {
         StringBuilder key = new StringBuilder();
+
 
         if (monitoredVehicleJourney.getVehicleRef() != null) {
             VehicleRef vehicleRef = monitoredVehicleJourney.getVehicleRef();

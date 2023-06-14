@@ -13,10 +13,10 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static uk.org.siri.siri20.VehicleModesEnumeration.BUS;
-import static uk.org.siri.siri20.VehicleModesEnumeration.COACH;
-import static uk.org.siri.siri20.VehicleModesEnumeration.RAIL;
-import static uk.org.siri.siri20.VehicleModesEnumeration.TRAM;
+import static uk.org.siri.siri21.VehicleModesEnumeration.BUS;
+import static uk.org.siri.siri21.VehicleModesEnumeration.COACH;
+import static uk.org.siri.siri21.VehicleModesEnumeration.RAIL;
+import static uk.org.siri.siri21.VehicleModesEnumeration.TRAM;
 
 public class StopsUtilTest {
 
@@ -54,6 +54,35 @@ public class StopsUtilTest {
 
         assertEquals(190,  speedKph);
 
+    }
+
+    @Test
+    public void testInfiniteSpeed() {
+        String fromRef = "NSR:Quay:47719"; // Mento
+        String toRef = "NSR:Quay:44786";   // Risavika utenriksterminal
+
+        BigDecimal fromLon = new BigDecimal(5.584158);
+        BigDecimal fromLat = new BigDecimal(58.917911);
+
+        BigDecimal toLon = new BigDecimal(5.582071);
+        BigDecimal toLat = new BigDecimal(58.921065);
+
+        NetexUpdaterService.locations.put(fromRef,
+                new LocationStructure().withLatitude(fromLat).withLongitude(fromLon)
+        );
+        NetexUpdaterService.locations.put(toRef,
+                new LocationStructure().withLatitude(toLat).withLongitude(toLon)
+        );
+
+        final double distance = StopsUtil.getDistance(fromRef, toRef);
+        assertTrue(((int)distance) == 371); // Verifying approximate distance
+
+
+        // Verifying cornercase when arrival-/departure-times are equal
+        ZonedDateTime now = ZonedDateTime.now();
+        final int speedKph = StopsUtil.calculateSpeedKph(fromRef, toRef, now, now );
+
+        assertEquals(Integer.MAX_VALUE,  speedKph);
     }
 
     @Test

@@ -10,7 +10,7 @@ import org.locationtech.jts.geom.Coordinate;
 import org.opengis.referencing.operation.TransformException;
 import org.rutebanken.netex.model.LocationStructure;
 import org.rutebanken.netex.model.VehicleModeEnumeration;
-import uk.org.siri.siri20.VehicleModesEnumeration;
+import uk.org.siri.siri21.VehicleModesEnumeration;
 
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -94,7 +94,7 @@ public class StopsUtil {
     public static int calculateSpeedKph(double distanceInMeters, ZonedDateTime departureTime, ZonedDateTime arrivalTime) {
         final long seconds = getSeconds(departureTime, arrivalTime);
         if (seconds <= 0) {
-            return -1;
+            return Integer.MAX_VALUE;
         }
         double metersPerSecond = distanceInMeters/seconds;
         double kilometersPerHour = metersPerSecond * 3.6;

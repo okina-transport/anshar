@@ -32,17 +32,19 @@ import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.EstimatedVersionFrameStructure;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.SituationExchangeDeliveryStructure;
-import uk.org.siri.siri20.VehicleMonitoringDeliveryStructure;
+import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
+import uk.org.siri.siri21.EstimatedVersionFrameStructure;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.SituationExchangeDeliveryStructure;
+import uk.org.siri.siri21.VehicleMonitoringDeliveryStructure;
 
 import javax.annotation.PreDestroy;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static no.rutebanken.anshar.subscription.SubscriptionSetup.SubscriptionMode.AVRO_PUBSUB;
 
 @Component
 public class PrometheusMetricsService extends PrometheusMeterRegistry {
@@ -51,6 +53,10 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
     private static final String AGENCY_TAG_NAME = "agency";
     private static final String MAPPING_ID_TAG = "mappingId";
     private static final String MAPPING_NAME_TAG = "mappingName";
+    private static final String SIRI_CONTENT_NAME_TAG = "siriContent";
+    private static final String SIRI_CONTENT_LABEL_TAG = "siriContentLabel";
+    private static final String SIRI_CONTENT_GROUP_TAG = "group";
+    private static final String SERVICE_JOURNEY_ID_TAG_NAME = "serviceJourney";
 
     private static final String KAFKA_STATUS_TAG = "kafkaStatus";
     private static final String KAFKA_TOPIC_NAME = "kafkaTopic";
@@ -73,6 +79,8 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
     private static final String DATA_OUTBOUND_COUNTER_NAME = METRICS_PREFIX + "data.outbound";
 
     private static final String DATA_MAPPING_COUNTER_NAME = METRICS_PREFIX + "data.mapping";
+
+    private static final String SIRI_CONTENT_COUNTER_NAME = METRICS_PREFIX + "siri.content";
 
     private static final String KAFKA_COUNTER_NAME = METRICS_PREFIX + "data.kafka";
 
@@ -111,7 +119,22 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
         counter(DATA_MAPPING_COUNTER_NAME, counterTags).increment(mappedCount);
     }
 
-    public enum KafkaStatus {SENT, ACKED, FAILED}
+    public void registerSiriContent(SiriDataType dataType, String agencyId, String serviceJourneyId, SiriContent content) {
+        List<Tag> counterTags = new ArrayList<>();
+        counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType.name()));
+        if (agencyId != null) {
+            counterTags.add(new ImmutableTag(AGENCY_TAG_NAME, agencyId));
+        }
+        if (serviceJourneyId != null) {
+            counterTags.add(new ImmutableTag(SERVICE_JOURNEY_ID_TAG_NAME, serviceJourneyId));
+        }
+        counterTags.add(new ImmutableTag(SIRI_CONTENT_NAME_TAG, content.name()));
+        counterTags.add(new ImmutableTag(SIRI_CONTENT_LABEL_TAG, content.getLabel()));
+        counterTags.add(new ImmutableTag(SIRI_CONTENT_GROUP_TAG, content.getGroup().name()));
+
+        counter(SIRI_CONTENT_COUNTER_NAME, counterTags).increment();
+    }
+
     public void registerAckedKafkaRecord(String topic) {
         registerKafkaRecord(topic, KafkaStatus.ACKED);
     }
@@ -121,6 +144,10 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
         counterTags.add(new ImmutableTag(KAFKA_STATUS_TAG, status.name()));
 
         counter(KAFKA_COUNTER_NAME, counterTags).increment();
+    }
+
+    public void registerAvroPubsubRecord(SiriDataType dataType) {
+        countOutgoingData(dataType, AVRO_PUBSUB, 1);
     }
 
     public void countOutgoingData(Siri siri, SubscriptionSetup.SubscriptionMode mode) {

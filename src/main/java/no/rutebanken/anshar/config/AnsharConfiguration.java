@@ -23,7 +23,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
-import java.time.Instant;
+import java.time.Duration;
 import java.util.List;
 
 @Configuration
@@ -132,6 +132,12 @@ public class AnsharConfiguration {
 
     @Value("${anshar.application.mode:}")
     private List<AppMode> appModes;
+
+    @Value("${anshar.split.data.for.processing:false}")
+    private Boolean splitDataForProcessing;
+    @Value("${anshar.siri.et.future.update.hard.limit.duration:}")
+    private Duration hardLimitForFutureUpdates;
+
 
     @Autowired
     @Qualifier("getLockMap")
@@ -282,6 +288,14 @@ public class AnsharConfiguration {
     }
     public boolean processData() {
         return (appModes.isEmpty() || ((appModes.contains(AppMode.DATA_ET) | appModes.contains(AppMode.DATA_VM) | appModes.contains(AppMode.DATA_SX))));
+    }
+
+    public Boolean splitDataForProcessing() {
+        return splitDataForProcessing;
+    }
+
+    public Duration hardLimitForFutureEtUpdates() {
+        return hardLimitForFutureUpdates;
     }
 
     public boolean isHealthcheckDisabled() {

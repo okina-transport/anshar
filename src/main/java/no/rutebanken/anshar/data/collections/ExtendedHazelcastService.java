@@ -38,6 +38,7 @@ import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.rutebanken.hazelcasthelper.service.HazelCastService;
+import org.rutebanken.hazelcasthelper.service.KubernetesService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,7 +46,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.PtSituationElement;
+import uk.org.siri.siri21.VehicleActivityStructure;
 
 import javax.annotation.PreDestroy;
 import java.lang.invoke.SerializedLambda;
@@ -53,7 +56,6 @@ import java.math.BigInteger;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.*;
-
 
 @Service
 @Configuration

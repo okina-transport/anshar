@@ -25,6 +25,7 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
+import org.entur.siri.validator.SiriValidator;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.slf4j.Logger;
@@ -35,20 +36,32 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.AbstractSubscriptionStructure;
+import uk.org.siri.siri21.CheckStatusRequestStructure;
+import uk.org.siri.siri21.EstimatedTimetableSubscriptionStructure;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.PtSituationElement;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.SituationExchangeSubscriptionStructure;
+import uk.org.siri.siri21.SubscriptionRequest;
+import uk.org.siri.siri21.VehicleActivityStructure;
+import uk.org.siri.siri21.VehicleMonitoringSubscriptionStructure;
 
 import javax.xml.datatype.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 import static java.time.temporal.ChronoUnit.MILLIS;
-
+import static no.rutebanken.anshar.routes.kafka.KafkaConfig.CODESPACE_ID_KAFKA_HEADER_NAME;
 
 @SuppressWarnings("unchecked")
 @Service
@@ -220,7 +233,10 @@ public class ServerSubscriptionManager {
                 subscriptionRequest.getRequestorRef().getValue(),
                 findInitialTerminationTime(subscriptionRequest),
                 datasetId,
-                clientTrackingName
+                clientTrackingName,
+                outboundIdMappingPolicy.equals(OutboundIdMappingPolicy.SIRI_2_1) ?
+                        SiriValidator.Version.VERSION_2_1 : SiriValidator.Version.VERSION_2_0
+
                 );
     }
 
@@ -435,7 +451,7 @@ public class ServerSubscriptionManager {
             )
             .collect(Collectors.toList());
 
-        boolean logFullContents = true;
+        boolean logFullContents = false;
         for (OutboundSubscriptionSetup recipient : recipients) {
             camelRouteManager.pushSiriData(delivery, recipient, logFullContents);
             logFullContents = false;
@@ -511,8 +527,8 @@ public class ServerSubscriptionManager {
                                 )
                         )
 
-                )
-                .collect(Collectors.toList());
+            )
+            .collect(Collectors.toList());
 
         boolean logFullContents = true;
         for (OutboundSubscriptionSetup recipient : recipients) {

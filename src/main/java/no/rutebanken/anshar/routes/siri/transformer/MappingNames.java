@@ -10,7 +10,9 @@ public enum MappingNames {
         REMOVE_FREIGHT_TRAIN("Remove freight train"),
         REMOVE_UNKNOWN_DEPARTURE("Remove unknown departure"),
         RESTRUCTURE_DEPARTURE("Restructure departure"),
+        REPLACE_TRAIN_NUMBER("Train-number replaced"),
         ENSURE_INCREASING_TIMES("Ensure increasing times"),
+        ENSURE_INCREASING_INACCURATE_TIMES("Override missing realtime (predictionInaccurate)"),
         LINE_MAPPING("Create NeTEx-LineRef"),
         SET_MISSING_REPORT_TYPE("Set missing ReportType"),
         APPEND_PREFIX("Add prefix to create NeTEx-ID"),
@@ -20,7 +22,8 @@ public enum MappingNames {
         ADD_ORDER_TO_CALLS("Add Order to calls"),
         EXTRA_JOURNEY_TOO_FAST("ExtraJourney is reported to travel too fast between stops"),
         EXTRA_JOURNEY_INVALID_MODE("ExtraJourney mode does not match stops in use"),
-        EXTRA_JOURNEY_ID_EXISTS("ExtraJourney has ID that already exists in plan-data")
+        EXTRA_JOURNEY_ID_EXISTS("ExtraJourney has ID that already exists in plan-data"),
+        OVERRIDE_MONITORED_FALSE("Monitored is set to false, but a pattern-change has been detected")
         ;
 
 

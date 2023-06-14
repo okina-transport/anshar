@@ -8,13 +8,17 @@ import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.Siri;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.MediaType;
 import java.io.ByteArrayOutputStream;
 
+import static no.rutebanken.anshar.routes.HttpParameter.SIRI_VERSION_HEADER_NAME;
+import static no.rutebanken.anshar.routes.RestRouteBuilder.downgradeSiriVersion;
+
 @Service
+@Configuration
 public class OutboundSiriDistributionRoute extends RouteBuilder {
 
     @Autowired
@@ -23,14 +27,25 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
     @Autowired
     private PrometheusMetricsService metrics;
 
+
+    @Value("${anshar.outbound.error.redelivery.delay.millis:1000}")
+    private int redeliveryDelay;
+
+    @Value("${anshar.outbound.error.redelivery.count:2}")
+    private int redeliveryCount;
+
+    @Value("${anshar.outbound.timeout.socket:15000}")
+    private int socketTimeout;
+
+    @Value("${anshar.outbound.timeout.connect:5000}")
+    private int connectTimeout;
+
     @Override
     public void configure() {
 
-        int timeout = 15000;
-
         onException(Exception.class)
-            .maximumRedeliveries(2)
-            .redeliveryDelay(3000) //milliseconds
+            .maximumRedeliveries(redeliveryCount)
+            .redeliveryDelay(redeliveryDelay)
             .logRetryAttempted(true)
             .log("Retry triggered")
         ;
@@ -42,17 +57,21 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
                 .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.APPLICATION_XML))
                 .bean(metrics, "countOutgoingData(${body}, SUBSCRIBE)")
                 .to("direct:siri.transform.data")
-                .process(p->{
-                    Siri response = p.getIn().getBody(Siri.class);
-                    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                    CustomSiriXml.toXml(response,null, byteArrayOutputStream);
-                    p.getIn().setBody(byteArrayOutputStream.toString());
-                })
-                .setHeader("httpClient.socketTimeout", constant(timeout))
-                .setHeader("httpClient.connectTimeout", constant(timeout))
+                .choice()
+                    .when(header(SIRI_VERSION_HEADER_NAME).isEqualTo(SiriValidator.Version.VERSION_2_1))
+                        .marshal(SiriDataFormatHelper.getSiriJaxbDataformat(SiriValidator.Version.VERSION_2_1))
+                    .endChoice()
+                    .otherwise()
+                        .process(p -> {
+                            p.getMessage().setBody(downgradeSiriVersion(p.getIn().getBody(Siri.class)));
+                        })
+                        .marshal(SiriDataFormatHelper.getSiriJaxbDataformat(SiriValidator.Version.VERSION_2_0))
+                .end()
+                .setHeader("httpClient.socketTimeout", constant(socketTimeout))
+                .setHeader("httpClient.connectTimeout", constant(connectTimeout))
                 .choice()
                 .when(header("showBody").isEqualTo(true))
-                        .to("log:push:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
+                        .to("log:push:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .endChoice()
                     .otherwise()
                         .to("log:push:" + getClass().getSimpleName() + "?showAll=false&showExchangeId=true&showHeaders=true&showException=true&multiline=true&showBody=false")

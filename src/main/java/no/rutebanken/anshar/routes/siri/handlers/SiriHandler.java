@@ -26,6 +26,7 @@ import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
+import no.rutebanken.anshar.routes.outbound.SiriHelper;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
@@ -35,15 +36,31 @@ import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
-import no.rutebanken.anshar.util.GeneralMessageHelper;
-import no.rutebanken.anshar.util.IDUtils;
+import org.entur.siri21.util.SiriXml;
 import org.json.simple.JSONObject;
 import org.rutebanken.siri20.util.SiriXml;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.ErrorCodeStructure;
+import uk.org.siri.siri21.ErrorDescriptionStructure;
+import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.LineRef;
+import uk.org.siri.siri21.PtSituationElement;
+import uk.org.siri.siri21.RequestorRef;
+import uk.org.siri.siri21.ServiceDeliveryErrorConditionElement;
+import uk.org.siri.siri21.ServiceRequest;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.SituationExchangeDeliveryStructure;
+import uk.org.siri.siri21.SubscriptionResponseStructure;
+import uk.org.siri.siri21.TerminateSubscriptionRequestStructure;
+import uk.org.siri.siri21.TerminateSubscriptionResponseStructure;
+import uk.org.siri.siri21.VehicleActivityStructure;
+import uk.org.siri.siri21.VehicleMonitoringDeliveryStructure;
+import uk.org.siri.siri21.VehicleMonitoringRequestStructure;
+import uk.org.siri.siri21.VehicleRef;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.UnmarshalException;
@@ -51,11 +68,14 @@ import javax.xml.datatype.Duration;
 import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getOriginalId;
 
@@ -122,11 +142,12 @@ public class SiriHandler {
     }
 
     /**
-     * @param subscriptionId          SubscriptionId
-     * @param xml                     SIRI-request as XML
-     * @param datasetId               Optional datasetId
+     *
+     * @param subscriptionId SubscriptionId
+     * @param xml SIRI-request as XML
+     * @param datasetId Optional datasetId
      * @param outboundIdMappingPolicy Defines outbound idmapping-policy
-     * @return the siri response
+     * @return
      */
     public Siri handleIncomingSiri(String subscriptionId, InputStream xml, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String clientTrackingName) throws UnmarshalException {
         return handleIncomingSiri(subscriptionId, xml, datasetId, null, outboundIdMappingPolicy, maxSize, clientTrackingName);
@@ -169,19 +190,19 @@ public class SiriHandler {
                 dataType = SiriDataType.SITUATION_EXCHANGE;
 
                 final Collection<PtSituationElement> elements = situations.getAllCachedUpdates(requestorRef,
-                        datasetId,
-                        clientTrackingName
+                    datasetId,
+                    clientTrackingName
                 );
                 logger.info("Returning {} elements from cache", elements.size());
-                serviceResponse = siriObjectFactory.createSXServiceDelivery(elements);
+                serviceResponse =  siriObjectFactory.createSXServiceDelivery(elements);
 
             } else if (hasValues(serviceRequest.getVehicleMonitoringRequests())) {
                 dataType = SiriDataType.VEHICLE_MONITORING;
 
                 final Collection<VehicleActivityStructure> elements = vehicleActivities.getAllCachedUpdates(
-                        requestorRef,
-                        datasetId,
-                        clientTrackingName
+                    requestorRef,
+                    datasetId,
+                    clientTrackingName
                 );
                 logger.info("Returning {} elements from cache", elements.size());
                 serviceResponse = siriObjectFactory.createVMServiceDelivery(elements);
@@ -199,9 +220,6 @@ public class SiriHandler {
 
             if (serviceResponse != null) {
                 metrics.countOutgoingData(serviceResponse, SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE);
-
-
-
                 return SiriValueTransformer.transform(
                         serviceResponse,
                         MappingAdapterPresets.getOutboundAdapters(dataType, OutboundIdMappingPolicy.DEFAULT, subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId)),
@@ -214,13 +232,12 @@ public class SiriHandler {
     }
 
 
-
-
     /**
      * Handling incoming requests from external clients
      *
-     * @param incoming              incoming message
-     * @param excludedDatasetIdList dataset to exclude
+     * @param incoming
+     * @param excludedDatasetIdList
+     * @throws JAXBException
      */
     private Siri processSiriServerRequest(Siri incoming, String datasetId, List<String> excludedDatasetIdList, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String clientTrackingName) {
 
@@ -667,8 +684,10 @@ public class SiriHandler {
     /**
      * Handling incoming requests from external servers
      *
-     * @param subscriptionId the subscription's id
-     * @param xml            the incoming message
+     * @param subscriptionId
+     * @param xml
+     * @return
+     * @throws JAXBException
      */
     private void processSiriClientRequest(String subscriptionId, InputStream xml)
             throws XMLStreamException, JAXBException {
@@ -1279,7 +1298,7 @@ public class SiriHandler {
     }
 
     private Map<String, List<PtSituationElement>> splitSituationsByCodespace(
-            List<PtSituationElement> ptSituationElements
+        List<PtSituationElement> ptSituationElements
     ) {
         Map<String, List<PtSituationElement>> result = new HashMap<>();
         for (PtSituationElement ptSituationElement : ptSituationElements) {
@@ -1291,8 +1310,8 @@ public class SiriHandler {
                 participantRef.setValue(codespace);
 
                 final List<PtSituationElement> situations = result.getOrDefault(
-                        codespace,
-                        new ArrayList<>()
+                    codespace,
+                    new ArrayList<>()
                 );
 
                 situations.add(ptSituationElement);
@@ -1360,8 +1379,8 @@ public class SiriHandler {
     /**
      * Creates a json-string containing all potential errormessage-values
      *
-     * @param errorCondition the error condition to filter
-     * @return the error contents
+     * @param errorCondition
+     * @return
      */
     private String getErrorContents(ServiceDeliveryErrorConditionElement errorCondition) {
         String errorContents = "";

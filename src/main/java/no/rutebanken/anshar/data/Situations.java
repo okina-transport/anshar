@@ -26,18 +26,18 @@ import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
-import org.apache.camel.component.hazelcast.listener.MapEntryListener;
 import org.quartz.utils.counter.Counter;
 import org.quartz.utils.counter.CounterImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Repository;
-import uk.org.siri.siri20.HalfOpenTimestampOutputRangeStructure;
-import uk.org.siri.siri20.MessageRefStructure;
-import uk.org.siri.siri20.PtSituationElement;
-import uk.org.siri.siri20.Siri;
+import org.springframework.stereotype.Component;
+import uk.org.siri.siri21.HalfOpenTimestampOutputRangeStructure;
+import uk.org.siri.siri21.MessageRefStructure;
+import uk.org.siri.siri21.PtSituationElement;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.SituationVersion;
 
 import javax.annotation.PostConstruct;
 import java.time.Instant;
@@ -52,9 +52,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-@Repository
+@Component
 public class Situations extends SiriRepository<PtSituationElement> {
     private final Logger logger = LoggerFactory.getLogger(Situations.class);
 
@@ -329,8 +330,8 @@ public class Situations extends SiriRepository<PtSituationElement> {
         Map<SiriObjectStorageKey, PtSituationElement> changes = new HashMap<>();
         Map<SiriObjectStorageKey, String> checksumTmp = new HashMap<>();
 
-        Counter alreadyExpiredCounter = new CounterImpl(0);
-        Counter ignoredCounter = new CounterImpl(0);
+        AtomicInteger alreadyExpiredCounter = new AtomicInteger(0);
+        AtomicInteger ignoredCounter = new AtomicInteger(0);
         sxList.forEach(situation -> {
             TimingTracer timingTracer = new TimingTracer("single-sx");
 
@@ -350,6 +351,26 @@ public class Situations extends SiriRepository<PtSituationElement> {
             if (existingChecksum != null && situationElements.containsKey(key)) { // Checksum not compared if actual situation does not exist
                 //Exists - compare values
                 updated =  !(currentChecksum.equals(existingChecksum));
+
+                if (updated) { // Ignore if data is unchanged
+                    // Compare "Version" - if it exists
+                    // If received version is equal or higher - keep updated-flag
+                    if (situation.getVersion() != null) {
+                        SituationVersion newVersion = situation.getVersion();
+                        if (situationElements.containsKey(key)) {
+                            PtSituationElement existing = situationElements.get(key);
+                            if (existing != null && existing.getVersion() != null) {
+                                int currentVersion = existing.getVersion().getValue().intValue();
+                                int updatedVersion = newVersion.getValue().intValue();
+
+                                if (updatedVersion < currentVersion) {
+                                    // We already have a newer version - ignore this update
+                                    updated = false;
+                                }
+                            }
+                        }
+                    }
+                }
             } else {
                 //Does not exist
                 updated = true;
@@ -371,10 +392,10 @@ public class Situations extends SiriRepository<PtSituationElement> {
                     timingTracer.mark("checksumCache.remove");
                 }
                 if (expiration < 0) {
-                    alreadyExpiredCounter.increment();
+                    alreadyExpiredCounter.incrementAndGet();
                 }
             } else {
-                ignoredCounter.increment();
+                ignoredCounter.incrementAndGet();
             }
 
             long elapsed = timingTracer.getTotalTime();
@@ -384,14 +405,14 @@ public class Situations extends SiriRepository<PtSituationElement> {
         });
         TimingTracer timingTracer = new TimingTracer("all-sx [" + changes.size() + " changes]");
 
-        logger.info("Updated {} (of {}) :: Already expired: {}, Unchanged: {}", changes.size(), sxList.size(), alreadyExpiredCounter.getValue(), ignoredCounter.getValue());
+        logger.info("Updated {} (of {}) :: Already expired: {}, Unchanged: {}", changes.size(), sxList.size(), alreadyExpiredCounter.get(), ignoredCounter.get());
 
         checksumCache.setAll(checksumTmp);
         timingTracer.mark("checksumCache.setAll");
         situationElements.setAll(changes);
         timingTracer.mark("monitoredVehicles.setAll");
 
-        markDataReceived(SiriDataType.SITUATION_EXCHANGE, datasetId, sxList.size(), changes.size(), alreadyExpiredCounter.getValue(), ignoredCounter.getValue());
+        markDataReceived(SiriDataType.SITUATION_EXCHANGE, datasetId, sxList.size(), changes.size(), alreadyExpiredCounter.get(), ignoredCounter.get());
         timingTracer.mark("markDataReceived");
 
         markIdsAsUpdated(changes.keySet());

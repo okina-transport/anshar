@@ -31,19 +31,46 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.*;
-
-import javax.xml.bind.JAXBException;
-import javax.xml.datatype.DatatypeConfigurationException;
-import javax.xml.datatype.DatatypeFactory;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import uk.org.siri.siri21.CheckStatusRequestStructure;
+import uk.org.siri.siri21.CheckStatusResponseStructure;
+import uk.org.siri.siri21.DataReadyRequestStructure;
+import uk.org.siri.siri21.DataSupplyRequestStructure;
+import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
+import uk.org.siri.siri21.EstimatedTimetableRequestStructure;
+import uk.org.siri.siri21.EstimatedTimetableSubscriptionStructure;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.EstimatedVersionFrameStructure;
+import uk.org.siri.siri21.HeartbeatNotificationStructure;
+import uk.org.siri.siri21.LineDirectionStructure;
+import uk.org.siri.siri21.LineRef;
+import uk.org.siri.siri21.MessageQualifierStructure;
+import uk.org.siri.siri21.MessageRefStructure;
+import uk.org.siri.siri21.OperatorRefStructure;
+import uk.org.siri.siri21.OtherErrorStructure;
+import uk.org.siri.siri21.PtSituationElement;
+import uk.org.siri.siri21.RequestorRef;
+import uk.org.siri.siri21.ResponseStatus;
+import uk.org.siri.siri21.ServiceDelivery;
+import uk.org.siri.siri21.ServiceDeliveryErrorConditionElement;
+import uk.org.siri.siri21.ServiceRequest;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.SituationExchangeDeliveryStructure;
+import uk.org.siri.siri21.SituationExchangeRequestStructure;
+import uk.org.siri.siri21.SituationExchangeSubscriptionStructure;
+import uk.org.siri.siri21.SubscriptionContextStructure;
+import uk.org.siri.siri21.SubscriptionQualifierStructure;
+import uk.org.siri.siri21.SubscriptionRefStructure;
+import uk.org.siri.siri21.SubscriptionRequest;
+import uk.org.siri.siri21.SubscriptionResponseStructure;
+import uk.org.siri.siri21.TerminateSubscriptionRequestStructure;
+import uk.org.siri.siri21.TerminateSubscriptionResponseStructure;
+import uk.org.siri.siri21.TerminationResponseStatusStructure;
+import uk.org.siri.siri21.VehicleActivityStructure;
+import uk.org.siri.siri21.VehicleMonitoringDeliveryStructure;
+import uk.org.siri.siri21.VehicleMonitoringRefStructure;
+import uk.org.siri.siri21.VehicleMonitoringRequestStructure;
+import uk.org.siri.siri21.VehicleMonitoringSubscriptionStructure;
+import uk.org.siri.siri21.VehicleRef;
 
 @Service
 public class SiriObjectFactory {
@@ -95,7 +122,7 @@ public class SiriObjectFactory {
     }
     
     public static Siri createSubscriptionRequest(SubscriptionSetup subscriptionSetup) {
-        Siri siri = createSiriObject();
+        Siri siri = createSiriObject(subscriptionSetup.getVersion());
 
         SubscriptionRequest request = null;
 
@@ -107,7 +134,9 @@ public class SiriObjectFactory {
                     subscriptionSetup.getFilterMap(),
                     subscriptionSetup.getAddressFieldName(),
                     subscriptionSetup.getIncrementalUpdates(),
-                    subscriptionSetup.getPreviewInterval());
+                    subscriptionSetup.getPreviewInterval(),
+                    subscriptionSetup.getVersion()
+                    );
         }
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.VEHICLE_MONITORING)) {
             request = createVehicleMonitoringSubscriptionRequest(subscriptionSetup.getRequestorRef(),
@@ -121,13 +150,12 @@ public class SiriObjectFactory {
                     subscriptionSetup.getAddressFieldName(),
                     subscriptionSetup.getIncrementalUpdates(),
                     subscriptionSetup.getVehicleMonitoringRefValue(),
-                    subscriptionSetup.getLineRefValue()
+                    subscriptionSetup.getLineRefValue(),
+                    subscriptionSetup.getVersion()
                     );
         }
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.ESTIMATED_TIMETABLE)) {
-            request = createEstimatedTimetableSubscriptionRequest(
-                    subscriptionSetup.getRequestorRef(),
-                    subscriptionSetup.getSubscriptionId(),
+            request = createEstimatedTimetableSubscriptionRequest(subscriptionSetup.getRequestorRef(),subscriptionSetup.getSubscriptionId(),
                     subscriptionSetup.getHeartbeatInterval(),
                     subscriptionSetup.buildUrl(),
                     subscriptionSetup.getDurationOfSubscription(),
@@ -135,7 +163,9 @@ public class SiriObjectFactory {
                     subscriptionSetup.getAddressFieldName(),
                     subscriptionSetup.getIncrementalUpdates(),
                     subscriptionSetup.getPreviewInterval(),
-                    subscriptionSetup.getChangeBeforeUpdates());
+                    subscriptionSetup.getChangeBeforeUpdates(),
+                    subscriptionSetup.getVersion()
+            );
         }
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
             request = createStopMonitoringSubscriptionRequest(
@@ -170,7 +200,7 @@ public class SiriObjectFactory {
 
 
     public static Siri createServiceRequest(SubscriptionSetup subscriptionSetup) {
-        Siri siri = createSiriObject();
+        Siri siri = createSiriObject(subscriptionSetup.getVersion());
 
         ServiceRequest request = new ServiceRequest();
         request.setRequestTimestamp(ZonedDateTime.now());
@@ -209,7 +239,7 @@ public class SiriObjectFactory {
 
 
     public static Siri createDataSupplyRequest(SubscriptionSetup subscriptionSetup, Boolean allData) {
-        Siri siri = createSiriObject();
+        Siri siri = createSiriObject(subscriptionSetup.getVersion());
 
         DataSupplyRequestStructure request = new DataSupplyRequestStructure();
         request.setRequestTimestamp(ZonedDateTime.now());
@@ -222,7 +252,7 @@ public class SiriObjectFactory {
     }
 
     public static Siri createCheckStatusRequest(SubscriptionSetup subscriptionSetup) {
-        Siri siri = createSiriObject();
+        Siri siri = createSiriObject(subscriptionSetup.getVersion());
 
         CheckStatusRequestStructure statusRequest = new CheckStatusRequestStructure();
         statusRequest.setRequestTimestamp(ZonedDateTime.now());
@@ -233,10 +263,10 @@ public class SiriObjectFactory {
         return siri;
     }
 
-    private static SituationExchangeRequestStructure createSituationExchangeRequestStructure(Duration previewInterval) {
+    private static SituationExchangeRequestStructure createSituationExchangeRequestStructure(Duration previewInterval, @Nonnull String version) {
         SituationExchangeRequestStructure sxRequest = new SituationExchangeRequestStructure();
         sxRequest.setRequestTimestamp(ZonedDateTime.now());
-        sxRequest.setVersion(SIRI_VERSION);
+        sxRequest.setVersion(version);
         sxRequest.setMessageIdentifier(createMessageIdentifier());
         if (previewInterval != null) {
             sxRequest.setPreviewInterval(createDataTypeFactory().newDuration(previewInterval.toString()));
@@ -244,18 +274,20 @@ public class SiriObjectFactory {
         return sxRequest;
     }
 
-    private static VehicleMonitoringRequestStructure createVehicleMonitoringRequestStructure() {
+
+
+    private static VehicleMonitoringRequestStructure createVehicleMonitoringRequestStructure(@Nonnull String version) {
         VehicleMonitoringRequestStructure vmRequest = new VehicleMonitoringRequestStructure();
         vmRequest.setRequestTimestamp(ZonedDateTime.now());
-        vmRequest.setVersion(SIRI_VERSION);
+        vmRequest.setVersion(version);
         vmRequest.setMessageIdentifier(createMessageIdentifier());
         return vmRequest;
     }
 
-    private static EstimatedTimetableRequestStructure createEstimatedTimetableRequestStructure(Duration previewInterval) {
+    private static EstimatedTimetableRequestStructure createEstimatedTimetableRequestStructure(Duration previewInterval, @Nonnull String version) {
         EstimatedTimetableRequestStructure etRequest = new EstimatedTimetableRequestStructure();
         etRequest.setRequestTimestamp(ZonedDateTime.now());
-        etRequest.setVersion(SIRI_VERSION);
+        etRequest.setVersion(version);
         etRequest.setMessageIdentifier(createMessageIdentifier());
         if (previewInterval != null) {
             etRequest.setPreviewInterval(createDataTypeFactory().newDuration(previewInterval.toString()));
@@ -263,7 +295,7 @@ public class SiriObjectFactory {
         return etRequest;
     }
 
-    // TODO MHI
+
     private static StopMonitoringRequestStructure createStopMonitoringRequestStructure(SubscriptionSetup subscriptionSetup) {
         StopMonitoringRequestStructure smRequest = new StopMonitoringRequestStructure();
         smRequest.setRequestTimestamp(ZonedDateTime.now());
@@ -292,7 +324,7 @@ public class SiriObjectFactory {
     private static SubscriptionRequest createSituationExchangeSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap, String addressFieldName, Boolean incrementalUpdates, Duration previewInterval) {
         SubscriptionRequest request = createSubscriptionRequest(requestorRef, heartbeatInterval, address, addressFieldName);
 
-        SituationExchangeRequestStructure sxRequest = createSituationExchangeRequestStructure(null);
+        SituationExchangeRequestStructure sxRequest = createSituationExchangeRequestStructure(null, version);
 
         if (previewInterval != null) {
             sxRequest.setPreviewInterval(createDataTypeFactory().newDuration(previewInterval.toString()));
@@ -321,13 +353,12 @@ public class SiriObjectFactory {
         return request;
     }
 
-    private static SubscriptionRequest createVehicleMonitoringSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap,
-                                                                                  Duration updateInterval, Duration changeBeforeUpdates, String addressFieldName, Boolean incrementalUpdates, String vehicleMonitoringRefValue, String lineRefValue) {
+    private static SubscriptionRequest createVehicleMonitoringSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap, Duration updateInterval, Duration changeBeforeUpdates, String addressFieldName, Boolean incrementalUpdates, String vehicleMonitoringRefValue) {
         SubscriptionRequest request = createSubscriptionRequest(requestorRef,heartbeatInterval, address, addressFieldName);
 
         VehicleMonitoringRequestStructure vmRequest = new VehicleMonitoringRequestStructure();
         vmRequest.setRequestTimestamp(ZonedDateTime.now());
-        vmRequest.setVersion(SIRI_VERSION);
+        vmRequest.setVersion(version);
 
         if (vehicleMonitoringRefValue != null) {
             VehicleMonitoringRefStructure vehicleMonitoringRef = new VehicleMonitoringRefStructure();
@@ -441,12 +472,14 @@ public class SiriObjectFactory {
     }
 
 
-    private static SubscriptionRequest createEstimatedTimetableSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap, String addressFieldName, Boolean incrementalUpdates, Duration previewInterval, Duration changeBeforeUpdates) {
+    private static SubscriptionRequest createEstimatedTimetableSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap, String addressFieldName, Boolean incrementalUpdates, Duration previewInterval, Duration changeBeforeUpdates,
+            @Nonnull String version
+    ) {
         SubscriptionRequest request = createSubscriptionRequest(requestorRef, heartbeatInterval, address, addressFieldName);
 
         EstimatedTimetableRequestStructure etRequest = new EstimatedTimetableRequestStructure();
         etRequest.setRequestTimestamp(ZonedDateTime.now());
-        etRequest.setVersion(SIRI_VERSION);
+        etRequest.setVersion(version);
 
         if (previewInterval != null) {
             etRequest.setPreviewInterval(createDataTypeFactory().newDuration(previewInterval.toString()));
@@ -521,10 +554,10 @@ public class SiriObjectFactory {
         if (subscriptionSetup == null) {
             return null;
         }
-        return createTerminateSubscriptionRequest(subscriptionSetup.getSubscriptionId(), createRequestorRef(subscriptionSetup.getRequestorRef()));
+        return createTerminateSubscriptionRequest(subscriptionSetup.getSubscriptionId(), createRequestorRef(subscriptionSetup.getRequestorRef()), subscriptionSetup.getVersion());
     }
 
-    private static Siri createTerminateSubscriptionRequest(String subscriptionId, RequestorRef requestorRef) {
+    private static Siri createTerminateSubscriptionRequest(String subscriptionId, RequestorRef requestorRef, String version) {
         if (requestorRef == null || requestorRef.getValue() == null) {
             logger.warn("RequestorRef cannot be null");
             return null;
@@ -536,7 +569,7 @@ public class SiriObjectFactory {
         terminationReq.setRequestorRef(requestorRef);
         terminationReq.setMessageIdentifier(createMessageIdentifier(UUID.randomUUID().toString()));
 
-        Siri siri = createSiriObject();
+        Siri siri = createSiriObject(version);
         siri.setTerminateSubscriptionRequest(terminationReq);
         return siri;
     }
@@ -556,6 +589,13 @@ public class SiriObjectFactory {
         return subscriptionRef;
     }
 
+
+    private static SubscriptionRefStructure createSubscriptionRef(String subscriptionId) {
+        SubscriptionRefStructure subscriptionRef = new SubscriptionRefStructure();
+        subscriptionRef.setValue(subscriptionId);
+        return subscriptionRef;
+    }
+
     private static MessageQualifierStructure createMessageIdentifier(String value) {
         MessageQualifierStructure msgId = new MessageQualifierStructure();
         msgId.setValue(value);
@@ -566,8 +606,18 @@ public class SiriObjectFactory {
         return createMessageIdentifier(UUID.randomUUID().toString());
     }
 
+    private static MessageRefStructure createMessageRef(String value) {
+        MessageRefStructure msgId = new MessageRefStructure();
+        msgId.setValue(value);
+        return msgId;
+    }
+
+    private static MessageRefStructure createMessageRef() {
+        return createMessageRef(UUID.randomUUID().toString());
+    }
+
     public Siri createSXServiceDelivery(Collection<PtSituationElement> elements) {
-        Siri siri = createSiriObject();
+        Siri siri = createSiriObject(SiriHelper.FALLBACK_SIRI_VERSION);
         ServiceDelivery delivery = createServiceDelivery();
         SituationExchangeDeliveryStructure deliveryStructure = new SituationExchangeDeliveryStructure();
         SituationExchangeDeliveryStructure.Situations situations = new SituationExchangeDeliveryStructure.Situations();
@@ -580,10 +630,10 @@ public class SiriObjectFactory {
     }
 
     public Siri createVMServiceDelivery(Collection<VehicleActivityStructure> elements) {
-        Siri siri = createSiriObject();
+        Siri siri = createSiriObject(SiriHelper.FALLBACK_SIRI_VERSION);
         ServiceDelivery delivery = createServiceDelivery();
         VehicleMonitoringDeliveryStructure deliveryStructure = new VehicleMonitoringDeliveryStructure();
-        deliveryStructure.setVersion(SIRI_VERSION);
+        deliveryStructure.setVersion(SiriHelper.FALLBACK_SIRI_VERSION);
         deliveryStructure.getVehicleActivities().addAll(elements);
         deliveryStructure.setResponseTimestamp(ZonedDateTime.now());
         delivery.getVehicleMonitoringDeliveries().add(deliveryStructure);
@@ -592,10 +642,10 @@ public class SiriObjectFactory {
     }
 
     public Siri createETServiceDelivery(Collection<EstimatedVehicleJourney> elements) {
-        Siri siri = createSiriObject();
+        Siri siri = createSiriObject(SiriHelper.FALLBACK_SIRI_VERSION);
         ServiceDelivery delivery = createServiceDelivery();
         EstimatedTimetableDeliveryStructure deliveryStructure = new EstimatedTimetableDeliveryStructure();
-        deliveryStructure.setVersion(SIRI_VERSION);
+        deliveryStructure.setVersion(SiriHelper.FALLBACK_SIRI_VERSION);
         EstimatedVersionFrameStructure estimatedVersionFrameStructure = new EstimatedVersionFrameStructure();
         estimatedVersionFrameStructure.setRecordedAtTime(ZonedDateTime.now());
         estimatedVersionFrameStructure.getEstimatedVehicleJourneies().addAll(elements);
@@ -685,7 +735,7 @@ public class SiriObjectFactory {
     }
 
     public Siri createHeartbeatNotification(String requestorRef) {
-        Siri siri = createSiriObject();
+        Siri siri = createSiriObject(SiriHelper.FALLBACK_SIRI_VERSION);
         HeartbeatNotificationStructure heartbeat = new HeartbeatNotificationStructure();
         heartbeat.setStatus(true);
         heartbeat.setServiceStartedTime(serverStartTime.atZone(ZoneId.systemDefault()));
@@ -720,25 +770,25 @@ public class SiriObjectFactory {
         return siri;
     }
 
-    private static Siri createSiriObject() {
+    private static Siri createSiriObject(@Nonnull String version) {
         Siri siri = new Siri();
-        siri.setVersion(SIRI_VERSION);
+        siri.setVersion(version);
         return siri;
     }
 
     public Siri createSubscriptionResponse(String subscriptionRef, boolean status, String errorText) {
-        Siri siri = createSiriObject();
+        Siri siri = createSiriObject(SiriHelper.FALLBACK_SIRI_VERSION);
         SubscriptionResponseStructure response = new SubscriptionResponseStructure();
         response.setServiceStartedTime(serverStartTime.atZone(ZoneId.systemDefault()));
-        response.setRequestMessageRef(createMessageIdentifier());
+        response.setRequestMessageRef(createMessageRef());
         response.setResponderRef(createRequestorRef(subscriptionRef));
         response.setResponseTimestamp(ZonedDateTime.now());
 
 
         ResponseStatus responseStatus = new ResponseStatus();
         responseStatus.setResponseTimestamp(ZonedDateTime.now());
-        responseStatus.setRequestMessageRef(createMessageIdentifier());
-        responseStatus.setSubscriptionRef(createSubscriptionIdentifier(subscriptionRef));
+        responseStatus.setRequestMessageRef(createMessageRef());
+        responseStatus.setSubscriptionRef(createSubscriptionRef(subscriptionRef));
         responseStatus.setStatus(status);
 
         if (errorText != null) {
@@ -756,10 +806,10 @@ public class SiriObjectFactory {
     }
 
     public Siri createTerminateSubscriptionResponse(String subscriptionRef) {
-        Siri siri = createSiriObject();
+        Siri siri = createSiriObject(SiriHelper.FALLBACK_SIRI_VERSION);
         TerminateSubscriptionResponseStructure response = new TerminateSubscriptionResponseStructure();
         TerminationResponseStatusStructure status = new TerminationResponseStatusStructure();
-        status.setSubscriptionRef(createSubscriptionIdentifier(subscriptionRef));
+        status.setSubscriptionRef(createSubscriptionRef(subscriptionRef));
         status.setResponseTimestamp(ZonedDateTime.now());
         status.setStatus(true);
 
@@ -769,7 +819,7 @@ public class SiriObjectFactory {
     }
 
     public Siri createDataReadyNotification() {
-        Siri siri = createSiriObject();
+        Siri siri = createSiriObject(SiriHelper.FALLBACK_SIRI_VERSION);
         DataReadyRequestStructure dataReadyNotification = new DataReadyRequestStructure();
         dataReadyNotification.setRequestTimestamp(ZonedDateTime.now());
         siri.setDataReadyNotification(dataReadyNotification);

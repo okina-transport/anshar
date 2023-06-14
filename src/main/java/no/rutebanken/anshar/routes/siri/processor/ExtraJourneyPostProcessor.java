@@ -24,13 +24,13 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri20.EstimatedCall;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.EstimatedVersionFrameStructure;
-import uk.org.siri.siri20.RecordedCall;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.VehicleModesEnumeration;
+import uk.org.siri.siri21.EstimatedCall;
+import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.EstimatedVersionFrameStructure;
+import uk.org.siri.siri21.RecordedCall;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.VehicleModesEnumeration;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -42,7 +42,6 @@ import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.EXTRA_JO
 import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.EXTRA_JOURNEY_TOO_FAST;
 import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getMappedId;
 import static no.rutebanken.anshar.routes.validation.validators.et.SaneSpeedValidator.SANE_SPEED_LIMIT;
-import static org.apache.commons.lang3.BooleanUtils.isTrue;
 
 /**
  * Verifies that ExtraJourneys in ET stop at stops having the correct mode, and that
@@ -76,8 +75,13 @@ public class ExtraJourneyPostProcessor extends ValueAdapter implements PostProce
                         List<EstimatedVehicleJourney> extraJourneysToRemove = new ArrayList<>();
 
                         for (EstimatedVehicleJourney estimatedVehicleJourney : estimatedVehicleJourneies) {
-                            if (isTrue(estimatedVehicleJourney.isExtraJourney())) {
-                                String estimatedVehicleJourneyCode = estimatedVehicleJourney.getEstimatedVehicleJourneyCode();
+                            String estimatedVehicleJourneyCode = estimatedVehicleJourney.getEstimatedVehicleJourneyCode();
+
+                            /*
+                                Only verify that EstimatedVehicleJourneyCode exists - as it should only be
+                                used together when also "ExtraJourney=true" is set
+                             */
+                            if (estimatedVehicleJourneyCode != null) {
                                 try {
 
                                     if (serviceJourneyIdExists(estimatedVehicleJourneyCode)) {
@@ -201,8 +205,7 @@ public class ExtraJourneyPostProcessor extends ValueAdapter implements PostProce
         final ZonedDateTime fromTime = times.getLeft();
         final ZonedDateTime toTime = times.getRight();
 
-        if (fromTime != null && toTime != null &&
-            toTime.isAfter(fromTime)) {
+        if (fromTime != null && toTime != null) {
             final int kph = StopsUtil.calculateSpeedKph(fromStop, toStop,
                 fromTime,
                 toTime

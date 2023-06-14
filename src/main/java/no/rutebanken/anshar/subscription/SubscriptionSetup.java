@@ -24,6 +24,7 @@ import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
 import java.io.Serializable;
 import java.text.MessageFormat;
 import java.time.Duration;
@@ -32,7 +33,10 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+
+import static no.rutebanken.anshar.routes.outbound.SiriHelper.FALLBACK_SIRI_VERSION;
 
 public class SubscriptionSetup implements Serializable {
 
@@ -84,6 +88,9 @@ public class SubscriptionSetup implements Serializable {
     private boolean useProvidedCodespaceId = false;
 
     private boolean enrichSiriData = false;
+
+    // transient to refresh config on each redeploy
+    private transient boolean reduceLogging;
 
     public boolean isUseProvidedCodespaceId() {
         return useProvidedCodespaceId;
@@ -207,8 +214,9 @@ public class SubscriptionSetup implements Serializable {
         return subscriptionId;
     }
 
+    @Nonnull
     public String getVersion() {
-        return version;
+        return Optional.ofNullable(version).orElse(FALLBACK_SIRI_VERSION);
     }
 
     public String getVendor() {
@@ -445,9 +453,17 @@ public class SubscriptionSetup implements Serializable {
         this.enrichSiriData = enrichSiriData;
     }
 
+    public boolean isReduceLogging() {
+        return reduceLogging;
+    }
+
+    public void setReduceLogging(boolean reduceLogging) {
+        this.reduceLogging = reduceLogging;
+    }
+
     public enum ServiceType {SOAP, REST}
 
-    public enum SubscriptionMode {SUBSCRIBE, REQUEST_RESPONSE, POLLING_FETCHED_DELIVERY, FETCHED_DELIVERY, LITE, WEBSOCKET, BIG_DATA_EXPORT, VM_POSITION_FORWARDING}
+    public enum SubscriptionMode {SUBSCRIBE, REQUEST_RESPONSE, POLLING_FETCHED_DELIVERY, FETCHED_DELIVERY, LITE, WEBSOCKET, BIG_DATA_EXPORT, VM_POSITION_FORWARDING, AVRO_PUBSUB, KAFKA_PUBSUB}
 
     public void setIdMappingPrefixes(List<String> idMappingPrefixes) {
         this.idMappingPrefixes = idMappingPrefixes;

@@ -31,15 +31,7 @@ import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.xml.sax.SAXException;
-import uk.org.siri.siri20.AnnotatedLineRef;
-import uk.org.siri.siri20.AnnotatedStopPointStructure;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.HalfOpenTimestampOutputRangeStructure;
-import uk.org.siri.siri20.MonitoredStopVisit;
-import uk.org.siri.siri20.PtSituationElement;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.VehicleActivityStructure;
+import uk.org.siri.siri21.Siri;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.parsers.ParserConfigurationException;
@@ -58,11 +50,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import static org.junit.jupiter.api.Assertions.fail;
 
 public class SiriHandlerTest extends SpringBootBaseTest {
@@ -158,8 +146,8 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     }
 
 
-   // @Test
-    public void testErrorInVMServiceDelivery() {
+    @Test
+    public void testErrorInVMServiceDelivery() throws JAXBException {
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
                 "<siri:Siri xmlns:siri=\"http://www.siri.org.uk/siri\">\n" +
                 "  <siril:ServiceDelivery xmlns:siril=\"http://www.siri.org.uk/siri\">\n" +

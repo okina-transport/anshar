@@ -20,16 +20,21 @@ import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.Predicate;
-
-import org.apache.commons.lang3.StringUtils;
-import org.rutebanken.siri20.util.SiriXml;
+import org.apache.camel.Processor;
+import org.apache.camel.component.google.pubsub.GooglePubsubConstants;
+import org.apache.camel.util.CaseInsensitiveMap;
+import org.entur.siri21.util.SiriXml;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.Siri;
 
 import java.io.InputStream;
+import java.util.Map;
 
-import static no.rutebanken.anshar.routes.HttpParameter.*;
+import static no.rutebanken.anshar.routes.HttpParameter.INTERNAL_PUBLISH_TO_KAFKA_FOR_APC_ENRICHMENT;
+import static no.rutebanken.anshar.routes.HttpParameter.INTERNAL_SIRI_DATA_TYPE;
+import static no.rutebanken.anshar.routes.HttpParameter.PARAM_SUBSCRIPTION_ID;
+import static no.rutebanken.anshar.routes.HttpParameter.PARAM_USE_ORIGINAL_ID;
 import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_SOAP;
 import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_VERSION;
 import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
@@ -61,7 +66,6 @@ public class MessagingRoute extends RestRouteBuilder {
         String messageQueueCamelRoutePrefix = configuration.getMessageQueueCamelRoutePrefix();
 
         String queueConsumerParameters = "?concurrentConsumers="+configuration.getConcurrentConsumers();
-
 
 
         final String pubsubQueueSX = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_SX;
@@ -212,15 +216,54 @@ public class MessagingRoute extends RestRouteBuilder {
                         .end()
                     .end()
                 .end()
-                .removeHeaders("*", "subscriptionId", "breadcrumbId", "target_topic")
-                .to("direct:compress.jaxb")
-                .log(LoggingLevel.DEBUG,"Sending data to topic ${header.target_topic}")
-                .toD("${header.target_topic}")
-                .log(LoggingLevel.DEBUG, "Data sent")
+                .removeHeaders("*", "subscriptionId", "breadcrumbId", "target_topic", "correlationId")
+                .process(p -> {
+                    p.getMessage().setHeader(INTERNAL_PUBLISH_TO_KAFKA_FOR_APC_ENRICHMENT, enrichSiriData(p));
+                })
+                .bean(subscriptionManager, "dataReceived(${header.subscriptionId})")
+                .process(convertHeadersToAttributes)
+                .to("direct:send.to.queue")
                 .end()
+                .routeId("add.to.queue")
         ;
 
+        if (configuration.splitDataForProcessing()) {
+            log.info("Application configured to split all SIRI-data before processing");
+            from("direct:send.to.queue")
+                    .autoStartup(true)
+                    .choice()
+                        .when(header(INTERNAL_PUBLISH_TO_KAFKA_FOR_APC_ENRICHMENT).isEqualTo(Boolean.TRUE))
+                        .removeHeader(INTERNAL_PUBLISH_TO_KAFKA_FOR_APC_ENRICHMENT)
+                        .log("Sending data to enrichment topic")
+                        .to("direct:anshar.enrich.siri.et")
+                    .endChoice()
+                    .otherwise()
+                        .log("Sending split data to topic ${header.target_topic}")
+                        .to("xslt-saxon:xsl/split.xsl")
+                        .split().tokenizeXML("Siri").streaming()
+                        .to("direct:compress.jaxb")
+                        .toD("${header.target_topic}")
+                    .end()
+            ;
+        } else {
+
+            from("direct:send.to.queue")
+                    .autoStartup(true)
+                    .choice()
+                    .when(header(INTERNAL_PUBLISH_TO_KAFKA_FOR_APC_ENRICHMENT).isEqualTo(Boolean.TRUE))
+                        .removeHeader(INTERNAL_PUBLISH_TO_KAFKA_FOR_APC_ENRICHMENT)
+                        .log("Sending data to enrichment topic")
+                        .to("direct:anshar.enrich.siri.et")
+                    .otherwise()
+                        .log("Sending data to topic ${header.target_topic}")
+                        .to("direct:compress.jaxb")
+                        .toD("${header.target_topic}")
+                        .end()
+            ;
+        }
+
         from("direct:transform.siri")
+                .to("direct:set.mdc.subscriptionId")
                 .choice()
                     .when(header(TRANSFORM_SOAP).isEqualTo(simple(TRANSFORM_SOAP)))
                     .log(LoggingLevel.DEBUG, "Transforming SOAP")
@@ -235,10 +278,12 @@ public class MessagingRoute extends RestRouteBuilder {
                 .end()
                 .to("direct:process.mapping")
                 .to("direct:format.xml")
+                .to("direct:clear.mdc.subscriptionId")
         ;
 
 
         from("direct:process.mapping")
+                .to("direct:set.mdc.subscriptionId")
                 .process(p -> {
 
                     String subscriptionId =  p.getIn().getHeader("subscriptionId", String.class);
@@ -251,6 +296,7 @@ public class MessagingRoute extends RestRouteBuilder {
                         p.getMessage().setBody(SiriXml.toXml(incoming));
                     }
                 })
+                .to("direct:clear.mdc.subscriptionId")
         ;
 
         from("direct:format.xml")
@@ -261,22 +307,18 @@ public class MessagingRoute extends RestRouteBuilder {
         // When shutdown has been triggered - stop processing data from pubsub
         Predicate readFromPubsub = exchange -> adminRouteHelper.isNotShuttingDown();
 
-//        from(pubsubQueueDefault + queueConsumerParameters)
-//            .choice().when(readFromPubsub)
-//                .to("direct:decompress.jaxb")
-//                .log("Processing data from " + pubsubQueueDefault + ", size ${header.Content-Length}")
-//                .wireTap("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
-//            .endChoice()
-//            .startupOrder(100004)
-//            .routeId("incoming.transform.default")
-//        ;
         if (configuration.processSX()) {
             from(pubsubQueueSX + queueConsumerParameters)
-                    .choice().when(readFromPubsub)
-                    .log("Processing data from " + pubsubQueueSX + ", size ${header.Content-Length}")
-                    .to("direct:decompress.jaxb")
-                    .to("direct:process.queue.default.async")
-                    .endChoice()
+                    .process(convertAttributesToHeaders)
+                    .to("direct:set.mdc.subscriptionId")
+                    .choice()
+                        .when(readFromPubsub)
+                            .log("Processing data from " + pubsubQueueSX)
+                            .to("direct:decompress.jaxb")
+                            .to("direct:process.queue.default.async")
+                        .endChoice()
+                    .end()
+                    .to("direct:clear.mdc.subscriptionId")
                     .startupOrder(100004)
                     .routeId("incoming.transform.sx")
             ;
@@ -284,11 +326,16 @@ public class MessagingRoute extends RestRouteBuilder {
 
         if (configuration.processVM()) {
             from(pubsubQueueVM + queueConsumerParameters)
-                    .choice().when(readFromPubsub)
-                    .log("Processing data from " + pubsubQueueVM + ", size ${header.Content-Length}")
-                    .to("direct:decompress.jaxb")
-                    .to("direct:process.queue.default.async")
-                    .endChoice()
+                    .process(convertAttributesToHeaders)
+                    .to("direct:set.mdc.subscriptionId")
+                    .choice()
+                        .when(readFromPubsub)
+                            .log("Processing data from " + pubsubQueueVM)
+                            .to("direct:decompress.jaxb")
+                            .to("direct:process.queue.default.async")
+                        .endChoice()
+                    .end()
+                    .to("direct:clear.mdc.subscriptionId")
                     .startupOrder(100003)
                     .routeId("incoming.transform.vm")
             ;
@@ -296,11 +343,16 @@ public class MessagingRoute extends RestRouteBuilder {
 
         if (configuration.processET()) {
             from(pubsubQueueET + queueConsumerParameters)
-                    .choice().when(readFromPubsub)
-                    .log("Processing data from " + pubsubQueueET + ", size ${header.Content-Length}")
-                    .to("direct:decompress.jaxb")
-                    .to("direct:process.queue.default.async")
-                    .endChoice()
+                    .process(convertAttributesToHeaders)
+                    .to("direct:set.mdc.subscriptionId")
+                    .choice()
+                        .when(readFromPubsub)
+                            .log("Processing data from " + pubsubQueueET)
+                            .to("direct:decompress.jaxb")
+                            .to("direct:process.queue.default.async")
+                        .endChoice()
+                    .end()
+                    .to("direct:clear.mdc.subscriptionId")
                     .startupOrder(100002)
                     .routeId("incoming.transform.et")
             ;
@@ -318,24 +370,13 @@ public class MessagingRoute extends RestRouteBuilder {
             ;
         }
 
-
-        if (configuration.processGM()) {
-            from(pubsubQueueGM + queueConsumerParameters)
-                    .choice().when(readFromPubsub)
-                    .to("direct:decompress.jaxb")
-                    .wireTap("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
-                    .endChoice()
-                    .startupOrder(100005)
-                    .routeId("incoming.transform.gm")
-            ;
-        }
-
         from("direct:process.queue.default.async")
                 .wireTap("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
                 .routeId("process.queue.default.async")
         ;
 
         from("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
+                .to("direct:set.mdc.subscriptionId")
                 .process(p -> {
 
                     String subscriptionId = p.getIn().getHeader("subscriptionId", String.class);
@@ -349,10 +390,12 @@ public class MessagingRoute extends RestRouteBuilder {
                     handler.handleIncomingSiri(subscriptionId, xml, datasetId, SiriHandler.getIdMappingPolicy(useOriginalId, useAltId), -1, clientTrackingName);
 
                 })
+                .to("direct:clear.mdc.subscriptionId")
                 .routeId("incoming.processor.default")
         ;
 
         from("direct:" + CamelRouteNames.FETCHED_DELIVERY_QUEUE)
+                .to("direct:set.mdc.subscriptionId")
                 .log("Processing fetched delivery")
                 .process(p -> {
                     String routeName = null;
@@ -368,9 +411,11 @@ public class MessagingRoute extends RestRouteBuilder {
 
                 })
                 .choice()
-                .when(header("routename").isNotNull())
-                    .toD("direct:${header.routename}")
-                .endChoice()
+                    .when(header("routename").isNotNull())
+                        .toD("direct:${header.routename}")
+                    .endChoice()
+                .end()
+                .to("direct:clear.mdc.subscriptionId")
                 .routeId("incoming.processor.fetched_delivery")
         ;
     }

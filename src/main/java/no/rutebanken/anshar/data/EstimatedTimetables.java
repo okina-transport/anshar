@@ -22,6 +22,7 @@ import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.data.util.TimingTracer;
+import no.rutebanken.anshar.metrics.SiriContent;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.quartz.utils.counter.Counter;
@@ -30,8 +31,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Repository;
-import uk.org.siri.siri20.*;
+import org.springframework.stereotype.Component;
+import uk.org.siri.siri21.EstimatedCall;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.MessageRefStructure;
+import uk.org.siri.siri21.QuayRefStructure;
+import uk.org.siri.siri21.RecordedCall;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.StopAssignmentStructure;
+import uk.org.siri.siri21.StopPointRefStructure;
 
 import javax.annotation.PostConstruct;
 import java.time.Instant;
@@ -52,11 +60,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.OVERRIDE_MONITORED_FALSE;
+import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getMappedId;
 import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getOriginalId;
 
-@Repository
+@Component
 public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney> {
     private final Logger logger = LoggerFactory.getLogger(EstimatedTimetables.class);
+
+    private static final long ONE_WEEK_IN_MILLIS = 60 * 60 * 24 * 7 * 1000;
 
     @Autowired
     private IMap<SiriObjectStorageKey, EstimatedVehicleJourney> timetableDeliveries;
@@ -90,8 +102,17 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
     @Autowired
     ExtendedHazelcastService hazelcastService;
 
+    private long hardLimitFutureUpdates = Integer.MAX_VALUE;
+
     protected EstimatedTimetables() {
         super(SiriDataType.ESTIMATED_TIMETABLE);
+    }
+
+    @PostConstruct
+    private void initConfig() {
+        if (configuration.hardLimitForFutureEtUpdates() != null) {
+            hardLimitFutureUpdates = configuration.hardLimitForFutureEtUpdates().toMillis();
+        }
     }
 
     @PostConstruct
@@ -173,7 +194,7 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
     @Override
     public void clearAllByDatasetId(String datasetId) {
 
-        Set<SiriObjectStorageKey> idsToRemove = timetableDeliveries.keySet(createCodespacePredicate(datasetId));
+        Set<SiriObjectStorageKey> idsToRemove = timetableDeliveries.keySet(createLineRefPredicate(datasetId));
 
         logger.warn("Removing all data ({} ids) for {}", idsToRemove.size(), datasetId);
 
@@ -245,8 +266,8 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
         if (previewInterval >= 0) {
             long t1 = System.currentTimeMillis();
             startTimes.addAll(idStartTimeMap
-                    .entrySet().stream()
-                    .filter(entry -> entry.getValue().isBefore(previewExpiry))
+                        .entrySet().stream()
+                        .filter(entry -> entry.getValue().isBefore(previewExpiry))
                         .map(Map.Entry::getKey)
                         .collect(Collectors.toSet()));
 
@@ -316,6 +337,100 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
 
         return siri;
     }
+    private void resolveContentMetrics(EstimatedVehicleJourney estimatedVehicleJourney, long expiration) {
+
+//        prepareMetrics();
+
+        if (estimatedVehicleJourney != null) {
+            // Not separating on SJ-id for now
+            String serviceJourneyId = null;//resolveServiceJourneyId(estimatedVehicleJourney);
+            String dataSource = getMappedId(estimatedVehicleJourney.getDataSource());
+
+            if (estimatedVehicleJourney.isCancellation() != null && estimatedVehicleJourney.isCancellation()) {
+                metrics.registerSiriContent(SiriDataType.ESTIMATED_TIMETABLE, dataSource, serviceJourneyId, SiriContent.TRIP_CANCELLATION);
+            }
+            if (estimatedVehicleJourney.isExtraJourney() != null && estimatedVehicleJourney.isExtraJourney()) {
+                metrics.registerSiriContent(SiriDataType.ESTIMATED_TIMETABLE, dataSource, serviceJourneyId, SiriContent.EXTRA_JOURNEY);
+            }
+
+            if (estimatedVehicleJourney.getOccupancy() != null) {
+                metrics.registerSiriContent(SiriDataType.ESTIMATED_TIMETABLE, dataSource, serviceJourneyId, SiriContent.OCCUPANCY_TRIP);
+            }
+
+            if (estimatedVehicleJourney.getRecordedCalls() != null && estimatedVehicleJourney.getRecordedCalls().getRecordedCalls() != null) {
+                List<RecordedCall> recordedCalls = estimatedVehicleJourney.getRecordedCalls().getRecordedCalls();
+
+                for (RecordedCall recordedCall : recordedCalls) {
+                    if (recordedCall.isCancellation() != null && recordedCall.isCancellation()) {
+                        metrics.registerSiriContent(SiriDataType.ESTIMATED_TIMETABLE, dataSource, serviceJourneyId, SiriContent.STOP_CANCELLATION);
+                    }
+
+                    if (recordedCall.getOccupancy() != null) {
+                        metrics.registerSiriContent(SiriDataType.ESTIMATED_TIMETABLE, dataSource, serviceJourneyId, SiriContent.OCCUPANCY_STOP);
+                    }
+
+                    if (recordedCall.getDestinationDisplaies() != null && !recordedCall.getDestinationDisplaies().isEmpty()) {
+                        metrics.registerSiriContent(SiriDataType.ESTIMATED_TIMETABLE, dataSource, serviceJourneyId, SiriContent.DESTINATION_DISPLAY);
+                    }
+
+                    StopAssignmentStructure stopAssignment = null;
+                    if (!recordedCall.getDepartureStopAssignments().isEmpty()) {
+                        stopAssignment = recordedCall.getDepartureStopAssignments().get(0);
+                    } else if (!recordedCall.getArrivalStopAssignments().isEmpty()) {
+                        stopAssignment = recordedCall.getArrivalStopAssignments().get(0);
+                    }
+                    if (stopAssignment != null) {
+                        QuayRefStructure aimedQuayRef = stopAssignment.getAimedQuayRef();
+                        QuayRefStructure expectedQuayRef = stopAssignment.getExpectedQuayRef();
+                        if (aimedQuayRef != null && expectedQuayRef != null) {
+                            if (!aimedQuayRef.getValue().equals(expectedQuayRef.getValue())) {
+                                metrics.registerSiriContent(SiriDataType.ESTIMATED_TIMETABLE, getMappedId(estimatedVehicleJourney.getDataSource()), serviceJourneyId, SiriContent.QUAY_CHANGED);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (estimatedVehicleJourney.getEstimatedCalls() != null && estimatedVehicleJourney.getEstimatedCalls().getEstimatedCalls() != null) {
+                List<EstimatedCall> estimatedCalls = estimatedVehicleJourney.getEstimatedCalls().getEstimatedCalls();
+
+                for (EstimatedCall estimatedCall : estimatedCalls) {
+                    if (estimatedCall.isCancellation() != null && estimatedCall.isCancellation()) {
+                        metrics.registerSiriContent(SiriDataType.ESTIMATED_TIMETABLE, dataSource, serviceJourneyId, SiriContent.STOP_CANCELLATION);
+                    }
+
+                    if (estimatedCall.getOccupancy() != null) {
+                        metrics.registerSiriContent(SiriDataType.ESTIMATED_TIMETABLE, dataSource, serviceJourneyId, SiriContent.OCCUPANCY_STOP);
+                    }
+
+                    if (estimatedCall.getDestinationDisplaies() != null && !estimatedCall.getDestinationDisplaies().isEmpty()) {
+                        metrics.registerSiriContent(SiriDataType.ESTIMATED_TIMETABLE, dataSource, serviceJourneyId, SiriContent.DESTINATION_DISPLAY);
+                    }
+
+                    StopAssignmentStructure stopAssignment = null;
+                    if (!estimatedCall.getDepartureStopAssignments().isEmpty()) {
+                        stopAssignment = estimatedCall.getDepartureStopAssignments().get(0);
+                    } else if (!estimatedCall.getArrivalStopAssignments().isEmpty()) {
+                        stopAssignment = estimatedCall.getArrivalStopAssignments().get(0);
+                    }
+
+                    if (stopAssignment != null) {
+                        QuayRefStructure aimedQuayRef = stopAssignment.getAimedQuayRef();
+                        QuayRefStructure expectedQuayRef = stopAssignment.getExpectedQuayRef();
+                        if (aimedQuayRef != null && expectedQuayRef != null) {
+                            if (!aimedQuayRef.getValue().equals(expectedQuayRef.getValue())) {
+                                metrics.registerSiriContent(SiriDataType.ESTIMATED_TIMETABLE, dataSource, serviceJourneyId, SiriContent.QUAY_CHANGED);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (expiration > ONE_WEEK_IN_MILLIS) {
+                metrics.registerSiriContent(SiriDataType.ESTIMATED_TIMETABLE, dataSource, null, SiriContent.TOO_FAR_AHEAD);
+            }
+        }
+    }
 
     /**
      * Generates a set of keys that matches with user's request
@@ -348,9 +463,10 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
             if (estimatedVehicleJourney.getVehicleRef() != null && estimatedVehicleJourney.getVehicleRef().getValue() != null) {
                 vehicleRef = estimatedVehicleJourney.getVehicleRef().getValue();
             }
+            String dataSource = getMappedId(estimatedVehicleJourney.getDataSource());
             if (estimatedVehicleJourney.isCancellation() != null && estimatedVehicleJourney.isCancellation()) {
                 if (vehicleRef != null) {
-                    logger.info("Cancellation:  Operator {}, vehicleRef {}, Cancelled journey", estimatedVehicleJourney.getDataSource(), vehicleRef);
+                    logger.info("Cancellation:  Operator {}, vehicleRef {}, Cancelled journey", dataSource, vehicleRef);
                 }
                 return true;
             }
@@ -366,11 +482,15 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
                     if (estimatedCall.isCancellation() != null && estimatedCall.isCancellation()) {
                         cancelledStops.add(estimatedCall.getStopPointRef().getValue());
                     }
-                    StopAssignmentStructure stopAssignment = estimatedCall.getDepartureStopAssignment();
-                    if (stopAssignment == null) {
-                        stopAssignment = estimatedCall.getArrivalStopAssignment();
+
+                    List<StopAssignmentStructure> stopAssignments = estimatedCall.getDepartureStopAssignments();
+                    if (estimatedCall.getDepartureStopAssignments().isEmpty()) {
+                        stopAssignments = estimatedCall.getArrivalStopAssignments();
                     }
-                    if (stopAssignment != null) {
+
+
+                    if (!stopAssignments.isEmpty()) {
+                        StopAssignmentStructure stopAssignment = stopAssignments.get(0);
                         QuayRefStructure aimedQuayRef = stopAssignment.getAimedQuayRef();
                         QuayRefStructure expectedQuayRef = stopAssignment.getExpectedQuayRef();
                         if (aimedQuayRef != null && expectedQuayRef != null) {
@@ -382,12 +502,12 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
                 }
                 boolean hasCancelledStops = !cancelledStops.isEmpty();
                 if (hasCancelledStops && vehicleRef != null) {
-                    logger.info("Cancellation:  Operator {}, vehicleRef {}, stopPointRefs {}", estimatedVehicleJourney.getDataSource(), vehicleRef, cancelledStops);
+                    logger.info("Cancellation:  Operator {}, vehicleRef {}, stopPointRefs {}", dataSource, vehicleRef, cancelledStops);
                 }
 
                 boolean hasQuayChanges = !quayChanges.isEmpty();
                 if (hasQuayChanges) {
-                    logger.info("Quay changed:  Operator {}, vehicleRef {}, stopPointRefs {}", estimatedVehicleJourney.getDataSource(), vehicleRef, quayChanges);
+                    logger.info("Quay changed:  Operator {}, vehicleRef {}, stopPointRefs {}", dataSource, vehicleRef, quayChanges);
                 }
                 return hasCancelledStops || hasQuayChanges;
             }
@@ -467,7 +587,7 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
             }
         }
 
-        final SiriObjectStorageKey key = createKey(vehicleJourney.getDataSource(), vehicleJourney);
+        final SiriObjectStorageKey key = createKey(getMappedId(vehicleJourney.getDataSource()), vehicleJourney);
         logger.warn("Unable to find aimed time for VehicleJourney with key {}, returning 'now'", key);
 
         return ZonedDateTime.now();
@@ -532,15 +652,16 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
     }
 
     public Collection<EstimatedVehicleJourney> addAll(String datasetId, List<EstimatedVehicleJourney> etList) {
-
+        prepareMetrics();
         Map<SiriObjectStorageKey, EstimatedVehicleJourney> changes = new HashMap();
 
         Map<SiriObjectStorageKey, String> checksumCacheTmp = new HashMap<>();
         Map<SiriObjectStorageKey, ZonedDateTime> idStartTimeMapTmp = new HashMap<>();
         Map<SiriObjectStorageKey, Long> expirationMap = new HashMap<>();
 
-        Counter outdatedCounter = new CounterImpl(0);
-        Counter notUpdatedCounter = new CounterImpl(0);
+        AtomicInteger outdatedCounter = new AtomicInteger(0);
+        AtomicInteger tooFarAheadCounter = new AtomicInteger(0);
+        AtomicInteger notUpdatedCounter = new AtomicInteger(0);
         etList.forEach(et -> {
             TimingTracer timingTracer = new TimingTracer("single-et");
             SiriObjectStorageKey key = createKey(datasetId, et);
@@ -600,14 +721,24 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
                 }
 
             } else {
-                notUpdatedCounter.increment();
+                notUpdatedCounter.incrementAndGet();
             }
+
+            long expiration = getExpiration(et);
+            timingTracer.mark("getExpiration");
+
+            if (expiration > hardLimitFutureUpdates) {
+                metrics.registerSiriContent(SiriDataType.ESTIMATED_TIMETABLE, datasetId, null, SiriContent.TOO_FAR_AHEAD);
+                tooFarAheadCounter.incrementAndGet();
+                keep = false;
+            }
+
             if (keep) {
 
-                long expiration = getExpiration(et);
-                timingTracer.mark("getExpiration");
-
                 if (expiration > 0) {
+
+                    resolveContentMetrics(et, expiration);
+                    timingTracer.mark("resolveContentMetrics");
 
                     boolean hasPatternChanges = hasPatternChanges(et);
                     timingTracer.mark("hasPatternChanges");
@@ -617,7 +748,10 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
                         idForPatternChanges.put(key, key.getKey(), expiration, TimeUnit.MILLISECONDS);
                         timingTracer.mark("idForPatternChanges.put");
 
-                        if (et.isMonitored() == null) {
+                        if (et.isCancellation() == null || !et.isCancellation()) {
+                            if (et.isMonitored() != null && !et.isMonitored()) {
+                                metrics.registerDataMapping(SiriDataType.ESTIMATED_TIMETABLE, datasetId, OVERRIDE_MONITORED_FALSE, 1);
+                            }
                             et.setMonitored(true);
                         }
                     }
@@ -635,7 +769,7 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
                     expirationMap.put(key, expiration);
 
                 } else {
-                    outdatedCounter.increment();
+                    outdatedCounter.incrementAndGet();
                     timingTracer.mark("outdatedCounter.increment");
                 }
 
@@ -647,9 +781,9 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
 
         });
 
-        logger.info("Updated {} (of {}), {} expired, {} without changes", changes.size(), etList.size(), outdatedCounter.getValue(), notUpdatedCounter.getValue());
+        logger.info("Updated {} (of {}), {} outdated, {} without changes, {} too far ahead.", changes.size(), etList.size(), outdatedCounter.get(), notUpdatedCounter.get(), tooFarAheadCounter.get());
 
-        markDataReceived(SiriDataType.ESTIMATED_TIMETABLE, datasetId, etList.size(), changes.size(), outdatedCounter.getValue(), notUpdatedCounter.getValue());
+        markDataReceived(SiriDataType.ESTIMATED_TIMETABLE, datasetId, etList.size(), changes.size(), outdatedCounter.get(), notUpdatedCounter.get() + tooFarAheadCounter.get());
         TimingTracer timingTracer = new TimingTracer("all-et [" + changes.size() + " changes]");
 
         // TTL is set in EntryListener when objects are added to main map
@@ -688,6 +822,9 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
             key.append(dataFrameRef)
                     .append(":")
                     .append(element.getFramedVehicleJourneyRef().getDatedVehicleJourneyRef());
+        } else if (element.getDatedVehicleJourneyRef() != null) {
+
+            key.append(element.getDatedVehicleJourneyRef().getValue());
         } else if (element.isExtraJourney() != null && element.getEstimatedVehicleJourneyCode() != null) {
 
             key.append(datasetId).append(":ExtraJourney:")
@@ -699,7 +836,7 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
             if (element.getEstimatedCalls() != null && element.getEstimatedCalls().getEstimatedCalls() != null && !element.getEstimatedCalls().getEstimatedCalls().isEmpty()) {
                 final List<EstimatedCall> estimatedCalls = element.getEstimatedCalls().getEstimatedCalls();
                 if (estimatedCalls.get(estimatedCalls.size()-1) != null) {
-                    final StopPointRef stopPointRef = estimatedCalls.get(estimatedCalls.size()-1).getStopPointRef();
+                    final StopPointRefStructure stopPointRef = estimatedCalls.get(estimatedCalls.size()-1).getStopPointRef();
                     if (stopPointRef != null) {
                         lastStopId = getOriginalId(stopPointRef.getValue());
                     }
@@ -709,7 +846,7 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
                 if (element.getRecordedCalls() != null && element.getRecordedCalls().getRecordedCalls() != null && !element.getRecordedCalls().getRecordedCalls().isEmpty()) {
                     final List<RecordedCall> recordedCalls = element.getRecordedCalls().getRecordedCalls();
                     if (recordedCalls.get(recordedCalls.size()-1) != null) {
-                        final StopPointRef stopPointRef = recordedCalls.get(recordedCalls.size()-1).getStopPointRef();
+                        final StopPointRefStructure stopPointRef = recordedCalls.get(recordedCalls.size()-1).getStopPointRef();
                         if (stopPointRef != null) {
                             lastStopId = getOriginalId(stopPointRef.getValue());
                         }

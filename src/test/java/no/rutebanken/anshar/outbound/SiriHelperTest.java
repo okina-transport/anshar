@@ -19,24 +19,19 @@ import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.outbound.SiriHelper;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.LineRef;
-import uk.org.siri.siri20.MonitoredStopVisit;
-import uk.org.siri.siri20.MonitoringRefStructure;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.StopMonitoringDeliveryStructure;
-import uk.org.siri.siri20.StopMonitoringRequestStructure;
-import uk.org.siri.siri20.StopMonitoringSubscriptionStructure;
-import uk.org.siri.siri20.SubscriptionRequest;
-import uk.org.siri.siri20.VehicleActivityStructure;
-import uk.org.siri.siri20.VehicleRef;
+import uk.org.siri.siri21.LineRef;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.VehicleActivityStructure;
+import uk.org.siri.siri21.VehicleRef;
 
+import java.time.Instant;
 import java.util.*;
-
 
 import static org.junit.jupiter.api.Assertions.*;
 
+public class SiriHelperTest {
 
 public class SiriHelperTest  extends SpringBootBaseTest {
 
@@ -47,8 +42,14 @@ public class SiriHelperTest  extends SpringBootBaseTest {
     private SiriObjectFactory siriObjectFactory;
 
 
+    @BeforeEach
+    public void setUp() {
+        siriObjectFactory = new SiriObjectFactory(Instant.now());
+        siriHelper = new SiriHelper(siriObjectFactory);
+    }
+
     @Test
-    public void testFilterVmDelivery() {
+    public void testFilterVmDelivery() throws Exception {
         List<VehicleActivityStructure> vmElements = new ArrayList<>();
         String filterMatchingLineRef_1 = "1234";
         String filterMatchingVehicleRef_1 = "22";
