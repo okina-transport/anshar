@@ -6,7 +6,7 @@ import com.google.transit.realtime.GtfsRealtime;
 import io.micrometer.core.instrument.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 
 import java.math.BigDecimal;
@@ -107,7 +107,7 @@ public class VehiclePositionMapper {
             monitoredCallStruct.setVehicleLocationAtStop(locStruct);
 
             if (StringUtils.isNotEmpty(vehiclePosition.getStopId())){
-                StopPointRef stopPointRef = new StopPointRef();
+                StopPointRefStructure stopPointRef = new StopPointRefStructure();
                 stopPointRef.setValue(vehiclePosition.getStopId());
                 monitoredCallStruct.setStopPointRef(stopPointRef);
             }

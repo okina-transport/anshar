@@ -20,12 +20,12 @@ import org.junit.Ignore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.CallStatusEnumeration;
-import uk.org.siri.siri20.MonitoredCallStructure;
-import uk.org.siri.siri20.MonitoredStopVisit;
-import uk.org.siri.siri20.MonitoredVehicleJourneyStructure;
-import uk.org.siri.siri20.MonitoringRefStructure;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.CallStatusEnumeration;
+import uk.org.siri.siri21.MonitoredCallStructure;
+import uk.org.siri.siri21.MonitoredStopVisit;
+import uk.org.siri.siri21.MonitoredVehicleJourneyStructure;
+import uk.org.siri.siri21.MonitoringRefStructure;
+import uk.org.siri.siri21.Siri;
 
 import java.time.ZonedDateTime;
 import java.util.Arrays;

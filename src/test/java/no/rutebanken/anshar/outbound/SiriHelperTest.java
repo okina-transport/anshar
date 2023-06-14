@@ -21,16 +21,16 @@ import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.LineRef;
-import uk.org.siri.siri20.MonitoredStopVisit;
-import uk.org.siri.siri20.MonitoringRefStructure;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.StopMonitoringDeliveryStructure;
-import uk.org.siri.siri20.StopMonitoringRequestStructure;
-import uk.org.siri.siri20.StopMonitoringSubscriptionStructure;
-import uk.org.siri.siri20.SubscriptionRequest;
-import uk.org.siri.siri20.VehicleActivityStructure;
-import uk.org.siri.siri20.VehicleRef;
+import uk.org.siri.siri21.LineRef;
+import uk.org.siri.siri21.MonitoredStopVisit;
+import uk.org.siri.siri21.MonitoringRefStructure;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.StopMonitoringDeliveryStructure;
+import uk.org.siri.siri21.StopMonitoringRequestStructure;
+import uk.org.siri.siri21.StopMonitoringSubscriptionStructure;
+import uk.org.siri.siri21.SubscriptionRequest;
+import uk.org.siri.siri21.VehicleActivityStructure;
+import uk.org.siri.siri21.VehicleRef;
 
 import java.util.*;
 

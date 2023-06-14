@@ -25,7 +25,7 @@ import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import uk.org.ifopt.siri20.StopPlaceRef;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import java.util.*;
 
@@ -39,7 +39,7 @@ public class MappingAdapterPresets {
     public static List<ValueAdapter> getOutboundAdapters(SiriDataType dataType, OutboundIdMappingPolicy outboundIdMappingPolicy, Map<ObjectType, Optional<IdProcessingParameters>> idProcessingMap) {
 
 
-        OutboundIdAdapter stopIdAdapter = new OutboundIdAdapter(StopPointRef.class, outboundIdMappingPolicy, true);
+        OutboundIdAdapter stopIdAdapter = new OutboundIdAdapter(StopPointRefStructure.class, outboundIdMappingPolicy, true);
         OutboundIdAdapter monitoringRefAdapter = new OutboundIdAdapter(MonitoringRefStructure.class, outboundIdMappingPolicy, true);
         OutboundIdAdapter destinationRefAdapter = new OutboundIdAdapter(DestinationRef.class, outboundIdMappingPolicy, true);
         OutboundIdAdapter originRefAdapter = new OutboundIdAdapter(JourneyPlaceRefStructure.class, outboundIdMappingPolicy, true);
@@ -122,7 +122,7 @@ public class MappingAdapterPresets {
     public static List<ValueAdapter> getOutboundAdapters(OutboundIdMappingPolicy outboundIdMappingPolicy) {
         List<ValueAdapter> adapters = new ArrayList<>();
         adapters.add(new OutboundIdAdapter(LineRef.class, outboundIdMappingPolicy));
-        adapters.add(new OutboundIdAdapter(StopPointRef.class, outboundIdMappingPolicy));
+        adapters.add(new OutboundIdAdapter(StopPointRefStructure.class, outboundIdMappingPolicy));
         adapters.add(new OutboundIdAdapter(StopPlaceRef.class, outboundIdMappingPolicy));
         adapters.add(new OutboundIdAdapter(JourneyPlaceRefStructure.class, outboundIdMappingPolicy));
         adapters.add(new OutboundIdAdapter(DestinationRef.class, outboundIdMappingPolicy));

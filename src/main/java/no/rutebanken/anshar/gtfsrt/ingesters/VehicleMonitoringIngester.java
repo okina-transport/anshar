@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.gtfsrt.ingesters;
 
+import jakarta.xml.bind.JAXBException;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
@@ -10,11 +11,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.MonitoredStopVisit;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.VehicleActivityStructure;
+import uk.org.siri.siri21.MonitoredStopVisit;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.VehicleActivityStructure;
 
-import javax.xml.bind.JAXBException;
+
 import javax.xml.stream.XMLStreamException;
 import java.io.InputStream;
 import java.util.Collection;

@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import javax.annotation.PostConstruct;
 import java.time.Instant;
@@ -366,16 +366,25 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
                     if (estimatedCall.isCancellation() != null && estimatedCall.isCancellation()) {
                         cancelledStops.add(estimatedCall.getStopPointRef().getValue());
                     }
-                    StopAssignmentStructure stopAssignment = estimatedCall.getDepartureStopAssignment();
-                    if (stopAssignment == null) {
-                        stopAssignment = estimatedCall.getArrivalStopAssignment();
+                    //StopAssignmentStructure stopAssignment = estimatedCall.getDepartureStopAssignment();
+
+                    List<StopAssignmentStructure> stopAssignments = estimatedCall.getDepartureStopAssignments();
+
+
+
+
+                    if (stopAssignments == null || stopAssignments.size() == 0) {
+                        stopAssignments = estimatedCall.getArrivalStopAssignments();
                     }
-                    if (stopAssignment != null) {
-                        QuayRefStructure aimedQuayRef = stopAssignment.getAimedQuayRef();
-                        QuayRefStructure expectedQuayRef = stopAssignment.getExpectedQuayRef();
-                        if (aimedQuayRef != null && expectedQuayRef != null) {
-                            if (!aimedQuayRef.getValue().equals(expectedQuayRef.getValue())) {
-                                quayChanges.add(aimedQuayRef.getValue() + " => " + expectedQuayRef.getValue());
+
+                    if (stopAssignments != null && stopAssignments.size() > 0) {
+                        for (StopAssignmentStructure stopAssignment : stopAssignments) {
+                            QuayRefStructure aimedQuayRef = stopAssignment.getAimedQuayRef();
+                            QuayRefStructure expectedQuayRef = stopAssignment.getExpectedQuayRef();
+                            if (aimedQuayRef != null && expectedQuayRef != null) {
+                                if (!aimedQuayRef.getValue().equals(expectedQuayRef.getValue())) {
+                                    quayChanges.add(aimedQuayRef.getValue() + " => " + expectedQuayRef.getValue());
+                                }
                             }
                         }
                     }
@@ -699,7 +708,7 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
             if (element.getEstimatedCalls() != null && element.getEstimatedCalls().getEstimatedCalls() != null && !element.getEstimatedCalls().getEstimatedCalls().isEmpty()) {
                 final List<EstimatedCall> estimatedCalls = element.getEstimatedCalls().getEstimatedCalls();
                 if (estimatedCalls.get(estimatedCalls.size()-1) != null) {
-                    final StopPointRef stopPointRef = estimatedCalls.get(estimatedCalls.size()-1).getStopPointRef();
+                    final StopPointRefStructure stopPointRef = estimatedCalls.get(estimatedCalls.size()-1).getStopPointRef();
                     if (stopPointRef != null) {
                         lastStopId = getOriginalId(stopPointRef.getValue());
                     }
@@ -709,7 +718,7 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
                 if (element.getRecordedCalls() != null && element.getRecordedCalls().getRecordedCalls() != null && !element.getRecordedCalls().getRecordedCalls().isEmpty()) {
                     final List<RecordedCall> recordedCalls = element.getRecordedCalls().getRecordedCalls();
                     if (recordedCalls.get(recordedCalls.size()-1) != null) {
-                        final StopPointRef stopPointRef = recordedCalls.get(recordedCalls.size()-1).getStopPointRef();
+                        final StopPointRefStructure stopPointRef = recordedCalls.get(recordedCalls.size()-1).getStopPointRef();
                         if (stopPointRef != null) {
                             lastStopId = getOriginalId(stopPointRef.getValue());
                         }

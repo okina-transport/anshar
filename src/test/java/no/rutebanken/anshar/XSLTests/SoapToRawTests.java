@@ -4,7 +4,7 @@ import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.Test;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.Siri;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.stream.XMLStreamException;

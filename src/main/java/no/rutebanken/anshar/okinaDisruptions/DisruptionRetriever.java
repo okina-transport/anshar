@@ -18,7 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import uk.org.siri.siri20.PtSituationElement;
+import uk.org.siri.siri21.PtSituationElement;
 
 import java.io.BufferedReader;
 import java.io.IOException;

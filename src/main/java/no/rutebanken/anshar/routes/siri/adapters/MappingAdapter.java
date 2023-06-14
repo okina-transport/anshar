@@ -23,11 +23,11 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import uk.org.ifopt.siri20.StopPlaceRef;
-import uk.org.siri.siri20.CourseOfJourneyRefStructure;
-import uk.org.siri.siri20.DestinationRef;
-import uk.org.siri.siri20.JourneyPlaceRefStructure;
-import uk.org.siri.siri20.LineRef;
-import uk.org.siri.siri20.StopPointRef;
+import uk.org.siri.siri21.CourseOfJourneyRefStructure;
+import uk.org.siri.siri21.DestinationRef;
+import uk.org.siri.siri21.JourneyPlaceRefStructure;
+import uk.org.siri.siri21.LineRef;
+
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,7 +42,7 @@ public abstract class MappingAdapter {
     List<ValueAdapter> createNsrIdMappingAdapters(SiriDataType type, String datasetId, List<String> idMappingPrefixes) {
         List<ValueAdapter> nsr = new ArrayList<>();
         nsr.add(new StopPlaceRegisterMapper(type, datasetId, StopPlaceRef.class, idMappingPrefixes, "StopPlace"));
-        nsr.add(new StopPlaceRegisterMapper(type, datasetId, StopPointRef.class, idMappingPrefixes));
+        //nsr.add(new StopPlaceRegisterMapper(type, datasetId, StopPointRef.class, idMappingPrefixes));
         nsr.add(new StopPlaceRegisterMapper(type, datasetId, JourneyPlaceRefStructure.class, idMappingPrefixes));
         nsr.add(new StopPlaceRegisterMapper(type, datasetId, DestinationRef.class, idMappingPrefixes));
         return nsr;

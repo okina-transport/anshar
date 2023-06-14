@@ -5,7 +5,11 @@ import com.google.transit.realtime.GtfsRealtime;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri20.EnvironmentReasonEnumeration;
+import uk.org.siri.siri20.EquipmentReasonEnumeration;
+import uk.org.siri.siri20.MiscellaneousReasonEnumeration;
+import uk.org.siri.siri20.PersonnelReasonEnumeration;
+import uk.org.siri.siri21.*;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -123,7 +127,7 @@ public class AlertMapper {
 
         if (informedEntity.hasStopId()){
             AffectedStopPointStructure stopPoint = new AffectedStopPointStructure();
-            StopPointRef stopPointRef = new StopPointRef();
+            StopPointRefStructure stopPointRef = new StopPointRefStructure();
             stopPointRef.setValue(informedEntity.getStopId());
             stopPoint.setStopPointRef(stopPointRef);
             stopPoints.getAffectedStopPoints().add(stopPoint);
@@ -173,40 +177,40 @@ public class AlertMapper {
 
         switch(alert.getCause()){
             case WEATHER:
-                ptSituationElement.setEnvironmentReason(EnvironmentReasonEnumeration.UNDEFINED_ENVIRONMENTAL_PROBLEM);
+                ptSituationElement.setEnvironmentReason(EnvironmentReasonEnumeration.UNDEFINED_ENVIRONMENTAL_PROBLEM.value());
                 break;
             case CONSTRUCTION:
-                ptSituationElement.setEquipmentReason(EquipmentReasonEnumeration.CONSTRUCTION_WORK);
+                ptSituationElement.setEquipmentReason(EquipmentReasonEnumeration.CONSTRUCTION_WORK.value());
                 break;
             case MAINTENANCE:
-                ptSituationElement.setEquipmentReason(EquipmentReasonEnumeration.MAINTENANCE_WORK);
+                ptSituationElement.setEquipmentReason(EquipmentReasonEnumeration.MAINTENANCE_WORK.value());
                 break;
             case STRIKE:
-                ptSituationElement.setPersonnelReason(PersonnelReasonEnumeration.INDUSTRIAL_ACTION);
+                ptSituationElement.setPersonnelReason(PersonnelReasonEnumeration.INDUSTRIAL_ACTION.value());
                 break;
             case OTHER_CAUSE:
-                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.UNDEFINED_PROBLEM);
+                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.UNDEFINED_PROBLEM.value());
                 break;
             case UNKNOWN_CAUSE:
-                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.UNKNOWN);
+                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.UNKNOWN.value());
                 break;
             case ACCIDENT:
-                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.ACCIDENT);
+                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.ACCIDENT.value());
                 break;
             case DEMONSTRATION:
-                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.DEMONSTRATION);
+                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.DEMONSTRATION.value());
                 break;
             case MEDICAL_EMERGENCY:
-                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.INCIDENT);
+                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.INCIDENT.value());
                 break;
             case POLICE_ACTIVITY:
-                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.POLICE_ACTIVITY);
+                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.POLICE_ACTIVITY.value());
                 break;
             case TECHNICAL_PROBLEM:
-                ptSituationElement.setEquipmentReason(EquipmentReasonEnumeration.TECHNICAL_PROBLEM);
+                ptSituationElement.setEquipmentReason(EquipmentReasonEnumeration.TECHNICAL_PROBLEM.value());
                 break;
             case HOLIDAY:
-                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.HOLIDAY);
+                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.HOLIDAY.value());
                 break;
         }
     }

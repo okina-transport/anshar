@@ -31,11 +31,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
-import uk.org.siri.siri20.MessageRefStructure;
-import uk.org.siri.siri20.MonitoredCallStructure;
-import uk.org.siri.siri20.MonitoredStopVisit;
-import uk.org.siri.siri20.MonitoredVehicleJourneyStructure;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.MessageRefStructure;
+import uk.org.siri.siri21.MonitoredCallStructure;
+import uk.org.siri.siri21.MonitoredStopVisit;
+import uk.org.siri.siri21.MonitoredVehicleJourneyStructure;
+import uk.org.siri.siri21.Siri;
 
 import javax.annotation.PostConstruct;
 import java.io.Serializable;

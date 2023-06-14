@@ -6,11 +6,11 @@ import no.rutebanken.anshar.routes.siri.processor.ExtraJourneyPostProcessor;
 import no.rutebanken.anshar.routes.siri.processor.routedata.NetexUpdaterService;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import uk.org.siri.siri20.EstimatedCall;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.StopPointRef;
-import uk.org.siri.siri20.VehicleModesEnumeration;
+import uk.org.siri.siri21.EstimatedCall;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.StopPointRef;
+import uk.org.siri.siri21.VehicleModesEnumeration;
 
 import java.time.Instant;
 import java.time.ZonedDateTime;

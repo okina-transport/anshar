@@ -45,10 +45,10 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri20.VehicleActivityStructure;
+import uk.org.siri.siri21.VehicleActivityStructure;
 import org.quartz.utils.counter.Counter;
 import org.quartz.utils.counter.CounterImpl;
 

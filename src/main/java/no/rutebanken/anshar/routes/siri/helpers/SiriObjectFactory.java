@@ -31,7 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.datatype.DatatypeConfigurationException;
@@ -550,19 +550,22 @@ public class SiriObjectFactory {
         return requestorRef;
     }
 
-    private static SubscriptionQualifierStructure createSubscriptionIdentifier(String subscriptionId) {
-        SubscriptionQualifierStructure subscriptionRef = new SubscriptionQualifierStructure();
+    private static SubscriptionRefStructure createSubscriptionIdentifier(String subscriptionId) {
+        SubscriptionRefStructure subscriptionRef = new SubscriptionRefStructure();
         subscriptionRef.setValue(subscriptionId);
         return subscriptionRef;
     }
 
-    private static MessageQualifierStructure createMessageIdentifier(String value) {
-        MessageQualifierStructure msgId = new MessageQualifierStructure();
+    private static MessageRefStructure createMessageIdentifier(String value) {
+        MessageRefStructure msgId = new MessageRefStructure();
         msgId.setValue(value);
         return msgId;
     }
 
-    private static MessageQualifierStructure createMessageIdentifier() {
+    private static MessageRefStructure createMessageIdentifier() {
+
+
+
         return createMessageIdentifier(UUID.randomUUID().toString());
     }
 

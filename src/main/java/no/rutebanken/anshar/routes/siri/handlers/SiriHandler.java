@@ -16,6 +16,7 @@
 package no.rutebanken.anshar.routes.siri.handlers;
 
 import io.micrometer.core.instrument.util.StringUtils;
+import jakarta.xml.bind.JAXBException;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
@@ -38,19 +39,20 @@ import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import no.rutebanken.anshar.util.GeneralMessageHelper;
 import no.rutebanken.anshar.util.IDUtils;
 import org.json.simple.JSONObject;
-import org.rutebanken.siri20.util.SiriXml;
+import org.entur.siri21.util.SiriXml;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
-import javax.xml.bind.JAXBException;
+
 import javax.xml.bind.UnmarshalException;
 import javax.xml.datatype.Duration;
 import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 import java.io.InputStream;
+
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -113,11 +115,11 @@ public class SiriHandler {
     private ExternalIdsService externalIdsService;
 
 
-    public Siri handleIncomingSiri(String subscriptionId, InputStream xml) throws UnmarshalException {
+    public Siri handleIncomingSiri(String subscriptionId, InputStream xml) throws javax.xml.bind.JAXBException {
         return handleIncomingSiri(subscriptionId, xml, null, -1);
     }
 
-    private Siri handleIncomingSiri(String subscriptionId, InputStream xml, String datasetId, int maxSize) throws UnmarshalException {
+    private Siri handleIncomingSiri(String subscriptionId, InputStream xml, String datasetId, int maxSize) throws javax.xml.bind.JAXBException {
         return handleIncomingSiri(subscriptionId, xml, datasetId, null, maxSize, null);
     }
 
@@ -128,11 +130,11 @@ public class SiriHandler {
      * @param outboundIdMappingPolicy Defines outbound idmapping-policy
      * @return the siri response
      */
-    public Siri handleIncomingSiri(String subscriptionId, InputStream xml, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String clientTrackingName) throws UnmarshalException {
+    public Siri handleIncomingSiri(String subscriptionId, InputStream xml, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String clientTrackingName) throws javax.xml.bind.JAXBException {
         return handleIncomingSiri(subscriptionId, xml, datasetId, null, outboundIdMappingPolicy, maxSize, clientTrackingName);
     }
 
-    public Siri handleIncomingSiri(String subscriptionId, InputStream xml, String datasetId, List<String> excludedDatasetIdList, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String clientTrackingName) throws UnmarshalException {
+    public Siri handleIncomingSiri(String subscriptionId, InputStream xml, String datasetId, List<String> excludedDatasetIdList, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String clientTrackingName) throws javax.xml.bind.JAXBException {
         try {
             if (subscriptionId != null) {
                 processSiriClientRequest(subscriptionId, xml); // Response to a request we made on behalf of one of the subscriptions
@@ -140,8 +142,6 @@ public class SiriHandler {
                 Siri incoming = SiriValueTransformer.parseXml(xml); // Someone asking us for siri update
                 return processSiriServerRequest(incoming, datasetId, excludedDatasetIdList, outboundIdMappingPolicy, maxSize, clientTrackingName);
             }
-        } catch (UnmarshalException e) {
-            throw e;
         } catch (JAXBException | XMLStreamException e) {
             logger.warn("Caught exception when parsing incoming XML", e);
         }
@@ -594,7 +594,7 @@ public class SiriHandler {
      */
     private AnnotatedStopPointStructure convertKeyToPointStructure(String stopRef) {
         AnnotatedStopPointStructure pointStruct = new AnnotatedStopPointStructure();
-        StopPointRef stopPointRef = new StopPointRef();
+        StopPointRefStructure stopPointRef = new StopPointRefStructure();
         stopPointRef.setValue(stopRef);
         pointStruct.setStopPointRef(stopPointRef);
         pointStruct.setMonitored(true);

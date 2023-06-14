@@ -4,7 +4,7 @@ package no.rutebanken.anshar.data.util;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Message;
 import org.apache.commons.lang3.StringUtils;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;

@@ -3,7 +3,7 @@ package no.rutebanken.anshar.util;
 
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -61,7 +61,7 @@ public class SytralJSONMapper {
 
 
         MonitoredCallStructure monitoredCallStructure = new MonitoredCallStructure();
-        StopPointRef stopPointRef = new StopPointRef();
+        StopPointRefStructure stopPointRef = new StopPointRefStructure();
         stopPointRef.setValue(stopPointId);
         monitoredCallStructure.setStopPointRef(stopPointRef);
 

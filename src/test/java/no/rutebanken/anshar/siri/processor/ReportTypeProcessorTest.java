@@ -20,8 +20,8 @@ import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.processor.ReportTypeProcessor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import uk.org.siri.siri20.PtSituationElement;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.PtSituationElement;
+import uk.org.siri.siri21.Siri;
 
 import java.time.Instant;
 import java.util.ArrayList;

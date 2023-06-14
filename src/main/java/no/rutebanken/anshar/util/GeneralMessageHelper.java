@@ -5,7 +5,7 @@ import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import java.util.List;
 import java.util.Map;
@@ -97,7 +97,7 @@ public class GeneralMessageHelper {
             }
 
             OutboundIdAdapter currAdapter = (OutboundIdAdapter) valueAdapter;
-            if(currAdapter.getClassToApply().equals(StopPointRef.class)){
+            if(currAdapter.getClassToApply().equals(StopPointRefStructure.class)){
              return Optional.of (currAdapter);
             }
         }

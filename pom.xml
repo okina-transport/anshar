@@ -109,6 +109,12 @@
     </dependencyManagement>
 
     <dependencies>
+
+        <dependency>
+            <groupId>jakarta.xml.bind</groupId>
+            <artifactId>jakarta.xml.bind-api</artifactId>
+            <version>3.0.1</version>
+        </dependency>
         <dependency>
             <groupId>net.logstash.logback</groupId>
             <artifactId>logstash-logback-encoder</artifactId>
@@ -278,7 +284,7 @@
         <dependency>
             <groupId>org.entur</groupId>
             <artifactId>siri-java-model</artifactId>
-            <version>0.14</version>
+            <version>1.23.1-mobi-iti</version>
         </dependency>
 
         <dependency>

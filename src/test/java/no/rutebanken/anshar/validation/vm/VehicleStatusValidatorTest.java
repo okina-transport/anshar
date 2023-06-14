@@ -19,7 +19,7 @@ import no.rutebanken.anshar.routes.validation.validators.vm.VehicleStatusValidat
 import no.rutebanken.anshar.validation.CustomValidatorTest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import uk.org.siri.siri20.VehicleStatusEnumeration;
+import uk.org.siri.siri21.VehicleStatusEnumeration;
 
 import javax.xml.bind.ValidationEvent;
 

@@ -24,6 +24,10 @@ public class SendToActiveMQRouteBuilder  extends RouteBuilder {
 
 
         from("direct:send.sx.to.realtime.server")
+                .process(e->{
+                    System.out.println("aa");
+
+                })
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
                 .setExchangePattern(ExchangePattern.InOnly)
                 .to(ACTIVEMQ_PREFIX + GTFSRT_SX_QUEUE)

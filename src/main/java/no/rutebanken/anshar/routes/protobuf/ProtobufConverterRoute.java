@@ -5,7 +5,7 @@ import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
 import org.entur.protobuf.mapper.SiriMapper;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.Siri;
 import uk.org.siri.www.siri.SiriType;
 
 import static org.apache.camel.Exchange.CONTENT_LENGTH;

@@ -23,14 +23,16 @@ import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.support.builder.Namespaces;
 import org.apache.http.HttpHeaders;
+
+
 import org.entur.protobuf.mapper.SiriMapper;
-import org.rutebanken.siri20.util.SiriJson;
+import org.entur.siri21.util.SiriJson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.Siri;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.MediaType;
@@ -529,10 +531,11 @@ public class RestRouteBuilder extends RouteBuilder {
         } else if ("application/x-protobuf".equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE)) |
             "application/x-protobuf".equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
             try {
-                final byte[] bytes = SiriMapper.mapToPbf(response).toByteArray();
-                p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, "application/x-protobuf");
-                p.getMessage().setHeader(HttpHeaders.CONTENT_LENGTH, "" + bytes.length);
-                out.getOutputStream().write(bytes);
+                //TODO GCA : finir après avoir réglé le prob du protobug avec siri 2.1
+//                final byte[] bytes = SiriMapper.mapToPbf(response).toByteArray();
+//                p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, "application/x-protobuf");
+//                p.getMessage().setHeader(HttpHeaders.CONTENT_LENGTH, "" + bytes.length);
+//                out.getOutputStream().write(bytes);
             } catch (NullPointerException npe) {
                 File file = new File("ET-" + System.currentTimeMillis() + ".xml");
                 log.error("Caught NullPointerException, data written to " + file.getAbsolutePath(), npe);
