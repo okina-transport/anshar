@@ -6,24 +6,23 @@ import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
-import org.quartz.utils.counter.Counter;
-import org.quartz.utils.counter.CounterImpl;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
-import uk.org.siri.siri20.GeneralMessage;
-import uk.org.siri.siri20.InfoChannelRefStructure;
-import uk.org.siri.siri20.MessageRefStructure;
-import uk.org.siri.siri20.Siri;
-
+import uk.org.siri.siri21.GeneralMessage;
+import uk.org.siri.siri21.InfoChannelRefStructure;
+import uk.org.siri.siri21.MessageRefStructure;
+import uk.org.siri.siri21.Siri;
 
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 
@@ -129,7 +128,7 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
     @Override
     public Collection<GeneralMessage> addAll(String datasetId, List<GeneralMessage> gmList) {
         Set<GeneralMessage> addedData = new HashSet<>();
-        Counter outdatedCounter = new CounterImpl(0);
+        AtomicInteger outdatedCounter = new AtomicInteger(0);
 
         gmList.stream()
                 .filter(generalMessage -> generalMessage != null)
@@ -145,13 +144,13 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
                         generalMessages.set(key, generalMessage, expiration, TimeUnit.MILLISECONDS);
                         addedData.add(generalMessage);
                     }else{
-                        outdatedCounter.increment();
+                        outdatedCounter.incrementAndGet();
                     }
 
                 });
 
-        logger.debug("Updated {} (of {}) :: Ignored elements - outdated : {}", addedData.size(), gmList.size(), outdatedCounter.getValue());
-        markDataReceived(SiriDataType.GENERAL_MESSAGE, datasetId, gmList.size(), addedData.size(),outdatedCounter.getValue(),0);
+        logger.debug("Updated {} (of {}) :: Ignored elements - outdated : {}", addedData.size(), gmList.size(), outdatedCounter.get());
+        markDataReceived(SiriDataType.GENERAL_MESSAGE, datasetId, gmList.size(), addedData.size(),outdatedCounter.get(),0);
 
         return addedData;
     }
@@ -171,7 +170,7 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
 
     @Override
     void clearAllByDatasetId(String datasetId) {
-        Set<SiriObjectStorageKey> idsToRemove = generalMessages.keySet(createCodespacePredicate(datasetId));
+        Set<SiriObjectStorageKey> idsToRemove = generalMessages.keySet(createHzCodespacePredicate(datasetId));
         logger.warn("Removing all data ({} ids) for {}", idsToRemove.size(), datasetId);
 
         for (SiriObjectStorageKey id : idsToRemove) {

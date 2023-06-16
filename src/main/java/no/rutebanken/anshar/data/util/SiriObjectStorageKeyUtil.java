@@ -2,7 +2,8 @@ package no.rutebanken.anshar.data.util;
 
 import com.hazelcast.query.Predicate;
 import no.rutebanken.anshar.data.SiriObjectStorageKey;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
+
 
 import java.util.ArrayList;
 import java.util.List;

@@ -46,9 +46,9 @@ public class OutboundSubscriptionSetup implements Serializable {
     private long updateInterval;
 
     public OutboundSubscriptionSetup(ZonedDateTime requestTimestamp, SiriDataType subscriptionType, String address, long heartbeatInterval,
-                                     long changeBeforeUpdates, Map<Class, Set<String>> filterMap, List<ValueAdapter> valueAdapters,
-                                     String subscriptionId, String requestorRef, ZonedDateTime initialTerminationTime, String datasetId, String clientTrackingName,
-                                     SiriValidator.Version siriVersion) {
+                                     boolean incrementalUpdates, long changeBeforeUpdates, long updateInterval,
+                                     Map<Class, Set<String>> filterMap, List<ValueAdapter> valueAdapters,
+                                     String subscriptionId, String requestorRef, ZonedDateTime initialTerminationTime, String datasetId, String clientTrackingName,SiriValidator.Version siriVersion) {
         this.requestTimestamp = requestTimestamp;
         this.subscriptionType = subscriptionType;
         this.address = address;

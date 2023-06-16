@@ -55,15 +55,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Repository;
-import uk.org.siri.siri20.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import uk.org.siri.siri20.VehicleActivityStructure;
-import org.quartz.utils.counter.Counter;
-import org.quartz.utils.counter.CounterImpl;
+
 
 @Component
 public class VehicleActivities extends SiriRepository<VehicleActivityStructure> {
@@ -156,7 +148,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
     @Override
     public void clearAllByDatasetId(String datasetId) {
 
-        Set<SiriObjectStorageKey> idsToRemove = monitoredVehicles.keySet(createCodespacePredicate(datasetId));
+        Set<SiriObjectStorageKey> idsToRemove = monitoredVehicles.keySet(createHzCodespacePredicate(datasetId));
 
         logger.warn("Removing all data ({} ids) for {}", idsToRemove.size(), datasetId);
 

@@ -15,44 +15,24 @@
 
 package no.rutebanken.anshar.routes.outbound;
 
-import no.rutebanken.anshar.data.EstimatedTimetables;
-import no.rutebanken.anshar.data.Situations;
-import no.rutebanken.anshar.data.VehicleActivities;
+import no.rutebanken.anshar.config.IdProcessingParameters;
+import no.rutebanken.anshar.config.ObjectType;
+import no.rutebanken.anshar.data.*;
+import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
+import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
+import no.rutebanken.anshar.subscription.SubscriptionConfig;
+import no.rutebanken.anshar.util.IDUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri21.AffectedLineStructure;
-import uk.org.siri.siri21.AffectsScopeStructure;
-import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri21.EstimatedTimetableRequestStructure;
-import uk.org.siri.siri21.EstimatedTimetableSubscriptionStructure;
-import uk.org.siri.siri21.EstimatedVehicleJourney;
-import uk.org.siri.siri21.EstimatedVersionFrameStructure;
-import uk.org.siri.siri21.LineDirectionStructure;
-import uk.org.siri.siri21.LineRef;
-import uk.org.siri.siri21.PtSituationElement;
-import uk.org.siri.siri21.Siri;
-import uk.org.siri.siri21.SituationExchangeDeliveryStructure;
-import uk.org.siri.siri21.SituationExchangeRequestStructure;
-import uk.org.siri.siri21.SituationExchangeSubscriptionStructure;
-import uk.org.siri.siri21.SubscriptionRequest;
-import uk.org.siri.siri21.VehicleActivityStructure;
-import uk.org.siri.siri21.VehicleMonitoringDeliveryStructure;
-import uk.org.siri.siri21.VehicleMonitoringRequestStructure;
-import uk.org.siri.siri21.VehicleMonitoringSubscriptionStructure;
-import uk.org.siri.siri21.VehicleRef;
+import uk.org.siri.siri21.*;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @SuppressWarnings("unchecked")
 @Component

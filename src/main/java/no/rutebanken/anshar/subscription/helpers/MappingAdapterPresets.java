@@ -25,15 +25,9 @@ import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import uk.org.ifopt.siri21.StopPlaceRef;
-import uk.org.siri.siri21.CourseOfJourneyRefStructure;
-import uk.org.siri.siri21.DestinationRef;
-import uk.org.siri.siri21.JourneyPlaceRefStructure;
-import uk.org.siri.siri21.LineRef;
-import uk.org.siri.siri21.RequestorRef;
-import uk.org.siri.siri21.StopPointRefStructure;
+import uk.org.siri.siri21.*;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class MappingAdapterPresets {
 

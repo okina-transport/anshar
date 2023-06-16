@@ -54,6 +54,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer.SEPARATOR;
+
 abstract class SiriRepository<T> {
 
     private IMap<String, Instant> lastUpdateRequested;
@@ -446,6 +448,20 @@ abstract class SiriRepository<T> {
             return ref.equalsIgnoreCase(decodedLine);
         }
         return false;
+    }
+
+    Predicate<SiriObjectStorageKey, T> createLineRefPredicate(String lineRef) {
+        return entry -> {
+            String decodedLine = URLDecoder.decode(lineRef, StandardCharsets.UTF_8);
+            if (entry.getKey().getLineRef() != null) {
+                final String ref = entry.getKey().getLineRef();
+
+                return ref.startsWith(decodedLine + SEPARATOR) ||
+                        ref.endsWith(SEPARATOR + decodedLine) ||
+                        ref.equalsIgnoreCase(decodedLine);
+            }
+            return false;
+        };
     }
 
     /**

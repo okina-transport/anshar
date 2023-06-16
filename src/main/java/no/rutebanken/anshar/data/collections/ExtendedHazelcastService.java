@@ -46,9 +46,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri21.EstimatedVehicleJourney;
-import uk.org.siri.siri21.PtSituationElement;
-import uk.org.siri.siri21.VehicleActivityStructure;
+import uk.org.siri.siri21.*;
 
 import javax.annotation.PreDestroy;
 import java.lang.invoke.SerializedLambda;

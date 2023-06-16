@@ -24,18 +24,13 @@ import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.util.StopMonitoringUtils;
-import org.quartz.utils.counter.Counter;
-import org.quartz.utils.counter.CounterImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
-import uk.org.siri.siri20.MessageRefStructure;
-import uk.org.siri.siri20.MonitoredCallStructure;
-import uk.org.siri.siri20.MonitoredStopVisit;
-import uk.org.siri.siri20.MonitoredVehicleJourneyStructure;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.*;
+
 
 import javax.annotation.PostConstruct;
 import java.io.Serializable;
@@ -137,7 +132,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
     @Override
     void clearAllByDatasetId(String datasetId) {
-        Set<SiriObjectStorageKey> idsToRemove = monitoredStopVisits.keySet(createCodespacePredicate(datasetId));
+        Set<SiriObjectStorageKey> idsToRemove = monitoredStopVisits.keySet(createHzCodespacePredicate(datasetId));
 
         logger.warn("Removing all data ({} ids) for {}", idsToRemove.size(), datasetId);
 
@@ -164,7 +159,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
 
 
-    public Siri createServiceDelivery(String requestorRef, String datasetId, String clientTrackingName, int maxSize,  Set<String> searchedStopIds) {
+    public Siri createServiceDelivery(String requestorRef, String datasetId, String clientTrackingName, int maxSize, Set<String> searchedStopIds) {
         return createServiceDelivery(requestorRef, datasetId, clientTrackingName, null, maxSize, -1, searchedStopIds);
     }
 
@@ -388,10 +383,11 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         Set<SiriObjectStorageKey> changes = new HashSet<>();
         Set<MonitoredStopVisit> addedData = new HashSet<>();
 
-        Counter invalidLocationCounter = new CounterImpl(0);
-        Counter notMeaningfulCounter = new CounterImpl(0);
-        Counter outdatedCounter = new CounterImpl(0);
-        Counter notUpdatedCounter = new CounterImpl(0);
+        AtomicInteger invalidLocationCounter = new AtomicInteger(0);
+        AtomicInteger notMeaningfulCounter = new AtomicInteger(0);
+        AtomicInteger outdatedCounter = new AtomicInteger(0);
+        AtomicInteger notUpdatedCounter = new AtomicInteger(0);
+
 
         smList.stream()
                 .filter(monitoredStopVisit -> monitoredStopVisit.getMonitoringRef() != null)
@@ -453,19 +449,19 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 //                            siriSmMqttHandler.pushToMqttAsync(datasetId, monitoredStopVisit);
 
                         } else {
-                            outdatedCounter.increment();
+                            outdatedCounter.incrementAndGet();
                         }
 
 
                     } else {
-                        notUpdatedCounter.increment();
+                        notUpdatedCounter.incrementAndGet();
                     }
 
                 });
 
-        logger.info("Updated {} (of {}) :: Ignored elements - Missing location:{}, Missing values: {}, Expired: {}, Not updated: {}", changes.size(), smList.size(), invalidLocationCounter.getValue(), notMeaningfulCounter.getValue(), outdatedCounter.getValue(), notUpdatedCounter.getValue());
+        logger.info("Updated {} (of {}) :: Ignored elements - Missing location:{}, Missing values: {}, Expired: {}, Not updated: {}", changes.size(), smList.size(), invalidLocationCounter.get(), notMeaningfulCounter.get(), outdatedCounter.get(), notUpdatedCounter.get());
 
-        markDataReceived(SiriDataType.STOP_MONITORING, datasetId, smList.size(), changes.size(), outdatedCounter.getValue(), (invalidLocationCounter.getValue() + notMeaningfulCounter.getValue() + notUpdatedCounter.getValue()));
+        markDataReceived(SiriDataType.STOP_MONITORING, datasetId, smList.size(), changes.size(), outdatedCounter.get(), (invalidLocationCounter.get() + notMeaningfulCounter.get() + notUpdatedCounter.get()));
 
         markIdsAsUpdated(changes);
 
