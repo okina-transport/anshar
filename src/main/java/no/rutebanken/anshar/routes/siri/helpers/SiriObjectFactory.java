@@ -163,9 +163,8 @@ public class SiriObjectFactory {
                     subscriptionSetup.getAddressFieldName());
         }
 
-        //todo definir les champs nécessaires
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.FACILITY_MONITORING)) {
-            request = createGeneralMessageSubscriptionRequest(
+            request = createFacilityMonitoringSubscriptionRequest(
                     subscriptionSetup.getRequestorRef(),
                     subscriptionSetup.getSubscriptionId(),
                     subscriptionSetup.getHeartbeatInterval(),
@@ -173,7 +172,6 @@ public class SiriObjectFactory {
                     subscriptionSetup.getDurationOfSubscription(),
                     subscriptionSetup.getAddressFieldName());
         }
-        siri.setSubscriptionRequest(request);
 
         siri.setSubscriptionRequest(request);
 
@@ -306,7 +304,6 @@ public class SiriObjectFactory {
         return gmRequest;
     }
 
-//todo vérifier les champs
     private static FacilityMonitoringRequestStructure createFacilityMonitoringRequestStructure(SubscriptionSetup subscriptionSetup) {
         FacilityMonitoringRequestStructure fmRequest = new FacilityMonitoringRequestStructure();
         fmRequest.setRequestTimestamp(ZonedDateTime.now());
@@ -425,7 +422,6 @@ public class SiriObjectFactory {
         return request;
     }
 
-    //todo les champs ne sont pas définis encore
     private static SubscriptionRequest createFacilityMonitoringSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address,
                                                                                Duration subscriptionDuration,     String addressFieldName ) {
 

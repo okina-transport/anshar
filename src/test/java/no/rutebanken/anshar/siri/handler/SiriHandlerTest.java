@@ -25,18 +25,12 @@ import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.xml.sax.SAXException;
-import uk.org.siri.siri20.AnnotatedLineRef;
-import uk.org.siri.siri20.AnnotatedStopPointStructure;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.HalfOpenTimestampOutputRangeStructure;
-import uk.org.siri.siri20.MonitoredStopVisit;
-import uk.org.siri.siri20.PtSituationElement;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.VehicleActivityStructure;
+import uk.org.siri.siri20.*;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.parsers.ParserConfigurationException;
@@ -55,12 +49,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class SiriHandlerTest extends SpringBootBaseTest {
 
@@ -69,6 +58,9 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
     @Autowired
     private FacilityMonitoring facilityMonitoring;
+
+    @Autowired
+    private GeneralMessages genrealMessage;
 
     @Autowired
     private SiriHandler handler;
@@ -288,6 +280,64 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         Collection<MonitoredStopVisit> savedStopVisits = stopVisits.getAll();
 
+    }
+
+    @Test
+    public void testFmComplianceExpired() throws JAXBException {
+        facilityMonitoring.clearAll();
+        SubscriptionSetup fmSubscription = getFmSubscription();
+        subscriptionManager.addSubscription(fmSubscription.getSubscriptionId(), fmSubscription);
+        ClassLoader classLoader = getClass().getClassLoader();
+        File file = new File("src/test/resources/fm_example_expired_delivery.xml");
+
+        try {
+            handler.handleIncomingSiri(fmSubscription.getSubscriptionId(), new ByteArrayInputStream(FileUtils.readFileToByteArray(file)));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        Collection<FacilityConditionStructure> savedfacilities = facilityMonitoring.getAll();
+        assertTrue(savedfacilities.isEmpty(), "La liste des objets ajouté doit être vide");
+    }
+
+    /**
+     * Test to check that file given by GitHub siri complies with okina management rules
+     * @throws JAXBException
+     */
+    @Test
+    public void testFmCompliance() throws JAXBException {
+        facilityMonitoring.clearAll();
+        SubscriptionSetup fmSubscription = getFmSubscription();
+        subscriptionManager.addSubscription(fmSubscription.getSubscriptionId(), fmSubscription);
+        ClassLoader classLoader = getClass().getClassLoader();
+        File file = new File("src/test/resources/fm_example_delivery.xml");
+
+        try {
+            handler.handleIncomingSiri(fmSubscription.getSubscriptionId(), new ByteArrayInputStream(FileUtils.readFileToByteArray(file)));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        Collection<FacilityConditionStructure> savedfacilities = facilityMonitoring.getAll();
+        assertFalse(savedfacilities.isEmpty(), "Un objet a dû être ajouté");
+    }
+
+    @Test
+    public void testGmCompliance() throws JAXBException {
+        genrealMessage.clearAll();
+        SubscriptionSetup gmSubscription = getGmSubscription();
+        subscriptionManager.addSubscription(gmSubscription.getSubscriptionId(), gmSubscription);
+        ClassLoader classLoader = getClass().getClassLoader();
+        File file = new File("src/test/resources/gm_example_delivery.xml");
+
+        try {
+            handler.handleIncomingSiri(gmSubscription.getSubscriptionId(), new ByteArrayInputStream(FileUtils.readFileToByteArray(file)));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        Collection<GeneralMessage> savedGeneralMessages = genrealMessage.getAll();
+        assertFalse(savedGeneralMessages.isEmpty(), "Un objet a dû être ajouté");
     }
 
     /**
@@ -552,6 +602,9 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     }
 
     private SubscriptionSetup getFmSubscription() { return getSubscriptionSetup(SiriDataType.FACILITY_MONITORING);
+    }
+
+    private SubscriptionSetup getGmSubscription() { return getSubscriptionSetup(SiriDataType.GENERAL_MESSAGE);
     }
 
     private SubscriptionSetup getSubscriptionSetup(SiriDataType type) {

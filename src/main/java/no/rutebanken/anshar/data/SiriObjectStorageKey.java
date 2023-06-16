@@ -54,7 +54,7 @@ public class SiriObjectStorageKey implements Serializable {
     }
 
     public String getFacilityRef() {
-        return stopRef;
+        return facilityRef;
     }
 
     String getVehicleJourney() {

@@ -249,6 +249,8 @@ public class ServerSubscriptionManager {
             return SiriDataType.STOP_MONITORING;
         } else if (SiriHelper.containsValues(subscriptionRequest.getGeneralMessageSubscriptionRequests())) {
             return SiriDataType.GENERAL_MESSAGE;
+        } else if (SiriHelper.containsValues(subscriptionRequest.getFacilityMonitoringSubscriptionRequests())) {
+            return SiriDataType.FACILITY_MONITORING;
         }
         return null;
     }
@@ -326,6 +328,11 @@ public class ServerSubscriptionManager {
             GeneralMessageSubscriptionStructure generalMessageSubscriptionStructure = subscriptionRequest.getGeneralMessageSubscriptionRequests().get(0);
 
             return getSubscriptionIdentifier(generalMessageSubscriptionStructure);
+        } else if (SiriHelper.containsValues(subscriptionRequest.getFacilityMonitoringSubscriptionRequests())) {
+
+            FacilityMonitoringSubscriptionStructure facilityMonitoringSubscriptionStructure = subscriptionRequest.getFacilityMonitoringSubscriptionRequests().get(0);
+
+            return getSubscriptionIdentifier(facilityMonitoringSubscriptionStructure);
         }
         return null;
     }
@@ -353,6 +360,9 @@ public class ServerSubscriptionManager {
         } else if (SiriHelper.containsValues(subscriptionRequest.getGeneralMessageSubscriptionRequests())) {
 
             return subscriptionRequest.getGeneralMessageSubscriptionRequests().get(0).getInitialTerminationTime();
+        } else if (SiriHelper.containsValues(subscriptionRequest.getFacilityMonitoringSubscriptionRequests())) {
+
+            return subscriptionRequest.getFacilityMonitoringSubscriptionRequests().get(0).getInitialTerminationTime();
         }
         return null;
     }
@@ -399,6 +409,9 @@ public class ServerSubscriptionManager {
                 break;
             case GENERAL_MESSAGE:
                 executorService.submit(() -> pushUpdatedGeneralMessages(updates, datasetId, breadcrumbId));
+                break;
+            case FACILITY_MONITORING:
+                executorService.submit(() -> pushUpdatedFacilityMonitoring(updates, datasetId, breadcrumbId));
                 break;
             default:
                 // Ignore
@@ -502,6 +515,43 @@ public class ServerSubscriptionManager {
                 .stream()
                 .filter(subscriptionRequest -> (
                                 subscriptionRequest.getSubscriptionType().equals(SiriDataType.GENERAL_MESSAGE)
+                                        && (
+                                        subscriptionRequest.getDatasetId() == null || (
+                                                subscriptionRequest
+                                                        .getDatasetId()
+                                                        .equals(datasetId)
+                                        )
+                                )
+                        )
+
+                )
+                .collect(Collectors.toList());
+
+        boolean logFullContents = true;
+        for (OutboundSubscriptionSetup recipient : recipients) {
+            camelRouteManager.pushSiriData(delivery, recipient, logFullContents);
+            logFullContents = false;
+        }
+
+        MDC.remove("camel.breadcrumbId");
+    }
+
+
+    private void pushUpdatedFacilityMonitoring(List updates, String datasetId, String breadcrumbId) {
+        MDC.put("camel.breadcrumbId", breadcrumbId);
+
+        if (updates == null || updates.isEmpty()) {
+            return;
+        }
+        Siri delivery = siriObjectFactory.createFMServiceDelivery(updates);
+
+
+
+        final List<OutboundSubscriptionSetup> recipients = subscriptions
+                .values()
+                .stream()
+                .filter(subscriptionRequest -> (
+                                subscriptionRequest.getSubscriptionType().equals(SiriDataType.FACILITY_MONITORING)
                                         && (
                                         subscriptionRequest.getDatasetId() == null || (
                                                 subscriptionRequest

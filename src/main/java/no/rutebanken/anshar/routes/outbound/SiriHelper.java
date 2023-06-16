@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.org.siri.siri20.*;
+import uk.org.siri.www.siri.FacilityRefStructure;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -57,6 +58,9 @@ public class SiriHelper {
     private GeneralMessages generalMessages;
 
     @Autowired
+    private FacilityMonitoring facilityMonitoring;
+
+    @Autowired
     private StopPlaceUpdaterService stopPlaceUpdaterService;
 
     @Autowired
@@ -80,10 +84,32 @@ public class SiriHelper {
             return getFilter(subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0), outboundIdMappingPolicy, datasetId);
         }else if (containsValues(subscriptionRequest.getGeneralMessageSubscriptionRequests())) {
             return getFilter(subscriptionRequest.getGeneralMessageSubscriptionRequests().get(0), outboundIdMappingPolicy, datasetId);
+        } else if (containsValues(subscriptionRequest.getFacilityMonitoringSubscriptionRequests())) {
+            return getFilter(subscriptionRequest.getFacilityMonitoringSubscriptionRequests().get(0), outboundIdMappingPolicy, datasetId);
         }
 
         return new HashMap<>();
     }
+
+    private Map<Class, Set<String>> getFilter(FacilityMonitoringSubscriptionStructure facilityMonitoringSubscriptionStructure, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
+        Map<Class, Set<String>> filterMap = new HashMap<>();
+
+        List<FacilityRef> requestedFacilities = facilityMonitoringSubscriptionStructure.getFacilityMonitoringRequest().getFacilityReves();
+
+
+        Set<String> requestedFacilitiesSet = requestedFacilities.stream()
+                .map(FacilityRef::getValue)
+                .collect(Collectors.toSet());
+
+        Map<ObjectType, Optional<IdProcessingParameters>> idProcessingParams = subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);
+
+        if (!requestedFacilitiesSet.isEmpty()) {
+            filterMap.put(FacilityStructure.class, requestedFacilitiesSet);
+        }
+
+        return filterMap;
+    }
+
 
     private Map<Class, Set<String>> getFilter(GeneralMessageSubscriptionStructure generalMessageSubscriptionStructure, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
 
@@ -97,8 +123,6 @@ public class SiriHelper {
                                                 .collect(Collectors.toSet());
 
         Map<ObjectType, Optional<IdProcessingParameters>> idProcessingParams = subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);
-
-
 
         if (!requestedChannels.isEmpty()) {
             filterMap.put(InfoChannel.class, requestedChannels);
@@ -249,6 +273,12 @@ public class SiriHelper {
                 delivery = siriObjectFactory.createGMServiceDelivery(messages);
                 break;
 
+            case FACILITY_MONITORING:
+                Collection<FacilityConditionStructure> facility = facilityMonitoring.getAll(subscriptionRequest.getDatasetId());
+                logger.info("Initial FM-delivery: {} elements", facility.size());
+                delivery = siriObjectFactory.createFMServiceDelivery(facility);
+                break;
+
 
         }
         return delivery;
@@ -324,6 +354,18 @@ public class SiriHelper {
                 siriList.add(siriObjectFactory.createGMServiceDelivery(list));
             }
 
+        } else if (containsValues(payload.getServiceDelivery().getFacilityMonitoringDeliveries())) {
+
+            List<FacilityConditionStructure> facilityConditionsList = payload.getServiceDelivery()
+                    .getFacilityMonitoringDeliveries().get(0)
+                    .getFacilityConditions();
+
+            List<List> fmList = splitList(facilityConditionsList, maximumSizePerDelivery);
+
+            for (List<FacilityConditionStructure> list : fmList) {
+                siriList.add(siriObjectFactory.createFMServiceDelivery(list));
+            }
+
         }
 
         return siriList;
@@ -384,11 +426,37 @@ public class SiriHelper {
                 return applySingleMatchFilter(filtered, filter);
             } else if (containsValues(filtered.getServiceDelivery().getGeneralMessageDeliveries())){
                 return applyGeneralMessageFilter(filtered, filter);
+            } else if (containsValues(filtered.getServiceDelivery().getFacilityMonitoringDeliveries())){
+                return applyFacilityMonitoringFilter(filtered, filter);
             }
         }
 
         return siri;
     }
+
+    private static Siri applyFacilityMonitoringFilter(Siri filtered, Map<Class, Set<String>> filter) {
+
+        Set<String> facility = filter.get(FacilityStructure.class);
+        if (facility == null || facility.isEmpty()) {
+            return filtered;
+        }
+
+        for (FacilityMonitoringDeliveryStructure facilityMonitoringDelivery : filtered.getServiceDelivery().getFacilityMonitoringDeliveries()) {
+
+            List<FacilityConditionStructure> filteredFacilityCondition = new ArrayList<>();
+            for (FacilityConditionStructure facilityCondition : facilityMonitoringDelivery.getFacilityConditions()) {
+
+                if (facility.contains(facilityCondition.getFacilityRef().getValue())){
+                    filteredFacilityCondition.add(facilityCondition);
+                }
+            }
+
+            facilityMonitoringDelivery.getFacilityConditions().clear();
+            facilityMonitoringDelivery.getFacilityConditions().addAll(filteredFacilityCondition);
+        }
+        return filtered;
+    }
+
 
     private static Siri applyGeneralMessageFilter(Siri filtered, Map<Class, Set<String>> filter) {
 

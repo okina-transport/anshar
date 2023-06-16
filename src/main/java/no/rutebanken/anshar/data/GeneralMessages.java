@@ -58,7 +58,7 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
 
 
     @Override
-    Collection<GeneralMessage> getAll() {
+    public Collection<GeneralMessage> getAll() {
         return generalMessages.values();
     }
 

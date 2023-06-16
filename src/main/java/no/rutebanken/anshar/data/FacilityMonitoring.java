@@ -7,6 +7,7 @@ import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import org.apache.kafka.common.network.Send;
 import org.quartz.utils.counter.Counter;
 import org.quartz.utils.counter.CounterImpl;
 import org.slf4j.Logger;
@@ -18,8 +19,10 @@ import uk.org.ifopt.siri13.StopPlaceRef;
 import uk.org.ifopt.siri20.StopPlaceComponentRefStructure;
 import uk.org.siri.siri20.*;
 
+import javax.validation.constraints.NotNull;
 import java.time.Instant;
 import java.time.ZonedDateTime;
+import java.time.chrono.ChronoZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -57,7 +60,7 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
 
 
     @Override
-    Collection<FacilityConditionStructure> getAll() {
+    public Collection<FacilityConditionStructure> getAll() {
         return facilityMonitoring.values();
     }
 
@@ -118,8 +121,8 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
 
     private SiriObjectStorageKey createKey(String datasetId, FacilityConditionStructure conditionStructure) {
         StringBuilder key = new StringBuilder();
-        key.append(conditionStructure.getFacilityRef().getValue());
-        FacilityLocationStructure facilityLocation = conditionStructure.getFacility().getFacilityLocation();
+        key.append(conditionStructure.getFacilityRef() != null ? conditionStructure.getFacilityRef().getValue() : "null");
+        FacilityLocationStructure facilityLocation = conditionStructure.getFacility() != null ? conditionStructure.getFacility().getFacilityLocation() : null;
         if (facilityLocation != null){
             key.append(":")
                     .append(facilityLocation.getLineRef() != null ? facilityLocation.getLineRef().getValue() : "null")
@@ -130,24 +133,22 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
                     .append(":")
                     .append(facilityLocation.getOperatorRef() != null ? facilityLocation.getOperatorRef().getValue() : "null");
         }
-        return new SiriObjectStorageKey(datasetId, null, key.toString());
+        return new SiriObjectStorageKey(datasetId, null, key.toString(), null, null, null, conditionStructure.getFacilityRef() != null ? conditionStructure.getFacilityRef().getValue() : null);
     }
 
     @Override
-    Collection<FacilityConditionStructure> addAll(String datasetId, List<FacilityConditionStructure> fmList) {
+    public Collection<FacilityConditionStructure> addAll(String datasetId, List<FacilityConditionStructure> fmList) {
         Set<FacilityConditionStructure> addedData = new HashSet<>();
         Counter outDatedCounter = new CounterImpl(0);
 
         fmList.stream()
-                .filter(facilityMonitoringCondition -> facilityMonitoringCondition != null)
-                .filter(facilityMonitoringCondition -> facilityMonitoringCondition.getFacilityRef() != null)
-                .filter(facilityMonitoringCondition -> facilityMonitoringCondition.getFacility() != null)
+                .filter(Objects::nonNull)
                 .forEach(fmCondition -> {
                     SiriObjectStorageKey key = createKey(datasetId, fmCondition);
 
                     long expiration = getExpiration(fmCondition);
 
-                    if(expiration > 0){
+                    if(expiration > ZonedDateTime.now().toInstant().toEpochMilli()){
                         facilityMonitoring.set(key, fmCondition, expiration, TimeUnit.MILLISECONDS);
                         addedData.add(fmCondition);
                     }else{
@@ -169,16 +170,25 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
 
 
     @Override
-    FacilityConditionStructure add(String datasetId, FacilityConditionStructure facilityCondition) {
+    public FacilityConditionStructure add(String datasetId, FacilityConditionStructure facilityCondition) {
         Collection<FacilityConditionStructure> added = addAll(datasetId, Arrays.asList(facilityCondition));
         return added.size() > 0 ? added.iterator().next() : null;
     }
 
     @Override
     long getExpiration(FacilityConditionStructure s) {
-        ZonedDateTime validUntil = s.getValidityPeriod().getEndTime();
+        ZonedDateTime validUntil = s.getValidityPeriod() != null ? s.getValidityPeriod().getEndTime() : null;
+        if (s.getFacility() != null && validUntil == null){
+            validUntil = s.getFacility().getValidityCondition() != null && s.getFacility().getValidityCondition().getPeriods() != null &&
+                    s.getFacility().getValidityCondition().getPeriods().stream()
+                    .map(HalfOpenTimestampOutputRangeStructure::getEndTime)
+                    .max(ChronoZonedDateTime::compareTo).isPresent() ?
+                    s.getFacility().getValidityCondition().getPeriods().stream()
+                            .map(HalfOpenTimestampOutputRangeStructure::getEndTime)
+                            .max(ChronoZonedDateTime::compareTo).get() : null;
+        }
         return validUntil == null ? ZonedDateTime.now().until(ZonedDateTime.now().plusYears(10), ChronoUnit.MILLIS) :
-                ZonedDateTime.now().until(validUntil.plus(configuration.getSxGraceperiodMinutes(), ChronoUnit.MINUTES), ChronoUnit.MILLIS);
+                ZonedDateTime.now().until(validUntil.plus(configuration.getFMGraceperiodMinutes(), ChronoUnit.MINUTES), ChronoUnit.MILLIS);
     }
 
     @Override

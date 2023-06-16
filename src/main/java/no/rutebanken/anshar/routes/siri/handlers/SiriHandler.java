@@ -400,7 +400,7 @@ public class SiriHandler {
                     List<FacilityRef> facilityReves = req.getFacilityReves();
                     if (facilityReves != null && !facilityReves.isEmpty()) {
                         Set<String> facilityRevesList = filterMap.get(FacilityRef.class) != null ? filterMap.get(FacilityRef.class) : new HashSet<>();
-                        facilityRevesList.addAll(facilityReves.stream().map(facilityRef -> facilityRef.getValue()).collect(Collectors.toSet()));
+                        facilityRevesList.addAll(facilityReves.stream().map(FacilityRef::getValue).collect(Collectors.toSet()));
                         filterMap.put(FacilityRef.class, facilityRevesList);
                     }
                     LineRef lineRef = req.getLineRef();
@@ -1009,6 +1009,51 @@ public class SiriHandler {
                     logger.debug("Active GM-elements: {}, current delivery: {}, {}", generalMessages.getSize(), addedOrUpdated.size(), subscriptionSetup);
                 }
 
+                if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.FACILITY_MONITORING)) {
+
+                    List<FacilityMonitoringDeliveryStructure> facilityMonitoringStructures = incoming.getServiceDelivery().getFacilityMonitoringDeliveries();
+                    logger.debug("Got FM-delivery: Subscription [{}] ", subscriptionSetup);
+                    monitoredRef = getStopRefs(incoming);
+
+                    List<FacilityConditionStructure> addedOrUpdated = new ArrayList<>();
+
+                    for (FacilityMonitoringDeliveryStructure facilityMonitoringDeliveryStructure : facilityMonitoringStructures) {
+                        if (facilityMonitoringDeliveryStructure.isStatus() != null && !facilityMonitoringDeliveryStructure.isStatus()) {
+                            logger.info(getErrorContents(facilityMonitoringDeliveryStructure.getErrorCondition()));
+                        } else {
+                            if (facilityMonitoringDeliveryStructure.getFacilityConditions() != null) {
+                                if (subscriptionSetup.isUseProvidedCodespaceId()) {
+                                    Map<String, List<FacilityConditionStructure>> situationsByCodespace = splitFacilitiesByCodespace(facilityMonitoringDeliveryStructure.getFacilityConditions());
+                                    for (String codespace : situationsByCodespace.keySet()) {
+                                        // List containing added situations for current codespace
+                                        List<FacilityConditionStructure> addedFacilities = new ArrayList();
+
+                                        Collection<FacilityConditionStructure> ingested = ingestFacilities(codespace, situationsByCodespace.get(codespace));
+                                        addedFacilities.addAll(ingested);
+
+                                        // Push updates to subscribers on this codespace
+                                        serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedFacilities, codespace);
+
+                                        // Add to complete list of added situations
+                                        addedOrUpdated.addAll(addedFacilities);
+                                    }
+                                } else {
+                                    Collection<FacilityConditionStructure> ingested = ingestFacilities(subscriptionSetup.getDatasetId(), facilityMonitoringDeliveryStructure.getFacilityConditions());
+                                    addedOrUpdated.addAll(ingested);
+                                    serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
+                                }
+                            }
+                        }
+                    }
+
+                    deliveryContainsData = deliveryContainsData || (addedOrUpdated.size() > 0);
+
+
+                    serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
+                    subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdated.size());
+                    logger.debug("Active FM-elements: {}, current delivery: {}, {}", facilityMonitoring.getSize(), addedOrUpdated.size(), subscriptionSetup);
+                }
+
 
                 if (deliveryContainsData) {
                     subscriptionManager.dataReceived(subscriptionId, receivedBytes, monitoredRef);
@@ -1280,6 +1325,14 @@ public class SiriHandler {
         return result;
     }
 
+    public Collection<FacilityConditionStructure> ingestFacilities(String datasetId, List<FacilityConditionStructure> incomingFacilities) {
+        Collection<FacilityConditionStructure> result = facilityMonitoring.addAll(datasetId, incomingFacilities);
+        if (result.size() > 0) {
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.FACILITY_MONITORING, incomingFacilities, datasetId);
+        }
+        return result;
+    }
+
     /**
      * Convert a list of situations to a list of generalMessages and ingest them
      *
@@ -1379,6 +1432,30 @@ public class SiriHandler {
 
                 situations.add(ptSituationElement);
                 result.put(codespace, situations);
+            }
+        }
+        return result;
+    }
+
+    private Map<String, List<FacilityConditionStructure>> splitFacilitiesByCodespace(
+            List<FacilityConditionStructure> facilitiesConditions
+    ) {
+        Map<String, List<FacilityConditionStructure>> result = new HashMap<>();
+        for (FacilityConditionStructure facilityCondition : facilitiesConditions) {
+            final OrganisationRefStructure ownerRef = facilityCondition.getFacility() != null ? facilityCondition.getFacility().getOwnerRef() : null;
+            if (ownerRef != null) {
+                final String codespace = getOriginalId(ownerRef.getValue());
+
+                //Override mapped value if present
+                ownerRef.setValue(codespace);
+
+                final List<FacilityConditionStructure> facilities = result.getOrDefault(
+                        codespace,
+                        new ArrayList<>()
+                );
+
+                facilities.add(facilityCondition);
+                result.put(codespace, facilities);
             }
         }
         return result;
