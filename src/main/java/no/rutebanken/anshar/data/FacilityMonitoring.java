@@ -148,7 +148,7 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
 
                     long expiration = getExpiration(fmCondition);
 
-                    if(expiration > ZonedDateTime.now().toInstant().toEpochMilli()){
+                    if(expiration > 0){
                         facilityMonitoring.set(key, fmCondition, expiration, TimeUnit.MILLISECONDS);
                         addedData.add(fmCondition);
                     }else{
