@@ -15,13 +15,23 @@
 
 package no.rutebanken.anshar.config;
 
+import com.hazelcast.map.IMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.Instant;
 import java.util.List;
 
 @Configuration
 public class AnsharConfiguration {
+
+    private static final String CURRENT_INSTANCE_LEADER_KEY = "currentInstanceLeader";
+
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     @Value("${rutebanken.kubernetes.url:}")
     private String kubernetesUrl;
@@ -125,6 +135,12 @@ public class AnsharConfiguration {
 
     @Value("${anshar.application.mode:}")
     private List<AppMode> appModes;
+
+    @Autowired
+    @Qualifier("getLockMap")
+    private IMap<String, Instant> lockMap;
+
+    private Boolean isCurrentInstanceLeader;
 
     public String getHazelcastManagementUrl() {
         return hazelcastManagementUrl;
@@ -281,5 +297,24 @@ public class AnsharConfiguration {
 
     public boolean isHealthcheckDisabled() {
         return isHealthcheckDisabled;
+    }
+
+    public boolean isCurrentInstanceLeader() {
+
+        if (isCurrentInstanceLeader == null){
+            initCurrentInstanceLeader();
+        }
+        return isCurrentInstanceLeader;
+    }
+
+    private void initCurrentInstanceLeader() {
+        if (!lockMap.containsKey(CURRENT_INSTANCE_LEADER_KEY)){
+            lockMap.set(CURRENT_INSTANCE_LEADER_KEY, Instant.now());
+            isCurrentInstanceLeader = true;
+            logger.info("=====> Current instance is leader. Will launch all GTFS-RT or SIRI Requests   <=================");
+        }else{
+            isCurrentInstanceLeader = false;
+            logger.info("=====> Current instance is not leader. Will not launch any GTFS-RT or SIRI Requests   <=================");
+        }
     }
 }

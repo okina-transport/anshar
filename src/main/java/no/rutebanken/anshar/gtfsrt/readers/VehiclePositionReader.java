@@ -2,6 +2,7 @@ package no.rutebanken.anshar.gtfsrt.readers;
 
 import com.google.transit.realtime.GtfsRealtime;
 
+import net.logstash.logback.encoder.org.apache.commons.lang3.StringUtils;
 import no.rutebanken.anshar.gtfsrt.mappers.VehiclePositionMapper;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Component;
 import uk.org.siri.siri20.*;
 
 
+import java.math.BigDecimal;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -104,11 +106,24 @@ public class VehiclePositionReader extends AbstractSwallower {
                 continue;
 
             VehicleActivityStructure vehicleActivity = VehiclePositionMapper.mapVehicleActivityFromVehiclePosition(feedEntity.getVehicle());
+
+            if (isEmptyVehicleRef(vehicleActivity)  && isEmptyLocation(vehicleActivity)){
+                continue;
+            }
             ZonedDateTime dateTime = ZonedDateTime.now();
             vehicleActivity.setValidUntilTime(dateTime.plusMinutes(10));
             vehicleActivities.add(vehicleActivity);
         }
         return vehicleActivities;
+    }
+
+    private boolean isEmptyLocation(VehicleActivityStructure vehicleActivity){
+        VehicleActivityStructure.MonitoredVehicleJourney vehicleJourney = vehicleActivity.getMonitoredVehicleJourney();
+        return vehicleJourney.getVehicleLocation() == null || vehicleJourney.getVehicleLocation().getLatitude().compareTo(BigDecimal.ZERO) == 0;
+    }
+
+    private boolean isEmptyVehicleRef(VehicleActivityStructure vehicleActivity){
+        return vehicleActivity.getVehicleMonitoringRef() == null || StringUtils.isEmpty(vehicleActivity.getVehicleMonitoringRef().getValue());
     }
 
 

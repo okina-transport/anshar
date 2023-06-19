@@ -30,8 +30,8 @@ public class GtfsRTRouteBuilder extends BaseRouteBuilder {
     public void configure() throws Exception {
 
 
-        if (!configuration.processSX() && !configuration.processVM() && !configuration.processSM() && !configuration.processET()){
-            logger.info("Application non paramétrée en SM/SX/ET/VM. Pas de récupération GTFS-RT");
+        if ((!configuration.processSX() && !configuration.processVM() && !configuration.processSM() && !configuration.processET()) || !configuration.isCurrentInstanceLeader()){
+            logger.info("Application non paramétrée en SM/SX/ET/VM ou instance non leader. Pas de récupération GTFS-RT");
             return;
         }
 

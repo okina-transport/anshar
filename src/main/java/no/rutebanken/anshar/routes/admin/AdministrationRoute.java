@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.routes.admin;
 
+import com.hazelcast.map.IMap;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
@@ -29,7 +30,10 @@ import org.apache.camel.Exchange;
 import org.apache.commons.lang3.StringUtils;
 import com.google.common.net.HttpHeaders;
 import org.json.simple.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
@@ -37,6 +41,7 @@ import org.springframework.stereotype.Service;
 import javax.ws.rs.core.MediaType;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -87,6 +92,8 @@ public class AdministrationRoute extends RestRouteBuilder {
 
     @Value("${anshar.situations.debug.endpoint.enabled:false}")
     private boolean situationsDebugEndpoint;
+
+
 
 //    @Autowired
 //    private BasicAuthService basicAuthProcessor;
@@ -480,4 +487,6 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .routeId("admin.clusterstats")
         ;
     }
+
+
 }
