@@ -1,22 +1,29 @@
 package no.rutebanken.anshar.routes.mapping;
 
+import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
+import no.rutebanken.anshar.routes.BaseRouteBuilder;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.util.CSVUtils;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-import javax.annotation.PostConstruct;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -24,26 +31,26 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 
 /**
  * Service to handle alternative ids in mapping files.
- * - Build a cache by reading mapping files files
+ * - Build a cache by reading mapping files
  */
 @Component
 @Configuration
-public class ExternalIdsService {
+public class ExternalIdsService extends BaseRouteBuilder {
 
     private final Logger logger = LoggerFactory.getLogger(ExternalIdsService.class);
 
-    private static final Object LOCK = new Object();
+    @Value("${cron.download.files.mapping}")
+    private String cronDownloadFilesMapping;
 
-    @Value("${anshar.mapping.external.ids.update.frequency.min:1}")
-    private int updateFrequency = 5;
+    @Value("${urls.stops.mapping.file}")
+    private String urlsStopsMappingFile;
 
+    @Value("${urls.lines.mapping.file}")
+    private String urlsLinesMappingFile;
 
     @Value("${anshar.mapping.external.ids.root.directory}")
     private String mappingExternalIdsRootDir;
@@ -54,25 +61,65 @@ public class ExternalIdsService {
     @Autowired
     SubscriptionManager subscriptionManager;
 
+    WebClient webClient = WebClient.builder().build();
+
     private final Map<String, Map<String, String>> stopsCache = new HashMap();
     private final Map<String, Map<String, List<String>>> linesCache = new HashMap();
 
+    private final String pathStops =  "stops";
+    private final String pathLines =  "lines";
 
-    @PostConstruct
-    private void initialize() {
+    protected ExternalIdsService(AnsharConfiguration config, SubscriptionManager subscriptionManager) {
+        super(config, subscriptionManager);
+    }
 
-        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
-        executor.scheduleAtFixedRate(this::refreshCache, 0, updateFrequency, TimeUnit.MINUTES);
-        logger.info("Initialized mappingExternalIdsService, updateFrequency:{} min", updateFrequency);
+    @Override
+    public void configure() throws Exception {
+        singletonFrom("quartz://anshar/DownloadFilesMapping?cron=" + cronDownloadFilesMapping + "&trigger.timeZone=Europe/Paris", "monitor.download.files.mapping")
+                .log("Starting downloading and importing files mapping")
+                .process(p -> downloadFilesAndRefreshCache());
     }
 
     /**
-     * Refresh the cache containing data from mapping stops and lines files
+     * Download and refresh the cache containing data from mapping stops and lines files
      */
-    private void refreshCache() {
-        synchronized (LOCK) {
-            updateMappingExternalIdsCache();
-        }
+    private void downloadFilesAndRefreshCache() {
+        Flux<String> stopsMappingUrls = Flux.fromArray(urlsStopsMappingFile.split(","));
+        Flux<String> linesMappingUrls = Flux.fromArray(urlsLinesMappingFile.split(","));
+
+        Mono<Void> downloadFilesMono = Flux.zip(
+                        downloadFilesMapping(stopsMappingUrls, pathStops, "BERTHELET_stops_mapping.csv"),
+                        downloadFilesMapping(linesMappingUrls, pathLines, "BERTHELET_lines_mapping.csv"))
+                .then();
+
+        downloadFilesMono.block();
+
+        updateMappingExternalIdsCache();
+    }
+
+    private Mono<Void> downloadFilesMapping(Flux<String> urls, String path, String name) {
+        return urls.flatMap(url -> downloadFileMapping(url, path, name))
+                .then();
+    }
+
+    private Mono<Void> downloadFileMapping(String url, String path, String name) {
+        return webClient.get()
+                .uri(url)
+                .retrieve()
+                .bodyToMono(byte[].class)
+                .flatMap(fileBytes -> Mono.fromRunnable(() -> {
+                    try {
+                        Files.createDirectories(Paths.get(mappingExternalIdsRootDir, path));
+                        Path filePath = Paths.get(mappingExternalIdsRootDir, path, name);
+                        Files.write(filePath, fileBytes, StandardOpenOption.CREATE);
+                    } catch (Exception e) {
+                        logger.error("An error occurred while downloading the file: " + e.getMessage());
+                    }
+                }))
+                .onErrorResume(error -> {
+                    logger.error("Unable to download file: " + error.getMessage());
+                    return Mono.empty();
+                }).then();
     }
 
     /**
@@ -88,8 +135,8 @@ public class ExternalIdsService {
 
     private void updateMappingExternalIdsCache(String datasetId) {
 
-        File mappingStopsDirectory = new File(mappingExternalIdsRootDir, "stops");
-        File mappingLinesDirectory = new File(mappingExternalIdsRootDir, "lines");
+        File mappingStopsDirectory = new File(mappingExternalIdsRootDir, pathStops);
+        File mappingLinesDirectory = new File(mappingExternalIdsRootDir, pathLines);
 
         if (!mappingStopsDirectory.exists() && !mappingLinesDirectory.exists()) {
             return;
@@ -118,7 +165,7 @@ public class ExternalIdsService {
             }
         }
 
-        logger.info("Finishing Updating mapping external ids lines cache for dataset : " + datasetId);
+        logger.info("Finishing updating mapping external ids lines cache for dataset : " + datasetId);
 
         logger.info("Feeding cache completed for datasetId: " + datasetId);
     }

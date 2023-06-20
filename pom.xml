@@ -386,6 +386,11 @@
             <version>${gtfs.realtime-bindings.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+
         <!-- Kryo zero configuration -->
         <dependency>
             <groupId>info.jerrinot</groupId>
