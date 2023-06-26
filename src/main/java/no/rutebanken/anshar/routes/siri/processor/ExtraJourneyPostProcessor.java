@@ -49,7 +49,7 @@ import static org.apache.commons.lang3.BooleanUtils.isTrue;
  * the reported arrival-/departure times are reasonable
  */
 public class ExtraJourneyPostProcessor extends ValueAdapter implements PostProcessor {
-    private Logger logger = LoggerFactory.getLogger(ExtraJourneyPostProcessor.class);
+    private static final Logger logger = LoggerFactory.getLogger(ExtraJourneyPostProcessor.class);
     private final String datasetId;
 
     public ExtraJourneyPostProcessor(String datasetId) {

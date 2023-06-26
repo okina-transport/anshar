@@ -20,7 +20,7 @@ public class BasicAuthService implements Processor {
    @Value("${anshar.login.password:}")
    String password;
 
-   private static Logger log = LoggerFactory.getLogger(BasicAuthService.class);
+   private static final Logger log = LoggerFactory.getLogger(BasicAuthService.class);
 
    public void process(Exchange exchange) throws Exception {
       if (!exchange.getIn().getHeaders().containsKey("Authorization")) {

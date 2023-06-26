@@ -31,7 +31,7 @@ public class AnsharConfiguration {
 
     private static final String CURRENT_INSTANCE_LEADER_KEY = "currentInstanceLeader";
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private static final Logger logger = LoggerFactory.getLogger(AnsharConfiguration.class);
 
     @Value("${rutebanken.kubernetes.url:}")
     private String kubernetesUrl;

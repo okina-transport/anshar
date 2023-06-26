@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
 
 public class OutboundIdAdapter extends ValueAdapter {
 
-    private final Logger logger = LoggerFactory.getLogger(OutboundIdAdapter.class);
+    private static final Logger logger = LoggerFactory.getLogger(OutboundIdAdapter.class);
 
     private final OutboundIdMappingPolicy outboundIdMappingPolicy;
 

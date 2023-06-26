@@ -24,7 +24,7 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
 @Service
 public class EstimatedTimetableIngester extends RestRouteBuilder {
 
-    private final Logger logger = LoggerFactory.getLogger(EstimatedTimetableIngester.class);
+    private static final Logger logger = LoggerFactory.getLogger(EstimatedTimetableIngester.class);
 
     @Autowired
     AnsharConfiguration configuration;

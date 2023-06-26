@@ -33,7 +33,7 @@ import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapte
 @Repository
 public class FacilityMonitoring extends SiriRepository<FacilityConditionStructure>  {
 
-    private final Logger logger = LoggerFactory.getLogger(FacilityMonitoring.class);
+    private static final Logger logger = LoggerFactory.getLogger(FacilityMonitoring.class);
 
     @Autowired
     @Qualifier("getFacilityMonitoring")

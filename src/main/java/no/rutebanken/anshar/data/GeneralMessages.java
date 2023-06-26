@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 @Repository
 public class GeneralMessages extends SiriRepository<GeneralMessage> {
 
-    private final Logger logger = LoggerFactory.getLogger(GeneralMessages.class);
+    private static final Logger logger = LoggerFactory.getLogger(GeneralMessages.class);
 
     @Autowired
     @Qualifier("getGeneralMessages")

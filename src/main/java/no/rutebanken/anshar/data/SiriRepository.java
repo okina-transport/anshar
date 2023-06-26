@@ -79,7 +79,7 @@ abstract class SiriRepository<T> {
 
     abstract long getExpiration(T s);
 
-    private final Logger logger = LoggerFactory.getLogger(SiriRepository.class);
+    private static final Logger logger = LoggerFactory.getLogger(SiriRepository.class);
 
     private PrometheusMetricsService metrics;
 

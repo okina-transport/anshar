@@ -25,7 +25,7 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
 @Service
 public class StopMonitoringIngester extends RestRouteBuilder {
 
-    private final Logger logger = LoggerFactory.getLogger(StopMonitoringIngester.class);
+    private static final Logger logger = LoggerFactory.getLogger(StopMonitoringIngester.class);
 
     @Autowired
     AnsharConfiguration configuration;

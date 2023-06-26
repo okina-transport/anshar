@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @Disabled
 public class RouteDataUpdaterTest {
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
+    private static final Logger logger = LoggerFactory.getLogger(RouteDataUpdaterTest.class);
 
     @Test
     public void testStopPlaces() {

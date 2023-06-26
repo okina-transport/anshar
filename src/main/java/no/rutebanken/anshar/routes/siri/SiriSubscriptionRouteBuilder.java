@@ -39,7 +39,7 @@ import java.time.Instant;
 @Component
 public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
 
-    private Logger logger = LoggerFactory.getLogger(this.getClass());
+    private static final Logger logger = LoggerFactory.getLogger(SiriSubscriptionRouteBuilder.class);
     
     NamespacePrefixMapper customNamespacePrefixMapper;
 

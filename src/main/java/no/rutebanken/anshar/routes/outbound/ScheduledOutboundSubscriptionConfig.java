@@ -22,7 +22,7 @@ public class ScheduledOutboundSubscriptionConfig {
     private final ThreadPoolTaskScheduler scheduler;
     private final Map<String, ScheduledTaskWrapper> scheduledTasks = new HashMap<>();
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private static final Logger logger = LoggerFactory.getLogger(ScheduledOutboundSubscriptionConfig.class);
 
     public ScheduledOutboundSubscriptionConfig() {
         scheduler = new ThreadPoolTaskScheduler();

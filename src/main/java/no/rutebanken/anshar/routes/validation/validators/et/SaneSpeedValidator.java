@@ -30,7 +30,7 @@ import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapte
 @Validator(profileName = "norway", targetType = SiriDataType.ESTIMATED_TIMETABLE)
 @Component
 public class SaneSpeedValidator extends SiriObjectValidator {
-    private Logger logger = LoggerFactory.getLogger(SaneSpeedValidator.class);
+    private static final Logger logger = LoggerFactory.getLogger(SaneSpeedValidator.class);
 
     public static final int SANE_SPEED_LIMIT = 300;
 

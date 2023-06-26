@@ -36,7 +36,7 @@ import java.util.Set;
 @Service
 @Configuration
 public class LivenessReadinessRoute extends RestRouteBuilder {
-    private Logger logger = LoggerFactory.getLogger(this.getClass());
+    private static final Logger logger = LoggerFactory.getLogger(LivenessReadinessRoute.class);
 
     @Value("${anshar.healthcheck.hubot.url}")
     private String hubotUrl;

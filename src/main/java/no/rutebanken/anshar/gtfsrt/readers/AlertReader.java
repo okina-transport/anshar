@@ -30,7 +30,7 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.GTFSRT
 @Component
 public class AlertReader extends AbstractSwallower {
 
-    private Logger logger = LoggerFactory.getLogger(this.getClass());
+    private static final Logger logger = LoggerFactory.getLogger(AlertReader.class);
 
     @Autowired
     private SubscriptionManager subscriptionManager;

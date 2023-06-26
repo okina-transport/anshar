@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 
 
 public class StatisticsLogger {
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private static final Logger logger = LoggerFactory.getLogger(StatisticsLogger.class);
 
     @Autowired
     private MonitoredStopVisits monitoredStopVisits;

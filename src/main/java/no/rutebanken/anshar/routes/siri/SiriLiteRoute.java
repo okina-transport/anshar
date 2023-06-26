@@ -46,7 +46,7 @@ import static no.rutebanken.anshar.routes.HttpParameter.*;
 
 @Service
 public class SiriLiteRoute extends RestRouteBuilder {
-    private Logger logger = LoggerFactory.getLogger(this.getClass());
+    private static final Logger logger = LoggerFactory.getLogger(SiriLiteRoute.class);
 
     @Autowired
     private AnsharConfiguration configuration;

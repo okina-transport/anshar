@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
 @Component
 @Configuration
 public class BaneNorIdPlatformUpdaterService {
-    private final Logger logger = LoggerFactory.getLogger(BaneNorIdPlatformUpdaterService.class);
+    private static final Logger logger = LoggerFactory.getLogger(BaneNorIdPlatformUpdaterService.class);
 
     private static final Object LOCK = new Object();
 

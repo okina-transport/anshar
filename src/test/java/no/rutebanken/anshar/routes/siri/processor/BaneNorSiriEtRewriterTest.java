@@ -30,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class BaneNorSiriEtRewriterTest extends SpringBootBaseTest {
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
+    private static final Logger logger = LoggerFactory.getLogger(BaneNorSiriEtRewriterTest.class);
 
     private BaneNorSiriEtRewriter rewriter;
 

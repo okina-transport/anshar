@@ -41,7 +41,7 @@ import java.util.Set;
 @Configuration
 public class ExternalIdsService extends BaseRouteBuilder {
 
-    private final Logger logger = LoggerFactory.getLogger(ExternalIdsService.class);
+    private static final Logger logger = LoggerFactory.getLogger(ExternalIdsService.class);
 
     @Value("${cron.download.files.mapping}")
     private String cronDownloadFilesMapping;

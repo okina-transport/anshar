@@ -41,7 +41,7 @@ import java.util.Set;
 @Configuration
 public class HealthManager {
 
-    private final Logger logger = LoggerFactory.getLogger(HealthManager.class);
+    private static final Logger logger = LoggerFactory.getLogger(HealthManager.class);
 
     @Autowired
     @Qualifier("getHealthCheckMap")

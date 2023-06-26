@@ -54,7 +54,7 @@ import org.quartz.utils.counter.CounterImpl;
 
 @Repository
 public class VehicleActivities extends SiriRepository<VehicleActivityStructure> {
-    private final Logger logger = LoggerFactory.getLogger(VehicleActivities.class);
+    private static final Logger logger = LoggerFactory.getLogger(VehicleActivities.class);
 
     @Autowired
     private IMap<SiriObjectStorageKey, VehicleActivityStructure> monitoredVehicles;

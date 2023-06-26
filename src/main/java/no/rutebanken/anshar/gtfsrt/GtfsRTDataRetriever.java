@@ -24,7 +24,7 @@ import java.util.Optional;
 
 @Service
 public class GtfsRTDataRetriever {
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private static final Logger logger = LoggerFactory.getLogger(GtfsRTDataRetriever.class);
 
 
     @Autowired

@@ -29,7 +29,7 @@ import java.nio.file.Files;
 @Service
 public class BlobStoreService {
 
-	private Logger logger = LoggerFactory.getLogger(this.getClass());
+	private static final Logger logger = LoggerFactory.getLogger(BlobStoreService.class);
 
 	@Autowired
 	private BlobStoreRepository repository;

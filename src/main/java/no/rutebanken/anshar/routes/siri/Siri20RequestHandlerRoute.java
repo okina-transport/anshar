@@ -54,7 +54,7 @@ import static no.rutebanken.anshar.routes.HttpParameter.getParameterValuesAsList
 @Configuration
 public class Siri20RequestHandlerRoute extends RestRouteBuilder implements CamelContextAware {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private static final Logger logger = LoggerFactory.getLogger(Siri20RequestHandlerRoute.class);
 
     @Autowired
     private SubscriptionManager subscriptionManager;

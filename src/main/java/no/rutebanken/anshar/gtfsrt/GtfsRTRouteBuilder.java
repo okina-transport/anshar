@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class GtfsRTRouteBuilder extends BaseRouteBuilder {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private static final Logger logger = LoggerFactory.getLogger(GtfsRTRouteBuilder.class);
 
     private static final int INTERVAL_IN_MILLIS = 60000;
 

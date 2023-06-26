@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class StopPlaceIdRecoveringRoute extends BaseRouteBuilder{
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private static final Logger logger = LoggerFactory.getLogger(RestRouteBuilder.class);
 
     private static final int INTERVAL_IN_MILLIS = 300000;
 

@@ -56,7 +56,7 @@ import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapte
 
 @Repository
 public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney> {
-    private final Logger logger = LoggerFactory.getLogger(EstimatedTimetables.class);
+    private static final Logger logger = LoggerFactory.getLogger(EstimatedTimetables.class);
 
     @Autowired
     private IMap<SiriObjectStorageKey, EstimatedVehicleJourney> timetableDeliveries;

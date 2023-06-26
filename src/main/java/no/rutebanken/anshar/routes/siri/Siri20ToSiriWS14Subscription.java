@@ -38,7 +38,7 @@ import static no.rutebanken.anshar.routes.siri.helpers.SiriRequestFactory.getCam
 import static no.rutebanken.anshar.subscription.SubscriptionSetup.SubscriptionMode.FETCHED_DELIVERY;
 
 public class Siri20ToSiriWS14Subscription extends SiriSubscriptionRouteBuilder {
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private static final Logger logger = LoggerFactory.getLogger(Siri20ToSiriWS14Subscription.class);
 
     private final SiriHandler handler;
 

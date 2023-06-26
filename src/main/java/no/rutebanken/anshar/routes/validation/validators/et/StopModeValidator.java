@@ -28,7 +28,7 @@ import static org.apache.commons.lang3.BooleanUtils.isTrue;
 @Validator(profileName = "norway", targetType = SiriDataType.ESTIMATED_TIMETABLE)
 @Component
 public class StopModeValidator extends SiriObjectValidator {
-    private Logger logger = LoggerFactory.getLogger(StopModeValidator.class);
+    private static final Logger logger = LoggerFactory.getLogger(StopModeValidator.class);
 
     private static final Node DUMMY_NODE = new NodeImpl() {
         @Override

@@ -28,7 +28,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public class RemoveEmojiPostProcessor extends ValueAdapter implements PostProcessor {
-    private Logger logger = LoggerFactory.getLogger(RemoveEmojiPostProcessor.class);
+    private static final Logger logger = LoggerFactory.getLogger(RemoveEmojiPostProcessor.class);
 
     private OutboundIdMappingPolicy outboundIdMappingPolicy;
 

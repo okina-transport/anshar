@@ -26,7 +26,7 @@ import java.io.*;
 
 public class CustomSiriXml {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private static final Logger logger = LoggerFactory.getLogger(CustomSiriXml.class);
 
     private static JAXBContext jaxbContext;
 

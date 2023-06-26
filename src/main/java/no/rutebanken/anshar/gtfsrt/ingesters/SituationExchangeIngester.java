@@ -25,7 +25,7 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
 @Service
 public class SituationExchangeIngester extends RestRouteBuilder {
 
-    private final Logger logger = LoggerFactory.getLogger(SituationExchangeIngester.class);
+    private static final Logger logger = LoggerFactory.getLogger(SituationExchangeIngester.class);
 
     @Autowired
     AnsharConfiguration configuration;

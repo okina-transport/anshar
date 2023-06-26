@@ -56,7 +56,7 @@ import java.util.stream.Collectors;
 
 @Repository
 public class Situations extends SiriRepository<PtSituationElement> {
-    private final Logger logger = LoggerFactory.getLogger(Situations.class);
+    private static final Logger logger = LoggerFactory.getLogger(Situations.class);
 
     @Autowired
     private IMap<SiriObjectStorageKey , PtSituationElement>  situationElements;

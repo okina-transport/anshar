@@ -36,7 +36,7 @@ import java.util.Set;
 
 public class SubscriptionSetup implements Serializable {
 
-    private final Logger logger = LoggerFactory.getLogger(SubscriptionSetup.class);
+    private static final Logger logger = LoggerFactory.getLogger(SubscriptionSetup.class);
     private long internalId;
     private List<ValueAdapter> mappingAdapters = new ArrayList<>();
     private SiriDataType subscriptionType;

@@ -33,7 +33,7 @@ import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.ORIGINAL
 
 public class StopPlaceRegisterMapper extends ValueAdapter {
 
-    private Logger logger = LoggerFactory.getLogger(StopPlaceRegisterMapper.class);
+    private static final Logger logger = LoggerFactory.getLogger(StopPlaceRegisterMapper.class);
 
     private static HealthManager healthManager;
 

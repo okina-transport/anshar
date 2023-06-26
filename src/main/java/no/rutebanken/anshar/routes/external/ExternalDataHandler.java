@@ -25,7 +25,7 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.URL_HE
 @Service
 public class ExternalDataHandler {
 
-    private final Logger logger = LoggerFactory.getLogger(ExternalDataHandler.class);
+    private static final Logger logger = LoggerFactory.getLogger(ExternalDataHandler.class);
 
     private static final int DEFAULT_HEARTBEAT_SECONDS = 300;
 

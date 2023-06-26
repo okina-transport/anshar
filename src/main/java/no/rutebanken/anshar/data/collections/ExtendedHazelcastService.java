@@ -20,10 +20,9 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.hazelcast.cluster.Cluster;
 import com.hazelcast.cluster.Member;
 import com.hazelcast.collection.ISet;
-import com.hazelcast.config.CacheDeserializedValues;
-import com.hazelcast.config.MapConfig;
-import com.hazelcast.config.SerializerConfig;
+import com.hazelcast.config.*;
 import com.hazelcast.core.DistributedObject;
+import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.LifecycleEvent;
 import com.hazelcast.map.IMap;
@@ -50,6 +49,8 @@ import uk.org.siri.siri20.*;
 import javax.annotation.PreDestroy;
 import java.lang.invoke.SerializedLambda;
 import java.math.BigInteger;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -59,10 +60,10 @@ import java.util.*;
 @Configuration
 public class ExtendedHazelcastService extends HazelCastService {
 
-    private Logger logger = LoggerFactory.getLogger(ExtendedHazelcastService.class);
+    private static final Logger logger = LoggerFactory.getLogger(ExtendedHazelcastService.class);
 
 
-    public ExtendedHazelcastService(@Value("${entur.hazelcast.backup.count.sync:2}") int backupCountSync, @Value("${anshar.hazelcast.members:}") List<String> members) {
+    public ExtendedHazelcastService(@Value("${entur.hazelcast.backup.count.sync:2}") int backupCountSync, @Value("${anshar.hazelcast.members:}") List<String> members) throws UnknownHostException {
         super(null);
         // setBackupCount(backupCountSync);
     }

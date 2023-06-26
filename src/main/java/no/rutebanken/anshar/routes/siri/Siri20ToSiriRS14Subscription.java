@@ -36,7 +36,7 @@ import static no.rutebanken.anshar.routes.HttpParameter.PARAM_RESPONSE_CODE;
 import static no.rutebanken.anshar.routes.siri.helpers.SiriRequestFactory.getCamelUrl;
 
 public class Siri20ToSiriRS14Subscription extends SiriSubscriptionRouteBuilder {
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private static final Logger logger = LoggerFactory.getLogger(Siri20ToSiriRS14Subscription.class);
 
     private final SiriHandler handler;
 

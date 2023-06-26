@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 @Service
 public class StopPlaceIdRetriever {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private static final Logger logger = LoggerFactory.getLogger(StopPlaceIdRetriever.class);
     private boolean isProcessAlreadyLaunched = false;
 
     @Value("${stop-places.api.url}")

@@ -41,7 +41,7 @@ import static no.rutebanken.anshar.routes.siri.transformer.SiriOutputTransformer
 
 @Service
 public class CamelRouteManager {
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private static final Logger logger = LoggerFactory.getLogger(CamelRouteManager.class);
 
     @Autowired
     private SiriHelper siriHelper;

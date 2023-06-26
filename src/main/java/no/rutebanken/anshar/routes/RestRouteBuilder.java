@@ -45,7 +45,7 @@ import java.util.Map;
 
 public class RestRouteBuilder extends RouteBuilder {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private static final Logger logger = LoggerFactory.getLogger(RestRouteBuilder.class);
 
     protected Namespaces nameSpace = new Namespaces("siri", "http://www.siri.org.uk/siri")
             .add("xsd", "http://www.w3.org/2001/XMLSchema");

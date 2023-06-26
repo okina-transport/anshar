@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
 @Configuration
 public class StopPlaceUpdaterService {
 
-    private final Logger logger = LoggerFactory.getLogger(StopPlaceUpdaterService.class);
+    private static final Logger logger = LoggerFactory.getLogger(StopPlaceUpdaterService.class);
 
     private static final Object LOCK = new Object();
 

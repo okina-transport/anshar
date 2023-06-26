@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 @Service
 public final class TokenService {
     private static Keycloak keycloakClient;
-    private static Logger log = LoggerFactory.getLogger(TokenService.class);
+    private static final Logger log = LoggerFactory.getLogger(TokenService.class);
 
     @Value("${iam.keycloak.admin.client}")
     private String clientId;

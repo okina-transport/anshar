@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 @Configuration
 public class StopTimesService {
 
-    private final Logger logger = LoggerFactory.getLogger(StopTimesService.class);
+    private static final Logger logger = LoggerFactory.getLogger(StopTimesService.class);
 
     private static final Object LOCK = new Object();
 

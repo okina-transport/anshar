@@ -41,7 +41,7 @@ import static no.rutebanken.anshar.subscription.SubscriptionSetup.SubscriptionMo
 
 public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
 
-    private final Logger logger = LoggerFactory.getLogger(Siri20ToSiriRS20Subscription.class);
+    private static final Logger logger = LoggerFactory.getLogger(Siri20ToSiriRS20Subscription.class);
 
     private final SiriHandler handler;
 

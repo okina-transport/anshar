@@ -54,7 +54,7 @@ import java.util.stream.Collectors;
 // TODO MHI
 public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
-    private final Logger logger = LoggerFactory.getLogger(MonitoredStopVisits.class);
+    private static final Logger logger = LoggerFactory.getLogger(MonitoredStopVisits.class);
 
     @Autowired
     @Qualifier("getMonitoredStopVisits")

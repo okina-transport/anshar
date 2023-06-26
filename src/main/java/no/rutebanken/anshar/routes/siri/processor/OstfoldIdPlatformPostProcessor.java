@@ -44,7 +44,7 @@ import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapte
 
 public class OstfoldIdPlatformPostProcessor extends ValueAdapter implements PostProcessor {
 
-    private final Logger logger = LoggerFactory.getLogger(OstfoldIdPlatformPostProcessor.class);
+    private static final Logger logger = LoggerFactory.getLogger(OstfoldIdPlatformPostProcessor.class);
 
     private static final Set<String> unmappedStopPlacePlatform = new HashSet<>();
     private boolean listUpdated;

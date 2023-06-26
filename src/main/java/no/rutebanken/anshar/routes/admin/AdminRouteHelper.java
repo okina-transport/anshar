@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
 
 @Component
 public class AdminRouteHelper {
-    private final Logger logger = LoggerFactory.getLogger(AdminRouteHelper.class);
+    private static final Logger logger = LoggerFactory.getLogger(AdminRouteHelper.class);
 
     @Autowired
     private SubscriptionManager subscriptionManager;

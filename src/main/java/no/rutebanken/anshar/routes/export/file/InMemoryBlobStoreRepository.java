@@ -28,7 +28,7 @@ import java.io.InputStream;
 @Profile("in-memory-blobstore")
 public class InMemoryBlobStoreRepository implements BlobStoreRepository {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private static final Logger logger = LoggerFactory.getLogger(InMemoryBlobStoreRepository.class);
 
     @Override
     public void uploadBlob(String objectName, byte[] bytes) {

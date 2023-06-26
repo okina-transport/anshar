@@ -13,7 +13,7 @@ import java.util.List;
  */
 public class ProfileValidationEventOrList implements ValidationEvent {
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private static final Logger logger = LoggerFactory.getLogger(ProfileValidationEventOrList.class);
 
     List<ValidationEvent> events = new ArrayList<>();
 

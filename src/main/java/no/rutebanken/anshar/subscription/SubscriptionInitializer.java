@@ -38,7 +38,7 @@ import java.util.*;
 
 @Component
 public class SubscriptionInitializer implements CamelContextAware {
-    private final Logger logger = LoggerFactory.getLogger(SubscriptionInitializer.class);
+    private static final Logger logger = LoggerFactory.getLogger(SubscriptionInitializer.class);
 
     @Autowired
     private SubscriptionManager subscriptionManager;

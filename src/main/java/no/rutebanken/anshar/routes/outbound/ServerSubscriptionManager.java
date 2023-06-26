@@ -55,7 +55,7 @@ import static java.time.temporal.ChronoUnit.MILLIS;
 @Configuration
 public class ServerSubscriptionManager {
 
-    private final Logger logger = LoggerFactory.getLogger(ServerSubscriptionManager.class);
+    private static final Logger logger = LoggerFactory.getLogger(ServerSubscriptionManager.class);
 
     public static final String CODESPACE_ID_KAFKA_HEADER_NAME = "codespaceId";
 

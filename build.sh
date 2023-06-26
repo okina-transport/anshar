@@ -43,5 +43,7 @@ BACK_IMAGE_NAME=registry.okina.fr/mobiiti/anshar:"${VERSION_BACK}"
 #mvn spring-boot:build-image -Dspring-boot.build-image.imageName="${BACK_IMAGE_NAME}" -D${SKIP_TESTS}
 #mvn clean package -D${SKIP_TESTS}
 
-docker build -t "${BACK_IMAGE_NAME}" --build-arg JAR_FILE=target/anshar-${VERSION_BACK}.jar .
+echo "jar file:" + target/anshar-${VERSION_BACK}-exec.jar
+
+docker build -t "${BACK_IMAGE_NAME}" --build-arg JAR_FILE=target/anshar-${VERSION_BACK}-exec.jar .
 docker push "${BACK_IMAGE_NAME}"

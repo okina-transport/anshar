@@ -65,7 +65,7 @@ import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapte
 @Service
 public class SiriHandler {
 
-    private final Logger logger = LoggerFactory.getLogger(SiriHandler.class);
+    private static final Logger logger = LoggerFactory.getLogger(SiriHandler.class);
 
     @Autowired
     private ServerSubscriptionManager serverSubscriptionManager;

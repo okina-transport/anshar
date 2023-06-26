@@ -56,7 +56,7 @@ import static no.rutebanken.anshar.subscription.SiriDataType.*;
 @Service
 public class SubscriptionManager {
 
-    private final Logger logger = LoggerFactory.getLogger(SubscriptionManager.class);
+    private static final Logger logger = LoggerFactory.getLogger(SubscriptionManager.class);
 
     @Value("${anshar.healthcheck.interval.factor:12}")
     private int healthcheckIntervalFactor;

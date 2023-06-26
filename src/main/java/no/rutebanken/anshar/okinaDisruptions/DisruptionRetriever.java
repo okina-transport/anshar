@@ -38,7 +38,7 @@ public class DisruptionRetriever {
     private static final int DEFAULT_HEARTBEAT_SECONDS = 300;
     private static final String PREFIX = "OKINA_SX_";
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private static final Logger logger = LoggerFactory.getLogger(DisruptionRetriever.class);
 
     @Autowired
     private SubscriptionManager subscriptionManager;
