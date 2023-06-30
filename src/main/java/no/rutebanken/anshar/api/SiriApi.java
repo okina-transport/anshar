@@ -5,6 +5,8 @@ public class SiriApi {
     private String type;
     private String url;
 
+    private Boolean active;
+
     public String getDatasetId() {
         return datasetId;
     }
@@ -27,5 +29,13 @@ public class SiriApi {
 
     public void setUrl(String url) {
         this.url = url;
+    }
+
+    public Boolean getActive() {
+        return active;
+    }
+
+    public void setActive(Boolean active) {
+        this.active = active;
     }
 }

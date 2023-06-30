@@ -5,8 +5,8 @@ import no.rutebanken.anshar.config.GTFSRTType;
 public class GtfsRTApi {
     private String datasetId;
     private String url;
-
     private GTFSRTType type;
+    private Boolean active;
 
     public String getDatasetId() {
         return datasetId;
@@ -30,5 +30,13 @@ public class GtfsRTApi {
 
     public void setType(GTFSRTType type) {
         this.type = type;
+    }
+
+    public Boolean getActive() {
+        return active;
+    }
+
+    public void setActive(Boolean active) {
+        this.active = active;
     }
 }

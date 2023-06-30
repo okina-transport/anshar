@@ -10,6 +10,9 @@ import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import no.rutebanken.anshar.util.ZipFileUtils;
+import org.apache.camel.Exchange;
+import org.apache.camel.component.http.HttpMethods;
+import org.apache.camel.model.dataformat.JsonLibrary;
 import org.apache.commons.io.FileUtils;
 import org.joda.time.DateTime;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,10 +31,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 import static no.rutebanken.anshar.subscription.SubscriptionSetup.ServiceType.SOAP;
 
@@ -43,6 +43,11 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
 
     @Value("${cron.siri:0+0+0+1+1+?+2099}")
     private String cronSchedule;
+
+    private static final int INTERVAL_IN_MILLIS_ISHTAR = 1080000; // toutes les demi-heures
+
+    @Value("${ishtar.server.port}")
+    private String ISHTAR_PORT;
 
     @Autowired
     private SubscriptionConfig subscriptionConfig;
@@ -66,6 +71,32 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
         singletonFrom("quartz://anshar/SiriApiQuartz?cron=" + cronSchedule + "&trigger.timeZone=Europe/Paris", "monitor.siri.api")
                 .log("Starting Siri from API")
                 .process(p -> createSubscriptionsFromApis());
+
+        singletonFrom("quartz://anshar/getAllSiriFromIshtar?trigger.repeatInterval=" + INTERVAL_IN_MILLIS_ISHTAR,"getAllSiriFromIshtar")
+                .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))
+                .toD(ISHTAR_PORT + "/siri-apis/all")
+                .unmarshal().json(JsonLibrary.Jackson, List.class)
+                .log("Get Siri Api data from Ishtar project")
+                .process(exchange -> {
+                    List<Object> gtfsResult = body().getExpression().evaluate(exchange, List.class);
+                    ArrayList<SiriApi> results = new ArrayList<>();
+                    if (gtfsResult != null) {
+                        for (Object obj : gtfsResult) {
+                            if ((Boolean) ((LinkedHashMap<?, ?>) obj).get("active")) {
+                                SiriApi newSiri = new SiriApi();
+                                newSiri.setDatasetId(((LinkedHashMap<?, ?>) obj).get("datasetId").toString());
+                                newSiri.setType(((LinkedHashMap<?, ?>) obj).get("type").toString());
+                                newSiri.setUrl(((LinkedHashMap<?, ?>) obj).get("url").toString());
+                                newSiri.setActive((Boolean) ((LinkedHashMap<?, ?>) obj).get("active"));
+                                results.add(newSiri);
+                            }
+                        }
+                        subscriptionConfig.getSiriApis().addAll(results);
+                    }
+                })
+                .process(p -> createSubscriptionsFromApis())
+                .end();
+
     }
 
 
