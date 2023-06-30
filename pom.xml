@@ -42,7 +42,7 @@
         <camel-version>3.18.0</camel-version>
 
         <metrics.version>3.2.3</metrics.version>
-        <okina.helpers.version>1.0.27</okina.helpers.version>
+        <okina.helpers.version>1.0.26</okina.helpers.version>
         <geotools.version>27.0</geotools.version>
         <sonar.projectKey>mobi-iti:anshar</sonar.projectKey>
         <protobuf.version>3.19.3</protobuf.version>
