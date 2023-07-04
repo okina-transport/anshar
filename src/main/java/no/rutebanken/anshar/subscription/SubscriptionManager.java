@@ -771,15 +771,6 @@ public class SubscriptionManager {
         return null;
     }
 
-    public SubscriptionSetup getSubscriptionByVendor(String vendor) {
-        for (SubscriptionSetup setup : subscriptions.values()) {
-            if (Objects.equals(setup.getVendor(), vendor)) {
-                return setup;
-            }
-        }
-        return null;
-    }
-
     /**
      * Terminating all subscriptions by SiriDataType - to be used before a full restart to
      */

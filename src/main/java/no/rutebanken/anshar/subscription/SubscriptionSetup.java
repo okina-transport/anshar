@@ -672,4 +672,49 @@ public class SubscriptionSetup implements Serializable {
         }
         return true;
     }
+
+    public void clear() {
+        internalId = 0;
+        mappingAdapters.clear();
+        subscriptionType = null;
+        address = null;
+        heartbeatInterval = null;
+        updateInterval = null;
+        previewInterval = null;
+        changeBeforeUpdates = null;
+        operatorNamespace = null;
+        urlMap = null;
+        subscriptionId = null;
+        version = null;
+        vendor = null;
+        name = null;
+        datasetId = null;
+        serviceType = null;
+        durationOfSubscription = null;
+        requestorRef = null;
+        active = false;
+        dataSupplyRequestForInitialDelivery = false;
+        subscriptionMode = null;
+        filterMap = null;
+        customHeaders = null;
+        idMappingPrefixes = null;
+        mappingAdapterId = null;
+        filterMapPresets = null;
+        addressFieldName = null;
+        soapenvNamespace = null;
+        incrementalUpdates = null;
+        contentType = null;
+        vehicleMonitoringRefValue = null;
+        lineRefValue = null;
+        stopMonitoringRefValue = null;
+        validation = false;
+        restartTime = null;
+        oauth2Config = null;
+        dataNotReceivedAction = null;
+        validationFilter = null;
+        forwardPositionData = false;
+        useProvidedCodespaceId = false;
+        enrichSiriData = false;
+    }
+
 }

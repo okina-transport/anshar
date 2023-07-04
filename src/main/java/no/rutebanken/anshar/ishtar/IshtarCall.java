@@ -21,7 +21,7 @@ import java.util.*;
 @Component
 public class IshtarCall extends BaseRouteBuilder {
 
-    private static final int INTERVAL_IN_MILLIS_ISHTAR = 1080000; // toutes les demi-heures
+    private static final int INTERVAL_IN_MILLIS_ISHTAR = 60000; //1080000; // toutes les demi-heures
 
     @Value("${ishtar.server.port}")
     private String ISHTAR_PORT;
@@ -40,7 +40,7 @@ public class IshtarCall extends BaseRouteBuilder {
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))
                 .toD(ISHTAR_PORT + "/gtfs-rt-apis/all")
                 .unmarshal().json(JsonLibrary.Jackson, List.class)
-                .log("ISHTAR : get GTFS RT Api data")
+                .log("--> ISHTAR : get GTFS RT Api data")
                 .process(exchange -> {
                     List<Object> allGtfs = body().getExpression().evaluate(exchange, List.class);
                     ArrayList<GtfsRTApi> gtfsResults = new ArrayList<>();
@@ -62,12 +62,11 @@ public class IshtarCall extends BaseRouteBuilder {
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))
                 .toD(ISHTAR_PORT + "/siri-apis/all")
                 .unmarshal().json(JsonLibrary.Jackson, List.class)
-                .log("ISHTAR : get Siri Api data")
+                .log("--> ISHTAR : get Siri Api data")
                 .process(exchange -> {
                     List<Object> allSiri = body().getExpression().evaluate(exchange, List.class);
                     ArrayList<SiriApi> siriResults = new ArrayList<>();
                     ObjectMapper objectMapper = new ObjectMapper();
-
                     if (allSiri != null) {
                         for (Object obj : allSiri) {
                             Map<?, ?> jsonMap = (Map<?, ?>) obj;
@@ -85,7 +84,7 @@ public class IshtarCall extends BaseRouteBuilder {
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))
                 .toD(ISHTAR_PORT + "/id-processing-parameters/all")
                 .unmarshal().json(JsonLibrary.Jackson, List.class)
-                .log("ISHTAR : get ID Processing Parameters data")
+                .log("--> ISHTAR : get ID Processing Parameters data")
                 .process(exchange -> {
                     List<Object> allProcessing = body().getExpression().evaluate(exchange, List.class);
                     ArrayList<IdProcessingParameters> processingResults = new ArrayList<>();
@@ -105,48 +104,54 @@ public class IshtarCall extends BaseRouteBuilder {
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))
                 .toD(ISHTAR_PORT + "/subscriptions/all")
                 .unmarshal().json(JsonLibrary.Jackson, List.class)
-                .log("ISHTAR : get Subscriptions data")
+                .log("--> ISHTAR : get Subscriptions data")
                 .process(exchange -> {
                     ObjectMapper objectMapper = new ObjectMapper();
                     objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
                     List subscriptionResult = body().getExpression().evaluate(exchange, List.class);
                     ArrayList<SubscriptionSetup> results = new ArrayList<>();
+                    // on vide les précédentes valeurs
+                    subscriptionConfig.getSubscriptions().removeAll(subscriptionConfig.getSubscriptions());
 
                     if (subscriptionResult != null) {
                         for (Object obj : subscriptionResult) {
                             LinkedHashMap<?, ?> current_subscription = ((LinkedHashMap<?, ?>) ((LinkedHashMap<?, ?>) obj).get("subscription"));
-                            SubscriptionSetup newSubscription = objectMapper.convertValue(current_subscription, SubscriptionSetup.class);
-                            newSubscription.setInternalId((int) ((LinkedHashMap<?, ?>) ((LinkedHashMap<?, ?>) obj).get("subscription")).get("id"));
+                            if ((Boolean) current_subscription.get("active")) {
+                                SubscriptionSetup newSubscription = objectMapper.convertValue(current_subscription, SubscriptionSetup.class);
+                                newSubscription.setInternalId((int) ((LinkedHashMap<?, ?>) ((LinkedHashMap<?, ?>) obj).get("subscription")).get("id"));
 
-                            List<Map<String, Object>> urlMapsList = (List<Map<String, Object>>) ((LinkedHashMap<?, ?>) obj).get("urlMaps");
-                            Map<RequestType, String> urlMap = new HashMap<>();
-                            for (Map<String, Object> urlMapData : urlMapsList) {
-                                LinkedHashMap<?, ?> current_urlMap = ((LinkedHashMap<?, ?>) ((LinkedHashMap<?, ?>) urlMapData).get("urlMaps"));
-                                RequestType requestType = RequestType.valueOf(current_urlMap.get("name").toString());
-                                String url = current_urlMap.get("url").toString();
-                                urlMap.put(requestType, url);
+                                List<Map<String, Object>> urlMapsList = (List<Map<String, Object>>) ((LinkedHashMap<?, ?>) obj).get("urlMaps");
+                                Map<RequestType, String> urlMap = new HashMap<>();
+                                for (Map<String, Object> urlMapData : urlMapsList) {
+                                    LinkedHashMap<?, ?> current_urlMap = ((LinkedHashMap<?, ?>) ((LinkedHashMap<?, ?>) urlMapData).get("urlMaps"));
+                                    RequestType requestType = RequestType.valueOf(current_urlMap.get("name").toString());
+                                    String url = current_urlMap.get("url").toString();
+                                    urlMap.put(requestType, url);
+                                }
+                                newSubscription.setUrlMap(urlMap);
+
+                                List<Map<String, Object>> customHeadersList = (List<Map<String, Object>>) ((LinkedHashMap<?, ?>) obj).get("customHeaders");
+                                Map<String, Object> customHeaders = new HashMap<>();
+                                for (Map<String, Object> customHeaderData : customHeadersList) {
+                                    LinkedHashMap<?, ?> current_customHeaders = ((LinkedHashMap<?, ?>) ((LinkedHashMap<?, ?>) customHeaderData).get("customHeaders"));
+                                    String name = current_customHeaders.get("name").toString();
+                                    Object value = current_customHeaders.get("value").toString();
+                                    customHeaders.put(name, value);
+                                }
+                                newSubscription.setCustomHeaders(customHeaders);
+
+                                List<String> idMappingPrefixesList = (List<String>) ((LinkedHashMap<?, ?>) obj).get("idMappingPrefixes");
+                                List<String> idMappingPrefixes = new ArrayList<>(idMappingPrefixesList);
+                                newSubscription.setIdMappingPrefixes(idMappingPrefixes);
+
+                                results.add(newSubscription);
                             }
-                            newSubscription.setUrlMap(urlMap);
-
-                            List<Map<String, Object>> customHeadersList = (List<Map<String, Object>>) ((LinkedHashMap<?, ?>) obj).get("customHeaders");
-                            Map<String, Object> customHeaders = new HashMap<>();
-                            for (Map<String, Object> customHeaderData : customHeadersList) {
-                                LinkedHashMap<?, ?> current_customHeaders = ((LinkedHashMap<?, ?>) ((LinkedHashMap<?, ?>) customHeaderData).get("customHeaders"));
-                                String name = current_customHeaders.get("name").toString();
-                                Object value = current_customHeaders.get("value").toString();
-                                customHeaders.put(name, value);
-                            }
-                            newSubscription.setCustomHeaders(customHeaders);
-
-                            List<String> idMappingPrefixesList = (List<String>) ((LinkedHashMap<?, ?>) obj).get("idMappingPrefixes");
-                            List<String> idMappingPrefixes = new ArrayList<>(idMappingPrefixesList);
-                            newSubscription.setIdMappingPrefixes(idMappingPrefixes);
-
-                            results.add(newSubscription);
                         }
-                        subscriptionConfig.getSubscriptions().addAll(results);
                     }
+                    subscriptionConfig.getSubscriptions().addAll(results);
+                    List<SubscriptionSetup> result = subscriptionConfig.getSubscriptions();
                 })
+                .bean(SubscriptionInitializer.class, "createSubscriptions")
                 .end();
     }
 }
