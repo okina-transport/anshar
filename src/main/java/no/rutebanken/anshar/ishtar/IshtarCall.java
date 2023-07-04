@@ -21,7 +21,7 @@ import java.util.*;
 @Component
 public class IshtarCall extends BaseRouteBuilder {
 
-    private static final int INTERVAL_IN_MILLIS_ISHTAR = 60000; //1080000; // toutes les demi-heures
+    private static final int INTERVAL_IN_MILLIS_ISHTAR = 1080000; // toutes les demi-heures
 
     @Value("${ishtar.server.port}")
     private String ISHTAR_PORT;
@@ -45,6 +45,9 @@ public class IshtarCall extends BaseRouteBuilder {
                     List<Object> allGtfs = body().getExpression().evaluate(exchange, List.class);
                     ArrayList<GtfsRTApi> gtfsResults = new ArrayList<>();
                     ObjectMapper objectMapper = new ObjectMapper();
+                    // on vide les précédentes valeurs
+                    subscriptionConfig.getGtfsRTApis().removeAll(subscriptionConfig.getGtfsRTApis());
+
                     if (allGtfs != null) {
                         for (Object obj : allGtfs) {
                             Map<?, ?> jsonMap = (Map<?, ?>) obj;
@@ -55,8 +58,8 @@ public class IshtarCall extends BaseRouteBuilder {
                                 gtfsResults.add(newGtfs);
                             }
                         }
-                        subscriptionConfig.getGtfsRTApis().addAll(gtfsResults);
                     }
+                    subscriptionConfig.getGtfsRTApis().addAll(gtfsResults);
                 })
 
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))
@@ -67,6 +70,9 @@ public class IshtarCall extends BaseRouteBuilder {
                     List<Object> allSiri = body().getExpression().evaluate(exchange, List.class);
                     ArrayList<SiriApi> siriResults = new ArrayList<>();
                     ObjectMapper objectMapper = new ObjectMapper();
+                    // on vide les précédentes valeurs
+                    subscriptionConfig.getSiriApis().removeAll(subscriptionConfig.getSiriApis());
+
                     if (allSiri != null) {
                         for (Object obj : allSiri) {
                             Map<?, ?> jsonMap = (Map<?, ?>) obj;
@@ -77,8 +83,8 @@ public class IshtarCall extends BaseRouteBuilder {
                                 siriResults.add(newSiri);
                             }
                         }
-                        subscriptionConfig.getSiriApis().addAll(siriResults);
                     }
+                    subscriptionConfig.getSiriApis().addAll(siriResults);
                 })
 
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))
@@ -89,6 +95,9 @@ public class IshtarCall extends BaseRouteBuilder {
                     List<Object> allProcessing = body().getExpression().evaluate(exchange, List.class);
                     ArrayList<IdProcessingParameters> processingResults = new ArrayList<>();
                     ObjectMapper objectMapper = new ObjectMapper();
+                    // on vide les précédentes valeurs
+                    subscriptionConfig.getIdProcessingParameters().removeAll(subscriptionConfig.getIdProcessingParameters());
+
                     if (allProcessing != null) {
                         for (Object obj : allProcessing) {
                             Map<?, ?> jsonMap = (Map<?, ?>) obj;
@@ -97,8 +106,8 @@ public class IshtarCall extends BaseRouteBuilder {
                             IdProcessingParameters newProcessing = objectMapper.convertValue(jsonMap, IdProcessingParameters.class);
                             processingResults.add(newProcessing);
                         }
-                        subscriptionConfig.getIdProcessingParameters().addAll(processingResults);
                     }
+                    subscriptionConfig.getIdProcessingParameters().addAll(processingResults);
                 })
 
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))
@@ -149,7 +158,6 @@ public class IshtarCall extends BaseRouteBuilder {
                         }
                     }
                     subscriptionConfig.getSubscriptions().addAll(results);
-                    List<SubscriptionSetup> result = subscriptionConfig.getSubscriptions();
                 })
                 .bean(SubscriptionInitializer.class, "createSubscriptions")
                 .end();
