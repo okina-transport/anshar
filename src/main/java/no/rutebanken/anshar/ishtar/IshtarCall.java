@@ -21,10 +21,14 @@ import java.util.*;
 @Component
 public class IshtarCall extends BaseRouteBuilder {
 
-    private static final int INTERVAL_IN_MILLIS_ISHTAR = 1080000; // toutes les demi-heures
+    private static final int INTERVAL_IN_MILLIS_ISHTAR = 1800000; // toutes les demi-heures
 
     @Value("${ishtar.server.port}")
-    private String ISHTAR_PORT;
+    private int ishtarPort;
+
+
+    @Value("${ishtar.server.url}")
+    private String ishtarUrl;
 
     @Autowired
     private SubscriptionConfig subscriptionConfig;
@@ -36,9 +40,9 @@ public class IshtarCall extends BaseRouteBuilder {
     @Override
     public void configure() throws Exception {
 
-        singletonFrom("quartz://anshar/getAllDataFromIshtar?trigger.repeatInterval=" + INTERVAL_IN_MILLIS_ISHTAR,"getAllGTFSRTFromIshtar")
+        singletonFrom("quartz://anshar/getAllDataFromIshtar?trigger.repeatInterval=" + INTERVAL_IN_MILLIS_ISHTAR,"getAllDataFromIshtar")
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))
-                .toD(ISHTAR_PORT + "/gtfs-rt-apis/all")
+                .toD(ishtarUrl + ":" + ishtarPort + "/gtfs-rt-apis/all")
                 .unmarshal().json(JsonLibrary.Jackson, List.class)
                 .log("--> ISHTAR : get GTFS RT Api data")
                 .process(exchange -> {
@@ -46,7 +50,8 @@ public class IshtarCall extends BaseRouteBuilder {
                     ArrayList<GtfsRTApi> gtfsResults = new ArrayList<>();
                     ObjectMapper objectMapper = new ObjectMapper();
                     // on vide les précédentes valeurs
-                    subscriptionConfig.getGtfsRTApis().removeAll(subscriptionConfig.getGtfsRTApis());
+                    subscriptionConfig.getGtfsRTApis().clear();
+
 
                     if (allGtfs != null) {
                         for (Object obj : allGtfs) {
@@ -63,7 +68,7 @@ public class IshtarCall extends BaseRouteBuilder {
                 })
 
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))
-                .toD(ISHTAR_PORT + "/siri-apis/all")
+                .toD(ishtarUrl + ":" + ishtarPort + "/siri-apis/all")
                 .unmarshal().json(JsonLibrary.Jackson, List.class)
                 .log("--> ISHTAR : get Siri Api data")
                 .process(exchange -> {
@@ -88,7 +93,7 @@ public class IshtarCall extends BaseRouteBuilder {
                 })
 
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))
-                .toD(ISHTAR_PORT + "/id-processing-parameters/all")
+                .toD(ishtarUrl + ":" + ishtarPort + "/id-processing-parameters/all")
                 .unmarshal().json(JsonLibrary.Jackson, List.class)
                 .log("--> ISHTAR : get ID Processing Parameters data")
                 .process(exchange -> {
@@ -96,7 +101,7 @@ public class IshtarCall extends BaseRouteBuilder {
                     ArrayList<IdProcessingParameters> processingResults = new ArrayList<>();
                     ObjectMapper objectMapper = new ObjectMapper();
                     // on vide les précédentes valeurs
-                    subscriptionConfig.getIdProcessingParameters().removeAll(subscriptionConfig.getIdProcessingParameters());
+                    subscriptionConfig.getIdProcessingParameters().clear();
 
                     if (allProcessing != null) {
                         for (Object obj : allProcessing) {
@@ -111,7 +116,7 @@ public class IshtarCall extends BaseRouteBuilder {
                 })
 
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))
-                .toD(ISHTAR_PORT + "/subscriptions/all")
+                .toD(ishtarUrl + ":" + ishtarPort + "/subscriptions/all")
                 .unmarshal().json(JsonLibrary.Jackson, List.class)
                 .log("--> ISHTAR : get Subscriptions data")
                 .process(exchange -> {
@@ -120,13 +125,14 @@ public class IshtarCall extends BaseRouteBuilder {
                     List subscriptionResult = body().getExpression().evaluate(exchange, List.class);
                     ArrayList<SubscriptionSetup> results = new ArrayList<>();
                     // on vide les précédentes valeurs
-                    subscriptionConfig.getSubscriptions().removeAll(subscriptionConfig.getSubscriptions());
+                    subscriptionConfig.getSubscriptions().clear();
 
                     if (subscriptionResult != null) {
                         for (Object obj : subscriptionResult) {
                             LinkedHashMap<?, ?> current_subscription = ((LinkedHashMap<?, ?>) ((LinkedHashMap<?, ?>) obj).get("subscription"));
-                            if ((Boolean) current_subscription.get("active")) {
                                 SubscriptionSetup newSubscription = objectMapper.convertValue(current_subscription, SubscriptionSetup.class);
+                                newSubscription.setChangeBeforeUpdatesSeconds((int)current_subscription.get("changeBeforeUpdateSeconds"));
+
                                 newSubscription.setInternalId((int) ((LinkedHashMap<?, ?>) ((LinkedHashMap<?, ?>) obj).get("subscription")).get("id"));
 
                                 List<Map<String, Object>> urlMapsList = (List<Map<String, Object>>) ((LinkedHashMap<?, ?>) obj).get("urlMaps");
@@ -150,11 +156,8 @@ public class IshtarCall extends BaseRouteBuilder {
                                 newSubscription.setCustomHeaders(customHeaders);
 
                                 List<String> idMappingPrefixesList = (List<String>) ((LinkedHashMap<?, ?>) obj).get("idMappingPrefixes");
-                                List<String> idMappingPrefixes = new ArrayList<>(idMappingPrefixesList);
-                                newSubscription.setIdMappingPrefixes(idMappingPrefixes);
-
+                                newSubscription.setIdMappingPrefixes(idMappingPrefixesList);
                                 results.add(newSubscription);
-                            }
                         }
                     }
                     subscriptionConfig.getSubscriptions().addAll(results);

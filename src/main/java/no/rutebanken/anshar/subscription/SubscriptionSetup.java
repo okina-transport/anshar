@@ -191,10 +191,10 @@ public class SubscriptionSetup implements Serializable {
         if (urlMap != null) {
             for (Map.Entry<RequestType, String> entry : urlMap.entrySet()) {
                 final String url = entry.getValue();
-                if (!url.startsWith("http")) {
+                if (!url.startsWith("http") && !url.startsWith("https")) {
                     if (!url.isEmpty()) {
                         entry.setValue("http://" + url);
-                        logger.warn("Prefixing url with 'http://': ", entry.getValue());
+                     //   logger.warn("Prefixing url with 'http://': ", entry.getValue());
                     }
                 } else if (url.startsWith("https4")) {
                     entry.setValue(url.replaceFirst("https4://", "https://"));

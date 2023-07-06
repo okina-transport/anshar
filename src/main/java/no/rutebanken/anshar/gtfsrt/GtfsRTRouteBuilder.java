@@ -29,17 +29,15 @@ public class GtfsRTRouteBuilder extends BaseRouteBuilder {
     @Override
     public void configure() throws Exception {
 
-        if ((!configuration.processSX() && !configuration.processVM() && !configuration.processSM() && !configuration.processET()) || !configuration.isCurrentInstanceLeader()){
+        if ((!configuration.processSX() && !configuration.processVM() && !configuration.processSM() && !configuration.processET()) || !configuration.isCurrentInstanceLeader()) {
             logger.info("Application non paramétrée en SM/SX/ET/VM ou instance non leader. Pas de récupération GTFS-RT");
             return;
         }
 
-        if (subscriptionConfig.getGtfsRTApis().size() > 0) {
-            singletonFrom("quartz://anshar/import_GTFSRT_DATA?trigger.repeatInterval=" + INTERVAL_IN_MILLIS, "import_GTFSRT_DATA")
-                    .bean(GtfsRTDataRetriever.class, "getGTFSRTData")
-                    .end();
-        } else {
-            logger.info("Pas d'url GTFS-RT définie");
-        }
+
+        singletonFrom("quartz://anshar/import_GTFSRT_DATA?trigger.repeatInterval=" + INTERVAL_IN_MILLIS, "import_GTFSRT_DATA")
+                .bean(GtfsRTDataRetriever.class, "getGTFSRTData")
+                .end();
+
     }
 }

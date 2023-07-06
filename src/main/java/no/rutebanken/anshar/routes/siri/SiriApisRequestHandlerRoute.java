@@ -41,10 +41,6 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
     @Value("${cron.siri:0+0+0+1+1+?+2099}")
     private String cronSchedule;
 
-    private static final int INTERVAL_IN_MILLIS_ISHTAR = 1080000; // toutes les demi-heures
-
-    @Value("${ishtar.server.port}")
-    private String ISHTAR_PORT;
 
     @Autowired
     private SubscriptionConfig subscriptionConfig;

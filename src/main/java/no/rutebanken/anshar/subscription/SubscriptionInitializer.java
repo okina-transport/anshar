@@ -35,6 +35,7 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 public class SubscriptionInitializer implements CamelContextAware {
@@ -81,7 +82,7 @@ public class SubscriptionInitializer implements CamelContextAware {
             logger.info("App started with mode(s): {}", configuration.getAppModes());
         }
 
-        if (!configuration.isCurrentInstanceLeader()){
+        if (!configuration.isCurrentInstanceLeader()) {
             logger.info("===> Current instance not leader. Not launching subscriptions");
             return;
         }
@@ -99,7 +100,7 @@ public class SubscriptionInitializer implements CamelContextAware {
         if (subscriptionConfig != null) {
             List<SubscriptionSetup> subscriptionSetups = subscriptionConfig.getSubscriptions();
 
-            logger.info("Initializing {} subscriptions", subscriptionSetups.size());
+
             Set<String> subscriptionIds = new HashSet<>();
             Set<String> subscriptionNames = new HashSet<>();
 
@@ -107,8 +108,19 @@ public class SubscriptionInitializer implements CamelContextAware {
 
             List<SubscriptionSetup> actualSubscriptionSetups = new ArrayList<>();
 
+            List<SubscriptionSetup> activeSubscriptions = subscriptionSetups.stream()
+                    .filter(SubscriptionSetup::isActive)
+                    .collect(Collectors.toList());
+
+            List<SubscriptionSetup> disabledSubscriptions = subscriptionSetups.stream()
+                    .filter(subscriptionSetup -> !subscriptionSetup.isActive())
+                    .collect(Collectors.toList());
+
+            disableSubscriptions(disabledSubscriptions);
+
+            logger.info("Initializing {} subscriptions", activeSubscriptions.size());
             // Validation and consistency-verification
-            for (SubscriptionSetup subscriptionSetup : subscriptionSetups) {
+            for (SubscriptionSetup subscriptionSetup : activeSubscriptions) {
 
                 subscriptionSetup.setAddress(configuration.getInboundUrl());
 
@@ -118,17 +130,17 @@ public class SubscriptionInitializer implements CamelContextAware {
 
                 if (subscriptionIds.contains(subscriptionSetup.getSubscriptionId())) {
                     //Verify subscriptionId-uniqueness
-                    throw new ServiceConfigurationError("SubscriptionIds are NOT unique for ID="+subscriptionSetup.getSubscriptionId());
+                    throw new ServiceConfigurationError("SubscriptionIds are NOT unique for ID=" + subscriptionSetup.getSubscriptionId());
                 }
 
                 if (subscriptionNames.contains(subscriptionSetup.getVendor())) {
                     //Verify vendor-uniqueness
-                    throw new ServiceConfigurationError("Vendor is NOT unique for vendor="+subscriptionSetup.getVendor());
+                    throw new ServiceConfigurationError("Vendor is NOT unique for vendor=" + subscriptionSetup.getVendor());
                 }
 
                 if (subscriptionInternalIds.contains(subscriptionSetup.getInternalId())) {
                     //Verify internalId-uniqueness
-                    throw new ServiceConfigurationError("InternalId is NOT unique for ID="+subscriptionSetup.getInternalId());
+                    throw new ServiceConfigurationError("InternalId is NOT unique for ID=" + subscriptionSetup.getInternalId());
                 }
 
                 List<ValueAdapter> valueAdapters = new ArrayList<>();
@@ -203,6 +215,18 @@ public class SubscriptionInitializer implements CamelContextAware {
                 // If not admin - do NOT add subscription-handlers
                 for (SubscriptionSetup subscriptionSetup : actualSubscriptionSetups) {
 
+                    if (subscriptionManager.isSubscriptionRegistered(subscriptionSetup.getSubscriptionId())  && subscriptionManager.get(subscriptionSetup.getSubscriptionId()).isActive()){
+                        //subscription already active. no need to start it
+                        continue;
+                    }
+
+                    if (subscriptionManager.isSubscriptionRegistered(subscriptionSetup.getSubscriptionId())){
+                        //subscription previously disabled. Re-activating it
+                        subscriptionManager.startSubscription(subscriptionSetup.getSubscriptionId());
+                        continue;
+                    }
+
+
                     try {
 
                         List<RouteBuilder> routeBuilder = getRouteBuilders(subscriptionSetup);
@@ -226,12 +250,28 @@ public class SubscriptionInitializer implements CamelContextAware {
         }
     }
 
+    /**
+     * Disable a list of subscriptions given as parameter
+     *
+     * @param disabledSubscriptions
+     */
+    private void disableSubscriptions(List<SubscriptionSetup> disabledSubscriptions) {
+
+        for (SubscriptionSetup disabledSubscription : disabledSubscriptions) {
+            String subscriptionIdToDisable = disabledSubscription.getSubscriptionId();
+
+            if(subscriptionManager.isSubscriptionRegistered(subscriptionIdToDisable) && subscriptionManager.get(subscriptionIdToDisable).isActive()){
+                subscriptionManager.removeSubscription(subscriptionIdToDisable);
+            }
+        }
+    }
+
     List<RouteBuilder> getRouteBuilders(SubscriptionSetup subscriptionSetup) {
         List<RouteBuilder> routeBuilders = new ArrayList<>();
 
         boolean isSubscription = subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.SUBSCRIBE;
         boolean isFetchedDelivery = subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.FETCHED_DELIVERY |
-                                subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.POLLING_FETCHED_DELIVERY;
+                subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.POLLING_FETCHED_DELIVERY;
         boolean isSoap = subscriptionSetup.getServiceType() == SubscriptionSetup.ServiceType.SOAP;
 
         if (subscriptionSetup.getVersion().equals("1.4")) {
@@ -319,7 +359,7 @@ public class SubscriptionInitializer implements CamelContextAware {
 
             Preconditions.checkNotNull(urlMap.get(RequestType.SUBSCRIBE), "SUBSCRIBE-url is missing. " + s);
             Preconditions.checkNotNull(urlMap.get(RequestType.DELETE_SUBSCRIPTION), "DELETE_SUBSCRIPTION-url is missing. " + s);
-        }  else if (s.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.FETCHED_DELIVERY |
+        } else if (s.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.FETCHED_DELIVERY |
                 s.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.POLLING_FETCHED_DELIVERY) {
             Preconditions.checkNotNull(urlMap.get(RequestType.SUBSCRIBE), "SUBSCRIBE-url is missing. " + s);
             Preconditions.checkNotNull(urlMap.get(RequestType.DELETE_SUBSCRIPTION), "DELETE_SUBSCRIPTION-url is missing. " + s);
@@ -328,7 +368,7 @@ public class SubscriptionInitializer implements CamelContextAware {
         }
 
         if (!SiriDataType.VEHICLE_MONITORING.equals(s.getSubscriptionType())) {
-            Preconditions.checkArgument(! s.forwardPositionData(), "Position only is only valid for VM-subscription.");
+            Preconditions.checkArgument(!s.forwardPositionData(), "Position only is only valid for VM-subscription.");
         }
 
         return true;

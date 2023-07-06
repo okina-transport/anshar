@@ -28,6 +28,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 @PropertySource(value = "${anshar.subscriptions.config.path}", factory = YamlPropertySourceFactory.class)
@@ -35,13 +36,13 @@ import java.util.stream.Collectors;
 @Configuration
 public class SubscriptionConfig {
 
-    private List<SubscriptionSetup> subscriptions;
+    private List<SubscriptionSetup> subscriptions = new CopyOnWriteArrayList();
 
-    private List<GtfsRTApi> gtfsRTApis = new ArrayList<>();
+    private List<GtfsRTApi> gtfsRTApis = new CopyOnWriteArrayList<>();
 
-    private List<SiriApi> siriApis = new ArrayList<>();
+    private List<SiriApi> siriApis = new CopyOnWriteArrayList<>();
 
-    private List<IdProcessingParameters> idProcessingParametrers = new ArrayList<>();
+    private List<IdProcessingParameters> idProcessingParametrers = new CopyOnWriteArrayList<>();
 
     @Value("${anshar.subscriptions.datatypes.filter:}")
     List<SiriDataType> dataTypes;
