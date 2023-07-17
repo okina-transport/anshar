@@ -12,9 +12,7 @@ import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 
 /***
@@ -59,7 +57,7 @@ public class AlertMapper {
         AffectsScopeStructure.StopPoints stopPoints = new AffectsScopeStructure.StopPoints();
         AffectsScopeStructure.VehicleJourneys vehicleJourneys = new AffectsScopeStructure.VehicleJourneys();
         AffectsScopeStructure.Networks networks =  new AffectsScopeStructure.Networks();
-
+        Set<String> affectedLines = new HashSet();
 
 
 
@@ -68,38 +66,35 @@ public class AlertMapper {
             operators.getAffectedOperators().addAll(getOperators(informedEntity));
             stopPoints.getAffectedStopPoints().addAll(getStopPoints(informedEntity));
             vehicleJourneys.getAffectedVehicleJourneies().addAll(getVehicleJourneys(informedEntity));
-            networks.getAffectedNetworks().addAll(getNetworks(informedEntity));
-
+            if (informedEntity.hasRouteId()){
+                affectedLines.add(informedEntity.getRouteId());
+            }
         }
+
+        if (affectedLines.size() > 0){
+            networks.getAffectedNetworks().add(buildAffectedNetwork(affectedLines));
+            affectStruct.setNetworks(networks);
+        }
+
 
         affectStruct.setOperators(operators);
         affectStruct.setStopPoints(stopPoints);
         affectStruct.setVehicleJourneys(vehicleJourneys);
 
-        affectStruct.setNetworks(networks);
-
-
         ptSituationElement.setAffects(affectStruct);
-
-
     }
 
-    private static  List<AffectsScopeStructure.Networks.AffectedNetwork> getNetworks(GtfsRealtime.EntitySelector informedEntity) {
+    private static AffectsScopeStructure.Networks.AffectedNetwork buildAffectedNetwork(Set<String> affectedLines ){
+        AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork = new AffectsScopeStructure.Networks.AffectedNetwork();
 
-        AffectsScopeStructure.Networks networks = new AffectsScopeStructure.Networks();
-
-
-        if (StringUtils.isNotEmpty(informedEntity.getRouteId())){
-            AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork = new AffectsScopeStructure.Networks.AffectedNetwork();
-            AffectedLineStructure affecteLine = new AffectedLineStructure();
+        for (String affectedLine : affectedLines) {
+            AffectedLineStructure affecteLineStruct = new AffectedLineStructure();
             LineRef lineRef = new LineRef();
-            lineRef.setValue(informedEntity.getRouteId());
-            affecteLine.setLineRef(lineRef);
-            affectedNetwork.getAffectedLines().add(affecteLine);
-            networks.getAffectedNetworks().add(affectedNetwork);
+            lineRef.setValue(affectedLine);
+            affecteLineStruct.setLineRef(lineRef);
+            affectedNetwork.getAffectedLines().add(affecteLineStruct);
         }
-        return networks.getAffectedNetworks();
-
+        return affectedNetwork;
     }
 
     private static List<AffectedVehicleJourneyStructure> getVehicleJourneys(GtfsRealtime.EntitySelector informedEntity ){
