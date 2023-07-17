@@ -58,16 +58,22 @@ public class AlertMapper {
         AffectsScopeStructure.VehicleJourneys vehicleJourneys = new AffectsScopeStructure.VehicleJourneys();
         AffectsScopeStructure.Networks networks =  new AffectsScopeStructure.Networks();
         Set<String> affectedLines = new HashSet();
-
-
+        Set<String> affectedOperators = new HashSet();
+        Set<String> affectedStopPoints = new HashSet();
 
         for (GtfsRealtime.EntitySelector informedEntity : informedEntities) {
 
-            operators.getAffectedOperators().addAll(getOperators(informedEntity));
-            stopPoints.getAffectedStopPoints().addAll(getStopPoints(informedEntity));
             vehicleJourneys.getAffectedVehicleJourneies().addAll(getVehicleJourneys(informedEntity));
             if (informedEntity.hasRouteId()){
                 affectedLines.add(informedEntity.getRouteId());
+            }
+
+            if (informedEntity.hasAgencyId()){
+                affectedOperators.add(informedEntity.getAgencyId());
+            }
+
+            if (informedEntity.hasStopId()){
+                affectedStopPoints.add(informedEntity.getStopId());
             }
         }
 
@@ -76,12 +82,48 @@ public class AlertMapper {
             affectStruct.setNetworks(networks);
         }
 
+        if (affectedOperators.size() > 0){
+            operators.getAffectedOperators().addAll(buildAffectedOperators(affectedOperators));
+            affectStruct.setOperators(operators);
+        }
 
-        affectStruct.setOperators(operators);
-        affectStruct.setStopPoints(stopPoints);
+        if (affectedStopPoints.size() > 0){
+            stopPoints.getAffectedStopPoints().addAll(buildAffectedStopPoints(affectedStopPoints));
+            affectStruct.setStopPoints(stopPoints);
+        }
+
+
+
         affectStruct.setVehicleJourneys(vehicleJourneys);
 
         ptSituationElement.setAffects(affectStruct);
+    }
+
+    private static List<AffectedStopPointStructure> buildAffectedStopPoints(Set<String> affectedStopPoints) {
+        List<AffectedStopPointStructure> affectedPointsList = new ArrayList<>();
+        for (String affectedStopPoint : affectedStopPoints) {
+            AffectedStopPointStructure affStopPointStruct = new AffectedStopPointStructure();
+            StopPointRef stopPointRef = new StopPointRef();
+            stopPointRef.setValue(affectedStopPoint);
+            affStopPointStruct.setStopPointRef(stopPointRef);
+            affectedPointsList.add(affStopPointStruct);
+        }
+
+
+        return affectedPointsList;
+    }
+
+    private static List<AffectedOperatorStructure> buildAffectedOperators(Set<String> affectedOperators) {
+        List<AffectedOperatorStructure> affectedOp = new ArrayList<>();
+        for (String affectedOperatorStr : affectedOperators) {
+
+            AffectedOperatorStructure affectedOperatorStruct = new AffectedOperatorStructure();
+            OperatorRefStructure operatorRefStructure = new OperatorRefStructure();
+            operatorRefStructure.setValue(affectedOperatorStr);
+            affectedOperatorStruct.setOperatorRef(operatorRefStructure);
+            affectedOp.add(affectedOperatorStruct);
+        }
+        return affectedOp;
     }
 
     private static AffectsScopeStructure.Networks.AffectedNetwork buildAffectedNetwork(Set<String> affectedLines ){
@@ -113,33 +155,7 @@ public class AlertMapper {
 
     }
 
-    private static List<AffectedStopPointStructure> getStopPoints(GtfsRealtime.EntitySelector informedEntity ){
-        AffectsScopeStructure.StopPoints stopPoints = new AffectsScopeStructure.StopPoints();
 
-        if (informedEntity.hasStopId()){
-            AffectedStopPointStructure stopPoint = new AffectedStopPointStructure();
-            StopPointRef stopPointRef = new StopPointRef();
-            stopPointRef.setValue(informedEntity.getStopId());
-            stopPoint.setStopPointRef(stopPointRef);
-            stopPoints.getAffectedStopPoints().add(stopPoint);
-        }
-
-        return stopPoints.getAffectedStopPoints();
-
-    }
-
-    private static List<AffectedOperatorStructure> getOperators(GtfsRealtime.EntitySelector informedEntity ){
-
-        AffectsScopeStructure.Operators operators = new AffectsScopeStructure.Operators();
-        if (informedEntity.hasAgencyId()){
-            AffectedOperatorStructure affectedOperator = new AffectedOperatorStructure();
-            OperatorRefStructure operatorRefStructure = new OperatorRefStructure();
-            operatorRefStructure.setValue(informedEntity.getAgencyId());
-            affectedOperator.setOperatorRef(operatorRefStructure);
-            operators.getAffectedOperators().add(affectedOperator);
-        }
-        return operators.getAffectedOperators();
-    }
 
     private static void mapTripDescriptor(GtfsRealtime.TripDescriptor tripDescriptor, AffectedVehicleJourneyStructure vehicleJourney){
         if (StringUtils.isNotEmpty(tripDescriptor.getStartDate())){
