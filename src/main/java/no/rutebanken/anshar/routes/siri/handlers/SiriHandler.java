@@ -38,14 +38,11 @@ import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import no.rutebanken.anshar.util.GeneralMessageHelper;
 import no.rutebanken.anshar.util.IDUtils;
 import org.json.simple.JSONObject;
-import org.rutebanken.netex.model.SiteRefStructure;
 import org.rutebanken.siri20.util.SiriXml;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.ifopt.siri20.StopPlaceComponentRefStructure;
-import uk.org.ifopt.siri20.StopPlaceRef;
 import uk.org.siri.siri20.*;
 
 import javax.xml.bind.JAXBException;
@@ -528,13 +525,15 @@ public class SiriHandler {
      */
     private Siri getDiscoveryLines(String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy) {
 
+        List<SiriDataType> siriDataTypes = new ArrayList<>();
+        siriDataTypes.add(SiriDataType.VEHICLE_MONITORING);
 
-        List<SubscriptionSetup> subscriptionList = subscriptionManager.getAllSubscriptions(SiriDataType.VEHICLE_MONITORING).stream()
+        List<SubscriptionSetup> subscriptionListVM = subscriptionManager.getAllSubscriptions(SiriDataType.VEHICLE_MONITORING).stream()
                 .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))
                 .collect(Collectors.toList());
 
 
-        List<String> datasetList = subscriptionList.stream()
+        List<String> datasetList = subscriptionListVM.stream()
                 .map(SubscriptionSetup::getDatasetId)
                 .distinct()
                 .collect(Collectors.toList());
@@ -542,25 +541,42 @@ public class SiriHandler {
 
         Map<String, IdProcessingParameters> idProcessingMap = buildIdProcessingMap(datasetList, ObjectType.LINE);
 
-
-        List<String> lineRefList = subscriptionList.stream()
+        Set<String> lineRefSetVM = subscriptionListVM.stream()
                 .map(subscription -> extractAndTransformLineId(subscription, idProcessingMap))
                 .filter(lineRef -> lineRef != null)
-                .collect(Collectors.toList());
+                .collect(Collectors.toSet());
 
         if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy) && datasetId != null) {
-            lineRefList = lineRefList.stream()
+            lineRefSetVM = lineRefSetVM.stream()
                     .map(id -> externalIdsService.getAltId(datasetId, id, ObjectType.LINE).orElse(id))
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toSet());
         }
 
+        Set<String> lineRefSetET = estimatedTimetables.getAll(datasetId)
+                .stream()
+                .filter(estimatedVehicleJourney -> estimatedVehicleJourney.getLineRef() != null)
+                .map(estimatedVehicleJourney -> {
+                    String lineRef = estimatedVehicleJourney.getLineRef().getValue();
+                    return idProcessingMap.containsKey(datasetId) ? idProcessingMap.get(datasetId).applyTransformationToString(lineRef) : lineRef;
+                }
+                )
+                .collect(Collectors.toSet());
 
-        List<AnnotatedLineRef> resultList = lineRefList.stream()
+        if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy) && datasetId != null) {
+            lineRefSetET = lineRefSetET.stream()
+                    .map(id -> externalIdsService.getAltId(datasetId, id, ObjectType.LINE).orElse(id))
+                    .collect(Collectors.toSet());
+        }
+
+        Set<String> lineRefSet = new HashSet<>();
+        lineRefSet.addAll(lineRefSetVM);
+        lineRefSet.addAll(lineRefSetET);
+
+        List<AnnotatedLineRef> resultList = lineRefSet.stream()
                 .map(this::convertKeyToLineRef)
                 .collect(Collectors.toList());
 
         return siriObjectFactory.createLinesDiscoveryDelivery(resultList);
-
 
     }
 
@@ -570,7 +586,6 @@ public class SiriHandler {
      * @return the siri response with all points
      */
     public Siri getDiscoveryStopPoints(String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy) {
-
 
         List<SubscriptionSetup> subscriptionList = subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING).stream()
                 .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))

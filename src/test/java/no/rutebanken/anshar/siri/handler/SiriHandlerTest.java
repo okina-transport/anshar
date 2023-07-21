@@ -39,8 +39,10 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -401,6 +403,13 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         vmSubscription2.setLineRefValue("line2");
         subscriptionManager.addSubscription(vmSubscription2.getSubscriptionId(), vmSubscription2);
 
+        SubscriptionSetup vmSubscription3 = getVmSubscription();
+        vmSubscription3.setLineRefValue("line3");
+        subscriptionManager.addSubscription(vmSubscription3.getSubscriptionId(), vmSubscription3);
+
+        estimatedTimetables.add(getVmSubscription().getDatasetId(), createEstimatedVehicleJourney("line3", "vehicle3", 0, 30, ZonedDateTime.now().plusHours(1), true));
+        estimatedTimetables.add(getVmSubscription().getDatasetId(), createEstimatedVehicleJourney("line4", "vehicle4", 0, 30, ZonedDateTime.now().plusHours(1), true));
+
         ClassLoader classLoader = getClass().getClassLoader();
         File file = new File("src/test/resources/discoveryTest/lines_discovery_test.xml");
 
@@ -408,8 +417,8 @@ public class SiriHandlerTest extends SpringBootBaseTest {
             Siri result = handler.handleIncomingSiri(null, new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), null, null, null, -1, null);
             assertNotNull(result.getLinesDelivery());
             assertNotNull(result.getLinesDelivery().getAnnotatedLineReves());
-            assertEquals(2,result.getLinesDelivery().getAnnotatedLineReves().size());
-            List<String> expectedLineRef = Arrays.asList("line1", "line2");
+            assertEquals(4,result.getLinesDelivery().getAnnotatedLineReves().size());
+            List<String> expectedLineRef = Arrays.asList("line1", "line2", "line3", "line4");
 
             for (AnnotatedLineRef annotatedLineReve : result.getLinesDelivery().getAnnotatedLineReves()) {
                 assertTrue(expectedLineRef.contains(annotatedLineReve.getLineRef().getValue()));
@@ -628,5 +637,41 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 Duration.ofSeconds(600),
                 true
         );
+    }
+
+    private EstimatedVehicleJourney createEstimatedVehicleJourney(String lineRefValue, String vehicleRefValue, int startOrder, int callCount, ZonedDateTime arrival, Boolean isComplete) {
+        return createEstimatedVehicleJourney(lineRefValue, vehicleRefValue, startOrder, callCount, arrival, arrival, isComplete);
+    }
+
+    private EstimatedVehicleJourney createEstimatedVehicleJourney(String lineRefValue, String vehicleRefValue, int startOrder, int callCount, ZonedDateTime arrival, ZonedDateTime departure, Boolean isComplete) {
+        EstimatedVehicleJourney element = new EstimatedVehicleJourney();
+        LineRef lineRef = new LineRef();
+        lineRef.setValue(lineRefValue);
+        element.setLineRef(lineRef);
+        VehicleRef vehicleRef = new VehicleRef();
+        vehicleRef.setValue(vehicleRefValue);
+        element.setVehicleRef(vehicleRef);
+        element.setIsCompleteStopSequence(isComplete);
+
+        EstimatedVehicleJourney.EstimatedCalls estimatedCalls = new EstimatedVehicleJourney.EstimatedCalls();
+        for (int i = startOrder; i < callCount; i++) {
+
+            StopPointRef stopPointRef = new StopPointRef();
+            stopPointRef.setValue("NSR:TEST:" + i);
+            EstimatedCall call = new EstimatedCall();
+            call.setStopPointRef(stopPointRef);
+            call.setAimedArrivalTime(arrival);
+            call.setExpectedArrivalTime(arrival);
+            call.setAimedDepartureTime(departure);
+            call.setExpectedDepartureTime(departure);
+            call.setOrder(BigInteger.valueOf(i));
+            call.setVisitNumber(BigInteger.valueOf(i));
+            estimatedCalls.getEstimatedCalls().add(call);
+        }
+
+        element.setEstimatedCalls(estimatedCalls);
+        element.setRecordedAtTime(ZonedDateTime.now());
+
+        return element;
     }
 }
