@@ -27,7 +27,7 @@
 
     <groupId>no.rutebanken.anshar</groupId>
     <artifactId>anshar</artifactId>
-    <version>1.3.2-mobi-iti-SNAPSHOT</version>
+    <version>1.3.3-mobi-iti-SNAPSHOT</version>
     <packaging>jar</packaging>
 
 
