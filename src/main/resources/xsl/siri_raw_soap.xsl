@@ -45,10 +45,48 @@
         <xsl:apply-templates/>
     </xsl:template>
 
+    <xsl:template match="siri:StopPointsRequest">
+        <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsdl="http://wsdl.siri.org.uk" xmlns:siri="http://www.siri.org.uk/siri">
+            <soapenv:Header/>
+            <soapenv:Body>
+                <wsdl:StopPointsDiscovery>
+                    <Request version="2.0">
+                        <xsl:copy-of select="./siri:RequestTimestamp" copy-namespaces="no">
+                        </xsl:copy-of>
+                        <xsl:copy-of select="./siri:RequestorRef" copy-namespaces="no">
+                        </xsl:copy-of>
+                        <xsl:copy-of select="./siri:MessageIdentifier" copy-namespaces="no">
+                        </xsl:copy-of>
+                    </Request>
+
+                </wsdl:StopPointsDiscovery>
+            </soapenv:Body>
+        </soapenv:Envelope>
+    </xsl:template>
+
+    <xsl:template match="siri:LinesRequest">
+        <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsdl="http://wsdl.siri.org.uk" xmlns:siri="http://www.siri.org.uk/siri">
+            <soapenv:Header/>
+            <soapenv:Body>
+                <wsdl:LinesDiscovery>
+                    <Request version="2.0">
+                        <xsl:copy-of select="./siri:RequestTimestamp" copy-namespaces="no">
+                        </xsl:copy-of>
+                        <xsl:copy-of select="./siri:RequestorRef" copy-namespaces="no">
+                        </xsl:copy-of>
+                        <xsl:copy-of select="./siri:MessageIdentifier" copy-namespaces="no">
+                        </xsl:copy-of>
+                    </Request>
+
+                </wsdl:LinesDiscovery>
+            </soapenv:Body>
+        </soapenv:Envelope>
+    </xsl:template>
+
     <xsl:template match="siri:StopPointsDelivery">
         <xsl:element name="soapenv:Envelope" namespace="{$soapEnvelopeNamespace}">
             <xsl:element name="soapenv:Body" namespace="{$soapEnvelopeNamespace}">
-                <xsl:element name="StopPointsDiscoveryResponse">
+                    <xsl:element name="StopPointsDiscoveryResponse">
                     <xsl:copy-of select="./siri:AnnotatedStopPointRef" copy-namespaces="no">
 
                     </xsl:copy-of>
