@@ -26,6 +26,13 @@ public class SituationExchangeGenerator {
         if (disruption.getSeverity() != null){
             ptSituationElement.setSeverity(SeverityEnumeration.valueOf(disruption.getSeverity()));
         }
+        if (disruption.getEffect() != null){
+            PtConsequencesStructure ptConsequencesStructure = new PtConsequencesStructure();
+            PtConsequenceStructure ptConsequenceStructure = new PtConsequenceStructure();
+            ptConsequenceStructure.getConditions().add(ServiceConditionEnumeration.valueOf(disruption.getEffect()));
+            ptConsequencesStructure.getConsequences().add(ptConsequenceStructure);
+            ptSituationElement.setConsequences(ptConsequencesStructure);
+        }
 
         return ptSituationElement;
     }
