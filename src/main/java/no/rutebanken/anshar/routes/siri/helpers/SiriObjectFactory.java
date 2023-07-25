@@ -727,6 +727,7 @@ public class SiriObjectFactory {
         if (configuration != null && configuration.getProducerRef() != null) {
             delivery.setProducerRef(createRequestorRef(configuration.getProducerRef()));
         }
+        delivery.setStatus(true);
         return delivery;
     }
 
