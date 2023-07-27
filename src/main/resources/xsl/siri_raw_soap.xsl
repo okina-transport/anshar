@@ -229,6 +229,10 @@
                                                     select="siri:EstimatedTimetableSubscriptionRequest/siri:SubscriptionIdentifier"
                                                     copy-namespaces="no"/>
                                             <xsl:copy-of
+                                                    select="siri:EstimatedTimetableSubscriptionRequest/siri:SubscriberRef"
+                                                    copy-namespaces="no"/>
+
+                                            <xsl:copy-of
                                                     select="siri:EstimatedTimetableSubscriptionRequest/siri:InitialTerminationTime"
                                                     copy-namespaces="no"/>
 

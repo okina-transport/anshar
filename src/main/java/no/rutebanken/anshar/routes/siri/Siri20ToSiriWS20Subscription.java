@@ -73,6 +73,9 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
                 .setHeader("operatorNamespace", constant(subscriptionSetup.getOperatorNamespace())) // Need to make SOAP request with endpoint specific element namespace
                 .setHeader("endpointUrl", constant(endpointUrl)) // Need to make SOAP request with endpoint specific element namespace
                 .setHeader("soapEnvelopeNamespace", constant(subscriptionSetup.getSoapenvNamespace())) // Need to make SOAP request with endpoint specific element namespace
+                .process(p->{
+                    logger.info("Subscription request content:"+p.getIn().getBody(String.class));
+                })
                 .to("xslt-saxon:xsl/siri_raw_soap.xsl") // Convert SIRI raw request to SOAP version
                 .to("xslt-saxon:xsl/siri_14_20.xsl") // Convert SIRI raw request to SOAP version
                 .process(p->{

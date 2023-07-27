@@ -137,6 +137,8 @@ public class SiriObjectFactory {
                     subscriptionSetup.getIncrementalUpdates(),
                     subscriptionSetup.getPreviewInterval(),
                     subscriptionSetup.getChangeBeforeUpdates());
+
+
         }
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
             request = createStopMonitoringSubscriptionRequest(
@@ -486,9 +488,17 @@ public class SiriObjectFactory {
     private static SubscriptionRequest createEstimatedTimetableSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap, String addressFieldName, Boolean incrementalUpdates, Duration previewInterval, Duration changeBeforeUpdates) {
         SubscriptionRequest request = createSubscriptionRequest(requestorRef, heartbeatInterval, address, addressFieldName);
 
+        EstimatedTimetableSubscriptionStructure etSubRequest = new EstimatedTimetableSubscriptionStructure();
+
         EstimatedTimetableRequestStructure etRequest = new EstimatedTimetableRequestStructure();
         etRequest.setRequestTimestamp(ZonedDateTime.now());
         etRequest.setVersion(SIRI_VERSION);
+
+
+        RequestorRef reqRef = new RequestorRef();
+        reqRef.setValue(requestorRef);
+        etSubRequest.setSubscriberRef(reqRef);
+
 
         if (previewInterval != null) {
             etRequest.setPreviewInterval(createDataTypeFactory().newDuration(previewInterval.toString()));
@@ -531,8 +541,9 @@ public class SiriObjectFactory {
         }
 
         etSubscriptionReq.setIncrementalUpdates(incrementalUpdates);
+        etSubRequest.setEstimatedTimetableRequest(etRequest);
 
-        request.getEstimatedTimetableSubscriptionRequests().add(etSubscriptionReq);
+        request.getEstimatedTimetableSubscriptionRequests().add(etSubRequest);
 
         return request;
     }
