@@ -35,6 +35,7 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 public class SubscriptionInitializer implements CamelContextAware {
@@ -106,8 +107,19 @@ public class SubscriptionInitializer implements CamelContextAware {
 
             List<SubscriptionSetup> actualSubscriptionSetups = new ArrayList<>();
 
+            List<SubscriptionSetup> activeSubscriptions = subscriptionSetups.stream()
+                    .filter(SubscriptionSetup::isActive)
+                    .collect(Collectors.toList());
+
+            List<SubscriptionSetup> disabledSubscriptions = subscriptionSetups.stream()
+                    .filter(subscriptionSetup -> !subscriptionSetup.isActive())
+                    .collect(Collectors.toList());
+
+            disableSubscriptions(disabledSubscriptions);
+
+            logger.info("Initializing {} subscriptions", activeSubscriptions.size());
             // Validation and consistency-verification
-            for (SubscriptionSetup subscriptionSetup : subscriptionSetups) {
+            for (SubscriptionSetup subscriptionSetup : activeSubscriptions) {
 
                 subscriptionSetup.setAddress(configuration.getInboundUrl());
 
@@ -202,6 +214,18 @@ public class SubscriptionInitializer implements CamelContextAware {
                 // If not admin - do NOT add subscription-handlers
                 for (SubscriptionSetup subscriptionSetup : actualSubscriptionSetups) {
 
+                    if (subscriptionManager.isSubscriptionRegistered(subscriptionSetup.getSubscriptionId())  && subscriptionManager.get(subscriptionSetup.getSubscriptionId()).isActive()){
+                        //subscription already active. no need to start it
+                        continue;
+                    }
+
+                    if (subscriptionManager.isSubscriptionRegistered(subscriptionSetup.getSubscriptionId())){
+                        //subscription previously disabled. Re-activating it
+                        subscriptionManager.startSubscription(subscriptionSetup.getSubscriptionId());
+                        continue;
+                    }
+
+
                     try {
 
                         List<RouteBuilder> routeBuilder = getRouteBuilders(subscriptionSetup);
@@ -222,6 +246,22 @@ public class SubscriptionInitializer implements CamelContextAware {
             }
         } else {
             logger.error("Subscriptions not configured correctly - no subscriptions will be started");
+        }
+    }
+
+    /**
+     * Disable a list of subscriptions given as parameter
+     *
+     * @param disabledSubscriptions
+     */
+    private void disableSubscriptions(List<SubscriptionSetup> disabledSubscriptions) {
+
+        for (SubscriptionSetup disabledSubscription : disabledSubscriptions) {
+            String subscriptionIdToDisable = disabledSubscription.getSubscriptionId();
+
+            if(subscriptionManager.isSubscriptionRegistered(subscriptionIdToDisable) && subscriptionManager.get(subscriptionIdToDisable).isActive()){
+                subscriptionManager.removeSubscription(subscriptionIdToDisable);
+            }
         }
     }
 

@@ -21,6 +21,7 @@ import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.api.SiriApi;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
+import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.util.YamlPropertySourceFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -40,6 +41,8 @@ public class SubscriptionConfig {
     private List<GtfsRTApi> gtfsRTApis = new ArrayList<>();
 
     private List<SiriApi> siriApis = new ArrayList<>();
+
+    private List<DiscoverySubscription> discoverySubscriptions = new ArrayList<>();
 
     private List<IdProcessingParameters> idProcessingParametrers = new ArrayList<>();
 
@@ -72,12 +75,20 @@ public class SubscriptionConfig {
         return siriApis;
     }
 
+    public List<DiscoverySubscription> getDiscoverySubscriptions() {
+        return discoverySubscriptions;
+    }
+
     public List<IdProcessingParameters> getIdProcessingParameters() {
         return idProcessingParametrers;
     }
 
     public void setSiriApis(List<SiriApi> siriApis) {
         this.siriApis = siriApis;
+    }
+
+    public void setDiscoverySubscriptions(List<DiscoverySubscription> discoverySubscriptions) {
+        this.discoverySubscriptions = discoverySubscriptions;
     }
 
     public Optional<IdProcessingParameters> getIdParametersForDataset(String datasetId, ObjectType objectType){
