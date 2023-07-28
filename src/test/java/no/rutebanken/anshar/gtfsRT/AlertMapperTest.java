@@ -4,11 +4,9 @@ import com.google.transit.realtime.GtfsRealtime;
 import no.rutebanken.anshar.gtfsrt.mappers.AlertMapper;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import org.junit.jupiter.api.Test;
-import uk.org.siri.siri20.AffectedLineStructure;
-import uk.org.siri.siri20.AffectedStopPointStructure;
-import uk.org.siri.siri20.AffectsScopeStructure;
-import uk.org.siri.siri20.PtSituationElement;
+import uk.org.siri.siri20.*;
 
+import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertTrue;
 import static junit.framework.TestCase.assertEquals;
 
@@ -269,6 +267,57 @@ public class AlertMapperTest extends SpringBootBaseTest {
         assertTrue(   secondPoint.getStopPointRef() != null);
         assertEquals(  stopId2, secondPoint.getStopPointRef().getValue());
     }
+
+    @Test
+    public void testSeverityConversions() {
+        testSeverityConversion(GtfsRealtime.Alert.SeverityLevel.UNKNOWN_SEVERITY, SeverityEnumeration.UNKNOWN);
+        testSeverityConversion(GtfsRealtime.Alert.SeverityLevel.INFO, SeverityEnumeration.VERY_SLIGHT);
+        testSeverityConversion(GtfsRealtime.Alert.SeverityLevel.WARNING, SeverityEnumeration.NORMAL);
+        testSeverityConversion(GtfsRealtime.Alert.SeverityLevel.SEVERE, SeverityEnumeration.SEVERE);
+    }
+
+    private void testSeverityConversion(GtfsRealtime.Alert.SeverityLevel inputSeverityLevel, SeverityEnumeration outputSeverity ){
+        GtfsRealtime.Alert alert = buildAlertWithSeverity(inputSeverityLevel);
+        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alert);
+        assertEquals("severity conversion issue between :" + inputSeverityLevel + " , and :" + outputSeverity,situation.getSeverity(), outputSeverity);
+    }
+
+    private GtfsRealtime.Alert buildAlertWithSeverity(GtfsRealtime.Alert.SeverityLevel severityLevel){
+        GtfsRealtime.Alert.Builder alertBuilder = GtfsRealtime.Alert.newBuilder();
+        alertBuilder.setSeverityLevel(severityLevel);
+        return alertBuilder.build();
+    }
+
+    @Test
+    public void testEffectConversions() {
+        testEffectConversion(GtfsRealtime.Alert.Effect.NO_SERVICE, ServiceConditionEnumeration.NO_SERVICE);
+        testEffectConversion(GtfsRealtime.Alert.Effect.REDUCED_SERVICE, ServiceConditionEnumeration.SHORT_FORMED_SERVICE);
+        testEffectConversion(GtfsRealtime.Alert.Effect.SIGNIFICANT_DELAYS, ServiceConditionEnumeration.DELAYED);
+        testEffectConversion(GtfsRealtime.Alert.Effect.DETOUR, ServiceConditionEnumeration.DIVERTED);
+        testEffectConversion(GtfsRealtime.Alert.Effect.STOP_MOVED, ServiceConditionEnumeration.DIVERTED);
+        testEffectConversion(GtfsRealtime.Alert.Effect.ADDITIONAL_SERVICE, ServiceConditionEnumeration.ADDITIONAL_SERVICE);
+        testEffectConversion(GtfsRealtime.Alert.Effect.MODIFIED_SERVICE, ServiceConditionEnumeration.ALTERED);
+        testEffectConversion(GtfsRealtime.Alert.Effect.OTHER_EFFECT, ServiceConditionEnumeration.NORMAL_SERVICE);
+        testEffectConversion(GtfsRealtime.Alert.Effect.UNKNOWN_EFFECT, ServiceConditionEnumeration.UNKNOWN);
+
+    }
+
+    private void testEffectConversion(GtfsRealtime.Alert.Effect inputEffect, ServiceConditionEnumeration outputServiceCondition ){
+        GtfsRealtime.Alert alert = buildAlertWithEffect(inputEffect);
+        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alert);
+        assertNotNull(situation.getConsequences());
+        assertNotNull(situation.getConsequences().getConsequences());
+        assertNotNull(situation.getConsequences().getConsequences().get(0));
+        assertNotNull(situation.getConsequences().getConsequences().get(0).getConditions());
+        assertEquals("effect conversion issue between :" + inputEffect + " , and :" + outputServiceCondition,outputServiceCondition,situation.getConsequences().getConsequences().get(0).getConditions().get(0));
+    }
+
+    private GtfsRealtime.Alert buildAlertWithEffect(GtfsRealtime.Alert.Effect effect){
+        GtfsRealtime.Alert.Builder alertBuilder = GtfsRealtime.Alert.newBuilder();
+        alertBuilder.setEffect(effect);
+        return alertBuilder.build();
+    }
+
 
 
 }

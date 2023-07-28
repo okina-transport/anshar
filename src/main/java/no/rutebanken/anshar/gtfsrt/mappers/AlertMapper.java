@@ -39,8 +39,73 @@ public class AlertMapper {
         mapPeriod(ptSituationElement, alert);
         mapReasons(ptSituationElement, alert);
         mapAffects(ptSituationElement, alert);
+        mapEffect(ptSituationElement, alert);
+        mapSeverity(ptSituationElement, alert);
 
         return ptSituationElement;
+    }
+
+    private static void mapSeverity(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert) {
+        if (!alert.hasSeverityLevel()){
+            return;
+        }
+
+        ptSituationElement.setSeverity(convertSeverity(alert.getSeverityLevel()));
+    }
+
+    private static SeverityEnumeration convertSeverity(GtfsRealtime.Alert.SeverityLevel severityLevel) {
+
+        switch(severityLevel){
+            case UNKNOWN_SEVERITY:
+                return SeverityEnumeration.UNKNOWN;
+            case INFO:
+                return SeverityEnumeration.VERY_SLIGHT;
+            case WARNING:
+                return SeverityEnumeration.NORMAL;
+            case SEVERE:
+                return SeverityEnumeration.SEVERE;
+            default:
+                return SeverityEnumeration.UNDEFINED;
+        }
+    }
+
+    private static void mapEffect(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert) {
+        if (!alert.hasEffect()){
+            return;
+        }
+
+        PtConsequencesStructure consequences = new PtConsequencesStructure();
+        PtConsequenceStructure consequence = new PtConsequenceStructure();
+
+        consequence.getConditions().add(convertEffectToCondition(alert.getEffect()));
+        consequences.getConsequences().add(consequence);
+        ptSituationElement.setConsequences(consequences);
+    }
+
+    private static ServiceConditionEnumeration convertEffectToCondition(GtfsRealtime.Alert.Effect effect) {
+
+        switch (effect){
+            case NO_SERVICE:
+                return ServiceConditionEnumeration.NO_SERVICE;
+            case REDUCED_SERVICE:
+                return ServiceConditionEnumeration.SHORT_FORMED_SERVICE;
+            case SIGNIFICANT_DELAYS:
+                return ServiceConditionEnumeration.DELAYED;
+            case DETOUR:
+            case STOP_MOVED:
+                return ServiceConditionEnumeration.DIVERTED;
+            case ADDITIONAL_SERVICE:
+                return ServiceConditionEnumeration.ADDITIONAL_SERVICE;
+            case MODIFIED_SERVICE:
+                return ServiceConditionEnumeration.ALTERED;
+            case OTHER_EFFECT:
+                return ServiceConditionEnumeration.NORMAL_SERVICE;
+            case UNKNOWN_EFFECT:
+                return ServiceConditionEnumeration.UNKNOWN;
+            default:
+                return ServiceConditionEnumeration.UNDEFINED_SERVICE_INFORMATION;
+        }
+
     }
 
     private static void mapAffects(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert) {
