@@ -6,7 +6,6 @@ import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
-import org.apache.commons.lang3.StringUtils;
 import org.quartz.utils.counter.Counter;
 import org.quartz.utils.counter.CounterImpl;
 import org.slf4j.Logger;
@@ -14,33 +13,28 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
-import uk.org.siri.siri20.GeneralMessage;
-import uk.org.siri.siri20.InfoChannelRefStructure;
-import uk.org.siri.siri20.MessageRefStructure;
-import uk.org.siri.siri20.Siri;
-
+import uk.org.siri.siri20.*;
 
 import java.time.Instant;
 import java.time.ZonedDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 
 @Repository
-public class GeneralMessages extends SiriRepository<GeneralMessage> {
+public class GeneralMessagesCancellations extends SiriRepository<GeneralMessageCancellation> {
 
-    private static final Logger logger = LoggerFactory.getLogger(GeneralMessages.class);
-    private static final String DEFAULT_FORMAT_REF = "STIF-IDF";
-
-    @Autowired
-    @Qualifier("getGeneralMessages")
-    private IMap<SiriObjectStorageKey, GeneralMessage> generalMessages;
-
+    private static final Logger logger = LoggerFactory.getLogger(GeneralMessagesCancellations.class);
+    
 
     @Autowired
-    @Qualifier("getGeneralMessagesChangesMap")
+    @Qualifier("getGeneralMessageCancellations")
+    private IMap<SiriObjectStorageKey, GeneralMessageCancellation> generalMessagesCancellations;
+
+
+    @Autowired
+    @Qualifier("getGeneralMessageCancellationChangesMap")
     private IMap<String, Set<SiriObjectStorageKey>> changesMap;
 
     @Autowired
@@ -54,37 +48,37 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
     private SiriObjectFactory siriObjectFactory;
 
 
-    protected GeneralMessages() {
+    protected GeneralMessagesCancellations() {
         super(SiriDataType.GENERAL_MESSAGE);
     }
 
 
     @Override
-    public Collection<GeneralMessage> getAll() {
-        return generalMessages.values();
+    public Collection<GeneralMessageCancellation> getAll() {
+        return generalMessagesCancellations.values();
     }
 
     @Override
-    Map<SiriObjectStorageKey, GeneralMessage> getAllAsMap() {
-        return generalMessages;
+    Map<SiriObjectStorageKey, GeneralMessageCancellation> getAllAsMap() {
+        return generalMessagesCancellations;
     }
 
     @Override
     public int getSize() {
-        return generalMessages.keySet().size();
+        return generalMessagesCancellations.keySet().size();
     }
 
     @Override
-    public Collection<GeneralMessage> getAll(String datasetId) {
+    public Collection<GeneralMessageCancellation> getAll(String datasetId) {
         if (datasetId == null) {
             return getAll();
         }
 
-        return getValuesByDatasetId(generalMessages, datasetId);
+        return getValuesByDatasetId(generalMessagesCancellations, datasetId);
     }
 
     @Override
-    Collection<GeneralMessage> getAllUpdates(String requestorId, String datasetId) {
+    Collection<GeneralMessageCancellation> getAllUpdates(String requestorId, String datasetId) {
         if (requestorId != null) {
 
             Set<SiriObjectStorageKey> idSet = changesMap.get(requestorId);
@@ -98,7 +92,7 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
                     datasetFilteredIdSet.addAll(idSet);
                 }
 
-                Collection<GeneralMessage> changes = generalMessages.getAll(datasetFilteredIdSet).values();
+                Collection<GeneralMessageCancellation> changes = generalMessagesCancellations.getAll(datasetFilteredIdSet).values();
 
                 Set<SiriObjectStorageKey> existingSet = changesMap.get(requestorId);
                 if (existingSet == null) {
@@ -108,9 +102,9 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
                 //Remove returned ids
                 existingSet.removeAll(idSet);
 
-                if (idSet.size() > generalMessages.size()) {
+                if (idSet.size() > generalMessagesCancellations.size()) {
                     //Remove outdated ids
-                    existingSet.removeIf(id -> !generalMessages.containsKey(id));
+                    existingSet.removeIf(id -> !generalMessagesCancellations.containsKey(id));
                 }
 
                 updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, existingSet, configuration.getTrackingPeriodMinutes(), TimeUnit.MINUTES);
@@ -129,8 +123,8 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
     }
 
     @Override
-    public Collection<GeneralMessage> addAll(String datasetId, List<GeneralMessage> gmList) {
-        Set<GeneralMessage> addedData = new HashSet<>();
+    public Collection<GeneralMessageCancellation> addAll(String datasetId, List<GeneralMessageCancellation> gmList) {
+        Set<GeneralMessageCancellation> addedData = new HashSet<>();
         Counter outdatedCounter = new CounterImpl(0);
 
         gmList.stream()
@@ -139,76 +133,64 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
                 .filter(generalMessage -> generalMessage.getInfoChannelRef() != null)
                 .forEach(generalMessage -> {
 
-                    if (generalMessage.getRecordedAtTime() == null){
+                    if (generalMessage.getRecordedAtTime() == null) {
                         generalMessage.setRecordedAtTime(ZonedDateTime.now());
                     }
 
-                    if (StringUtils.isEmpty(generalMessage.getFormatRef())){
-                        generalMessage.setFormatRef(DEFAULT_FORMAT_REF);
+                    if (generalMessage.getItemRef() == null) {
+                        ItemRefStructure refStruct = new ItemRefStructure();
+                        refStruct.setValue(UUID.randomUUID().toString());
+                        generalMessage.setItemRef(refStruct);
                     }
-
-                    if (StringUtils.isEmpty(generalMessage.getItemIdentifier())){
-                        generalMessage.setItemIdentifier(UUID.randomUUID().toString());
-                    }
-
-                    if (generalMessage.getValidUntilTime() == null){
-
-                        ZonedDateTime today = ZonedDateTime.now();
-                        int currentHour = today.getHour();
-                        ZonedDateTime endOfTheDay = today.plusHours(24 - currentHour);
-                        generalMessage.setValidUntilTime(endOfTheDay);
-                    }
-
 
 
                     SiriObjectStorageKey key = createKey(datasetId, generalMessage);
 
                     long expiration = getExpiration(generalMessage);
 
-                    if (expiration > 0 ) {
-                        generalMessages.set(key, generalMessage, expiration, TimeUnit.MILLISECONDS);
+                    if (expiration > 0) {
+                        generalMessagesCancellations.set(key, generalMessage, expiration, TimeUnit.MILLISECONDS);
                         addedData.add(generalMessage);
-                    }else{
+                    } else {
                         outdatedCounter.increment();
                     }
 
                 });
 
         logger.debug("Updated {} (of {}) :: Ignored elements - outdated : {}", addedData.size(), gmList.size(), outdatedCounter.getValue());
-        markDataReceived(SiriDataType.GENERAL_MESSAGE, datasetId, gmList.size(), addedData.size(),outdatedCounter.getValue(),0);
+        markDataReceived(SiriDataType.GENERAL_MESSAGE, datasetId, gmList.size(), addedData.size(), outdatedCounter.getValue(), 0);
 
         return addedData;
     }
 
     @Override
-    public GeneralMessage add(String datasetId, GeneralMessage generalMessage) {
-        Collection<GeneralMessage> added = addAll(datasetId, Arrays.asList(generalMessage));
+    public GeneralMessageCancellation add(String datasetId, GeneralMessageCancellation generalMessage) {
+        Collection<GeneralMessageCancellation> added = addAll(datasetId, Arrays.asList(generalMessage));
         return added.size() > 0 ? added.iterator().next() : null;
     }
 
     @Override
-    public long getExpiration(GeneralMessage s) {
-        ZonedDateTime validUntil = s.getValidUntilTime();
-        return validUntil == null ? ZonedDateTime.now().until(ZonedDateTime.now().plusYears(10), ChronoUnit.MILLIS) :
-                ZonedDateTime.now().until(validUntil.plus(configuration.getSxGraceperiodMinutes(), ChronoUnit.MINUTES), ChronoUnit.MILLIS);
+    long getExpiration(GeneralMessageCancellation s) {
+        return 10000000;
     }
+
 
     @Override
     void clearAllByDatasetId(String datasetId) {
-        Set<SiriObjectStorageKey> idsToRemove = generalMessages.keySet(createCodespacePredicate(datasetId));
+        Set<SiriObjectStorageKey> idsToRemove = generalMessagesCancellations.keySet(createCodespacePredicate(datasetId));
         logger.warn("Removing all data ({} ids) for {}", idsToRemove.size(), datasetId);
 
         for (SiriObjectStorageKey id : idsToRemove) {
-            generalMessages.delete(id);
+            generalMessagesCancellations.delete(id);
         }
         logger.warn("Removing all data done");
     }
 
-    private SiriObjectStorageKey createKey(String datasetId, GeneralMessage generalMessage) {
-        return new SiriObjectStorageKey(datasetId, null, generalMessage.getInfoMessageIdentifier().getValue(), null, null,generalMessage.getInfoChannelRef().getValue());
+    private SiriObjectStorageKey createKey(String datasetId, GeneralMessageCancellation generalMessage) {
+        return new SiriObjectStorageKey(datasetId, null, generalMessage.getInfoMessageIdentifier().getValue(), null, null, generalMessage.getInfoChannelRef().getValue());
     }
 
-    public Siri createServiceDelivery(String requestorId, String datasetId, String clientName, int maxSize,  List<InfoChannelRefStructure> requestedChannels) {
+    public Siri createServiceDelivery(String requestorId, String datasetId, String clientName, int maxSize, List<InfoChannelRefStructure> requestedChannels) {
 
         requestorRefRepository.touchRequestorRef(requestorId, datasetId, clientName, SiriDataType.GENERAL_MESSAGE);
 
@@ -222,7 +204,7 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
         }
 
         // Filter by datasetId
-        Set<SiriObjectStorageKey> requestedIds = generateIdSet(datasetId,requestedChannels);
+        Set<SiriObjectStorageKey> requestedIds = generateIdSet(datasetId, requestedChannels);
 
         long t1 = System.currentTimeMillis();
 
@@ -234,16 +216,16 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
 
         //Remove collected objects
         sizeLimitedIds.forEach(requestedIds::remove);
-        logger.info("Limiting size: {} ms", (System.currentTimeMillis()-t1));
+        logger.info("Limiting size: {} ms", (System.currentTimeMillis() - t1));
         t1 = System.currentTimeMillis();
 
-        Collection<GeneralMessage> values = generalMessages.getAll(sizeLimitedIds).values();
-        logger.info("Fetching data: {} ms", (System.currentTimeMillis()-t1));
+        Collection<GeneralMessageCancellation> values = generalMessagesCancellations.getAll(sizeLimitedIds).values();
+        logger.info("Fetching data: {} ms", (System.currentTimeMillis() - t1));
         t1 = System.currentTimeMillis();
 
-        Siri siri = siriObjectFactory.createGMServiceDelivery(values);
+        Siri siri = siriObjectFactory.createGMCancellationServiceDelivery(values);
         siri.getServiceDelivery().setMoreData(isMoreData);
-        logger.info("Creating SIRI-delivery: {} ms", (System.currentTimeMillis()-t1));
+        logger.info("Creating SIRI-delivery: {} ms", (System.currentTimeMillis() - t1));
 
         if (isAdHocRequest) {
             logger.info("Returning {}, no requestorRef is set", sizeLimitedIds.size());
@@ -255,9 +237,9 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
             siri.getServiceDelivery().setRequestMessageRef(msgRef);
 
 
-            if (requestedIds.size() > generalMessages.size()) {
+            if (requestedIds.size() > generalMessagesCancellations.size()) {
                 //Remove outdated ids
-                requestedIds.removeIf(id -> !generalMessages.containsKey(id));
+                requestedIds.removeIf(id -> !generalMessagesCancellations.containsKey(id));
             }
 
             //Update change-tracker
@@ -280,15 +262,15 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
 
         // Get all relevant ids
 
-        Predicate<SiriObjectStorageKey, GeneralMessage> predicate = SiriObjectStorageKeyUtil.getGeneralMessagePredicate(datasetId,requestedChannels);
-        Set<SiriObjectStorageKey> idSet =new HashSet<>(generalMessages.keySet(predicate));
+        Predicate<SiriObjectStorageKey, GeneralMessageCancellation> predicate = SiriObjectStorageKeyUtil.getGeneralMessageCancellationsPredicate(datasetId, requestedChannels);
+        Set<SiriObjectStorageKey> idSet = new HashSet<>(generalMessagesCancellations.keySet(predicate));
 
         return idSet;
     }
 
     public void clearAll() {
         logger.error("Deleting all data - should only be used in test!!!");
-        generalMessages.clear();
+        generalMessagesCancellations.clear();
         changesMap.clear();
         lastUpdateRequested.clear();
         cache.clear();

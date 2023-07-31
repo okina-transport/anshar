@@ -686,6 +686,18 @@ public class SiriObjectFactory {
         return siri;
     }
 
+    public Siri createGMCancellationServiceDelivery(Collection<GeneralMessageCancellation> elements) {
+        Siri siri = createSiriObject();
+        ServiceDelivery delivery = createServiceDelivery();
+        GeneralMessageDeliveryStructure deliveryStructure = new GeneralMessageDeliveryStructure();
+        deliveryStructure.setVersion(SIRI_VERSION);
+        deliveryStructure.getGeneralMessageCancellations().addAll(elements);
+        deliveryStructure.setResponseTimestamp(ZonedDateTime.now());
+        delivery.getGeneralMessageDeliveries().add(deliveryStructure);
+        siri.setServiceDelivery(delivery);
+        return siri;
+    }
+
 
     /**
      * Creates a SIRI response message with all points recovered from discovery service

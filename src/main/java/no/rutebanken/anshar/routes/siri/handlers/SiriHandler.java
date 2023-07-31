@@ -76,6 +76,10 @@ public class SiriHandler {
     @Autowired
     private GeneralMessages generalMessages;
 
+
+    @Autowired
+    private GeneralMessagesCancellations generalMessageCancellations;
+
     @Autowired
     private FacilityMonitoring facilityMonitoring;
 
@@ -387,6 +391,13 @@ public class SiriHandler {
                 List<InfoChannelRefStructure> requestedChannels = request.getInfoChannelReves();
                 valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idMap);
                 serviceResponse = generalMessages.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, requestedChannels);
+
+                //Ask for general message cancellations at the same time
+                Siri cancellationResponses = generalMessageCancellations.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, requestedChannels);
+                // and add cancellations to the general message response
+                serviceResponse.getServiceDelivery().getGeneralMessageDeliveries().addAll(cancellationResponses.getServiceDelivery().getGeneralMessageDeliveries());
+
+
                 GeneralMessageHelper.applyTransformationsInContent(serviceResponse,valueAdapters, idMap);
 
             } else if (hasValues(serviceRequest.getFacilityMonitoringRequests())) {
@@ -1011,15 +1022,20 @@ public class SiriHandler {
                     monitoredRef = getStopRefs(incoming);
 
                     List<GeneralMessage> addedOrUpdated = new ArrayList<>();
+                    List<GeneralMessageCancellation> cancellationsAddedOrUpdated = new ArrayList<>();
 
                     for (GeneralMessageDeliveryStructure generalDelivery : generalDeliveries) {
                         addedOrUpdated.addAll(generalMessages.addAll(subscriptionSetup.getDatasetId(), generalDelivery.getGeneralMessages()));
+                        cancellationsAddedOrUpdated.addAll(generalMessageCancellations.addAll(subscriptionSetup.getDatasetId(), generalDelivery.getGeneralMessageCancellations()));
                     }
 
 
-                    deliveryContainsData = deliveryContainsData || (addedOrUpdated.size() > 0);
+                    deliveryContainsData = deliveryContainsData || (addedOrUpdated.size() > 0 || cancellationsAddedOrUpdated.size() > 0);
 
                     serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
+                    if (cancellationsAddedOrUpdated.size() > 0){
+                        serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), cancellationsAddedOrUpdated, subscriptionSetup.getDatasetId());
+                    }
                     subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdated.size());
                     logger.debug("Active GM-elements: {}, current delivery: {}, {}", generalMessages.getSize(), addedOrUpdated.size(), subscriptionSetup);
                 }

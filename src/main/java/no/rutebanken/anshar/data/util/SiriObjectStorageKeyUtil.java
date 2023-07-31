@@ -45,6 +45,20 @@ public class SiriObjectStorageKeyUtil {
         return entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, null, datasetId, null, typeList, null);
     }
 
+    public static Predicate<SiriObjectStorageKey, GeneralMessageCancellation> getGeneralMessageCancellationsPredicate(String datasetId, List<InfoChannelRefStructure> requestedChannels) {
+
+        List<String> typeList = new ArrayList<>();
+
+        if (requestedChannels != null) {
+            requestedChannels.stream()
+                    .map(InfoChannelRefStructure::getValue)
+                    .forEach(typeList::add);
+        }
+
+
+        return entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, null, datasetId, null, typeList, null);
+    }
+
     public static Predicate<SiriObjectStorageKey, FacilityConditionStructure> getFacilityMonitoringPredicate(String datasetId, Set<String> requestedFacilities,
                   Set<String> requestedLineRef, Set<String> requestedVehicleRef, Set<String> requestedStopPoints, List<String> excludeData) {
 
