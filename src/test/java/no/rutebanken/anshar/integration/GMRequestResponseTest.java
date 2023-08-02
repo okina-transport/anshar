@@ -17,17 +17,17 @@ package no.rutebanken.anshar.integration;
 
 import io.restassured.http.ContentType;
 import no.rutebanken.anshar.data.GeneralMessages;
-import no.rutebanken.anshar.data.Situations;
+import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.rutebanken.siri20.util.SiriXml;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.*;
-
-import java.time.ZonedDateTime;
-import java.util.UUID;
+import uk.org.siri.siri20.GeneralMessage;
+import uk.org.siri.siri20.InfoChannelRefStructure;
+import uk.org.siri.siri20.InfoMessageRefStructure;
+import uk.org.siri.siri20.Siri;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
@@ -51,16 +51,16 @@ public class GMRequestResponseTest extends BaseHttpTest {
     public void testGMRequest() throws Exception {
 
         //Test SIRI Request
-        Siri siriRequest = SiriObjectFactory.createServiceRequest(getSubscriptionSetup(SiriDataType.GENERAL_MESSAGE));
+        Siri siriRequest = SiriObjectFactory.createServiceRequest(TestObjectFactory.getSubscriptionSetup(SiriDataType.GENERAL_MESSAGE));
         given()
                 .when()
-                    .contentType(ContentType.XML)
-                    .body(SiriXml.toXml(siriRequest))
-                    .post("anshar/services")
+                .contentType(ContentType.XML)
+                .body(SiriXml.toXml(siriRequest))
+                .post("anshar/services")
                 .then()
-                    .statusCode(200)
-                    .rootPath("Siri.ServiceDelivery.GeneralMessageDelivery.GeneralMessage")
-                        .body("InfoMessageIdentifier", equalTo(situationNumber))
+                .statusCode(200)
+                .rootPath("Siri.ServiceDelivery.GeneralMessageDelivery.GeneralMessage")
+                .body("InfoMessageIdentifier", equalTo(situationNumber))
 
         ;
     }

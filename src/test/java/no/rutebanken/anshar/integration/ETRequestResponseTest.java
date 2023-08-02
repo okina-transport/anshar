@@ -17,28 +17,21 @@ package no.rutebanken.anshar.integration;
 
 import io.restassured.http.ContentType;
 import no.rutebanken.anshar.data.EstimatedTimetables;
+import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.rutebanken.siri20.util.SiriXml;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.EstimatedCall;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.FramedVehicleJourneyRefStructure;
-import uk.org.siri.siri20.LineRef;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.StopPointRef;
-import uk.org.siri.siri20.VehicleRef;
+import uk.org.siri.siri20.*;
 
 import java.math.BigInteger;
 import java.time.ZonedDateTime;
 
 import static io.restassured.RestAssured.given;
 import static no.rutebanken.anshar.helpers.SleepUtil.sleep;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasKey;
-import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.*;
 
 public class ETRequestResponseTest extends BaseHttpTest {
 
@@ -61,17 +54,17 @@ public class ETRequestResponseTest extends BaseHttpTest {
     public void testETRequest() throws Exception {
 
         //Test SIRI Request
-        Siri siriRequest = SiriObjectFactory.createServiceRequest(getSubscriptionSetup(SiriDataType.ESTIMATED_TIMETABLE));
+        Siri siriRequest = SiriObjectFactory.createServiceRequest(TestObjectFactory.getSubscriptionSetup(SiriDataType.ESTIMATED_TIMETABLE));
         given()
                 .when()
-                    .contentType(ContentType.XML)
-                    .body(SiriXml.toXml(siriRequest))
-                    .post("anshar/services")
+                .contentType(ContentType.XML)
+                .body(SiriXml.toXml(siriRequest))
+                .post("anshar/services")
                 .then()
-                    .statusCode(200)
-                    .rootPath("Siri.ServiceDelivery.EstimatedTimetableDelivery.EstimatedJourneyVersionFrame.EstimatedVehicleJourney")
-                        .body("LineRef", equalTo(lineRef))
-                        .body("FramedVehicleJourneyRef.DatedVehicleJourneyRef", equalTo(datedVehicleRef))
+                .statusCode(200)
+                .rootPath("Siri.ServiceDelivery.EstimatedTimetableDelivery.EstimatedJourneyVersionFrame.EstimatedVehicleJourney")
+                .body("LineRef", equalTo(lineRef))
+                .body("FramedVehicleJourneyRef.DatedVehicleJourneyRef", equalTo(datedVehicleRef))
         ;
     }
 
@@ -80,28 +73,28 @@ public class ETRequestResponseTest extends BaseHttpTest {
     public void testETRequestWithExcludedIds() throws Exception {
 
         //Test SIRI Request
-        Siri siriRequest = SiriObjectFactory.createServiceRequest(getSubscriptionSetup(SiriDataType.ESTIMATED_TIMETABLE));
+        Siri siriRequest = SiriObjectFactory.createServiceRequest(TestObjectFactory.getSubscriptionSetup(SiriDataType.ESTIMATED_TIMETABLE));
         given()
                 .when()
-                    .contentType(ContentType.XML)
-                    .body(SiriXml.toXml(siriRequest))
-                    .post("anshar/services?excludedDatasetIds=DUMMY")
+                .contentType(ContentType.XML)
+                .body(SiriXml.toXml(siriRequest))
+                .post("anshar/services?excludedDatasetIds=DUMMY")
                 .then()
-                    .statusCode(200)
-                    .rootPath("Siri.ServiceDelivery.EstimatedTimetableDelivery.EstimatedJourneyVersionFrame.EstimatedVehicleJourney")
-                        .body("LineRef", equalTo(lineRef))
-                        .body("FramedVehicleJourneyRef.DatedVehicleJourneyRef", equalTo(datedVehicleRef))
+                .statusCode(200)
+                .rootPath("Siri.ServiceDelivery.EstimatedTimetableDelivery.EstimatedJourneyVersionFrame.EstimatedVehicleJourney")
+                .body("LineRef", equalTo(lineRef))
+                .body("FramedVehicleJourneyRef.DatedVehicleJourneyRef", equalTo(datedVehicleRef))
         ;
 
         given()
                 .when()
-                    .contentType(ContentType.XML)
-                    .body(SiriXml.toXml(siriRequest))
-                    .post("anshar/services?excludedDatasetIds="+dataSource)
+                .contentType(ContentType.XML)
+                .body(SiriXml.toXml(siriRequest))
+                .post("anshar/services?excludedDatasetIds=" + dataSource)
                 .then()
-                    .statusCode(200)
-                    .rootPath("Siri.ServiceDelivery.EstimatedTimetableDelivery.EstimatedJourneyVersionFrame")
-                        .body("$", not(hasKey("EstimatedVehicleJourney")))
+                .statusCode(200)
+                .rootPath("Siri.ServiceDelivery.EstimatedTimetableDelivery.EstimatedJourneyVersionFrame")
+                .body("$", not(hasKey("EstimatedVehicleJourney")))
         ;
     }
 
@@ -111,13 +104,13 @@ public class ETRequestResponseTest extends BaseHttpTest {
         //Test SIRI Lite Request
         given()
                 .when()
-                    .get("anshar/rest/et")
+                .get("anshar/rest/et")
                 .then()
-                    .statusCode(200)
-                    .contentType(ContentType.XML)
+                .statusCode(200)
+                .contentType(ContentType.XML)
                 .rootPath("Siri.ServiceDelivery.EstimatedTimetableDelivery.EstimatedJourneyVersionFrame.EstimatedVehicleJourney")
-                    .body("LineRef", equalTo(lineRef))
-                    .body("FramedVehicleJourneyRef.DatedVehicleJourneyRef", equalTo(datedVehicleRef))
+                .body("LineRef", equalTo(lineRef))
+                .body("FramedVehicleJourneyRef.DatedVehicleJourneyRef", equalTo(datedVehicleRef))
         ;
     }
 
@@ -127,23 +120,23 @@ public class ETRequestResponseTest extends BaseHttpTest {
         //Test SIRI Lite Request
         given()
                 .when()
-                    .get("anshar/rest/et?excludedDatasetIds=DUMMY")
+                .get("anshar/rest/et?excludedDatasetIds=DUMMY")
                 .then()
-                    .statusCode(200)
-                    .contentType(ContentType.XML)
+                .statusCode(200)
+                .contentType(ContentType.XML)
                 .rootPath("Siri.ServiceDelivery.EstimatedTimetableDelivery.EstimatedJourneyVersionFrame.EstimatedVehicleJourney")
-                    .body("LineRef", equalTo(lineRef))
-                    .body("FramedVehicleJourneyRef.DatedVehicleJourneyRef", equalTo(datedVehicleRef))
+                .body("LineRef", equalTo(lineRef))
+                .body("FramedVehicleJourneyRef.DatedVehicleJourneyRef", equalTo(datedVehicleRef))
         ;
 
         given()
                 .when()
-                    .get("anshar/rest/et?excludedDatasetIds="+dataSource)
+                .get("anshar/rest/et?excludedDatasetIds=" + dataSource)
                 .then()
-                    .statusCode(200)
-                    .contentType(ContentType.XML)
+                .statusCode(200)
+                .contentType(ContentType.XML)
                 .rootPath("Siri.ServiceDelivery.EstimatedTimetableDelivery.EstimatedJourneyVersionFrame")
-                        .body("$", not(hasKey("EstimatedVehicleJourney")))
+                .body("$", not(hasKey("EstimatedVehicleJourney")))
         ;
     }
 

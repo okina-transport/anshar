@@ -23,20 +23,26 @@ import java.util.List;
 
 public class HttpParameter {
     public static final String PARAM_SUBSCRIPTION_ID = "subscriptionId";
-    public static final String PARAM_CODESPACE       = "codespace";
-    public static final String PARAM_VALIDATION_REF  = "validationRef";
-    public static final String PARAM_DATASET_ID      = "datasetId";
-    public static final String PARAM_EXCLUDED_DATASET_ID      = "excludedDatasetIds";
-    public static final String PARAM_MAX_SIZE        = "maxSize";
+    public static final String PARAM_CODESPACE = "codespace";
+    public static final String PARAM_VALIDATION_REF = "validationRef";
+    public static final String PARAM_DATASET_ID = "datasetId";
+    public static final String PARAM_EXCLUDED_DATASET_ID = "excludedDatasetIds";
+    public static final String PARAM_MAX_SIZE = "maxSize";
     public static final String PARAM_USE_ORIGINAL_ID = "useOriginalId";
     public static final String PARAM_USE_ALT_ID = "useAltId";
-    public static final String PARAM_LINE_REF        = "lineRef";
-    public static final String PARAM_STOP_REF        = "stopRef";
-    public static final String PARAM_PREVIEW_INTERVAL   = "previewIntervalMinutes";
-    public static final String PARAM_RESPONSE_CODE   = "CamelHttpResponseCode";
-    public static final String PARAM_PATH           = "CamelHttpPath";
-    public static final String INTERNAL_SIRI_DATA_TYPE           = "InternalSiriDatatype";
-    public static final String INTERNAL_PUBLISH_TO_KAFKA_FOR_APC_ENRICHMENT           = "InternalEnrichWithApc";
+    public static final String PARAM_LINE_REF = "LineRef";
+    public static final String PARAM_STOP_REF = "MonitoringRef";
+    public static final String PARAM_PREVIEW_INTERVAL = "previewIntervalMinutes";
+
+    public static final String PARAM_VERSION = "version";
+
+    public static final String PARAM_SERVICE_AND_FORMAT = "serviceAndFormat";
+
+
+    public static final String PARAM_RESPONSE_CODE = "CamelHttpResponseCode";
+    public static final String PARAM_PATH = "CamelHttpPath";
+    public static final String INTERNAL_SIRI_DATA_TYPE = "InternalSiriDatatype";
+    public static final String INTERNAL_PUBLISH_TO_KAFKA_FOR_APC_ENRICHMENT = "InternalEnrichWithApc";
 
     public static List<String> getParameterValuesAsList(Message msg, String headerName) {
         String excludedDatasetIds = msg.getHeader(headerName, String.class);

@@ -208,7 +208,6 @@ public class SiriHandler {
                 metrics.countOutgoingData(serviceResponse, SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE);
 
 
-
                 return SiriValueTransformer.transform(
                         serviceResponse,
                         MappingAdapterPresets.getOutboundAdapters(dataType, OutboundIdMappingPolicy.DEFAULT, subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId)),
@@ -219,8 +218,6 @@ public class SiriHandler {
         }
         return null;
     }
-
-
 
 
     /**
@@ -398,7 +395,7 @@ public class SiriHandler {
                 serviceResponse.getServiceDelivery().getGeneralMessageDeliveries().addAll(cancellationResponses.getServiceDelivery().getGeneralMessageDeliveries());
 
 
-                GeneralMessageHelper.applyTransformationsInContent(serviceResponse,valueAdapters, idMap);
+                GeneralMessageHelper.applyTransformationsInContent(serviceResponse, valueAdapters, idMap);
 
             } else if (hasValues(serviceRequest.getFacilityMonitoringRequests())) {
                 dataType = SiriDataType.FACILITY_MONITORING;
@@ -474,7 +471,7 @@ public class SiriHandler {
 
 
                 valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idMap);
-                GeneralMessageHelper.applyTransformationsInContent(serviceResponse,valueAdapters, idMap);
+                GeneralMessageHelper.applyTransformationsInContent(serviceResponse, valueAdapters, idMap);
 
             }
 
@@ -528,13 +525,12 @@ public class SiriHandler {
     }
 
 
-
     /**
      * Creates a siri response with all lines existing in the cache, for vehicle Monitoring
      *
      * @return the siri response with all points
      */
-    private Siri getDiscoveryLines(String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy) {
+    public Siri getDiscoveryLines(String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy) {
 
         List<SiriDataType> siriDataTypes = new ArrayList<>();
         siriDataTypes.add(SiriDataType.VEHICLE_MONITORING);
@@ -567,9 +563,9 @@ public class SiriHandler {
                 .stream()
                 .filter(estimatedVehicleJourney -> estimatedVehicleJourney.getLineRef() != null)
                 .map(estimatedVehicleJourney -> {
-                    String lineRef = estimatedVehicleJourney.getLineRef().getValue();
-                    return idProcessingMap.containsKey(datasetId) ? idProcessingMap.get(datasetId).applyTransformationToString(lineRef) : lineRef;
-                }
+                            String lineRef = estimatedVehicleJourney.getLineRef().getValue();
+                            return idProcessingMap.containsKey(datasetId) ? idProcessingMap.get(datasetId).applyTransformationToString(lineRef) : lineRef;
+                        }
                 )
                 .collect(Collectors.toSet());
 
@@ -1033,7 +1029,7 @@ public class SiriHandler {
                     deliveryContainsData = deliveryContainsData || (addedOrUpdated.size() > 0 || cancellationsAddedOrUpdated.size() > 0);
 
                     serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
-                    if (cancellationsAddedOrUpdated.size() > 0){
+                    if (cancellationsAddedOrUpdated.size() > 0) {
                         serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), cancellationsAddedOrUpdated, subscriptionSetup.getDatasetId());
                     }
                     subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdated.size());

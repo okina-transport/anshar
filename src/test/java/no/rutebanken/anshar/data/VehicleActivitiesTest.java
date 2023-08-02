@@ -15,18 +15,16 @@
 
 package no.rutebanken.anshar.data;
 
+import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.CourseOfJourneyRefStructure;
-import uk.org.siri.siri20.LocationStructure;
 import uk.org.siri.siri20.ProgressBetweenStopsStructure;
 import uk.org.siri.siri20.Siri;
 import uk.org.siri.siri20.VehicleActivityStructure;
 import uk.org.siri.siri20.VehicleMonitoringRefStructure;
-import uk.org.siri.siri20.VehicleRef;
 
 import java.math.BigDecimal;
 import java.time.ZonedDateTime;
@@ -35,17 +33,14 @@ import java.util.List;
 import java.util.UUID;
 
 import static no.rutebanken.anshar.helpers.SleepUtil.sleep;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class VehicleActivitiesTest extends SpringBootBaseTest {
 
 
     @Autowired
     private VehicleActivities vehicleActivities;
-    
+
     @BeforeEach
     public void init() {
         vehicleActivities.clearAll();
@@ -54,10 +49,8 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
     @Test
     public void testAddVehicle() {
         int previousSize = vehicleActivities.getAll().size();
-        VehicleActivityStructure element = createVehicleActivityStructure(
-                                                    ZonedDateTime.now().plusMinutes(1), UUID.randomUUID().toString());
-        VehicleMonitoringRefStructure monitoringRef = new VehicleMonitoringRefStructure();
-        element.setVehicleMonitoringRef(monitoringRef);
+        VehicleActivityStructure element = TestObjectFactory.createVehicleActivityStructure(
+                ZonedDateTime.now().plusMinutes(1), UUID.randomUUID().toString(), "");
         vehicleActivities.add("test", element);
         assertEquals(previousSize + 1, vehicleActivities.getAll().size(), "Vehicle not added");
     }
@@ -76,22 +69,18 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
 
         //Add element
         String vehicleReference = UUID.randomUUID().toString();
-        VehicleActivityStructure element = createVehicleActivityStructure(
-                                                    ZonedDateTime.now().plusMinutes(1), vehicleReference);
+        VehicleActivityStructure element = TestObjectFactory.createVehicleActivityStructure(
+                ZonedDateTime.now().plusMinutes(1), vehicleReference, "VEH1");
 
-
-        VehicleMonitoringRefStructure monitoringRef = new VehicleMonitoringRefStructure();
-        monitoringRef.setValue("VEH1");
-        element.setVehicleMonitoringRef(monitoringRef);
 
         vehicleActivities.add("test", element);
         //Verify that element is added
         assertEquals(previousSize + 1, vehicleActivities.getAll().size());
 
         //Update element
-        VehicleActivityStructure element2 = createVehicleActivityStructure(
-                                                    ZonedDateTime.now().plusMinutes(1), vehicleReference);
-        element2.setVehicleMonitoringRef(monitoringRef);
+        VehicleActivityStructure element2 = TestObjectFactory.createVehicleActivityStructure(
+                ZonedDateTime.now().plusMinutes(1), vehicleReference, "");
+
         VehicleActivityStructure updatedVehicle = vehicleActivities.add("test", element2);
 
         //Verify that activity is found as updated
@@ -100,10 +89,9 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
         assertTrue(vehicleActivities.getAll().size() == previousSize + 1);
 
         //Add brand new element
-        VehicleActivityStructure element3 = createVehicleActivityStructure(
-                ZonedDateTime.now().plusMinutes(1), UUID.randomUUID().toString());
+        VehicleActivityStructure element3 = TestObjectFactory.createVehicleActivityStructure(
+                ZonedDateTime.now().plusMinutes(1), UUID.randomUUID().toString(), "");
 
-        element3.setVehicleMonitoringRef(monitoringRef);
 
         updatedVehicle = vehicleActivities.add("test", element3);
 
@@ -126,8 +114,8 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
 
         //Add element
         String vehicleReference = UUID.randomUUID().toString();
-        VehicleActivityStructure element = createVehicleActivityStructure(
-                                                    ZonedDateTime.now().plusMinutes(1), vehicleReference);
+        VehicleActivityStructure element = TestObjectFactory.createVehicleActivityStructure(
+                ZonedDateTime.now().plusMinutes(1), vehicleReference, "");
         ProgressBetweenStopsStructure progress = new ProgressBetweenStopsStructure();
         progress.setPercentage(BigDecimal.ONE);
         element.setProgressBetweenStops(progress);
@@ -140,8 +128,8 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
         assertEquals(BigDecimal.ONE, testOriginal.getProgressBetweenStops().getPercentage(), "VM has not been added.");
 
         //Update element
-        VehicleActivityStructure element2 = createVehicleActivityStructure(
-                                                    ZonedDateTime.now().plusMinutes(1), vehicleReference);
+        VehicleActivityStructure element2 = TestObjectFactory.createVehicleActivityStructure(
+                ZonedDateTime.now().plusMinutes(1), vehicleReference, "");
 
         ProgressBetweenStopsStructure progress2 = new ProgressBetweenStopsStructure();
         progress2.setPercentage(BigDecimal.TEN);
@@ -161,8 +149,8 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
 
         //Add element
         String vehicleReference = UUID.randomUUID().toString();
-        VehicleActivityStructure element = createVehicleActivityStructure(
-                                                    ZonedDateTime.now().plusMinutes(1), vehicleReference);
+        VehicleActivityStructure element = TestObjectFactory.createVehicleActivityStructure(
+                ZonedDateTime.now().plusMinutes(1), vehicleReference, "");
         ProgressBetweenStopsStructure progress = new ProgressBetweenStopsStructure();
         progress.setPercentage(BigDecimal.ONE);
         element.setProgressBetweenStops(progress);
@@ -175,8 +163,8 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
         assertEquals(BigDecimal.ONE, testOriginal.getProgressBetweenStops().getPercentage(), "VM has not been added.");
 
         //Update element
-        VehicleActivityStructure element2 = createVehicleActivityStructure(
-                                                    ZonedDateTime.now().plusMinutes(1), vehicleReference);
+        VehicleActivityStructure element2 = TestObjectFactory.createVehicleActivityStructure(
+                ZonedDateTime.now().plusMinutes(1), vehicleReference, "");
 
         ProgressBetweenStopsStructure progress2 = new ProgressBetweenStopsStructure();
         progress2.setPercentage(BigDecimal.TEN);
@@ -194,16 +182,16 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
         int previousSize = vehicleActivities.getAll().size();
 
         String prefix = "updateOnly-";
-        vehicleActivities.add("test", createVehicleActivityStructure(ZonedDateTime.now(), prefix+"1234"));
-        vehicleActivities.add("test", createVehicleActivityStructure(ZonedDateTime.now(), prefix+"2345"));
-        vehicleActivities.add("test", createVehicleActivityStructure(ZonedDateTime.now(), prefix+"3456"));
+        vehicleActivities.add("test", TestObjectFactory.createVehicleActivityStructure(ZonedDateTime.now(), prefix + "1234", ""));
+        vehicleActivities.add("test", TestObjectFactory.createVehicleActivityStructure(ZonedDateTime.now(), prefix + "2345", ""));
+        vehicleActivities.add("test", TestObjectFactory.createVehicleActivityStructure(ZonedDateTime.now(), prefix + "3456", ""));
 
         sleep(50);
 
         // Added 3
-        assertEquals(previousSize+3, vehicleActivities.getAllUpdates("1234-1234", null).size());
+        assertEquals(previousSize + 3, vehicleActivities.getAllUpdates("1234-1234", null).size());
 
-        vehicleActivities.add("test", createVehicleActivityStructure(ZonedDateTime.now(), prefix+"4567"));
+        vehicleActivities.add("test", TestObjectFactory.createVehicleActivityStructure(ZonedDateTime.now(), prefix + "4567", ""));
         sleep(50);
 
         //Added one
@@ -212,7 +200,7 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
 
 
         //Verify that all elements still exist
-        assertEquals(previousSize+4, vehicleActivities.getAll().size());
+        assertEquals(previousSize + 4, vehicleActivities.getAll().size());
     }
 
     @Test
@@ -223,16 +211,16 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
         final String datasetId = "cache-vm-test";
         final String requestorId = "cache-vm-1234-1234";
 
-        vehicleActivities.add(datasetId, createVehicleActivityStructure(ZonedDateTime.now(), prefix+"1234"));
-        vehicleActivities.add(datasetId, createVehicleActivityStructure(ZonedDateTime.now(), prefix+"2345"));
-        vehicleActivities.add(datasetId, createVehicleActivityStructure(ZonedDateTime.now(), prefix+"3456"));
+        vehicleActivities.add(datasetId, TestObjectFactory.createVehicleActivityStructure(ZonedDateTime.now(), prefix + "1234", ""));
+        vehicleActivities.add(datasetId, TestObjectFactory.createVehicleActivityStructure(ZonedDateTime.now(), prefix + "2345", ""));
+        vehicleActivities.add(datasetId, TestObjectFactory.createVehicleActivityStructure(ZonedDateTime.now(), prefix + "3456", ""));
 
         sleep(50);
 
         // Added 3
-        assertEquals(previousSize+3, vehicleActivities.getAllCachedUpdates(requestorId, null, null).size());
+        assertEquals(previousSize + 3, vehicleActivities.getAllCachedUpdates(requestorId, null, null).size());
 
-        vehicleActivities.add(datasetId, createVehicleActivityStructure(ZonedDateTime.now(), prefix+"4567"));
+        vehicleActivities.add(datasetId, TestObjectFactory.createVehicleActivityStructure(ZonedDateTime.now(), prefix + "4567", ""));
         sleep(50);
 
         //Added one
@@ -244,35 +232,8 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
         sleep(50);
 
         //Verify that all elements still exist
-        assertEquals(previousSize+4, vehicleActivities.getAll().size());
-        assertEquals(previousSize+4, vehicleActivities.getAllCachedUpdates(null,null, null).size());
-    }
-
-    private VehicleActivityStructure createVehicleActivityStructure(ZonedDateTime recordedAtTime, String vehicleReference) {
-        VehicleActivityStructure element = new VehicleActivityStructure();
-        element.setRecordedAtTime(recordedAtTime);
-        element.setValidUntilTime(recordedAtTime.plusMinutes(10));
-
-        VehicleMonitoringRefStructure monitoringRef = new VehicleMonitoringRefStructure();
-        monitoringRef.setValue("VEH1");
-        element.setVehicleMonitoringRef(monitoringRef);
-
-        VehicleActivityStructure.MonitoredVehicleJourney vehicleJourney = new VehicleActivityStructure.MonitoredVehicleJourney();
-        VehicleRef vRef = new VehicleRef();
-        vRef.setValue(vehicleReference);
-        vehicleJourney.setVehicleRef(vRef);
-
-        LocationStructure location = new LocationStructure();
-        location.setLatitude(BigDecimal.valueOf(10.63));
-        location.setLongitude(BigDecimal.valueOf(63.10));
-        vehicleJourney.setVehicleLocation(location);
-
-        CourseOfJourneyRefStructure journeyRefStructure = new CourseOfJourneyRefStructure();
-        journeyRefStructure.setValue("yadayada");
-        vehicleJourney.setCourseOfJourneyRef(journeyRefStructure);
-
-        element.setMonitoredVehicleJourney(vehicleJourney);
-        return element;
+        assertEquals(previousSize + 4, vehicleActivities.getAll().size());
+        assertEquals(previousSize + 4, vehicleActivities.getAllCachedUpdates(null, null, null).size());
     }
 
 
@@ -284,19 +245,19 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
         VehicleMonitoringRefStructure monitoringRef = new VehicleMonitoringRefStructure();
         monitoringRef.setValue("VEH1");
 
-        VehicleActivityStructure activity_1 = createVehicleActivityStructure(ZonedDateTime.now(), prefix + "1234");
+        VehicleActivityStructure activity_1 = TestObjectFactory.createVehicleActivityStructure(ZonedDateTime.now(), prefix + "1234", "");
         activity_1.getMonitoredVehicleJourney().setDataSource("test1");
         activity_1.setVehicleMonitoringRef(monitoringRef);
 
         vehicleActivities.add("test1", activity_1);
 
-        VehicleActivityStructure activity_2 = createVehicleActivityStructure(ZonedDateTime.now(), prefix + "2345");
+        VehicleActivityStructure activity_2 = TestObjectFactory.createVehicleActivityStructure(ZonedDateTime.now(), prefix + "2345", "");
         activity_2.getMonitoredVehicleJourney().setDataSource("test2");
         activity_2.setVehicleMonitoringRef(monitoringRef);
         vehicleActivities.add("test2", activity_2);
 
 
-        VehicleActivityStructure activity_3 = createVehicleActivityStructure(ZonedDateTime.now(), prefix + "3456");
+        VehicleActivityStructure activity_3 = TestObjectFactory.createVehicleActivityStructure(ZonedDateTime.now(), prefix + "3456", "");
         activity_3.getMonitoredVehicleJourney().setDataSource("test3");
         activity_3.setVehicleMonitoringRef(monitoringRef);
         vehicleActivities.add("test3", activity_3);

@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.routes.siri;
 
+import io.micrometer.core.instrument.util.StringUtils;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.*;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
@@ -27,8 +28,9 @@ import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
-
+import org.apache.camel.Exchange;
 import org.apache.camel.model.rest.RestParamType;
+import org.apache.http.HttpHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,15 +40,24 @@ import uk.org.siri.siri20.VehicleActivityStructure;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.core.MediaType;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static no.rutebanken.anshar.routes.HttpParameter.*;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.SIRI_LITE_SERVICE_NAME;
 
 @Service
 public class SiriLiteRoute extends RestRouteBuilder {
     private static final Logger logger = LoggerFactory.getLogger(SiriLiteRoute.class);
+
+    private
+    Set<String> siriLiteAutorizedServices = new HashSet<>(Set.of("stoppoints-discovery", "lines-discovery", "stop-monitoring", "general-message", "vehicle-monitoring", "situation-exchange", "estimated-timetables", "facility-monitoring"));
+
+    private
+    Set<String> siriLiteAutorizedFormats = new HashSet<>(Set.of("json", "xml"));
 
     @Autowired
     private AnsharConfiguration configuration;
@@ -75,31 +86,50 @@ public class SiriLiteRoute extends RestRouteBuilder {
     @Autowired
     private FacilityMonitoring facilityMonitoring;
 
+    @Autowired
+    private SiriHandler handler;
+
+
+    // @formatter:off
     @Override
     public void configure() throws Exception {
         super.configure();
+
+
+        rest("/siri")
+                .tag("siri.lite.idf.format")
+                .get("/{version}/{serviceAndFormat}").to("direct:handle.siri.lite.idf.request")
+                .param().required(true).name(PARAM_VERSION).type(RestParamType.path).description("The siri version").dataType("string").endParam()
+                .param().required(true).name(PARAM_SERVICE_AND_FORMAT).type(RestParamType.path).description("the requested service and the format").dataType("string").endParam()
+                .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
+                .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response").dataType("string").endParam()
+                .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
+                .param().required(false).name(PARAM_USE_ALT_ID).type(RestParamType.query).description("Option to return alternative Ids").dataType("boolean").endParam()
+                .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
+        ;
+
         rest("/anshar/rest")
                 .tag("siri.lite")
 
                 .get("/sx").to("direct:anshar.rest.sx")
-                        .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
-                        .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
-                        .param().required(false).name(PARAM_USE_ALT_ID).type(RestParamType.query).description("Option to return alternative Ids").dataType("boolean").endParam()
-                        .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
+                .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
+                .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
+                .param().required(false).name(PARAM_USE_ALT_ID).type(RestParamType.query).description("Option to return alternative Ids").dataType("boolean").endParam()
+                .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
 
                 .get("/vm").to("direct:anshar.rest.vm")
-                        .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
-                        .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response").dataType("string").endParam()
-                        .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
-                        .param().required(false).name(PARAM_USE_ALT_ID).type(RestParamType.query).description("Option to return alternative Ids").dataType("boolean").endParam()
-                        .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
+                .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
+                .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response").dataType("string").endParam()
+                .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
+                .param().required(false).name(PARAM_USE_ALT_ID).type(RestParamType.query).description("Option to return alternative Ids").dataType("boolean").endParam()
+                .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
 
                 .get("/et").to("direct:anshar.rest.et")
-                        .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
-                        .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response").dataType("string").endParam()
-                        .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
-                        .param().required(false).name(PARAM_USE_ALT_ID).type(RestParamType.query).description("Option to return alternative Ids").dataType("boolean").endParam()
-                        .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
+                .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
+                .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response").dataType("string").endParam()
+                .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
+                .param().required(false).name(PARAM_USE_ALT_ID).type(RestParamType.query).description("Option to return alternative Ids").dataType("boolean").endParam()
+                .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
 
                 .get("/et-monitored").to("direct:anshar.rest.et.monitored")
                 .get("/et-monitored-cache").to("direct:anshar.rest.et.monitored.cached")
@@ -107,21 +137,99 @@ public class SiriLiteRoute extends RestRouteBuilder {
                 .get("/vm-cache").to("direct:anshar.rest.vm.cached")
 
                 .get("/sm").to("direct:anshar.rest.sm")
-                        .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
-                        .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response").dataType("string").endParam()
-                        .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
-                        .param().required(false).name(PARAM_USE_ALT_ID).type(RestParamType.query).description("Option to return alternative Ids").dataType("boolean").endParam()
-                        .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
+                .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
+                .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response").dataType("string").endParam()
+                .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
+                .param().required(false).name(PARAM_USE_ALT_ID).type(RestParamType.query).description("Option to return alternative Ids").dataType("boolean").endParam()
+                .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
                 .get("/gm").to("direct:anshar.rest.gm")
-                        .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
-                        .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response").dataType("string").endParam()
-                        .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
-                        .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
+                .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
+                .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response").dataType("string").endParam()
+                .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
+                .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
                 .get("/fm").to("direct:anshar.rest.fm")
-                        .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
-                        .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response").dataType("string").endParam()
-                        .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
-                        .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
+                .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
+                .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response").dataType("string").endParam()
+                .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
+                .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
+
+
+        ;
+
+        from("direct:handle.siri.lite.idf.request")
+                .process(e -> {
+                    String version = getVersion(e);
+                    handleServiceAndFormat(e);
+                })
+                .choice()
+                .when(header(SIRI_LITE_SERVICE_NAME).isEqualTo(simple("stop-monitoring")))
+                        .to("direct:anshar.rest.sm")
+                .when(header(SIRI_LITE_SERVICE_NAME).isEqualTo(simple("vehicle-monitoring")))
+                        .to("direct:anshar.rest.vm")
+                .when(header(SIRI_LITE_SERVICE_NAME).isEqualTo(simple("situation-exchange")))
+                        .to("direct:anshar.rest.sx")
+                .when(header(SIRI_LITE_SERVICE_NAME).isEqualTo(simple("general-message")))
+                        .to("direct:anshar.rest.gm")
+                .when(header(SIRI_LITE_SERVICE_NAME).isEqualTo(simple("estimated-timetables")))
+                        .to("direct:anshar.rest.et")
+                .when(header(SIRI_LITE_SERVICE_NAME).isEqualTo(simple("stoppoints-discovery")))
+                        .to("direct:anshar.sirilite.stoppoints.discovery")
+                .when(header(SIRI_LITE_SERVICE_NAME).isEqualTo(simple("lines-discovery")))
+                        .to("direct:anshar.sirilite.lines.discovery")
+                .when(header(SIRI_LITE_SERVICE_NAME).isEqualTo(simple("facility-monitoring")))
+                        .to("direct:anshar.rest.fm")
+                .otherwise()
+                .process(e -> {
+                    String errorMsg = "Service not yet implemented : " + e.getIn().getHeader(SIRI_LITE_SERVICE_NAME);
+                    e.getIn().setBody(errorMsg);
+                    throw new IllegalArgumentException(errorMsg);
+                })
+                .endChoice()
+        ;
+
+        from("direct:anshar.sirilite.lines.discovery")
+                .process(p -> {
+                    String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
+                    String originalId = p.getIn().getHeader(PARAM_USE_ORIGINAL_ID, String.class);
+                    String altId = p.getIn().getHeader(PARAM_USE_ALT_ID, String.class);
+
+                    OutboundIdMappingPolicy mappingPolicy;
+
+                    if (altId != null && Boolean.parseBoolean(altId)){
+                        mappingPolicy = OutboundIdMappingPolicy.ALT_ID;
+                    }else if (originalId != null && Boolean.parseBoolean(originalId)){
+                        mappingPolicy = OutboundIdMappingPolicy.ORIGINAL_ID;
+                    }else{
+                        mappingPolicy = OutboundIdMappingPolicy.DEFAULT;
+                    }
+
+                    Siri response = handler.getDiscoveryLines(datasetId,mappingPolicy);
+                    HttpServletResponse out = p.getIn().getBody(HttpServletResponse.class);
+                    streamOutput(p, response, out);
+                })
+        ;
+
+
+        from("direct:anshar.sirilite.stoppoints.discovery")
+                .process(p -> {
+                    String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
+                    String originalId = p.getIn().getHeader(PARAM_USE_ORIGINAL_ID, String.class);
+                    String altId = p.getIn().getHeader(PARAM_USE_ALT_ID, String.class);
+
+                    OutboundIdMappingPolicy mappingPolicy;
+
+                    if (altId != null && Boolean.parseBoolean(altId)){
+                        mappingPolicy = OutboundIdMappingPolicy.ALT_ID;
+                    }else if (originalId != null && Boolean.parseBoolean(originalId)){
+                        mappingPolicy = OutboundIdMappingPolicy.ORIGINAL_ID;
+                    }else{
+                        mappingPolicy = OutboundIdMappingPolicy.DEFAULT;
+                    }
+
+                    Siri response = handler.getDiscoveryStopPoints(datasetId,mappingPolicy);
+                    HttpServletResponse out = p.getIn().getBody(HttpServletResponse.class);
+                    streamOutput(p, response, out);
+                })
         ;
 
         // Dataproviders
@@ -130,41 +238,41 @@ public class SiriLiteRoute extends RestRouteBuilder {
                 .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true")
                 .choice()
                 .when(e -> isTrackingHeaderAcceptable(e))
-                    .process(p -> {
-                        p.getOut().setHeaders(p.getIn().getHeaders());
+                .process(p -> {
+                    p.getOut().setHeaders(p.getIn().getHeaders());
 
-                        String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
+                    String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
 
-                        String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
-                        String originalId = p.getIn().getHeader(PARAM_USE_ORIGINAL_ID, String.class);
-                        String altId = p.getIn().getHeader(PARAM_USE_ALT_ID, String.class);
-                        Integer maxSizeStr = p.getIn().getHeader(PARAM_MAX_SIZE, Integer.class);
-                        String etClientName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
-                        int maxSize = datasetId != null ? Integer.MAX_VALUE:configuration.getDefaultMaxSize();
+                    String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
+                    String originalId = p.getIn().getHeader(PARAM_USE_ORIGINAL_ID, String.class);
+                    String altId = p.getIn().getHeader(PARAM_USE_ALT_ID, String.class);
+                    Integer maxSizeStr = p.getIn().getHeader(PARAM_MAX_SIZE, Integer.class);
+                    String etClientName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
+                    int maxSize = datasetId != null ? Integer.MAX_VALUE : configuration.getDefaultMaxSize();
 
-                        if (maxSizeStr != null) {
-                            maxSize = maxSizeStr.intValue();
-                        }
+                    if (maxSizeStr != null) {
+                        maxSize = maxSizeStr.intValue();
+                    }
 
-                        Siri response = situations.createServiceDelivery(requestorId, datasetId, etClientName, maxSize);
+                    Siri response = situations.createServiceDelivery(requestorId, datasetId, etClientName, maxSize);
 
-                        List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
+                    List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.SITUATION_EXCHANGE,
                             SiriHandler.getIdMappingPolicy(originalId, altId)
-                        );
-                        if ("test".equals(originalId)) {
-                            outboundAdapters = null;
-                        }
-                        response = SiriValueTransformer.transform(response, outboundAdapters, false, false);
+                    );
+                    if ("test".equals(originalId)) {
+                        outboundAdapters = null;
+                    }
+                    response = SiriValueTransformer.transform(response, outboundAdapters, false, false);
 
-                        metrics.countOutgoingData(response, SubscriptionSetup.SubscriptionMode.LITE);
+                    metrics.countOutgoingData(response, SubscriptionSetup.SubscriptionMode.LITE);
 
-                        HttpServletResponse out = p.getIn().getBody(HttpServletResponse.class);
-                        streamOutput(p, response, out);
-                    })
-                    .log("RequestTracer - Request done (SX)")
+                    HttpServletResponse out = p.getIn().getBody(HttpServletResponse.class);
+                    streamOutput(p, response, out);
+                })
+                .log("RequestTracer - Request done (SX)")
                 .otherwise()
-                    .to("direct:anshar.invalid.tracking.header.response")
+                .to("direct:anshar.invalid.tracking.header.response")
                 .routeId("incoming.rest.sx")
         ;
 
@@ -173,53 +281,53 @@ public class SiriLiteRoute extends RestRouteBuilder {
                 .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true")
                 .choice()
                 .when(e -> isTrackingHeaderAcceptable(e))
-                    .process(p -> {
-                        p.getOut().setHeaders(p.getIn().getHeaders());
+                .process(p -> {
+                    p.getOut().setHeaders(p.getIn().getHeaders());
 
-                        String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
-                        String originalId = p.getIn().getHeader(PARAM_USE_ORIGINAL_ID, String.class);
-                        String altId = p.getIn().getHeader(PARAM_USE_ALT_ID, String.class);
-                        String maxSizeStr = p.getIn().getHeader(PARAM_MAX_SIZE, String.class);
-                        String lineRef = p.getIn().getHeader(PARAM_LINE_REF, String.class);
-                        String etClientName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
-                        List<String> excludedIdList = getParameterValuesAsList(p.getIn(), PARAM_EXCLUDED_DATASET_ID);
+                    String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
+                    String originalId = p.getIn().getHeader(PARAM_USE_ORIGINAL_ID, String.class);
+                    String altId = p.getIn().getHeader(PARAM_USE_ALT_ID, String.class);
+                    String maxSizeStr = p.getIn().getHeader(PARAM_MAX_SIZE, String.class);
+                    String lineRef = p.getIn().getHeader(PARAM_LINE_REF, String.class);
+                    String etClientName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
+                    List<String> excludedIdList = getParameterValuesAsList(p.getIn(), PARAM_EXCLUDED_DATASET_ID);
 
-                        String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
+                    String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
 
-                        int maxSize = datasetId != null ? Integer.MAX_VALUE:configuration.getDefaultMaxSize();
-                        if (maxSizeStr != null) {
-                            try {
-                                maxSize = Integer.parseInt(maxSizeStr);
-                            } catch (NumberFormatException nfe) {
-                                //ignore
-                            }
+                    int maxSize = datasetId != null ? Integer.MAX_VALUE : configuration.getDefaultMaxSize();
+                    if (maxSizeStr != null) {
+                        try {
+                            maxSize = Integer.parseInt(maxSizeStr);
+                        } catch (NumberFormatException nfe) {
+                            //ignore
                         }
+                    }
 
-                        Siri response;
-                        if (lineRef != null) {
-                            response = vehicleActivities.createServiceDelivery(lineRef);
-                        } else {
-                            response = vehicleActivities.createServiceDelivery(requestorId, datasetId, etClientName, excludedIdList, maxSize);
-                        }
+                    Siri response;
+                    if (lineRef != null) {
+                        response = vehicleActivities.createServiceDelivery(lineRef);
+                    } else {
+                        response = vehicleActivities.createServiceDelivery(requestorId, datasetId, etClientName, excludedIdList, maxSize);
+                    }
 
-                        List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
+                    List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.VEHICLE_MONITORING,
                             SiriHandler.getIdMappingPolicy(originalId, altId)
-                        );
-                        if ("test".equals(originalId)) {
-                            outboundAdapters = null;
-                        }
-                        response = SiriValueTransformer.transform(response, outboundAdapters, false, false);
+                    );
+                    if ("test".equals(originalId)) {
+                        outboundAdapters = null;
+                    }
+                    response = SiriValueTransformer.transform(response, outboundAdapters, false, false);
 
-                        metrics.countOutgoingData(response, SubscriptionSetup.SubscriptionMode.LITE);
+                    metrics.countOutgoingData(response, SubscriptionSetup.SubscriptionMode.LITE);
 
-                        HttpServletResponse out = p.getIn().getBody(HttpServletResponse.class);
+                    HttpServletResponse out = p.getIn().getBody(HttpServletResponse.class);
 
-                        streamOutput(p, response, out);
-                    })
-                    .log("RequestTracer - Request done (VM)")
+                    streamOutput(p, response, out);
+                })
+                .log("RequestTracer - Request done (VM)")
                 .otherwise()
-                    .to("direct:anshar.invalid.tracking.header.response")
+                .to("direct:anshar.invalid.tracking.header.response")
                 .routeId("incoming.rest.vm")
         ;
 
@@ -229,59 +337,59 @@ public class SiriLiteRoute extends RestRouteBuilder {
                 .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true")
                 .choice()
                 .when(e -> isTrackingHeaderAcceptable(e))
-                    .process(p -> {
-                        p.getOut().setHeaders(p.getIn().getHeaders());
+                .process(p -> {
+                    p.getOut().setHeaders(p.getIn().getHeaders());
 
-                        String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
-                        String originalId = p.getIn().getHeader(PARAM_USE_ORIGINAL_ID, String.class);
-                        String altId = p.getIn().getHeader(PARAM_USE_ALT_ID, String.class);
-                        String maxSizeStr = p.getIn().getHeader(PARAM_MAX_SIZE, String.class);
-                        String lineRef = p.getIn().getHeader(PARAM_LINE_REF, String.class);
-                        String etClientName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
-                        String previewIntervalMinutesStr = p.getIn().getHeader(PARAM_PREVIEW_INTERVAL, String.class);
-                        List<String> excludedIdList = getParameterValuesAsList(p.getIn(), PARAM_EXCLUDED_DATASET_ID);
+                    String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
+                    String originalId = p.getIn().getHeader(PARAM_USE_ORIGINAL_ID, String.class);
+                    String altId = p.getIn().getHeader(PARAM_USE_ALT_ID, String.class);
+                    String maxSizeStr = p.getIn().getHeader(PARAM_MAX_SIZE, String.class);
+                    String lineRef = p.getIn().getHeader(PARAM_LINE_REF, String.class);
+                    String etClientName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
+                    String previewIntervalMinutesStr = p.getIn().getHeader(PARAM_PREVIEW_INTERVAL, String.class);
+                    List<String> excludedIdList = getParameterValuesAsList(p.getIn(), PARAM_EXCLUDED_DATASET_ID);
 
-                        String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
+                    String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
 
-                        int maxSize = datasetId != null ? Integer.MAX_VALUE:configuration.getDefaultMaxSize();
-                        if (maxSizeStr != null) {
-                            try {
-                                maxSize = Integer.parseInt(maxSizeStr);
-                            } catch (NumberFormatException nfe) {
-                                //ignore
-                            }
+                    int maxSize = datasetId != null ? Integer.MAX_VALUE : configuration.getDefaultMaxSize();
+                    if (maxSizeStr != null) {
+                        try {
+                            maxSize = Integer.parseInt(maxSizeStr);
+                        } catch (NumberFormatException nfe) {
+                            //ignore
                         }
-                        long previewIntervalMillis = -1;
-                        if (previewIntervalMinutesStr != null) {
-                            int minutes = Integer.parseInt(previewIntervalMinutesStr);
-                            previewIntervalMillis = minutes*60*1000;
-                        }
+                    }
+                    long previewIntervalMillis = -1;
+                    if (previewIntervalMinutesStr != null) {
+                        int minutes = Integer.parseInt(previewIntervalMinutesStr);
+                        previewIntervalMillis = minutes * 60 * 1000;
+                    }
 
-                        Siri response;
-                        if (lineRef != null) {
-                            response = estimatedTimetables.createServiceDelivery(lineRef);
-                        } else {
-                            response = estimatedTimetables.createServiceDelivery(requestorId, datasetId, etClientName, excludedIdList, maxSize, previewIntervalMillis);
-                        }
+                    Siri response;
+                    if (lineRef != null) {
+                        response = estimatedTimetables.createServiceDelivery(lineRef);
+                    } else {
+                        response = estimatedTimetables.createServiceDelivery(requestorId, datasetId, etClientName, excludedIdList, maxSize, previewIntervalMillis);
+                    }
 
-                        List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
+                    List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.ESTIMATED_TIMETABLE,
                             SiriHandler.getIdMappingPolicy(originalId, altId)
-                        );
-                        if ("test".equals(originalId)) {
-                            outboundAdapters = null;
-                        }
-                        response = SiriValueTransformer.transform(response, outboundAdapters, false, false);
+                    );
+                    if ("test".equals(originalId)) {
+                        outboundAdapters = null;
+                    }
+                    response = SiriValueTransformer.transform(response, outboundAdapters, false, false);
 
-                        metrics.countOutgoingData(response, SubscriptionSetup.SubscriptionMode.LITE);
+                    metrics.countOutgoingData(response, SubscriptionSetup.SubscriptionMode.LITE);
 
-                        HttpServletResponse out = p.getIn().getBody(HttpServletResponse.class);
+                    HttpServletResponse out = p.getIn().getBody(HttpServletResponse.class);
 
-                        streamOutput(p, response, out);
-                    })
-                    .log("RequestTracer - Request done (ET)")
+                    streamOutput(p, response, out);
+                })
+                .log("RequestTracer - Request done (ET)")
                 .otherwise()
-                    .to("direct:anshar.invalid.tracking.header.response")
+                .to("direct:anshar.invalid.tracking.header.response")
                 .routeId("incoming.rest.et")
         ;
 
@@ -304,7 +412,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
                     String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
 
-                    int maxSize = datasetId != null ? Integer.MAX_VALUE:configuration.getDefaultMaxSize();
+                    int maxSize = datasetId != null ? Integer.MAX_VALUE : configuration.getDefaultMaxSize();
                     if (maxSizeStr != null) {
                         try {
                             maxSize = Integer.parseInt(maxSizeStr);
@@ -315,17 +423,18 @@ public class SiriLiteRoute extends RestRouteBuilder {
                     long previewIntervalMillis = -1;
                     if (previewIntervalMinutesStr != null) {
                         int minutes = Integer.parseInt(previewIntervalMinutesStr);
-                        previewIntervalMillis = minutes*60*1000;
+                        previewIntervalMillis = minutes * 60 * 1000;
                     }
 
-                    // TODO MHI : prévoir un filtre par stop ref
-                    Siri response;
-//                    if (stopRef != null) {
-//                        response = monitoredStopVisits.createServiceDelivery(stopRef);
-//                    } else {
-                    response = monitoredStopVisits.createServiceDelivery(requestorId, datasetId, etClientName, excludedIdList, maxSize, previewIntervalMillis, new HashSet<>());
-//                    }
 
+                    Siri response;
+
+                    Set<String> searchedStopIds = new HashSet<>();
+                    if (StringUtils.isNotEmpty(stopRef)) {
+                        searchedStopIds.add(stopRef);
+                    }
+
+                    response = monitoredStopVisits.createServiceDelivery(requestorId, datasetId, etClientName, excludedIdList, maxSize, previewIntervalMillis, searchedStopIds);
                     List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.STOP_MONITORING,
                             SiriHandler.getIdMappingPolicy(originalId, altId)
@@ -358,9 +467,9 @@ public class SiriLiteRoute extends RestRouteBuilder {
                     Siri response = siriObjectFactory.createETServiceDelivery(estimatedTimetables.getAllMonitored());
 
                     List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
-                                                                                    SiriDataType.ESTIMATED_TIMETABLE,
-                                                                                    OutboundIdMappingPolicy.DEFAULT
-                                                                                );
+                            SiriDataType.ESTIMATED_TIMETABLE,
+                            OutboundIdMappingPolicy.DEFAULT
+                    );
 
                     logger.info("Transforming monitored ET-data");
                     response = SiriValueTransformer.transform(response, outboundAdapters, false, true);
@@ -393,17 +502,17 @@ public class SiriLiteRoute extends RestRouteBuilder {
                     String originalId = p.getIn().getHeader(PARAM_USE_ORIGINAL_ID, String.class);
                     Integer maxSizeStr = p.getIn().getHeader(PARAM_MAX_SIZE, Integer.class);
                     String etClientName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
-                    int maxSize = datasetId != null ? Integer.MAX_VALUE:configuration.getDefaultMaxSize();
+                    int maxSize = datasetId != null ? Integer.MAX_VALUE : configuration.getDefaultMaxSize();
 
                     if (maxSizeStr != null) {
                         maxSize = maxSizeStr.intValue();
                     }
 
-                    Siri response = generalMessages.createServiceDelivery(requestorId, datasetId, etClientName, maxSize,null);
+                    Siri response = generalMessages.createServiceDelivery(requestorId, datasetId, etClientName, maxSize, null);
 
                     List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.GENERAL_MESSAGE,
-                            SiriHandler.getIdMappingPolicy(originalId,null)
+                            SiriHandler.getIdMappingPolicy(originalId, null)
                     );
                     if ("test".equals(originalId)) {
                         outboundAdapters = null;
@@ -436,16 +545,16 @@ public class SiriLiteRoute extends RestRouteBuilder {
                     String originalId = p.getIn().getHeader(PARAM_USE_ORIGINAL_ID, String.class);
                     Integer maxSizeStr = p.getIn().getHeader(PARAM_MAX_SIZE, Integer.class);
                     String etClientName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
-                    int maxSize = datasetId != null ? Integer.MAX_VALUE:configuration.getDefaultMaxSize();
+                    int maxSize = datasetId != null ? Integer.MAX_VALUE : configuration.getDefaultMaxSize();
 
                     if (maxSizeStr != null) {
                         maxSize = maxSizeStr.intValue();
                     }
-                    Siri response = facilityMonitoring.createServiceDelivery(requestorId, datasetId, etClientName, null, maxSize,null,null,null,null);
+                    Siri response = facilityMonitoring.createServiceDelivery(requestorId, datasetId, etClientName, null, maxSize, null, null, null, null);
 
                     List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.FACILITY_MONITORING,
-                            SiriHandler.getIdMappingPolicy(originalId,null)
+                            SiriHandler.getIdMappingPolicy(originalId, null)
                     );
                     if ("test".equals(originalId)) {
                         outboundAdapters = null;
@@ -468,35 +577,35 @@ public class SiriLiteRoute extends RestRouteBuilder {
                 .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true")
                 .choice()
                 .when(e -> isTrackingHeaderAcceptable(e))
-                    .process(p -> {
-                        String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
-                        String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
-                        String clientTrackingName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
+                .process(p -> {
+                    String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
+                    String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
+                    String clientTrackingName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
 
-                        logger.info("Fetching cached SX-data");
-                        Siri response = siriObjectFactory.createSXServiceDelivery(situations.getAllCachedUpdates(requestorId,
+                    logger.info("Fetching cached SX-data");
+                    Siri response = siriObjectFactory.createSXServiceDelivery(situations.getAllCachedUpdates(requestorId,
                             datasetId, clientTrackingName
-                        ));
+                    ));
 
-                        List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
-                                                                                        SiriDataType.SITUATION_EXCHANGE,
-                                                                                        OutboundIdMappingPolicy.DEFAULT
-                                                                                    );
+                    List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
+                            SiriDataType.SITUATION_EXCHANGE,
+                            OutboundIdMappingPolicy.DEFAULT
+                    );
 
-                        logger.info("Transforming cached SX-data");
-                        response = SiriValueTransformer.transform(response, outboundAdapters, false, false);
+                    logger.info("Transforming cached SX-data");
+                    response = SiriValueTransformer.transform(response, outboundAdapters, false, false);
 
-                        metrics.countOutgoingData(response, SubscriptionSetup.SubscriptionMode.LITE);
+                    metrics.countOutgoingData(response, SubscriptionSetup.SubscriptionMode.LITE);
 
-                        HttpServletResponse out = p.getIn().getBody(HttpServletResponse.class);
+                    HttpServletResponse out = p.getIn().getBody(HttpServletResponse.class);
 
-                        logger.info("Streaming cached SX-data");
-                        streamOutput(p, response, out);
-                        logger.info("Done processing cached SX-data");
-                    })
-                    .log("RequestTracer - Request done (SX)")
+                    logger.info("Streaming cached SX-data");
+                    streamOutput(p, response, out);
+                    logger.info("Done processing cached SX-data");
+                })
+                .log("RequestTracer - Request done (SX)")
                 .otherwise()
-                    .to("direct:anshar.invalid.tracking.header.response")
+                .to("direct:anshar.invalid.tracking.header.response")
                 .routeId("incoming.rest.sx.cached")
         ;
 
@@ -505,48 +614,48 @@ public class SiriLiteRoute extends RestRouteBuilder {
                 .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true")
                 .choice()
                 .when(e -> isTrackingHeaderAcceptable(e))
-                    .process(p -> {
-                        String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
-                        String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
-                        String clientTrackingName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
+                .process(p -> {
+                    String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
+                    String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
+                    String clientTrackingName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
 
-                        logger.info("Fetching cached VM-data");
-                        final Collection<VehicleActivityStructure> cachedUpdates = vehicleActivities
+                    logger.info("Fetching cached VM-data");
+                    final Collection<VehicleActivityStructure> cachedUpdates = vehicleActivities
                             .getAllCachedUpdates(requestorId, datasetId, clientTrackingName);
-                        List<String> excludedIdList = getParameterValuesAsList(p.getIn(), PARAM_EXCLUDED_DATASET_ID);
+                    List<String> excludedIdList = getParameterValuesAsList(p.getIn(), PARAM_EXCLUDED_DATASET_ID);
 
-                        if (excludedIdList != null && !excludedIdList.isEmpty()) {
-                            cachedUpdates.removeIf(vehicle -> {
-                                if (vehicle.getMonitoredVehicleJourney() != null &&
+                    if (excludedIdList != null && !excludedIdList.isEmpty()) {
+                        cachedUpdates.removeIf(vehicle -> {
+                            if (vehicle.getMonitoredVehicleJourney() != null &&
                                     vehicle.getMonitoredVehicleJourney().getDataSource() != null) {
-                                    // Return 'true' if codespaceId should be excluded
-                                    return excludedIdList.contains(vehicle.getMonitoredVehicleJourney().getDataSource());
-                                }
-                                return false;
-                            });
-                        }
+                                // Return 'true' if codespaceId should be excluded
+                                return excludedIdList.contains(vehicle.getMonitoredVehicleJourney().getDataSource());
+                            }
+                            return false;
+                        });
+                    }
 
-                        Siri response = siriObjectFactory.createVMServiceDelivery(cachedUpdates);
+                    Siri response = siriObjectFactory.createVMServiceDelivery(cachedUpdates);
 
-                        List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
-                                                                                        SiriDataType.VEHICLE_MONITORING,
-                                                                                        OutboundIdMappingPolicy.DEFAULT
-                                                                                    );
+                    List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
+                            SiriDataType.VEHICLE_MONITORING,
+                            OutboundIdMappingPolicy.DEFAULT
+                    );
 
-                        logger.info("Transforming cached VM-data");
-                        response = SiriValueTransformer.transform(response, outboundAdapters, false, false);
+                    logger.info("Transforming cached VM-data");
+                    response = SiriValueTransformer.transform(response, outboundAdapters, false, false);
 
-                        metrics.countOutgoingData(response, SubscriptionSetup.SubscriptionMode.LITE);
+                    metrics.countOutgoingData(response, SubscriptionSetup.SubscriptionMode.LITE);
 
-                        HttpServletResponse out = p.getIn().getBody(HttpServletResponse.class);
+                    HttpServletResponse out = p.getIn().getBody(HttpServletResponse.class);
 
-                        logger.info("Streaming cached VM-data");
-                        streamOutput(p, response, out);
-                        logger.info("Done processing cached VM-data");
-                    })
-                    .log("RequestTracer - Request done (VM)")
+                    logger.info("Streaming cached VM-data");
+                    streamOutput(p, response, out);
+                    logger.info("Done processing cached VM-data");
+                })
+                .log("RequestTracer - Request done (VM)")
                 .otherwise()
-                    .to("direct:anshar.invalid.tracking.header.response")
+                .to("direct:anshar.invalid.tracking.header.response")
                 .routeId("incoming.rest.vm.cached")
         ;
 
@@ -590,44 +699,86 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
 
         from("direct:internal.anshar.rest.et.monitored.cached")
-            .log("RequestTracer - Incoming request (ET)")
-            .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true")
-            .choice()
-            .when(e -> isTrackingHeaderAcceptable(e))
-            .process(p -> {
+                .log("RequestTracer - Incoming request (ET)")
+                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true")
+                .choice()
+                .when(e -> isTrackingHeaderAcceptable(e))
+                .process(p -> {
 
-                logger.info("Fetching cached ET-data");
+                    logger.info("Fetching cached ET-data");
 
-                String clientTrackingName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
+                    String clientTrackingName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
 
-                Siri response = siriObjectFactory.createETServiceDelivery(estimatedTimetables.getAllCachedUpdates(null, null, clientTrackingName));
+                    Siri response = siriObjectFactory.createETServiceDelivery(estimatedTimetables.getAllCachedUpdates(null, null, clientTrackingName));
 
-                List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
-                    SiriDataType.ESTIMATED_TIMETABLE,
-                    OutboundIdMappingPolicy.DEFAULT
-                );
+                    List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
+                            SiriDataType.ESTIMATED_TIMETABLE,
+                            OutboundIdMappingPolicy.DEFAULT
+                    );
 
-                logger.info("Transforming cached ET-data");
-                response = SiriValueTransformer.transform(response, outboundAdapters, false, true);
+                    logger.info("Transforming cached ET-data");
+                    response = SiriValueTransformer.transform(response, outboundAdapters, false, true);
 
-                metrics.countOutgoingData(response, SubscriptionSetup.SubscriptionMode.LITE);
+                    metrics.countOutgoingData(response, SubscriptionSetup.SubscriptionMode.LITE);
 
-                HttpServletResponse out = p.getIn().getBody(HttpServletResponse.class);
+                    HttpServletResponse out = p.getIn().getBody(HttpServletResponse.class);
 
-                logger.info("Streaming cached ET-data");
-                streamOutput(p, response, out);
-                logger.info("Done processing cached ET-data");
-            })
-            .log("RequestTracer - Request done (ET)")
-            .otherwise()
-            .to("direct:anshar.invalid.tracking.header.response")
-            .routeId("incoming.rest.et.monitored.cached")
+                    logger.info("Streaming cached ET-data");
+                    streamOutput(p, response, out);
+                    logger.info("Done processing cached ET-data");
+                })
+                .log("RequestTracer - Request done (ET)")
+                .otherwise()
+                .to("direct:anshar.invalid.tracking.header.response")
+                .routeId("incoming.rest.et.monitored.cached")
         ;
+    }
+
+    private void handleServiceAndFormat(Exchange e) {
+        String serviceAndFormat = e.getIn().getHeader(PARAM_SERVICE_AND_FORMAT, String.class);
+        if (!serviceAndFormat.contains(".")) {
+            String errorMsg = "Unsupported service and format :" + serviceAndFormat + ". (should be stop-monitoring.json or vehicle-monitoring.json for example)";
+            e.getIn().setBody(errorMsg);
+            throw new IllegalArgumentException(errorMsg);
+        }
+
+        String[] serviceAndFormatTab = serviceAndFormat.split("\\.");
+        String service = serviceAndFormatTab[0];
+
+        if (!siriLiteAutorizedServices.contains(service)) {
+            String errorMsg = "Unsupported service:" + service + ". (should be stoppoints-discovery, lines-discovery, stop-monitoring, general-message, vehicle-monitoring, estimated-timetables, situation-exchange)";
+            e.getIn().setBody(errorMsg);
+            throw new IllegalArgumentException(errorMsg);
+        }
+
+        e.getIn().setHeader(SIRI_LITE_SERVICE_NAME, service);
+
+        String format = serviceAndFormatTab[1];
+        if (!siriLiteAutorizedFormats.contains(format)) {
+            String errorMsg = "Unsupported format:" + format + ". (should be json or xml)";
+            e.getIn().setBody(errorMsg);
+            throw new IllegalArgumentException(errorMsg);
+        }
+
+        String mediaType = "json".equals(format) ? MediaType.APPLICATION_JSON : MediaType.APPLICATION_XML;
+        e.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, mediaType);
+
+    }
+
+    private String getVersion(Exchange e) {
+        String version = e.getIn().getHeader(PARAM_VERSION, String.class);
+        if (!"2.0".equals(version)) {
+            String errorMsg = "Unsupported version:" + version;
+            e.getIn().setBody(errorMsg);
+            throw new IllegalArgumentException(errorMsg);
+        }
+        return version;
     }
 
     /**
      * If http-parameter requestorId is not provided in request, it will be generated based on
      * client IP and requested resource for uniqueness
+     *
      * @param request
      * @return
      */

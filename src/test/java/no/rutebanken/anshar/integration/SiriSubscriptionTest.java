@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.integration;
 
+import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.routes.outbound.OutboundSubscriptionSetup;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
@@ -41,7 +42,7 @@ public class SiriSubscriptionTest extends BaseHttpTest {
     @Test
     @Disabled
     public void testCreateSubscription() throws JAXBException {
-        SubscriptionSetup subscriptionSetup = getSubscriptionSetup(SiriDataType.ESTIMATED_TIMETABLE);
+        SubscriptionSetup subscriptionSetup = TestObjectFactory.getSubscriptionSetup(SiriDataType.ESTIMATED_TIMETABLE);
 
         Siri subscriptionRequest = SiriObjectFactory.createSubscriptionRequest(subscriptionSetup);
 
@@ -49,27 +50,27 @@ public class SiriSubscriptionTest extends BaseHttpTest {
 
         //Create Subscription
         given()
-            .when()
+                .when()
                 .body(SiriXml.toXml(subscriptionRequest))
                 .post("anshar/subscribe")
-            .then()
+                .then()
                 .statusCode(200)
                 .body("Siri.SubscriptionResponse.ResponseStatus.Status", equalTo("true"));
 
         //Verify that it exists
         assertTrue(subscriptionManager.getSubscriptions().size() == 1);
         OutboundSubscriptionSetup outboundSubscription = (OutboundSubscriptionSetup) subscriptionManager.getSubscriptions().iterator().next();
-        assertTrue(outboundSubscription.getSubscriptionId().equals(TEST_SUBSCRIPTION_ID));
+        assertTrue(outboundSubscription.getSubscriptionId().equals(TestObjectFactory.TEST_SUBSCRIPTION_ID));
 
         Siri terminateSubscriptionRequest = SiriObjectFactory.createTerminateSubscriptionRequest(subscriptionSetup);
         // Terminate Subscription
         given()
                 .when()
-                    .body(SiriXml.toXml(terminateSubscriptionRequest))
-                    .post("anshar/subscribe")
+                .body(SiriXml.toXml(terminateSubscriptionRequest))
+                .post("anshar/subscribe")
                 .then()
-                    .statusCode(200)
-                    .body("Siri.TerminateSubscriptionResponse.TerminationResponseStatus.Status", equalTo("true"));
+                .statusCode(200)
+                .body("Siri.TerminateSubscriptionResponse.TerminationResponseStatus.Status", equalTo("true"));
 
         // Verify that it has been removed
         assertTrue(subscriptionManager.getSubscriptions().isEmpty());

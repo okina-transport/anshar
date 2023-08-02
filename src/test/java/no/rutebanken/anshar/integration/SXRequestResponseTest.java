@@ -17,6 +17,7 @@ package no.rutebanken.anshar.integration;
 
 import io.restassured.http.ContentType;
 import no.rutebanken.anshar.data.Situations;
+import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,17 +54,17 @@ public class SXRequestResponseTest extends BaseHttpTest {
     public void testSXRequest() throws Exception {
 
         //Test SIRI Request
-        Siri siriRequest = SiriObjectFactory.createServiceRequest(getSubscriptionSetup(SiriDataType.SITUATION_EXCHANGE));
+        Siri siriRequest = SiriObjectFactory.createServiceRequest(TestObjectFactory.getSubscriptionSetup(SiriDataType.SITUATION_EXCHANGE));
         given()
                 .when()
-                    .contentType(ContentType.XML)
-                    .body(SiriXml.toXml(siriRequest))
-                    .post("anshar/services")
+                .contentType(ContentType.XML)
+                .body(SiriXml.toXml(siriRequest))
+                .post("anshar/services")
                 .then()
-                    .statusCode(200)
-                    .rootPath("Siri.ServiceDelivery.SituationExchangeDelivery.Situations.PtSituationElement")
-                        .body("SituationNumber", equalTo(situationNumber))
-                        .body("ParticipantRef", equalTo(participantRef))
+                .statusCode(200)
+                .rootPath("Siri.ServiceDelivery.SituationExchangeDelivery.Situations.PtSituationElement")
+                .body("SituationNumber", equalTo(situationNumber))
+                .body("ParticipantRef", equalTo(participantRef))
         ;
     }
 
@@ -78,8 +79,8 @@ public class SXRequestResponseTest extends BaseHttpTest {
                 .statusCode(200)
                 .contentType(ContentType.XML)
                 .rootPath("Siri.ServiceDelivery.SituationExchangeDelivery.Situations.PtSituationElement")
-                    .body("SituationNumber", equalTo(situationNumber))
-                    .body("ParticipantRef", equalTo(participantRef))
+                .body("SituationNumber", equalTo(situationNumber))
+                .body("ParticipantRef", equalTo(participantRef))
         ;
     }
 

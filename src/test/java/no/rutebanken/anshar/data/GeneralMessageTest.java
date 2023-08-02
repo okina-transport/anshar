@@ -1,6 +1,7 @@
 package no.rutebanken.anshar.data;
 
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
+import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import org.apache.commons.io.IOUtils;
@@ -45,7 +46,7 @@ public class GeneralMessageTest extends SpringBootBaseTest {
     @Test
     public void testAddGeneralMessage() {
         int previousSize = generalMessages.getAll().size();
-        GeneralMessage msg = createGeneralMessage();
+        GeneralMessage msg = TestObjectFactory.createGeneralMessage();
         generalMessages.add("test", msg);
         assertTrue(generalMessages.getAll().size() == previousSize + 1);
     }
@@ -54,7 +55,7 @@ public class GeneralMessageTest extends SpringBootBaseTest {
     public void testUpdate() {
 
 
-        GeneralMessage msg = createGeneralMessage();
+        GeneralMessage msg = TestObjectFactory.createGeneralMessage();
         Content content1 = new Content();
         content1.setStopPointRefs(Arrays.asList("stop1"));
         msg.setContent(content1);
@@ -91,7 +92,7 @@ public class GeneralMessageTest extends SpringBootBaseTest {
 
     @Test
     public void testChannelFilter() {
-        GeneralMessage msg = createGeneralMessage();
+        GeneralMessage msg = TestObjectFactory.createGeneralMessage();
         Content content1 = new Content();
         content1.setStopPointRefs(Arrays.asList("stop1"));
         msg.setContent(content1);
@@ -113,7 +114,7 @@ public class GeneralMessageTest extends SpringBootBaseTest {
 
     @Test
     public void testDatasetFilter() {
-        GeneralMessage msg = createGeneralMessage();
+        GeneralMessage msg = TestObjectFactory.createGeneralMessage();
         Content content1 = new Content();
         content1.setStopPointRefs(Arrays.asList("stop1"));
         msg.setContent(content1);
@@ -135,7 +136,7 @@ public class GeneralMessageTest extends SpringBootBaseTest {
 
     @Test
     public void testLumiplanFormat() {
-        GeneralMessage msg = createGeneralMessage();
+        GeneralMessage msg = TestObjectFactory.createGeneralMessage();
         Content content1 = new Content();
         content1.setStopPointRefs(Arrays.asList("stop1"));
         msg.setContent(content1);
@@ -155,7 +156,7 @@ public class GeneralMessageTest extends SpringBootBaseTest {
 
     @Test
     public void testCancellations() throws UnmarshalException {
-        GeneralMessage msg = createGeneralMessage();
+        GeneralMessage msg = TestObjectFactory.createGeneralMessage();
         Content content1 = new Content();
         content1.setStopPointRefs(Arrays.asList("stop1"));
         msg.setContent(content1);
@@ -218,9 +219,6 @@ public class GeneralMessageTest extends SpringBootBaseTest {
         return resultList;
     }
 
-    private GeneralMessage createGeneralMessage() {
-        return createGeneralMessage("Perturbation");
-    }
 
     private GeneralMessageCancellation createGeneralMessageCancellation() {
         return createGeneralMessageCancellation("Perturbation");
@@ -238,16 +236,5 @@ public class GeneralMessageTest extends SpringBootBaseTest {
         return msg;
     }
 
-    private GeneralMessage createGeneralMessage(String infoChannel) {
 
-        GeneralMessage msg = new GeneralMessage();
-        InfoMessageRefStructure identifier = new InfoMessageRefStructure();
-        identifier.setValue(UUID.randomUUID().toString());
-        msg.setInfoMessageIdentifier(identifier);
-        InfoChannelRefStructure RefStruct = new InfoChannelRefStructure();
-        RefStruct.setValue(infoChannel);
-        msg.setInfoChannelRef(RefStruct);
-
-        return msg;
-    }
 }

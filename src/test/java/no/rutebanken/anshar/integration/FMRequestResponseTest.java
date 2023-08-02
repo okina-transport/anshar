@@ -2,14 +2,17 @@ package no.rutebanken.anshar.integration;
 
 import io.restassured.http.ContentType;
 import no.rutebanken.anshar.data.FacilityMonitoring;
-import no.rutebanken.anshar.data.GeneralMessages;
+import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.rutebanken.siri20.util.SiriXml;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri20.FacilityConditionStructure;
+import uk.org.siri.siri20.FacilityRef;
+import uk.org.siri.siri20.FacilityStructure;
+import uk.org.siri.siri20.Siri;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
@@ -33,7 +36,7 @@ public class FMRequestResponseTest extends BaseHttpTest {
     public void testFMRequest() throws Exception {
 
         //Test SIRI Request
-        Siri siriRequest = SiriObjectFactory.createServiceRequest(getSubscriptionSetup(SiriDataType.FACILITY_MONITORING));
+        Siri siriRequest = SiriObjectFactory.createServiceRequest(TestObjectFactory.getSubscriptionSetup(SiriDataType.FACILITY_MONITORING));
         given()
                 .when()
                 .contentType(ContentType.XML)
