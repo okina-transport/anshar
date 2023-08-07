@@ -4,6 +4,7 @@ import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
+import no.rutebanken.anshar.util.IDUtils;
 import org.apache.camel.Exchange;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
@@ -103,6 +104,7 @@ public class DiscoverySubscriptionCreator {
         newSubscription.setUpdateIntervalSeconds(discoveryParams.getUpdateIntervalSeconds());
         newSubscription.setPreviewIntervalSeconds(discoveryParams.getPreviewIntervalSeconds());
         newSubscription.setOperatorNamespace("http://wsdl.siri.org.uk");
+        newSubscription.setInternalId(IDUtils.getUniqueInternalIdForDiscoverySubscription());
 
         Map<RequestType, String> urlMap = new HashMap<>();
         urlMap.put(RequestType.SUBSCRIBE, discoveryParams.getUrl());
