@@ -4,7 +4,6 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 
 import java.io.Serializable;
-import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
 
@@ -35,6 +34,26 @@ public class DiscoverySubscription implements Serializable {
 
     private int durationOfSubscriptionHours;
 
+    private String vendorBaseName;
+
+    private String subscriptionIdBase;
+
+    public String getSubscriptionIdBase() {
+        return subscriptionIdBase;
+    }
+
+    public void setSubscriptionIdBase(String subscriptionIdBase) {
+        this.subscriptionIdBase = subscriptionIdBase;
+    }
+
+    public String getVendorBaseName() {
+        return vendorBaseName;
+    }
+
+    public void setVendorBaseName(String vendorBaseName) {
+        this.vendorBaseName = vendorBaseName;
+    }
+
     public String getDatasetId() {
         return datasetId;
     }
@@ -54,6 +73,7 @@ public class DiscoverySubscription implements Serializable {
     public void setDatasetId(String datasetId) {
         this.datasetId = datasetId;
     }
+
     public void setUrl(String url) {
         this.url = url;
     }
@@ -128,13 +148,13 @@ public class DiscoverySubscription implements Serializable {
         if (o == null || getClass() != o.getClass()) return false;
         DiscoverySubscription that = (DiscoverySubscription) o;
         return Objects.equals(datasetId, that.datasetId) && Objects.equals(url, that.url)
-                && Objects.equals(discoveryType, that.discoveryType )
+                && Objects.equals(discoveryType, that.discoveryType)
                 && Objects.equals(subscriptionMode, that.subscriptionMode)
                 && Objects.equals(requestorRef, that.requestorRef);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(datasetId,url,discoveryType,requestorRef,subscriptionMode);
+        return Objects.hash(datasetId, url, discoveryType, requestorRef, subscriptionMode);
     }
 }

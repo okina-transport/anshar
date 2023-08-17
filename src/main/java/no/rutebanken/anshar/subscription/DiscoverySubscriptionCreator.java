@@ -78,7 +78,13 @@ public class DiscoverySubscriptionCreator {
                     .collect(Collectors.toList());
         }
 
+
         List<SubscriptionSetup> subscriptionsToStart = createSubscriptionsSetups(referenceList, discoveryParams);
+
+        //TOTO REmove . test only
+        SubscriptionSetup single = subscriptionsToStart.get(0);
+        subscriptionsToStart.clear();
+        subscriptionsToStart.add(single);
 
         subscriptionConfig.getSubscriptions().addAll(subscriptionsToStart);
         subscriptionInitializer.createSubscriptions();
@@ -96,7 +102,7 @@ public class DiscoverySubscriptionCreator {
         newSubscription.setDatasetId(discoveryParams.getDatasetId());
         newSubscription.setSubscriptionType(discoveryParams.getDiscoveryType());
         newSubscription.setName(value + " subscription");
-        newSubscription.setVendor("VENDOR-" + value);
+        newSubscription.setVendor(buildVendor(discoveryParams, value));
         newSubscription.setServiceType(SubscriptionSetup.ServiceType.SOAP);
         newSubscription.setSubscriptionMode(discoveryParams.getSubscriptionMode());
         newSubscription.setHeartbeatIntervalSeconds(discoveryParams.getHeartbeatIntervalSeconds());
@@ -129,7 +135,7 @@ public class DiscoverySubscriptionCreator {
         newSubscription.setCustomHeaders(discoveryParams.getCustomHeaders());
         newSubscription.setVersion("2.0");
         newSubscription.setContentType("text/xml;charset=UTF-8");
-        newSubscription.setSubscriptionId(value + "-SUB");
+        newSubscription.setSubscriptionId(buildSubscriptionId(discoveryParams, value));
         newSubscription.setRequestorRef(discoveryParams.getRequestorRef());
         newSubscription.setDurationOfSubscriptionHours(discoveryParams.getDurationOfSubscriptionHours());
         newSubscription.setMappingAdapterId(mappingAdapter);
@@ -141,6 +147,23 @@ public class DiscoverySubscriptionCreator {
         newSubscription.setLineRefValue(lineRefValue);
         newSubscription.setActive(true);
         return newSubscription;
+    }
+
+    private String buildVendor(DiscoverySubscription discoveryParams, String value) {
+        String type = SiriDataType.STOP_MONITORING.equals(discoveryParams.getDiscoveryType()) ? "SM" : "VM";
+        return discoveryParams.getVendorBaseName() + extractValueFromRef(value) + "-" + type + "-SUB";
+    }
+
+    private String buildSubscriptionId(DiscoverySubscription discoveryParams, String value) {
+        String type = SiriDataType.STOP_MONITORING.equals(discoveryParams.getDiscoveryType()) ? "SM" : "VM";
+        return discoveryParams.getSubscriptionIdBase() + extractValueFromRef(value) + "-" + type + "-SUB";
+    }
+
+    private String extractValueFromRef(String value) {
+        if (!value.contains(":") || value.split(":").length != 5) {
+            return value;
+        }
+        return value.split(":")[3];
     }
 
 
