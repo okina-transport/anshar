@@ -99,7 +99,7 @@ public class AdministrationRoute extends RestRouteBuilder {
         super.configure();
 
 
-        rest("/").tag("internal.admin.root")
+        rest("/")
                 .apiDocs(false)
                 .get("").produces(MediaType.TEXT_HTML).to(STATS_ROUTE)
                 .put("").to(OPERATION_ROUTE)
@@ -108,7 +108,7 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .delete("/unmapped/{datasetId}").to("direct:clear-unmapped")
         ;
 
-        rest("/anshar").tag("internal.admin")
+        rest("/anshar")
                 .apiDocs(false)
                 .get("/stats").produces(MediaType.TEXT_HTML).to(STATS_ROUTE)
                 .get("/internalstats").produces(MediaType.APPLICATION_JSON).to(INTERNAL_STATS_ROUTE)

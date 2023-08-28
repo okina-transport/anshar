@@ -97,7 +97,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
 
         rest("/siri")
-                .tag("siri.lite.idf.format")
+                .tag("siri.lite")
                 .get("/{version}/{serviceAndFormat}").to("direct:handle.siri.lite.idf.request")
                 .param().required(true).name(PARAM_VERSION).type(RestParamType.path).description("The siri version").dataType("string").endParam()
                 .param().required(true).name(PARAM_SERVICE_AND_FORMAT).type(RestParamType.path).description("the requested service and the format").dataType("string").endParam()
@@ -109,15 +109,17 @@ public class SiriLiteRoute extends RestRouteBuilder {
         ;
 
         rest("/anshar/rest")
-                .tag("siri.lite")
+
 
                 .get("/sx").to("direct:anshar.rest.sx")
+                .apiDocs(false)
                 .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
                 .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
                 .param().required(false).name(PARAM_USE_ALT_ID).type(RestParamType.query).description("Option to return alternative Ids").dataType("boolean").endParam()
                 .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
 
                 .get("/vm").to("direct:anshar.rest.vm")
+                .apiDocs(false)
                 .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
                 .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response").dataType("string").endParam()
                 .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
@@ -125,29 +127,30 @@ public class SiriLiteRoute extends RestRouteBuilder {
                 .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
 
                 .get("/et").to("direct:anshar.rest.et")
+                .apiDocs(false)
                 .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
                 .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response").dataType("string").endParam()
                 .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
                 .param().required(false).name(PARAM_USE_ALT_ID).type(RestParamType.query).description("Option to return alternative Ids").dataType("boolean").endParam()
                 .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
 
-                .get("/et-monitored").to("direct:anshar.rest.et.monitored")
-                .get("/et-monitored-cache").to("direct:anshar.rest.et.monitored.cached")
-                .get("/sx-cache").to("direct:anshar.rest.sx.cached")
-                .get("/vm-cache").to("direct:anshar.rest.vm.cached")
+                .get("/et-monitored").apiDocs(false).to("direct:anshar.rest.et.monitored")
+                .get("/et-monitored-cache").apiDocs(false).to("direct:anshar.rest.et.monitored.cached")
+                .get("/sx-cache").apiDocs(false).to("direct:anshar.rest.sx.cached")
+                .get("/vm-cache").apiDocs(false).to("direct:anshar.rest.vm.cached")
 
-                .get("/sm").to("direct:anshar.rest.sm")
+                .get("/sm").apiDocs(false).to("direct:anshar.rest.sm")
                 .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
                 .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response").dataType("string").endParam()
                 .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
                 .param().required(false).name(PARAM_USE_ALT_ID).type(RestParamType.query).description("Option to return alternative Ids").dataType("boolean").endParam()
                 .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
-                .get("/gm").to("direct:anshar.rest.gm")
+                .get("/gm").apiDocs(false).to("direct:anshar.rest.gm")
                 .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
                 .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response").dataType("string").endParam()
                 .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()
                 .param().required(false).name(PARAM_MAX_SIZE).type(RestParamType.query).description("Specify max number of returned elements").dataType("integer").endParam()
-                .get("/fm").to("direct:anshar.rest.fm")
+                .get("/fm").apiDocs(false).to("direct:anshar.rest.fm")
                 .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
                 .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response").dataType("string").endParam()
                 .param().required(false).name(PARAM_USE_ORIGINAL_ID).type(RestParamType.query).description("Option to return original Ids").dataType("boolean").endParam()

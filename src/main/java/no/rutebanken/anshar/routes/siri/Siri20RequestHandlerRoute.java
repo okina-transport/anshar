@@ -40,14 +40,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.List;
 
-import static no.rutebanken.anshar.routes.HttpParameter.INTERNAL_SIRI_DATA_TYPE;
-import static no.rutebanken.anshar.routes.HttpParameter.PARAM_DATASET_ID;
-import static no.rutebanken.anshar.routes.HttpParameter.PARAM_EXCLUDED_DATASET_ID;
-import static no.rutebanken.anshar.routes.HttpParameter.PARAM_MAX_SIZE;
-import static no.rutebanken.anshar.routes.HttpParameter.PARAM_SUBSCRIPTION_ID;
-import static no.rutebanken.anshar.routes.HttpParameter.PARAM_USE_ALT_ID;
-import static no.rutebanken.anshar.routes.HttpParameter.PARAM_USE_ORIGINAL_ID;
-import static no.rutebanken.anshar.routes.HttpParameter.getParameterValuesAsList;
+import static no.rutebanken.anshar.routes.HttpParameter.*;
 
 @SuppressWarnings("unchecked")
 @Service
@@ -102,6 +95,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.path).description("The id of the Codespace to limit data to").dataType("string").endParam()
 
                 .post("/services").to("direct:process.service.request")
+                .apiDocs(false)
                 .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response (SIRI ET and VM)").dataType("string").endParam()
                 .description("Endpoint used for SIRI ServiceRequest.")
 
@@ -111,13 +105,17 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
 
                 // Endpoints that returned cached data
                 .post("/services-cache").to("direct:process.service.request.cache")
+                .apiDocs(false)
                 .post("/services-cache/{" + PARAM_DATASET_ID + "}").to("direct:process.service.request.cache")
+                .apiDocs(false)
 
 
                 .post("/subscribe").to("direct:process.subscription.request")
+                .apiDocs(false)
                 .description("Endpoint used for SIRI SubscriptionRequest.")
 
                 .post("/subscribe/{" + PARAM_DATASET_ID + "}").to("direct:process.subscription.request")
+                .apiDocs(false)
                 .description("Endpoint used for SIRI SubscriptionRequest limited to single dataprovider.")
                 .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.path).description("The id of the Codespace to limit data to").dataType("string").endParam()
 
@@ -128,6 +126,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .apiDocs(false)
 
                 .post("/{version}/{type}/{vendor}/{" + PARAM_SUBSCRIPTION_ID + "}/{service}/{operation}").to("direct:process.incoming.request")
+                .apiDocs(false)
                 .description("Generated dynamically when creating Subscription. Endpoint for incoming data")
                 .param().required(false).name("service").endParam()
                 .param().required(false).name("operation").endParam()
@@ -282,7 +281,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
 
                         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
-                        CustomSiriXml.toXml(response,null, byteArrayOutputStream);
+                        CustomSiriXml.toXml(response, null, byteArrayOutputStream);
                         p.getOut().setBody(byteArrayOutputStream.toString());
                     }
                 })
@@ -368,7 +367,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
             e.getOut().setHeaders(e.getIn().getHeaders());
             e.getOut().setBody(e.getIn().getBody());
 
-            if (!"2.0".equals(subscriptionSetup.getVersion())) {
+            if (!"2.0" .equals(subscriptionSetup.getVersion())) {
                 e.getOut().setHeader(TRANSFORM_VERSION, TRANSFORM_VERSION);
             }
 

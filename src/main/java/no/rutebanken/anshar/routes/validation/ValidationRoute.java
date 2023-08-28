@@ -41,7 +41,7 @@ public class ValidationRoute extends RestRouteBuilder {
     public void configure() throws Exception {
         super.configure();
         rest("/anshar/validation")
-                .tag("validation")
+                .apiDocs(false)
                 .get("/{" + PARAM_CODESPACE + "}").produces(MediaType.TEXT_HTML).to("direct:validation.list")
                 .get("/report").produces(MediaType.TEXT_HTML).to("direct:validation.report")
                 .put("/toggle").produces(MediaType.TEXT_HTML).to("direct:validation.toggle")
@@ -55,7 +55,7 @@ public class ValidationRoute extends RestRouteBuilder {
         ;
 
         from("direct:validation.list")
-                .bean(subscriptionManager, "getSubscriptionsForCodespace(${header."+ PARAM_CODESPACE+"})")
+                .bean(subscriptionManager, "getSubscriptionsForCodespace(${header." + PARAM_CODESPACE + "})")
                 .to("direct:removeHeaders")
                 .to("freemarker:templates/validation.ftl")
                 .routeId("admin.validation.list")
@@ -80,14 +80,14 @@ public class ValidationRoute extends RestRouteBuilder {
         log.info("got validationFilter: " + validationFilter);
         SubscriptionSetup subscriptionSetup = subscriptionManager.getSubscriptionById(subscriptionId);
         if (subscriptionSetup != null) {
-            subscriptionSetup.setValidation(! subscriptionSetup.isValidation());
+            subscriptionSetup.setValidation(!subscriptionSetup.isValidation());
             if (subscriptionSetup.isValidation()) {
                 //Validation has now been switched on - clear previous results
                 siriXmlValidator.clearValidationResults(subscriptionSetup.getSubscriptionId());
                 siriXmlValidator.addFilter(subscriptionSetup.getSubscriptionId(), validationFilter);
                 subscriptionSetup.setValidationFilter(validationFilter);
             }
-            log.info("Toggling validation, validation is now {}", (subscriptionSetup.isValidation()?"active":"disabled"));
+            log.info("Toggling validation, validation is now {}", (subscriptionSetup.isValidation() ? "active" : "disabled"));
             subscriptionManager.updateSubscription(subscriptionSetup);
         }
     }
