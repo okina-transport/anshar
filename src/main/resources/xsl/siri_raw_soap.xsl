@@ -46,7 +46,8 @@
     </xsl:template>
 
     <xsl:template match="siri:StopPointsRequest">
-        <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsdl="http://wsdl.siri.org.uk" xmlns:siri="http://www.siri.org.uk/siri">
+        <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsdl="http://wsdl.siri.org.uk"
+                          xmlns:siri="http://www.siri.org.uk/siri">
             <soapenv:Header/>
             <soapenv:Body>
                 <wsdl:StopPointsDiscovery>
@@ -65,7 +66,8 @@
     </xsl:template>
 
     <xsl:template match="siri:LinesRequest">
-        <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsdl="http://wsdl.siri.org.uk" xmlns:siri="http://www.siri.org.uk/siri">
+        <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsdl="http://wsdl.siri.org.uk"
+                          xmlns:siri="http://www.siri.org.uk/siri">
             <soapenv:Header/>
             <soapenv:Body>
                 <wsdl:LinesDiscovery>
@@ -86,7 +88,7 @@
     <xsl:template match="siri:StopPointsDelivery">
         <xsl:element name="soapenv:Envelope" namespace="{$soapEnvelopeNamespace}">
             <xsl:element name="soapenv:Body" namespace="{$soapEnvelopeNamespace}">
-                    <xsl:element name="StopPointsDiscoveryResponse">
+                <xsl:element name="StopPointsDiscoveryResponse">
                     <xsl:copy-of select="./siri:AnnotatedStopPointRef" copy-namespaces="no">
 
                     </xsl:copy-of>
@@ -111,8 +113,8 @@
         <xsl:element name="soapenv:Envelope" namespace="{$soapEnvelopeNamespace}">
             <xsl:element name="soapenv:Body" namespace="{$soapEnvelopeNamespace}">
                 <xsl:element name="Answer">
-                <xsl:element name="CheckStatusResponse">
-<!--                    <xsl:value-of select="../siri:CheckStatusResponse"/>-->
+                    <xsl:element name="CheckStatusResponse">
+                        <!--                    <xsl:value-of select="../siri:CheckStatusResponse"/>-->
                         <xsl:copy-of select="../siri:CheckStatusResponse" copy-namespaces="no">
                         </xsl:copy-of>
                     </xsl:element>
@@ -228,6 +230,10 @@
                                             <xsl:copy-of
                                                     select="siri:EstimatedTimetableSubscriptionRequest/siri:SubscriptionIdentifier"
                                                     copy-namespaces="no"/>
+                                            <xsl:copy-of
+                                                    select="siri:EstimatedTimetableSubscriptionRequest/siri:SubscriberRef"
+                                                    copy-namespaces="no"/>
+
                                             <xsl:copy-of
                                                     select="siri:EstimatedTimetableSubscriptionRequest/siri:InitialTerminationTime"
                                                     copy-namespaces="no"/>
