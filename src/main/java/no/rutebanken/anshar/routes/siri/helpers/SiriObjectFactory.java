@@ -528,17 +528,17 @@ public class SiriObjectFactory {
             }
         }
 
-        EstimatedTimetableSubscriptionStructure etSubscriptionReq = new EstimatedTimetableSubscriptionStructure();
-        etSubscriptionReq.setEstimatedTimetableRequest(etRequest);
-        etSubscriptionReq.setSubscriptionIdentifier(createSubscriptionIdentifier(subscriptionId));
-        etSubscriptionReq.setInitialTerminationTime(ZonedDateTime.now().plusSeconds(subscriptionDuration.getSeconds()));
-        etSubscriptionReq.setSubscriberRef(request.getRequestorRef());
+
+        etSubRequest.setEstimatedTimetableRequest(etRequest);
+        etSubRequest.setSubscriptionIdentifier(createSubscriptionIdentifier(subscriptionId));
+        etSubRequest.setInitialTerminationTime(ZonedDateTime.now().plusSeconds(subscriptionDuration.getSeconds()));
+        etSubRequest.setSubscriberRef(request.getRequestorRef());
         if (changeBeforeUpdates != null) {
-            etSubscriptionReq.setChangeBeforeUpdates(createDataTypeFactory().newDuration(changeBeforeUpdates.toString()));
+            etSubRequest.setChangeBeforeUpdates(createDataTypeFactory().newDuration(changeBeforeUpdates.toString()));
         }
 
 
-        etSubscriptionReq.setIncrementalUpdates(incrementalUpdates);
+        etSubRequest.setIncrementalUpdates(incrementalUpdates);
         etSubRequest.setEstimatedTimetableRequest(etRequest);
 
         request.getEstimatedTimetableSubscriptionRequests().add(etSubRequest);
