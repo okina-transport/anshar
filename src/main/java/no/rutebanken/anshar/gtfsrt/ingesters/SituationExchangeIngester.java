@@ -3,6 +3,7 @@ package no.rutebanken.anshar.gtfsrt.ingesters;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
+import no.rutebanken.anshar.routes.siri.handlers.inbound.SituationExchangeInbound;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import org.apache.camel.Exchange;
@@ -36,7 +37,8 @@ public class SituationExchangeIngester extends RestRouteBuilder {
     @Autowired
     private SubscriptionManager subscriptionManager;
 
-
+    @Autowired
+    private SituationExchangeInbound situationExchangeInbound;
 
 
     public void processIncomingSXFromGTFSRT(Exchange e) {
@@ -54,7 +56,7 @@ public class SituationExchangeIngester extends RestRouteBuilder {
             List<PtSituationElement> situations = siri.getServiceDelivery().getSituationExchangeDeliveries().get(0).getSituations().getPtSituationElements();
 
 
-            Collection<PtSituationElement> ingestedSituations = handler.ingestSituations(datasetId, situations);
+            Collection<PtSituationElement> ingestedSituations = situationExchangeInbound.ingestSituations(datasetId, situations);
 
             for (PtSituationElement situation : ingestedSituations) {
                 subscriptionManager.touchSubscription(GTFSRT_SX_PREFIX + getSituationSubscriptionId(situation), false);

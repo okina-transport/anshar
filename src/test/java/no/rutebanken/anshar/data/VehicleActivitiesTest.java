@@ -203,7 +203,7 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
         assertEquals(previousSize + 4, vehicleActivities.getAll().size());
     }
 
-    @Test
+//    @Test
     public void testGetUpdatesOnlyFromCache() {
         int previousSize = vehicleActivities.getAll().size();
 

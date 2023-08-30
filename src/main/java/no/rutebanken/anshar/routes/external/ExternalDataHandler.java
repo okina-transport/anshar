@@ -1,6 +1,9 @@
 package no.rutebanken.anshar.routes.external;
 
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
+import no.rutebanken.anshar.routes.siri.handlers.inbound.SituationExchangeInbound;
+import no.rutebanken.anshar.routes.siri.handlers.inbound.StopMonitoringInbound;
+import no.rutebanken.anshar.routes.siri.handlers.inbound.VehicleMonitoringInbound;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
@@ -30,7 +33,13 @@ public class ExternalDataHandler {
     private static final int DEFAULT_HEARTBEAT_SECONDS = 300;
 
     @Autowired
-    private SiriHandler handler;
+    private VehicleMonitoringInbound vehicleMonitoringInbound;
+
+    @Autowired
+    private SituationExchangeInbound situationExchangeInbound;
+
+    @Autowired
+    private StopMonitoringInbound stopMonitoringInbound;
 
     @Autowired
     private SubscriptionManager subscriptionManager;
@@ -47,12 +56,12 @@ public class ExternalDataHandler {
                 return;
             }
 
-            String subscriptionId = checkAndCreateSMSubscription(siri, datasetId, url);
+            checkAndCreateSMSubscription(siri, datasetId, url);
 
             List<MonitoredStopVisit> stopVisitToIngest = collectStopVisits(siri);
 
             if (stopVisitToIngest.size() > 0){
-                handler.ingestStopVisits(datasetId,stopVisitToIngest);
+                stopMonitoringInbound.ingestStopVisits(datasetId,stopVisitToIngest);
             }
 
         } catch (JAXBException | XMLStreamException jaxbException) {
@@ -72,11 +81,11 @@ public class ExternalDataHandler {
                 return;
             }
 
-            String subscriptionId = checkAndCreateSXSubscription(siri, datasetId, url);
+            checkAndCreateSXSubscription(siri, datasetId, url);
             List<PtSituationElement> situationsToIngest = collectSituations(siri);
 
             if (situationsToIngest.size() > 0){
-                handler.ingestSituations(datasetId, situationsToIngest);
+                situationExchangeInbound.ingestSituations(datasetId, situationsToIngest);
             }
 
         } catch (JAXBException | XMLStreamException jaxbException) {
@@ -96,11 +105,11 @@ public class ExternalDataHandler {
                 return;
             }
 
-            String subscriptionId = checkAndCreateVMSubscription(siri, datasetId, url);
+            checkAndCreateVMSubscription(siri, datasetId, url);
             List<VehicleActivityStructure> vehicleActivitiesToIngest = collectVehicleActivities(siri);
 
             if (vehicleActivitiesToIngest.size() > 0){
-                handler.ingestVehicleActivities(datasetId, vehicleActivitiesToIngest);
+                vehicleMonitoringInbound.ingestVehicleActivities(datasetId, vehicleActivitiesToIngest);
             }
 
         } catch (JAXBException | XMLStreamException jaxbException) {
@@ -108,7 +117,7 @@ public class ExternalDataHandler {
         }
     }
 
-    private String checkAndCreateSXSubscription(Siri siri, String datasetId, String url) {
+    private void checkAndCreateSXSubscription(Siri siri, String datasetId, String url) {
         String subscriptionId = siri.getServiceDelivery().getSituationExchangeDeliveries().get(0).getSituations().getPtSituationElements().get(0).getSituationNumber().getValue();
 
         if (!subscriptionManager.isSituationExchangeSubscriptionExisting(subscriptionId, datasetId)){
@@ -136,10 +145,9 @@ public class ExternalDataHandler {
             subscriptionManager.addSubscription(subscriptionId,setup);
 
         }
-        return subscriptionId;
     }
 
-    private String checkAndCreateVMSubscription(Siri siri, String datasetId, String url) {
+    private void checkAndCreateVMSubscription(Siri siri, String datasetId, String url) {
         String subscriptionId = siri.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getVehicleMonitoringRef().getValue();
 
         if (!subscriptionManager.isVehicleMonitoringSubscriptionExisting(subscriptionId, datasetId)){
@@ -167,7 +175,6 @@ public class ExternalDataHandler {
             subscriptionManager.addSubscription(subscriptionId, setup);
 
         }
-        return subscriptionId;
     }
 
 
@@ -207,7 +214,7 @@ public class ExternalDataHandler {
 
 
 
-    private String checkAndCreateSMSubscription(Siri siri, String datasetId, String url){
+    private void checkAndCreateSMSubscription(Siri siri, String datasetId, String url){
 
         String subscriptionId = siri.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue();
 
@@ -238,6 +245,5 @@ public class ExternalDataHandler {
             subscriptionManager.addSubscription(subscriptionId,setup);
 
         }
-        return subscriptionId;
     }
 }

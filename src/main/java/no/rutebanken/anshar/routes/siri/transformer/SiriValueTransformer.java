@@ -167,7 +167,7 @@ public class SiriValueTransformer {
                     processor.process(transformed);
 
                     if (detailedLogging) {
-                        logger.debug("SIRI Transform: PostProcessor {} processed", processor.toString());
+                        logger.debug("SIRI Transform: PostProcessor {} processed", processor);
                     }
                 } catch (Throwable t) {
                     logger.warn("Caught exception while post-processing SIRI-object with processor '" + processor + "'", t);

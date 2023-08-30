@@ -56,7 +56,7 @@ public class GMRequestResponseTest extends BaseHttpTest {
                 .when()
                 .contentType(ContentType.XML)
                 .body(SiriXml.toXml(siriRequest))
-                .post("anshar/services")
+                .post("anshar/services?datasetId=TTT")
                 .then()
                 .statusCode(200)
                 .rootPath("Siri.ServiceDelivery.GeneralMessageDelivery.GeneralMessage")
@@ -71,7 +71,7 @@ public class GMRequestResponseTest extends BaseHttpTest {
         //Test SIRI Lite Request
         given()
                 .when()
-                .get("anshar/rest/gm")
+                .get("anshar/rest/gm?datasetId=TTT")
                 .then()
                 .statusCode(200)
                 .contentType(ContentType.XML)

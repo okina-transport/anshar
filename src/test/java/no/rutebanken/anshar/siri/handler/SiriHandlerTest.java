@@ -18,14 +18,15 @@ package no.rutebanken.anshar.siri.handler;
 import no.rutebanken.anshar.data.*;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
+import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.SiriApisRequestHandlerRoute;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
+import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +34,7 @@ import org.xml.sax.SAXException;
 import uk.org.siri.siri20.*;
 
 import javax.xml.bind.JAXBException;
+import javax.xml.bind.UnmarshalException;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.stream.XMLStreamException;
 import java.io.ByteArrayInputStream;
@@ -48,7 +50,10 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -62,7 +67,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     private FacilityMonitoring facilityMonitoring;
 
     @Autowired
-    private GeneralMessages genrealMessage;
+    private GeneralMessages generalMessage;
 
     @Autowired
     private SiriHandler handler;
@@ -89,10 +94,16 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     @BeforeEach
     public void init() {
         subscriptionManager.clearAllSubscriptions();
+        estimatedTimetables.clearAll();
+        vehicleActivities.clearAll();
+        situations.clearAll();
+        stopVisits.clearAll();
+        generalMessage.clearAll();
+        facilityMonitoring.clearAll();
     }
 
 
-//    @Test
+    //    @Test
     public void testErrorInSXServiceDelivery() {
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
                 "<siri:Siri xmlns:siri=\"http://www.siri.org.uk/siri\">\n" +
@@ -113,9 +124,9 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 "</siri:Siri>\n";
 
         try {
-            SubscriptionSetup sxSubscription = getSxSubscription();
+            SubscriptionSetup sxSubscription = getSxSubscription("tst");
             subscriptionManager.addSubscription(sxSubscription.getSubscriptionId(), sxSubscription);
-            handler.handleIncomingSiri(sxSubscription.getSubscriptionId(),new ByteArrayInputStream(xml.getBytes()));
+            handler.handleIncomingSiri(sxSubscription.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes()));
         } catch (Throwable t) {
             fail("Handling empty response caused exception");
         }
@@ -143,7 +154,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 "</siri:Siri>\n";
 
         try {
-            SubscriptionSetup etSubscription = getEtSubscription();
+            SubscriptionSetup etSubscription = getEtSubscription("tst");
             subscriptionManager.addSubscription(etSubscription.getSubscriptionId(), etSubscription);
             handler.handleIncomingSiri(etSubscription.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes()));
         } catch (Throwable t) {
@@ -152,7 +163,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     }
 
 
-   // @Test
+    // @Test
     public void testErrorInVMServiceDelivery() {
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
                 "<siri:Siri xmlns:siri=\"http://www.siri.org.uk/siri\">\n" +
@@ -172,7 +183,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 "  </siril:ServiceDelivery>\n" +
                 "</siri:Siri>\n";
         try {
-            SubscriptionSetup vmSubscription = getVmSubscription();
+            SubscriptionSetup vmSubscription = getVmSubscription("tst");
             subscriptionManager.addSubscription(vmSubscription.getSubscriptionId(), vmSubscription);
             handler.handleIncomingSiri(vmSubscription.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes()));
         } catch (Throwable t) {
@@ -200,7 +211,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 "  </siril:ServiceDelivery>\n" +
                 "</siri:Siri>\n";
         try {
-            SubscriptionSetup smSubscription = getSmSubscription();
+            SubscriptionSetup smSubscription = getSmSubscription("tst");
             smSubscription.setStopMonitoringRefValue("sp3");
             subscriptionManager.addSubscription(smSubscription.getSubscriptionId(), smSubscription);
             handler.handleIncomingSiri(smSubscription.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes()));
@@ -230,7 +241,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 "</siri:Siri>\n";
 
         try {
-            SubscriptionSetup fmSubscription = getFmSubscription();
+            SubscriptionSetup fmSubscription = getFmSubscription("tst");
             fmSubscription.setStopMonitoringRefValue("sp3");
             subscriptionManager.addSubscription(fmSubscription.getSubscriptionId(), fmSubscription);
             handler.handleIncomingSiri(fmSubscription.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes()));
@@ -242,11 +253,12 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
     /**
      * Test to check that file given by cityway complies with okina management rules
+     *
      * @throws JAXBException
      */
     @Test
     public void testCitywaySxCompliance() throws JAXBException {
-        SubscriptionSetup sxSubscription = getSxSubscription();
+        SubscriptionSetup sxSubscription = getSxSubscription("tst");
         subscriptionManager.addSubscription(sxSubscription.getSubscriptionId(), sxSubscription);
         ClassLoader classLoader = getClass().getClassLoader();
         File file = new File("src/test/resources/PT_EVENT_CG38_siri-sx_dynamic.xml");
@@ -264,11 +276,12 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
     /**
      * Test to check that file given by cityway complies with okina management rules
+     *
      * @throws JAXBException
      */
     @Test
     public void testCitywaySmCompliance() throws JAXBException {
-        SubscriptionSetup smSubscription = getSmSubscription();
+        SubscriptionSetup smSubscription = getSmSubscription("tst");
         smSubscription.setStopMonitoringRefValue("sp4");
         subscriptionManager.addSubscription(smSubscription.getSubscriptionId(), smSubscription);
         ClassLoader classLoader = getClass().getClassLoader();
@@ -287,7 +300,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     // @Test expiration bloquant pour les TU à cause de la gestion de cache
     public void testFmComplianceExpired() throws JAXBException {
         facilityMonitoring.clearAll();
-        SubscriptionSetup fmSubscription = getFmSubscription();
+        SubscriptionSetup fmSubscription = getFmSubscription("tst");
         subscriptionManager.addSubscription(fmSubscription.getSubscriptionId(), fmSubscription);
         ClassLoader classLoader = getClass().getClassLoader();
         File file = new File("src/test/resources/fm_example_expired_delivery.xml");
@@ -304,12 +317,13 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
     /**
      * Test to check that file given by GitHub siri complies with okina management rules
+     *
      * @throws JAXBException
      */
     //@Test
     public void testFmCompliance() throws JAXBException {
         facilityMonitoring.clearAll();
-        SubscriptionSetup fmSubscription = getFmSubscription();
+        SubscriptionSetup fmSubscription = getFmSubscription("tst");
         subscriptionManager.addSubscription(fmSubscription.getSubscriptionId(), fmSubscription);
         ClassLoader classLoader = getClass().getClassLoader();
         File file = new File("src/test/resources/fm_example_delivery.xml");
@@ -326,8 +340,8 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
     //@Test
     public void testGmCompliance() throws JAXBException {
-        genrealMessage.clearAll();
-        SubscriptionSetup gmSubscription = getGmSubscription();
+        generalMessage.clearAll();
+        SubscriptionSetup gmSubscription = getGmSubscription("tst");
         subscriptionManager.addSubscription(gmSubscription.getSubscriptionId(), gmSubscription);
         ClassLoader classLoader = getClass().getClassLoader();
         File file = new File("src/test/resources/gm_example_delivery.xml");
@@ -338,18 +352,19 @@ public class SiriHandlerTest extends SpringBootBaseTest {
             e.printStackTrace();
         }
 
-        Collection<GeneralMessage> savedGeneralMessages = genrealMessage.getAll();
+        Collection<GeneralMessage> savedGeneralMessages = generalMessage.getAll();
         assertFalse(savedGeneralMessages.isEmpty(), "Un objet a dû être ajouté");
     }
 
     /**
      * Test to check that file given by cityway complies with okina management rules
+     *
      * @throws JAXBException
      */
 //    @Test
     public void testCitywayEtCompliance() throws JAXBException {
 
-        SubscriptionSetup etSubscription = getEtSubscription();
+        SubscriptionSetup etSubscription = getEtSubscription("tst");
         subscriptionManager.addSubscription(etSubscription.getSubscriptionId(), etSubscription);
         ClassLoader classLoader = getClass().getClassLoader();
         File file = new File("src/test/resources/PT_RT_STOPTIME_STAS_siri-et_dynamic.xml");
@@ -366,11 +381,11 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
     @Test
     public void stopPointsDiscoveryTest() throws JAXBException, IOException {
-        SubscriptionSetup smSubscription1 = getSmSubscription();
+        SubscriptionSetup smSubscription1 = getSmSubscription("tst");
         smSubscription1.setStopMonitoringRefValue("sp1");
         subscriptionManager.addSubscription(smSubscription1.getSubscriptionId(), smSubscription1);
 
-        SubscriptionSetup smSubscription2 = getSmSubscription();
+        SubscriptionSetup smSubscription2 = getSmSubscription("tst");
         smSubscription2.setStopMonitoringRefValue("sp2");
         subscriptionManager.addSubscription(smSubscription2.getSubscriptionId(), smSubscription2);
 
@@ -381,10 +396,38 @@ public class SiriHandlerTest extends SpringBootBaseTest {
             Siri result = handler.handleIncomingSiri(null, new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), null, null, null, -1, null);
             assertNotNull(result.getStopPointsDelivery());
             assertNotNull(result.getStopPointsDelivery().getAnnotatedStopPointReves());
-            assertEquals(2,result.getStopPointsDelivery().getAnnotatedStopPointReves().size());
+            assertEquals(2, result.getStopPointsDelivery().getAnnotatedStopPointReves().size());
             List<String> expectedPointRef = Arrays.asList("sp1", "sp2", "sp3", "sp4");
             for (AnnotatedStopPointStructure annotatedStopPointReve : result.getStopPointsDelivery().getAnnotatedStopPointReves()) {
-                    assertTrue(expectedPointRef.contains(annotatedStopPointReve.getStopPointRef().getValue()));
+                assertTrue(expectedPointRef.contains(annotatedStopPointReve.getStopPointRef().getValue()));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+    @Test
+    public void stopPointsDiscoveryTestWithDifferentDatasetId() throws JAXBException, IOException {
+        SubscriptionSetup smSubscription1 = getSmSubscription("tst1");
+        smSubscription1.setStopMonitoringRefValue("sp1");
+        subscriptionManager.addSubscription(smSubscription1.getSubscriptionId(), smSubscription1);
+
+        SubscriptionSetup smSubscription2 = getSmSubscription("tst2");
+        smSubscription2.setStopMonitoringRefValue("sp2");
+        subscriptionManager.addSubscription(smSubscription2.getSubscriptionId(), smSubscription2);
+
+        ClassLoader classLoader = getClass().getClassLoader();
+        File file = new File("src/test/resources/discoveryTest/stop_points_discovery_test.xml");
+
+        try {
+            Siri result = handler.handleIncomingSiri(null, new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), null, null, null, -1, null);
+            assertNotNull(result.getStopPointsDelivery());
+            assertNotNull(result.getStopPointsDelivery().getAnnotatedStopPointReves());
+            assertEquals(2, result.getStopPointsDelivery().getAnnotatedStopPointReves().size());
+            List<String> expectedPointRef = Arrays.asList("sp1", "sp2", "sp3", "sp4");
+            for (AnnotatedStopPointStructure annotatedStopPointReve : result.getStopPointsDelivery().getAnnotatedStopPointReves()) {
+                assertTrue(expectedPointRef.contains(annotatedStopPointReve.getStopPointRef().getValue()));
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -396,20 +439,20 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     @Test
     public void linesDiscoveryTest() throws JAXBException, IOException {
         estimatedTimetables.clearAll();
-        SubscriptionSetup vmSubscription1 = getVmSubscription();
+        SubscriptionSetup vmSubscription1 = getVmSubscription("tst");
         vmSubscription1.setLineRefValue("line1");
         subscriptionManager.addSubscription(vmSubscription1.getSubscriptionId(), vmSubscription1);
 
-        SubscriptionSetup vmSubscription2 = getVmSubscription();
+        SubscriptionSetup vmSubscription2 = getVmSubscription("tst");
         vmSubscription2.setLineRefValue("line2");
         subscriptionManager.addSubscription(vmSubscription2.getSubscriptionId(), vmSubscription2);
 
-        SubscriptionSetup vmSubscription3 = getVmSubscription();
+        SubscriptionSetup vmSubscription3 = getVmSubscription("tst");
         vmSubscription3.setLineRefValue("line3");
         subscriptionManager.addSubscription(vmSubscription3.getSubscriptionId(), vmSubscription3);
 
-        estimatedTimetables.add(getVmSubscription().getDatasetId(), createEstimatedVehicleJourney("line3", "vehicle3", 0, 30, ZonedDateTime.now().plusHours(1), true));
-        estimatedTimetables.add(getVmSubscription().getDatasetId(), createEstimatedVehicleJourney("line4", "vehicle4", 0, 30, ZonedDateTime.now().plusHours(1), true));
+        estimatedTimetables.add(getVmSubscription("tst").getDatasetId(), createEstimatedVehicleJourney("line3", "vehicle3", 0, 30, ZonedDateTime.now().plusHours(1), true));
+        estimatedTimetables.add(getVmSubscription("tst").getDatasetId(), createEstimatedVehicleJourney("line4", "vehicle4", 0, 30, ZonedDateTime.now().plusHours(1), true));
 
         ClassLoader classLoader = getClass().getClassLoader();
         File file = new File("src/test/resources/discoveryTest/lines_discovery_test.xml");
@@ -418,7 +461,45 @@ public class SiriHandlerTest extends SpringBootBaseTest {
             Siri result = handler.handleIncomingSiri(null, new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), null, null, null, -1, null);
             assertNotNull(result.getLinesDelivery());
             assertNotNull(result.getLinesDelivery().getAnnotatedLineReves());
-            assertEquals(4,result.getLinesDelivery().getAnnotatedLineReves().size());
+            assertEquals(4, result.getLinesDelivery().getAnnotatedLineReves().size());
+            List<String> expectedLineRef = Arrays.asList("line1", "line2", "line3", "line4");
+
+            for (AnnotatedLineRef annotatedLineReve : result.getLinesDelivery().getAnnotatedLineReves()) {
+                assertTrue(expectedLineRef.contains(annotatedLineReve.getLineRef().getValue()));
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+    @Test
+    public void linesDiscoveryTestWithDifferentDatasetId() throws JAXBException, IOException {
+        estimatedTimetables.clearAll();
+        SubscriptionSetup vmSubscription1 = getVmSubscription("tst1");
+        vmSubscription1.setLineRefValue("line1");
+        subscriptionManager.addSubscription(vmSubscription1.getSubscriptionId(), vmSubscription1);
+
+        SubscriptionSetup vmSubscription2 = getVmSubscription("tst2");
+        vmSubscription2.setLineRefValue("line2");
+        subscriptionManager.addSubscription(vmSubscription2.getSubscriptionId(), vmSubscription2);
+
+        SubscriptionSetup vmSubscription3 = getVmSubscription("tst3");
+        vmSubscription3.setLineRefValue("line3");
+        subscriptionManager.addSubscription(vmSubscription3.getSubscriptionId(), vmSubscription3);
+
+        estimatedTimetables.add(getVmSubscription("tst3").getDatasetId(), createEstimatedVehicleJourney("line3", "vehicle3", 0, 30, ZonedDateTime.now().plusHours(1), true));
+        estimatedTimetables.add(getVmSubscription("tst4").getDatasetId(), createEstimatedVehicleJourney("line4", "vehicle4", 0, 30, ZonedDateTime.now().plusHours(1), true));
+
+        ClassLoader classLoader = getClass().getClassLoader();
+        File file = new File("src/test/resources/discoveryTest/lines_discovery_test.xml");
+
+        try {
+            Siri result = handler.handleIncomingSiri(null, new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), null, null, null, -1, null);
+            assertNotNull(result.getLinesDelivery());
+            assertNotNull(result.getLinesDelivery().getAnnotatedLineReves());
+            assertEquals(4, result.getLinesDelivery().getAnnotatedLineReves().size());
             List<String> expectedLineRef = Arrays.asList("line1", "line2", "line3", "line4");
 
             for (AnnotatedLineRef annotatedLineReve : result.getLinesDelivery().getAnnotatedLineReves()) {
@@ -433,12 +514,12 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
     /**
      * Test to check sx with and without validity period and start time
+     *
      * @throws JAXBException
      */
     @Test
     public void testSxValidityPeriodStartTime() throws JAXBException {
-        SubscriptionSetup sxSubscription = getSxSubscription();
-        situations.clearAll();
+        SubscriptionSetup sxSubscription = getSxSubscription("tst");
         subscriptionManager.addSubscription(sxSubscription.getSubscriptionId(), sxSubscription);
         File file = new File("src/test/resources/siri-sx_validity_period_start_time.xml");
 
@@ -450,174 +531,66 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         Collection<PtSituationElement> savedSituations = situations.getAll();
 
-        assertEquals(savedSituations.size(), 4);
+        assertEquals(4, savedSituations.size());
 
-        for(PtSituationElement savedSituation :  savedSituations) {
+        for (PtSituationElement savedSituation : savedSituations) {
             assertNotNull(savedSituation.getValidityPeriods());
             assertNotEquals(savedSituation.getValidityPeriods().size(), 0);
-            for(HalfOpenTimestampOutputRangeStructure validityPeriod : savedSituation.getValidityPeriods()){
+            for (HalfOpenTimestampOutputRangeStructure validityPeriod : savedSituation.getValidityPeriods()) {
                 assertNotNull(validityPeriod.getStartTime());
             }
         }
     }
 
-    @Test
-    public void testAltIdStop() throws JAXBException {
-        File file = new File("src/test/resources/stops_mapping.csv");
-        externalIdsService.feedCacheStopWithFile(file, "TEST");
+    public void initStopPlaceMapper() {
+        Map<String, String> stopPlaceMap;
 
-        SubscriptionSetup smSubscription = getSmSubscription();
-        smSubscription.setStopMonitoringRefValue("TEST:StopPoint:SP:12:LOC");
-        smSubscription.setDatasetId("TEST");
-        subscriptionManager.addSubscription(smSubscription.getSubscriptionId(), smSubscription);
+        stopPlaceMap = new HashMap<>();
+        stopPlaceMap.put("TEST1:StopPoint:SP:121:LOC", "MOBIITI:Quay:a");
+        stopPlaceMap.put("TEST2:StopPoint:SP:122:LOC", "MOBIITI:Quay:a");
 
+        StopPlaceUpdaterService stopPlaceService = ApplicationContextHolder.getContext().getBean(StopPlaceUpdaterService.class);
 
-        File fileInject = new File("src/test/resources/siri-sm.zip");
-        try {
-            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-sm", fileInject, fileInject.getPath(), "TEST");
-        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
-            e.printStackTrace();
-        }
+        //Manually adding custom mapping to Spring context
+        stopPlaceService.addStopPlaceMappings(stopPlaceMap);
 
-        assertFalse(stopVisits.getAll().isEmpty());
+        Set<String> stopQuays = new HashSet<>(stopPlaceMap.keySet());
+        stopPlaceService.addStopQuays(stopQuays);
 
-
-        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
-                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
-                "    <ServiceRequest>\n" +
-                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
-                "        <StopMonitoringRequest version=\"2.0\">\n" +
-                "            <MonitoringRef>30</MonitoringRef>\n" +
-                "        </StopMonitoringRequest>\n" +
-                "    </ServiceRequest>\n" +
-                "</Siri>";
-
-        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);;
-
-        Siri response = handler.handleIncomingSiri(null, xml, "TEST", SiriHandler.getIdMappingPolicy("false", "true"), -1, null);
-        assertNotNull(response);
-        assertNotNull(response.getServiceDelivery());
-        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
-        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty());
-        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
-        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
-        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
-        assertEquals(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue(), "30");
+        Map<String, List<String>> stopPlaceReverseMap = new HashMap<>();
+        List<String> originalIds = new ArrayList<>();
+        originalIds.add("TEST1:StopPoint:SP:121:LOC");
+        originalIds.add("TEST2:StopPoint:SP:122:LOC");
+        stopPlaceReverseMap.put("MOBIITI:Quay:a", originalIds);
+        stopPlaceService.addStopPlaceReverseMappings(stopPlaceReverseMap);
     }
 
 
-    @Test
-    public void testAltIdLine() throws JAXBException {
-        File file = new File("src/test/resources/lines_mapping.csv");
-        externalIdsService.feedCacheLineWithFile(file, "TEST");
-
-        SubscriptionSetup vmSubscription = getVmSubscription();
-        vmSubscription.setVehicleMonitoringRefValue("TEST:VehicleJourney::23:LOC");
-        vmSubscription.setDatasetId("TEST");
-        subscriptionManager.addSubscription(vmSubscription.getSubscriptionId(), vmSubscription);
-
-
-        File fileInject = new File("src/test/resources/siri-vm.zip");
-        try {
-            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-vm", fileInject, fileInject.getPath(), "TEST");
-        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
-            e.printStackTrace();
-        }
-
-        assertFalse(vehicleActivities.getAll().isEmpty());
-
-
-        String stringXmlLineRef12 = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
-                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
-                "    <ServiceRequest>\n" +
-                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
-                "           <VehicleMonitoringRequest version=\"2.0\">\n" +
-                "               <LineRef>12</LineRef>\n" +
-                "           </VehicleMonitoringRequest>\n" +
-                "    </ServiceRequest>\n" +
-                "</Siri>";
-
-
-        InputStream xmlLineRef12 = IOUtils.toInputStream(stringXmlLineRef12, StandardCharsets.UTF_8);;
-
-        Siri responseLineRef12 = handler.handleIncomingSiri(null, xmlLineRef12, "TEST", SiriHandler.getIdMappingPolicy("false", "true"), -1, null);
-        assertNotNull(responseLineRef12);
-        assertNotNull(responseLineRef12.getServiceDelivery());
-        assertFalse(responseLineRef12.getServiceDelivery().getVehicleMonitoringDeliveries().isEmpty());
-        assertFalse(responseLineRef12.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().isEmpty());
-        assertNotNull(responseLineRef12.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getVehicleMonitoringRef());
-        assertNotNull(responseLineRef12.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getVehicleMonitoringRef());
-        assertNotNull(responseLineRef12.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getVehicleMonitoringRef().getValue());
-        assertEquals(responseLineRef12.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getVehicleMonitoringRef().getValue(), "TEST:VehicleJourney::23:LOC");
-        assertEquals(responseLineRef12.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getMonitoredVehicleJourney().getLineRef().getValue(), "12");
-
-        String stringXmlLineRef34 = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
-                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
-                "    <ServiceRequest>\n" +
-                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
-                "           <VehicleMonitoringRequest version=\"2.0\">\n" +
-                "               <LineRef>34</LineRef>\n" +
-                "           </VehicleMonitoringRequest>\n" +
-                "    </ServiceRequest>\n" +
-                "</Siri>";
-
-
-        InputStream xmlLineRef34 = IOUtils.toInputStream(stringXmlLineRef34, StandardCharsets.UTF_8);;
-
-        Siri responseLineRef34 = handler.handleIncomingSiri(null, xmlLineRef34, "TEST", SiriHandler.getIdMappingPolicy("false", "true"), -1, null);
-        assertNotNull(responseLineRef34);
-        assertNotNull(responseLineRef34.getServiceDelivery());
-        assertFalse(responseLineRef34.getServiceDelivery().getVehicleMonitoringDeliveries().isEmpty());
-        assertFalse(responseLineRef34.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().isEmpty());
-
-        List<VehicleActivityStructure> vehicleActivityStructures = responseLineRef34.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities();
-        Comparator<VehicleActivityStructure> vehicleActivityStructureComparator
-                = Comparator.comparing(vehicleActivityStructure -> vehicleActivityStructure.getVehicleMonitoringRef().getValue());
-        vehicleActivityStructures.sort(vehicleActivityStructureComparator);
-
-        assertNotNull(vehicleActivityStructures.get(0).getVehicleMonitoringRef());
-        assertNotNull(vehicleActivityStructures.get(0).getVehicleMonitoringRef());
-        assertNotNull(vehicleActivityStructures.get(0).getVehicleMonitoringRef().getValue());
-        assertEquals(vehicleActivityStructures.get(0).getVehicleMonitoringRef().getValue(), "TEST:VehicleJourney::232:LOC");
-        assertEquals(vehicleActivityStructures.get(0).getMonitoredVehicleJourney().getLineRef().getValue(), "34");
-
-        assertNotNull(vehicleActivityStructures.get(1).getVehicleMonitoringRef());
-        assertNotNull(vehicleActivityStructures.get(1).getVehicleMonitoringRef());
-        assertNotNull(vehicleActivityStructures.get(1).getVehicleMonitoringRef().getValue());
-        assertEquals(vehicleActivityStructures.get(1).getVehicleMonitoringRef().getValue(), "TEST:VehicleJourney::233:LOC");
-        assertEquals(vehicleActivityStructures.get(1).getMonitoredVehicleJourney().getLineRef().getValue(), "34");
+    private SubscriptionSetup getSxSubscription(String datasetId) {
+        return getSubscriptionSetup(SiriDataType.SITUATION_EXCHANGE, datasetId);
     }
 
-
-
-
-
-
-
-
-
-    private SubscriptionSetup getSxSubscription() {
-        return getSubscriptionSetup(SiriDataType.SITUATION_EXCHANGE);
+    private SubscriptionSetup getVmSubscription(String datasetId) {
+        return getSubscriptionSetup(SiriDataType.VEHICLE_MONITORING, datasetId);
     }
 
-    private SubscriptionSetup getVmSubscription() {
-        return getSubscriptionSetup(SiriDataType.VEHICLE_MONITORING);
+    private SubscriptionSetup getEtSubscription(String datasetId) {
+        return getSubscriptionSetup(SiriDataType.ESTIMATED_TIMETABLE, datasetId);
     }
 
-    private SubscriptionSetup getEtSubscription() {
-        return getSubscriptionSetup(SiriDataType.ESTIMATED_TIMETABLE);
+    private SubscriptionSetup getSmSubscription(String datasetId) {
+        return getSubscriptionSetup(SiriDataType.STOP_MONITORING, datasetId);
     }
 
-    private SubscriptionSetup getSmSubscription() { return getSubscriptionSetup(SiriDataType.STOP_MONITORING);
+    private SubscriptionSetup getFmSubscription(String datasetId) {
+        return getSubscriptionSetup(SiriDataType.FACILITY_MONITORING, datasetId);
     }
 
-    private SubscriptionSetup getFmSubscription() { return getSubscriptionSetup(SiriDataType.FACILITY_MONITORING);
+    private SubscriptionSetup getGmSubscription(String datasetId) {
+        return getSubscriptionSetup(SiriDataType.GENERAL_MESSAGE, datasetId);
     }
 
-    private SubscriptionSetup getGmSubscription() { return getSubscriptionSetup(SiriDataType.GENERAL_MESSAGE);
-    }
-
-    private SubscriptionSetup getSubscriptionSetup(SiriDataType type) {
+    private SubscriptionSetup getSubscriptionSetup(SiriDataType type, String datasetId) {
         return new SubscriptionSetup(
                 type,
                 SubscriptionSetup.SubscriptionMode.SUBSCRIBE,
@@ -628,7 +601,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 new HashMap<>(),
                 "1.4",
                 "SwarcoMizar",
-                "tst",
+                datasetId,
                 SubscriptionSetup.ServiceType.SOAP,
                 new ArrayList<>(),
                 new HashMap<>(),
@@ -675,4 +648,851 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         return element;
     }
+
+    /** Stop monitoring
+     * id producteur
+     * useOriginalId true
+     * avec datasetId
+     * retour données producteurs identifiants locaux **/
+    @Test
+    public void SM_idProducer_DatasetId() throws JAXBException {
+        initStopPlaceMapper();
+        File fileInject1 = new File("src/test/resources/siri-sm-test1.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-sm", fileInject1, fileInject1.getPath(), "TEST1");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        File fileInject2 = new File("src/test/resources/siri-sm-test2.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-sm", fileInject2, fileInject2.getPath(), "TEST2");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        assertFalse(stopVisits.getAll().isEmpty());
+
+
+        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <StopMonitoringRequest version=\"2.0\">\n" +
+                "            <MonitoringRef>TEST1:StopPoint:SP:121:LOC</MonitoringRef>\n" +
+                "        </StopMonitoringRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+        ;
+
+        Siri response = handler.handleIncomingSiri(null, xml, "TEST1", SiriHandler.getIdMappingPolicy("true", "false"), -1, null);
+        assertNotNull(response);
+        assertNotNull(response.getServiceDelivery());
+        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
+        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty());
+        assertEquals(1, response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().size());
+        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
+        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
+        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
+        assertEquals("TEST1:StopPoint:SP:121:LOC", response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
+    }
+
+    /** Stop monitoring
+     * id producteur
+     * userOriginalId true
+     * sans datasetId
+     * retour rien **/
+    @Test
+    public void SM_idProducer_No_DatasetId() throws JAXBException {
+        initStopPlaceMapper();
+        File fileInject1 = new File("src/test/resources/siri-sm-test1.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-sm", fileInject1, fileInject1.getPath(), "TEST1");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        File fileInject2 = new File("src/test/resources/siri-sm-test2.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-sm", fileInject2, fileInject2.getPath(), "TEST2");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        assertFalse(stopVisits.getAll().isEmpty());
+
+
+        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <StopMonitoringRequest version=\"2.0\">\n" +
+                "            <MonitoringRef>TEST1:StopPoint:SP:121:LOC</MonitoringRef>\n" +
+                "        </StopMonitoringRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+
+        Siri response = handler.handleIncomingSiri(null, xml, null, SiriHandler.getIdMappingPolicy("true", "false"), -1, null);
+        assertNotNull(response);
+        assertNotNull(response.getServiceDelivery());
+        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
+        assertTrue(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty());
+    }
+
+    /** Stop monitoring
+     * id producteur
+     * useOriginalId false
+     * sans datasetId
+     * retour rien **/
+    @Test
+    public void SM_IdProducer_UseOriginalId_False_No_DatasetId() throws JAXBException {
+        initStopPlaceMapper();
+        File fileInject1 = new File("src/test/resources/siri-sm-test1.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-sm", fileInject1, fileInject1.getPath(), "TEST1");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        File fileInject2 = new File("src/test/resources/siri-sm-test2.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-sm", fileInject2, fileInject2.getPath(), "TEST2");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        assertFalse(stopVisits.getAll().isEmpty());
+
+
+        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <StopMonitoringRequest version=\"2.0\">\n" +
+                "            <MonitoringRef>TEST1:StopPoint:SP:121:LOC</MonitoringRef>\n" +
+                "        </StopMonitoringRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+
+        Siri response = handler.handleIncomingSiri(null, xml, null, SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        assertNotNull(response);
+        assertNotNull(response.getServiceDelivery());
+        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
+        assertTrue(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty());
+    }
+
+    /** Estimated timetable
+     * avec datasetId
+     * retour données producteurs identifiants locaux **/
+    @Test
+    public void ET_DatasetId() throws JAXBException {
+        File fileInject1 = new File("src/test/resources/siri-et-test1.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-et", fileInject1, fileInject1.getPath(), "TEST1");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        File fileInject2 = new File("src/test/resources/siri-et-test2.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-et", fileInject2, fileInject2.getPath(), "TEST2");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        assertFalse(estimatedTimetables.getAll().isEmpty());
+
+
+        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <EstimatedTimetableRequest version=\"2.0\">\n" +
+                "        </EstimatedTimetableRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+
+        Siri response = handler.handleIncomingSiri(null, xml, "TEST1", SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        assertNotNull(response);
+        assertNotNull(response.getServiceDelivery());
+        assertEquals(1, response.getServiceDelivery().getEstimatedTimetableDeliveries().size());
+        assertEquals("TEST1:Line:1", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getLineRef().getValue());
+        assertEquals("TEST1:VehicleJourney:1", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getDatedVehicleJourneyRef().getValue());
+    }
+
+    /** Estimated timetable
+     * sans datasetId
+     * retour rien **/
+    @Test
+    public void ET_No_DatasetId() throws JAXBException {
+        File fileInject1 = new File("src/test/resources/siri-et-test1.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-et", fileInject1, fileInject1.getPath(), "TEST1");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        File fileInject2 = new File("src/test/resources/siri-et-test2.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-et", fileInject2, fileInject2.getPath(), "TEST2");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        assertFalse(estimatedTimetables.getAll().isEmpty());
+
+
+        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <EstimatedTimetableRequest version=\"2.0\">\n" +
+                "        </EstimatedTimetableRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+
+        Siri response = handler.handleIncomingSiri(null, xml, null, SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        assertNotNull(response);
+        assertNotNull(response.getServiceDelivery());
+        assertFalse(response.getServiceDelivery().getEstimatedTimetableDeliveries().isEmpty());
+        assertTrue(response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().isEmpty());
+    }
+
+    /** Vehicle monitoring
+     * id producteur
+     * avec datasetId
+     * retour données producteurs identifiants locaux **/
+    @Test
+    public void VM_DatasetId() throws JAXBException {
+        File fileInject1 = new File("src/test/resources/siri-vm-test1.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-vm", fileInject1, fileInject1.getPath(), "TEST1");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        File fileInject2 = new File("src/test/resources/siri-vm-test2.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-vm", fileInject2, fileInject2.getPath(), "TEST2");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        assertFalse(vehicleActivities.getAll().isEmpty());
+
+
+        String stringXmlLineRef = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <VehicleMonitoringRequest version=\"2.0\">\n" +
+                "            <LineRef>TEST1::Line::1:LOC</LineRef>\n" +
+                "        </VehicleMonitoringRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+        InputStream xmlLineRef = IOUtils.toInputStream(stringXmlLineRef, StandardCharsets.UTF_8);
+
+        Siri responseLineRef = handler.handleIncomingSiri(null, xmlLineRef, "TEST1", SiriHandler.getIdMappingPolicy("true", "false"), -1, null);
+        assertNotNull(responseLineRef);
+        assertNotNull(responseLineRef.getServiceDelivery());
+        assertFalse(responseLineRef.getServiceDelivery().getVehicleMonitoringDeliveries().isEmpty());
+        assertEquals(1, responseLineRef.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().size());
+        assertEquals("TEST1::Line::1:LOC", responseLineRef.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getMonitoredVehicleJourney().getLineRef().getValue());
+
+
+
+//        String stringXmlVehicleRef = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+//                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+//                "    <ServiceRequest>\n" +
+//                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+//                "        <VehicleMonitoringRequest version=\"2.0\">\n" +
+//                "            <VehicleRef>TEST1:VehicleJourney::1:LOC</VehicleRef>\n" +
+//                "        </VehicleMonitoringRequest>\n" +
+//                "    </ServiceRequest>\n" +
+//                "</Siri>";
+//
+//        InputStream xmlVehicleRef = IOUtils.toInputStream(stringXmlVehicleRef, StandardCharsets.UTF_8);
+//
+//        Siri responseVehicleRef = handler.handleIncomingSiri(null, xmlVehicleRef, "TEST1", SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+//        assertNotNull(responseVehicleRef);
+//        assertNotNull(responseVehicleRef.getServiceDelivery());
+//        assertFalse(responseVehicleRef.getServiceDelivery().getVehicleMonitoringDeliveries().isEmpty());
+//        assertEquals(1, responseVehicleRef.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().size());
+//        assertEquals("TEST1:VehicleJourney::1:LOC", responseVehicleRef.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getVehicleMonitoringRef().getValue());
+    }
+
+    /** Vehicle monitoring
+     * sans datasetId
+     * retour rien **/
+    @Test
+    public void VM_No_DatasetId() throws JAXBException {
+        File fileInject1 = new File("src/test/resources/siri-vm-test1.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-vm", fileInject1, fileInject1.getPath(), "TEST1");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        File fileInject2 = new File("src/test/resources/siri-vm-test2.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-vm", fileInject2, fileInject2.getPath(), "TEST2");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        assertFalse(vehicleActivities.getAll().isEmpty());
+
+
+        String stringXmlLineRef = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <VehicleMonitoringRequest version=\"2.0\">\n" +
+                "            <LineRef>TEST1::Line::1:LOC</LineRef>\n" +
+                "        </VehicleMonitoringRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+        InputStream xmlLineRef = IOUtils.toInputStream(stringXmlLineRef, StandardCharsets.UTF_8);
+
+        Siri responseLineRef = handler.handleIncomingSiri(null, xmlLineRef, null, SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        assertNotNull(responseLineRef);
+        assertNotNull(responseLineRef.getServiceDelivery());
+        assertFalse(responseLineRef.getServiceDelivery().getVehicleMonitoringDeliveries().isEmpty());
+        assertEquals(0, responseLineRef.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().size());
+
+
+//        String stringXmlVehicleRef = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+//                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+//                "    <ServiceRequest>\n" +
+//                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+//                "        <VehicleMonitoringRequest version=\"2.0\">\n" +
+//                "            <VehicleRef>TEST1:VehicleJourney::1:LOC</VehicleRef>\n" +
+//                "        </VehicleMonitoringRequest>\n" +
+//                "    </ServiceRequest>\n" +
+//                "</Siri>";
+//
+//        InputStream xmlVehicleRef = IOUtils.toInputStream(stringXmlVehicleRef, StandardCharsets.UTF_8);
+//
+//        Siri responseVehicleRef = handler.handleIncomingSiri(null, xmlVehicleRef, null, SiriHandler.getIdMappingPolicy("true", "false"), -1, null);
+//        assertNotNull(responseVehicleRef);
+//        assertNotNull(responseVehicleRef.getServiceDelivery());
+//        assertFalse(responseVehicleRef.getServiceDelivery().getVehicleMonitoringDeliveries().isEmpty());
+//        assertEquals(0, responseVehicleRef.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().size());
+    }
+
+    /** Situation exchange
+     * avec datasetId
+     * retour données producteurs identifiants locaux **/
+    @Test
+    public void SX_DatasetId() throws JAXBException{
+        File fileInject1 = new File("src/test/resources/siri-sx-test1.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-sx", fileInject1, fileInject1.getPath(), "TEST1");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        File fileInject2 = new File("src/test/resources/siri-sx-test2.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-sx", fileInject2, fileInject2.getPath(), "TEST2");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        assertFalse(situations.getAll().isEmpty());
+
+
+        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <SituationExchangeRequest version=\"2.0\">\n" +
+                "        </SituationExchangeRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+        InputStream xmlLine = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+
+        Siri response = handler.handleIncomingSiri(null, xmlLine, "TEST1", SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        assertNotNull(response);
+        assertNotNull(response.getServiceDelivery());
+        assertEquals(1, response.getServiceDelivery().getSituationExchangeDeliveries().size());
+        assertEquals("TEST1:J1", response.getServiceDelivery().getSituationExchangeDeliveries().get(0).getSituations().getPtSituationElements().get(0).getSituationNumber().getValue());
+    }
+
+    /** Situation exchange
+     * sans datasetId
+     * retour rien **/
+    @Test
+    public void SX_No_DatasetId() throws JAXBException {
+        File fileInject1 = new File("src/test/resources/siri-sx-test1.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-sx", fileInject1, fileInject1.getPath(), "TEST1");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        File fileInject2 = new File("src/test/resources/siri-sx-test2.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-sx", fileInject2, fileInject2.getPath(), "TEST2");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        assertFalse(situations.getAll().isEmpty());
+
+
+        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <SituationExchangeRequest version=\"2.0\">\n" +
+                "        </SituationExchangeRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+
+        Siri response = handler.handleIncomingSiri(null, xml, null, SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        assertNotNull(response);
+        assertNotNull(response.getServiceDelivery());
+        assertFalse(response.getServiceDelivery().getSituationExchangeDeliveries().isEmpty());
+        assertTrue(response.getServiceDelivery().getSituationExchangeDeliveries().get(0).getSituations().getPtSituationElements().isEmpty());
+    }
+
+    /** Facility monitoring
+     * id producteur
+     * useOriginalId true
+     * avec datasetId
+     * retour données producteurs identifiants locaux **/
+//    @Test
+    public void FM_idProducer_DatasetId() throws JAXBException {
+        initStopPlaceMapper();
+        File fileInject1 = new File("src/test/resources/siri-fm-test1.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-fm", fileInject1, fileInject1.getPath(), "TEST1");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        File fileInject2 = new File("src/test/resources/siri-fm-test2.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-fm", fileInject2, fileInject2.getPath(), "TEST2");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        assertFalse(facilityMonitoring.getAll().isEmpty());
+
+
+        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <FacilityMonitoringRequest version=\"2.0\">\n" +
+                "        </FacilityMonitoringRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+        ;
+
+        Siri response = handler.handleIncomingSiri(null, xml, "TEST1", SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        assertNotNull(response);
+        assertNotNull(response.getServiceDelivery());
+        assertFalse(response.getServiceDelivery().getFacilityMonitoringDeliveries().isEmpty());
+    }
+
+    /** Facility monitoring
+     * id producteur
+     * userOriginalId true
+     * sans datasetId
+     * retour rien **/
+//    @Test
+    public void FM_idProducer_No_DatasetId() throws JAXBException {
+        initStopPlaceMapper();
+        File fileInject1 = new File("src/test/resources/siri-fm-test1.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-fm", fileInject1, fileInject1.getPath(), "TEST1");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        File fileInject2 = new File("src/test/resources/siri-fm-test2.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-fm", fileInject2, fileInject2.getPath(), "TEST2");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        assertFalse(facilityMonitoring.getAll().isEmpty());
+
+
+        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <FacilityMonitoringRequest version=\"2.0\">\n" +
+                "            <MonitoringRef>TEST1:StopPoint:SP:121:LOC</MonitoringRef>\n" +
+                "        </FacilityMonitoringRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+
+        Siri response = handler.handleIncomingSiri(null, xml, null, SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        assertNotNull(response);
+        assertNotNull(response.getServiceDelivery());
+        assertTrue(response.getServiceDelivery().getFacilityMonitoringDeliveries().isEmpty());
+    }
+
+
+    /** General message
+     * useOriginalId true
+     * avec datasetId
+     * retour données producteurs identifiants locaux **/
+//    @Test
+    public void GM_datasetId() throws UnmarshalException {
+        File fileInject1 = new File("src/test/resources/siri-gm-test1.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-gm", fileInject1, fileInject1.getPath(), "TEST1");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        File fileInject2 = new File("src/test/resources/siri-gm-test2.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-gm", fileInject2, fileInject2.getPath(), "TEST2");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        assertFalse(generalMessage.getAll().isEmpty());
+
+
+        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <GeneralMessageRequest version=\"2.0\">\n" +
+                "        </GeneralMessageRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+        InputStream xmlLine = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+
+        Siri response = handler.handleIncomingSiri(null, xmlLine, "TEST1", SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        assertNotNull(response);
+        assertNotNull(response.getServiceDelivery());
+        assertEquals(1, response.getServiceDelivery().getGeneralMessageDeliveries().size());
+    }
+
+    /** General message
+     * userOriginalId true
+     * sans datasetId
+     * retour rien **/
+//    @Test
+    public void GM_No_datasetId() throws UnmarshalException {
+        File fileInject1 = new File("src/test/resources/siri-gm-test1.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-gm", fileInject1, fileInject1.getPath(), "TEST1");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        File fileInject2 = new File("src/test/resources/siri-gm-test2.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-gm", fileInject2, fileInject2.getPath(), "TEST2");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        assertFalse(generalMessage.getAll().isEmpty());
+
+
+        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <GeneralMessageRequest version=\"2.0\">\n" +
+                "        </GeneralMessageRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+
+        Siri response = handler.handleIncomingSiri(null, xml, null, SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        assertNotNull(response);
+        assertNotNull(response.getServiceDelivery());
+        assertFalse(response.getServiceDelivery().getGeneralMessageDeliveries().isEmpty());
+        assertTrue(response.getServiceDelivery().getGeneralMessageDeliveries().get(0).getGeneralMessages().isEmpty());
+    }
+
+
+    /** Stop monitoring
+     * avec datasetId
+     * retour données du datasetId
+     **/
+    @Test
+    public void SM_idMobi_datasetId() throws JAXBException {
+        initStopPlaceMapper();
+        File fileInject1 = new File("src/test/resources/siri-sm-test1.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-sm", fileInject1, fileInject1.getPath(), "TEST1");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        File fileInject2 = new File("src/test/resources/siri-sm-test2.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-sm", fileInject2, fileInject2.getPath(), "TEST2");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        assertFalse(stopVisits.getAll().isEmpty());
+
+
+        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <StopMonitoringRequest version=\"2.0\">\n" +
+                "            <MonitoringRef>MOBIITI:Quay:a</MonitoringRef>\n" +
+                "        </StopMonitoringRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+
+        Siri response = handler.handleIncomingSiri(null, xml, "TEST1", SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        assertNotNull(response);
+        assertNotNull(response.getServiceDelivery());
+        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
+        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty());
+        assertEquals(1, response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().size());
+        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
+        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
+        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
+        assertEquals("MOBIITI:Quay:a", response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
+    }
+
+    /** Stop monitoring
+     * sans datasetId
+     * retour données de tous les producteurs
+     **/
+    @Test
+    public void SM_idMobi_No_datasetId() throws JAXBException {
+        initStopPlaceMapper();
+        File fileInject1 = new File("src/test/resources/siri-sm-test1.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-sm", fileInject1, fileInject1.getPath(), "TEST1");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        File fileInject2 = new File("src/test/resources/siri-sm-test2.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-sm", fileInject2, fileInject2.getPath(), "TEST2");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        assertFalse(stopVisits.getAll().isEmpty());
+
+
+        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <StopMonitoringRequest version=\"2.0\">\n" +
+                "            <MonitoringRef>MOBIITI:Quay:a</MonitoringRef>\n" +
+                "        </StopMonitoringRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+
+        Siri response = handler.handleIncomingSiri(null, xml, null, SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        assertNotNull(response);
+        assertNotNull(response.getServiceDelivery());
+        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
+        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty());
+        assertEquals(2, response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().size());
+        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
+        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
+        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
+        assertEquals("MOBIITI:Quay:a", response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
+    }
+
+
+
+    @Test
+    public void SM_AltID_DatasetId() throws JAXBException {
+        File file = new File("src/test/resources/stops_mapping.csv");
+        externalIdsService.feedCacheStopWithFile(file, "TEST1");
+
+        File fileInject = new File("src/test/resources/siri-sm-test1-alt.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-sm", fileInject, fileInject.getPath(), "TEST1");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        assertFalse(stopVisits.getAll().isEmpty());
+
+
+        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <StopMonitoringRequest version=\"2.0\">\n" +
+                "            <MonitoringRef>30</MonitoringRef>\n" +
+                "        </StopMonitoringRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+
+        Siri response = handler.handleIncomingSiri(null, xml, "TEST1", SiriHandler.getIdMappingPolicy("false", "true"), -1, null);
+        assertNotNull(response);
+        assertNotNull(response.getServiceDelivery());
+        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
+        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty());
+        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
+        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
+        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
+        assertEquals("30", response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
+    }
+
+    @Test
+    public void SM_AltID_No_DatasetId() throws JAXBException {
+        File file = new File("src/test/resources/stops_mapping.csv");
+        externalIdsService.feedCacheStopWithFile(file, "TEST1");
+
+        File fileInject = new File("src/test/resources/siri-sm.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-sm", fileInject, fileInject.getPath(), "TEST1");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        assertFalse(stopVisits.getAll().isEmpty());
+
+
+        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <StopMonitoringRequest version=\"2.0\">\n" +
+                "            <MonitoringRef>30</MonitoringRef>\n" +
+                "        </StopMonitoringRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+
+        Siri response = handler.handleIncomingSiri(null, xml, null, SiriHandler.getIdMappingPolicy("false", "true"), -1, null);
+        assertNotNull(response);
+        assertNotNull(response.getServiceDelivery());
+        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
+        assertTrue(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty());
+    }
+
+
+    /** Vehicle monitoring
+     * avec altId
+     * avec datasetId
+     * retour données identifiants producteurs locaux
+     **/
+    @Test
+    public void VM_AltId_DatasetId() throws JAXBException {
+        File file = new File("src/test/resources/lines_mapping.csv");
+        externalIdsService.feedCacheLineWithFile(file, "TEST");
+
+        File fileInject = new File("src/test/resources/siri-vm.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-vm", fileInject, fileInject.getPath(), "TEST");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        assertFalse(vehicleActivities.getAll().isEmpty());
+
+
+        String stringXmlLineRef12 = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "           <VehicleMonitoringRequest version=\"2.0\">\n" +
+                "               <LineRef>12</LineRef>\n" +
+                "           </VehicleMonitoringRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+
+        InputStream xmlLineRef12 = IOUtils.toInputStream(stringXmlLineRef12, StandardCharsets.UTF_8);
+        ;
+
+        Siri responseLineRef12 = handler.handleIncomingSiri(null, xmlLineRef12, "TEST", SiriHandler.getIdMappingPolicy("false", "true"), -1, null);
+        assertNotNull(responseLineRef12);
+        assertNotNull(responseLineRef12.getServiceDelivery());
+        assertFalse(responseLineRef12.getServiceDelivery().getVehicleMonitoringDeliveries().isEmpty());
+        assertFalse(responseLineRef12.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().isEmpty());
+        assertNotNull(responseLineRef12.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getVehicleMonitoringRef());
+        assertNotNull(responseLineRef12.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getVehicleMonitoringRef());
+        assertNotNull(responseLineRef12.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getVehicleMonitoringRef().getValue());
+        assertEquals("TEST:VehicleJourney::23:LOC", responseLineRef12.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getVehicleMonitoringRef().getValue());
+        assertEquals("12", responseLineRef12.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getMonitoredVehicleJourney().getLineRef().getValue());
+
+        String stringXmlLineRef34 = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "           <VehicleMonitoringRequest version=\"2.0\">\n" +
+                "               <LineRef>34</LineRef>\n" +
+                "           </VehicleMonitoringRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+
+        InputStream xmlLineRef34 = IOUtils.toInputStream(stringXmlLineRef34, StandardCharsets.UTF_8);
+        ;
+
+        Siri responseLineRef34 = handler.handleIncomingSiri(null, xmlLineRef34, "TEST", SiriHandler.getIdMappingPolicy("false", "true"), -1, null);
+        assertNotNull(responseLineRef34);
+        assertNotNull(responseLineRef34.getServiceDelivery());
+        assertFalse(responseLineRef34.getServiceDelivery().getVehicleMonitoringDeliveries().isEmpty());
+        assertFalse(responseLineRef34.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().isEmpty());
+
+        List<VehicleActivityStructure> vehicleActivityStructures = responseLineRef34.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities();
+        Comparator<VehicleActivityStructure> vehicleActivityStructureComparator
+                = Comparator.comparing(vehicleActivityStructure -> vehicleActivityStructure.getVehicleMonitoringRef().getValue());
+        vehicleActivityStructures.sort(vehicleActivityStructureComparator);
+
+        assertNotNull(vehicleActivityStructures.get(0).getVehicleMonitoringRef());
+        assertNotNull(vehicleActivityStructures.get(0).getVehicleMonitoringRef());
+        assertNotNull(vehicleActivityStructures.get(0).getVehicleMonitoringRef().getValue());
+        assertEquals("TEST:VehicleJourney::232:LOC", vehicleActivityStructures.get(0).getVehicleMonitoringRef().getValue());
+        assertEquals("34", vehicleActivityStructures.get(0).getMonitoredVehicleJourney().getLineRef().getValue());
+
+        assertNotNull(vehicleActivityStructures.get(1).getVehicleMonitoringRef());
+        assertNotNull(vehicleActivityStructures.get(1).getVehicleMonitoringRef());
+        assertNotNull(vehicleActivityStructures.get(1).getVehicleMonitoringRef().getValue());
+        assertEquals("TEST:VehicleJourney::233:LOC", vehicleActivityStructures.get(1).getVehicleMonitoringRef().getValue());
+        assertEquals("34", vehicleActivityStructures.get(1).getMonitoredVehicleJourney().getLineRef().getValue() );
+    }
+
 }

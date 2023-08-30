@@ -59,7 +59,7 @@ public class SXRequestResponseTest extends BaseHttpTest {
                 .when()
                 .contentType(ContentType.XML)
                 .body(SiriXml.toXml(siriRequest))
-                .post("anshar/services")
+                .post("anshar/services?datasetId=TTT")
                 .then()
                 .statusCode(200)
                 .rootPath("Siri.ServiceDelivery.SituationExchangeDelivery.Situations.PtSituationElement")
@@ -74,7 +74,7 @@ public class SXRequestResponseTest extends BaseHttpTest {
         //Test SIRI Lite Request
         given()
                 .when()
-                .get("anshar/rest/sx")
+                .get("anshar/rest/sx?datasetId=TTT")
                 .then()
                 .statusCode(200)
                 .contentType(ContentType.XML)

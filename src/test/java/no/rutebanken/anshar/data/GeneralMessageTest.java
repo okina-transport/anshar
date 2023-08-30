@@ -62,9 +62,9 @@ public class GeneralMessageTest extends SpringBootBaseTest {
 
         //adding gm with 1 stopRef
         generalMessages.add("test", msg);
-        assertTrue(generalMessages.getAll().size() == 1);
+        assertEquals(1, generalMessages.getAll().size());
 
-        Siri siri = generalMessages.createServiceDelivery("test", null, "name", 20, new ArrayList<>());
+        Siri siri = generalMessages.createServiceDelivery("test", "test", "name", 20, new ArrayList<>());
 
 
         Content recoveredContent = getContentFromGeneralMessage(getGeneralMessagesFromSiri(siri).get(0));
@@ -81,7 +81,7 @@ public class GeneralMessageTest extends SpringBootBaseTest {
         generalMessages.add("test", msg);
         assertTrue(generalMessages.getAll().size() == 1);
 
-        siri = generalMessages.createServiceDelivery("test", null, "name", 20, new ArrayList<>());
+        siri = generalMessages.createServiceDelivery("test", "test", "name", 20, new ArrayList<>());
 
         recoveredContent = getContentFromGeneralMessage(getGeneralMessagesFromSiri(siri).get(0));
         assertEquals(2, recoveredContent.getStopPointRefs().size());
@@ -108,7 +108,7 @@ public class GeneralMessageTest extends SpringBootBaseTest {
 
 
         infoChannelRefStructure.setValue("Perturbation");
-        siri = generalMessages.createServiceDelivery("reqRef", null, "name", 20, Arrays.asList(infoChannelRefStructure));
+        siri = generalMessages.createServiceDelivery("reqRef", "test", "name", 20, Arrays.asList(infoChannelRefStructure));
         assertEquals(1, getGeneralMessagesFromSiri(siri).size(), "Delevery should return the msg because we are asking the correct channel");
     }
 
@@ -130,7 +130,7 @@ public class GeneralMessageTest extends SpringBootBaseTest {
         assertEquals(0, getGeneralMessagesFromSiri(siri).size(), "Delevery should be empty because a  message was added to the cache with datasetId 'test' and we are asking for dataset 'wrongDataset'");
 
 
-        siri = generalMessages.createServiceDelivery("reqRef", null, "name", 20, Arrays.asList(infoChannelRefStructure));
+        siri = generalMessages.createServiceDelivery("reqRef", "test", "name", 20, Arrays.asList(infoChannelRefStructure));
         assertEquals(1, getGeneralMessagesFromSiri(siri).size(), "Delevery should return the msg because we are asking the correct datasetId");
     }
 
@@ -145,7 +145,7 @@ public class GeneralMessageTest extends SpringBootBaseTest {
         generalMessages.add("test", msg);
         assertTrue(generalMessages.getAll().size() == 1);
 
-        Siri siri = generalMessages.createServiceDelivery("test", null, "name", 20, new ArrayList<>());
+        Siri siri = generalMessages.createServiceDelivery("test", "test", "name", 20, new ArrayList<>());
 
         GeneralMessage recoveredGeneralMessage = getGeneralMessagesFromSiri(siri).get(0);
         assertEquals(recoveredGeneralMessage.getFormatRef(), "STIF-IDF");

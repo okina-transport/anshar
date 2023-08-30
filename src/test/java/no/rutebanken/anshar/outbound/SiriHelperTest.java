@@ -254,7 +254,7 @@ public class SiriHelperTest  extends SpringBootBaseTest {
         subscriptionRequest.getStopMonitoringSubscriptionRequests().add(smSubscription);
 
 
-        Map<Class, Set<String>>  filter = siriHelper.getFilter(subscriptionRequest, OutboundIdMappingPolicy.ORIGINAL_ID, "datId");
+        Map<Class, Set<String>> filter = siriHelper.getFilter(subscriptionRequest, OutboundIdMappingPolicy.ORIGINAL_ID, "datId");
 
         List<MonitoredStopVisit> vmElements = new ArrayList<>();
 

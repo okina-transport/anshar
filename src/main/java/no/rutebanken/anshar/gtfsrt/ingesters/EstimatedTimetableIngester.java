@@ -2,7 +2,7 @@ package no.rutebanken.anshar.gtfsrt.ingesters;
 
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
-import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
+import no.rutebanken.anshar.routes.siri.handlers.inbound.EstimatedTimetableInbound;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import org.apache.camel.Exchange;
@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import uk.org.siri.siri20.EstimatedVehicleJourney;
 import uk.org.siri.siri20.Siri;
 
 import javax.xml.bind.JAXBException;
@@ -17,9 +18,10 @@ import javax.xml.stream.XMLStreamException;
 import java.io.InputStream;
 import java.util.Collection;
 import java.util.List;
-import uk.org.siri.siri20.*;
 
-import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASET_ID_HEADER_NAME;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.GTFSRT_ET_PREFIX;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.URL_HEADER_NAME;
 
 @Service
 public class EstimatedTimetableIngester extends RestRouteBuilder {
@@ -30,13 +32,10 @@ public class EstimatedTimetableIngester extends RestRouteBuilder {
     AnsharConfiguration configuration;
 
     @Autowired
-    private SiriHandler handler;
-
-    @Autowired
     private SubscriptionManager subscriptionManager;
 
-
-
+    @Autowired
+    private EstimatedTimetableInbound estimatedTimetableInbound;
 
     public void processIncomingETFromGTFSRT(Exchange e) {
         InputStream xml = e.getIn().getBody(InputStream.class);
@@ -52,7 +51,7 @@ public class EstimatedTimetableIngester extends RestRouteBuilder {
             }
 
             List<EstimatedVehicleJourney> estimatedVehicleJourneys = siri.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies();
-            Collection<EstimatedVehicleJourney> ingestedEstimatedTimetables = handler.ingestEstimatedTimeTables(datasetId, estimatedVehicleJourneys);
+            Collection<EstimatedVehicleJourney> ingestedEstimatedTimetables = estimatedTimetableInbound.ingestEstimatedTimeTables(datasetId, estimatedVehicleJourneys);
 
             for (EstimatedVehicleJourney estimatedVehicleJourney : ingestedEstimatedTimetables) {
                 subscriptionManager.touchSubscription(GTFSRT_ET_PREFIX + estimatedVehicleJourney.getDatedVehicleJourneyRef().getValue(), false);

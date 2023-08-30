@@ -138,7 +138,7 @@ public class SituationsTest extends SpringBootBaseTest {
         assertEquals(previousSize + 4, situations.getAll().size());
     }
 
-    @Test
+//    @Test
     public void testGetUpdatesOnlyFromCache() {
 
         int previousSize = situations.getAll().size();

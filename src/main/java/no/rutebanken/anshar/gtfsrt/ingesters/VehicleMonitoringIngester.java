@@ -3,6 +3,7 @@ package no.rutebanken.anshar.gtfsrt.ingesters;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
+import no.rutebanken.anshar.routes.siri.handlers.inbound.VehicleMonitoringInbound;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import org.apache.camel.Exchange;
@@ -31,13 +32,10 @@ public class VehicleMonitoringIngester extends RestRouteBuilder {
     AnsharConfiguration configuration;
 
     @Autowired
-    private SiriHandler handler;
-
-    @Autowired
     private SubscriptionManager subscriptionManager;
 
-
-
+    @Autowired
+    private VehicleMonitoringInbound vehicleMonitoringInbound;
 
     public void processIncomingVMFromGTFSRT(Exchange e) {
         InputStream xml = e.getIn().getBody(InputStream.class);
@@ -53,7 +51,7 @@ public class VehicleMonitoringIngester extends RestRouteBuilder {
             }
 
             List<VehicleActivityStructure> vehicleActivities = siri.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities();
-            Collection<VehicleActivityStructure> ingestedVehicleJourneys = handler.ingestVehicleActivities(datasetId, vehicleActivities);
+            Collection<VehicleActivityStructure> ingestedVehicleJourneys = vehicleMonitoringInbound.ingestVehicleActivities(datasetId, vehicleActivities);
             for ( VehicleActivityStructure  vehicleActivity : ingestedVehicleJourneys) {
                 subscriptionManager.touchSubscription(GTFSRT_VM_PREFIX + vehicleActivity.getMonitoredVehicleJourney().getLineRef().getValue(), false);
             }

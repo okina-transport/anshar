@@ -88,7 +88,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
     private void initializeUpdateCommitter() {
         super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
 
-        enableCache(monitoredVehicles);
+//        enableCache(monitoredVehicles);
         linkEntriesTtl(monitoredVehicles, changesMap, checksumCache);
     }
 
@@ -156,6 +156,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
     public void clearAll() {
         logger.error("Deleting all data - should only be used in test!!!");
         monitoredVehicles.clear();
+        checksumCache.clear();
         cache.clear();
     }
 
@@ -225,7 +226,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
 
 
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientName, List<String> excludedDatasetIds, int maxSize) {
-        return createServiceDelivery(requestorId,datasetId,clientName,excludedDatasetIds, maxSize, null, null);
+        return createServiceDelivery(requestorId, datasetId, clientName, excludedDatasetIds, maxSize, null, null);
     }
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientName, List<String> excludedDatasetIds, int maxSize, Set<String> linerefSet, Set<String> vehicleRefSet) {
         requestorRefRepository.touchRequestorRef(requestorId, datasetId, clientName, SiriDataType.VEHICLE_MONITORING);

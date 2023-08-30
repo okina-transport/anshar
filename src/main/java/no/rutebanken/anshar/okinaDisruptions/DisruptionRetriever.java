@@ -10,6 +10,7 @@ import no.rutebanken.anshar.config.TokenService;
 import no.rutebanken.anshar.okinaDisruptions.model.Disruption;
 import no.rutebanken.anshar.okinaDisruptions.model.MillisOrLocalDateTimeDeserializer;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
+import no.rutebanken.anshar.routes.siri.handlers.inbound.SituationExchangeInbound;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
@@ -37,20 +38,16 @@ public class DisruptionRetriever {
 
     private static final int DEFAULT_HEARTBEAT_SECONDS = 300;
     private static final String PREFIX = "OKINA_SX_";
-
     private static final Logger logger = LoggerFactory.getLogger(DisruptionRetriever.class);
 
     @Autowired
     private SubscriptionManager subscriptionManager;
 
-
     @Value("${mobi.iti.disruption.url:defaultURL}")
     private String disruptionURLInSubscriptions;
 
-
     @Autowired
     private SiriHandler handler;
-
 
     @Value("${mobi.iti.disruption.api.url}")
     private String okinaDisruptionAPIUrl;
@@ -58,9 +55,10 @@ public class DisruptionRetriever {
     @Autowired
     private TokenService tokenService;
 
+    @Autowired
+    private SituationExchangeInbound situationExchangeInbound;
+
     private String ansharUserId;
-
-
 
     String disruptionURLAPI = "http://0.0.0.0:8081/Okina/REST/disruptions/allCurrentDisruptions";
 
@@ -69,11 +67,7 @@ public class DisruptionRetriever {
     }
 
     public void retrieveDisruptions() {
-
-
         logger.info("Début récupération des perturbations");
-
-
 
         try {
 
@@ -124,10 +118,10 @@ public class DisruptionRetriever {
                                                                             .collect(Collectors.toList());
                 totalDeletedSituationCount = totalDeletedSituationCount + situationsToDelete.size();
 
-                situationsToDelete.forEach(situationToDelete -> handler.removeSituation(currentDisruptionEntry.getKey(), situationToDelete));
+                situationsToDelete.forEach(situationToDelete -> situationExchangeInbound.removeSituation(currentDisruptionEntry.getKey(), situationToDelete));
                 List<String> subscriptionList = getSubscriptions(situations) ;
                 checkAndCreateSubscriptions(subscriptionList);
-                ingestedSituations.addAll(handler.ingestSituations(currentDisruptionEntry.getKey(), situations));
+                ingestedSituations.addAll(situationExchangeInbound.ingestSituations(currentDisruptionEntry.getKey(), situations));
 
             }
 
@@ -231,13 +225,7 @@ public class DisruptionRetriever {
     }
 
 
-
-
-
-
-
     private List<Disruption> convertJSONtoObjects(String jsonDisruptions) throws JsonProcessingException {
-        List<Disruption> disruptions = new ArrayList<>();
         ObjectMapper objectMapper = new ObjectMapper();
 
         JavaTimeModule javaTimeModule = new JavaTimeModule();
@@ -245,7 +233,8 @@ public class DisruptionRetriever {
         javaTimeModule.addDeserializer(LocalDateTime.class, new MillisOrLocalDateTimeDeserializer());
 
         objectMapper.registerModule(javaTimeModule);
-        return objectMapper.readValue(jsonDisruptions, new TypeReference<List<Disruption>>(){});
+        return objectMapper.readValue(jsonDisruptions, new TypeReference<>() {
+        });
 
     }
 }

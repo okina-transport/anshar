@@ -22,6 +22,8 @@ import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
+import no.rutebanken.anshar.routes.siri.handlers.outbound.DiscoveryLinesOutbound;
+import no.rutebanken.anshar.routes.siri.handlers.outbound.DiscoveryStopPointsOutbound;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
@@ -42,6 +44,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.MediaType;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -87,7 +90,10 @@ public class SiriLiteRoute extends RestRouteBuilder {
     private FacilityMonitoring facilityMonitoring;
 
     @Autowired
-    private SiriHandler handler;
+    private DiscoveryStopPointsOutbound discoveryStopPointsOutbound;
+
+    @Autowired
+    private DiscoveryLinesOutbound discoveryLinesOutbound;
 
 
     // @formatter:off
@@ -206,7 +212,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
                         mappingPolicy = OutboundIdMappingPolicy.DEFAULT;
                     }
 
-                    Siri response = handler.getDiscoveryLines(datasetId,mappingPolicy);
+                    Siri response = discoveryLinesOutbound.getDiscoveryLines(datasetId,mappingPolicy);
                     HttpServletResponse out = p.getIn().getBody(HttpServletResponse.class);
                     streamOutput(p, response, out);
                 })
@@ -229,7 +235,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
                         mappingPolicy = OutboundIdMappingPolicy.DEFAULT;
                     }
 
-                    Siri response = handler.getDiscoveryStopPoints(datasetId,mappingPolicy);
+                    Siri response = discoveryStopPointsOutbound.getDiscoveryStopPoints(datasetId, mappingPolicy);
                     HttpServletResponse out = p.getIn().getBody(HttpServletResponse.class);
                     streamOutput(p, response, out);
                 })

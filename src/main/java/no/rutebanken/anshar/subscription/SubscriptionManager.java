@@ -918,5 +918,6 @@ public class SubscriptionManager {
      */
     public void clearAllSubscriptions(){
         subscriptions.clear();
+        siriAPISubscriptions.clear();
     }
 }

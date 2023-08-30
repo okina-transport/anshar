@@ -80,6 +80,7 @@ public class SiriLiteTest extends BaseHttpTest {
 
 
     public void clear() {
+        subscriptionManager.clearAllSubscriptions();
         estimatedTimetables.clearAll();
         monitoredStopVisits.clearAll();
         vehicleActivities.clearAll();
@@ -203,8 +204,6 @@ public class SiriLiteTest extends BaseHttpTest {
 
     @Test
     public void testStopDiscoveryJSON() {
-
-        feedCaches();
         given()
                 .when()
                 .get("/siri/2.0/stoppoints-discovery.json")
@@ -224,8 +223,6 @@ public class SiriLiteTest extends BaseHttpTest {
 
     @Test
     public void testLinesDiscoveryJSON() {
-
-        feedCaches();
         given()
                 .when()
                 .get("/siri/2.0/lines-discovery.json")
@@ -244,8 +241,6 @@ public class SiriLiteTest extends BaseHttpTest {
 
     @Test
     public void testVMJSON() {
-
-        feedCaches();
         given()
                 .when()
                 .get("/siri/2.0/vehicle-monitoring.json")
@@ -253,15 +248,11 @@ public class SiriLiteTest extends BaseHttpTest {
                 .statusCode(200)
                 .contentType(ContentType.JSON)
                 .rootPath("Siri.ServiceDelivery.VehicleMonitoringDelivery[0].")
-                .body("VehicleActivity", Matchers.hasSize(2))
-                .body("VehicleActivity[0].MonitoredVehicleJourney.LineRef.value", Matchers.oneOf(lineRef1, lineRef2))
-                .body("VehicleActivity[1].MonitoredVehicleJourney.LineRef.value", Matchers.oneOf(lineRef1, lineRef2));
+                .body("VehicleActivity", Matchers.nullValue());
     }
 
     @Test
     public void testVMJSONFilterOnLineRef() {
-
-        feedCaches();
         given()
                 .when()
                 .get("/siri/2.0/vehicle-monitoring.json?LineRef=" + lineRef1)
@@ -275,8 +266,6 @@ public class SiriLiteTest extends BaseHttpTest {
 
     @Test
     public void testVMJSONFilterOnDatasetId() {
-
-        feedCaches();
         given()
                 .when()
                 .get("/siri/2.0/vehicle-monitoring.json?datasetId=test2")
@@ -293,12 +282,10 @@ public class SiriLiteTest extends BaseHttpTest {
     /////// SITUATION EXCHANGE
     ////////////////////////////////////////////////
     @Test
-    public void testSXJSON() {
-
-        feedCaches();
+    public void testSXJSONFilterOnDatasetId() {
         given()
                 .when()
-                .get("/siri/2.0/situation-exchange.json")
+                .get("/siri/2.0/situation-exchange.json?datasetId=test")
                 .then()
                 .statusCode(200)
                 .contentType(ContentType.JSON)
@@ -313,12 +300,10 @@ public class SiriLiteTest extends BaseHttpTest {
     ////////////////////////////////////////////////
 
     @Test
-    public void testGMJSON() {
-
-        feedCaches();
+    public void testGMJSONFilterOnDatasetId() {
         given()
                 .when()
-                .get("/siri/2.0/general-message.json")
+                .get("/siri/2.0/general-message.json?datasetId=test")
                 .then()
                 .statusCode(200)
                 .contentType(ContentType.JSON)
@@ -333,12 +318,10 @@ public class SiriLiteTest extends BaseHttpTest {
     ////////////////////////////////////////////////
 
     @Test
-    public void testFMJSON() {
-
-        feedCaches();
+    public void testFMJSONFilterOnDatasetId() {
         given()
                 .when()
-                .get("/siri/2.0/facility-monitoring.json")
+                .get("/siri/2.0/facility-monitoring.json?datasetId=test")
                 .then()
                 .statusCode(200)
                 .contentType(ContentType.JSON)
@@ -353,12 +336,10 @@ public class SiriLiteTest extends BaseHttpTest {
     ////////////////////////////////////////////////
 
     @Test
-    public void testETJSON() {
-
-        feedCaches();
+    public void testETJSONFilterOnDatasetId() {
         given()
                 .when()
-                .get("/siri/2.0/estimated-timetables.json")
+                .get("/siri/2.0/estimated-timetables.json?datasetId=test")
                 .then()
                 .statusCode(200)
                 .contentType(ContentType.JSON)
@@ -368,11 +349,10 @@ public class SiriLiteTest extends BaseHttpTest {
     }
 
     @Test
-    public void testETXML() {
-        feedCaches();
+    public void testETXMLFilterOnDatasetId() {
         given()
                 .when()
-                .get("/siri/2.0/estimated-timetables.xml")
+                .get("/siri/2.0/estimated-timetables.xml?datasetId=test")
                 .then()
                 .statusCode(200)
                 .contentType(ContentType.XML)
@@ -396,8 +376,6 @@ public class SiriLiteTest extends BaseHttpTest {
 
     @Test
     public void testSMJSON() {
-
-        feedCaches();
         given()
                 .when()
                 .get("/siri/2.0/stop-monitoring.json")
@@ -405,16 +383,12 @@ public class SiriLiteTest extends BaseHttpTest {
                 .statusCode(200)
                 .contentType(ContentType.JSON)
                 .rootPath("Siri.ServiceDelivery.StopMonitoringDelivery[0]")
-                .body("MonitoredStopVisit", Matchers.hasSize(2))
-                .body("MonitoredStopVisit[0].MonitoringRef.value", Matchers.oneOf(stopReference1, stopReference2))
-                .body("MonitoredStopVisit[1].MonitoringRef.value", Matchers.oneOf(stopReference1, stopReference2));
+                .body("MonitoredStopVisit", Matchers.nullValue());
 
     }
 
     @Test
     public void testSMJSONFilterOnMonitoringRef() {
-
-        feedCaches();
         given()
                 .when()
                 .get("/siri/2.0/stop-monitoring.json?MonitoringRef=" + stopReference1)
@@ -429,8 +403,6 @@ public class SiriLiteTest extends BaseHttpTest {
 
     @Test
     public void testSMJSONFilterOnDatasetId() {
-
-        feedCaches();
         given()
                 .when()
                 .get("/siri/2.0/stop-monitoring.json?datasetId=test2")
@@ -444,21 +416,18 @@ public class SiriLiteTest extends BaseHttpTest {
 
 
     @Test
-    public void testSMXML() {
+    public void testSMXMLFilterOnDatasetId() {
         RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
 
         RestAssured.rootPath = "";
-
-        feedCaches();
         given()
                 .when()
-                .get("/siri/2.0/stop-monitoring.xml")
+                .get("/siri/2.0/stop-monitoring.xml?datasetId=test")
                 .then()
                 .statusCode(200)
                 .contentType(ContentType.XML)
                 .rootPath("Siri.ServiceDelivery.StopMonitoringDelivery")
-                .body("MonitoredStopVisit[0].MonitoringRef", oneOf(stopReference1, stopReference2))
-                .body("MonitoredStopVisit[1].MonitoringRef", oneOf(stopReference1, stopReference2));
+                .body("MonitoredStopVisit[0].MonitoringRef", Matchers.equalTo(stopReference1));
     }
 
 

@@ -118,7 +118,7 @@ public class VMRequestResponseTest extends BaseHttpTest {
         //Test SIRI Lite Request
         given()
                 .when()
-                .get("anshar/rest/vm")
+                .get("anshar/rest/vm?datasetId=TTT")
                 .then()
                 .statusCode(200)
                 .contentType(ContentType.XML)

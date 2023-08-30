@@ -4,6 +4,7 @@ import com.hazelcast.map.IMap;
 import com.hazelcast.query.Predicate;
 import net.sf.saxon.trans.SymbolicName;
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -19,6 +20,7 @@ import uk.org.ifopt.siri13.StopPlaceRef;
 import uk.org.ifopt.siri20.StopPlaceComponentRefStructure;
 import uk.org.siri.siri20.*;
 
+import javax.annotation.PostConstruct;
 import javax.validation.constraints.NotNull;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -53,9 +55,17 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
     @Autowired
     private SiriObjectFactory siriObjectFactory;
 
+    @Autowired
+    ExtendedHazelcastService hazelcastService;
+
 
     protected FacilityMonitoring() {
         super(SiriDataType.FACILITY_MONITORING);
+    }
+
+    @PostConstruct
+    private void initializeUpdateCommitter() {
+        super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
     }
 
 
@@ -151,7 +161,7 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
                     if(expiration > 0){
                         facilityMonitoring.set(key, fmCondition, expiration, TimeUnit.MILLISECONDS);
                         addedData.add(fmCondition);
-                    }else{
+                    } else{
                         outDatedCounter.increment();
                     }
                 });
@@ -172,7 +182,7 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
     @Override
     public FacilityConditionStructure add(String datasetId, FacilityConditionStructure facilityCondition) {
         Collection<FacilityConditionStructure> added = addAll(datasetId, Arrays.asList(facilityCondition));
-        return added.size() > 0 ? added.iterator().next() : null;
+        return !added.isEmpty() ? added.iterator().next() : null;
     }
 
     @Override

@@ -41,7 +41,7 @@ public class FMRequestResponseTest extends BaseHttpTest {
                 .when()
                 .contentType(ContentType.XML)
                 .body(SiriXml.toXml(siriRequest))
-                .post("anshar/services")
+                .post("anshar/services?datasetId=TTT")
                 .then()
                 .statusCode(200)
                 .rootPath("Siri.ServiceDelivery.FacilityMonitoringDelivery.FacilityCondition.Facility")
@@ -56,7 +56,7 @@ public class FMRequestResponseTest extends BaseHttpTest {
         //Test SIRI Lite Request
         given()
                 .when()
-                .get("anshar/rest/fm")
+                .get("anshar/rest/fm?datasetId=TTT")
                 .then()
                 .statusCode(200)
                 .contentType(ContentType.XML)

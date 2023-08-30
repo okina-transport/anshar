@@ -24,6 +24,7 @@ import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.util.StopMonitoringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.quartz.utils.counter.Counter;
 import org.quartz.utils.counter.CounterImpl;
 import org.slf4j.Logger;
@@ -159,10 +160,15 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         return createServiceDelivery(requestorRef, datasetId, clientTrackingName, null, maxSize, -1, searchedStopIds);
     }
 
-    // TODO MHI : copié collé, à revoir
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientTrackingName, List<String> excludedDatasetIds, int maxSize, long previewInterval, Set<String> searchedStopIds) {
 
-        requestorRefRepository.touchRequestorRef(requestorId, datasetId, clientTrackingName, SiriDataType.STOP_MONITORING);
+        if(StringUtils.isNotEmpty(datasetId)){
+            requestorRefRepository.touchRequestorRef(requestorId, datasetId, clientTrackingName, SiriDataType.STOP_MONITORING);
+        }
+        else{
+            requestorRefRepository.touchRequestorRef(requestorId, null, clientTrackingName, SiriDataType.STOP_MONITORING);
+        }
+
 
         int trackingPeriodMinutes = configuration.getTrackingPeriodMinutes();
 
@@ -175,7 +181,14 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         }
 
         // Filter by (datasetId and/or searchedStopIds) OR (excludedDatasetIds and/or searchedStopIds)
-        Set<SiriObjectStorageKey> requestedIds = generateIdSet(requestorId, datasetId, searchedStopIds, excludedDatasetIds);
+        Set<SiriObjectStorageKey> requestedIds = new HashSet<>();
+        if(StringUtils.isNotEmpty(datasetId)){
+            requestedIds.addAll(generateIdSet(datasetId, searchedStopIds, excludedDatasetIds));
+        }
+        else{
+            requestedIds.addAll(generateIdSet(null, searchedStopIds, excludedDatasetIds));
+        }
+
 
         final ZonedDateTime previewExpiry = ZonedDateTime.now().plusSeconds(previewInterval / 1000);
 
@@ -259,13 +272,12 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     /**
      * Generates a set of keys that matches with user's request
      *
-     * @param requestorId        user id
      * @param datasetId          dataset id
      * @param searchedStopRefs   stop place ids filters
      * @param excludedDatasetIds dataset ids excluded
      * @return a set of keys matching with filters
      */
-    private Set<SiriObjectStorageKey> generateIdSet(String requestorId, String datasetId, Set<String> searchedStopRefs, List<String> excludedDatasetIds) {
+    private Set<SiriObjectStorageKey> generateIdSet(String datasetId, Set<String> searchedStopRefs, List<String> excludedDatasetIds) {
         // Get all relevant ids
         Set<SiriObjectStorageKey> idSet = new HashSet<>();
 
@@ -274,11 +286,6 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         return idSet;
     }
-
-
-//    private Predicate<SiriObjectStorageKey, MonitoredStopVisit> getpredicate(Set<String> searchedStopRefs, String datasetId, List<String> excludedDatasetIds){
-//        return entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, searchedStopRefs, datasetId, excludedDatasetIds);
-//    }
 
 
     @Override
@@ -551,5 +558,9 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
             results.put(datasetId, stopSet.size());
         }
         return results;
+    }
+
+    public Set<String> getAllDatasetIds(){
+        return monitoredStopVisits.keySet().stream().map(SiriObjectStorageKey::getCodespaceId).collect(Collectors.toSet());
     }
 }

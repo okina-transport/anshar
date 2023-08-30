@@ -34,3 +34,15 @@ anshar:
       inputSuffixToRemove:
       outputPrefixToAdd:
       outputSuffixToAdd:
+    - datasetId: TEST1
+      objectType: STOP
+      inputPrefixToRemove:
+      inputSuffixToRemove:
+      outputPrefixToAdd:
+      outputSuffixToAdd:
+    - datasetId: TEST1
+      objectType: LINE
+      inputPrefixToRemove:
+      inputSuffixToRemove:
+      outputPrefixToAdd:
+      outputSuffixToAdd:

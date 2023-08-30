@@ -59,7 +59,7 @@ public class ETRequestResponseTest extends BaseHttpTest {
                 .when()
                 .contentType(ContentType.XML)
                 .body(SiriXml.toXml(siriRequest))
-                .post("anshar/services")
+                .post("anshar/services?datasetId=TTT")
                 .then()
                 .statusCode(200)
                 .rootPath("Siri.ServiceDelivery.EstimatedTimetableDelivery.EstimatedJourneyVersionFrame.EstimatedVehicleJourney")
@@ -104,7 +104,7 @@ public class ETRequestResponseTest extends BaseHttpTest {
         //Test SIRI Lite Request
         given()
                 .when()
-                .get("anshar/rest/et")
+                .get("anshar/rest/et?datasetId=TTT")
                 .then()
                 .statusCode(200)
                 .contentType(ContentType.XML)

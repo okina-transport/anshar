@@ -84,28 +84,31 @@ public class SiriObjectStorageKeyUtil {
             return false;
         }
 
-        if (excludedDatasetIds != null && excludedDatasetIds.size() > 0 && excludedDatasetIds.contains(key.getCodespaceId())) {
+        if (excludedDatasetIds != null && !excludedDatasetIds.isEmpty() && excludedDatasetIds.contains(key.getCodespaceId())) {
             return false;
         }
 
-        if (linerefSet != null && linerefSet.size() > 0 && !linerefSet.contains(key.getLineRef())) {
+        if (linerefSet != null && !linerefSet.isEmpty() && !linerefSet.contains(key.getLineRef())) {
             return false;
         }
 
-        if (vehicleRefSet != null && vehicleRefSet.size() > 0 && !vehicleRefSet.contains(key.getKey())) {
+        if (vehicleRefSet != null && !vehicleRefSet.isEmpty() && !vehicleRefSet.contains(key.getKey())) {
             return false;
         }
 
-        if (facilityRefSet != null && facilityRefSet.size() > 0 && !facilityRefSet.contains(key.getFacilityRef())) {
+        if (facilityRefSet != null && !facilityRefSet.isEmpty() && !facilityRefSet.contains(key.getFacilityRef())) {
             return false;
         }
 
-        if (stopRefSet != null && stopRefSet.size() > 0 && !stopRefSet.contains(key.getStopRef())) {
+        if (stopRefSet != null && !stopRefSet.isEmpty() && !stopRefSet.contains(key.getStopRef())) {
             return false;
         }
 
+        if (types != null && !types.isEmpty() && !types.contains(key.getType())) {
+            return false;
+        }
 
-        if (types != null && types.size() > 0 && !types.contains(key.getType())) {
+        if(datasetId == null && (stopRefSet == null || stopRefSet.isEmpty()) && (excludedDatasetIds == null || excludedDatasetIds.isEmpty())){
             return false;
         }
 
