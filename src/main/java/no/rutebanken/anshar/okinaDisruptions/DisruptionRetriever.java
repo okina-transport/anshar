@@ -6,7 +6,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.micrometer.core.instrument.util.StringUtils;
-import no.rutebanken.anshar.config.TokenService;
 import no.rutebanken.anshar.okinaDisruptions.model.Disruption;
 import no.rutebanken.anshar.okinaDisruptions.model.MillisOrLocalDateTimeDeserializer;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
@@ -18,20 +17,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 import uk.org.siri.siri20.PtSituationElement;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 
+@Component
 public class DisruptionRetriever {
 
 
@@ -43,26 +41,17 @@ public class DisruptionRetriever {
     @Autowired
     private SubscriptionManager subscriptionManager;
 
+    @Autowired
+    private DisruptionService disruptionService;
+
 
     @Value("${mobi.iti.disruption.url:defaultURL}")
-    private String disruptionURLInSubscriptions;
-
-
-    @Autowired
-    private SiriHandler handler;
-
-
-    @Value("${mobi.iti.disruption.api.url}")
-    private String okinaDisruptionAPIUrl;
-
-    @Autowired
-    private TokenService tokenService;
+    String disruptionURLInSubscriptions;
 
     private String ansharUserId;
 
-
-
-    String disruptionURLAPI = "http://0.0.0.0:8081/Okina/REST/disruptions/allCurrentDisruptions";
+    @Autowired
+    private SiriHandler handler;
 
     public DisruptionRetriever() {
         ansharUserId = "anshar-" + System.currentTimeMillis();
@@ -76,16 +65,7 @@ public class DisruptionRetriever {
 
 
         try {
-
-            URL url = new URL(okinaDisruptionAPIUrl+"?requestorId="+ansharUserId);
-            HttpURLConnection connection = null;
-            connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("GET");
-            connection.setRequestProperty("Content-type", "application/json");
-            connection.setDoOutput(true);
-            connection.setRequestProperty("Authorization", "Bearer " + tokenService.getToken());
-            InputStream inputStream = connection.getInputStream();
-            String disruptionsString = new BufferedReader( new InputStreamReader(inputStream, StandardCharsets.UTF_8)).lines() .collect(Collectors.joining("\n"));
+            String disruptionsString = disruptionService.getAllDisrutionsFromOkinaDB(ansharUserId);
 
             if (StringUtils.isEmpty(disruptionsString)){
                 logger.info("Pas de nouvelle perturbation");
@@ -101,6 +81,7 @@ public class DisruptionRetriever {
 
             List<Disruption> disruptionsToIngest = disruptions.stream()
                                                             .filter(disruption -> disruption.getDeleteDateTime() == null)
+                                                            .filter(disruption -> disruption.getDiffusion() != null && disruption.getDiffusion().equals("DIFFUSED"))
                                                             .collect(Collectors.toList());
 
             Map<String, List<Disruption>> disruptionsByDataset = buildDisruptionMap(disruptionsToIngest);
@@ -229,12 +210,6 @@ public class DisruptionRetriever {
 
         return setup;
     }
-
-
-
-
-
-
 
     private List<Disruption> convertJSONtoObjects(String jsonDisruptions) throws JsonProcessingException {
         List<Disruption> disruptions = new ArrayList<>();
