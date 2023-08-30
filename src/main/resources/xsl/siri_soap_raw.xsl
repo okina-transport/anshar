@@ -563,8 +563,8 @@
                 <xsl:element name="Siri" namespace="http://www.siri.org.uk/siri">
                     <xsl:element name="StopPointsDelivery" namespace="http://www.siri.org.uk/siri">
 
-                            <xsl:copy-of select="Answer/siril:AnnotatedStopPointRef" copy-namespaces="no">
-                            </xsl:copy-of>
+                        <xsl:copy-of select="Answer/siril:AnnotatedStopPointRef" copy-namespaces="no">
+                        </xsl:copy-of>
 
                     </xsl:element>
                 </xsl:element>
@@ -631,6 +631,34 @@
 
                                 <xsl:for-each select="siril:StopMonitoringRequest">
                                     <xsl:element name="StopMonitoringRequest" namespace="http://www.siri.org.uk/siri">
+                                        <xsl:copy-of select="*" copy-namespaces="no"/>
+                                    </xsl:element>
+                                </xsl:for-each>
+
+                            </xsl:element>
+
+                        </xsl:for-each>
+
+
+                        <xsl:for-each select="Request/siril:VehicleMonitoringSubscriptionRequest">
+                            <xsl:element name="VehicleMonitoringSubscriptionRequest"
+                                         namespace="http://www.siri.org.uk/siri">
+
+                                <xsl:for-each select="siril:SubscriptionIdentifier">
+                                    <xsl:element name="{local-name()}" namespace="http://www.siri.org.uk/siri">
+                                        <xsl:apply-templates select="* | node()"/>
+                                    </xsl:element>
+                                </xsl:for-each>
+
+                                <xsl:for-each select="siril:InitialTerminationTime">
+                                    <xsl:element name="{local-name()}" namespace="http://www.siri.org.uk/siri">
+                                        <xsl:apply-templates select="* | node()"/>
+                                    </xsl:element>
+                                </xsl:for-each>
+
+                                <xsl:for-each select="siril:VehicleMonitoringRequest">
+                                    <xsl:element name="VehicleMonitoringRequest"
+                                                 namespace="http://www.siri.org.uk/siri">
                                         <xsl:copy-of select="*" copy-namespaces="no"/>
                                     </xsl:element>
                                 </xsl:for-each>
