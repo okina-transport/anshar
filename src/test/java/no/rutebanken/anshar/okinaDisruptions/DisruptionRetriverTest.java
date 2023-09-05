@@ -47,7 +47,6 @@ public class DisruptionRetriverTest  extends SpringBootBaseTest {
     public void init() throws IOException {
         situations.clearAll();
         MockitoAnnotations.initMocks(this);
-        this.disruptionRetriever.disruptionURLInSubscriptions = "http://0.0.0.0:8081/Okina/REST/disruptions/allCurrentDisruptions";
     }
 
     @Test
