@@ -65,7 +65,7 @@
     <xsl:template match="*"/>
 
     <xsl:template
-            match="*:NotifyVehicleMonitoring | *:NotifySituationExchange | *:NotifyEstimatedTimetable | *:NotifyStopMonitoring | *:NotifyHeartbeat | *:GetVehicleMonitoringResponse | *:GetSituationExchangeResponse | *:GetStopMonitoringResponse | *:GetEstimatedTimetable | *:GetEstimatedTimetableResponse | *:SubscribeResponse | *:DeleteSubscriptionResponse | *:HeartbeatNotification | *:SituationExchangeAnswer | *:VehicleMonitoringAnswer | *:CheckStatusResponse | *:DataSupplyResponse | *:GetStopMonitoring | *:GetVehicleMonitoring | *:StopPointsDiscovery | *:LinesDiscovery | *:GetSituationExchange | *:GetGeneralMessage | *:GetGeneralMessageResponse  | *:GetFacilityMonitoring | *:GetFacilityMonitoringResponse  | *:Subscribe | *:CheckStatus |*:StopPointsDiscoveryResponse | *:LinesDiscoveryResponse"> <!-- TODO add all conseptual types of requests -->
+            match="*:NotifyVehicleMonitoring | *:NotifySituationExchange | *:NotifyEstimatedTimetable | *:NotifyStopMonitoring | *:NotifyHeartbeat | *:GetVehicleMonitoringResponse | *:GetSituationExchangeResponse | *:GetStopMonitoringResponse | *:GetEstimatedTimetable | *:GetEstimatedTimetableResponse | *:SubscribeResponse | *:DeleteSubscriptionResponse | *:HeartbeatNotification | *:SituationExchangeAnswer | *:VehicleMonitoringAnswer | *:CheckStatusResponse | *:DataSupplyResponse | *:GetStopMonitoring | *:GetVehicleMonitoring | *:StopPointsDiscovery | *:LinesDiscovery | *:GetSituationExchange | *:GetGeneralMessage | *:GetGeneralMessageResponse  | *:GetFacilityMonitoring | *:GetFacilityMonitoringResponse  | *:Subscribe | *:DeleteSubscription | *:CheckStatus |*:StopPointsDiscoveryResponse | *:LinesDiscoveryResponse"> <!-- TODO add all conseptual types of requests -->
 
         <xsl:choose>
             <xsl:when test="local-name()='SubscribeResponse'">
@@ -563,8 +563,8 @@
                 <xsl:element name="Siri" namespace="http://www.siri.org.uk/siri">
                     <xsl:element name="StopPointsDelivery" namespace="http://www.siri.org.uk/siri">
 
-                            <xsl:copy-of select="Answer/siril:AnnotatedStopPointRef" copy-namespaces="no">
-                            </xsl:copy-of>
+                        <xsl:copy-of select="Answer/siril:AnnotatedStopPointRef" copy-namespaces="no">
+                        </xsl:copy-of>
 
                     </xsl:element>
                 </xsl:element>
@@ -576,6 +576,40 @@
 
                         <xsl:copy-of select="Answer/siril:AnnotatedLineRef" copy-namespaces="no">
                         </xsl:copy-of>
+
+                    </xsl:element>
+                </xsl:element>
+            </xsl:when>
+
+
+            <xsl:when test="local-name()='DeleteSubscription'">
+                <xsl:element name="Siri" namespace="http://www.siri.org.uk/siri">
+                    <xsl:element name="TerminateSubscriptionRequest" namespace="http://www.siri.org.uk/siri">
+                        <xsl:for-each select="DeleteSubscriptionInfo/siril:RequestTimestamp">
+                            <xsl:element name="siril:{local-name()}">
+                                <xsl:apply-templates select="* | node()"/>
+                            </xsl:element>
+                        </xsl:for-each>
+
+
+                        <xsl:for-each select="DeleteSubscriptionInfo/siril:RequestorRef">
+                            <xsl:element name="siril:{local-name()}">
+                                <xsl:apply-templates select="* | node()"/>
+                            </xsl:element>
+                        </xsl:for-each>
+
+                        <xsl:for-each select="Request/siril:All">
+                            <xsl:element name="siril:{local-name()}">
+                                <xsl:apply-templates select="* | node()"/>
+                            </xsl:element>
+                        </xsl:for-each>
+
+
+                        <xsl:for-each select="Request/siril:SubscriptionRef">
+                            <xsl:element name="siril:{local-name()}">
+                                <xsl:apply-templates select="* | node()"/>
+                            </xsl:element>
+                        </xsl:for-each>
 
                     </xsl:element>
                 </xsl:element>
@@ -631,6 +665,34 @@
 
                                 <xsl:for-each select="siril:StopMonitoringRequest">
                                     <xsl:element name="StopMonitoringRequest" namespace="http://www.siri.org.uk/siri">
+                                        <xsl:copy-of select="*" copy-namespaces="no"/>
+                                    </xsl:element>
+                                </xsl:for-each>
+
+                            </xsl:element>
+
+                        </xsl:for-each>
+
+
+                        <xsl:for-each select="Request/siril:VehicleMonitoringSubscriptionRequest">
+                            <xsl:element name="VehicleMonitoringSubscriptionRequest"
+                                         namespace="http://www.siri.org.uk/siri">
+
+                                <xsl:for-each select="siril:SubscriptionIdentifier">
+                                    <xsl:element name="{local-name()}" namespace="http://www.siri.org.uk/siri">
+                                        <xsl:apply-templates select="* | node()"/>
+                                    </xsl:element>
+                                </xsl:for-each>
+
+                                <xsl:for-each select="siril:InitialTerminationTime">
+                                    <xsl:element name="{local-name()}" namespace="http://www.siri.org.uk/siri">
+                                        <xsl:apply-templates select="* | node()"/>
+                                    </xsl:element>
+                                </xsl:for-each>
+
+                                <xsl:for-each select="siril:VehicleMonitoringRequest">
+                                    <xsl:element name="VehicleMonitoringRequest"
+                                                 namespace="http://www.siri.org.uk/siri">
                                         <xsl:copy-of select="*" copy-namespaces="no"/>
                                     </xsl:element>
                                 </xsl:for-each>

@@ -392,7 +392,10 @@ public class SiriHandler {
                 //Ask for general message cancellations at the same time
                 Siri cancellationResponses = generalMessageCancellations.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, requestedChannels);
                 // and add cancellations to the general message response
-                serviceResponse.getServiceDelivery().getGeneralMessageDeliveries().addAll(cancellationResponses.getServiceDelivery().getGeneralMessageDeliveries());
+
+                if (cancellationResponses.getServiceDelivery().getGeneralMessageDeliveries() != null && !cancellationResponses.getServiceDelivery().getGeneralMessageDeliveries().get(0).getGeneralMessageCancellations().isEmpty()) {
+                    serviceResponse.getServiceDelivery().getGeneralMessageDeliveries().addAll(cancellationResponses.getServiceDelivery().getGeneralMessageDeliveries());
+                }
 
 
                 GeneralMessageHelper.applyTransformationsInContent(serviceResponse, valueAdapters, idMap);
