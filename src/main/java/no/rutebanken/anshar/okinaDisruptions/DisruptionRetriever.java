@@ -67,58 +67,7 @@ public class DisruptionRetriever {
         try {
             String disruptionsString = disruptionService.getAllDisrutionsFromOkinaDB(ansharUserId);
 
-            if (StringUtils.isEmpty(disruptionsString)){
-                logger.info("Pas de nouvelle perturbation");
-                return;
-            }
-
-            List<Disruption> disruptions = convertJSONtoObjects(disruptionsString);
-
-
-            List<Disruption> disruptionsToDelete = disruptions.stream()
-                                                              .filter(disruption -> disruption.getDeleteDateTime() != null)
-                                                               .collect(Collectors.toList());
-
-            List<Disruption> disruptionsToIngest = disruptions.stream()
-                                                            .filter(disruption -> disruption.getDeleteDateTime() == null)
-                                                            .filter(disruption -> disruption.getDiffusion() != null && disruption.getDiffusion().equals("DIFFUSED"))
-                                                            .collect(Collectors.toList());
-
-            Map<String, List<Disruption>> disruptionsByDataset = buildDisruptionMap(disruptionsToIngest);
-
-
-            List<PtSituationElement> ingestedSituations = new ArrayList<>();
-
-            int totalSituationCount = 0;
-            int totalDeletedSituationCount = 0;
-            for (Map.Entry<String, List<Disruption>> currentDisruptionEntry : disruptionsByDataset.entrySet()) {
-
-
-                List<PtSituationElement> situations = currentDisruptionEntry.getValue().stream()
-                                                            .map(SituationExchangeGenerator::createFromDisruption)
-                                                            .collect(Collectors.toList());
-
-                totalSituationCount = totalSituationCount + situations.size();
-
-                List<PtSituationElement> situationsToDelete = disruptionsToDelete.stream()
-                                                                            .map(SituationExchangeGenerator::createFromDisruption)
-                                                                            .collect(Collectors.toList());
-                totalDeletedSituationCount = totalDeletedSituationCount + situationsToDelete.size();
-
-                situationsToDelete.forEach(situationToDelete -> handler.removeSituation(currentDisruptionEntry.getKey(), situationToDelete));
-                List<String> subscriptionList = getSubscriptions(situations) ;
-                checkAndCreateSubscriptions(subscriptionList);
-                ingestedSituations.addAll(handler.ingestSituations(currentDisruptionEntry.getKey(), situations));
-
-            }
-
-
-            for (PtSituationElement situation : ingestedSituations) {
-                subscriptionManager.touchSubscription(PREFIX + situation.getSituationNumber());
-            }
-
-            logger.info("Ingested alerts from Okina disruption service {} on {}. Deleted : {} ", ingestedSituations.size(), totalSituationCount, totalDeletedSituationCount);
-
+            ingestDisruption(disruptionsString);
 
         } catch (IOException e) {
             logger.error("Error while retrieving disruptions");
@@ -126,6 +75,62 @@ public class DisruptionRetriever {
 
         }
 
+
+    }
+
+    void ingestDisruption(String disruptionsString) throws JsonProcessingException {
+
+        if (StringUtils.isEmpty(disruptionsString)){
+            logger.info("Pas de nouvelle perturbation");
+            return;
+        }
+
+        List<Disruption> disruptions = convertJSONtoObjects(disruptionsString);
+
+
+        List<Disruption> disruptionsToDelete = disruptions.stream()
+                .filter(disruption -> disruption.getDeleteDateTime() != null)
+                .collect(Collectors.toList());
+
+        List<Disruption> disruptionsToIngest = disruptions.stream()
+                .filter(disruption -> disruption.getDeleteDateTime() == null)
+                .filter(disruption -> disruption.getDiffusion() != null && disruption.getDiffusion().equals("DIFFUSED"))
+                .collect(Collectors.toList());
+
+        Map<String, List<Disruption>> disruptionsByDataset = buildDisruptionMap(disruptionsToIngest);
+
+
+        List<PtSituationElement> ingestedSituations = new ArrayList<>();
+
+        int totalSituationCount = 0;
+        int totalDeletedSituationCount = 0;
+        for (Map.Entry<String, List<Disruption>> currentDisruptionEntry : disruptionsByDataset.entrySet()) {
+
+
+            List<PtSituationElement> situations = currentDisruptionEntry.getValue().stream()
+                    .map(SituationExchangeGenerator::createFromDisruption)
+                    .collect(Collectors.toList());
+
+            totalSituationCount = totalSituationCount + situations.size();
+
+            List<PtSituationElement> situationsToDelete = disruptionsToDelete.stream()
+                    .map(SituationExchangeGenerator::createFromDisruption)
+                    .collect(Collectors.toList());
+            totalDeletedSituationCount = totalDeletedSituationCount + situationsToDelete.size();
+
+            situationsToDelete.forEach(situationToDelete -> handler.removeSituation(currentDisruptionEntry.getKey(), situationToDelete));
+            List<String> subscriptionList = getSubscriptions(situations) ;
+            checkAndCreateSubscriptions(subscriptionList);
+            ingestedSituations.addAll(handler.ingestSituations(currentDisruptionEntry.getKey(), situations));
+
+        }
+
+
+        for (PtSituationElement situation : ingestedSituations) {
+            subscriptionManager.touchSubscription(PREFIX + situation.getSituationNumber());
+        }
+
+        logger.info("Ingested alerts from Okina disruption service {} on {}. Deleted : {} ", ingestedSituations.size(), totalSituationCount, totalDeletedSituationCount);
 
     }
 

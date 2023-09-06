@@ -31,7 +31,7 @@ public class DisruptionRetriverTest  extends SpringBootBaseTest {
     @Autowired
     DisruptionRetriever disruptionRetriever;
 
-    @MockBean
+    @Autowired
     private DisruptionService disruptionService;
 
     @Autowired
@@ -46,18 +46,13 @@ public class DisruptionRetriverTest  extends SpringBootBaseTest {
     @BeforeEach
     public void init() throws IOException {
         situations.clearAll();
-        MockitoAnnotations.initMocks(this);
     }
 
     @Test
     public void testDiffusedDisruption() throws IOException {
         String diffused = Files.readString(Path.of("src/test/resources/disruption_diffused.json"), StandardCharsets.UTF_8);
-        Mockito.when(disruptionService.getAllDisrutionsFromOkinaDB(Mockito.anyString())).thenReturn(diffused);
-        String disruptions = disruptionService.getAllDisrutionsFromOkinaDB("my-anshar-user-id");
 
-        assertThat(disruptions).isEqualTo(diffused);
-
-        disruptionRetriever.retrieveDisruptions();
+        disruptionRetriever.ingestDisruption(diffused);
 
         assertThat(situations.getAll().size()).isEqualTo(1);
     }
@@ -65,12 +60,8 @@ public class DisruptionRetriverTest  extends SpringBootBaseTest {
     @Test
     public void testDiffusingDisruption() throws IOException {
         String diffusing = Files.readString(Path.of("src/test/resources/disruption_diffusing.json"), StandardCharsets.UTF_8);
-        Mockito.when(disruptionService.getAllDisrutionsFromOkinaDB(Mockito.anyString())).thenReturn(diffusing);
-        String disruptions = disruptionService.getAllDisrutionsFromOkinaDB("my-anshar-user-id");
 
-        assertThat(disruptions).isEqualTo(diffusing);
-
-        disruptionRetriever.retrieveDisruptions();
+        disruptionRetriever.ingestDisruption(diffusing);
 
         assertThat(situations.getAll().size()).isEqualTo(0);
     }
@@ -78,12 +69,8 @@ public class DisruptionRetriverTest  extends SpringBootBaseTest {
     @Test
     public void testEmptyDisruption() throws IOException {
         String emptyJson = "";
-        Mockito.when(disruptionService.getAllDisrutionsFromOkinaDB(Mockito.anyString())).thenReturn(emptyJson);
-        String disruptions = disruptionService.getAllDisrutionsFromOkinaDB("my-anshar-user-id");
 
-        assertThat(disruptions).isEqualTo(emptyJson);
-
-        disruptionRetriever.retrieveDisruptions();
+        disruptionRetriever.ingestDisruption(emptyJson);
 
         assertThat(situations.getAll().size()).isEqualTo(0);
     }
