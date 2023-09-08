@@ -30,7 +30,7 @@ public class DisruptionService {
     public String getAllDisrutionsFromOkinaDB(String ansharUserId){
         try {
             URL url = new URL(okinaDisruptionAPIUrl+"?requestorId="+ansharUserId);
-            HttpURLConnection connection = null;
+            HttpURLConnection connection;
             connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
             connection.setRequestProperty("Content-type", "application/json");

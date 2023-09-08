@@ -8,7 +8,6 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.micrometer.core.instrument.util.StringUtils;
 import no.rutebanken.anshar.okinaDisruptions.model.Disruption;
 import no.rutebanken.anshar.okinaDisruptions.model.MillisOrLocalDateTimeDeserializer;
-import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.SituationExchangeInbound;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
@@ -52,20 +51,7 @@ public class DisruptionRetriever {
     private String ansharUserId;
 
     @Autowired
-    private SiriHandler handler;
-
-    @Value("${mobi.iti.disruption.api.url}")
-    private String okinaDisruptionAPIUrl;
-
-    @Autowired
-    private TokenService tokenService;
-
-    @Autowired
     private SituationExchangeInbound situationExchangeInbound;
-
-    private String ansharUserId;
-
-    String disruptionURLAPI = "http://0.0.0.0:8081/Okina/REST/disruptions/allCurrentDisruptions";
 
     public DisruptionRetriever() {
         ansharUserId = "anshar-" + System.currentTimeMillis();
