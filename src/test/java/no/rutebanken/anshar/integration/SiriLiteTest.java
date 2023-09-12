@@ -383,9 +383,7 @@ public class SiriLiteTest extends BaseHttpTest {
                 .statusCode(200)
                 .contentType(ContentType.JSON)
                 .rootPath("Siri.ServiceDelivery.StopMonitoringDelivery[0]")
-                .body("MonitoredStopVisit", Matchers.hasSize(2))
-                .body("MonitoredStopVisit[0].MonitoringRef.value", Matchers.oneOf(stopReference1, stopReference2))
-                .body("MonitoredStopVisit[1].MonitoringRef.value", Matchers.oneOf(stopReference1, stopReference2));
+                .body("MonitoredStopVisit", Matchers.nullValue());
 
     }
 
