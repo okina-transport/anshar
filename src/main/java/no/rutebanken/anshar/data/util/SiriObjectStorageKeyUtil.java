@@ -2,15 +2,11 @@ package no.rutebanken.anshar.data.util;
 
 import com.hazelcast.query.Predicate;
 import no.rutebanken.anshar.data.SiriObjectStorageKey;
-import uk.org.ifopt.siri13.StopPlaceRef;
-import uk.org.ifopt.siri20.StopPlaceComponentRefStructure;
 import uk.org.siri.siri20.*;
 
-import javax.sound.sampled.Line;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class SiriObjectStorageKeyUtil {
 
@@ -60,7 +56,7 @@ public class SiriObjectStorageKeyUtil {
     }
 
     public static Predicate<SiriObjectStorageKey, FacilityConditionStructure> getFacilityMonitoringPredicate(String datasetId, Set<String> requestedFacilities,
-                  Set<String> requestedLineRef, Set<String> requestedVehicleRef, Set<String> requestedStopPoints, List<String> excludeData) {
+                                                                                                             Set<String> requestedLineRef, Set<String> requestedVehicleRef, Set<String> requestedStopPoints, List<String> excludeData) {
 
         return entry -> isKeyCompliantWithFilters(entry.getKey(), requestedLineRef, requestedVehicleRef, requestedStopPoints, datasetId, excludeData, null, requestedFacilities);
     }
@@ -108,9 +104,6 @@ public class SiriObjectStorageKeyUtil {
             return false;
         }
 
-        if(datasetId == null && (stopRefSet == null || stopRefSet.isEmpty()) && (excludedDatasetIds == null || excludedDatasetIds.isEmpty())){
-            return false;
-        }
 
         return true;
     }
