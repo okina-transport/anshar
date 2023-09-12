@@ -248,7 +248,9 @@ public class SiriLiteTest extends BaseHttpTest {
                 .statusCode(200)
                 .contentType(ContentType.JSON)
                 .rootPath("Siri.ServiceDelivery.VehicleMonitoringDelivery[0].")
-                .body("VehicleActivity", Matchers.nullValue());
+                .body("VehicleActivity", Matchers.hasSize(2))
+                .body("VehicleActivity[0].MonitoredVehicleJourney.LineRef.value", Matchers.oneOf(lineRef1, lineRef2))
+                .body("VehicleActivity[1].MonitoredVehicleJourney.LineRef.value", Matchers.oneOf(lineRef1, lineRef2));
     }
 
     @Test
@@ -383,7 +385,9 @@ public class SiriLiteTest extends BaseHttpTest {
                 .statusCode(200)
                 .contentType(ContentType.JSON)
                 .rootPath("Siri.ServiceDelivery.StopMonitoringDelivery[0]")
-                .body("MonitoredStopVisit", Matchers.nullValue());
+                .body("MonitoredStopVisit", Matchers.hasSize(2))
+                .body("MonitoredStopVisit[0].MonitoringRef.value", Matchers.oneOf(stopReference1, stopReference2))
+                .body("MonitoredStopVisit[1].MonitoringRef.value", Matchers.oneOf(stopReference1, stopReference2));
 
     }
 
