@@ -104,6 +104,9 @@ public class SiriObjectStorageKeyUtil {
             return false;
         }
 
+        if (datasetId == null && (stopRefSet == null || stopRefSet.isEmpty()) && (excludedDatasetIds == null || excludedDatasetIds.isEmpty())) {
+            return false;
+        }
 
         return true;
     }

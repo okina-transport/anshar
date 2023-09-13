@@ -86,6 +86,7 @@ public class DisruptionRetriever {
 
         List<Disruption> disruptionsToDelete = disruptions.stream()
                 .filter(disruption -> disruption.getDeleteDateTime() != null)
+                .filter(disruption -> disruption.getDiffusion() != null && disruption.getDiffusion().equals("DIFFUSING"))
                 .collect(Collectors.toList());
 
         List<Disruption> disruptionsToIngest = disruptions.stream()
