@@ -90,10 +90,12 @@ public class OutboundIdAdapter extends ValueAdapter {
         if (stopPlaceService == null){
             stopPlaceService = ApplicationContextHolder.getContext().getBean(StopPlaceUpdaterService.class);
         }
-        if (!StringUtils.isEmpty(text) && stopPlaceService.isKnownId(text)) {
-            return stopPlaceService.get(text);
-        } else if (!StringUtils.isEmpty(text.replace(":Quay:", ":StopPlace:")) && stopPlaceService.isKnownId(text.replace(":Quay:", ":StopPlace:"))) {
-            return stopPlaceService.get(text.replace(":Quay:", ":StopPlace:"));
+        if (!StringUtils.isEmpty(text)) {
+            if (stopPlaceService.isKnownId(text)) {
+                return stopPlaceService.get(text);
+            } else if (stopPlaceService.isKnownId(text.replace(":Quay:", ":StopPlace:"))) {
+                return stopPlaceService.get(text.replace(":Quay:", ":StopPlace:"));
+            }
         }
         return text;
     }
