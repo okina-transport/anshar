@@ -44,7 +44,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.MediaType;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -375,11 +374,11 @@ public class SiriLiteRoute extends RestRouteBuilder {
                     }
 
                     Siri response;
+                    Set<String> requestedLines = new HashSet<>();
                     if (lineRef != null) {
-                        response = estimatedTimetables.createServiceDelivery(lineRef);
-                    } else {
-                        response = estimatedTimetables.createServiceDelivery(requestorId, datasetId, etClientName, excludedIdList, maxSize, previewIntervalMillis);
+                        requestedLines.add(lineRef);
                     }
+                    response = estimatedTimetables.createServiceDelivery(requestorId, datasetId, etClientName, excludedIdList, maxSize, previewIntervalMillis, requestedLines);
 
                     List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.ESTIMATED_TIMETABLE,

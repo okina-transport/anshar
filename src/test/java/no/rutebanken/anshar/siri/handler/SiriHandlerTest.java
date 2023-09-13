@@ -45,16 +45,7 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -649,11 +640,13 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         return element;
     }
 
-    /** Stop monitoring
+    /**
+     * Stop monitoring
      * id producteur
      * useOriginalId true
      * avec datasetId
-     * retour données producteurs identifiants locaux **/
+     * retour données producteurs identifiants locaux
+     **/
     @Test
     public void SM_idProducer_DatasetId() throws JAXBException {
         initStopPlaceMapper();
@@ -699,11 +692,13 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         assertEquals("TEST1:StopPoint:SP:121:LOC", response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
     }
 
-    /** Stop monitoring
+    /**
+     * Stop monitoring
      * id producteur
      * userOriginalId true
      * sans datasetId
-     * retour rien **/
+     * retour rien
+     **/
     @Test
     public void SM_idProducer_No_DatasetId() throws JAXBException {
         initStopPlaceMapper();
@@ -743,11 +738,13 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         assertTrue(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty());
     }
 
-    /** Stop monitoring
+    /**
+     * Stop monitoring
      * id producteur
      * useOriginalId false
      * sans datasetId
-     * retour rien **/
+     * retour rien
+     **/
     @Test
     public void SM_IdProducer_UseOriginalId_False_No_DatasetId() throws JAXBException {
         initStopPlaceMapper();
@@ -787,9 +784,11 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         assertTrue(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty());
     }
 
-    /** Estimated timetable
+    /**
+     * Estimated timetable
      * avec datasetId
-     * retour données producteurs identifiants locaux **/
+     * retour données producteurs identifiants locaux
+     **/
     @Test
     public void ET_DatasetId() throws JAXBException {
         File fileInject1 = new File("src/test/resources/siri-et-test1.zip");
@@ -828,9 +827,11 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         assertEquals("TEST1:VehicleJourney:1", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getDatedVehicleJourneyRef().getValue());
     }
 
-    /** Estimated timetable
+    /**
+     * Estimated timetable
      * sans datasetId
-     * retour rien **/
+     * retour rien
+     **/
     @Test
     public void ET_No_DatasetId() throws JAXBException {
         File fileInject1 = new File("src/test/resources/siri-et-test1.zip");
@@ -868,10 +869,12 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         assertTrue(response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().isEmpty());
     }
 
-    /** Vehicle monitoring
+    /**
+     * Vehicle monitoring
      * id producteur
      * avec datasetId
-     * retour données producteurs identifiants locaux **/
+     * retour données producteurs identifiants locaux
+     **/
     @Test
     public void VM_DatasetId() throws JAXBException {
         File fileInject1 = new File("src/test/resources/siri-vm-test1.zip");
@@ -911,7 +914,6 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         assertEquals("TEST1::Line::1:LOC", responseLineRef.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getMonitoredVehicleJourney().getLineRef().getValue());
 
 
-
 //        String stringXmlVehicleRef = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
 //                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
 //                "    <ServiceRequest>\n" +
@@ -932,9 +934,11 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 //        assertEquals("TEST1:VehicleJourney::1:LOC", responseVehicleRef.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getVehicleMonitoringRef().getValue());
     }
 
-    /** Vehicle monitoring
+    /**
+     * Vehicle monitoring
      * sans datasetId
-     * retour rien **/
+     * retour rien
+     **/
     @Test
     public void VM_No_DatasetId() throws JAXBException {
         File fileInject1 = new File("src/test/resources/siri-vm-test1.zip");
@@ -992,11 +996,13 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 //        assertEquals(0, responseVehicleRef.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().size());
     }
 
-    /** Situation exchange
+    /**
+     * Situation exchange
      * avec datasetId
-     * retour données producteurs identifiants locaux **/
+     * retour données producteurs identifiants locaux
+     **/
     @Test
-    public void SX_DatasetId() throws JAXBException{
+    public void SX_DatasetId() throws JAXBException {
         File fileInject1 = new File("src/test/resources/siri-sx-test1.zip");
         try {
             siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-sx", fileInject1, fileInject1.getPath(), "TEST1");
@@ -1032,9 +1038,11 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         assertEquals("TEST1:J1", response.getServiceDelivery().getSituationExchangeDeliveries().get(0).getSituations().getPtSituationElements().get(0).getSituationNumber().getValue());
     }
 
-    /** Situation exchange
+    /**
+     * Situation exchange
      * sans datasetId
-     * retour rien **/
+     * retour rien
+     **/
     @Test
     public void SX_No_DatasetId() throws JAXBException {
         File fileInject1 = new File("src/test/resources/siri-sx-test1.zip");
@@ -1052,6 +1060,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         }
 
         assertFalse(situations.getAll().isEmpty());
+        situations.cleanChangesMap();
 
 
         String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
@@ -1072,11 +1081,13 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         assertTrue(response.getServiceDelivery().getSituationExchangeDeliveries().get(0).getSituations().getPtSituationElements().isEmpty());
     }
 
-    /** Facility monitoring
+    /**
+     * Facility monitoring
      * id producteur
      * useOriginalId true
      * avec datasetId
-     * retour données producteurs identifiants locaux **/
+     * retour données producteurs identifiants locaux
+     **/
 //    @Test
     public void FM_idProducer_DatasetId() throws JAXBException {
         initStopPlaceMapper();
@@ -1115,11 +1126,13 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         assertFalse(response.getServiceDelivery().getFacilityMonitoringDeliveries().isEmpty());
     }
 
-    /** Facility monitoring
+    /**
+     * Facility monitoring
      * id producteur
      * userOriginalId true
      * sans datasetId
-     * retour rien **/
+     * retour rien
+     **/
 //    @Test
     public void FM_idProducer_No_DatasetId() throws JAXBException {
         initStopPlaceMapper();
@@ -1159,10 +1172,12 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     }
 
 
-    /** General message
+    /**
+     * General message
      * useOriginalId true
      * avec datasetId
-     * retour données producteurs identifiants locaux **/
+     * retour données producteurs identifiants locaux
+     **/
 //    @Test
     public void GM_datasetId() throws UnmarshalException {
         File fileInject1 = new File("src/test/resources/siri-gm-test1.zip");
@@ -1199,10 +1214,12 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         assertEquals(1, response.getServiceDelivery().getGeneralMessageDeliveries().size());
     }
 
-    /** General message
+    /**
+     * General message
      * userOriginalId true
      * sans datasetId
-     * retour rien **/
+     * retour rien
+     **/
 //    @Test
     public void GM_No_datasetId() throws UnmarshalException {
         File fileInject1 = new File("src/test/resources/siri-gm-test1.zip");
@@ -1241,7 +1258,8 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     }
 
 
-    /** Stop monitoring
+    /**
+     * Stop monitoring
      * avec datasetId
      * retour données du datasetId
      **/
@@ -1289,7 +1307,8 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         assertEquals("MOBIITI:Quay:a", response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
     }
 
-    /** Stop monitoring
+    /**
+     * Stop monitoring
      * sans datasetId
      * retour données de tous les producteurs
      **/
@@ -1336,7 +1355,6 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
         assertEquals("MOBIITI:Quay:a", response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
     }
-
 
 
     @Test
@@ -1412,7 +1430,8 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     }
 
 
-    /** Vehicle monitoring
+    /**
+     * Vehicle monitoring
      * avec altId
      * avec datasetId
      * retour données identifiants producteurs locaux
@@ -1492,7 +1511,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         assertNotNull(vehicleActivityStructures.get(1).getVehicleMonitoringRef());
         assertNotNull(vehicleActivityStructures.get(1).getVehicleMonitoringRef().getValue());
         assertEquals("TEST:VehicleJourney::233:LOC", vehicleActivityStructures.get(1).getVehicleMonitoringRef().getValue());
-        assertEquals("34", vehicleActivityStructures.get(1).getMonitoredVehicleJourney().getLineRef().getValue() );
+        assertEquals("34", vehicleActivityStructures.get(1).getMonitoredVehicleJourney().getLineRef().getValue());
     }
 
 }
