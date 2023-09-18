@@ -85,8 +85,7 @@ public class DisruptionRetriever {
 
 
         List<Disruption> disruptionsToDelete = disruptions.stream()
-                .filter(disruption -> disruption.getDeleteDateTime() != null)
-                .filter(disruption -> disruption.getDiffusion() != null && disruption.getDiffusion().equals("DIFFUSING"))
+                .filter(disruption -> disruption.getDeleteDateTime() != null || (disruption.getDiffusion() != null && disruption.getDiffusion().equals("DIFFUSING")))
                 .collect(Collectors.toList());
 
         List<Disruption> disruptionsToIngest = disruptions.stream()
@@ -95,6 +94,7 @@ public class DisruptionRetriever {
                 .collect(Collectors.toList());
 
         Map<String, List<Disruption>> disruptionsByDataset = buildDisruptionMap(disruptionsToIngest);
+        Map<String, List<Disruption>> disruptionsByDatasetToDelete = buildDisruptionMap(disruptionsToDelete);
 
 
         List<PtSituationElement> ingestedSituations = new ArrayList<>();
@@ -110,18 +110,21 @@ public class DisruptionRetriever {
 
             totalSituationCount = totalSituationCount + situations.size();
 
-            List<PtSituationElement> situationsToDelete = disruptionsToDelete.stream()
-                    .map(SituationExchangeGenerator::createFromDisruption)
-                    .collect(Collectors.toList());
-            totalDeletedSituationCount = totalDeletedSituationCount + situationsToDelete.size();
 
-            situationsToDelete.forEach(situationToDelete -> situationExchangeInbound.removeSituation(currentDisruptionEntry.getKey(), situationToDelete));
             List<String> subscriptionList = getSubscriptions(situations) ;
             checkAndCreateSubscriptions(subscriptionList);
             ingestedSituations.addAll(situationExchangeInbound.ingestSituations(currentDisruptionEntry.getKey(), situations));
 
         }
 
+        for (Map.Entry<String, List<Disruption>> currentDisruptionEntry : disruptionsByDatasetToDelete.entrySet()) {
+            List<PtSituationElement> situationsToDelete = disruptionsToDelete.stream()
+                    .map(SituationExchangeGenerator::createFromDisruption)
+                    .collect(Collectors.toList());
+            totalDeletedSituationCount = totalDeletedSituationCount + situationsToDelete.size();
+
+            situationsToDelete.forEach(situationToDelete -> situationExchangeInbound.removeSituation(currentDisruptionEntry.getKey(), situationToDelete));
+        }
 
         for (PtSituationElement situation : ingestedSituations) {
             subscriptionManager.touchSubscription(PREFIX + situation.getSituationNumber());
