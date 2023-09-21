@@ -81,11 +81,6 @@ public class DiscoverySubscriptionCreator {
 
         List<SubscriptionSetup> subscriptionsToStart = createSubscriptionsSetups(referenceList, discoveryParams);
 
-        //TOTO REmove . test only
-        SubscriptionSetup single = subscriptionsToStart.get(0);
-        subscriptionsToStart.clear();
-        subscriptionsToStart.add(single);
-
         subscriptionConfig.getSubscriptions().addAll(subscriptionsToStart);
         subscriptionInitializer.createSubscriptions();
     }
