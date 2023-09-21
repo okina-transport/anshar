@@ -15,33 +15,15 @@
 
 package no.rutebanken.anshar.routes.siri.handlers;
 
-import io.micrometer.core.instrument.util.StringUtils;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
-import no.rutebanken.anshar.data.EstimatedTimetables;
-import no.rutebanken.anshar.data.FacilityMonitoring;
-import no.rutebanken.anshar.data.GeneralMessages;
-import no.rutebanken.anshar.data.GeneralMessagesCancellations;
-import no.rutebanken.anshar.data.MonitoredStopVisits;
-import no.rutebanken.anshar.data.Situations;
-import no.rutebanken.anshar.data.VehicleActivities;
+import no.rutebanken.anshar.data.*;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
-import no.rutebanken.anshar.routes.siri.handlers.inbound.EstimatedTimetableInbound;
-import no.rutebanken.anshar.routes.siri.handlers.inbound.FacilityMonitoringInbound;
-import no.rutebanken.anshar.routes.siri.handlers.inbound.GeneralMessageInbound;
-import no.rutebanken.anshar.routes.siri.handlers.inbound.SituationExchangeInbound;
-import no.rutebanken.anshar.routes.siri.handlers.inbound.StopMonitoringInbound;
-import no.rutebanken.anshar.routes.siri.handlers.inbound.VehicleMonitoringInbound;
-import no.rutebanken.anshar.routes.siri.handlers.outbound.DiscoveryLinesOutbound;
-import no.rutebanken.anshar.routes.siri.handlers.outbound.DiscoveryStopPointsOutbound;
-import no.rutebanken.anshar.routes.siri.handlers.outbound.EstimatedTimetableOutbound;
-import no.rutebanken.anshar.routes.siri.handlers.outbound.FacilityMonitoringOutbound;
-import no.rutebanken.anshar.routes.siri.handlers.outbound.SituationExchangeOutbound;
-import no.rutebanken.anshar.routes.siri.handlers.outbound.StopMonitoringOutbound;
-import no.rutebanken.anshar.routes.siri.handlers.outbound.VehicleMonitoringOutbound;
+import no.rutebanken.anshar.routes.siri.handlers.inbound.*;
+import no.rutebanken.anshar.routes.siri.handlers.outbound.*;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
@@ -58,28 +40,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.GeneralMessageRequestStructure;
-import uk.org.siri.siri20.InfoChannelRefStructure;
-import uk.org.siri.siri20.PtSituationElement;
-import uk.org.siri.siri20.ServiceRequest;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.SubscriptionResponseStructure;
-import uk.org.siri.siri20.TerminateSubscriptionRequestStructure;
-import uk.org.siri.siri20.TerminateSubscriptionResponseStructure;
-import uk.org.siri.siri20.VehicleActivityStructure;
+import uk.org.siri.siri20.*;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.UnmarshalException;
 import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 
@@ -303,10 +271,14 @@ public class SiriHandler {
             TerminateSubscriptionRequestStructure terminateSubscriptionRequest = incoming.getTerminateSubscriptionRequest();
             if (terminateSubscriptionRequest.getSubscriptionReves() != null && !terminateSubscriptionRequest.getSubscriptionReves().isEmpty()) {
                 String subscriptionRef = terminateSubscriptionRequest.getSubscriptionReves().get(0).getValue();
-
                 serverSubscriptionManager.terminateSubscription(subscriptionRef, configuration.processAdmin());
                 if (configuration.processAdmin()) {
                     return siriObjectFactory.createTerminateSubscriptionResponse(subscriptionRef);
+                }
+            } else if (terminateSubscriptionRequest.getAll() != null) {
+                List<String> terminatedSubscriptions = serverSubscriptionManager.terminateAllsubscriptionsForRequestor(terminateSubscriptionRequest.getRequestorRef().getValue(), configuration.processAdmin());
+                if (configuration.processAdmin()) {
+                    return siriObjectFactory.createTerminateSubscriptionResponse(terminatedSubscriptions.stream().collect(Collectors.joining(",")));
                 }
             }
         } else if (incoming.getCheckStatusRequest() != null) {
@@ -380,7 +352,7 @@ public class SiriHandler {
                 Set<String> stopPointRefList = facilityMonitoringOutbound.getStopPointRefList(serviceRequest);
                 Set<String> vehicleRefList = facilityMonitoringOutbound.getVehicleRefList(serviceRequest);
 
-                    //todo upgrade pour avoir les siteRef
+                //todo upgrade pour avoir les siteRef
 /*                    SiteRefStructure siteRef = req.getSiteRef;
                     if (stopPlaceComponentRef != null) {
                         Set<String> stopPlaceComponentRefList = filterMap.get(StopPlaceComponentRefStructure.class) != null ? filterMap.get(StopPlaceComponentRefStructure.class) : new HashSet<>();
@@ -389,7 +361,7 @@ public class SiriHandler {
                     }*/
 
 
-                    //todo ajouter quand on aura les siteRef
+                //todo ajouter quand on aura les siteRef
                 //Set<String> siteRefList = filterMap.get(SiteRef.class) != null ? filterMap.get(SiteRef.class) : new HashSet<>();
 
 
@@ -427,7 +399,7 @@ public class SiriHandler {
                         false
                 );
             }
-            if(serviceResponse != null && hasValues(serviceRequest.getStopMonitoringRequests())){
+            if (serviceResponse != null && hasValues(serviceRequest.getStopMonitoringRequests())) {
                 metrics.countOutgoingData(serviceResponse, SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE);
                 return serviceResponse;
             }
