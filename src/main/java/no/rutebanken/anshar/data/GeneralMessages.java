@@ -6,6 +6,7 @@ import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import org.apache.commons.lang3.StringUtils;
 import org.quartz.utils.counter.Counter;
 import org.quartz.utils.counter.CounterImpl;
 import org.slf4j.Logger;
@@ -31,6 +32,7 @@ import java.util.stream.Collectors;
 public class GeneralMessages extends SiriRepository<GeneralMessage> {
 
     private static final Logger logger = LoggerFactory.getLogger(GeneralMessages.class);
+    private static final String DEFAULT_FORMAT_REF = "STIF-IDF";
 
     @Autowired
     @Qualifier("getGeneralMessages")
@@ -136,6 +138,28 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
                 .filter(generalMessage -> generalMessage.getInfoMessageIdentifier() != null)
                 .filter(generalMessage -> generalMessage.getInfoChannelRef() != null)
                 .forEach(generalMessage -> {
+
+                    if (generalMessage.getRecordedAtTime() == null){
+                        generalMessage.setRecordedAtTime(ZonedDateTime.now());
+                    }
+
+                    if (StringUtils.isEmpty(generalMessage.getFormatRef())){
+                        generalMessage.setFormatRef(DEFAULT_FORMAT_REF);
+                    }
+
+                    if (StringUtils.isEmpty(generalMessage.getItemIdentifier())){
+                        generalMessage.setItemIdentifier(UUID.randomUUID().toString());
+                    }
+
+                    if (generalMessage.getValidUntilTime() == null){
+
+                        ZonedDateTime today = ZonedDateTime.now();
+                        int currentHour = today.getHour();
+                        ZonedDateTime endOfTheDay = today.plusHours(24 - currentHour);
+                        generalMessage.setValidUntilTime(endOfTheDay);
+                    }
+
+
 
                     SiriObjectStorageKey key = createKey(datasetId, generalMessage);
 

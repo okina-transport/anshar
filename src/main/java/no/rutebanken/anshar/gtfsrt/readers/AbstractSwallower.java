@@ -4,6 +4,7 @@ package no.rutebanken.anshar.gtfsrt.readers;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
+import no.rutebanken.anshar.util.IDUtils;
 import org.apache.camel.ProducerTemplate;
 import uk.org.siri.siri20.Siri;
 
@@ -27,7 +28,7 @@ public abstract class AbstractSwallower {
         this.url = url;
     }
 
-    protected SubscriptionSetup createStandardSubscription(String objectRef, String datasetId){
+    protected SubscriptionSetup createStandardSubscription(String objectRef, String datasetId) {
         SubscriptionSetup setup = new SubscriptionSetup();
         setup.setDatasetId(datasetId);
         setup.setHeartbeatIntervalSeconds(DEFAULT_HEARTBEAT_SECONDS);
@@ -45,8 +46,9 @@ public abstract class AbstractSwallower {
         setup.setSubscriptionType(dataType);
         setup.setSubscriptionId(subscriptionId);
         Map<RequestType, String> urlMap = new HashMap<>();
-        urlMap.put(requestType,url);
+        urlMap.put(requestType, url);
         setup.setUrlMap(urlMap);
+        setup.setInternalId(IDUtils.getUniqueInternalIdForGTFSRT());
 
 
         return setup;
@@ -55,7 +57,7 @@ public abstract class AbstractSwallower {
     protected void sendToRealTimeServer(ProducerTemplate producerTemplate, Siri siriToSend, String datasetId) {
         Map<String, Object> headers = new HashMap<>();
         headers.put(DATASET_ID_HEADER_NAME, datasetId);
-        headers.put(URL_HEADER_NAME,url);
+        headers.put(URL_HEADER_NAME, url);
         producerTemplate.asyncRequestBodyAndHeaders(producerTemplate.getDefaultEndpoint(), siriToSend, headers);
     }
 }

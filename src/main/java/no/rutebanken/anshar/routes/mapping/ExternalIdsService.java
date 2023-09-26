@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 
 /**
@@ -323,7 +324,7 @@ public class ExternalIdsService extends BaseRouteBuilder {
         return Optional.empty();
     }
 
-    public Optional<String> getReverseAltIdStop(String datasetId, String stopId) {
+    public List<String> getReverseAltIdStop(String datasetId, String stopId) {
         return getRevertAltIdStops(datasetId, stopId, stopsCache);
 
     }
@@ -332,15 +333,15 @@ public class ExternalIdsService extends BaseRouteBuilder {
         return getRevertAltIdLines(datasetId, lineId, linesCache);
     }
 
-    private Optional<String> getRevertAltIdStops(String datasetId, String id, Map<String, Map<String, String>> cache) {
+    private List<String> getRevertAltIdStops(String datasetId, String id, Map<String, Map<String, String>> cache) {
         if (!cache.containsKey(datasetId)) {
-            return Optional.empty();
+            return new ArrayList<>();
         }
 
         Map<String, String> datasetMap = cache.get(datasetId);
 
         if (!datasetMap.containsValue(id)) {
-            return Optional.empty();
+            return new ArrayList<>();
         }
 
         return datasetMap
@@ -348,7 +349,7 @@ public class ExternalIdsService extends BaseRouteBuilder {
                 .stream()
                 .filter(entry -> id.equals(entry.getValue()))
                 .map(Map.Entry::getKey)
-                .findFirst();
+                .collect(Collectors.toList());
     }
 
     private List<String> getRevertAltIdLines(String datasetId, String id, Map<String, Map<String, List<String>>> cache) {

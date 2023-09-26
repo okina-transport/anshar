@@ -15,11 +15,10 @@
 
 package no.rutebanken.anshar.routes.admin;
 
-import com.hazelcast.map.IMap;
+import com.google.common.net.HttpHeaders;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
-import no.rutebanken.anshar.routes.admin.auth.BasicAuthService;
 import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.validation.SiriXmlValidator;
@@ -28,12 +27,8 @@ import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.Exchange;
 import org.apache.commons.lang3.StringUtils;
-import com.google.common.net.HttpHeaders;
 import org.json.simple.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
@@ -41,8 +36,10 @@ import org.springframework.stereotype.Service;
 import javax.ws.rs.core.MediaType;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.time.Instant;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -94,7 +91,6 @@ public class AdministrationRoute extends RestRouteBuilder {
     private boolean situationsDebugEndpoint;
 
 
-
 //    @Autowired
 //    private BasicAuthService basicAuthProcessor;
 
@@ -103,7 +99,8 @@ public class AdministrationRoute extends RestRouteBuilder {
         super.configure();
 
 
-        rest("/").tag("internal.admin.root")
+        rest("/")
+                .apiDocs(false)
                 .get("").produces(MediaType.TEXT_HTML).to(STATS_ROUTE)
                 .put("").to(OPERATION_ROUTE)
                 .get("/locks").to("direct:locks")
@@ -111,7 +108,8 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .delete("/unmapped/{datasetId}").to("direct:clear-unmapped")
         ;
 
-        rest("/anshar").tag("internal.admin")
+        rest("/anshar")
+                .apiDocs(false)
                 .get("/stats").produces(MediaType.TEXT_HTML).to(STATS_ROUTE)
                 .get("/internalstats").produces(MediaType.APPLICATION_JSON).to(INTERNAL_STATS_ROUTE)
                 .get("/clusterstats").produces(MediaType.APPLICATION_JSON).to(CLUSTERSTATS_ROUTE)
@@ -126,63 +124,63 @@ public class AdministrationRoute extends RestRouteBuilder {
             long verificationIntervalMillis = 10 * 60 * 1000;
             // repeatInterval : Use repeat interval to check every 10 minutes after startup - not every 10 minutes on clock
             from("quartz://anshar.verify.locks?trigger.repeatInterval=" + verificationIntervalMillis)
-                .log("Verifying locks - start")
-                .process(p -> {
-                    final Map<String, String> locksMap = helper.getAllLocks();
-                    for (Map.Entry<String, String> lockEntries : locksMap.entrySet()) {
-                        final String hostName = lockEntries.getValue();
-                        boolean unlock = false;
-                        if (!hostName.equals(DEFAULT_LOCK_VALUE)) {
-                            try {
-                                final InetAddress host = InetAddress.getByName(hostName);
-                                if (!host.isReachable(5000)) {
+                    .log("Verifying locks - start")
+                    .process(p -> {
+                        final Map<String, String> locksMap = helper.getAllLocks();
+                        for (Map.Entry<String, String> lockEntries : locksMap.entrySet()) {
+                            final String hostName = lockEntries.getValue();
+                            boolean unlock = false;
+                            if (!hostName.equals(DEFAULT_LOCK_VALUE)) {
+                                try {
+                                    final InetAddress host = InetAddress.getByName(hostName);
+                                    if (!host.isReachable(5000)) {
+                                        unlock = true;
+                                        log.info("Host [{}] unreachable.", hostName);
+                                    }
+                                } catch (UnknownHostException e) {
                                     unlock = true;
-                                    log.info("Host [{}] unreachable.", hostName);
+                                    log.info("Unknown host [{}]", hostName);
                                 }
-                            } catch (UnknownHostException e) {
-                                unlock = true;
-                                log.info("Unknown host [{}]", hostName);
+                            }
+                            if (unlock) {
+                                log.info("Releasing lock {}", lockEntries.getKey());
+                                helper.forceUnlock(lockEntries.getKey());
                             }
                         }
-                        if (unlock) {
-                            log.info("Releasing lock {}", lockEntries.getKey());
-                            helper.forceUnlock(lockEntries.getKey());
-                        }
-                    }
-                })
-                .log("Verifying locks - done")
-                .routeId("anshar.admin.periodic.lock.verification");
+                    })
+                    .log("Verifying locks - done")
+                    .routeId("anshar.admin.periodic.lock.verification");
         }
 
         from("direct:locks")
-            .choice()
-            .when().header("unlock")
-            .process(p -> helper.forceUnlock((String) p.getIn().getHeader("unlock")))
-            .end()
-            .process(p -> {
-                // Fetch all locks - sorted by keys
-                final TreeMap<String, String> locksMap = new TreeMap<>(helper.getAllLocks());
-                int maxlength = 0;
-                // Find max length for prettifying output
-                for (String s : locksMap.keySet()) {
-                    maxlength = Math.max(maxlength, s.length());
-                }
+                .choice()
+                .when().header("unlock")
+                .process(p -> helper.forceUnlock((String) p.getIn().getHeader("unlock")))
+                .end()
+                .process(p -> {
+                    // Fetch all locks - sorted by keys
+                    final TreeMap<String, String> locksMap = new TreeMap<>(helper.getAllLocks());
+                    int maxlength = 0;
+                    // Find max length for prettifying output
+                    for (String s : locksMap.keySet()) {
+                        maxlength = Math.max(maxlength, s.length());
+                    }
 
-                String body = StringUtils.rightPad("key", maxlength) + " | value\n";
+                    String body = StringUtils.rightPad("key", maxlength) + " | value\n";
 
-                // Now, sort by values to group hosts
-                final List<Map.Entry<String, String>> sortedEntries = locksMap
-                    .entrySet()
-                    .stream()
-                    .sorted(Map.Entry.comparingByValue())
-                    .collect(Collectors.toList());
+                    // Now, sort by values to group hosts
+                    final List<Map.Entry<String, String>> sortedEntries = locksMap
+                            .entrySet()
+                            .stream()
+                            .sorted(Map.Entry.comparingByValue())
+                            .collect(Collectors.toList());
 
-                for (Map.Entry<String, String> e : sortedEntries) {
-                    body += StringUtils.rightPad(e.getKey(), maxlength) + " | " + e.getValue() + "\n";
-                }
-                p.getOut().setBody(body);
-            })
-            .routeId("admin")
+                    for (Map.Entry<String, String> e : sortedEntries) {
+                        body += StringUtils.rightPad(e.getKey(), maxlength) + " | " + e.getValue() + "\n";
+                    }
+                    p.getOut().setBody(body);
+                })
+                .routeId("admin")
         ;
 
         from(SYNTHESIS_ROUTE)
@@ -196,11 +194,9 @@ public class AdministrationRoute extends RestRouteBuilder {
         ;
 
 
-
-
         if (configuration.processAdmin() && !configuration.processData()) {
             from(STATS_ROUTE)
-            //        .process(basicAuthProcessor)
+                    //        .process(basicAuthProcessor)
                     .setHeader(HttpHeaders.CONTENT_TYPE, simple(MediaType.APPLICATION_JSON))
                     .to(INTERNAL_STATS_ROUTE)
                     .removeHeader(HttpHeaders.CONTENT_TYPE)
@@ -241,20 +237,20 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .removeHeaders("*")
                 .routeId("admin.remove.headers");
 
-        from (INTERNAL_STATS_ROUTE)
-            .process(p -> {
-                JSONObject stats = subscriptionManager.buildStats();
-                stats.put("outbound", serverSubscriptionManager.getSubscriptionsAsJson());
+        from(INTERNAL_STATS_ROUTE)
+                .process(p -> {
+                    JSONObject stats = subscriptionManager.buildStats();
+                    stats.put("outbound", serverSubscriptionManager.getSubscriptionsAsJson());
 
-                if (MediaType.APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE, String.class))) {
-                    p.getMessage().setBody(stats);
-                } else {
-                    p.getMessage().setBody(stats.toJSONString());
-                }
-            })
+                    if (MediaType.APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE, String.class))) {
+                        p.getMessage().setBody(stats);
+                    } else {
+                        p.getMessage().setBody(stats.toJSONString());
+                    }
+                })
         ;
 
-        from (INTERNAL_SYNTHESIS_ROUTE)
+        from(INTERNAL_SYNTHESIS_ROUTE)
                 .process(p -> {
                     JSONObject stats = helper.buildSynthesisData();
                     if (MediaType.APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE, String.class))) {
@@ -269,44 +265,44 @@ public class AdministrationRoute extends RestRouteBuilder {
 
         //Stop subscription
         from(OPERATION_ROUTE)
-           // .process(basicAuthProcessor)
-             .choice()
+                // .process(basicAuthProcessor)
+                .choice()
                 .when(header(operationHeaderName).isEqualTo("stop"))
-                    .to("direct:stop")
+                .to("direct:stop")
                 .endChoice()
                 .when(header(operationHeaderName).isEqualTo("start"))
-                    .to("direct:start")
+                .to("direct:start")
                 .endChoice()
                 .when(header(operationHeaderName).isEqualTo("terminate"))
-                    .to("direct:terminate.outbound.subscription")
+                .to("direct:terminate.outbound.subscription")
                 .endChoice()
                 .when(header(operationHeaderName).isEqualTo("terminateAll"))
-                    .to("direct:terminate.all.subscriptions")
+                .to("direct:terminate.all.subscriptions")
                 .endChoice()
                 .when(header(operationHeaderName).isEqualTo("startAll"))
-                    .to("direct:restart.all.subscriptions")
+                .to("direct:restart.all.subscriptions")
                 .endChoice()
                 .when(header(operationHeaderName).isEqualTo("flush"))
-                    .to("direct:flush.data.from.subscription")
+                .to("direct:flush.data.from.subscription")
                 .endChoice()
                 .when(header(operationHeaderName).isEqualTo("delete"))
-                    .to("direct:delete.subscription")
+                .to("direct:delete.subscription")
                 .endChoice()
                 .when(header(operationHeaderName).isEqualTo("validateAll"))
-                    .to("direct:validate.all.subscriptions")
+                .to("direct:validate.all.subscriptions")
                 .endChoice()
-            .end()
+                .end()
         ;
 
         from("direct:stop")
-          //      .process(basicAuthProcessor)
+                //      .process(basicAuthProcessor)
                 .bean(subscriptionManager, "stopSubscription(${header.subscriptionId})")
                 .routeId("admin.stop")
         ;
 
         //Start subscription
         from("direct:start")
-             //   .process(basicAuthProcessor)
+                //   .process(basicAuthProcessor)
                 .bean(subscriptionManager, "startSubscription(${header.subscriptionId})")
                 .routeId("admin.start")
         ;
@@ -314,7 +310,7 @@ public class AdministrationRoute extends RestRouteBuilder {
         if (!configuration.processData()) {
             //Return subscription status
             from("direct:terminate.outbound.subscription")
-                  //  .process(basicAuthProcessor)
+                    //  .process(basicAuthProcessor)
                     .to("direct:redirect.request.et")
                     .to("direct:redirect.request.vm")
                     .to("direct:redirect.request.sx")
@@ -330,7 +326,7 @@ public class AdministrationRoute extends RestRouteBuilder {
 
         //Return subscription status
         from("direct:terminate.all.subscriptions")
-            //    .process(basicAuthProcessor)
+                //    .process(basicAuthProcessor)
                 .bean(subscriptionManager, "terminateAllSubscriptions(${header.type})")
                 .routeId("admin.terminate.all.subscriptions")
         ;
@@ -338,14 +334,14 @@ public class AdministrationRoute extends RestRouteBuilder {
 
         //Return subscription status
         from("direct:restart.all.subscriptions")
-           //     .process(basicAuthProcessor)
+                //     .process(basicAuthProcessor)
                 .bean(subscriptionManager, "triggerRestartAllActiveSubscriptions(${header.type})")
                 .routeId("admin.start.all.subscriptions")
         ;
 
         //Return subscription status
         from("direct:flush.data.from.subscription")
-              //  .process(basicAuthProcessor)
+                //  .process(basicAuthProcessor)
                 .process(p -> {
                     String subscriptionId = p.getIn().getHeader("subscriptionId", String.class);
                     SubscriptionSetup subscriptionSetup = subscriptionManager.get(subscriptionId);
@@ -360,7 +356,7 @@ public class AdministrationRoute extends RestRouteBuilder {
 
         //Return subscription status
         from("direct:validate.all.subscriptions")
-            //    .process(basicAuthProcessor)
+                //    .process(basicAuthProcessor)
                 .process(p -> {
                     Set<String> ids = subscriptionManager.subscriptions.keySet();
                     log.info("Enabling validation for {} subscriptions", ids.size());
@@ -379,16 +375,16 @@ public class AdministrationRoute extends RestRouteBuilder {
 
         from("direct:internal.flush.data.from.subscription")
                 .choice()
-                    .when(p -> !configuration.processET() && p.getIn().getHeader("SiriDataType").equals(SiriDataType.ESTIMATED_TIMETABLE.name()))
-                        .toD(etHandlerBaseUrl + "/anshar/stats?bridgeEndpoint=true&httpMethod=PUT&subscriptionId=${header.subscriptionId}")
-                    .when(p -> !configuration.processVM() && p.getIn().getHeader("SiriDataType").equals(SiriDataType.VEHICLE_MONITORING.name()))
-                        .toD(vmHandlerBaseUrl + "/anshar/stats?bridgeEndpoint=true&httpMethod=PUT&subscriptionId=${header.subscriptionId}")
-                    .when(p -> !configuration.processSX() && p.getIn().getHeader("SiriDataType").equals(SiriDataType.SITUATION_EXCHANGE.name()))
-                        .toD(sxHandlerBaseUrl + "/anshar/stats?bridgeEndpoint=true&httpMethod=PUT&subscriptionId=${header.subscriptionId}")
-                    .when(p -> !configuration.processSM() && p.getIn().getHeader("SiriDataType").equals(SiriDataType.STOP_MONITORING.name()))
-                        .toD(smHandlerBaseUrl + "/anshar/stats?bridgeEndpoint=true&httpMethod=PUT&subscriptionId=${header.subscriptionId}")
-                    .otherwise()
-                        .bean(helper, "flushDataFromSubscription(${header.subscriptionId})")
+                .when(p -> !configuration.processET() && p.getIn().getHeader("SiriDataType").equals(SiriDataType.ESTIMATED_TIMETABLE.name()))
+                .toD(etHandlerBaseUrl + "/anshar/stats?bridgeEndpoint=true&httpMethod=PUT&subscriptionId=${header.subscriptionId}")
+                .when(p -> !configuration.processVM() && p.getIn().getHeader("SiriDataType").equals(SiriDataType.VEHICLE_MONITORING.name()))
+                .toD(vmHandlerBaseUrl + "/anshar/stats?bridgeEndpoint=true&httpMethod=PUT&subscriptionId=${header.subscriptionId}")
+                .when(p -> !configuration.processSX() && p.getIn().getHeader("SiriDataType").equals(SiriDataType.SITUATION_EXCHANGE.name()))
+                .toD(sxHandlerBaseUrl + "/anshar/stats?bridgeEndpoint=true&httpMethod=PUT&subscriptionId=${header.subscriptionId}")
+                .when(p -> !configuration.processSM() && p.getIn().getHeader("SiriDataType").equals(SiriDataType.STOP_MONITORING.name()))
+                .toD(smHandlerBaseUrl + "/anshar/stats?bridgeEndpoint=true&httpMethod=PUT&subscriptionId=${header.subscriptionId}")
+                .otherwise()
+                .bean(helper, "flushDataFromSubscription(${header.subscriptionId})")
                 .endChoice()
                 .routeId("admin.internal.flush.data")
         ;
@@ -396,7 +392,7 @@ public class AdministrationRoute extends RestRouteBuilder {
 
         //Return subscription status
         from("direct:delete.subscription")
-               // .process(basicAuthProcessor)
+                // .process(basicAuthProcessor)
                 .bean(helper, "deleteSubscription(${header.subscriptionId})")
                 .to("direct:internal.delete.subscription")
         ;
@@ -437,7 +433,7 @@ public class AdministrationRoute extends RestRouteBuilder {
 
         //Prepare Camel shutdown
         from("direct:prepare-shutdown")
-            .log("Triggered to prepare for shutdown")
+                .log("Triggered to prepare for shutdown")
                 .process(p -> {
                     helper.shutdownTriggered = true;
 
@@ -482,7 +478,7 @@ public class AdministrationRoute extends RestRouteBuilder {
             ;
         }
 
-        from (CLUSTERSTATS_ROUTE)
+        from(CLUSTERSTATS_ROUTE)
                 .bean(helper, "listClusterStats")
                 .routeId("admin.clusterstats")
         ;

@@ -15,18 +15,14 @@
 
 package no.rutebanken.anshar.data;
 
-import com.hazelcast.core.EntryEvent;
 import com.hazelcast.map.IMap;
-import com.hazelcast.map.MapEvent;
 import com.hazelcast.query.Predicate;
-import com.hazelcast.replicatedmap.ReplicatedMap;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
-import org.apache.camel.component.hazelcast.listener.MapEntryListener;
 import org.quartz.utils.counter.Counter;
 import org.quartz.utils.counter.CounterImpl;
 import org.slf4j.Logger;
@@ -43,14 +39,7 @@ import javax.annotation.PostConstruct;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -59,11 +48,11 @@ public class Situations extends SiriRepository<PtSituationElement> {
     private static final Logger logger = LoggerFactory.getLogger(Situations.class);
 
     @Autowired
-    private IMap<SiriObjectStorageKey , PtSituationElement>  situationElements;
+    private IMap<SiriObjectStorageKey, PtSituationElement> situationElements;
 
     @Autowired
     @Qualifier("getSxChecksumMap")
-    private IMap<SiriObjectStorageKey,String> checksumCache;
+    private IMap<SiriObjectStorageKey, String> checksumCache;
 
     @Autowired
     @Qualifier("getSituationChangesMap")
@@ -91,9 +80,9 @@ public class Situations extends SiriRepository<PtSituationElement> {
     private void initializeUpdateCommitter() {
         super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
 
-        enableCache(situationElements);
+//        enableCache(situationElements);
 
-        linkEntriesTtl(situationElements, changesMap, checksumCache);
+//        linkEntriesTtl(situationElements, changesMap, checksumCache);
     }
 
     /**
@@ -119,9 +108,9 @@ public class Situations extends SiriRepository<PtSituationElement> {
             String datasetId = key.getCodespaceId();
 
             Integer count = sizeMap.getOrDefault(datasetId, 0);
-            sizeMap.put(datasetId, count+1);
+            sizeMap.put(datasetId, count + 1);
         });
-        logger.debug("Calculating data-distribution (SX) took {} ms: {}", (System.currentTimeMillis()-t1), sizeMap);
+        logger.debug("Calculating data-distribution (SX) took {} ms: {}", (System.currentTimeMillis() - t1), sizeMap);
         return sizeMap;
     }
 
@@ -133,9 +122,9 @@ public class Situations extends SiriRepository<PtSituationElement> {
             String datasetId = key.getCodespaceId();
 
             Integer count = sizeMap.getOrDefault(datasetId, 0);
-            sizeMap.put(datasetId, count+1);
+            sizeMap.put(datasetId, count + 1);
         });
-        logger.debug("Calculating data-distribution (SX) took {} ms: {}", (System.currentTimeMillis()-t1), sizeMap);
+        logger.debug("Calculating data-distribution (SX) took {} ms: {}", (System.currentTimeMillis() - t1), sizeMap);
         return sizeMap;
     }
 
@@ -192,16 +181,16 @@ public class Situations extends SiriRepository<PtSituationElement> {
 
         //Remove collected objects
         sizeLimitedIds.forEach(requestedIds::remove);
-        logger.info("Limiting size: {} ms", (System.currentTimeMillis()-t1));
+        logger.info("Limiting size: {} ms", (System.currentTimeMillis() - t1));
         t1 = System.currentTimeMillis();
 
         Collection<PtSituationElement> values = situationElements.getAll(sizeLimitedIds).values();
-        logger.info("Fetching data: {} ms", (System.currentTimeMillis()-t1));
+        logger.info("Fetching data: {} ms", (System.currentTimeMillis() - t1));
         t1 = System.currentTimeMillis();
 
         Siri siri = siriObjectFactory.createSXServiceDelivery(values);
         siri.getServiceDelivery().setMoreData(isMoreData);
-        logger.info("Creating SIRI-delivery: {} ms", (System.currentTimeMillis()-t1));
+        logger.info("Creating SIRI-delivery: {} ms", (System.currentTimeMillis() - t1));
 
         if (isAdHocRequest) {
             logger.info("Returning {}, no requestorRef is set", sizeLimitedIds.size());
@@ -230,8 +219,8 @@ public class Situations extends SiriRepository<PtSituationElement> {
     /**
      * Generates a set of keys that matches with user's request
      *
-     * @param requestorId        user id
-     * @param datasetId          dataset id
+     * @param requestorId user id
+     * @param datasetId   dataset id
      * @return a set of keys matching with filters
      */
     private Set<SiriObjectStorageKey> generateIdSet(String requestorId, String datasetId) {
@@ -321,7 +310,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
             return ZonedDateTime.now().until(expiry.plus(configuration.getSxGraceperiodMinutes(), ChronoUnit.MINUTES), ChronoUnit.MILLIS);
         } else {
             // No expiration set - keep "forever"
-            return  ZonedDateTime.now().until(ZonedDateTime.now().plusYears(10), ChronoUnit.MILLIS);
+            return ZonedDateTime.now().until(ZonedDateTime.now().plusYears(10), ChronoUnit.MILLIS);
         }
     }
 
@@ -349,7 +338,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
             boolean updated;
             if (existingChecksum != null && situationElements.containsKey(key)) { // Checksum not compared if actual situation does not exist
                 //Exists - compare values
-                updated =  !(currentChecksum.equals(existingChecksum));
+                updated = !(currentChecksum.equals(existingChecksum));
             } else {
                 //Does not exist
                 updated = true;
@@ -404,12 +393,13 @@ public class Situations extends SiriRepository<PtSituationElement> {
         return changes.values();
     }
 
-    public void removeSituation(String datasetId,PtSituationElement situation ){
+    public void removeSituation(String datasetId, PtSituationElement situation) {
 
         SiriObjectStorageKey key = createKey(datasetId, situation);
         situationElements.delete(key);
         checksumCache.remove(key);
     }
+
     private boolean keepByProgressStatus(PtSituationElement situation) {
         if (situation.getProgress() != null) {
             switch (situation.getProgress()) {
@@ -443,8 +433,12 @@ public class Situations extends SiriRepository<PtSituationElement> {
         key.append(datasetId).append(":")
                 .append((element.getSituationNumber() != null ? element.getSituationNumber().getValue() : "null"))
                 .append(":")
-                .append((element.getParticipantRef() != null ? element.getParticipantRef().getValue() :"null"));
+                .append((element.getParticipantRef() != null ? element.getParticipantRef().getValue() : "null"));
 
         return new SiriObjectStorageKey(datasetId, null, key.toString());
+    }
+
+    public void cleanChangesMap() {
+        changesMap.clear();
     }
 }

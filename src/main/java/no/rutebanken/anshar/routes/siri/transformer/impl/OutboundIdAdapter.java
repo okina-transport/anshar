@@ -90,8 +90,14 @@ public class OutboundIdAdapter extends ValueAdapter {
         if (stopPlaceService == null){
             stopPlaceService = ApplicationContextHolder.getContext().getBean(StopPlaceUpdaterService.class);
         }
-
-        return StringUtils.isEmpty(text) || !stopPlaceService.isKnownId(text) ? text : stopPlaceService.get(text);
+        if (!StringUtils.isEmpty(text)) {
+            if (stopPlaceService.isKnownId(text)) {
+                return stopPlaceService.get(text);
+            } else if (stopPlaceService.isKnownId(text.replace(":Quay:", ":StopPlace:"))) {
+                return stopPlaceService.get(text.replace(":Quay:", ":StopPlace:"));
+            }
+        }
+        return text;
     }
 
     private String convertToAltId(String datasetId, String text, ObjectType objectType) {

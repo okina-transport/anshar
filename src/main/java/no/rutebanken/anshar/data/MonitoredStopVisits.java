@@ -24,6 +24,7 @@ import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.util.StopMonitoringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.quartz.utils.counter.Counter;
 import org.quartz.utils.counter.CounterImpl;
 import org.slf4j.Logger;
@@ -31,15 +32,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
-import uk.org.siri.siri20.MessageRefStructure;
-import uk.org.siri.siri20.MonitoredCallStructure;
-import uk.org.siri.siri20.MonitoredStopVisit;
-import uk.org.siri.siri20.MonitoredVehicleJourneyStructure;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri20.*;
 
 import javax.annotation.PostConstruct;
-import java.io.Serializable;
-import java.lang.invoke.SerializedLambda;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -47,7 +42,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import java.util.stream.Collectors;
 
 @Repository
@@ -162,16 +156,19 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     }
 
 
-
-
-    public Siri createServiceDelivery(String requestorRef, String datasetId, String clientTrackingName, int maxSize,  Set<String> searchedStopIds) {
+    public Siri createServiceDelivery(String requestorRef, String datasetId, String clientTrackingName, int maxSize, Set<String> searchedStopIds) {
         return createServiceDelivery(requestorRef, datasetId, clientTrackingName, null, maxSize, -1, searchedStopIds);
     }
 
-    // TODO MHI : copié collé, à revoir
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientTrackingName, List<String> excludedDatasetIds, int maxSize, long previewInterval, Set<String> searchedStopIds) {
 
-        requestorRefRepository.touchRequestorRef(requestorId, datasetId, clientTrackingName, SiriDataType.STOP_MONITORING);
+        if(StringUtils.isNotEmpty(datasetId)){
+            requestorRefRepository.touchRequestorRef(requestorId, datasetId, clientTrackingName, SiriDataType.STOP_MONITORING);
+        }
+        else{
+            requestorRefRepository.touchRequestorRef(requestorId, null, clientTrackingName, SiriDataType.STOP_MONITORING);
+        }
+
 
         int trackingPeriodMinutes = configuration.getTrackingPeriodMinutes();
 
@@ -184,7 +181,14 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         }
 
         // Filter by (datasetId and/or searchedStopIds) OR (excludedDatasetIds and/or searchedStopIds)
-        Set<SiriObjectStorageKey> requestedIds = generateIdSet(requestorId, datasetId, searchedStopIds, excludedDatasetIds);
+        Set<SiriObjectStorageKey> requestedIds = new HashSet<>();
+        if(StringUtils.isNotEmpty(datasetId)){
+            requestedIds.addAll(generateIdSet(datasetId, searchedStopIds, excludedDatasetIds));
+        }
+        else{
+            requestedIds.addAll(generateIdSet(null, searchedStopIds, excludedDatasetIds));
+        }
+
 
         final ZonedDateTime previewExpiry = ZonedDateTime.now().plusSeconds(previewInterval / 1000);
 
@@ -199,7 +203,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
                     .map(Map.Entry::getKey)
                     .collect(Collectors.toSet()));
 
-            logger.info("Found {} ids starting within {} ms in {} ms", startTimes.size(), previewInterval, (System.currentTimeMillis()-t1));
+            logger.info("Found {} ids starting within {} ms in {} ms", startTimes.size(), previewInterval, (System.currentTimeMillis() - t1));
         }
 
         final AtomicInteger previewIntervalInclusionCounter = new AtomicInteger();
@@ -238,11 +242,11 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         Boolean isMoreData = (previewIntervalExclusionCounter.get() + sizeLimitedIds.size()) < requestedIds.size();
 
         Collection<MonitoredStopVisit> values = monitoredStopVisits.getAll(sizeLimitedIds).values();
-        logger.debug("Fetching data: {} ms", (System.currentTimeMillis()-t1));
+        logger.debug("Fetching data: {} ms", (System.currentTimeMillis() - t1));
         t1 = System.currentTimeMillis();
 
         Siri siri = siriObjectFactory.createSMServiceDelivery(values);
-        logger.debug("Creating SIRI-delivery: {} sm", (System.currentTimeMillis()-t1));
+        logger.debug("Creating SIRI-delivery: {} sm", (System.currentTimeMillis() - t1));
 
         siri.getServiceDelivery().setMoreData(isMoreData);
 
@@ -267,18 +271,13 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
     /**
      * Generates a set of keys that matches with user's request
-     * @param requestorId
-     *  user id
-     * @param datasetId
-     *  dataset id
-     * @param searchedStopRefs
-     *   stop place ids filters
-     * @param excludedDatasetIds
-     *   dataset ids excluded
-     * @return
-     *  a set of keys matching with filters
+     *
+     * @param datasetId          dataset id
+     * @param searchedStopRefs   stop place ids filters
+     * @param excludedDatasetIds dataset ids excluded
+     * @return a set of keys matching with filters
      */
-    private Set<SiriObjectStorageKey> generateIdSet(String requestorId, String datasetId, Set<String> searchedStopRefs, List<String> excludedDatasetIds){
+    private Set<SiriObjectStorageKey> generateIdSet(String datasetId, Set<String> searchedStopRefs, List<String> excludedDatasetIds) {
         // Get all relevant ids
         Set<SiriObjectStorageKey> idSet = new HashSet<>();
 
@@ -287,11 +286,6 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         return idSet;
     }
-
-
-//    private Predicate<SiriObjectStorageKey, MonitoredStopVisit> getpredicate(Set<String> searchedStopRefs, String datasetId, List<String> excludedDatasetIds){
-//        return entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, searchedStopRefs, datasetId, excludedDatasetIds);
-//    }
 
 
     @Override
@@ -352,7 +346,6 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     }
 
 
-
     @Override
     long getExpiration(MonitoredStopVisit monitoredStopVisit) {
         MonitoredVehicleJourneyStructure monitoredVehicleJourney = monitoredStopVisit.getMonitoredVehicleJourney();
@@ -384,7 +377,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
     // TODO MHI : copié / collé, à revoir
     @Override
-    public Collection<MonitoredStopVisit> addAll(String datasetId, List<MonitoredStopVisit> smList ) {
+    public Collection<MonitoredStopVisit> addAll(String datasetId, List<MonitoredStopVisit> smList) {
         Set<SiriObjectStorageKey> changes = new HashSet<>();
         Set<MonitoredStopVisit> addedData = new HashSet<>();
 
@@ -402,7 +395,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
                     String vehicleJourneyName = StopMonitoringUtils.getVehicleJourneyName(monitoredStopVisit).orElse(null);
 
                     String keyCriteria = monitoredStopVisit.getItemIdentifier() != null ? monitoredStopVisit.getItemIdentifier() : monitoredStopVisit.getRecordedAtTime().format(DateTimeFormatter.ISO_DATE);
-                    SiriObjectStorageKey key = createKey(datasetId, keyCriteria,monitoredStopVisit.getMonitoringRef().getValue(), vehicleJourneyName, lineName);
+                    SiriObjectStorageKey key = createKey(datasetId, keyCriteria, monitoredStopVisit.getMonitoringRef().getValue(), vehicleJourneyName, lineName);
 
                     String currentChecksum = null;
                     ZonedDateTime validUntilTime = monitoredStopVisit.getValidUntilTime();
@@ -428,8 +421,8 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
                         // if new visit's monitored status != old visit's status => update must be made
                         // else, a look on checksum is made
-                        updated = existing.getMonitoredVehicleJourney().isMonitored() !=  monitoredStopVisit.getMonitoredVehicleJourney().isMonitored()
-                                                                                                 || !(currentChecksum.equals(existingChecksum));
+                        updated = existing.getMonitoredVehicleJourney().isMonitored() != monitoredStopVisit.getMonitoredVehicleJourney().isMonitored()
+                                || !(currentChecksum.equals(existingChecksum));
                     } else {
                         //Does not exist
                         updated = true;
@@ -439,7 +432,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
                         checksumCache.put(key, currentChecksum, 5, TimeUnit.MINUTES); //Keeping all checksums for at least 5 minutes to avoid stale data
 
 
-                        boolean keep = shouldKeepIncomingData(existing,monitoredStopVisit);
+                        boolean keep = shouldKeepIncomingData(existing, monitoredStopVisit);
 
                         long expiration = getExpiration(monitoredStopVisit);
 
@@ -474,34 +467,34 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
     /**
      * Determine if incoming data (new data) must be kept or not
-     * @return
-     *   true : incoming data must be kept. It must replace the old data
-     *   false : incoming data should be ignored
+     *
+     * @return true : incoming data must be kept. It must replace the old data
+     * false : incoming data should be ignored
      */
-    private boolean shouldKeepIncomingData(MonitoredStopVisit oldData, MonitoredStopVisit newData){
-        if (oldData == null){
+    private boolean shouldKeepIncomingData(MonitoredStopVisit oldData, MonitoredStopVisit newData) {
+        if (oldData == null) {
             //No existing data => new data must be kept
             return true;
         }
 
-        if (oldData.getMonitoredVehicleJourney().isMonitored() != newData.getMonitoredVehicleJourney().isMonitored()){
+        if (oldData.getMonitoredVehicleJourney().isMonitored() != newData.getMonitoredVehicleJourney().isMonitored()) {
             //monitored status has changed => new data must be kept
             return true;
         }
 
-        if (newData.getRecordedAtTime() == null || oldData.getRecordedAtTime() == null){
+        if (newData.getRecordedAtTime() == null || oldData.getRecordedAtTime() == null) {
             // Inconsistent data => new data ignored
             return false;
         }
 
         //new data only kept if more recent than old one
-        return  newData.getRecordedAtTime().isAfter(oldData.getRecordedAtTime());
+        return newData.getRecordedAtTime().isAfter(oldData.getRecordedAtTime());
     }
 
 
     @Override
-    MonitoredStopVisit add(String datasetId, MonitoredStopVisit monitoredStopVisit) {
-        return add(datasetId, monitoredStopVisit, null,null );
+    public MonitoredStopVisit add(String datasetId, MonitoredStopVisit monitoredStopVisit) {
+        return add(datasetId, monitoredStopVisit, null, null);
     }
 
     MonitoredStopVisit add(String datasetId, MonitoredStopVisit monitoredStopVisit, String vehicleJourney, String line) {
@@ -512,44 +505,44 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         monitoredStopVisits.add(monitoredStopVisit);
         addAll(datasetId, monitoredStopVisits);
 
-        String monitoringRef = monitoredStopVisit.getMonitoringRef() == null ? null :  monitoredStopVisit.getMonitoringRef().getValue();
-        return this.monitoredStopVisits.get(createKey(datasetId,monitoredStopVisit.getItemIdentifier(), monitoringRef, vehicleJourney, line));
+        String monitoringRef = monitoredStopVisit.getMonitoringRef() == null ? null : monitoredStopVisit.getMonitoringRef().getValue();
+        return this.monitoredStopVisits.get(createKey(datasetId, monitoredStopVisit.getItemIdentifier(), monitoringRef, vehicleJourney, line));
     }
-
 
 
     /**
      * Creates unique key - assumes that any operator has a set of unique StopMonitoringRefs
+     *
      * @param datasetId
      * @param monitoredStopVisitIdentifier
      * @return
      */
     private SiriObjectStorageKey createKey(String datasetId, String monitoredStopVisitIdentifier, String monitoringRef, String vehicleJourney, String line) {
-        return new SiriObjectStorageKey(datasetId, line, monitoredStopVisitIdentifier, monitoringRef, vehicleJourney,null);
+        return new SiriObjectStorageKey(datasetId, line, monitoredStopVisitIdentifier, monitoringRef, vehicleJourney, null);
     }
 
-    public void writeStatistics(List<String> datasetIds){
+    public void writeStatistics(List<String> datasetIds) {
         Map<String, Integer> results = getNbOfItemsByDataset(datasetIds);
         for (Map.Entry<String, Integer> entry : results.entrySet()) {
-            logger.info("Okina-StopMonitoring " + entry.getKey() + " : " +  entry.getValue() + " MonitoredRefs");
+            logger.info("Okina-StopMonitoring " + entry.getKey() + " : " + entry.getValue() + " MonitoredRefs");
         }
     }
 
 
-    public Map<String,Integer> getNbOfItemsByDataset(List<String> datasetIds){
-        Map<String,Integer> results = new HashMap<>();
+    public Map<String, Integer> getNbOfItemsByDataset(List<String> datasetIds) {
+        Map<String, Integer> results = new HashMap<>();
 
         for (String datasetId : datasetIds) {
 
             Predicate<SiriObjectStorageKey, MonitoredStopVisit> predicate = SiriObjectStorageKeyUtil.getStopPredicate(null, datasetId, null);
             Set<SiriObjectStorageKey> idSet = monitoredStopVisits.keySet(predicate);
-            results.put(datasetId,idSet.size());
+            results.put(datasetId, idSet.size());
         }
         return results;
     }
 
-    public Map<String,Integer> getNbOfStopsByDataset(List<String> datasetIds){
-        Map<String,Integer> results = new HashMap<>();
+    public Map<String, Integer> getNbOfStopsByDataset(List<String> datasetIds) {
+        Map<String, Integer> results = new HashMap<>();
 
 
         for (String datasetId : datasetIds) {
@@ -558,12 +551,16 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
             Set<String> stopSet = new HashSet();
             for (SiriObjectStorageKey siriObjectStorageKey : idSet) {
 
-                if (!stopSet.contains(siriObjectStorageKey.getStopRef())){
+                if (!stopSet.contains(siriObjectStorageKey.getStopRef())) {
                     stopSet.add(siriObjectStorageKey.getStopRef());
                 }
             }
-            results.put(datasetId,stopSet.size());
+            results.put(datasetId, stopSet.size());
         }
         return results;
+    }
+
+    public Set<String> getAllDatasetIds(){
+        return monitoredStopVisits.keySet().stream().map(SiriObjectStorageKey::getCodespaceId).collect(Collectors.toSet());
     }
 }

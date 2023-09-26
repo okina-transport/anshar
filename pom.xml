@@ -17,17 +17,17 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
-  <modelVersion>4.0.0</modelVersion>
-  <parent>
-      <groupId>com.okina.springboot</groupId>
-      <artifactId>superpom</artifactId>
-      <version>1.0.1-SNAPSHOT</version>
-  </parent>
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.okina.springboot</groupId>
+        <artifactId>superpom</artifactId>
+        <version>1.0.1-SNAPSHOT</version>
+    </parent>
 
 
     <groupId>no.rutebanken.anshar</groupId>
     <artifactId>anshar</artifactId>
-    <version>1.3.2-mobi-iti-SNAPSHOT</version>
+    <version>1.3.5-mobi-iti-SNAPSHOT</version>
     <packaging>jar</packaging>
 
 
@@ -42,11 +42,11 @@
         <camel-version>3.18.0</camel-version>
 
         <metrics.version>3.2.3</metrics.version>
-        <okina.helpers.version>1.0.27</okina.helpers.version>
-        <geotools.version>27.0</geotools.version>
+        <okina.helpers.version>1.0.26</okina.helpers.version>
+        <geotools.version>29.0</geotools.version>
         <sonar.projectKey>mobi-iti:anshar</sonar.projectKey>
         <protobuf.version>3.19.3</protobuf.version>
-        <gtfs.realtime-bindings.version>0.0.4</gtfs.realtime-bindings.version>
+        <gtfs.realtime-bindings.version>0.0.5</gtfs.realtime-bindings.version>
         <version.lombok>1.18.16</version.lombok>
 
     </properties>
@@ -115,6 +115,18 @@
                     </exclusion>
                 </exclusions>
             </dependency>
+            <dependency>
+                <groupId>org.eclipse.emf</groupId>
+                <artifactId>org.eclipse.emf.common</artifactId>
+                <version>2.29.0</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.emf</groupId>
+                <artifactId>org.eclipse.emf.ecore</artifactId>
+                <version>2.29.0</version>
+            </dependency>
+
+
         </dependencies>
     </dependencyManagement>
 
@@ -311,12 +323,17 @@
             <artifactId>netex-java-model</artifactId>
             <version>1.0.13</version>
         </dependency>
-
-        <!-- Geotools needed for calculating speed between stops-->
+        <!--        Geotools needed for calculating speed between stops-->
         <dependency>
             <groupId>org.geotools</groupId>
             <artifactId>gt-main</artifactId>
             <version>${geotools.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.eclipse.emf</groupId>
+            <artifactId>org.eclipse.emf.common</artifactId>
+            <version>2.29.0</version>
         </dependency>
 
         <dependency>
@@ -380,11 +397,13 @@
             <version>${protobuf.version}</version>
         </dependency>
 
+
         <dependency>
-            <groupId>com.google.transit</groupId>
+            <groupId>io.mobilitydata.transit</groupId>
             <artifactId>gtfs-realtime-bindings</artifactId>
             <version>${gtfs.realtime-bindings.version}</version>
         </dependency>
+
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -403,8 +422,6 @@
             <artifactId>commons-csv</artifactId>
             <version>1.9.0</version>
         </dependency>
-
-
 
 
         <!-- testing -->
@@ -443,19 +460,19 @@
         <dependency>
             <groupId>io.rest-assured</groupId>
             <artifactId>rest-assured</artifactId>
-            <version>4.5.1</version>
+            <version>5.3.1</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.rest-assured</groupId>
             <artifactId>json-path</artifactId>
-            <version>4.5.1</version>
+            <version>5.3.1</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.rest-assured</groupId>
             <artifactId>xml-path</artifactId>
-            <version>4.5.1</version>
+            <version>5.3.1</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -506,18 +523,18 @@
                 </configuration>
             </plugin>
 
-<!--            <plugin>-->
-<!--                <groupId>org.springframework.boot</groupId>-->
-<!--                <artifactId>spring-boot-maven-plugin</artifactId>-->
-<!--                <version>${spring-boot-plugin.version}</version>-->
-<!--                <executions>-->
-<!--                    <execution>-->
-<!--                        <goals>-->
-<!--                            <goal>repackage</goal>-->
-<!--                        </goals>-->
-<!--                    </execution>-->
-<!--                </executions>-->
-<!--            </plugin>-->
+            <!--            <plugin>-->
+            <!--                <groupId>org.springframework.boot</groupId>-->
+            <!--                <artifactId>spring-boot-maven-plugin</artifactId>-->
+            <!--                <version>${spring-boot-plugin.version}</version>-->
+            <!--                <executions>-->
+            <!--                    <execution>-->
+            <!--                        <goals>-->
+            <!--                            <goal>repackage</goal>-->
+            <!--                        </goals>-->
+            <!--                    </execution>-->
+            <!--                </executions>-->
+            <!--            </plugin>-->
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -563,8 +580,10 @@
         <profile>
             <id>sonar</id>
             <properties>
-                <sonar.dependencyCheck.jsonReportPath>target/dependency-check-report.json</sonar.dependencyCheck.jsonReportPath>
-                <sonar.dependencyCheck.htmlReportPath>target/dependency-check-report.html</sonar.dependencyCheck.htmlReportPath>
+                <sonar.dependencyCheck.jsonReportPath>target/dependency-check-report.json
+                </sonar.dependencyCheck.jsonReportPath>
+                <sonar.dependencyCheck.htmlReportPath>target/dependency-check-report.html
+                </sonar.dependencyCheck.htmlReportPath>
                 <sonar.dependencyCheck.securityHotspot>true</sonar.dependencyCheck.securityHotspot>
                 <sonar.dependencyCheck.summarize>true</sonar.dependencyCheck.summarize>
             </properties>

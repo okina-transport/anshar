@@ -9,6 +9,10 @@ import java.util.Set;
 
 public class IDUtils {
 
+
+    private static long currentGTFSRTInternalId = 1_000_000;
+    private static long currentDiscoveryInternalId = 5_000_000;
+
     /**
      * Revert searched Ids by user to go back to an original id
      *
@@ -44,6 +48,16 @@ public class IDUtils {
             revertedIds.add(originalMonitoringRef);
         }
         return revertedIds;
+    }
+
+    public static long getUniqueInternalIdForGTFSRT() {
+        currentGTFSRTInternalId++;
+        return currentGTFSRTInternalId;
+    }
+
+    public static long getUniqueInternalIdForDiscoverySubscription() {
+        currentDiscoveryInternalId++;
+        return currentDiscoveryInternalId;
     }
 
 }

@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.routes.mapping;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,7 +74,7 @@ public class StopPlaceUpdaterService {
         return stopPlaceMappings.get(id);
     }
 
-    public String getReverse(String id, String datasetId) {
+    public List<String> getReverse(String id, String datasetId) {
         if (reverseStopPlaceMappings.isEmpty()) {
             // Avoid multiple calls at the same time.
             // Could have used a timed lock here.
@@ -85,10 +86,32 @@ public class StopPlaceUpdaterService {
             }
         }
 
-        return reverseStopPlaceMappings.get(id).stream()
+        Optional<String> reverseStopPlaceMapping = reverseStopPlaceMappings.get(id).stream()
                                                 .filter(provId -> provId.startsWith(datasetId))
-                                                .findFirst()
-                                                .get();
+                                                .findFirst();
+
+        return reverseStopPlaceMapping.map(Arrays::asList).orElseGet(ArrayList::new);
+
+    }
+
+    public List<String> getReverseWithoutDatasetId(String id) {
+        if (reverseStopPlaceMappings.isEmpty()) {
+            // Avoid multiple calls at the same time.
+            // Could have used a timed lock here.
+            synchronized (LOCK) {
+                // Check again.
+                if (reverseStopPlaceMappings.isEmpty()) {
+                    updateIdMapping();
+                }
+            }
+        }
+
+        if(reverseStopPlaceMappings.get(id) != null && !reverseStopPlaceMappings.get(id).isEmpty()){
+            return reverseStopPlaceMappings.get(id);
+        }
+
+        return new ArrayList<>();
+
     }
 
     /**
@@ -113,8 +136,16 @@ public class StopPlaceUpdaterService {
         List<String> mappings = reverseStopPlaceMappings.get(id);
 
         return mappings.stream()
-                        .filter(provId -> provId != null)
+                        .filter(Objects::nonNull)
                         .anyMatch(provId -> provId.startsWith(datasetId));
+    }
+
+    public boolean canBeRevertedWithoutDatasetId(String id) {
+        if (!reverseStopPlaceMappings.containsKey(id)){
+            return false;
+        }
+
+        return reverseStopPlaceMappings.get(id) != null && !reverseStopPlaceMappings.get(id).isEmpty();
     }
 
     @PostConstruct
@@ -150,7 +181,7 @@ public class StopPlaceUpdaterService {
                 providerIds = reverseStopPlaceMappings.get(mappingEntry.getValue());
             }else{
                 providerIds = new ArrayList<>();
-                reverseStopPlaceMappings.put(mappingEntry.getValue(), providerIds );
+                reverseStopPlaceMappings.put(mappingEntry.getValue(), providerIds);
             }
 
             providerIds.add(mappingEntry.getKey());
@@ -187,6 +218,11 @@ public class StopPlaceUpdaterService {
     //Called from tests
     public void addStopPlaceMappings(Map<String, String> stopPlaceMap) {
         this.stopPlaceMappings.putAll(stopPlaceMap);
+    }
+
+    //Called from tests
+    public void addStopPlaceReverseMappings(Map<String, List<String>> stopPlaceReverseMap) {
+        this.reverseStopPlaceMappings.putAll(stopPlaceReverseMap);
     }
 
     //Called from tests

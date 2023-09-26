@@ -122,14 +122,14 @@ public class ServerSubscriptionManager {
             OutboundSubscriptionSetup subscription = subscriptions.get(key);
 
             JSONObject obj = new JSONObject();
-            obj.put("subscriptionRef",""+key);
-            obj.put("subscriptionType",""+subscription.getSubscriptionType());
-            obj.put("address",""+subscription.getAddress());
-            obj.put("heartbeatInterval",""+(subscription.getHeartbeatInterval()/1000) + " s");
-            obj.put("datasetId",subscription.getDatasetId()!=null ? subscription.getDatasetId():"");
+            obj.put("subscriptionRef", "" + key);
+            obj.put("subscriptionType", "" + subscription.getSubscriptionType());
+            obj.put("address", "" + subscription.getAddress());
+            obj.put("heartbeatInterval", "" + (subscription.getHeartbeatInterval() / 1000) + " s");
+            obj.put("datasetId", subscription.getDatasetId() != null ? subscription.getDatasetId() : "");
             obj.put("requestReceived", formatter.format(subscription.getRequestTimestamp()));
-            obj.put("initialTerminationTime",formatter.format(subscription.getInitialTerminationTime()));
-            obj.put("clientTrackingName",subscription.getClientTrackingName()!=null ? subscription.getClientTrackingName():"");
+            obj.put("initialTerminationTime", formatter.format(subscription.getInitialTerminationTime()));
+            obj.put("clientTrackingName", subscription.getClientTrackingName() != null ? subscription.getClientTrackingName() : "");
 
             stats.add(obj);
         }
@@ -194,22 +194,21 @@ public class ServerSubscriptionManager {
     }
 
 
-
     private OutboundSubscriptionSetup createSubscription(SubscriptionRequest subscriptionRequest, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName) {
 
 
         List<ValueAdapter> mappers;
-        if (subscriptionRequest.getStopMonitoringSubscriptionRequests() != null && subscriptionRequest.getStopMonitoringSubscriptionRequests().size() > 0){
+        if (subscriptionRequest.getStopMonitoringSubscriptionRequests() != null && subscriptionRequest.getStopMonitoringSubscriptionRequests().size() > 0) {
             Map<ObjectType, Optional<IdProcessingParameters>> idProcessingParams = siriHelper.getIdProcessingParamsFromSubscription(subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0), outboundIdMappingPolicy, datasetId);
             mappers = MappingAdapterPresets.getOutboundAdapters(SiriDataType.STOP_MONITORING, outboundIdMappingPolicy, idProcessingParams);
-        }else{
+        } else {
             mappers = MappingAdapterPresets.getOutboundAdapters(outboundIdMappingPolicy);
         }
 
         return new OutboundSubscriptionSetup(
                 ZonedDateTime.now(),
                 getSubscriptionType(subscriptionRequest),
-                subscriptionRequest.getConsumerAddress() != null ? subscriptionRequest.getConsumerAddress():subscriptionRequest.getAddress(),
+                subscriptionRequest.getConsumerAddress() != null ? subscriptionRequest.getConsumerAddress() : subscriptionRequest.getAddress(),
                 getHeartbeatInterval(subscriptionRequest),
                 getIncrementalUpdates(subscriptionRequest),
                 getChangeBeforeUpdates(subscriptionRequest),
@@ -221,7 +220,7 @@ public class ServerSubscriptionManager {
                 findInitialTerminationTime(subscriptionRequest),
                 datasetId,
                 clientTrackingName
-                );
+        );
     }
 
     // public for unittest
@@ -280,7 +279,7 @@ public class ServerSubscriptionManager {
 
     private int getMilliSeconds(Duration changeBeforeUpdates) {
         if (changeBeforeUpdates != null) {
-            return changeBeforeUpdates.getSeconds()*1000;
+            return changeBeforeUpdates.getSeconds() * 1000;
         }
         return 0;
     }
@@ -384,6 +383,19 @@ public class ServerSubscriptionManager {
         }
     }
 
+    public List<String> terminateAllsubscriptionsForRequestor(String requestorRef, boolean postResponse) {
+        logger.info("Terminating all subscriptions for requestor:" + requestorRef);
+        List<String> terminatedSubscriptions = new ArrayList<>();
+        for (OutboundSubscriptionSetup subscription : subscriptions.values()) {
+            if (subscription.getRequestorRef().equals(requestorRef)) {
+                terminatedSubscriptions.add(subscription.getSubscriptionId());
+                terminateSubscription(subscription.getSubscriptionId(), postResponse);
+            }
+        }
+        return terminatedSubscriptions;
+    }
+
+
     public Siri handleCheckStatusRequest(CheckStatusRequestStructure checkStatusRequest) {
         return siriObjectFactory.createCheckStatusResponse(checkStatusRequest);
     }
@@ -432,21 +444,21 @@ public class ServerSubscriptionManager {
         }
 
         final List<OutboundSubscriptionSetup> recipients = subscriptions
-            .values()
-            .stream()
-            .filter(subscriptionRequest -> (
-                    subscriptionRequest.getSubscriptionType().equals(SiriDataType.VEHICLE_MONITORING)
-                        && (
-                        subscriptionRequest.getDatasetId() == null || (
-                            subscriptionRequest
-                                .getDatasetId()
-                                .equals(datasetId)
+                .values()
+                .stream()
+                .filter(subscriptionRequest -> (
+                                subscriptionRequest.getSubscriptionType().equals(SiriDataType.VEHICLE_MONITORING)
+                                        && (
+                                        subscriptionRequest.getDatasetId() == null || (
+                                                subscriptionRequest
+                                                        .getDatasetId()
+                                                        .equals(datasetId)
+                                        )
+                                )
                         )
-                    )
-                )
 
-            )
-            .collect(Collectors.toList());
+                )
+                .collect(Collectors.toList());
 
         boolean logFullContents = true;
         for (OutboundSubscriptionSetup recipient : recipients) {
@@ -459,7 +471,7 @@ public class ServerSubscriptionManager {
 
 
     private void pushUpdatedSituations(
-        List<PtSituationElement> addedOrUpdated, String datasetId, String breadcrumbId
+            List<PtSituationElement> addedOrUpdated, String datasetId, String breadcrumbId
     ) {
         MDC.put("camel.breadcrumbId", breadcrumbId);
 
@@ -473,21 +485,21 @@ public class ServerSubscriptionManager {
         }
 
         final List<OutboundSubscriptionSetup> recipients = subscriptions
-            .values()
-            .stream()
-            .filter(subscriptionRequest -> (
-                    subscriptionRequest.getSubscriptionType().equals(SiriDataType.SITUATION_EXCHANGE)
-                        && (
-                        subscriptionRequest.getDatasetId() == null || (
-                            subscriptionRequest
-                                .getDatasetId()
-                                .equals(datasetId)
+                .values()
+                .stream()
+                .filter(subscriptionRequest -> (
+                                subscriptionRequest.getSubscriptionType().equals(SiriDataType.SITUATION_EXCHANGE)
+                                        && (
+                                        subscriptionRequest.getDatasetId() == null || (
+                                                subscriptionRequest
+                                                        .getDatasetId()
+                                                        .equals(datasetId)
+                                        )
+                                )
                         )
-                    )
-                )
 
-            )
-            .collect(Collectors.toList());
+                )
+                .collect(Collectors.toList());
 
         boolean logFullContents = true;
         for (OutboundSubscriptionSetup recipient : recipients) {
@@ -507,7 +519,6 @@ public class ServerSubscriptionManager {
             return;
         }
         Siri delivery = siriObjectFactory.createGMServiceDelivery(addedOrUpdated);
-
 
 
         final List<OutboundSubscriptionSetup> recipients = subscriptions
@@ -544,7 +555,6 @@ public class ServerSubscriptionManager {
             return;
         }
         Siri delivery = siriObjectFactory.createFMServiceDelivery(updates);
-
 
 
         final List<OutboundSubscriptionSetup> recipients = subscriptions
@@ -588,21 +598,21 @@ public class ServerSubscriptionManager {
         }
 
         final List<OutboundSubscriptionSetup> recipients = subscriptions
-            .values()
-            .stream()
-            .filter(subscriptionRequest -> (
-                    subscriptionRequest.getSubscriptionType().equals(SiriDataType.ESTIMATED_TIMETABLE)
-                        && (
-                        subscriptionRequest.getDatasetId() == null || (
-                            subscriptionRequest
-                                .getDatasetId()
-                                .equals(datasetId)
+                .values()
+                .stream()
+                .filter(subscriptionRequest -> (
+                                subscriptionRequest.getSubscriptionType().equals(SiriDataType.ESTIMATED_TIMETABLE)
+                                        && (
+                                        subscriptionRequest.getDatasetId() == null || (
+                                                subscriptionRequest
+                                                        .getDatasetId()
+                                                        .equals(datasetId)
+                                        )
+                                )
                         )
-                    )
-                )
 
-            )
-            .collect(Collectors.toList());
+                )
+                .collect(Collectors.toList());
 
         logger.info("Pushing {} ET updates to {} outbound subscriptions", addedOrUpdated.size(), recipients.size());
 
@@ -629,7 +639,7 @@ public class ServerSubscriptionManager {
         }
 
         subscriptions.values().stream().filter(subscriptionRequest ->
-                ( subscriptionRequest.getSubscriptionType().equals(SiriDataType.STOP_MONITORING) &&
+                (subscriptionRequest.getSubscriptionType().equals(SiriDataType.STOP_MONITORING) &&
                         (subscriptionRequest.getDatasetId() == null || (subscriptionRequest.getDatasetId().equals(datasetId))))
 
         ).forEach(subscription ->
@@ -644,16 +654,16 @@ public class ServerSubscriptionManager {
         if (outboundSubscriptionSetup != null) {
 
             //Grace-period is set to minimum 5 minutes
-            long gracePeriod = Math.max(3*outboundSubscriptionSetup.getHeartbeatInterval(), 5*60*1000L);
+            long gracePeriod = Math.max(3 * outboundSubscriptionSetup.getHeartbeatInterval(), 5 * 60 * 1000L);
 
             Instant firstFail = failTrackerMap.getOrDefault(subscriptionId, Instant.now());
 
             long terminationTime = firstFail.until(Instant.now(), MILLIS);
             if (terminationTime > gracePeriod) {
-                logger.info("Cancelling outbound subscription {} that has failed for {}s.", subscriptionId, terminationTime/1000);
+                logger.info("Cancelling outbound subscription {} that has failed for {}s.", subscriptionId, terminationTime / 1000);
                 removeSubscription(subscriptionId);
             } else {
-                logger.info("Outbound subscription {} has not responded for {}s, will be cancelled after {}s.", subscriptionId, terminationTime/1000, gracePeriod/1000);
+                logger.info("Outbound subscription {} has not responded for {}s, will be cancelled after {}s.", subscriptionId, terminationTime / 1000, gracePeriod / 1000);
                 failTrackerMap.set(subscriptionId, firstFail);
             }
         }

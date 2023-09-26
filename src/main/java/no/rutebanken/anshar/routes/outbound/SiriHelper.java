@@ -25,6 +25,7 @@ import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.util.IDUtils;
+import org.checkerframework.checker.units.qual.A;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -202,11 +203,12 @@ public class SiriHelper {
 
 
         String requestedId = stopMonitoringSubscription.getStopMonitoringRequest().getMonitoringRef().getValue();
+        List<String> originalRequestedIds = Collections.singletonList(requestedId);
         if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)){
-            requestedId = stopPlaceUpdaterService.canBeReverted(requestedId, datasetId) ? stopPlaceUpdaterService.getReverse(requestedId, datasetId) : requestedId;
+            originalRequestedIds = stopPlaceUpdaterService.canBeReverted(requestedId, datasetId) ? stopPlaceUpdaterService.getReverse(requestedId, datasetId) : Arrays.asList(requestedId);
         }
 
-        HashSet<String> requestedIds = new HashSet<>(Arrays.asList(requestedId));
+        HashSet<String> requestedIds = new HashSet<>(originalRequestedIds);
 
         Map<ObjectType, Optional<IdProcessingParameters>> idProcessingParams = subscriptionConfig.buildIdProcessingParams(null, requestedIds, ObjectType.STOP);
 
@@ -222,16 +224,14 @@ public class SiriHelper {
 
 
     public Map<ObjectType, Optional<IdProcessingParameters>> getIdProcessingParamsFromSubscription(StopMonitoringSubscriptionStructure stopMonitoringSubscription, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
-        Map<Class, Set<String>> filterMap = new HashMap<>();
-        Set<String> stopPointRefValues = new HashSet<>();
-
 
         String requestedId = stopMonitoringSubscription.getStopMonitoringRequest().getMonitoringRef().getValue();
+        List<String> originalRequestedIds = new ArrayList<>();
         if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)){
-            requestedId = stopPlaceUpdaterService.canBeReverted(requestedId, datasetId) ? stopPlaceUpdaterService.getReverse(requestedId, datasetId) : requestedId;
+            originalRequestedIds = stopPlaceUpdaterService.canBeReverted(requestedId, datasetId) ? stopPlaceUpdaterService.getReverse(requestedId, datasetId) : Arrays.asList(requestedId);
         }
 
-        HashSet<String> requestedIds = new HashSet<>(Arrays.asList(requestedId));
+        HashSet<String> requestedIds = new HashSet<>(originalRequestedIds);
 
         return subscriptionConfig.buildIdProcessingParams(null, requestedIds, ObjectType.STOP);
     }

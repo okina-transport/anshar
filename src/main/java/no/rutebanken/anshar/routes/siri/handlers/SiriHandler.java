@@ -15,17 +15,15 @@
 
 package no.rutebanken.anshar.routes.siri.handlers;
 
-import io.micrometer.core.instrument.util.StringUtils;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.*;
-import no.rutebanken.anshar.data.util.GeneralMessageMapper;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.health.HealthManager;
-import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
-import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
+import no.rutebanken.anshar.routes.siri.handlers.inbound.*;
+import no.rutebanken.anshar.routes.siri.handlers.outbound.*;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
@@ -37,30 +35,21 @@ import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import no.rutebanken.anshar.util.GeneralMessageHelper;
 import no.rutebanken.anshar.util.IDUtils;
-import org.json.simple.JSONObject;
-import org.rutebanken.netex.model.SiteRefStructure;
 import org.rutebanken.siri20.util.SiriXml;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.ifopt.siri20.StopPlaceComponentRefStructure;
-import uk.org.ifopt.siri20.StopPlaceRef;
 import uk.org.siri.siri20.*;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.UnmarshalException;
-import javax.xml.datatype.Duration;
 import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getOriginalId;
 
 @Service
 public class SiriHandler {
@@ -78,6 +67,9 @@ public class SiriHandler {
 
     @Autowired
     private GeneralMessages generalMessages;
+
+    @Autowired
+    private GeneralMessagesCancellations generalMessageCancellations;
 
     @Autowired
     private FacilityMonitoring facilityMonitoring;
@@ -107,16 +99,49 @@ public class SiriHandler {
     private PrometheusMetricsService metrics;
 
     @Autowired
-    private StopPlaceIdCache idCache;
-
-    @Autowired
     private SubscriptionConfig subscriptionConfig;
 
     @Autowired
-    private StopPlaceUpdaterService stopPlaceUpdaterService;
+    private SituationExchangeOutbound situationExchangeOutbound;
 
     @Autowired
-    private ExternalIdsService externalIdsService;
+    private DiscoveryStopPointsOutbound discoveryStopPointsOutbound;
+
+    @Autowired
+    private DiscoveryLinesOutbound discoveryLinesOutbound;
+
+    @Autowired
+    private Utils utils;
+
+    @Autowired
+    private SituationExchangeInbound situationExchangeInbound;
+
+    @Autowired
+    private EstimatedTimetableInbound estimatedTimetableInbound;
+
+    @Autowired
+    private StopMonitoringInbound stopMonitoringInbound;
+
+    @Autowired
+    private VehicleMonitoringInbound vehicleMonitoringInbound;
+
+    @Autowired
+    private FacilityMonitoringInbound facilityMonitoringInbound;
+
+    @Autowired
+    private VehicleMonitoringOutbound vehicleMonitoringOutbound;
+
+    @Autowired
+    private EstimatedTimetableOutbound estimatedTimetableOutbound;
+
+    @Autowired
+    private StopMonitoringOutbound stopMonitoringOutbound;
+
+    @Autowired
+    private FacilityMonitoringOutbound facilityMonitoringOutbound;
+
+    @Autowired
+    private GeneralMessageInbound generalMessageInbound;
 
 
     public Siri handleIncomingSiri(String subscriptionId, InputStream xml) throws UnmarshalException {
@@ -141,10 +166,10 @@ public class SiriHandler {
     public Siri handleIncomingSiri(String subscriptionId, InputStream xml, String datasetId, List<String> excludedDatasetIdList, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String clientTrackingName) throws UnmarshalException {
         try {
             if (subscriptionId != null) {
-                processSiriClientRequest(subscriptionId, xml); // Response to a request we made on behalf of one of the subscriptions
+                inboundProcessSiriClientRequest(subscriptionId, xml); // Response to a request we made on behalf of one of the subscriptions
             } else {
                 Siri incoming = SiriValueTransformer.parseXml(xml); // Someone asking us for siri update
-                return processSiriServerRequest(incoming, datasetId, excludedDatasetIdList, outboundIdMappingPolicy, maxSize, clientTrackingName);
+                return outboundProcessSiriServerRequest(incoming, datasetId, excludedDatasetIdList, outboundIdMappingPolicy, maxSize, clientTrackingName);
             }
         } catch (UnmarshalException e) {
             throw e;
@@ -207,7 +232,6 @@ public class SiriHandler {
                 metrics.countOutgoingData(serviceResponse, SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE);
 
 
-
                 return SiriValueTransformer.transform(
                         serviceResponse,
                         MappingAdapterPresets.getOutboundAdapters(dataType, OutboundIdMappingPolicy.DEFAULT, subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId)),
@@ -220,15 +244,13 @@ public class SiriHandler {
     }
 
 
-
-
     /**
      * Handling incoming requests from external clients
      *
      * @param incoming              incoming message
      * @param excludedDatasetIdList dataset to exclude
      */
-    private Siri processSiriServerRequest(Siri incoming, String datasetId, List<String> excludedDatasetIdList, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String clientTrackingName) {
+    private Siri outboundProcessSiriServerRequest(Siri incoming, String datasetId, List<String> excludedDatasetIdList, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String clientTrackingName) {
 
         if (maxSize < 0) {
             maxSize = configuration.getDefaultMaxSize();
@@ -249,10 +271,14 @@ public class SiriHandler {
             TerminateSubscriptionRequestStructure terminateSubscriptionRequest = incoming.getTerminateSubscriptionRequest();
             if (terminateSubscriptionRequest.getSubscriptionReves() != null && !terminateSubscriptionRequest.getSubscriptionReves().isEmpty()) {
                 String subscriptionRef = terminateSubscriptionRequest.getSubscriptionReves().get(0).getValue();
-
                 serverSubscriptionManager.terminateSubscription(subscriptionRef, configuration.processAdmin());
                 if (configuration.processAdmin()) {
                     return siriObjectFactory.createTerminateSubscriptionResponse(subscriptionRef);
+                }
+            } else if (terminateSubscriptionRequest.getAll() != null) {
+                List<String> terminatedSubscriptions = serverSubscriptionManager.terminateAllsubscriptionsForRequestor(terminateSubscriptionRequest.getRequestorRef().getValue(), configuration.processAdmin());
+                if (configuration.processAdmin()) {
+                    return siriObjectFactory.createTerminateSubscriptionResponse(terminatedSubscriptions.stream().collect(Collectors.joining(",")));
                 }
             }
         } else if (incoming.getCheckStatusRequest() != null) {
@@ -268,160 +294,65 @@ public class SiriHandler {
             if (serviceRequest.getRequestorRef() != null) {
                 requestorRef = serviceRequest.getRequestorRef().getValue();
             }
-            SiriDataType dataType = null;
+
             if (hasValues(serviceRequest.getSituationExchangeRequests())) {
-                dataType = SiriDataType.SITUATION_EXCHANGE;
-                Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);
-                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idMap);
+                valueAdapters = situationExchangeOutbound.getValueAdapters(datasetId, outboundIdMappingPolicy);
                 serviceResponse = situations.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize);
             } else if (hasValues(serviceRequest.getVehicleMonitoringRequests())) {
-                dataType = SiriDataType.VEHICLE_MONITORING;
-
-                Map<Class, Set<String>> filterMap = new HashMap<>();
-                for (VehicleMonitoringRequestStructure req : serviceRequest.getVehicleMonitoringRequests()) {
-                    LineRef lineRef = req.getLineRef();
-                    if (lineRef != null) {
-                        Set<String> linerefList = filterMap.get(LineRef.class) != null ? filterMap.get(LineRef.class) : new HashSet<>();
-                        linerefList.add(lineRef.getValue());
-                        filterMap.put(LineRef.class, linerefList);
-                    }
-                    VehicleRef vehicleRef = req.getVehicleRef();
-                    if (vehicleRef != null) {
-                        Set<String> vehicleRefList = filterMap.get(VehicleRef.class) != null ? filterMap.get(VehicleRef.class) : new HashSet<>();
-                        vehicleRefList.add(vehicleRef.getValue());
-                        filterMap.put(VehicleRef.class, vehicleRefList);
-                    }
-                }
-
-
-                Set<String> lineRefList = filterMap.get(LineRef.class) != null ? filterMap.get(LineRef.class) : new HashSet<>();
-                Set<String> vehicleRefList = filterMap.get(VehicleRef.class) != null ? filterMap.get(VehicleRef.class) : new HashSet<>();
-
-                Set<String> lineRefOriginalList;
-                if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy)) {
-                    lineRefOriginalList = convertFromAltIdsToImportedIdsLine(lineRefList, datasetId);
-                } else {
-                    lineRefOriginalList = lineRefList;
-                }
-
+                Set<String> lineRefOriginalList = vehicleMonitoringOutbound.getLineRefOriginalList(serviceRequest, outboundIdMappingPolicy, datasetId);
+                Set<String> vehicleRefList = vehicleMonitoringOutbound.getVehicleRefList(serviceRequest);
 
                 Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParams(datasetId, lineRefOriginalList, ObjectType.LINE);
                 Set<String> revertedLineRefs = IDUtils.revertMonitoringRefs(lineRefOriginalList, idMap.get(ObjectType.LINE));
 
-                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idMap);
+                valueAdapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.VEHICLE_MONITORING, outboundIdMappingPolicy, idMap);
                 Siri siri = vehicleActivities.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize, revertedLineRefs, vehicleRefList);
                 serviceResponse = siri;
 
-                if (revertedLineRefs.size() > 0) {
+                if (!revertedLineRefs.isEmpty()) {
                     List<String> invalidDataReferences = revertedLineRefs.stream()
                             .filter(lineRef -> !subscriptionManager.isLineRefExistingInSubscriptions(lineRef))
                             .collect(Collectors.toList());
 
 
-                    handleInvalidDataReferences(serviceResponse, invalidDataReferences);
+                    utils.handleInvalidDataReferences(serviceResponse, invalidDataReferences);
                 }
 
 
                 String requestMsgRef = siri.getServiceDelivery().getRequestMessageRef().getValue();
-                logger.info("Filtering done. Returning :  {} for requestorRef {}", countVehicleActivityResults(serviceResponse), requestMsgRef);
+                logger.info("Filtering done. Returning :  {} for requestorRef {}", utils.countVehicleActivityResults(serviceResponse), requestMsgRef);
 
             } else if (hasValues(serviceRequest.getEstimatedTimetableRequests())) {
-                dataType = SiriDataType.ESTIMATED_TIMETABLE;
-                Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);
-                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idMap);
-
-                Duration previewInterval = serviceRequest.getEstimatedTimetableRequests().get(0).getPreviewInterval();
-                long previewIntervalInMillis = -1;
-
-                if (previewInterval != null) {
-                    previewIntervalInMillis = previewInterval.getTimeInMillis(new Date());
-                }
-
-                serviceResponse = estimatedTimetables.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize, previewIntervalInMillis);
+                valueAdapters = estimatedTimetableOutbound.getValueAdapters(datasetId, outboundIdMappingPolicy);
+                serviceResponse = estimatedTimetableOutbound.getEstimatedTimetableServiceDelivery(datasetId, excludedDatasetIdList, maxSize, clientTrackingName, serviceRequest, requestorRef);
             } else if (hasValues(serviceRequest.getStopMonitoringRequests())) {
-                dataType = SiriDataType.STOP_MONITORING;
-                Map<Class, Set<String>> filterMap = new HashMap<>();
-                Duration previewInterval = serviceRequest.getStopMonitoringRequests().get(0).getPreviewInterval();
-                long previewIntervalInMillis = -1;
-                if (previewInterval != null) {
-                    previewIntervalInMillis = previewInterval.getTimeInMillis(new Date());
-                }
-
-                String monitoringStringList = null;
-                for (StopMonitoringRequestStructure req : serviceRequest.getStopMonitoringRequests()) {
-                    MonitoringRefStructure monitoringRef = req.getMonitoringRef();
-                    if (monitoringRef != null) {
-                        Set<String> monitoringRefs = filterMap.get(MonitoringRefStructure.class) != null ? filterMap.get(MonitoringRefStructure.class) : new HashSet<>();
-                        monitoringRefs.add(monitoringRef.getValue());
-                        filterMap.put(MonitoringRefStructure.class, monitoringRefs);
-
-                        if (StringUtils.isEmpty(monitoringStringList)) {
-                            monitoringStringList = monitoringRef.getValue();
-                        } else {
-                            monitoringStringList = monitoringStringList + "|" + monitoringRef.getValue();
-                        }
-                    }
-                }
-
-
-                Set<String> originalMonitoringRefs = filterMap.get(MonitoringRefStructure.class) != null ? filterMap.get(MonitoringRefStructure.class) : new HashSet<>();
-                Set<String> importedIds;
-                if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)) {
-                    importedIds = convertToImportedIds(originalMonitoringRefs, datasetId);
-                } else if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy)) {
-                    importedIds = convertFromAltIdsToImportedIdsStop(originalMonitoringRefs, datasetId);
-                } else {
-                    importedIds = originalMonitoringRefs;
-                }
-
-
-                Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParams(datasetId, importedIds, ObjectType.STOP);
-                Set<String> revertedMonitoringRefs = IDUtils.revertMonitoringRefs(importedIds, idMap.get(ObjectType.STOP));
-                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idMap);
-
-
-                serviceResponse = monitoredStopVisits.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, revertedMonitoringRefs);
-                logger.info("Asking for service delivery for requestorId={}, monitoringRef={}, clientTrackingName={}, datasetId={}", requestorRef, monitoringStringList, clientTrackingName, datasetId);
+                serviceResponse = stopMonitoringOutbound.getStopMonitoringServiceDelivery(serviceRequest, outboundIdMappingPolicy, datasetId, valueAdapters, serviceResponse, requestorRef, clientTrackingName, maxSize);
             } else if (hasValues(serviceRequest.getGeneralMessageRequests())) {
-                dataType = SiriDataType.GENERAL_MESSAGE;
                 Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);
 
                 GeneralMessageRequestStructure request = serviceRequest.getGeneralMessageRequests().get(0);
                 List<InfoChannelRefStructure> requestedChannels = request.getInfoChannelReves();
-                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idMap);
+                valueAdapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.GENERAL_MESSAGE, outboundIdMappingPolicy, idMap);
                 serviceResponse = generalMessages.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, requestedChannels);
-                GeneralMessageHelper.applyTransformationsInContent(serviceResponse,valueAdapters, idMap);
+
+                //Ask for general message cancellations at the same time
+                Siri cancellationResponses = generalMessageCancellations.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, requestedChannels);
+                // and add cancellations to the general message response
+
+                if (cancellationResponses.getServiceDelivery().getGeneralMessageDeliveries() != null && !cancellationResponses.getServiceDelivery().getGeneralMessageDeliveries().get(0).getGeneralMessageCancellations().isEmpty()) {
+                    serviceResponse.getServiceDelivery().getGeneralMessageDeliveries().addAll(cancellationResponses.getServiceDelivery().getGeneralMessageDeliveries());
+                }
+
+
+                GeneralMessageHelper.applyTransformationsInContent(serviceResponse, valueAdapters, idMap);
 
             } else if (hasValues(serviceRequest.getFacilityMonitoringRequests())) {
-                dataType = SiriDataType.FACILITY_MONITORING;
+                Set<String> facilityRefList = facilityMonitoringOutbound.getFacilityRevesList(serviceRequest);
+                Set<String> lineRefOriginalList = facilityMonitoringOutbound.getLineRefOriginalList(serviceRequest, outboundIdMappingPolicy, datasetId);
+                Set<String> stopPointRefList = facilityMonitoringOutbound.getStopPointRefList(serviceRequest);
+                Set<String> vehicleRefList = facilityMonitoringOutbound.getVehicleRefList(serviceRequest);
 
-                Map<Class, Set<String>> filterMap = new HashMap<>();
-                for (FacilityMonitoringRequestStructure req : serviceRequest.getFacilityMonitoringRequests()) {
-                    List<FacilityRef> facilityReves = req.getFacilityReves();
-                    if (facilityReves != null && !facilityReves.isEmpty()) {
-                        Set<String> facilityRevesList = filterMap.get(FacilityRef.class) != null ? filterMap.get(FacilityRef.class) : new HashSet<>();
-                        facilityRevesList.addAll(facilityReves.stream().map(FacilityRef::getValue).collect(Collectors.toSet()));
-                        filterMap.put(FacilityRef.class, facilityRevesList);
-                    }
-                    LineRef lineRef = req.getLineRef();
-                    if (lineRef != null) {
-                        Set<String> linerefList = filterMap.get(LineRef.class) != null ? filterMap.get(LineRef.class) : new HashSet<>();
-                        linerefList.add(lineRef.getValue());
-                        filterMap.put(LineRef.class, linerefList);
-                    }
-                    StopPointRef stopPointRef = req.getStopPointRef();
-                    if (stopPointRef != null) {
-                        Set<String> stopPointRefList = filterMap.get(StopPointRef.class) != null ? filterMap.get(StopPointRef.class) : new HashSet<>();
-                        stopPointRefList.add(stopPointRef.getValue());
-                        filterMap.put(StopPointRef.class, stopPointRefList);
-                    }
-                    VehicleRef vehicleRef = req.getVehicleRef();
-                    if (vehicleRef != null) {
-                        Set<String> vehicleRefList = filterMap.get(VehicleRef.class) != null ? filterMap.get(VehicleRef.class) : new HashSet<>();
-                        vehicleRefList.add(vehicleRef.getValue());
-                        filterMap.put(VehicleRef.class, vehicleRefList);
-                    }
-                    //todo upgrade pour avoir les siteRef
+                //todo upgrade pour avoir les siteRef
 /*                    SiteRefStructure siteRef = req.getSiteRef;
                     if (stopPlaceComponentRef != null) {
                         Set<String> stopPlaceComponentRefList = filterMap.get(StopPlaceComponentRefStructure.class) != null ? filterMap.get(StopPlaceComponentRefStructure.class) : new HashSet<>();
@@ -429,49 +360,37 @@ public class SiriHandler {
                         filterMap.put(StopPlaceComponentRefStructure.class, stopPlaceComponentRefList);
                     }*/
 
-                }
 
-                Set<String> lineRefList = filterMap.get(LineRef.class) != null ? filterMap.get(LineRef.class) : new HashSet<>();
-                Set<String> stopPointRefList = filterMap.get(StopPointRef.class) != null ? filterMap.get(StopPointRef.class) : new HashSet<>();
-                Set<String> facilityRefList = filterMap.get(FacilityRef.class) != null ? filterMap.get(FacilityRef.class) : new HashSet<>();
-                Set<String> vehicleRefList = filterMap.get(VehicleRef.class) != null ? filterMap.get(VehicleRef.class) : new HashSet<>();
                 //todo ajouter quand on aura les siteRef
                 //Set<String> siteRefList = filterMap.get(SiteRef.class) != null ? filterMap.get(SiteRef.class) : new HashSet<>();
-
-                Set<String> lineRefOriginalList;
-                if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy)) {
-                    lineRefOriginalList = convertFromAltIdsToImportedIdsLine(lineRefList, datasetId);
-                } else {
-                    lineRefOriginalList = lineRefList;
-                }
 
 
                 Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParams(datasetId, lineRefOriginalList, ObjectType.LINE);
                 Set<String> revertedLineRefs = IDUtils.revertMonitoringRefs(lineRefOriginalList, idMap.get(ObjectType.LINE));
 
 
-                if (revertedLineRefs.size() > 0) {
+                if (!revertedLineRefs.isEmpty()) {
                     List<String> invalidDataReferences = revertedLineRefs.stream()
                             .filter(lineRef -> !subscriptionManager.isLineRefExistingInSubscriptions(lineRef))
                             .collect(Collectors.toList());
 
-                    handleInvalidDataReferences(serviceResponse, invalidDataReferences);
+                    utils.handleInvalidDataReferences(serviceResponse, invalidDataReferences);
                 }
 
                 Siri siri = facilityMonitoring.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize,
                         revertedLineRefs, facilityRefList, vehicleRefList, stopPointRefList);
                 serviceResponse = siri;
                 String requestMsgRef = siri.getServiceDelivery().getRequestMessageRef().getValue();
-                logger.info("Filtering done. Returning :  {} for requestorRef {}", countVehicleActivityResults(serviceResponse), requestMsgRef);
+                logger.info("Filtering done. Returning :  {} for requestorRef {}", utils.countVehicleActivityResults(serviceResponse), requestMsgRef);
 
 
-                valueAdapters = MappingAdapterPresets.getOutboundAdapters(dataType, outboundIdMappingPolicy, idMap);
-                GeneralMessageHelper.applyTransformationsInContent(serviceResponse,valueAdapters, idMap);
+                valueAdapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.FACILITY_MONITORING, outboundIdMappingPolicy, idMap);
+                GeneralMessageHelper.applyTransformationsInContent(serviceResponse, valueAdapters, idMap);
 
             }
 
 
-            if (serviceResponse != null) {
+            if (serviceResponse != null && !hasValues(serviceRequest.getStopMonitoringRequests())) {
                 metrics.countOutgoingData(serviceResponse, SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE);
                 return SiriValueTransformer.transform(
                         serviceResponse,
@@ -480,267 +399,21 @@ public class SiriHandler {
                         false
                 );
             }
+            if (serviceResponse != null && hasValues(serviceRequest.getStopMonitoringRequests())) {
+                metrics.countOutgoingData(serviceResponse, SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE);
+                return serviceResponse;
+            }
         } else if (incoming.getStopPointsRequest() != null) {
             // stop discovery request
-            return getDiscoveryStopPoints(datasetId, outboundIdMappingPolicy);
+            return discoveryStopPointsOutbound.getDiscoveryStopPoints(datasetId, outboundIdMappingPolicy);
         } else if (incoming.getLinesRequest() != null) {
             // lines discovery request (for vehicle monitoring)
-            return getDiscoveryLines(datasetId, outboundIdMappingPolicy);
+            return discoveryLinesOutbound.getDiscoveryLines(datasetId, outboundIdMappingPolicy);
         }
 
         return null;
     }
 
-
-    /**
-     * Converts netex Ids (MOBIITI:Quay:xxx) to imported Ids prefixed by producer (PROD123:Quay:xxx)
-     *
-     * @param originalMonitoringRefs
-     * @return the converted ids
-     */
-    private Set<String> convertToImportedIds(Set<String> originalMonitoringRefs, String datasetId) {
-
-        return originalMonitoringRefs.stream()
-                .map(id -> StringUtils.isNotEmpty(id) && stopPlaceUpdaterService.canBeReverted(id, datasetId) ? stopPlaceUpdaterService.getReverse(id, datasetId) : id)
-                .collect(Collectors.toSet());
-    }
-
-    private Set<String> convertFromAltIdsToImportedIdsStop(Set<String> originalMonitoringRefs, String datasetId) {
-
-        return originalMonitoringRefs.stream()
-                .map(id -> StringUtils.isNotEmpty(id) && externalIdsService.getReverseAltIdStop(datasetId, id).isPresent() ? externalIdsService.getReverseAltIdStop(datasetId, id).get() : id)
-                .collect(Collectors.toSet());
-    }
-
-
-    private Set<String> convertFromAltIdsToImportedIdsLine(Set<String> originalMonitoringRefs, String datasetId) {
-        return originalMonitoringRefs.stream()
-                .flatMap(id -> externalIdsService.getReverseAltIdLines(datasetId, id).stream().flatMap(String::lines))
-                .collect(Collectors.toSet());
-    }
-
-
-
-    /**
-     * Creates a siri response with all lines existing in the cache, for vehicle Monitoring
-     *
-     * @return the siri response with all points
-     */
-    private Siri getDiscoveryLines(String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy) {
-
-
-        List<SubscriptionSetup> subscriptionList = subscriptionManager.getAllSubscriptions(SiriDataType.VEHICLE_MONITORING).stream()
-                .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))
-                .collect(Collectors.toList());
-
-
-        List<String> datasetList = subscriptionList.stream()
-                .map(SubscriptionSetup::getDatasetId)
-                .distinct()
-                .collect(Collectors.toList());
-
-
-        Map<String, IdProcessingParameters> idProcessingMap = buildIdProcessingMap(datasetList, ObjectType.LINE);
-
-
-        List<String> lineRefList = subscriptionList.stream()
-                .map(subscription -> extractAndTransformLineId(subscription, idProcessingMap))
-                .filter(lineRef -> lineRef != null)
-                .collect(Collectors.toList());
-
-        if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy) && datasetId != null) {
-            lineRefList = lineRefList.stream()
-                    .map(id -> externalIdsService.getAltId(datasetId, id, ObjectType.LINE).orElse(id))
-                    .collect(Collectors.toList());
-        }
-
-
-        List<AnnotatedLineRef> resultList = lineRefList.stream()
-                .map(this::convertKeyToLineRef)
-                .collect(Collectors.toList());
-
-        return siriObjectFactory.createLinesDiscoveryDelivery(resultList);
-
-
-    }
-
-    /**
-     * Creates a siri response with all points existing in the cache
-     *
-     * @return the siri response with all points
-     */
-    public Siri getDiscoveryStopPoints(String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy) {
-
-
-        List<SubscriptionSetup> subscriptionList = subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING).stream()
-                .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))
-                .collect(Collectors.toList());
-
-        List<String> datasetList = subscriptionList.stream()
-                .map(SubscriptionSetup::getDatasetId)
-                .distinct()
-                .collect(Collectors.toList());
-
-        Map<String, IdProcessingParameters> idProcessingMap = buildIdProcessingMap(datasetList, ObjectType.STOP);
-
-
-        List<String> monitoringRefList = subscriptionList.stream()
-                .map(subscription -> extractAndTransformStopId(subscription, idProcessingMap))
-                .collect(Collectors.toList());
-
-        if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)) {
-            monitoringRefList = monitoringRefList.stream()
-                    .map(id -> stopPlaceUpdaterService.isKnownId(id) ? stopPlaceUpdaterService.get(id) : id)
-                    .collect(Collectors.toList());
-
-        } else if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy) && datasetId != null) {
-            monitoringRefList = monitoringRefList.stream()
-                    .map(id -> externalIdsService.getAltId(datasetId, id, ObjectType.STOP).orElse(id))
-                    .collect(Collectors.toList());
-        }
-
-
-        //  traceUnknownStopPoints(monitoringRefList);
-
-        List<AnnotatedStopPointStructure> resultList = monitoringRefList.stream()
-                .map(this::convertKeyToPointStructure)
-                .collect(Collectors.toList());
-
-        return siriObjectFactory.createStopPointsDiscoveryDelivery(resultList);
-    }
-
-    /**
-     * Extract a stopId from a subscriptionSetup and transforms it, with idProcessingParams
-     *
-     * @param subscriptionSetup the subscriptionSetup for which the stop id must be recovered
-     * @param idProcessingMap   the map that associate datasetId to idProcessingParams
-     * @return the transformed stop id
-     */
-    private String extractAndTransformStopId(SubscriptionSetup subscriptionSetup, Map<String, IdProcessingParameters> idProcessingMap) {
-        String stopId = subscriptionSetup.getStopMonitoringRefValue();
-        String datasetId = subscriptionSetup.getDatasetId();
-
-        return idProcessingMap.containsKey(datasetId) ? idProcessingMap.get(datasetId).applyTransformationToString(stopId) : stopId;
-    }
-
-    /**
-     * Extract a lineId from a subscriptionSetup and transforms it, with idProcessingParams
-     *
-     * @param subscriptionSetup the subscriptionSetup for which the stop id must be recovered
-     * @param idProcessingMap   the map that associate datasetId to idProcessingParams
-     * @return the transformed line id
-     */
-    private String extractAndTransformLineId(SubscriptionSetup subscriptionSetup, Map<String, IdProcessingParameters> idProcessingMap) {
-        String lineId = subscriptionSetup.getLineRefValue();
-        String datasetId = subscriptionSetup.getDatasetId();
-
-        return idProcessingMap.containsKey(datasetId) ? idProcessingMap.get(datasetId).applyTransformationToString(lineId) : lineId;
-    }
-
-    /**
-     * Builds a map with key = datasetId and value = idProcessingParams for this dataset and objectType = stop
-     *
-     * @param datasetList
-     * @return
-     */
-    private Map<String, IdProcessingParameters> buildIdProcessingMap(List<String> datasetList, ObjectType objectType) {
-        Map<String, IdProcessingParameters> resultMap = new HashMap<>();
-
-        for (String dataset : datasetList) {
-            Optional<IdProcessingParameters> idParamsOpt = subscriptionConfig.getIdParametersForDataset(dataset, objectType);
-            idParamsOpt.ifPresent(idParams -> resultMap.put(dataset, idParams));
-        }
-        return resultMap;
-    }
-
-    /**
-     * Function to trace the list of points that are unknown from theorical data
-     *
-     * @param stopPointList The list of sto points id to check
-     */
-    private void traceUnknownStopPoints(List<String> stopPointList) {
-        List<String> unknownPoints = stopPointList.stream()
-                .filter(stopPointId -> stopPointId.startsWith("MOBIITI:Quay:"))
-                .collect(Collectors.toList());
-
-        logger.warn("These points were received in real-time data but are unknown from theorical data :" + unknownPoints.stream().collect(Collectors.joining(",")));
-
-    }
-
-
-    /**
-     * Converts a stop reference to an annotatedStopPointStructure
-     *
-     * @param stopRef the stop reference
-     * @return the annotated stop point structure that will be included in siri response
-     */
-    private AnnotatedStopPointStructure convertKeyToPointStructure(String stopRef) {
-        AnnotatedStopPointStructure pointStruct = new AnnotatedStopPointStructure();
-        StopPointRef stopPointRef = new StopPointRef();
-        stopPointRef.setValue(stopRef);
-        pointStruct.setStopPointRef(stopPointRef);
-        pointStruct.setMonitored(true);
-        return pointStruct;
-    }
-
-    /**
-     * Converts a line reference to an annotatedLineRef
-     *
-     * @param lineRefStr the line reference
-     * @return the annotated lineref that will be included in siri response
-     */
-    private AnnotatedLineRef convertKeyToLineRef(String lineRefStr) {
-        AnnotatedLineRef annotatedLineRef = new AnnotatedLineRef();
-        LineRef lineRefSiri = new LineRef();
-        lineRefSiri.setValue(lineRefStr);
-        annotatedLineRef.setMonitored(true);
-        annotatedLineRef.setLineRef(lineRefSiri);
-        return annotatedLineRef;
-    }
-
-    /**
-     * Check if there are invalid references and write them to server response
-     *
-     * @param siri                  the response that will be sent to client
-     * @param invalidDataReferences list of invalid data references (invalid references are references requested by client that doesn't exist in subcriptions)
-     */
-    private void handleInvalidDataReferences(Siri siri, List<String> invalidDataReferences) {
-        if (invalidDataReferences.isEmpty() || siri.getServiceDelivery().getVehicleMonitoringDeliveries().size() == 0)
-            return;
-
-        //Error references need to be inserted in server response to inform client
-        ServiceDeliveryErrorConditionElement errorCondition = new ServiceDeliveryErrorConditionElement();
-        InvalidDataReferencesErrorStructure invalidDataStruct = new InvalidDataReferencesErrorStructure();
-        invalidDataStruct.setErrorText("InvalidDataReferencesError");
-        errorCondition.setInvalidDataReferencesError(invalidDataStruct);
-        ErrorDescriptionStructure errorDesc = new ErrorDescriptionStructure();
-        errorDesc.setValue(invalidDataReferences.stream().collect(Collectors.joining(",")));
-        errorCondition.setDescription(errorDesc);
-        siri.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).setErrorCondition(errorCondition);
-        String requestMsgRef = siri.getServiceDelivery().getRequestMessageRef().getValue();
-        siri.getServiceDelivery().getVehicleMonitoringDeliveries().forEach(vm -> logger.info("requestorRef:" + requestMsgRef + " - " + getErrorContents(vm.getErrorCondition())));
-
-    }
-
-
-    /**
-     * Count the number of vehicleActivities existing in the response
-     *
-     * @param siri
-     * @return the number of vehicle activities
-     */
-    private int countVehicleActivityResults(Siri siri) {
-        int nbOfResults = 0;
-        if (siri.getServiceDelivery() != null && siri.getServiceDelivery().getVehicleMonitoringDeliveries() != null) {
-            for (VehicleMonitoringDeliveryStructure vehicleMonitoringDelivery : siri.getServiceDelivery().getVehicleMonitoringDeliveries()) {
-                if (vehicleMonitoringDelivery.getVehicleActivities() == null)
-                    continue;
-
-                nbOfResults = nbOfResults + vehicleMonitoringDelivery.getVehicleActivities().size();
-            }
-        }
-        return nbOfResults;
-    }
 
     private boolean hasValues(List list) {
         return (list != null && !list.isEmpty());
@@ -752,7 +425,7 @@ public class SiriHandler {
      * @param subscriptionId the subscription's id
      * @param xml            the incoming message
      */
-    private void processSiriClientRequest(String subscriptionId, InputStream xml)
+    private void inboundProcessSiriClientRequest(String subscriptionId, InputStream xml)
             throws XMLStreamException, JAXBException {
         SubscriptionSetup subscriptionSetup = subscriptionManager.get(subscriptionId);
 
@@ -805,253 +478,29 @@ public class SiriHandler {
                 String monitoredRef = null;
 
                 if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.SITUATION_EXCHANGE)) {
-                    List<SituationExchangeDeliveryStructure> situationExchangeDeliveries = incoming.getServiceDelivery().getSituationExchangeDeliveries();
-                    logger.info("Got SX-delivery: Subscription [{}]", subscriptionSetup);
-
-                    List<PtSituationElement> addedOrUpdated = new ArrayList<>();
-                    if (situationExchangeDeliveries != null) {
-                        situationExchangeDeliveries.forEach(sx -> {
-                                    if (sx != null) {
-                                        if (sx.isStatus() != null && !sx.isStatus()) {
-                                            logger.info(getErrorContents(sx.getErrorCondition()));
-                                        } else {
-                                            if (sx.getSituations() != null && sx.getSituations().getPtSituationElements() != null) {
-                                                setValidityPeriodAndStartTimeIfNull(sx.getSituations().getPtSituationElements(), subscriptionSetup.getDatasetId());
-
-                                                if (subscriptionSetup.isUseProvidedCodespaceId()) {
-                                                    Map<String, List<PtSituationElement>> situationsByCodespace = splitSituationsByCodespace(sx.getSituations().getPtSituationElements());
-                                                    for (String codespace : situationsByCodespace.keySet()) {
-
-                                                        // List containing added situations for current codespace
-                                                        List<PtSituationElement> addedSituations = new ArrayList();
-
-                                                        Collection<PtSituationElement> ingested = ingestSituations(codespace, situationsByCodespace.get(codespace));
-                                                        addedSituations.addAll(ingested);
-
-                                                        // Push updates to subscribers on this codespace
-                                                        serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedSituations, codespace);
-
-                                                        // Add to complete list of added situations
-                                                        addedOrUpdated.addAll(addedSituations);
-
-                                                    }
-
-                                                } else {
-                                                    Collection<PtSituationElement> ingested = ingestSituations(subscriptionSetup.getDatasetId(), sx.getSituations().getPtSituationElements());
-                                                    addedOrUpdated.addAll(ingested);
-                                                    serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                        );
-                    }
-                    deliveryContainsData = addedOrUpdated.size() > 0;
-
-                    subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdated.size());
-
-                    logger.info("Active SX-elements: {}, current delivery: {}, {}", situations.getSize(), addedOrUpdated.size(), subscriptionSetup);
+                    deliveryContainsData = situationExchangeInbound.ingestSituationExchange(subscriptionSetup, incoming);
                 }
                 if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.VEHICLE_MONITORING)) {
-                    List<VehicleMonitoringDeliveryStructure> vehicleMonitoringDeliveries = incoming.getServiceDelivery().getVehicleMonitoringDeliveries();
-                    logger.debug("Got VM-delivery: Subscription [{}] {}", subscriptionSetup, subscriptionSetup.forwardPositionData() ? "- Position only" : "");
-                    monitoredRef = getLineRef(incoming);
-
-                    List<VehicleActivityStructure> addedOrUpdated = new ArrayList<>();
-                    if (vehicleMonitoringDeliveries != null) {
-                        vehicleMonitoringDeliveries.forEach(vm -> {
-                                    if (vm != null) {
-                                        if (vm.isStatus() != null && !vm.isStatus()) {
-                                            logger.info(getErrorContents(vm.getErrorCondition()));
-                                        } else {
-                                            if (vm.getVehicleActivities() != null) {
-                                                if (subscriptionSetup.isUseProvidedCodespaceId()) {
-                                                    Map<String, List<VehicleActivityStructure>> vehiclesByCodespace = splitVehicleMonitoringByCodespace(vm.getVehicleActivities());
-                                                    for (String codespace : vehiclesByCodespace.keySet()) {
-
-                                                        // List containing added situations for current codespace
-                                                        List<VehicleActivityStructure> addedVehicles = new ArrayList();
-
-                                                        addedVehicles.addAll(vehicleActivities.addAll(
-                                                                codespace,
-                                                                vehiclesByCodespace.get(codespace)
-                                                        ));
-
-                                                        // Push updates to subscribers on this codespace
-                                                        serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedVehicles, codespace);
-
-                                                        // Add to complete list of added situations
-                                                        addedOrUpdated.addAll(addedVehicles);
-
-                                                    }
-
-                                                } else {
-                                                    addedOrUpdated.addAll(ingestVehicleActivities(subscriptionSetup.getDatasetId(), vm.getVehicleActivities()));
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                        );
-                    }
-
-                    deliveryContainsData = deliveryContainsData || (addedOrUpdated.size() > 0);
-
-                    serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
-
-                    subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdated.size());
-
-                    logger.debug("Active VM-elements: {}, current delivery: {}, {}", vehicleActivities.getSize(), addedOrUpdated.size(), subscriptionSetup);
+                    monitoredRef = vehicleMonitoringInbound.getLineRef(incoming);
+                    deliveryContainsData = vehicleMonitoringInbound.ingestVehicleMonitoring(subscriptionSetup, incoming);
                 }
                 if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.ESTIMATED_TIMETABLE)) {
-                    List<EstimatedTimetableDeliveryStructure> estimatedTimetableDeliveries = incoming.getServiceDelivery().getEstimatedTimetableDeliveries();
-                    logger.info("Got ET-delivery: Subscription {}", subscriptionSetup);
-
-                    List<EstimatedVehicleJourney> addedOrUpdated = new ArrayList<>();
-                    if (estimatedTimetableDeliveries != null) {
-                        estimatedTimetableDeliveries.forEach(et -> {
-                                    if (et != null) {
-                                        if (et.isStatus() != null && !et.isStatus()) {
-                                            logger.info(getErrorContents(et.getErrorCondition()));
-                                        } else {
-                                            if (et.getEstimatedJourneyVersionFrames() != null) {
-                                                et.getEstimatedJourneyVersionFrames().forEach(versionFrame -> {
-                                                    if (versionFrame != null && versionFrame.getEstimatedVehicleJourneies() != null) {
-                                                        if (subscriptionSetup.isUseProvidedCodespaceId()) {
-                                                            Map<String, List<EstimatedVehicleJourney>> journeysByCodespace = splitEstimatedTimetablesByCodespace(versionFrame.getEstimatedVehicleJourneies());
-                                                            for (String codespace : journeysByCodespace.keySet()) {
-
-                                                                // List containing added situations for current codespace
-                                                                List<EstimatedVehicleJourney> addedJourneys = new ArrayList();
-
-                                                                addedJourneys.addAll(estimatedTimetables.addAll(
-                                                                        codespace,
-                                                                        journeysByCodespace.get(codespace)
-                                                                ));
-
-                                                                // Push updates to subscribers on this codespace
-                                                                serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedJourneys, codespace);
-
-                                                                // Add to complete list of added situations
-                                                                addedOrUpdated.addAll(addedJourneys);
-
-                                                            }
-
-                                                        } else {
-                                                            addedOrUpdated.addAll(ingestEstimatedTimeTables(subscriptionSetup.getDatasetId(), versionFrame.getEstimatedVehicleJourneies()));
-                                                        }
-                                                    }
-                                                });
-                                            }
-                                        }
-                                    }
-                                }
-                        );
-                    }
-
-                    deliveryContainsData = deliveryContainsData || (addedOrUpdated.size() > 0);
-
-                    serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
-
-                    subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdated.size());
-
-                    logger.info("Active ET-elements: {}, current delivery: {}, {}", estimatedTimetables.getSize(), addedOrUpdated.size(), subscriptionSetup);
+                    deliveryContainsData = estimatedTimetableInbound.ingestEstimatedTimetable(subscriptionSetup, incoming);
                 }
 
-                // TODO MHI
                 if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
-                    List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = incoming.getServiceDelivery().getStopMonitoringDeliveries();
-                    logger.debug("Got SM-delivery: Subscription [{}] ", subscriptionSetup);
-                    monitoredRef = getStopRefs(incoming);
-
-                    List<MonitoredStopVisit> addedOrUpdated = new ArrayList<>();
-                    if (stopMonitoringDeliveries != null) {
-                        stopMonitoringDeliveries.forEach(sm -> {
-                                    if (sm != null) {
-                                        if (sm.isStatus() != null && !sm.isStatus() || sm.getErrorCondition() != null) {
-                                            logger.info(getErrorContents(sm.getErrorCondition()));
-                                        } else {
-                                            if (sm.getMonitoredStopVisits() != null) {
-                                                addedOrUpdated.addAll(ingestStopVisits(subscriptionSetup.getDatasetId(), sm.getMonitoredStopVisits()));
-                                            }
-                                        }
-                                    }
-                                }
-                        );
-                    }
-
-                    deliveryContainsData = deliveryContainsData || (addedOrUpdated.size() > 0);
-
-                    serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
-
-                    subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdated.size());
-
-                    logger.debug("Active SM-elements: {}, current delivery: {}, {}", monitoredStopVisits.getSize(), addedOrUpdated.size(), subscriptionSetup);
+                    monitoredRef = utils.getStopRefs(incoming);
+                    deliveryContainsData = stopMonitoringInbound.ingestStopVisit(subscriptionSetup, incoming);
                 }
 
                 if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.GENERAL_MESSAGE)) {
-                    List<GeneralMessageDeliveryStructure> generalDeliveries = incoming.getServiceDelivery().getGeneralMessageDeliveries();
-                    logger.debug("Got GM-delivery: Subscription [{}] ", subscriptionSetup);
-                    monitoredRef = getStopRefs(incoming);
-
-                    List<GeneralMessage> addedOrUpdated = new ArrayList<>();
-
-                    for (GeneralMessageDeliveryStructure generalDelivery : generalDeliveries) {
-                        addedOrUpdated.addAll(generalMessages.addAll(subscriptionSetup.getDatasetId(), generalDelivery.getGeneralMessages()));
-                    }
-
-
-                    deliveryContainsData = deliveryContainsData || (addedOrUpdated.size() > 0);
-
-                    serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
-                    subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdated.size());
-                    logger.debug("Active GM-elements: {}, current delivery: {}, {}", generalMessages.getSize(), addedOrUpdated.size(), subscriptionSetup);
+                    monitoredRef = utils.getStopRefs(incoming);
+                    deliveryContainsData = generalMessageInbound.ingestGeneralMessage(subscriptionSetup, incoming);
                 }
 
                 if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.FACILITY_MONITORING)) {
-
-                    List<FacilityMonitoringDeliveryStructure> facilityMonitoringStructures = incoming.getServiceDelivery().getFacilityMonitoringDeliveries();
-                    logger.debug("Got FM-delivery: Subscription [{}] ", subscriptionSetup);
-                    monitoredRef = getStopRefs(incoming);
-
-                    List<FacilityConditionStructure> addedOrUpdated = new ArrayList<>();
-
-                    for (FacilityMonitoringDeliveryStructure facilityMonitoringDeliveryStructure : facilityMonitoringStructures) {
-                        if (facilityMonitoringDeliveryStructure.isStatus() != null && !facilityMonitoringDeliveryStructure.isStatus()) {
-                            logger.info(getErrorContents(facilityMonitoringDeliveryStructure.getErrorCondition()));
-                        } else {
-                            if (facilityMonitoringDeliveryStructure.getFacilityConditions() != null) {
-                                if (subscriptionSetup.isUseProvidedCodespaceId()) {
-                                    Map<String, List<FacilityConditionStructure>> situationsByCodespace = splitFacilitiesByCodespace(facilityMonitoringDeliveryStructure.getFacilityConditions());
-                                    for (String codespace : situationsByCodespace.keySet()) {
-                                        // List containing added situations for current codespace
-                                        List<FacilityConditionStructure> addedFacilities = new ArrayList();
-
-                                        Collection<FacilityConditionStructure> ingested = ingestFacilities(codespace, situationsByCodespace.get(codespace));
-                                        addedFacilities.addAll(ingested);
-
-                                        // Push updates to subscribers on this codespace
-                                        serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedFacilities, codespace);
-
-                                        // Add to complete list of added situations
-                                        addedOrUpdated.addAll(addedFacilities);
-                                    }
-                                } else {
-                                    Collection<FacilityConditionStructure> ingested = ingestFacilities(subscriptionSetup.getDatasetId(), facilityMonitoringDeliveryStructure.getFacilityConditions());
-                                    addedOrUpdated.addAll(ingested);
-                                    serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
-                                }
-                            }
-                        }
-                    }
-
-                    deliveryContainsData = deliveryContainsData || (addedOrUpdated.size() > 0);
-
-
-                    serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
-                    subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdated.size());
-                    logger.debug("Active FM-elements: {}, current delivery: {}, {}", facilityMonitoring.getSize(), addedOrUpdated.size(), subscriptionSetup);
+                    monitoredRef = utils.getStopRefs(incoming);
+                    deliveryContainsData = facilityMonitoringInbound.ingestFacility(subscriptionSetup, incoming);
                 }
 
 
@@ -1072,27 +521,6 @@ public class SiriHandler {
         }
     }
 
-    private void setValidityPeriodAndStartTimeIfNull(List<PtSituationElement> situationExchangeDeliveries, String datasetId) {
-        for (PtSituationElement situationElement : situationExchangeDeliveries) {
-            ZoneId zoneId = ZoneId.systemDefault();
-            for (HalfOpenTimestampOutputRangeStructure validityPeriod : situationElement.getValidityPeriods()) {
-                if (validityPeriod.getStartTime() == null) {
-                    ZonedDateTime timestamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(Long.MIN_VALUE), zoneId);
-                    validityPeriod.setStartTime(timestamp);
-                    logger.info("PtSituationElement without start time and/or validity period for datasetId : " + datasetId +
-                            " with situation element id : " + situationElement.getSituationNumber().getValue());
-                }
-            }
-            if (situationElement.getValidityPeriods().isEmpty()) {
-                HalfOpenTimestampOutputRangeStructure validityPeriod = new HalfOpenTimestampOutputRangeStructure();
-                ZonedDateTime timestamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(Long.MIN_VALUE), zoneId);
-                validityPeriod.setStartTime(timestamp);
-                situationElement.getValidityPeriods().add(validityPeriod);
-                logger.info("PtSituationElement without start time and/or validity period for datasetId : " + datasetId +
-                        " with situation element id : " + situationElement.getSituationNumber().getValue());
-            }
-        }
-    }
 
     /**
      * Handling incoming requests from external servers
@@ -1103,11 +531,10 @@ public class SiriHandler {
      * @param dataSetId
      * @throws XMLStreamException
      */
-    public void processSiriClientRequestFromApis(List<String> subscriptionIds, InputStream xml, SiriDataType dataFormat, String dataSetId)
-            throws XMLStreamException {
+    public void processSiriClientRequestFromApis(List<String> subscriptionIds, InputStream xml, SiriDataType dataFormat, String dataSetId) throws XMLStreamException {
         List<SubscriptionSetup> subscriptionSetupList = subscriptionManager.getAll(subscriptionIds);
 
-        if (subscriptionSetupList.size() == 0) {
+        if (subscriptionSetupList.isEmpty()) {
             logger.debug("ServiceDelivery for invalid subscriptionIds [{}] ignored.", subscriptionIds);
         } else {
             int receivedBytes;
@@ -1140,143 +567,27 @@ public class SiriHandler {
                 String monitoredRef = null;
 
                 if (dataFormat.equals(SiriDataType.SITUATION_EXCHANGE)) {
-                    List<SituationExchangeDeliveryStructure> situationExchangeDeliveries = incoming.getServiceDelivery().getSituationExchangeDeliveries();
-                    logger.info("Got SX-delivery: Subscription [{}]", subscriptionSetupList);
-
-                    List<PtSituationElement> addedOrUpdated = new ArrayList<>();
-                    if (situationExchangeDeliveries != null) {
-                        situationExchangeDeliveries.forEach(sx -> {
-                                    if (sx != null) {
-                                        if (sx.isStatus() != null && !sx.isStatus()) {
-                                            logger.info(getErrorContents(sx.getErrorCondition()));
-                                        } else {
-                                            if (sx.getSituations() != null && sx.getSituations().getPtSituationElements() != null) {
-                                                Collection<PtSituationElement> ingested = ingestSituations(dataSetId, sx.getSituations().getPtSituationElements());
-                                                addedOrUpdated.addAll(ingested);
-                                                serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, dataSetId);
-                                            }
-                                        }
-                                    }
-                                }
-                        );
-                    }
-                    deliveryContainsData = addedOrUpdated.size() > 0;
-
-                    for (SubscriptionSetup subscriptionSetup : subscriptionSetupList) {
-                        subscriptionManager.incrementObjectCounter(subscriptionSetup, 1);
-//                        logger.info("Active SX-elements: {}, current delivery: {}, {}", situations.getSize(), addedOrUpdated.size(), subscriptionSetup);
-                    }
+                    deliveryContainsData = situationExchangeInbound.ingestSituationExchangeFromApi(dataFormat, dataSetId, incoming, subscriptionSetupList);
                 }
                 if (dataFormat.equals(SiriDataType.ESTIMATED_TIMETABLE)) {
-                    List<EstimatedTimetableDeliveryStructure> estimatedTimetableDeliveries = incoming.getServiceDelivery().getEstimatedTimetableDeliveries();
-                    logger.info("Got ET-delivery: Subscription {}", subscriptionSetupList);
-
-                    List<EstimatedVehicleJourney> addedOrUpdated = new ArrayList<>();
-                    if (estimatedTimetableDeliveries != null) {
-                        estimatedTimetableDeliveries.forEach(et -> {
-                                    if (et != null) {
-                                        if (et.isStatus() != null && !et.isStatus()) {
-                                            logger.info(getErrorContents(et.getErrorCondition()));
-                                        } else {
-                                            if (et.getEstimatedJourneyVersionFrames() != null) {
-                                                et.getEstimatedJourneyVersionFrames().forEach(versionFrame -> {
-                                                    if (versionFrame != null && versionFrame.getEstimatedVehicleJourneies() != null) {
-                                                        addedOrUpdated.addAll(
-                                                                estimatedTimetables.addAll(dataSetId, versionFrame.getEstimatedVehicleJourneies())
-                                                        );
-                                                    }
-                                                });
-                                            }
-                                        }
-                                    }
-                                }
-                        );
-                    }
-
-                    deliveryContainsData = deliveryContainsData || (addedOrUpdated.size() > 0);
-
-                    serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, dataSetId);
-
-                    for (SubscriptionSetup subscriptionSetup : subscriptionSetupList) {
-                        List<EstimatedVehicleJourney> addedOrUpdatedBySubscription = addedOrUpdated
-                                .stream()
-                                .filter(estimatedVehicleJourney -> estimatedVehicleJourney.getLineRef().getValue().equals(subscriptionSetup.getLineRefValue()))
-                                .collect(Collectors.toList());
-                        subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdatedBySubscription.size());
-//                        logger.info("Active ET-elements: {}, current delivery: {}, {}", estimatedTimetables.getSize(), addedOrUpdatedBySubscription.size(), subscriptionSetup);
-                    }
+                    deliveryContainsData = estimatedTimetableInbound.ingestEstimatedTimetableFromApi(dataFormat, dataSetId, incoming, subscriptionSetupList);
                 }
-
                 if (dataFormat.equals(SiriDataType.STOP_MONITORING)) {
-                    List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = incoming.getServiceDelivery().getStopMonitoringDeliveries();
-                    logger.debug("Got SM-delivery: Subscription [{}] {}", subscriptionSetupList);
-                    monitoredRef = getStopRefs(incoming);
-
-                    List<MonitoredStopVisit> addedOrUpdated = new ArrayList<>();
-                    if (stopMonitoringDeliveries != null) {
-                        stopMonitoringDeliveries.forEach(sm -> {
-                                    if (sm != null) {
-                                        if (sm.isStatus() != null && !sm.isStatus() || sm.getErrorCondition() != null) {
-                                            logger.info(getErrorContents(sm.getErrorCondition()));
-                                        } else {
-                                            if (sm.getMonitoredStopVisits() != null) {
-                                                addedOrUpdated.addAll(
-                                                        monitoredStopVisits.addAll(dataSetId, sm.getMonitoredStopVisits()));
-                                            }
-                                        }
-                                    }
-                                }
-                        );
-                    }
-
-                    deliveryContainsData = deliveryContainsData || (addedOrUpdated.size() > 0);
-
-                    serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, dataSetId);
-
-                    for (SubscriptionSetup subscriptionSetup : subscriptionSetupList) {
-                        List<MonitoredStopVisit> addedOrUpdatedBySubscription = addedOrUpdated
-                                .stream()
-                                .filter(monitoredStopVisit -> monitoredStopVisit.getMonitoringRef().getValue().equals(subscriptionSetup.getStopMonitoringRefValue()))
-                                .collect(Collectors.toList());
-                        subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdatedBySubscription.size());
-//                        logger.info("Active SM-elements: {}, current delivery: {}, {}", monitoredStopVisits.getSize(), addedOrUpdatedBySubscription.size(), subscriptionSetup);
-                    }
+                    monitoredRef = utils.getStopRefs(incoming);
+                    deliveryContainsData = stopMonitoringInbound.ingestStopVisitFromApi(dataFormat, dataSetId, incoming, subscriptionSetupList);
                 }
                 if (dataFormat.equals(SiriDataType.VEHICLE_MONITORING)) {
-                    List<VehicleMonitoringDeliveryStructure> vehicleMonitoringDeliveries = incoming.getServiceDelivery().getVehicleMonitoringDeliveries();
-                    logger.debug("Got VM-delivery: Subscription [{}] {}", subscriptionSetupList);
-                    monitoredRef = getVehicleRefs(incoming);
-
-                    List<VehicleActivityStructure> addedOrUpdated = new ArrayList<>();
-                    if (vehicleMonitoringDeliveries != null) {
-                        vehicleMonitoringDeliveries.forEach(vm -> {
-                                    if (vm != null) {
-                                        if (vm.isStatus() != null && !vm.isStatus() || vm.getErrorCondition() != null) {
-                                            logger.info(getErrorContents(vm.getErrorCondition()));
-                                        } else {
-                                            if (vm.getVehicleActivities() != null) {
-                                                addedOrUpdated.addAll(
-                                                        vehicleActivities.addAll(dataSetId, vm.getVehicleActivities()));
-                                            }
-                                        }
-                                    }
-                                }
-                        );
-                    }
-
-                    deliveryContainsData = deliveryContainsData || (addedOrUpdated.size() > 0);
-
-                    serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, dataSetId);
-
-                    for (SubscriptionSetup subscriptionSetup : subscriptionSetupList) {
-                        List<VehicleActivityStructure> addedOrUpdatedBySubscription = addedOrUpdated
-                                .stream()
-                                .filter(vehicleActivityStructure -> vehicleActivityStructure.getVehicleMonitoringRef().getValue().equals(subscriptionSetup.getVehicleMonitoringRefValue()))
-                                .collect(Collectors.toList());
-                        subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdatedBySubscription.size());
-                    }
+                    monitoredRef = vehicleMonitoringInbound.getVehicleRefs(incoming);
+                    deliveryContainsData = vehicleMonitoringInbound.ingestVehicleMonitoringFromApi(dataFormat, dataSetId, incoming, subscriptionSetupList);
                 }
-
+                if (dataFormat.equals(SiriDataType.GENERAL_MESSAGE)) {
+                    monitoredRef = utils.getStopRefs(incoming);
+                    deliveryContainsData = generalMessageInbound.ingestGeneralMessageFromApi(dataFormat, dataSetId, incoming, subscriptionSetupList);
+                }
+                if (dataFormat.equals(SiriDataType.FACILITY_MONITORING)) {
+                    monitoredRef = utils.getStopRefs(incoming);
+                    deliveryContainsData = facilityMonitoringInbound.ingestFacilityFromApi(dataFormat, dataSetId, incoming, subscriptionSetupList);
+                }
 
                 for (SubscriptionSetup subscriptionSetup : subscriptionSetupList) {
                     if (deliveryContainsData) {
@@ -1289,332 +600,8 @@ public class SiriHandler {
         }
     }
 
-
-    public Collection<VehicleActivityStructure> ingestVehicleActivities(String datasetId, List<VehicleActivityStructure> incomingVehicleActivities) {
-        Collection<VehicleActivityStructure> result = vehicleActivities.addAll(datasetId, incomingVehicleActivities);
-        if (result.size() > 0) {
-            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.VEHICLE_MONITORING, incomingVehicleActivities, datasetId);
-        }
-        return result;
-    }
-
-    public Collection<MonitoredStopVisit> ingestStopVisits(String datasetId, List<MonitoredStopVisit> incomingMonitoredStopVisits) {
-        Collection<MonitoredStopVisit> result = monitoredStopVisits.addAll(datasetId, incomingMonitoredStopVisits);
-        if (result.size() > 0) {
-            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.STOP_MONITORING, incomingMonitoredStopVisits, datasetId);
-        }
-        return result;
-    }
-
-
-    public Collection<EstimatedVehicleJourney> ingestEstimatedTimeTables(String datasetId, List<EstimatedVehicleJourney> incomingEstimatedTimeTables) {
-        Collection<EstimatedVehicleJourney> result = estimatedTimetables.addAll(datasetId, incomingEstimatedTimeTables);
-        if (result.size() > 0) {
-            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.ESTIMATED_TIMETABLE, incomingEstimatedTimeTables, datasetId);
-        }
-        return result;
-    }
-
-    public Collection<PtSituationElement> ingestSituations(String datasetId, List<PtSituationElement> incomingSituations) {
-        Collection<PtSituationElement> result = situations.addAll(datasetId, incomingSituations);
-        if (result.size() > 0) {
-            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.SITUATION_EXCHANGE, incomingSituations, datasetId);
-        }
-
-        convertToGeneralMessageAndIngest(datasetId, incomingSituations);
-        return result;
-    }
-
-    public Collection<FacilityConditionStructure> ingestFacilities(String datasetId, List<FacilityConditionStructure> incomingFacilities) {
-        Collection<FacilityConditionStructure> result = facilityMonitoring.addAll(datasetId, incomingFacilities);
-        if (result.size() > 0) {
-            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.FACILITY_MONITORING, incomingFacilities, datasetId);
-        }
-        return result;
-    }
-
-    /**
-     * Convert a list of situations to a list of generalMessages and ingest them
-     *
-     * @param datasetId          the dataset on which the general messages must be ingested
-     * @param incomingSituations the situations that must be converted to GeneralMessages and must be ingested
-     */
-    private void convertToGeneralMessageAndIngest(String datasetId, List<PtSituationElement> incomingSituations) {
-
-        List<GeneralMessage> incomingMessages = incomingSituations.stream()
-                .map(GeneralMessageMapper::mapToGeneralMessage)
-                .collect(Collectors.toList());
-
-        Collection<GeneralMessage> added = generalMessages.addAll(datasetId, incomingMessages);
-
-        serverSubscriptionManager.pushUpdatesAsync(SiriDataType.GENERAL_MESSAGE, new ArrayList(added), datasetId);
-
-    }
-
-    public void removeSituation(String datasetId, PtSituationElement situation) {
-        situations.removeSituation(datasetId, situation);
-    }
-
-
-    /**
-     * Read incoming data to find the stopRefs (to identify which stops has received data)
-     *
-     * @param incomingData incoming message
-     * @return A string with all stops found in the incoming message
-     */
-    private String getStopRefs(Siri incomingData) {
-        List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = incomingData.getServiceDelivery().getStopMonitoringDeliveries();
-        List<String> stopRefs = new ArrayList<>();
-
-
-        for (StopMonitoringDeliveryStructure stopMonitoringDelivery : stopMonitoringDeliveries) {
-            for (MonitoredStopVisit monitoredStopVisit : stopMonitoringDelivery.getMonitoredStopVisits()) {
-                stopRefs.add(monitoredStopVisit.getMonitoringRef().getValue());
-            }
-        }
-
-        return stopRefs.stream()
-                .distinct()
-                .collect(Collectors.joining(","));
-    }
-
-    /**
-     * Read incoming data to find the lineRef (to identify which line has received data)
-     *
-     * @param incomingData incoming message
-     * @return A string with all lines found in the incoming message
-     */
-    private String getLineRef(Siri incomingData) {
-        List<VehicleMonitoringDeliveryStructure> vehicleDeliveries = incomingData.getServiceDelivery().getVehicleMonitoringDeliveries();
-        List<String> lineRefs = new ArrayList<>();
-
-        for (VehicleMonitoringDeliveryStructure vehicleDelivery : vehicleDeliveries) {
-            for (VehicleActivityStructure vehicleActivity : vehicleDelivery.getVehicleActivities()) {
-                lineRefs.add(vehicleActivity.getMonitoredVehicleJourney().getLineRef().getValue());
-            }
-        }
-        return lineRefs.stream()
-                .distinct()
-                .collect(Collectors.joining(","));
-    }
-
-    private String getVehicleRefs(Siri incomingData) {
-        List<VehicleMonitoringDeliveryStructure> vehicleMonitoringDeliveries = incomingData.getServiceDelivery().getVehicleMonitoringDeliveries();
-        List<String> vehicleRefs = new ArrayList<>();
-
-        for (VehicleMonitoringDeliveryStructure vehicleMonitoringDelivery : vehicleMonitoringDeliveries) {
-            for (VehicleActivityStructure vehicleActivity : vehicleMonitoringDelivery.getVehicleActivities()) {
-                vehicleRefs.add(vehicleActivity.getVehicleMonitoringRef().getValue());
-            }
-        }
-
-        return vehicleRefs.stream()
-                .distinct()
-                .collect(Collectors.joining(","));
-    }
-
-    private Map<String, List<PtSituationElement>> splitSituationsByCodespace(
-            List<PtSituationElement> ptSituationElements
-    ) {
-        Map<String, List<PtSituationElement>> result = new HashMap<>();
-        for (PtSituationElement ptSituationElement : ptSituationElements) {
-            final RequestorRef participantRef = ptSituationElement.getParticipantRef();
-            if (participantRef != null) {
-                final String codespace = getOriginalId(participantRef.getValue());
-
-                //Override mapped value if present
-                participantRef.setValue(codespace);
-
-                final List<PtSituationElement> situations = result.getOrDefault(
-                        codespace,
-                        new ArrayList<>()
-                );
-
-                situations.add(ptSituationElement);
-                result.put(codespace, situations);
-            }
-        }
-        return result;
-    }
-
-    private Map<String, List<FacilityConditionStructure>> splitFacilitiesByCodespace(
-            List<FacilityConditionStructure> facilitiesConditions
-    ) {
-        Map<String, List<FacilityConditionStructure>> result = new HashMap<>();
-        for (FacilityConditionStructure facilityCondition : facilitiesConditions) {
-            final OrganisationRefStructure ownerRef = facilityCondition.getFacility() != null ? facilityCondition.getFacility().getOwnerRef() : null;
-            if (ownerRef != null) {
-                final String codespace = getOriginalId(ownerRef.getValue());
-
-                //Override mapped value if present
-                ownerRef.setValue(codespace);
-
-                final List<FacilityConditionStructure> facilities = result.getOrDefault(
-                        codespace,
-                        new ArrayList<>()
-                );
-
-                facilities.add(facilityCondition);
-                result.put(codespace, facilities);
-            }
-        }
-        return result;
-    }
-
-    private Map<String, List<VehicleActivityStructure>> splitVehicleMonitoringByCodespace(
-            List<VehicleActivityStructure> activityStructures
-    ) {
-        Map<String, List<VehicleActivityStructure>> result = new HashMap<>();
-        for (VehicleActivityStructure vmElement : activityStructures) {
-            if (vmElement.getMonitoredVehicleJourney() != null) {
-
-                final String dataSource = vmElement.getMonitoredVehicleJourney().getDataSource();
-                if (dataSource != null) {
-
-                    final String codespace = getOriginalId(dataSource);
-                    //Override mapped value if present
-                    vmElement.getMonitoredVehicleJourney().setDataSource(codespace);
-
-                    final List<VehicleActivityStructure> vehicles = result.getOrDefault(
-                            codespace,
-                            new ArrayList<>()
-                    );
-
-                    vehicles.add(vmElement);
-                    result.put(codespace, vehicles);
-                }
-            }
-        }
-        return result;
-    }
-
-    private Map<String, List<EstimatedVehicleJourney>> splitEstimatedTimetablesByCodespace(
-            List<EstimatedVehicleJourney> estimatedVehicleJourneys
-    ) {
-        Map<String, List<EstimatedVehicleJourney>> result = new HashMap<>();
-        for (EstimatedVehicleJourney etElement : estimatedVehicleJourneys) {
-            if (etElement.getDataSource() != null) {
-
-                final String dataSource = etElement.getDataSource();
-                if (dataSource != null) {
-
-                    final String codespace = getOriginalId(dataSource);
-                    //Override mapped value if present
-                    etElement.setDataSource(codespace);
-
-                    final List<EstimatedVehicleJourney> etJourneys = result.getOrDefault(
-                            codespace,
-                            new ArrayList<>()
-                    );
-
-                    etJourneys.add(etElement);
-                    result.put(codespace, etJourneys);
-                }
-            }
-        }
-        return result;
-    }
-
-
-    /**
-     * Creates a json-string containing all potential errormessage-values
-     *
-     * @param errorCondition the error condition to filter
-     * @return the error contents
-     */
-    private String getErrorContents(ServiceDeliveryErrorConditionElement errorCondition) {
-        String errorContents = "";
-        if (errorCondition != null) {
-            Map<String, String> errorMap = new HashMap<>();
-            String accessNotAllowed = getErrorText(errorCondition.getAccessNotAllowedError());
-            String allowedResourceUsageExceeded = getErrorText(errorCondition.getAllowedResourceUsageExceededError());
-            String beyondDataHorizon = getErrorText(errorCondition.getBeyondDataHorizon());
-            String capabilityNotSupportedError = getErrorText(errorCondition.getCapabilityNotSupportedError());
-            String endpointDeniedAccessError = getErrorText(errorCondition.getEndpointDeniedAccessError());
-            String endpointNotAvailableAccessError = getErrorText(errorCondition.getEndpointNotAvailableAccessError());
-            String invalidDataReferencesError = getErrorText(errorCondition.getInvalidDataReferencesError());
-            String parametersIgnoredError = getErrorText(errorCondition.getParametersIgnoredError());
-            String serviceNotAvailableError = getErrorText(errorCondition.getServiceNotAvailableError());
-            String unapprovedKeyAccessError = getErrorText(errorCondition.getUnapprovedKeyAccessError());
-            String unknownEndpointError = getErrorText(errorCondition.getUnknownEndpointError());
-            String unknownExtensionsError = getErrorText(errorCondition.getUnknownExtensionsError());
-            String unknownParticipantError = getErrorText(errorCondition.getUnknownParticipantError());
-            String noInfoForTopicError = getErrorText(errorCondition.getNoInfoForTopicError());
-            String otherError = getErrorText(errorCondition.getOtherError());
-
-            String description = getDescriptionText(errorCondition.getDescription());
-
-            if (accessNotAllowed != null) {
-                errorMap.put("accessNotAllowed", accessNotAllowed);
-            }
-            if (allowedResourceUsageExceeded != null) {
-                errorMap.put("allowedResourceUsageExceeded", allowedResourceUsageExceeded);
-            }
-            if (beyondDataHorizon != null) {
-                errorMap.put("beyondDataHorizon", beyondDataHorizon);
-            }
-            if (capabilityNotSupportedError != null) {
-                errorMap.put("capabilityNotSupportedError", capabilityNotSupportedError);
-            }
-            if (endpointDeniedAccessError != null) {
-                errorMap.put("endpointDeniedAccessError", endpointDeniedAccessError);
-            }
-            if (endpointNotAvailableAccessError != null) {
-                errorMap.put("endpointNotAvailableAccessError", endpointNotAvailableAccessError);
-            }
-            if (invalidDataReferencesError != null) {
-                errorMap.put("invalidDataReferencesError", invalidDataReferencesError);
-            }
-            if (parametersIgnoredError != null) {
-                errorMap.put("parametersIgnoredError", parametersIgnoredError);
-            }
-            if (serviceNotAvailableError != null) {
-                errorMap.put("serviceNotAvailableError", serviceNotAvailableError);
-            }
-            if (unapprovedKeyAccessError != null) {
-                errorMap.put("unapprovedKeyAccessError", unapprovedKeyAccessError);
-            }
-            if (unknownEndpointError != null) {
-                errorMap.put("unknownEndpointError", unknownEndpointError);
-            }
-            if (unknownExtensionsError != null) {
-                errorMap.put("unknownExtensionsError", unknownExtensionsError);
-            }
-            if (unknownParticipantError != null) {
-                errorMap.put("unknownParticipantError", unknownParticipantError);
-            }
-            if (noInfoForTopicError != null) {
-                errorMap.put("noInfoForTopicError", noInfoForTopicError);
-            }
-            if (otherError != null) {
-                errorMap.put("otherError", otherError);
-            }
-            if (description != null) {
-                errorMap.put("description", description);
-            }
-
-            errorContents = JSONObject.toJSONString(errorMap);
-        }
-        return errorContents;
-    }
-
-    private String getErrorText(ErrorCodeStructure accessNotAllowedError) {
-        if (accessNotAllowedError != null) {
-            return accessNotAllowedError.getErrorText();
-        }
-        return null;
-    }
-
-    private String getDescriptionText(ErrorDescriptionStructure description) {
-        if (description != null) {
-            return description.getValue();
-        }
-        return null;
-    }
-
     public static OutboundIdMappingPolicy getIdMappingPolicy(String useOriginalId, String altId) {
         OutboundIdMappingPolicy outboundIdMappingPolicy = OutboundIdMappingPolicy.DEFAULT;
-
         if (altId != null) {
             if (Boolean.parseBoolean(altId)) {
                 outboundIdMappingPolicy = OutboundIdMappingPolicy.ALT_ID;

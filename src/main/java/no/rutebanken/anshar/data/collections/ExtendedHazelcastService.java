@@ -155,6 +155,12 @@ public class ExtendedHazelcastService extends HazelCastService {
     }
 
     @Bean
+    public IMap<SiriObjectStorageKey, GeneralMessageCancellation> getGeneralMessageCancellations() {
+        return hazelcast.getMap("anshar.gm.canc");
+    }
+
+
+    @Bean
     public IMap<SiriObjectStorageKey, FacilityConditionStructure> getFacilityMonitoring() {
         return hazelcast.getMap("anshar.fm");
     }
@@ -168,6 +174,12 @@ public class ExtendedHazelcastService extends HazelCastService {
     public IMap<String, Set<SiriObjectStorageKey>> getGeneralMessagesChangesMap() {
         return hazelcast.getMap("anshar.gm.changes");
     }
+
+    @Bean
+    public IMap<String, Set<SiriObjectStorageKey>> getGeneralMessageCancellationChangesMap() {
+        return hazelcast.getMap("anshar.gm.canc.changes");
+    }
+
 
     @Bean
     public IMap<String, Set<SiriObjectStorageKey>> getFacilityMonitoringChangesMap() {

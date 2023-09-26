@@ -95,7 +95,8 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
     public void configure() throws Exception {
         super.configure();
 
-        rest("").tag("health")
+        rest("")
+                .apiDocs(false)
                 .get("/scrape").to("direct:scrape")
                 .get("/ready").to("direct:ready")
                 .get("/up").to("direct:up")
@@ -133,13 +134,13 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
         from("direct:up")
                 .choice()
                 .when(p -> !healthManager.isHazelcastAlive())
-                    .log("Hazelcast is shut down")
-                    .setBody(simple("Hazelcast is shut down"))
-                    .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("500"))
+                .log("Hazelcast is shut down")
+                .setBody(simple("Hazelcast is shut down"))
+                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("500"))
                 .endChoice()
                 .otherwise()
-                    .setBody(simple("OK"))
-                    .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("200"))
+                .setBody(simple("OK"))
+                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("200"))
                 .end()
                 .routeId("health.up")
         ;
@@ -147,15 +148,15 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
         from("direct:healthy")
                 .choice()
                 .when(p -> !healthManager.isReceivingData())
-                    .process(p -> {
-                        p.getOut().setBody("Server has not received data for " + healthManager.getSecondsSinceDataReceived() + " seconds.");
-                    })
-                    .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("500"))
-                    .log("Server reports not receiving data")
+                .process(p -> {
+                    p.getOut().setBody("Server has not received data for " + healthManager.getSecondsSinceDataReceived() + " seconds.");
+                })
+                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("500"))
+                .log("Server reports not receiving data")
                 .endChoice()
                 .otherwise()
-                    .setBody(simple("OK"))
-                    .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("200"))
+                .setBody(simple("OK"))
+                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("200"))
                 .end()
                 .routeId("health.healthy")
         ;
@@ -163,74 +164,74 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
         from("direct:anshardata")
                 .choice()
                 .when(p -> getAllUnhealthySubscriptions().isEmpty() && !unhealthySubscriptionsAlreadyNotified.isEmpty())
-                    .process(p -> {
-                        unhealthySubscriptionsAlreadyNotified.clear();
-                        String message = hubotMessageSuccess;
+                .process(p -> {
+                    unhealthySubscriptionsAlreadyNotified.clear();
+                    String message = hubotMessageSuccess;
+
+                    if (LocalTime.now().isAfter(startMonitorTime) &&
+                            LocalTime.now().isBefore(endMonitorTime)) {
+                        String jsonPayload = "{" + MessageFormat.format(hubotTemplate, hubotSource, hubotIconSuccess, message) + "}";
+                        p.getOut().setBody("{" + jsonPayload + "}");
+                        p.getOut().setHeader("notify-target", "hubot");
+                    } else {
+                        p.getOut().setBody(message);
+                        p.getOut().setHeader("notify-target", "log");
+                    }
+                })
+                .log("Server is back to normal")
+                .to("direct:notify.hubot")
+                .endChoice()
+                .when(p -> getAllUnhealthySubscriptions() != null && !getAllUnhealthySubscriptions().isEmpty())
+                .process(p -> {
+                    Set<String> unhealthySubscriptions = getAllUnhealthySubscriptions();
+
+                    //Avoid notifying multiple times for same subscriptions
+                    unhealthySubscriptions.removeAll(unhealthySubscriptionsAlreadyNotified);
+
+                    //Keep
+                    unhealthySubscriptionsAlreadyNotified.addAll(unhealthySubscriptions);
+
+                    if (!unhealthySubscriptions.isEmpty()) {
+                        String message = MessageFormat.format(hubotMessageFail, getAllUnhealthySubscriptions());
 
                         if (LocalTime.now().isAfter(startMonitorTime) &&
                                 LocalTime.now().isBefore(endMonitorTime)) {
-                            String jsonPayload = "{" + MessageFormat.format(hubotTemplate, hubotSource, hubotIconSuccess, message) + "}";
-                            p.getOut().setBody("{" + jsonPayload + "}");
+
+                            String jsonPayload = "{" + MessageFormat.format(hubotTemplate, hubotSource, hubotIconFail, message) + "}";
+                            p.getOut().setBody(jsonPayload);
                             p.getOut().setHeader("notify-target", "hubot");
                         } else {
-                            p.getOut().setBody(message);
+                            p.getOut().setBody("Subscriptions not receiving data - NOT notifying hubot:" + message);
                             p.getOut().setHeader("notify-target", "log");
                         }
-                    })
-                    .log("Server is back to normal")
-                    .to("direct:notify.hubot")
-                .endChoice()
-                .when(p -> getAllUnhealthySubscriptions() != null && !getAllUnhealthySubscriptions().isEmpty())
-                    .process(p -> {
-                        Set<String> unhealthySubscriptions = getAllUnhealthySubscriptions();
-
-                        //Avoid notifying multiple times for same subscriptions
-                        unhealthySubscriptions.removeAll(unhealthySubscriptionsAlreadyNotified);
-
-                        //Keep
-                        unhealthySubscriptionsAlreadyNotified.addAll(unhealthySubscriptions);
-
-                        if (!unhealthySubscriptions.isEmpty()) {
-                            String message = MessageFormat.format(hubotMessageFail, getAllUnhealthySubscriptions());
-
-                            if (LocalTime.now().isAfter(startMonitorTime) &&
-                                    LocalTime.now().isBefore(endMonitorTime)) {
-
-                                String jsonPayload = "{" + MessageFormat.format(hubotTemplate, hubotSource, hubotIconFail, message) + "}";
-                                p.getOut().setBody( jsonPayload );
-                                p.getOut().setHeader("notify-target", "hubot");
-                            } else {
-                                p.getOut().setBody("Subscriptions not receiving data - NOT notifying hubot:" + message);
-                                p.getOut().setHeader("notify-target", "log");
-                            }
-                        }
-                    })
-                    .log("Server is NOT receiving data")
-                    .to("direct:notify.hubot")
+                    }
+                })
+                .log("Server is NOT receiving data")
+                .to("direct:notify.hubot")
                 .endChoice()
                 .otherwise()
-                    .setBody(simple("OK"))
-                    .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("200"))
+                .setBody(simple("OK"))
+                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("200"))
                 .endChoice()
                 .routeId("health.data.received")
         ;
         from("direct:notify.hubot")
                 .choice()
                 .when(header("notify-target").isEqualTo("log"))
-                    .to("log:health:" + getClass().getSimpleName() + "?showAll=false&multiline=false")
+                .to("log:health:" + getClass().getSimpleName() + "?showAll=false&multiline=false")
                 .endChoice()
                 .when(header("notify-target").isEqualTo("hubot"))
-                    .to("log:health:" + getClass().getSimpleName() + "?showAll=false&multiline=false")
+                .to("log:health:" + getClass().getSimpleName() + "?showAll=false&multiline=false")
 //                    .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.JSON_UTF_8))
 //                    .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
 //                    .to(hubotUrl)
                 .endChoice()
-            .routeId("health.notify.hubot")
+                .routeId("health.notify.hubot")
         ;
 
     }
 
     private Set<String> getAllUnhealthySubscriptions() {
-        return subscriptionManager.getAllUnhealthySubscriptions(allowedInactivityMinutes*60);
+        return subscriptionManager.getAllUnhealthySubscriptions(allowedInactivityMinutes * 60);
     }
 }

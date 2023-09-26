@@ -15,34 +15,19 @@
 
 package no.rutebanken.anshar.data;
 
-import junit.framework.TestCase;
+import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.EstimatedCall;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.Extensions;
-import uk.org.siri.siri20.LineRef;
-import uk.org.siri.siri20.NaturalLanguageStringStructure;
-import uk.org.siri.siri20.RecordedCall;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.StopPointRef;
-import uk.org.siri.siri20.VehicleRef;
+import uk.org.siri.siri20.*;
 
 import java.math.BigInteger;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static no.rutebanken.anshar.helpers.SleepUtil.sleep;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 
 public class EstimatedTimetablesTest extends SpringBootBaseTest {
@@ -66,7 +51,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
     @Test
     public void testAddJourney() {
         int previousSize = estimatedTimetables.getAll().size();
-        EstimatedVehicleJourney element = createEstimatedVehicleJourney("1234-added", "4321", 0, 30, ZonedDateTime.now().plusMinutes(1), true);
+        EstimatedVehicleJourney element = TestObjectFactory.createEstimatedVehicleJourney("1234-added", "4321", 0, 30, ZonedDateTime.now().plusMinutes(1), true);
 
         estimatedTimetables.add("test", element);
 
@@ -76,9 +61,9 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
     @Test
     public void testGetUpdatesOnly() {
 
-        estimatedTimetables.add("test", createEstimatedVehicleJourney("1234-update", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
-        estimatedTimetables.add("test", createEstimatedVehicleJourney("2345-update", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
-        estimatedTimetables.add("test", createEstimatedVehicleJourney("3456-update", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
+        estimatedTimetables.add("test", TestObjectFactory.createEstimatedVehicleJourney("1234-update", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
+        estimatedTimetables.add("test", TestObjectFactory.createEstimatedVehicleJourney("2345-update", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
+        estimatedTimetables.add("test", TestObjectFactory.createEstimatedVehicleJourney("3456-update", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
 
         estimatedTimetables.commitChanges();
         sleep(50);
@@ -86,9 +71,9 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         // Added 3
         String requestorId = UUID.randomUUID().toString();
 
-        assertEquals( 3, estimatedTimetables.getAllUpdates(requestorId, null).size());
+        assertEquals(3, estimatedTimetables.getAllUpdates(requestorId, null).size());
 
-        estimatedTimetables.add("test", createEstimatedVehicleJourney("4567-update", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
+        estimatedTimetables.add("test", TestObjectFactory.createEstimatedVehicleJourney("4567-update", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
         estimatedTimetables.commitChanges();
 
         sleep(50);
@@ -98,8 +83,8 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
 
         //None added
         assertEquals(
-            0, estimatedTimetables.getAllUpdates(requestorId, null).size(),
-            "Returning partial updates when nothing has changed");
+                0, estimatedTimetables.getAllUpdates(requestorId, null).size(),
+                "Returning partial updates when nothing has changed");
 
         //Verify that all elements still exist
         assertEquals(4, estimatedTimetables.getAll().size());
@@ -120,9 +105,9 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         assertEquals(0, estimatedTimetables.getAllUpdates(requestorId, null).size());
 
         String datasetId = UUID.randomUUID().toString();
-        estimatedTimetables.add(datasetId, createEstimatedVehicleJourney("1234-partialupdate", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
-        estimatedTimetables.add(datasetId, createEstimatedVehicleJourney("2345-partialupdate", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
-        estimatedTimetables.add(datasetId, createEstimatedVehicleJourney("3456-partialupdate", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
+        estimatedTimetables.add(datasetId, TestObjectFactory.createEstimatedVehicleJourney("1234-partialupdate", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
+        estimatedTimetables.add(datasetId, TestObjectFactory.createEstimatedVehicleJourney("2345-partialupdate", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
+        estimatedTimetables.add(datasetId, TestObjectFactory.createEstimatedVehicleJourney("3456-partialupdate", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
 
 
         estimatedTimetables.commitChanges();
@@ -148,7 +133,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
 
         assertFalse(siri.getServiceDelivery().isMoreData());
 
-        estimatedTimetables.add(datasetId, createEstimatedVehicleJourney("4567-partialupdate", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
+        estimatedTimetables.add(datasetId, TestObjectFactory.createEstimatedVehicleJourney("4567-partialupdate", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
 
         estimatedTimetables.commitChanges();
         sleep(50);
@@ -165,7 +150,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
 
 
         //Verify that all elements still exist
-        assertEquals(previousSize+4, estimatedTimetables.getAll().size());
+        assertEquals(previousSize + 4, estimatedTimetables.getAll().size());
     }
 
     @Test
@@ -173,32 +158,32 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         int previousSize = estimatedTimetables.getAll().size();
 
         ZonedDateTime departure = ZonedDateTime.now().plusHours(1);
-        estimatedTimetables.add("test", createEstimatedVehicleJourney("12345", "4321", 0, 30, departure, true));
-        int expectedSize = previousSize +1;
+        estimatedTimetables.add("test", TestObjectFactory.createEstimatedVehicleJourney("12345", "4321", 0, 30, departure, true));
+        int expectedSize = previousSize + 1;
         assertTrue(
-            estimatedTimetables.getAll().size() == expectedSize,
-            "Adding Journey did not add element."
+                estimatedTimetables.getAll().size() == expectedSize,
+                "Adding Journey did not add element."
         );
 
-        estimatedTimetables.add("test", createEstimatedVehicleJourney("12345", "4321", 0, 30, departure, true));
+        estimatedTimetables.add("test", TestObjectFactory.createEstimatedVehicleJourney("12345", "4321", 0, 30, departure, true));
         assertTrue(
-            estimatedTimetables.getAll().size() == expectedSize,
-            "Updating Journey added element."
+                estimatedTimetables.getAll().size() == expectedSize,
+                "Updating Journey added element."
         );
 
         ZonedDateTime departure_2 = ZonedDateTime.now().plusHours(1);
-        estimatedTimetables.add("test", createEstimatedVehicleJourney("54321", "4321", 0, 30, departure_2, true));
+        estimatedTimetables.add("test", TestObjectFactory.createEstimatedVehicleJourney("54321", "4321", 0, 30, departure_2, true));
         expectedSize++;
         assertTrue(
-            estimatedTimetables.getAll().size() == expectedSize,
-            "Adding Journey did not add element."
+                estimatedTimetables.getAll().size() == expectedSize,
+                "Adding Journey did not add element."
         );
 
-        estimatedTimetables.add("test2", createEstimatedVehicleJourney("12345", "4321", 0, 30, departure_2, true));
+        estimatedTimetables.add("test2", TestObjectFactory.createEstimatedVehicleJourney("12345", "4321", 0, 30, departure_2, true));
         expectedSize++;
         assertEquals(expectedSize, estimatedTimetables.getAll().size(), "Adding Journey for other vendor did not add element.");
-        assertEquals(previousSize+1, estimatedTimetables.getAll("test2").size(), "Getting Journey for vendor did not return correct element-count.");
-        assertEquals(expectedSize-1, estimatedTimetables.getAll("test").size(), "Getting Journey for vendor did not return correct element-count.");
+        assertEquals(previousSize + 1, estimatedTimetables.getAll("test2").size(), "Getting Journey for vendor did not return correct element-count.");
+        assertEquals(expectedSize - 1, estimatedTimetables.getAll("test").size(), "Getting Journey for vendor did not return correct element-count.");
 
     }
 
@@ -208,24 +193,24 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
 
         ZonedDateTime departure = ZonedDateTime.now().plusHours(1);
         String lineRefValue = "12345-wrongOrder";
-        EstimatedVehicleJourney estimatedVehicleJourney = createEstimatedVehicleJourney(lineRefValue, "4321", 0, 20, departure, true);
+        EstimatedVehicleJourney estimatedVehicleJourney = TestObjectFactory.createEstimatedVehicleJourney(lineRefValue, "4321", 0, 20, departure, true);
         final ZonedDateTime firstRecordedAtTime = ZonedDateTime.now().plusMinutes(1);
         estimatedVehicleJourney.setRecordedAtTime(firstRecordedAtTime);
 
         estimatedTimetables.add("test", estimatedVehicleJourney);
-        int expectedSize = previousSize +1;
+        int expectedSize = previousSize + 1;
         assertTrue(
-            estimatedTimetables.getAll().size() == expectedSize,
-            "Adding Journey did not add element."
+                estimatedTimetables.getAll().size() == expectedSize,
+                "Adding Journey did not add element."
         );
 
-        EstimatedVehicleJourney estimatedVehicleJourney1 = createEstimatedVehicleJourney(lineRefValue, "4321", 0, 20, departure, true);
+        EstimatedVehicleJourney estimatedVehicleJourney1 = TestObjectFactory.createEstimatedVehicleJourney(lineRefValue, "4321", 0, 20, departure, true);
         estimatedVehicleJourney1.setRecordedAtTime(ZonedDateTime.now());
         estimatedTimetables.add("test", estimatedVehicleJourney1);
 
         assertTrue(
-            estimatedTimetables.getAll().size() == expectedSize,
-            "Updating Journey added element."
+                estimatedTimetables.getAll().size() == expectedSize,
+                "Updating Journey added element."
         );
 
         boolean checkedMatchingJourney = false;
@@ -301,13 +286,13 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         String lineRefValue = "12345-RecordedCalls";
         final int numberOfEstimatedCalls = 20;
 
-        EstimatedVehicleJourney estimatedVehicleJourney = createEstimatedVehicleJourney(lineRefValue, "4321", 0, numberOfEstimatedCalls, departure, true);
+        EstimatedVehicleJourney estimatedVehicleJourney = TestObjectFactory.createEstimatedVehicleJourney(lineRefValue, "4321", 0, numberOfEstimatedCalls, departure, true);
         estimatedTimetables.add("test", estimatedVehicleJourney);
-        assertEquals(previousSize+1, estimatedTimetables.getAll().size(), "Adding Journey did not add element.");
+        assertEquals(previousSize + 1, estimatedTimetables.getAll().size(), "Adding Journey did not add element.");
 
         List<EstimatedCall> estimatedCalls = new ArrayList<>(estimatedVehicleJourney.getEstimatedCalls().getEstimatedCalls());
 
-        EstimatedVehicleJourney estimatedVehicleJourneyUpdate = createEstimatedVehicleJourney(lineRefValue, "4321", 0, 0, departure, false);
+        EstimatedVehicleJourney estimatedVehicleJourneyUpdate = TestObjectFactory.createEstimatedVehicleJourney(lineRefValue, "4321", 0, 0, departure, false);
         estimatedVehicleJourneyUpdate.setEstimatedCalls(new EstimatedVehicleJourney.EstimatedCalls());
         estimatedVehicleJourneyUpdate.setRecordedCalls(new EstimatedVehicleJourney.RecordedCalls());
 
@@ -333,7 +318,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
 
                 int rcSize = recordedCallsList.size();
                 int etSize = estimatedCallsList.size();
-                assertEquals(numberOfEstimatedCalls-expectedNumberOfRecordedCallsAfterUpdate, etSize, "List of EstimatedCalls have not been merged as expected.");
+                assertEquals(numberOfEstimatedCalls - expectedNumberOfRecordedCallsAfterUpdate, etSize, "List of EstimatedCalls have not been merged as expected.");
                 assertEquals(expectedNumberOfRecordedCallsAfterUpdate, rcSize, "List of RecordedCalls have not been merged as expected.");
 
                 EstimatedCall estimatedCall = estimatedCallsList.get(0);
@@ -347,9 +332,9 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
     @Test
     public void testCreateServiceDelivery() {
         String datasetId = "ServiceDeliveryTest";
-        estimatedTimetables.add(datasetId, createEstimatedVehicleJourney("1234", "1", 0, 30, ZonedDateTime.now().plusHours(1), true));
-        estimatedTimetables.add(datasetId, createEstimatedVehicleJourney("2345", "2", 0, 30, ZonedDateTime.now().plusHours(1), true));
-        estimatedTimetables.add(datasetId, createEstimatedVehicleJourney("3456", "3", 0, 30, ZonedDateTime.now().plusHours(1), true));
+        estimatedTimetables.add(datasetId, TestObjectFactory.createEstimatedVehicleJourney("1234", "1", 0, 30, ZonedDateTime.now().plusHours(1), true));
+        estimatedTimetables.add(datasetId, TestObjectFactory.createEstimatedVehicleJourney("2345", "2", 0, 30, ZonedDateTime.now().plusHours(1), true));
+        estimatedTimetables.add(datasetId, TestObjectFactory.createEstimatedVehicleJourney("3456", "3", 0, 30, ZonedDateTime.now().plusHours(1), true));
 
         estimatedTimetables.commitChanges();
 
@@ -384,43 +369,43 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
     public void testServiceDeliveryWithPreviewInterval() {
         String datasetId = "PreviewIntervalTest";
 
-        estimatedTimetables.add(datasetId, createEstimatedVehicleJourney("1234", "1", 0, 30, ZonedDateTime.now().plusMinutes(10), true));
-        estimatedTimetables.add(datasetId, createEstimatedVehicleJourney("2345", "2", 0, 30, ZonedDateTime.now().plusMinutes(100), true));
+        estimatedTimetables.add(datasetId, TestObjectFactory.createEstimatedVehicleJourney("1234", "1", 0, 30, ZonedDateTime.now().plusMinutes(10), true));
+        estimatedTimetables.add(datasetId, TestObjectFactory.createEstimatedVehicleJourney("2345", "2", 0, 30, ZonedDateTime.now().plusMinutes(100), true));
 
-        Siri serviceDelivery_1 = estimatedTimetables.createServiceDelivery(null, datasetId, 10, 20*60*1000);
+        Siri serviceDelivery_1 = estimatedTimetables.createServiceDelivery(null, datasetId, 10, 20 * 60 * 1000);
         sleep(50);
 
         assertNotNull(serviceDelivery_1);
         assertNotNull(serviceDelivery_1.getServiceDelivery());
         assertNotNull(serviceDelivery_1.getServiceDelivery().getEstimatedTimetableDeliveries());
         assertTrue(
-            serviceDelivery_1.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
-                                                            .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 1,
-            "Only first journey should have been returned"
+                serviceDelivery_1.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
+                        .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 1,
+                "Only first journey should have been returned"
         );
         assertFalse(serviceDelivery_1.getServiceDelivery().isMoreData());
 
 
-        Siri serviceDelivery_10 = estimatedTimetables.createServiceDelivery(null, datasetId, 10, 110*60*1000);
+        Siri serviceDelivery_10 = estimatedTimetables.createServiceDelivery(null, datasetId, 10, 110 * 60 * 1000);
         sleep(50);
 
         assertNotNull(serviceDelivery_10);
         assertNotNull(serviceDelivery_10.getServiceDelivery());
         assertNotNull(serviceDelivery_10.getServiceDelivery().getEstimatedTimetableDeliveries());
         assertTrue(
-            serviceDelivery_10.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
+                serviceDelivery_10.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
                         .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 2,
-            "Both journeys should have been returned"
+                "Both journeys should have been returned"
         );
 
         assertFalse(serviceDelivery_10.getServiceDelivery().isMoreData());
 
 
-        EstimatedVehicleJourney estimatedVehicleJourneyWithCancellation = createEstimatedVehicleJourney("3456", "3", 0, 30, ZonedDateTime.now().plusMinutes(30), true);
+        EstimatedVehicleJourney estimatedVehicleJourneyWithCancellation = TestObjectFactory.createEstimatedVehicleJourney("3456", "3", 0, 30, ZonedDateTime.now().plusMinutes(30), true);
         estimatedVehicleJourneyWithCancellation.setCancellation(Boolean.TRUE);
         estimatedTimetables.add(datasetId, estimatedVehicleJourneyWithCancellation);
 
-        Siri serviceDelivery_30 = estimatedTimetables.createServiceDelivery(null, datasetId, 10, 110*60*1000);
+        Siri serviceDelivery_30 = estimatedTimetables.createServiceDelivery(null, datasetId, 10, 110 * 60 * 1000);
         sleep(50);
 
         assertNotNull(serviceDelivery_30);
@@ -428,7 +413,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         assertNotNull(serviceDelivery_30.getServiceDelivery().getEstimatedTimetableDeliveries());
         assertTrue(serviceDelivery_30.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
                         .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 3,
-            "Cancelled journey in the future should have been returned");
+                "Cancelled journey in the future should have been returned");
         assertFalse(serviceDelivery_30.getServiceDelivery().isMoreData());
 
         Siri serviceDelivery_3 = estimatedTimetables.createServiceDelivery(null, datasetId, 10, -1);
@@ -439,7 +424,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         assertNotNull(serviceDelivery_3.getServiceDelivery().getEstimatedTimetableDeliveries());
         assertTrue(serviceDelivery_3.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
                         .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 3,
-            "Default request should have returned all journeys");
+                "Default request should have returned all journeys");
 
         assertFalse(serviceDelivery_3.getServiceDelivery().isMoreData());
 
@@ -453,8 +438,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         assertNotNull(serviceDelivery_3.getServiceDelivery().getEstimatedTimetableDeliveries());
         assertTrue(serviceDelivery_3.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
                         .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 2,
-            "Default request should have returned all journeys");
-
+                "Default request should have returned all journeys");
 
 
         serviceDelivery_3 = estimatedTimetables.createServiceDelivery(requestorId, datasetId, 2, -1);
@@ -474,15 +458,15 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
 
         String prefix = "excludedOnly-";
 
-        EstimatedVehicleJourney journey_1 = createEstimatedVehicleJourney("1", "9", 0, 10, ZonedDateTime.now().plusHours(1), true);
+        EstimatedVehicleJourney journey_1 = TestObjectFactory.createEstimatedVehicleJourney("1", "9", 0, 10, ZonedDateTime.now().plusHours(1), true);
         journey_1.setDataSource("test1");
         estimatedTimetables.add("test1", journey_1);
 
-        EstimatedVehicleJourney journey_2 = createEstimatedVehicleJourney("2", "8", 0, 10, ZonedDateTime.now().plusHours(1), true);
+        EstimatedVehicleJourney journey_2 = TestObjectFactory.createEstimatedVehicleJourney("2", "8", 0, 10, ZonedDateTime.now().plusHours(1), true);
         journey_2.setDataSource("test2");
         estimatedTimetables.add("test2", journey_2);
 
-        EstimatedVehicleJourney journey_3 = createEstimatedVehicleJourney("3", "7", 0, 10, ZonedDateTime.now().plusHours(1), true);
+        EstimatedVehicleJourney journey_3 = TestObjectFactory.createEstimatedVehicleJourney("3", "7", 0, 10, ZonedDateTime.now().plusHours(1), true);
         journey_3.setDataSource("test3");
         estimatedTimetables.add("test3", journey_3);
 
@@ -498,7 +482,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         EstimatedVehicleJourney monitoredTarget = null;
         EstimatedVehicleJourney cancelledTarget = null;
         for (int i = 0; i < 10; i++) {
-            EstimatedVehicleJourney estimatedVehicleJourney = createEstimatedVehicleJourney(lineRefValue, UUID.randomUUID() + " - " + i, 1, 20, ZonedDateTime.now().plusMinutes(2), true);
+            EstimatedVehicleJourney estimatedVehicleJourney = TestObjectFactory.createEstimatedVehicleJourney(lineRefValue, UUID.randomUUID() + " - " + i, 1, 20, ZonedDateTime.now().plusMinutes(2), true);
             if (i == 5) {
                 estimatedVehicleJourney.setCancellation(false);
                 estimatedVehicleJourney.setMonitored(true);
@@ -537,9 +521,8 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
     }
 
 
-
     private void assertExcludedId(String excludedDatasetId) {
-        Siri serviceDelivery = estimatedTimetables.createServiceDelivery(null, null, null, Arrays.asList(excludedDatasetId), 100, -1);
+        Siri serviceDelivery = estimatedTimetables.createServiceDelivery(null, null, null, Arrays.asList(excludedDatasetId), 100, -1, new HashSet<>());
 
         List<EstimatedVehicleJourney> journeys = serviceDelivery.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies();
 
@@ -549,42 +532,6 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         }
     }
 
-
-    private EstimatedVehicleJourney createEstimatedVehicleJourney(String lineRefValue, String vehicleRefValue, int startOrder, int callCount, ZonedDateTime arrival, Boolean isComplete) {
-        return createEstimatedVehicleJourney(lineRefValue, vehicleRefValue, startOrder, callCount, arrival, arrival, isComplete);
-    }
-
-    private EstimatedVehicleJourney createEstimatedVehicleJourney(String lineRefValue, String vehicleRefValue, int startOrder, int callCount, ZonedDateTime arrival, ZonedDateTime departure, Boolean isComplete) {
-        EstimatedVehicleJourney element = new EstimatedVehicleJourney();
-        LineRef lineRef = new LineRef();
-        lineRef.setValue(lineRefValue);
-        element.setLineRef(lineRef);
-        VehicleRef vehicleRef = new VehicleRef();
-        vehicleRef.setValue(vehicleRefValue);
-        element.setVehicleRef(vehicleRef);
-        element.setIsCompleteStopSequence(isComplete);
-
-        EstimatedVehicleJourney.EstimatedCalls estimatedCalls = new EstimatedVehicleJourney.EstimatedCalls();
-        for (int i = startOrder; i < callCount; i++) {
-
-            StopPointRef stopPointRef = new StopPointRef();
-            stopPointRef.setValue("NSR:TEST:" + i);
-            EstimatedCall call = new EstimatedCall();
-                call.setStopPointRef(stopPointRef);
-                call.setAimedArrivalTime(arrival);
-                call.setExpectedArrivalTime(arrival);
-                call.setAimedDepartureTime(departure);
-                call.setExpectedDepartureTime(departure);
-                call.setOrder(BigInteger.valueOf(i));
-                call.setVisitNumber(BigInteger.valueOf(i));
-            estimatedCalls.getEstimatedCalls().add(call);
-        }
-
-        element.setEstimatedCalls(estimatedCalls);
-        element.setRecordedAtTime(ZonedDateTime.now());
-
-        return element;
-    }
 
     private EstimatedVehicleJourney createEstimatedVehicleJourneyWithRecordedCallsOnly(String lineRefValue, String vehicleRefValue, int startOrder, int callCount, ZonedDateTime time, Boolean isComplete) {
         EstimatedVehicleJourney element = new EstimatedVehicleJourney();
@@ -600,15 +547,15 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         for (int i = startOrder; i < callCount; i++) {
 
             StopPointRef stopPointRef = new StopPointRef();
-            stopPointRef.setValue("NSR:TEST:"+i);
+            stopPointRef.setValue("NSR:TEST:" + i);
 
             RecordedCall call = new RecordedCall();
-                call.setStopPointRef(stopPointRef);
-                call.setAimedArrivalTime(time);
-                call.setExpectedArrivalTime(time);
-                call.setAimedDepartureTime(time);
-                call.setExpectedDepartureTime(time);
-                call.setOrder(BigInteger.valueOf(i));
+            call.setStopPointRef(stopPointRef);
+            call.setAimedArrivalTime(time);
+            call.setExpectedArrivalTime(time);
+            call.setAimedDepartureTime(time);
+            call.setExpectedDepartureTime(time);
+            call.setOrder(BigInteger.valueOf(i));
             recordedCallsCalls.getRecordedCalls().add(call);
         }
 

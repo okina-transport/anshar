@@ -1,0 +1,39 @@
+[
+  {
+    "id": 1,
+    "message": "test perturbation",
+    "organization": "test_local_romain_netex",
+    "comment": null,
+    "diffusion": "DIFFUSED",
+    "startDateTime": 1693223526619,
+    "endDateTime": 1696716000000,
+    "creationDateTime": 1693223608060,
+    "deleteDateTime": null,
+    "category": "EquipmentReason",
+    "reason": "CONSTRUCTION_WORK",
+    "severity": "NORMAL",
+    "effect": "CANCELLED",
+    "lines": [],
+    "networks": [],
+    "journeys": [],
+    "courses": [],
+    "stopAreas": [
+      {
+        "id": 50,
+        "objectId": "Nav15",
+        "name": "Grégoire De Tours"
+      }
+    ],
+    "periods": [
+      {
+        "id": 1,
+        "startDate": 1693223526619,
+        "endDate": 1696716000000
+      }
+    ],
+    "imgFileName": null,
+    "imgFileBinary": null,
+    "publicationStartDateTime": 1695852000000,
+    "publicationEndDateTime": 1699138800000
+  }
+]

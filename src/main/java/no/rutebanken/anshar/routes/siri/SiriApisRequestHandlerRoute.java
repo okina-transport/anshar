@@ -167,6 +167,12 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
             case "siri-vm":
                 siriDataType = SiriDataType.VEHICLE_MONITORING;
                 break;
+            case "siri-gm":
+                siriDataType = SiriDataType.GENERAL_MESSAGE;
+                break;
+            case "siri-fm":
+                siriDataType = SiriDataType.FACILITY_MONITORING;
+                break;
         }
 
         handler.processSiriClientRequestFromApis(ids, byteArrayInputStream, siriDataType, provider);
@@ -220,6 +226,20 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
                 subscriptionSetup.setVendor("AURA-MULTITUD-CITYWAY-SIRI-VM");
                 subscriptionSetup.setName("AURA-MULTITUD-CITYWAY-SIRI-VM");
                 break;
+            case "siri-fm":
+                subscriptionSetup.setSubscriptionType(SiriDataType.FACILITY_MONITORING);
+                subscriptionSetup.getUrlMap().put(RequestType.GET_FACILITY_MONITORING, url);
+                subscriptionSetup.setRequestorRef("AURA_OKINA_FM");
+                subscriptionSetup.setVendor("AURA-MULTITUD-CITYWAY-SIRI-FM");
+                subscriptionSetup.setName("AURA-MULTITUD-CITYWAY-SIRI-FM");
+                break;
+            case "siri-gm":
+                subscriptionSetup.setSubscriptionType(SiriDataType.GENERAL_MESSAGE);
+                subscriptionSetup.getUrlMap().put(RequestType.GET_GENERAL_MESSAGE, url);
+                subscriptionSetup.setRequestorRef("AURA_OKINA_GM");
+                subscriptionSetup.setVendor("AURA-MULTITUD-CITYWAY-SIRI-GM");
+                subscriptionSetup.setName("AURA-MULTITUD-CITYWAY-SIRI-GM");
+                break;
         }
         subscriptionSetup.setSubscriptionMode(SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE);
         subscriptionSetup.setServiceType(SOAP);
@@ -246,6 +266,12 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
                 break;
             case "siri-vm":
                 tagName = "VehicleMonitoringRef";
+                break;
+            case "siri-fm":
+                tagName = "FacilityRef";
+                break;
+            case "siri-gm":
+                tagName = "InfoMessageIdentifier";
                 break;
         }
         NodeList idLists = document.getElementsByTagName(tagName);

@@ -39,13 +39,13 @@ public class Constants {
 
     public static final String ESTIMATED_VEHICLE_JOURNEY = SERVICE_DELIVERY + "/EstimatedTimetableDelivery/EstimatedJourneyVersionFrame/EstimatedVehicleJourney";
     public static final String ESTIMATED_CALLS = ESTIMATED_VEHICLE_JOURNEY + "/EstimatedCalls";
-    public static final String ESTIMATED_CALL  = ESTIMATED_VEHICLE_JOURNEY + "/EstimatedCalls/EstimatedCall";
-    public static final String RECORDED_CALL   = ESTIMATED_VEHICLE_JOURNEY + "/RecordedCalls/RecordedCall";
+    public static final String ESTIMATED_CALL = ESTIMATED_VEHICLE_JOURNEY + "/EstimatedCalls/EstimatedCall";
+    public static final String RECORDED_CALL = ESTIMATED_VEHICLE_JOURNEY + "/RecordedCalls/RecordedCall";
 
 
     public static final String VEHICLE_ACTIVITY = SERVICE_DELIVERY + "/VehicleMonitoringDelivery/VehicleActivity";
-    public static final String MONITORED_VEHICLE_JOURNEY =  VEHICLE_ACTIVITY + "/MonitoredVehicleJourney";
-    public static final String MONITORED_CALL_STRUCTURE =  MONITORED_VEHICLE_JOURNEY + "/MonitoredCall";
+    public static final String MONITORED_VEHICLE_JOURNEY = VEHICLE_ACTIVITY + "/MonitoredVehicleJourney";
+    public static final String MONITORED_CALL_STRUCTURE = MONITORED_VEHICLE_JOURNEY + "/MonitoredCall";
 
     public static final String DATASET_ID_HEADER_NAME = "datasetId";
     public static final String URL_HEADER_NAME = "URL";
@@ -59,6 +59,9 @@ public class Constants {
     public final static String GTFSRT_SM_QUEUE = "gtfsrt.stop.monitoring";
     public final static String GTFSRT_SX_QUEUE = "gtfsrt.situation.exchange";
     public final static String GTFSRT_VM_QUEUE = "gtfsrt.vehicle.monitoring";
+
+    public final static String SIRI_LITE_SERVICE_NAME = "SiriLiteServiceName";
+
 
     // TODO MHI : implement validators for SM
 

@@ -26,6 +26,7 @@ public class Disruption implements Serializable {
     @NotNull
     private String message;
     private String comment;
+    private String diffusion;
     private String imgFileName;
     private byte[] imgFileBinary;
     private String organization;
@@ -45,6 +46,7 @@ public class Disruption implements Serializable {
     private String category;
     private String reason;
     private String severity;
+    private String effect;
 
     @Getter
     @Setter

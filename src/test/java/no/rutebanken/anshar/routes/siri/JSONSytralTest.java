@@ -1,56 +1,41 @@
 package no.rutebanken.anshar.routes.siri;
 
-import no.rutebanken.anshar.data.EstimatedTimetables;
-import no.rutebanken.anshar.data.MonitoredStopVisits;
-import no.rutebanken.anshar.data.Situations;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
-import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
+import no.rutebanken.anshar.routes.siri.handlers.inbound.StopMonitoringInbound;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import no.rutebanken.anshar.util.SytralJSONMapper;
 import org.joda.time.DateTime;
-
-
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
-import org.junit.Assert;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-
 import uk.org.siri.siri20.MonitoredStopVisit;
 
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 class JSONSytralTest extends SpringBootBaseTest {
 
     @Autowired
-    private Situations situations;
-
-    @Autowired
-    private MonitoredStopVisits stopVisits;
-
-    @Autowired
-    private EstimatedTimetables estimatedTimetables;
-
-    @Autowired
-    private SiriApisRequestHandlerRoute siriApisRequestHandlerRoute;
-
-    @Autowired
     private SubscriptionManager subscriptionManager;
 
     @Autowired
-    private SiriHandler handler;
-
+    private StopMonitoringInbound stopMonitoringInbound;
 
     private static final int DEFAULT_HEARTBEAT_SECONDS = 300;
 
@@ -81,14 +66,11 @@ class JSONSytralTest extends SpringBootBaseTest {
              //// STOP VISITS
             checkAndCreateSubscriptions(visitSubscriptionList, "SYTRAL_SM_", SiriDataType.STOP_MONITORING, RequestType.GET_STOP_MONITORING, "SYTRAL");
 
-            Collection<MonitoredStopVisit> ingestedVisits = handler.ingestStopVisits("SYTRAL", createdstopVisits);
+            Collection<MonitoredStopVisit> ingestedVisits = stopMonitoringInbound.ingestStopVisits("SYTRAL", createdstopVisits);
 
                 for (MonitoredStopVisit visit : ingestedVisits) {
                     subscriptionManager.touchSubscription("SYTRAL_" + visit.getMonitoringRef().getValue(),false);
                 }
-
-
-
 
             System.out.println("a");
             long endTime = DateTime.now().toInstant().getMillis();
@@ -102,8 +84,6 @@ class JSONSytralTest extends SpringBootBaseTest {
             searchedStopIds.add("35998");
 
           //  Siri siriResult = stopVisits.createServiceDelivery("requestorId", null, "track", null, 10000000, -10000, searchedStopIds);
-
-
 
         } catch (IOException e) {
             e.printStackTrace();

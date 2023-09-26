@@ -104,13 +104,18 @@ public class RestRouteBuilder extends RouteBuilder {
                 .setBody(simple("Unauthorized"))
         ;
 
+        onException(IllegalArgumentException.class)
+                .handled(true)
+                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("400"))
+        ;
+
         errorHandler(defaultErrorHandler()
                 .log(logger)
                 .loggingLevel(LoggingLevel.INFO)
         );
 
         if (!isDataHandlersInitialized) {
-            isDataHandlersInitialized=true;
+            isDataHandlersInitialized = true;
             createClientRequestRoutes();
         }
 
@@ -123,10 +128,10 @@ public class RestRouteBuilder extends RouteBuilder {
         ;
 
         from("direct:anshar.blocked.tracking.header.response")
-            .removeHeaders("*")
-            .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("400")) //400 Bad request
-            .setBody(constant(""))
-            .routeId("reject.request.blocked.header")
+                .removeHeaders("*")
+                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("400")) //400 Bad request
+                .setBody(constant(""))
+                .routeId("reject.request.blocked.header")
         ;
 
     }
@@ -188,7 +193,7 @@ public class RestRouteBuilder extends RouteBuilder {
                 // Data-instances should never redirect requests
                 from("direct:redirect.request.et")
                         .log("Ignore redirect")
-                        ;
+                ;
 
             } else {
                 from("direct:redirect.request.et")
@@ -521,6 +526,7 @@ public class RestRouteBuilder extends RouteBuilder {
 
     /**
      * Returns true if Et-Client-header is blocked - request should be ignored
+     *
      * @param e
      * @return
      */
@@ -547,7 +553,7 @@ public class RestRouteBuilder extends RouteBuilder {
     protected String getSubscriptionIdFromPath(String path) {
         if (configuration.getIncomingPathPattern().startsWith("/")) {
             if (!path.startsWith("/")) {
-                path = "/"+path;
+                path = "/" + path;
             }
         } else {
             if (path.startsWith("/")) {
@@ -583,17 +589,20 @@ public class RestRouteBuilder extends RouteBuilder {
 
         return values;
     }
+
     protected void streamOutput(Exchange p, Siri response, HttpServletResponse out) throws IOException, JAXBException {
 
         if (MediaType.APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE)) |
-            MediaType.APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
+                MediaType.APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
             p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
+            out.setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
             SiriJson.toJson(response, out.getOutputStream());
         } else if ("application/x-protobuf".equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE)) |
-            "application/x-protobuf".equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
+                "application/x-protobuf".equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
             try {
                 final byte[] bytes = SiriMapper.mapToPbf(response).toByteArray();
                 p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, "application/x-protobuf");
+                out.setHeader(HttpHeaders.CONTENT_TYPE, "application/x-protobuf");
                 p.getMessage().setHeader(HttpHeaders.CONTENT_LENGTH, "" + bytes.length);
                 out.getOutputStream().write(bytes);
             } catch (NullPointerException npe) {
@@ -603,6 +612,7 @@ public class RestRouteBuilder extends RouteBuilder {
             }
         } else {
             p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_XML);
+            out.setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_XML);
             CustomSiriXml.toXml(response, null, out.getOutputStream());
 
         }
