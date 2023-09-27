@@ -24,7 +24,8 @@ import java.util.*;
 @Component
 public class IshtarCall extends BaseRouteBuilder {
 
-    private static final int INTERVAL_IN_MILLIS_ISHTAR = 1800000; // toutes les demi-heures
+    @Value("${ishtar.interval.millis:180000}")
+    private int INTERVAL_IN_MILLIS_ISHTAR;
 
     @Value("${ishtar.server.port}")
     private int ishtarPort;
