@@ -27,9 +27,6 @@ public class IshtarCall extends BaseRouteBuilder {
     @Value("${ishtar.interval.millis:180000}")
     private int INTERVAL_IN_MILLIS_ISHTAR;
 
-    @Value("${ishtar.server.port}")
-    private int ishtarPort;
-
 
     @Value("${ishtar.server.url}")
     private String ishtarUrl;
@@ -47,7 +44,7 @@ public class IshtarCall extends BaseRouteBuilder {
         singletonFrom("quartz://anshar/getAllDataFromIshtar?trigger.repeatInterval=" + INTERVAL_IN_MILLIS_ISHTAR, "getAllDataFromIshtar")
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))
                 .setHeader("Accept", constant("application/json, text/plain, */*"))
-                .toD(ishtarUrl + ":" + ishtarPort + "/gtfs-rt-apis/all")
+                .toD(ishtarUrl + "/gtfs-rt-apis/all")
                 .unmarshal().json(JsonLibrary.Jackson, List.class)
                 .log("--> ISHTAR : get GTFS RT Api data")
                 .process(exchange -> {
@@ -73,7 +70,7 @@ public class IshtarCall extends BaseRouteBuilder {
                 })
 
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))
-                .toD(ishtarUrl + ":" + ishtarPort + "/siri-apis/all")
+                .toD(ishtarUrl + "/siri-apis/all")
                 .unmarshal().json(JsonLibrary.Jackson, List.class)
                 .log("--> ISHTAR : get Siri Api data")
                 .process(exchange -> {
@@ -98,7 +95,7 @@ public class IshtarCall extends BaseRouteBuilder {
                 })
 
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))
-                .toD(ishtarUrl + ":" + ishtarPort + "/id-processing-parameters/all")
+                .toD(ishtarUrl + "/id-processing-parameters/all")
                 .unmarshal().json(JsonLibrary.Jackson, List.class)
                 .log("--> ISHTAR : get ID Processing Parameters data")
                 .process(exchange -> {
@@ -121,7 +118,7 @@ public class IshtarCall extends BaseRouteBuilder {
                 })
 
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))
-                .toD(ishtarUrl + ":" + ishtarPort + "/subscriptions/all")
+                .toD(ishtarUrl + "/subscriptions/all")
                 .unmarshal().json(JsonLibrary.Jackson, List.class)
                 .log("--> ISHTAR : get Subscriptions data")
                 .process(exchange -> {
