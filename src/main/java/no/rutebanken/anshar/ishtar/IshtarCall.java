@@ -132,6 +132,9 @@ public class IshtarCall extends BaseRouteBuilder {
                     if (subscriptionResult != null) {
                         for (Object obj : subscriptionResult) {
                             LinkedHashMap<?, ?> current_subscription = ((LinkedHashMap<?, ?>) ((LinkedHashMap<?, ?>) obj).get("subscription"));
+                            if (current_subscription == null) {
+                                continue;
+                            }
                             SubscriptionSetup newSubscription = objectMapper.convertValue(current_subscription, SubscriptionSetup.class);
                             newSubscription.setChangeBeforeUpdatesSeconds((int) current_subscription.get("changeBeforeUpdateSeconds"));
 
