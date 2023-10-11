@@ -2,6 +2,7 @@ package no.rutebanken.anshar.ishtar;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.util.StringUtils;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.api.SiriApi;
 import no.rutebanken.anshar.config.AnsharConfiguration;
@@ -40,6 +41,10 @@ public class IshtarCall extends BaseRouteBuilder {
 
     @Override
     public void configure() throws Exception {
+
+        if (StringUtils.isEmpty(ishtarUrl)) {
+            return;
+        }
 
         singletonFrom("quartz://anshar/getAllDataFromIshtar?trigger.repeatInterval=" + INTERVAL_IN_MILLIS_ISHTAR, "getAllDataFromIshtar")
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))
