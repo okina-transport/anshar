@@ -15,7 +15,6 @@
 
 package no.rutebanken.anshar.routes.mapping;
 
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,11 +24,7 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 @Component
 @Configuration
@@ -87,8 +82,8 @@ public class StopPlaceUpdaterService {
         }
 
         Optional<String> reverseStopPlaceMapping = reverseStopPlaceMappings.get(id).stream()
-                                                .filter(provId -> provId.startsWith(datasetId))
-                                                .findFirst();
+                .filter(provId -> datasetId == null || provId.startsWith(datasetId))
+                .findFirst();
 
         return reverseStopPlaceMapping.map(Arrays::asList).orElseGet(ArrayList::new);
 
@@ -106,7 +101,7 @@ public class StopPlaceUpdaterService {
             }
         }
 
-        if(reverseStopPlaceMappings.get(id) != null && !reverseStopPlaceMappings.get(id).isEmpty()){
+        if (reverseStopPlaceMappings.get(id) != null && !reverseStopPlaceMappings.get(id).isEmpty()) {
             return reverseStopPlaceMappings.get(id);
         }
 
@@ -116,6 +111,7 @@ public class StopPlaceUpdaterService {
 
     /**
      * Returns true if provided id is included in the latest dataset from NSR
+     *
      * @param id
      * @return
      */
@@ -125,23 +121,28 @@ public class StopPlaceUpdaterService {
 
     /**
      * Returns true if provided id can be reverted to producer id
+     *
      * @param id
      * @return
      */
     public boolean canBeReverted(String id, String datasetId) {
-        if (!reverseStopPlaceMappings.containsKey(id)){
+        if (!reverseStopPlaceMappings.containsKey(id)) {
             return false;
         }
 
         List<String> mappings = reverseStopPlaceMappings.get(id);
 
+        if (datasetId == null && mappings != null && !mappings.isEmpty()) {
+            return true;
+        }
+
         return mappings.stream()
-                        .filter(Objects::nonNull)
-                        .anyMatch(provId -> provId.startsWith(datasetId));
+                .filter(Objects::nonNull)
+                .anyMatch(provId -> provId.startsWith(datasetId));
     }
 
     public boolean canBeRevertedWithoutDatasetId(String id) {
-        if (!reverseStopPlaceMappings.containsKey(id)){
+        if (!reverseStopPlaceMappings.containsKey(id)) {
             return false;
         }
 
@@ -177,9 +178,9 @@ public class StopPlaceUpdaterService {
         for (Map.Entry<String, String> mappingEntry : foundMappings.entrySet()) {
 
             List<String> providerIds;
-            if (reverseStopPlaceMappings.containsKey(mappingEntry.getValue())){
+            if (reverseStopPlaceMappings.containsKey(mappingEntry.getValue())) {
                 providerIds = reverseStopPlaceMappings.get(mappingEntry.getValue());
-            }else{
+            } else {
                 providerIds = new ArrayList<>();
                 reverseStopPlaceMappings.put(mappingEntry.getValue(), providerIds);
             }
