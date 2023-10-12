@@ -2,13 +2,11 @@ package no.rutebanken.anshar.data;
 
 import com.hazelcast.map.IMap;
 import com.hazelcast.query.Predicate;
-import net.sf.saxon.trans.SymbolicName;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
-import org.apache.kafka.common.network.Send;
 import org.quartz.utils.counter.Counter;
 import org.quartz.utils.counter.CounterImpl;
 import org.slf4j.Logger;
@@ -16,12 +14,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
-import uk.org.ifopt.siri13.StopPlaceRef;
-import uk.org.ifopt.siri20.StopPlaceComponentRefStructure;
 import uk.org.siri.siri20.*;
 
 import javax.annotation.PostConstruct;
-import javax.validation.constraints.NotNull;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.chrono.ChronoZonedDateTime;
@@ -29,8 +24,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-
-import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getOriginalId;
 
 @Repository
 public class FacilityMonitoring extends SiriRepository<FacilityConditionStructure>  {

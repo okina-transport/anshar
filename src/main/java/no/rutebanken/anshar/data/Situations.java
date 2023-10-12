@@ -21,6 +21,7 @@ import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.data.util.TimingTracer;
+import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.quartz.utils.counter.Counter;
@@ -30,10 +31,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
-import uk.org.siri.siri20.HalfOpenTimestampOutputRangeStructure;
-import uk.org.siri.siri20.MessageRefStructure;
-import uk.org.siri.siri20.PtSituationElement;
-import uk.org.siri.siri20.Siri;
+import uk.org.ifopt.siri20.StopPlaceRef;
+import uk.org.siri.siri20.*;
 
 import javax.annotation.PostConstruct;
 import java.time.Instant;
@@ -71,6 +70,9 @@ public class Situations extends SiriRepository<PtSituationElement> {
 
     @Autowired
     ExtendedHazelcastService hazelcastService;
+
+    @Autowired
+    private StopPlaceUpdaterService stopPlaceService;
 
     protected Situations() {
         super(SiriDataType.SITUATION_EXCHANGE);
@@ -345,6 +347,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
             }
             timingTracer.mark("compareChecksum");
 
+            updated = defineAffectedPoints(situation, datasetId) || updated;
             if (keepByProgressStatus(situation) && updated) {
                 timingTracer.mark("keepByProgressStatus");
                 long expiration = getExpiration(situation);
@@ -391,6 +394,37 @@ public class Situations extends SiriRepository<PtSituationElement> {
         }
 
         return changes.values();
+    }
+
+    private boolean defineAffectedPoints(PtSituationElement situation, String datasetId) {
+
+        if(situation.getAffects() == null || situation.getAffects().getStopPoints() == null
+                || situation.getAffects().getStopPoints().getAffectedStopPoints() == null){
+            return false;
+        }
+        List<AffectedStopPointStructure> refId = situation.getAffects().getStopPoints().getAffectedStopPoints();
+        List<AffectedStopPointStructure> refIdStopPlace = refId.stream()
+                .filter(affectedStopPoint -> affectedStopPoint.getStopPointRef() != null && stopPlaceService.isKnownId(datasetId + ":StopPlace:" + affectedStopPoint.getStopPointRef().getValue()))
+                .collect(Collectors.toList());
+        List<AffectedStopPlaceStructure> affectedStopPlaceStructures = new ArrayList<>();
+
+        refIdStopPlace.forEach( affectedStopPoint -> {
+            AffectedStopPlaceStructure affectedStopPlaceStructure = new AffectedStopPlaceStructure();
+            StopPlaceRef stopPlaceRef = new StopPlaceRef();
+            stopPlaceRef.setValue(affectedStopPoint.getStopPointRef().getValue());
+            affectedStopPlaceStructure.setStopPlaceRef(stopPlaceRef);
+            affectedStopPlaceStructures.add(affectedStopPlaceStructure);
+        });
+
+        situation.getAffects().getStopPoints().getAffectedStopPoints().removeAll(refIdStopPlace);
+        if (!affectedStopPlaceStructures.isEmpty()){
+
+            AffectsScopeStructure.StopPlaces newStopPlaces= new AffectsScopeStructure.StopPlaces();
+            newStopPlaces.getAffectedStopPlaces().addAll(affectedStopPlaceStructures);
+            situation.getAffects().setStopPlaces(newStopPlaces);
+            return true;
+        }
+        return false;
     }
 
     public void removeSituation(String datasetId, PtSituationElement situation) {
