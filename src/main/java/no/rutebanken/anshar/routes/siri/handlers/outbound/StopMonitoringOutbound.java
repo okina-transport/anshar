@@ -138,6 +138,9 @@ public class StopMonitoringOutbound {
             }
 
         }
+        else if(StringUtils.isNotEmpty(datasetId) && outboundIdMappingPolicy.equals(OutboundIdMappingPolicy.DEFAULT) && importedIds.isEmpty() && !originalMonitoringRefs.isEmpty()){
+            serviceResponse = siriObjectFactory.createSMServiceDelivery(new ArrayList<>());
+        }
         else {
             serviceResponse = getServiceResponseStopVisits(outboundIdMappingPolicy, requestorRef, clientTrackingName, maxSize, datasetId, importedIds);
         }
