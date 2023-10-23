@@ -565,12 +565,12 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <classifier>exec</classifier>
-                    <layers>
-                        <enabled>true</enabled>
-                    </layers>
-                </configuration>
+<!--                <configuration>-->
+<!--                    <classifier>exec</classifier>-->
+<!--                    <layers>-->
+<!--                        <enabled>true</enabled>-->
+<!--                    </layers>-->
+<!--                </configuration>-->
             </plugin>
 
         </plugins>
