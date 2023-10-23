@@ -6,7 +6,7 @@
     "comment": null,
     "diffusion": "DIFFUSED",
     "startDateTime": 1693223526619,
-    "endDateTime": 1696716000000,
+    "endDateTime": 1901716000000,
     "creationDateTime": 1693223608060,
     "deleteDateTime": null,
     "category": "EquipmentReason",
@@ -28,12 +28,12 @@
       {
         "id": 1,
         "startDate": 1693223526619,
-        "endDate": 1696716000000
+        "endDate": 1901716000000
       }
     ],
     "imgFileName": null,
     "imgFileBinary": null,
     "publicationStartDateTime": 1695852000000,
-    "publicationEndDateTime": 1699138800000
+    "publicationEndDateTime": 1901716000000
   }
 ]
