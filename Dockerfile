@@ -9,4 +9,4 @@ EXPOSE 8776
 ENV LANG C.UTF-8
 
 # Commande pour lancer l'application Spring Boot
-CMD ["java", "-jar", "app.jar"]
+ENTRYPOINT exec java -jar /app.jar
