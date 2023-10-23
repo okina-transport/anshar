@@ -1,7 +1,7 @@
 FROM openjdk:11-jre
 VOLUME /tmp
 ARG JAR_FILE
-COPY target/${JAR_FILE} app.jar
+COPY ${JAR_FILE} app.jar
 
 
 EXPOSE 8776
