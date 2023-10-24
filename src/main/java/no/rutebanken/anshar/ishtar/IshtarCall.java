@@ -138,12 +138,12 @@ public class IshtarCall extends BaseRouteBuilder {
                         for (Object obj : subscriptionResult) {
                             LinkedHashMap<?, ?> current_subscription = ((LinkedHashMap<?, ?>) ((LinkedHashMap<?, ?>) obj).get("subscription"));
                             if (current_subscription == null) {
-                                continue;
+                                current_subscription = (LinkedHashMap<?, ?>) obj;
                             }
                             SubscriptionSetup newSubscription = objectMapper.convertValue(current_subscription, SubscriptionSetup.class);
-                            newSubscription.setChangeBeforeUpdatesSeconds((int) current_subscription.get("changeBeforeUpdateSeconds"));
+                            newSubscription.setChangeBeforeUpdatesSeconds((int) current_subscription.get("changeBeforeUpdatesSeconds"));
 
-                            newSubscription.setInternalId((int) ((LinkedHashMap<?, ?>) ((LinkedHashMap<?, ?>) obj).get("subscription")).get("id"));
+                            newSubscription.setInternalId((int) current_subscription.get("id"));
 
                             List<Map<String, Object>> urlMapsList = (List<Map<String, Object>>) ((LinkedHashMap<?, ?>) obj).get("urlMaps");
                             Map<RequestType, String> urlMap = new HashMap<>();
@@ -169,6 +169,8 @@ public class IshtarCall extends BaseRouteBuilder {
                             newSubscription.setIdMappingPrefixes(idMappingPrefixesList);
                             results.add(newSubscription);
                         }
+                    } else {
+                        log.warn("IshtarCall : subscriptionResult null");
                     }
                     subscriptionConfig.getSubscriptions().addAll(results);
                 })
