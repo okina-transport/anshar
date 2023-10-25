@@ -78,7 +78,7 @@ public class ValidationRoute extends RestRouteBuilder {
 
     private void toggleValidation(Long subscriptionId, String validationFilter) {
         log.info("got validationFilter: " + validationFilter);
-        SubscriptionSetup subscriptionSetup = subscriptionManager.getSubscriptionById(subscriptionId);
+        SubscriptionSetup subscriptionSetup = subscriptionManager.getSubscriptionByInternalId(subscriptionId);
         if (subscriptionSetup != null) {
             subscriptionSetup.setValidation(!subscriptionSetup.isValidation());
             if (subscriptionSetup.isValidation()) {
