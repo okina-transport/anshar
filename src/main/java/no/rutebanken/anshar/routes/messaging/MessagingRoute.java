@@ -1,6 +1,5 @@
 package no.rutebanken.anshar.routes.messaging;
 
-import com.sun.xml.bind.v2.schemagen.xmlschema.SchemaTop;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.gtfsrt.ingesters.EstimatedTimetableIngester;
 import no.rutebanken.anshar.gtfsrt.ingesters.SituationExchangeIngester;
@@ -12,6 +11,7 @@ import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.admin.AdminRouteHelper;
 import no.rutebanken.anshar.routes.external.ExternalDataHandler;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
+import no.rutebanken.anshar.routes.siri.transformer.SiriJsonTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.validation.SiriXmlValidator;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -20,7 +20,6 @@ import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.Predicate;
-
 import org.apache.commons.lang3.StringUtils;
 import org.rutebanken.siri20.util.SiriXml;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,8 +59,7 @@ public class MessagingRoute extends RestRouteBuilder {
 
         String messageQueueCamelRoutePrefix = configuration.getMessageQueueCamelRoutePrefix();
 
-        String queueConsumerParameters = "?concurrentConsumers="+configuration.getConcurrentConsumers();
-
+        String queueConsumerParameters = "?concurrentConsumers=" + configuration.getConcurrentConsumers();
 
 
         final String pubsubQueueSX = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_SX;
@@ -84,7 +82,7 @@ public class MessagingRoute extends RestRouteBuilder {
 
         from(messageQueueCamelRoutePrefix + GTFSRT_ET_QUEUE)
                 .threads(2)
-                .process(e->{
+                .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
 
@@ -98,7 +96,7 @@ public class MessagingRoute extends RestRouteBuilder {
 
         from(messageQueueCamelRoutePrefix + GTFSRT_SM_QUEUE)
                 .threads(3)
-                .process(e->{
+                .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
 
@@ -112,7 +110,7 @@ public class MessagingRoute extends RestRouteBuilder {
 
         from(messageQueueCamelRoutePrefix + GTFSRT_SX_QUEUE)
                 .threads(2)
-                .process(e->{
+                .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
 
@@ -126,7 +124,7 @@ public class MessagingRoute extends RestRouteBuilder {
 
         from(messageQueueCamelRoutePrefix + GTFSRT_VM_QUEUE)
                 .threads(3)
-                .process(e->{
+                .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
 
@@ -139,7 +137,7 @@ public class MessagingRoute extends RestRouteBuilder {
         ;
 
         from(externalSiriSMQueue)
-                .process(e->{
+                .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
 
@@ -148,10 +146,10 @@ public class MessagingRoute extends RestRouteBuilder {
                 })
                 .to("direct:transform.siri")
                 .bean(ExternalDataHandler.class, "processIncomingSiriSM")
-                ;
+        ;
 
         from(externalSiriSXQueue)
-                .process(e->{
+                .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
 
@@ -163,19 +161,16 @@ public class MessagingRoute extends RestRouteBuilder {
         ;
 
         from(externalSiriVMQueue)
-                .process(e->{
+                .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
-                    e.getIn().setHeader(DATASET_ID_HEADER_NAME,datasetId );
+                    e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
 
                     String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
-                    e.getIn().setHeader(URL_HEADER_NAME,url );
+                    e.getIn().setHeader(URL_HEADER_NAME, url);
                 })
                 .to("direct:transform.siri")
                 .bean(ExternalDataHandler.class, "processIncomingSiriVM")
         ;
-
-
-
 
 
         from("direct:process.message.synchronous")
@@ -188,53 +183,75 @@ public class MessagingRoute extends RestRouteBuilder {
                 .convertBodyTo(String.class)
                 .to("direct:transform.siri")
                 .choice()
-                    .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.ESTIMATED_TIMETABLE.name()))
-                        .setHeader("target_topic", simple(pubsubQueueET))
-                    .endChoice()
-                    .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.VEHICLE_MONITORING.name()))
-                        .setHeader("target_topic", simple(pubsubQueueVM))
-                    .endChoice()
-                    .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.SITUATION_EXCHANGE.name()))
-                        .setHeader("target_topic", simple(pubsubQueueSX))
-                    .endChoice()
-                    .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.STOP_MONITORING.name()))
-                        .setHeader("target_topic", simple(pubsubQueueSM))
-                    .endChoice()
-                    .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.GENERAL_MESSAGE.name()))
-                    .setHeader("target_topic", simple(pubsubQueueGM))
-                    .endChoice()
-                    .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.FACILITY_MONITORING.name()))
-                    .setHeader("target_topic", simple(pubsubQueueFM))
-                    .endChoice()
-                    .otherwise()
-                        // DataReadyNotification is processed immediately
-                        .when().xpath("/siri:Siri/siri:DataReadyNotification", nameSpace)
-                            .setHeader("target_topic", simple("direct:"+CamelRouteNames.FETCHED_DELIVERY_QUEUE))
-                        .endChoice()
-                        .otherwise()
-                            .to("log:not_processed:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
-                        .end()
-                    .end()
+                .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.ESTIMATED_TIMETABLE.name()))
+                .setHeader("target_topic", simple(pubsubQueueET))
+                .endChoice()
+                .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.VEHICLE_MONITORING.name()))
+                .setHeader("target_topic", simple(pubsubQueueVM))
+                .endChoice()
+                .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.SITUATION_EXCHANGE.name()))
+                .setHeader("target_topic", simple(pubsubQueueSX))
+                .endChoice()
+                .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.STOP_MONITORING.name()))
+                .setHeader("target_topic", simple(pubsubQueueSM))
+                .endChoice()
+                .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.GENERAL_MESSAGE.name()))
+                .setHeader("target_topic", simple(pubsubQueueGM))
+                .endChoice()
+                .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.FACILITY_MONITORING.name()))
+                .setHeader("target_topic", simple(pubsubQueueFM))
+                .endChoice()
+                .otherwise()
+                // DataReadyNotification is processed immediately
+                .when().xpath("/siri:Siri/siri:DataReadyNotification", nameSpace)
+                .setHeader("target_topic", simple("direct:" + CamelRouteNames.FETCHED_DELIVERY_QUEUE))
+                .endChoice()
+                .otherwise()
+                .to("log:not_processed:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .end()
+                .end()
                 .end()
                 .removeHeaders("*", "subscriptionId", "breadcrumbId", "target_topic")
                 .to("direct:compress.jaxb")
-                .log(LoggingLevel.DEBUG,"Sending data to topic ${header.target_topic}")
+                .log(LoggingLevel.DEBUG, "Sending data to topic ${header.target_topic}")
                 .toD("${header.target_topic}")
                 .log(LoggingLevel.DEBUG, "Data sent")
                 .end()
         ;
 
+
+        from("direct:handleSiriJsonResponse")
+                .choice()
+                .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.VEHICLE_MONITORING.name()))
+                .setHeader("target_topic", simple(pubsubQueueET))
+                .to("direct:transformSiriJsonToVM")
+                .to("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
+                .endChoice()
+                .otherwise()
+                .log(LoggingLevel.ERROR, "Siri json ignored. Conversion from json not implemented for type : ${header.InternalSiriDatatype}")
+                .routeId("handleSiriJsonResponse");
+
+
+        from("direct:transformSiriJsonToVM")
+                .process(p -> {
+
+                    Siri incomingSiri = SiriJsonTransformer.convertJsonVMtoSiri(p.getIn().getBody(String.class));
+                    p.getMessage().setBody(SiriXml.toXml(incomingSiri));
+                })
+                .routeId("TransformSiriJsonToVM");
+
+
         from("direct:transform.siri")
                 .choice()
-                    .when(header(TRANSFORM_SOAP).isEqualTo(simple(TRANSFORM_SOAP)))
-                    .log(LoggingLevel.DEBUG, "Transforming SOAP")
-                    .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Extract SOAP version and convert to raw SIRI
+                .when(header(TRANSFORM_SOAP).isEqualTo(simple(TRANSFORM_SOAP)))
+                .log(LoggingLevel.DEBUG, "Transforming SOAP")
+                .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Extract SOAP version and convert to raw SIRI
                 .endChoice()
                 .end()
                 .choice()
-                    .when(header(TRANSFORM_VERSION).isEqualTo(simple(TRANSFORM_VERSION)))
-                    .log("Transforming version")
-                    .to("xslt-saxon:xsl/siri_14_20.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Convert from v1.4 to 2.0
+                .when(header(TRANSFORM_VERSION).isEqualTo(simple(TRANSFORM_VERSION)))
+                .log("Transforming version")
+                .to("xslt-saxon:xsl/siri_14_20.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Convert from v1.4 to 2.0
                 .endChoice()
                 .end()
                 .to("direct:process.mapping")
@@ -245,8 +262,8 @@ public class MessagingRoute extends RestRouteBuilder {
         from("direct:process.mapping")
                 .process(p -> {
 
-                    String subscriptionId =  p.getIn().getHeader("subscriptionId", String.class);
-                    if (StringUtils.isNotEmpty(subscriptionId)){
+                    String subscriptionId = p.getIn().getHeader("subscriptionId", String.class);
+                    if (StringUtils.isNotEmpty(subscriptionId)) {
                         SubscriptionSetup subscriptionSetup = subscriptionManager.get(p.getIn().getHeader("subscriptionId", String.class));
                         Siri originalInput = siriXmlValidator.parseXml(subscriptionSetup, p.getIn().getBody(String.class));
 
@@ -258,8 +275,8 @@ public class MessagingRoute extends RestRouteBuilder {
         ;
 
         from("direct:format.xml")
-            .to("xslt-saxon:xsl/indent.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory")
-            .routeId("incoming.format.xml")
+                .to("xslt-saxon:xsl/indent.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory")
+                .routeId("incoming.format.xml")
         ;
 
         // When shutdown has been triggered - stop processing data from pubsub
@@ -384,7 +401,7 @@ public class MessagingRoute extends RestRouteBuilder {
                 })
                 .choice()
                 .when(header("routename").isNotNull())
-                    .toD("direct:${header.routename}")
+                .toD("direct:${header.routename}")
                 .endChoice()
                 .routeId("incoming.processor.fetched_delivery")
         ;

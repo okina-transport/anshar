@@ -1,0 +1,237 @@
+{
+  "ServiceDelivery": {
+    "ResponseTimestamp": "2023-10-10T12:52:53+02:00",
+    "RequestMessageRef": null,
+    "VehicleMonitoringDelivery": [
+      {
+        "ResponseTimestamp": "2023-10-10T12:52:53+02:00",
+        "ValidUntil": "2023-10-10T12:53:23+02:00",
+        "ShortestPossibleCycle": "PT30S",
+        "VehicleActivity": [
+          {
+            "RecordedAtTime": "2023-10-10T12:52:19+02:00",
+            "MonitoredVehicleJourney": {
+              "LineRef": "B",
+              "DirectionRef": 1,
+              "FramedVehicleJourneyRef": {
+                "DatedVehicleJourneySAERef": "18622460-23SEPW-B-F-Semaine-00"
+              },
+              "VehicleMode": "tram",
+              "PublishedLineName": "B",
+              "DestinationName": "Lingolsheim Tiergaertel",
+              "DestinationShortName": "Lingolsheim Tiergaertel",
+              "DestinationRef": "180",
+              "Via": null,
+              "VehicleLocation": {
+                "Longitude": 7.758556,
+                "Latitude": 48.627856
+              },
+              "Bearing": 146,
+              "Delay": "PT0S",
+              "VehicleRef": "2001",
+              "VehicleType": "CITADIS",
+              "VehicleStatus": "TDEP",
+              "MonitoredCall": {
+                "StopPointName": "Hoenheim Gare",
+                "StopCode": "HOGAR_06",
+                "Order": 1,
+                "ExpectedDepartureTime": "2023-10-10T12:57:00+02:00",
+                "ExpectedArrivalTime": "2023-10-10T12:52:04+02:00",
+                "Extension": {
+                  "IsRealTime": true,
+                  "SAELineRef": "B",
+                  "DataSource": "INEO"
+                }
+              },
+              "PreviousCall": [],
+              "OnwardCall": [
+                {
+                  "StopPointName": "Général de Gaulle",
+                  "StopCode": "238B",
+                  "Order": 2,
+                  "ExpectedDepartureTime": "2023-10-10T12:59:30+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T12:59:30+02:00"
+                },
+                {
+                  "StopPointName": "Le Ried",
+                  "StopCode": "340B",
+                  "Order": 3,
+                  "ExpectedDepartureTime": "2023-10-10T13:00:15+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T13:00:15+02:00"
+                },
+                {
+                  "StopPointName": "Lycée Marc Bloch",
+                  "StopCode": "369B",
+                  "Order": 4,
+                  "ExpectedDepartureTime": "2023-10-10T13:01:54+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T13:01:54+02:00"
+                },
+                {
+                  "StopPointName": "Pont Phario",
+                  "StopCode": "496C",
+                  "Order": 5,
+                  "ExpectedDepartureTime": "2023-10-10T13:03:00+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T13:03:00+02:00"
+                },
+                {
+                  "StopPointName": "Le Marais",
+                  "StopCode": "338B",
+                  "Order": 6,
+                  "ExpectedDepartureTime": "2023-10-10T13:04:05+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T13:04:05+02:00"
+                },
+                {
+                  "StopPointName": "Futura Glacière",
+                  "StopCode": "228B",
+                  "Order": 7,
+                  "ExpectedDepartureTime": "2023-10-10T13:06:13+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T13:06:13+02:00"
+                },
+                {
+                  "StopPointName": "Rives de l'Aar",
+                  "StopCode": "530B",
+                  "Order": 8,
+                  "ExpectedDepartureTime": "2023-10-10T13:08:02+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T13:08:02+02:00"
+                },
+                {
+                  "StopPointName": "Wacken",
+                  "StopCode": "657B",
+                  "Order": 9,
+                  "ExpectedDepartureTime": "2023-10-10T13:09:49+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T13:09:49+02:00"
+                },
+                {
+                  "StopPointName": "Lycée Kléber",
+                  "StopCode": "368D",
+                  "Order": 10,
+                  "ExpectedDepartureTime": "2023-10-10T13:11:59+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T13:11:59+02:00"
+                },
+                {
+                  "StopPointName": "Parc du Contades",
+                  "StopCode": "451B",
+                  "Order": 11,
+                  "ExpectedDepartureTime": "2023-10-10T13:13:43+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T13:13:43+02:00"
+                },
+                {
+                  "StopPointName": "République",
+                  "StopCode": "527C",
+                  "Order": 12,
+                  "ExpectedDepartureTime": "2023-10-10T13:15:43+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T13:15:43+02:00"
+                },
+                {
+                  "StopPointName": "Broglie",
+                  "StopCode": "67B",
+                  "Order": 13,
+                  "ExpectedDepartureTime": "2023-10-10T13:18:31+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T13:18:31+02:00"
+                },
+                {
+                  "StopPointName": "Homme de Fer",
+                  "StopCode": "275D",
+                  "Order": 14,
+                  "ExpectedDepartureTime": "2023-10-10T13:19:49+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T13:19:49+02:00"
+                },
+                {
+                  "StopPointName": "Alt Winmärik-Vieux Marché aux Vins",
+                  "StopCode": "24B",
+                  "Order": 15,
+                  "ExpectedDepartureTime": "2023-10-10T13:21:57+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T13:21:57+02:00"
+                },
+                {
+                  "StopPointName": "Faubourg National",
+                  "StopCode": "193B",
+                  "Order": 16,
+                  "ExpectedDepartureTime": "2023-10-10T13:23:45+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T13:23:45+02:00"
+                },
+                {
+                  "StopPointName": "Musée d'Art Moderne",
+                  "StopCode": "375D",
+                  "Order": 17,
+                  "ExpectedDepartureTime": "2023-10-10T13:25:40+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T13:25:40+02:00"
+                },
+                {
+                  "StopPointName": "Laiterie",
+                  "StopCode": "323D",
+                  "Order": 18,
+                  "ExpectedDepartureTime": "2023-10-10T13:26:36+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T13:26:36+02:00"
+                },
+                {
+                  "StopPointName": "Montagne Verte",
+                  "StopCode": "410D",
+                  "Order": 19,
+                  "ExpectedDepartureTime": "2023-10-10T13:27:51+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T13:27:51+02:00"
+                },
+                {
+                  "StopPointName": "Elsau",
+                  "StopCode": "175D",
+                  "Order": 20,
+                  "ExpectedDepartureTime": "2023-10-10T13:31:02+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T13:31:02+02:00"
+                },
+                {
+                  "StopPointName": "Martin Schongauer",
+                  "StopCode": "412B",
+                  "Order": 21,
+                  "ExpectedDepartureTime": "2023-10-10T13:33:02+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T13:33:02+02:00"
+                },
+                {
+                  "StopPointName": "Elmerforst",
+                  "StopCode": "174D",
+                  "Order": 22,
+                  "ExpectedDepartureTime": "2023-10-10T13:35:09+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T13:35:09+02:00"
+                },
+                {
+                  "StopPointName": "Wihrel",
+                  "StopCode": "665D",
+                  "Order": 23,
+                  "ExpectedDepartureTime": "2023-10-10T13:37:38+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T13:37:38+02:00"
+                },
+                {
+                  "StopPointName": "Ostwald Hôtel de Ville",
+                  "StopCode": "448D",
+                  "Order": 24,
+                  "ExpectedDepartureTime": "2023-10-10T13:39:03+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T13:39:03+02:00"
+                },
+                {
+                  "StopPointName": "Bohrie",
+                  "StopCode": "58B",
+                  "Order": 25,
+                  "ExpectedDepartureTime": "2023-10-10T13:40:50+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T13:40:50+02:00"
+                },
+                {
+                  "StopPointName": "Lingolsheim Alouettes",
+                  "StopCode": "681E",
+                  "Order": 26,
+                  "ExpectedDepartureTime": "2023-10-10T13:43:23+02:00",
+                  "ExpectedArrivalTime": "2023-10-10T13:43:23+02:00"
+                },
+                {
+                  "StopPointName": "Lingolsheim Tiergaertel",
+                  "StopCode": "348A",
+                  "Order": 27,
+                  "ExpectedDepartureTime": null,
+                  "ExpectedArrivalTime": "2023-10-10T13:44:49+02:00"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -269,6 +269,7 @@ public class SubscriptionInitializer implements CamelContextAware {
         List<RouteBuilder> routeBuilders = new ArrayList<>();
 
         boolean isSubscription = subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.SUBSCRIBE;
+        boolean isLite = subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.LITE;
         boolean isFetchedDelivery = subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.FETCHED_DELIVERY |
                 subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.POLLING_FETCHED_DELIVERY;
         boolean isSoap = subscriptionSetup.getServiceType() == SubscriptionSetup.ServiceType.SOAP;
@@ -304,6 +305,8 @@ public class SubscriptionInitializer implements CamelContextAware {
                     if (isFetchedDelivery || subscriptionSetup.isDataSupplyRequestForInitialDelivery()) {
                         routeBuilders.add(new Siri20ToSiriRS20RequestResponse(configuration, subscriptionSetup, subscriptionManager));
                     }
+                } else if (isLite) {
+                    routeBuilders.add(new SiriLiteToSiriRS20RequestResponse(configuration, subscriptionSetup, subscriptionManager));
                 } else {
                     routeBuilders.add(new Siri20ToSiriRS20RequestResponse(configuration, subscriptionSetup, subscriptionManager));
                 }
@@ -331,7 +334,7 @@ public class SubscriptionInitializer implements CamelContextAware {
 
         Preconditions.checkNotNull(s.getUrlMap(), "UrlMap is not set");
         Map<RequestType, String> urlMap = s.getUrlMap();
-        if (s.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE) {
+        if (s.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE || s.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.LITE) {
 
             if (SiriDataType.SITUATION_EXCHANGE.equals(s.getSubscriptionType())) {
                 Preconditions.checkNotNull(urlMap.get(RequestType.GET_SITUATION_EXCHANGE), "GET_SITUATION_EXCHANGE-url is missing. " + s);
