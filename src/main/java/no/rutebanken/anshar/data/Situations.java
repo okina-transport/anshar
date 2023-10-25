@@ -21,6 +21,7 @@ import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.data.util.TimingTracer;
+import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.quartz.utils.counter.Counter;
@@ -30,10 +31,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
-import uk.org.siri.siri20.HalfOpenTimestampOutputRangeStructure;
-import uk.org.siri.siri20.MessageRefStructure;
-import uk.org.siri.siri20.PtSituationElement;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri20.*;
 
 import javax.annotation.PostConstruct;
 import java.time.Instant;
@@ -322,6 +320,12 @@ public class Situations extends SiriRepository<PtSituationElement> {
         Counter ignoredCounter = new CounterImpl(0);
         sxList.forEach(situation -> {
             TimingTracer timingTracer = new TimingTracer("single-sx");
+
+            if (situation.getParticipantRef() == null) {
+                RequestorRef emptyReqRef = new RequestorRef();
+                emptyReqRef.setValue("Empty participant ref");
+                situation.setParticipantRef(emptyReqRef);
+            }
 
             SiriObjectStorageKey key = createKey(datasetId, situation);
             timingTracer.mark("createKey");
