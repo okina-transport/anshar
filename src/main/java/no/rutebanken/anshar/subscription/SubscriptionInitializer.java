@@ -127,20 +127,11 @@ public class SubscriptionInitializer implements CamelContextAware {
                     throw new ServiceConfigurationError("Configuration is not valid for subscription " + subscriptionSetup);
                 }
 
-                if (subscriptionIds.contains(subscriptionSetup.getSubscriptionId())) {
-                    //Verify subscriptionId-uniqueness
-                    throw new ServiceConfigurationError("SubscriptionIds are NOT unique for ID=" + subscriptionSetup.getSubscriptionId());
-                }
-
                 if (subscriptionNames.contains(subscriptionSetup.getVendor())) {
                     //Verify vendor-uniqueness
                     throw new ServiceConfigurationError("Vendor is NOT unique for vendor=" + subscriptionSetup.getVendor());
                 }
 
-                if (subscriptionInternalIds.contains(subscriptionSetup.getInternalId())) {
-                    //Verify internalId-uniqueness
-                    throw new ServiceConfigurationError("InternalId is NOT unique for ID=" + subscriptionSetup.getInternalId());
-                }
 
                 List<ValueAdapter> valueAdapters = new ArrayList<>();
 
