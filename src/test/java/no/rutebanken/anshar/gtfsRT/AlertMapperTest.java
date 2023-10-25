@@ -35,7 +35,7 @@ public class AlertMapperTest extends SpringBootBaseTest {
         GtfsRealtime.TranslatedString.Builder descTextBuilder = GtfsRealtime.TranslatedString.newBuilder().addTranslation(descTextTrans);
         alertBuilder.setDescriptionText(descTextBuilder);
 
-        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build());
+        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build(), "");
 
 
         assertEquals("headerText", situation.getSummaries().get(0).getValue());
@@ -69,7 +69,7 @@ public class AlertMapperTest extends SpringBootBaseTest {
         newEnt.setAgencyId(agencyId);
 
         alertBuilder.addInformedEntity(newEnt.build());
-        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build());
+        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build(), "");
 
         assertTrue(situation.getAffects() != null);
         assertTrue(situation.getAffects().getNetworks() != null);
@@ -107,7 +107,7 @@ public class AlertMapperTest extends SpringBootBaseTest {
         newEnt.setRouteId(lineId);
 
         alertBuilder.addInformedEntity(newEnt.build());
-        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build());
+        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build(), "");
 
         assertTrue(situation.getAffects() != null);
         assertTrue(situation.getAffects().getNetworks() != null);
@@ -148,7 +148,7 @@ public class AlertMapperTest extends SpringBootBaseTest {
         newEnt.setStopId(stopId);
 
         alertBuilder.addInformedEntity(newEnt.build());
-        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build());
+        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build(), "");
 
         assertTrue(situation.getAffects() != null);
         assertTrue(situation.getAffects().getNetworks() != null);
@@ -195,7 +195,7 @@ public class AlertMapperTest extends SpringBootBaseTest {
         newEnt.setAgencyId(agencyId);
 
         alertBuilder.addInformedEntity(newEnt.build());
-        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build());
+        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build(), "");
 
         assertTrue(situation.getAffects() != null);
         assertTrue(situation.getAffects().getNetworks() != null);
@@ -253,7 +253,7 @@ public class AlertMapperTest extends SpringBootBaseTest {
 
         alertBuilder.addInformedEntity(newEnt.build());
         alertBuilder.addInformedEntity(newEnt2.build());
-        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build());
+        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build(),"");
 
        assertTrue(situation.getAffects() != null);
         assertTrue(situation.getAffects().getStopPoints() != null);
@@ -278,7 +278,7 @@ public class AlertMapperTest extends SpringBootBaseTest {
 
     private void testSeverityConversion(GtfsRealtime.Alert.SeverityLevel inputSeverityLevel, SeverityEnumeration outputSeverity ){
         GtfsRealtime.Alert alert = buildAlertWithSeverity(inputSeverityLevel);
-        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alert);
+        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alert,"");
         assertEquals("severity conversion issue between :" + inputSeverityLevel + " , and :" + outputSeverity,situation.getSeverity(), outputSeverity);
     }
 
@@ -304,7 +304,7 @@ public class AlertMapperTest extends SpringBootBaseTest {
 
     private void testEffectConversion(GtfsRealtime.Alert.Effect inputEffect, ServiceConditionEnumeration outputServiceCondition ){
         GtfsRealtime.Alert alert = buildAlertWithEffect(inputEffect);
-        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alert);
+        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alert,"");
         assertNotNull(situation.getConsequences());
         assertNotNull(situation.getConsequences().getConsequences());
         assertNotNull(situation.getConsequences().getConsequences().get(0));

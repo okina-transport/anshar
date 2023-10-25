@@ -40,6 +40,7 @@ public class MappingAdapterPresets {
 
 
         OutboundIdAdapter stopIdAdapter = new OutboundIdAdapter(StopPointRef.class, outboundIdMappingPolicy, true);
+        OutboundIdAdapter stopPlaceIdAdapter = new OutboundIdAdapter(StopPlaceRef.class, outboundIdMappingPolicy, true);
         OutboundIdAdapter monitoringRefAdapter = new OutboundIdAdapter(MonitoringRefStructure.class, outboundIdMappingPolicy, true);
         OutboundIdAdapter destinationRefAdapter = new OutboundIdAdapter(DestinationRef.class, outboundIdMappingPolicy, true);
         OutboundIdAdapter originRefAdapter = new OutboundIdAdapter(JourneyPlaceRefStructure.class, outboundIdMappingPolicy, true);
@@ -52,6 +53,7 @@ public class MappingAdapterPresets {
         if (idProcessingMap.containsKey(ObjectType.STOP) && idProcessingMap.get(ObjectType.STOP).isPresent()) {
             IdProcessingParameters idProcessingParameters = idProcessingMap.get(ObjectType.STOP).get();
             stopIdAdapter.setIdProcessingParameters(idProcessingParameters);
+            stopPlaceIdAdapter.setIdProcessingParameters(idProcessingParameters);
             monitoringRefAdapter.setIdProcessingParameters(idProcessingParameters);
             destinationRefAdapter.setIdProcessingParameters(idProcessingParameters);
             originRefAdapter.setIdProcessingParameters(idProcessingParameters);
@@ -81,6 +83,7 @@ public class MappingAdapterPresets {
 
         List<ValueAdapter> adapters = new ArrayList<>();
         adapters.add(stopIdAdapter);
+        adapters.add(stopPlaceIdAdapter);
         adapters.add(monitoringRefAdapter);
         adapters.add(destinationRefAdapter);
         adapters.add(originRefAdapter);

@@ -1,22 +1,12 @@
 package no.rutebanken.anshar.routes.siri.handlers.outbound;
 
-import jdk.jshell.execution.Util;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.handlers.Utils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.FacilityMonitoringRequestStructure;
-import uk.org.siri.siri20.FacilityRef;
-import uk.org.siri.siri20.LineRef;
-import uk.org.siri.siri20.ServiceRequest;
-import uk.org.siri.siri20.StopPointRef;
-import uk.org.siri.siri20.VehicleRef;
+import uk.org.siri.siri20.*;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -90,5 +80,4 @@ public class FacilityMonitoringOutbound {
 
         return  filterMap.get(VehicleRef.class) != null ? filterMap.get(VehicleRef.class) : new HashSet<>();
     }
-
 }

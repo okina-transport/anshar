@@ -57,7 +57,7 @@ public class AlertReader extends AbstractSwallower {
      *      The complete message (GTFS-RT format)
      */
     public void ingestAlertData(String datasetId, GtfsRealtime.FeedMessage completeGTFSRTMessage ){
-        List<PtSituationElement> situations = buildSituationList(completeGTFSRTMessage);
+        List<PtSituationElement> situations = buildSituationList(completeGTFSRTMessage, datasetId);
         updateParticipantRef(datasetId, situations);
         List<String> subscriptionList = getSubscriptions(situations) ;
         checkAndCreateSubscriptions(subscriptionList, datasetId);
@@ -106,7 +106,7 @@ public class AlertReader extends AbstractSwallower {
      * @return
      *         A list of situations, build by mapping alerts from GTFS-RT message
      */
-    private  List<PtSituationElement> buildSituationList(GtfsRealtime.FeedMessage feedMessage) {
+    public List<PtSituationElement> buildSituationList(GtfsRealtime.FeedMessage feedMessage, String datasetId) {
         List<PtSituationElement> situtations = new ArrayList<>();
 
 
@@ -115,7 +115,7 @@ public class AlertReader extends AbstractSwallower {
                 continue;
 
 
-            PtSituationElement situation = AlertMapper.mapSituationFromAlert(feedEntity.getAlert());
+            PtSituationElement situation = AlertMapper.mapSituationFromAlert(feedEntity.getAlert(), datasetId);
 
             SituationNumber situationNumber = new SituationNumber();
             situationNumber.setValue(feedEntity.getId());
