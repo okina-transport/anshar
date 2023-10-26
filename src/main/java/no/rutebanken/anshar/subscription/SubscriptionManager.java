@@ -19,13 +19,7 @@ package no.rutebanken.anshar.subscription;
 import com.hazelcast.map.IMap;
 import com.hazelcast.replicatedmap.ReplicatedMap;
 import no.rutebanken.anshar.config.AnsharConfiguration;
-import no.rutebanken.anshar.data.EstimatedTimetables;
-import no.rutebanken.anshar.data.MonitoredStopVisits;
-import no.rutebanken.anshar.data.RequestorRefRepository;
-import no.rutebanken.anshar.data.RequestorRefStats;
-import no.rutebanken.anshar.data.SiriObjectStorageKey;
-import no.rutebanken.anshar.data.Situations;
-import no.rutebanken.anshar.data.VehicleActivities;
+import no.rutebanken.anshar.data.*;
 import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
@@ -41,12 +35,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigInteger;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -150,7 +139,7 @@ public class SubscriptionManager {
         if (setup.isActive()) {
             activatePendingSubscription(subscriptionId);
         }
-      //  logStats();
+        //  logStats();
     }
 
     public boolean removeSubscription(String subscriptionId) {
@@ -173,23 +162,23 @@ public class SubscriptionManager {
             addSubscription(subscriptionId, setup);
         }
 
-     //   logStats();
+        //   logStats();
 
-        logger.info("Removed subscription {}, found: {}", (setup !=null ? setup.toString():subscriptionId), found);
+        logger.info("Removed subscription {}, found: {}", (setup != null ? setup.toString() : subscriptionId), found);
         return found;
     }
 
     public boolean touchSubscription(String subscriptionId) {
-    return touchSubscription(subscriptionId,null);
+        return touchSubscription(subscriptionId, null);
     }
 
     public boolean touchSubscription(String subscriptionId, boolean shouldLogSuccess) {
-        return touchSubscription(subscriptionId,null,shouldLogSuccess);
+        return touchSubscription(subscriptionId, null, shouldLogSuccess);
     }
 
 
     public boolean touchSubscription(String subscriptionId, String monitoredRef) {
-        return touchSubscription(subscriptionId,monitoredRef, true);
+        return touchSubscription(subscriptionId, monitoredRef, true);
     }
 
     public boolean touchSubscription(String subscriptionId, String monitoredRef, boolean shouldLogSuccess) {
@@ -198,10 +187,10 @@ public class SubscriptionManager {
 
         boolean success = (setup != null);
 
-        if (shouldLogSuccess){
-            if (monitoredRef != null ){
-                logger.info("Touched subscription {}, monitoredObjects:{}, success:{}", setup,monitoredRef, success);
-            }else{
+        if (shouldLogSuccess) {
+            if (monitoredRef != null) {
+                logger.info("Touched subscription {}, monitoredObjects:{}, success:{}", setup, monitoredRef, success);
+            } else {
                 logger.info("Touched subscription {}, success:{}", setup, success);
             }
         }
@@ -217,6 +206,7 @@ public class SubscriptionManager {
     /**
      * Touches subscription if reported serviceStartedTime is BEFORE last activity.
      * If not, subscription is removed to trigger reestablishing subscription
+     *
      * @param subscriptionId
      * @param serviceStartedTime
      * @param monitoredRef
@@ -227,7 +217,7 @@ public class SubscriptionManager {
         if (setup != null && serviceStartedTime != null) {
             Instant lastSubscriptionActivity = lastActivity.get(subscriptionId);
             if (lastSubscriptionActivity == null || serviceStartedTime.toInstant().isBefore(lastSubscriptionActivity)) {
-                logger.info("Remote Service startTime ({}) is before lastSubscriptionActivity ({}) for subscription [{}]",serviceStartedTime, lastSubscriptionActivity, setup);
+                logger.info("Remote Service startTime ({}) is before lastSubscriptionActivity ({}) for subscription [{}]", serviceStartedTime, lastSubscriptionActivity, setup);
                 return touchSubscription(subscriptionId, monitoredRef);
             } else {
                 logger.info("Remote service has been restarted, forcing subscription to be restarted [{}]", setup);
@@ -249,7 +239,7 @@ public class SubscriptionManager {
 
     public List<SubscriptionSetup> getAll(List<String> subscriptionIds) {
         List<SubscriptionSetup> subscriptionSetupList = new ArrayList<>();
-        for(String subscriptionId : subscriptionIds){
+        for (String subscriptionId : subscriptionIds) {
             subscriptionSetupList.add(subscriptions.get(subscriptionId));
         }
         return subscriptionSetupList;
@@ -258,20 +248,19 @@ public class SubscriptionManager {
 
     /**
      * Returns all subscriptions matching the type given as parameter     *
-     * @param type
-     *  the data type to search
-     * @return
-     *  the list of subscriptions matching the data type
+     *
+     * @param type the data type to search
+     * @return the list of subscriptions matching the data type
      */
     public List<SubscriptionSetup> getAllSubscriptions(SiriDataType type) {
 
-        if (type == null){
+        if (type == null) {
             throw new IllegalArgumentException("Type must be specified to search in subscriptions");
         }
 
         return subscriptions.values().stream()
-                                .filter(subscription -> type.equals(subscription.getSubscriptionType()))
-                                .collect(Collectors.toList());
+                .filter(subscription -> type.equals(subscription.getSubscriptionType()))
+                .collect(Collectors.toList());
     }
 
     public JSONObject getSubscriptionsForCodespace(String codespace) {
@@ -294,8 +283,8 @@ public class SubscriptionManager {
     }
 
     private void hit(String subscriptionId) {
-        int counter = (hitcount.get(subscriptionId) != null ? hitcount.get(subscriptionId):0);
-        hitcount.put(subscriptionId, counter+1);
+        int counter = (hitcount.get(subscriptionId) != null ? hitcount.get(subscriptionId) : 0);
+        hitcount.put(subscriptionId, counter + 1);
     }
 
     public void incrementObjectCounter(SubscriptionSetup subscriptionSetup, int size) {
@@ -325,15 +314,15 @@ public class SubscriptionManager {
             subscriptions.put(subscriptionId, subscriptionSetup);
             lastActivity.put(subscriptionId, Instant.now());
             activatedTimestamp.put(subscriptionId, Instant.now());
-            retryCountMap.put(subscriptionId,0);
-            if (shouldLogSuccess){
+            retryCountMap.put(subscriptionId, 0);
+            if (shouldLogSuccess) {
                 logger.info("Pending subscription {} activated", subscriptions.get(subscriptionId));
             }
 
             if (!dataReceived.containsKey(subscriptionId)) {
 
 
-                dataReceived(subscriptionId,shouldLogSuccess);
+                dataReceived(subscriptionId, shouldLogSuccess);
             }
             if (!receivedBytes.containsKey(subscriptionId)) {
                 receivedBytes.set(subscriptionId, 0L);
@@ -368,6 +357,7 @@ public class SubscriptionManager {
     public Boolean isSubscriptionHealthy(String subscriptionId) {
         return isSubscriptionHealthy(subscriptionId, healthcheckIntervalFactor);
     }
+
     private Boolean isSubscriptionHealthy(String subscriptionId, int healthCheckIntervalFactor) {
         Instant instant = lastActivity.get(subscriptionId);
 
@@ -393,7 +383,7 @@ public class SubscriptionManager {
                 return false;
             }
 
-            if (isRestartTimePassed(subscriptionId)){
+            if (isRestartTimePassed(subscriptionId)) {
                 forceRestart(subscriptionId);
                 return false;
             }
@@ -406,12 +396,12 @@ public class SubscriptionManager {
     /**
      * Checks if the subscription should be restarted, depending on restart time filled in subscription request
      * If current time is after restart time AND subscription has been started before restart time => restart
+     *
      * @param subscriptionId
-     * @return
-     * True : subscription should be restarted
+     * @return True : subscription should be restarted
      * false : subscription should not be restarted
      */
-    public boolean isRestartTimePassed(String subscriptionId){
+    public boolean isRestartTimePassed(String subscriptionId) {
         SubscriptionSetup activeSubscription = subscriptions.get(subscriptionId);
 
         //If active subscription has existed longer than "initial subscription duration" - restart
@@ -437,24 +427,25 @@ public class SubscriptionManager {
 
     /**
      * Checks if the subscription should try to restart or not, depending on MAX_RESTART_TRIES set in this class
+     *
      * @param subscriptionId
-     * @return
-     * true : current try nb is < MAX_RESTART_TRIES  : should try to restart
+     * @return true : current try nb is < MAX_RESTART_TRIES  : should try to restart
      * false : current try nb is > MAX_RESTART_TRIES : no more try should be done
      */
-    public boolean shouldTryRestart(String subscriptionId){
+    public boolean shouldTryRestart(String subscriptionId) {
         return retryCountMap.containsKey(subscriptionId) ? retryCountMap.get(subscriptionId) < MAX_RESTART_TRIES : true;
     }
 
 
     /**
      * Increase the number of tries, for the subscription given as parameter
+     *
      * @param subscriptionId
      * @return
      */
-    public void increaseTryCount(String subscriptionId){
-        Integer currentNbOfTries = retryCountMap.containsKey(subscriptionId) ? retryCountMap.get(subscriptionId) : 0 ;
-        retryCountMap.put(subscriptionId,currentNbOfTries+1);
+    public void increaseTryCount(String subscriptionId) {
+        Integer currentNbOfTries = retryCountMap.containsKey(subscriptionId) ? retryCountMap.get(subscriptionId) : 0;
+        retryCountMap.put(subscriptionId, currentNbOfTries + 1);
 
     }
 
@@ -466,9 +457,9 @@ public class SubscriptionManager {
 
     /**
      * Indicates if a lineRef is available to request or not
+     *
      * @param lineRef
-     * @return
-     * true: lineRef can be requested
+     * @return true: lineRef can be requested
      * false : lineRef is not existing
      */
     public boolean isLineRefExistingInSubscriptions(String lineRef) {
@@ -484,7 +475,7 @@ public class SubscriptionManager {
         return gtfsSubscriptions.contains(subscriptionId);
     }
 
-    public void addGTFSRTSubscription(String subscriptionId){
+    public void addGTFSRTSubscription(String subscriptionId) {
         gtfsSubscriptions.add(subscriptionId);
     }
 
@@ -492,39 +483,39 @@ public class SubscriptionManager {
         return siriAPISubscriptions.containsKey(monitoringRef);
     }
 
-    public void addSiriAPISubscription(String monitoringRef, String subcriptionId){
+    public void addSiriAPISubscription(String monitoringRef, String subcriptionId) {
         siriAPISubscriptions.put(monitoringRef, subcriptionId);
     }
 
-    public String getSubscriptionForMonitoringRef(String monitoringRef){
+    public String getSubscriptionForMonitoringRef(String monitoringRef) {
         return siriAPISubscriptions.get(monitoringRef);
     }
 
-    public boolean isStopMonitoringSubscriptionExisting(String stopMonitoringRef, String datasetId){
+    public boolean isStopMonitoringSubscriptionExisting(String stopMonitoringRef, String datasetId) {
         return getAllSubscriptions(SiriDataType.STOP_MONITORING).stream()
-                                                                .anyMatch(subscription -> subscription.getStopMonitoringRefValue().equals(stopMonitoringRef) && datasetId.equals(subscription.getDatasetId()));
+                .anyMatch(subscription -> subscription.getStopMonitoringRefValue().equals(stopMonitoringRef) && datasetId.equals(subscription.getDatasetId()));
     }
 
-    public boolean isSituationExchangeSubscriptionExisting(String situationNumber, String datasetId){
+    public boolean isSituationExchangeSubscriptionExisting(String situationNumber, String datasetId) {
         return getAllSubscriptions(SITUATION_EXCHANGE).stream()
                 .anyMatch(subscription -> subscription.getSubscriptionId().equals(situationNumber) && datasetId.equals(subscription.getDatasetId()));
     }
 
-    public boolean isVehicleMonitoringSubscriptionExisting(String vehicleMonitoringRef, String datasetId){
+    public boolean isVehicleMonitoringSubscriptionExisting(String vehicleMonitoringRef, String datasetId) {
         return getAllSubscriptions(VEHICLE_MONITORING).stream()
                 .anyMatch(subscription -> subscription.getSubscriptionId().equals(vehicleMonitoringRef) && datasetId.equals(subscription.getDatasetId()));
     }
 
     /**
      * Indicates if a subscription is available to request or not
+     *
      * @param subscriptionId
-     * @return
-     * true: subscription is existing
+     * @return true: subscription is existing
      * false : subscription is not existing
      */
     public boolean isSubscriptionExisting(String subscriptionId) {
         for (SubscriptionSetup subscription : subscriptions.values()) {
-            if (subscription.getSubscriptionId()!= null && subscription.getSubscriptionId().equals(subscriptionId))
+            if (subscription.getSubscriptionId() != null && subscription.getSubscriptionId().equals(subscriptionId))
                 return true;
         }
         return false;
@@ -572,16 +563,16 @@ public class SubscriptionManager {
         logger.debug("Built SM stats");
 
         JSONObject etType = new JSONObject();
-        etType.put("typeName", ""+ ESTIMATED_TIMETABLE);
+        etType.put("typeName", "" + ESTIMATED_TIMETABLE);
         etType.put("subscriptions", etSubscriptions);
         JSONObject vmType = new JSONObject();
-        vmType.put("typeName", ""+ VEHICLE_MONITORING);
+        vmType.put("typeName", "" + VEHICLE_MONITORING);
         vmType.put("subscriptions", vmSubscriptions);
         JSONObject sxType = new JSONObject();
-        sxType.put("typeName", ""+ SITUATION_EXCHANGE);
+        sxType.put("typeName", "" + SITUATION_EXCHANGE);
         sxType.put("subscriptions", sxSubscriptions);
         JSONObject smType = new JSONObject();
-        smType.put("typeName", ""+ STOP_MONITORING);
+        smType.put("typeName", "" + STOP_MONITORING);
         smType.put("subscriptions", smSubscriptions);
 
         stats.add(etType);
@@ -595,19 +586,19 @@ public class SubscriptionManager {
         logger.debug("Build polling stats");
 
         JSONObject etPolling = new JSONObject();
-        etPolling.put("typeName", ""+ ESTIMATED_TIMETABLE);
+        etPolling.put("typeName", "" + ESTIMATED_TIMETABLE);
         etPolling.put("polling", getIdAndCount(etChanges, ESTIMATED_TIMETABLE));
         logger.debug("Built ET polling stats");
         JSONObject vmPolling = new JSONObject();
-        vmPolling.put("typeName", ""+ VEHICLE_MONITORING);
+        vmPolling.put("typeName", "" + VEHICLE_MONITORING);
         vmPolling.put("polling", getIdAndCount(vmChanges, VEHICLE_MONITORING));
         logger.debug("Built VM polling stats");
         JSONObject sxPolling = new JSONObject();
-        sxPolling.put("typeName", ""+ SITUATION_EXCHANGE);
+        sxPolling.put("typeName", "" + SITUATION_EXCHANGE);
         sxPolling.put("polling", getIdAndCount(sxChanges, SITUATION_EXCHANGE));
         logger.debug("Built SX polling stats");
         JSONObject smPolling = new JSONObject();
-        smPolling.put("typeName", ""+ STOP_MONITORING);
+        smPolling.put("typeName", "" + STOP_MONITORING);
         smPolling.put("polling", getIdAndCount(smChanges, STOP_MONITORING));
         logger.debug("Built SM polling stats");
 
@@ -639,7 +630,7 @@ public class SubscriptionManager {
         count.put("sm", smDatasetSize.values().stream().mapToInt(Number::intValue).sum());
 
         logger.debug("Building distribution stats");
-        count.put("distribution", getCountPerDataset(etDatasetSize, vmDatasetSize, sxDatasetSize,smDatasetSize));
+        count.put("distribution", getCountPerDataset(etDatasetSize, vmDatasetSize, sxDatasetSize, smDatasetSize));
         logger.debug("Built distribution stats");
 
         result.put("elements", count);
@@ -693,7 +684,7 @@ public class SubscriptionManager {
             keyValue.put("requestCount", requestCount);
 
             double requestsPerMinute = requestsPerSecond * 60;
-            keyValue.put("requestsPerMinute", ((double)Math.round(requestsPerMinute * 10)) / 10); // rounding frequency to one decimal
+            keyValue.put("requestsPerMinute", ((double) Math.round(requestsPerMinute * 10)) / 10); // rounding frequency to one decimal
 
             count.add(keyValue);
         }
@@ -712,10 +703,10 @@ public class SubscriptionManager {
         for (String datasetId : allKeys) {
             JSONObject counter = new JSONObject();
             counter.put("datasetId", datasetId);
-            counter.put("etCount", etDatasetSize.getOrDefault(datasetId,0));
-            counter.put("vmCount", vmDatasetSize.getOrDefault(datasetId,0));
-            counter.put("sxCount", sxDatasetSize.getOrDefault(datasetId,0));
-            counter.put("smCount", smDatasetSize.getOrDefault(datasetId,0));
+            counter.put("etCount", etDatasetSize.getOrDefault(datasetId, 0));
+            counter.put("vmCount", vmDatasetSize.getOrDefault(datasetId, 0));
+            counter.put("sxCount", sxDatasetSize.getOrDefault(datasetId, 0));
+            counter.put("smCount", smDatasetSize.getOrDefault(datasetId, 0));
             etDatasetCount.add(counter);
         }
         return etDatasetCount;
@@ -726,24 +717,24 @@ public class SubscriptionManager {
             return null;
         }
         JSONObject obj = setup.toJSON();
-        obj.put("activated",formatTimestamp(activatedTimestamp.get(setup.getSubscriptionId())));
-        obj.put("lastActivity",""+formatTimestamp(lastActivity.get(setup.getSubscriptionId())));
-        obj.put("lastDataReceived",""+formatTimestamp(dataReceived.get(setup.getSubscriptionId())));
+        obj.put("activated", formatTimestamp(activatedTimestamp.get(setup.getSubscriptionId())));
+        obj.put("lastActivity", "" + formatTimestamp(lastActivity.get(setup.getSubscriptionId())));
+        obj.put("lastDataReceived", "" + formatTimestamp(dataReceived.get(setup.getSubscriptionId())));
         if (!setup.isActive()) {
             obj.put("status", "deactivated");
-            obj.put("healthy",null);
+            obj.put("healthy", null);
             obj.put("flagAsNotReceivingData", false);
         } else {
             obj.put("status", "active");
             obj.put("healthy", isSubscriptionHealthy(setup.getSubscriptionId()));
             obj.put("flagAsNotReceivingData", (dataReceived.get(setup.getSubscriptionId()) != null && (dataReceived.get(setup.getSubscriptionId())).isBefore(Instant.now().minusSeconds(1800))));
         }
-        obj.put("hitcount",hitcount.get(setup.getSubscriptionId()));
+        obj.put("hitcount", hitcount.get(setup.getSubscriptionId()));
         obj.put("objectcount", objectCounter.get(setup.getSubscriptionId()));
 
         Long byteCount = receivedBytes.get(setup.getSubscriptionId());
         obj.put("bytecount", byteCount);
-        obj.put("bytecountLabel", byteCount != null ? FileUtils.byteCountToDisplaySize(byteCount):null);
+        obj.put("bytecountLabel", byteCount != null ? FileUtils.byteCountToDisplaySize(byteCount) : null);
 
         JSONObject urllist = new JSONObject();
         for (RequestType s : setup.getUrlMap().keySet()) {
@@ -762,9 +753,18 @@ public class SubscriptionManager {
         return "";
     }
 
-    public SubscriptionSetup getSubscriptionById(long internalId) {
+    public SubscriptionSetup getSubscriptionByInternalId(long internalId) {
         for (SubscriptionSetup setup : subscriptions.values()) {
             if (setup.getInternalId() == internalId) {
+                return setup;
+            }
+        }
+        return null;
+    }
+
+    public SubscriptionSetup getSubscriptionBySubscriptionId(String subscriptionId) {
+        for (SubscriptionSetup setup : subscriptions.values()) {
+            if (setup.getSubscriptionId().equals(subscriptionId)) {
                 return setup;
             }
         }
@@ -775,7 +775,7 @@ public class SubscriptionManager {
      * Terminating all subscriptions by SiriDataType - to be used before a full restart to
      */
     public void terminateAllSubscriptions(SiriDataType type) {
-        logger.warn("Terminating ALL {}subscriptions", (type != null ? type + "-":""));
+        logger.warn("Terminating ALL {}subscriptions", (type != null ? type + "-" : ""));
         int counter = 0;
         int inactiveCounter = 0;
         for (SubscriptionSetup subscription : subscriptions.values()) {
@@ -797,7 +797,7 @@ public class SubscriptionManager {
      */
     public void triggerRestartAllActiveSubscriptions(SiriDataType type) {
 
-        logger.warn("Triggering restart of ALL active {}subscriptions", (type != null ? type + "-":""));
+        logger.warn("Triggering restart of ALL active {}subscriptions", (type != null ? type + "-" : ""));
         int counter = 0;
         int inactiveCounter = 0;
         for (SubscriptionSetup subscription : subscriptions.values()) {
@@ -871,11 +871,11 @@ public class SubscriptionManager {
     }
 
     public void dataReceived(String subscriptionId, boolean shouldLogSuccess) {
-        dataReceived(subscriptionId, 0,null , shouldLogSuccess);
+        dataReceived(subscriptionId, 0, null, shouldLogSuccess);
     }
 
     public void dataReceived(String subscriptionId, int receivedByteCount, String monitoredRef) {
-        dataReceived( subscriptionId,  receivedByteCount,  monitoredRef, true);
+        dataReceived(subscriptionId, receivedByteCount, monitoredRef, true);
     }
 
     public void dataReceived(String subscriptionId, int receivedByteCount, String monitoredRef, boolean shouldLogSuccess) {
@@ -893,18 +893,19 @@ public class SubscriptionManager {
 
 
     public void dataReceived(String subscriptionId, int receivedByteCount) {
-        dataReceived(subscriptionId,receivedByteCount,null);
+        dataReceived(subscriptionId, receivedByteCount, null);
     }
 
     /**
      * Silently updates subscription
+     *
      * @param subscriptionSetup
      */
     public void updateSubscription(SubscriptionSetup subscriptionSetup) {
         subscriptions.put(subscriptionSetup.getSubscriptionId(), subscriptionSetup);
     }
 
-    public Set<String> getAllDatasetIds(){
+    public Set<String> getAllDatasetIds() {
         return subscriptions.values()
                 .stream()
                 .map(SubscriptionSetup::getDatasetId)
@@ -916,7 +917,7 @@ public class SubscriptionManager {
      * TEST USAGE ONLY
      * Remove all subscriptions
      */
-    public void clearAllSubscriptions(){
+    public void clearAllSubscriptions() {
         subscriptions.clear();
         siriAPISubscriptions.clear();
     }

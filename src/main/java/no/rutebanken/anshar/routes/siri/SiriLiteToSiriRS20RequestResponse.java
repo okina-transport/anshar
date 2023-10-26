@@ -27,8 +27,7 @@ import org.apache.camel.component.http.HttpMethods;
 
 import java.util.List;
 
-import static no.rutebanken.anshar.routes.HttpParameter.INTERNAL_SIRI_DATA_TYPE;
-import static no.rutebanken.anshar.routes.HttpParameter.PARAM_SUBSCRIPTION_ID;
+import static no.rutebanken.anshar.routes.HttpParameter.*;
 
 /**
  * Class to handle calls to a siri lite client and ingest recovered data
@@ -51,7 +50,7 @@ public class SiriLiteToSiriRS20RequestResponse extends SiriSubscriptionRouteBuil
 
         String monitoringRouteId = "monitor.rs.20." + subscriptionSetup.getSubscriptionType() + "." + subscriptionSetup.getVendor();
         boolean releaseLeadershipOnError;
-        if (subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.LITE) {
+        if (subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.LITE || subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.LITE_XML) {
             releaseLeadershipOnError = true;
             singletonFrom("quartz://anshar/monitor_" + subscriptionSetup.getRequestResponseRouteName() + "?trigger.repeatInterval=" + heartbeatIntervalMillis,
                     monitoringRouteId)
@@ -68,7 +67,7 @@ public class SiriLiteToSiriRS20RequestResponse extends SiriSubscriptionRouteBuil
         from("direct:" + subscriptionSetup.getServiceRequestRouteName())
                 .messageHistory()
                 .process(p -> requestStarted())
-                .log(LoggingLevel.DEBUG, "Retrieving data " + subscriptionSetup.toString())
+                .log(LoggingLevel.INFO, "Retrieving data " + subscriptionSetup.toString())
                 //  .bean(helper, "createSiriDataRequest")
                 //.marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
                 .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
@@ -84,7 +83,8 @@ public class SiriLiteToSiriRS20RequestResponse extends SiriSubscriptionRouteBuil
                 .to("log:response:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .setHeader(PARAM_SUBSCRIPTION_ID, simple(subscriptionSetup.getSubscriptionId()))
                 .setHeader(INTERNAL_SIRI_DATA_TYPE, simple(subscriptionSetup.getSubscriptionType().name()))
-                .to("direct:handleSiriJsonResponse")
+                .setHeader(SUBSCRIPTION_MODE, simple(subscriptionSetup.getSubscriptionMode().name()))
+                .to("direct:handleSiriLiteResponse")
                 .doCatch(Exception.class)
                 .log("Caught exception -" + (releaseLeadershipOnError ? "" : " NOT") + " releasing leadership: " + subscriptionSetup.toString())
                 .to("log:response:" + getClass().getSimpleName() + "?showCaughtException=true&showAll=true&multiline=true")

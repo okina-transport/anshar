@@ -2,9 +2,12 @@ package no.rutebanken.anshar.gtfsrt.mappers;
 
 
 import com.google.transit.realtime.GtfsRealtime;
+import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
+import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import uk.org.ifopt.siri20.StopPlaceRef;
 import uk.org.siri.siri20.*;
 
 import java.text.ParseException;
@@ -12,12 +15,15 @@ import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 
 /***
  * Utility class to convert Alert (GTFS RT)  to situation exchange (SIRI)
  */
+
 
 public class AlertMapper {
 
@@ -26,19 +32,21 @@ public class AlertMapper {
     private static final Logger logger = LoggerFactory.getLogger(AlertMapper.class);
 
 
+    private static StopPlaceUpdaterService stopPlaceService;
+
     /**
      * Main function that converts alert (GTFS-RT) to situation exchange(SIRI)
      *
      * @param alert An alert coming from GTFS-RT
      * @return A situation exchange time table (SIRI format)
      */
-    public static PtSituationElement mapSituationFromAlert(GtfsRealtime.Alert alert) {
+    public static PtSituationElement mapSituationFromAlert(GtfsRealtime.Alert alert, String datasetId) {
 
         PtSituationElement ptSituationElement = new PtSituationElement();
         mapDescription(ptSituationElement, alert);
         mapPeriod(ptSituationElement, alert);
         mapReasons(ptSituationElement, alert);
-        mapAffects(ptSituationElement, alert);
+        mapAffects(ptSituationElement, alert, datasetId);
         mapEffect(ptSituationElement, alert);
         mapSeverity(ptSituationElement, alert);
 
@@ -108,7 +116,7 @@ public class AlertMapper {
 
     }
 
-    private static void mapAffects(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert) {
+    private static void mapAffects(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert, String datasetId) {
 
         List<GtfsRealtime.EntitySelector> informedEntities = alert.getInformedEntityList();
         if (informedEntities == null || informedEntities.size() == 0)
@@ -122,7 +130,7 @@ public class AlertMapper {
         for (GtfsRealtime.EntitySelector informedEntity : informedEntities) {
 
             vehicleJourneys.getAffectedVehicleJourneies().addAll(getVehicleJourneys(informedEntity));
-            recordAffect(affectStruct, informedEntity);
+            recordAffect(affectStruct, informedEntity, datasetId);
         }
         affectStruct.setVehicleJourneys(vehicleJourneys);
         ptSituationElement.setAffects(affectStruct);
@@ -135,7 +143,7 @@ public class AlertMapper {
      * @param affects        all already processed affects
      * @param informedEntity new entity containing affects that must be recorded
      */
-    private static void recordAffect(AffectsScopeStructure affects, GtfsRealtime.EntitySelector informedEntity) {
+    private static void recordAffect(AffectsScopeStructure affects, GtfsRealtime.EntitySelector informedEntity, String datasetId) {
 
 
         if (informedEntity.hasAgencyId() || informedEntity.hasRouteId()) {
@@ -146,7 +154,7 @@ public class AlertMapper {
                 addDestinationStop(affectedLine, informedEntity);
             }
         } else if (informedEntity.hasStopId()) {
-            addAffectedStop(affects, informedEntity);
+            addAffectedStop(affects, informedEntity, datasetId);
         }
     }
 
@@ -157,11 +165,39 @@ public class AlertMapper {
      * @param affects        all currently processed affects
      * @param informedEntity the current entity for which affect must be recorded
      */
-    private static void addAffectedStop(AffectsScopeStructure affects, GtfsRealtime.EntitySelector informedEntity) {
+    private static void addAffectedStop(AffectsScopeStructure affects, GtfsRealtime.EntitySelector informedEntity, String datasetId) {
 
+        if (stopPlaceService == null){
+            stopPlaceService = ApplicationContextHolder.getContext().getBean(StopPlaceUpdaterService.class);
+        }
         String stopId = informedEntity.getStopId();
+        if(stopPlaceService.isKnownId(datasetId + ":StopPlace:" + stopId)){
+            addStopPlace(affects, stopId);
+        } else {
+            addStopPoint(affects, stopId);
+        }
+    }
 
+    private static void addStopPlace(AffectsScopeStructure affects, String stopId) {
+        if(affects.getStopPlaces() == null){
+            AffectsScopeStructure.StopPlaces newStopPlaces= new AffectsScopeStructure.StopPlaces();
+            affects.setStopPlaces(newStopPlaces);
+        } else {
+            for (AffectedStopPlaceStructure affectedStopPlace : affects.getStopPlaces().getAffectedStopPlaces()) {
+                if (affectedStopPlace.getStopPlaceRef().getValue().equals(stopId)) {
+                    return;
+                }
+            }
+        }
 
+        AffectedStopPlaceStructure newStopPlaces = new AffectedStopPlaceStructure();
+        StopPlaceRef newStopRef = new StopPlaceRef();
+        newStopRef.setValue(stopId);
+        newStopPlaces.setStopPlaceRef(newStopRef);
+        affects.getStopPlaces().getAffectedStopPlaces().add(newStopPlaces);
+    }
+
+    private static void addStopPoint(AffectsScopeStructure affects, String stopId) {
         if (affects.getStopPoints() == null) {
             AffectsScopeStructure.StopPoints newStopPoints = new AffectsScopeStructure.StopPoints();
             affects.setStopPoints(newStopPoints);
@@ -178,7 +214,6 @@ public class AlertMapper {
         newStopRef.setValue(stopId);
         newStopPoints.setStopPointRef(newStopRef);
         affects.getStopPoints().getAffectedStopPoints().add(newStopPoints);
-
     }
 
     /**

@@ -127,20 +127,11 @@ public class SubscriptionInitializer implements CamelContextAware {
                     throw new ServiceConfigurationError("Configuration is not valid for subscription " + subscriptionSetup);
                 }
 
-                if (subscriptionIds.contains(subscriptionSetup.getSubscriptionId())) {
-                    //Verify subscriptionId-uniqueness
-                    throw new ServiceConfigurationError("SubscriptionIds are NOT unique for ID=" + subscriptionSetup.getSubscriptionId());
-                }
-
                 if (subscriptionNames.contains(subscriptionSetup.getVendor())) {
                     //Verify vendor-uniqueness
                     throw new ServiceConfigurationError("Vendor is NOT unique for vendor=" + subscriptionSetup.getVendor());
                 }
 
-                if (subscriptionInternalIds.contains(subscriptionSetup.getInternalId())) {
-                    //Verify internalId-uniqueness
-                    throw new ServiceConfigurationError("InternalId is NOT unique for ID=" + subscriptionSetup.getInternalId());
-                }
 
                 List<ValueAdapter> valueAdapters = new ArrayList<>();
 
@@ -177,7 +168,8 @@ public class SubscriptionInitializer implements CamelContextAware {
                     subscriptionSetup.getUrlMap().putIfAbsent(RequestType.GET_SITUATION_EXCHANGE, url);
                 }
 
-                SubscriptionSetup existingSubscription = subscriptionManager.getSubscriptionById(subscriptionSetup.getInternalId());
+                SubscriptionSetup existingSubscription = subscriptionManager.getSubscriptionBySubscriptionId(subscriptionSetup.getSubscriptionId());
+
 
                 if (existingSubscription != null) {
                     if (!existingSubscription.equals(subscriptionSetup)) {
@@ -269,7 +261,7 @@ public class SubscriptionInitializer implements CamelContextAware {
         List<RouteBuilder> routeBuilders = new ArrayList<>();
 
         boolean isSubscription = subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.SUBSCRIBE;
-        boolean isLite = subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.LITE;
+        boolean isLite = subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.LITE || subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.LITE_XML;
         boolean isFetchedDelivery = subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.FETCHED_DELIVERY |
                 subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.POLLING_FETCHED_DELIVERY;
         boolean isSoap = subscriptionSetup.getServiceType() == SubscriptionSetup.ServiceType.SOAP;
@@ -334,7 +326,8 @@ public class SubscriptionInitializer implements CamelContextAware {
 
         Preconditions.checkNotNull(s.getUrlMap(), "UrlMap is not set");
         Map<RequestType, String> urlMap = s.getUrlMap();
-        if (s.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE || s.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.LITE) {
+        if (s.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE || s.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.LITE
+                || s.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.LITE_XML) {
 
             if (SiriDataType.SITUATION_EXCHANGE.equals(s.getSubscriptionType())) {
                 Preconditions.checkNotNull(urlMap.get(RequestType.GET_SITUATION_EXCHANGE), "GET_SITUATION_EXCHANGE-url is missing. " + s);

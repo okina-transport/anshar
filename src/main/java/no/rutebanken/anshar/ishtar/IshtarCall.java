@@ -56,22 +56,18 @@ public class IshtarCall extends BaseRouteBuilder {
                     List<Object> allGtfs = body().getExpression().evaluate(exchange, List.class);
                     ArrayList<GtfsRTApi> gtfsResults = new ArrayList<>();
                     ObjectMapper objectMapper = new ObjectMapper();
-                    // on vide les précédentes valeurs
-                    subscriptionConfig.getGtfsRTApis().clear();
 
 
                     if (allGtfs != null) {
                         for (Object obj : allGtfs) {
                             Map<?, ?> jsonMap = (Map<?, ?>) obj;
-                            if ((Boolean) jsonMap.get("active")) {
-                                jsonMap.remove("id"); // Ignorer la propriété
-                                jsonMap.remove("updateDatetime"); // Ignorer la propriété
-                                GtfsRTApi newGtfs = objectMapper.convertValue(jsonMap, GtfsRTApi.class);
-                                gtfsResults.add(newGtfs);
-                            }
+                            jsonMap.remove("id"); // Ignorer la propriété
+                            jsonMap.remove("updateDatetime"); // Ignorer la propriété
+                            GtfsRTApi newGtfs = objectMapper.convertValue(jsonMap, GtfsRTApi.class);
+                            gtfsResults.add(newGtfs);
                         }
                     }
-                    subscriptionConfig.getGtfsRTApis().addAll(gtfsResults);
+                    subscriptionConfig.mergeGTFSRTApis(gtfsResults);
                 })
 
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))
@@ -82,21 +78,20 @@ public class IshtarCall extends BaseRouteBuilder {
                     List<Object> allSiri = body().getExpression().evaluate(exchange, List.class);
                     ArrayList<SiriApi> siriResults = new ArrayList<>();
                     ObjectMapper objectMapper = new ObjectMapper();
-                    // on vide les précédentes valeurs
-                    subscriptionConfig.getSiriApis().removeAll(subscriptionConfig.getSiriApis());
+
 
                     if (allSiri != null) {
                         for (Object obj : allSiri) {
                             Map<?, ?> jsonMap = (Map<?, ?>) obj;
-                            if ((Boolean) jsonMap.get("active")) {
-                                jsonMap.remove("id"); // Ignorer la propriété
-                                jsonMap.remove("updateDatetime"); // Ignorer la propriété
-                                SiriApi newSiri = objectMapper.convertValue(jsonMap, SiriApi.class);
-                                siriResults.add(newSiri);
-                            }
+
+                            jsonMap.remove("id"); // Ignorer la propriété
+                            jsonMap.remove("updateDatetime"); // Ignorer la propriété
+                            SiriApi newSiri = objectMapper.convertValue(jsonMap, SiriApi.class);
+                            siriResults.add(newSiri);
+                            
                         }
                     }
-                    subscriptionConfig.getSiriApis().addAll(siriResults);
+                    subscriptionConfig.mergeSiriApis(siriResults);
                 })
 
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))
@@ -131,19 +126,17 @@ public class IshtarCall extends BaseRouteBuilder {
                     objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
                     List subscriptionResult = body().getExpression().evaluate(exchange, List.class);
                     ArrayList<SubscriptionSetup> results = new ArrayList<>();
-                    // on vide les précédentes valeurs
-                    subscriptionConfig.getSubscriptions().clear();
 
                     if (subscriptionResult != null) {
                         for (Object obj : subscriptionResult) {
                             LinkedHashMap<?, ?> current_subscription = ((LinkedHashMap<?, ?>) ((LinkedHashMap<?, ?>) obj).get("subscription"));
                             if (current_subscription == null) {
-                                continue;
+                                current_subscription = (LinkedHashMap<?, ?>) obj;
                             }
                             SubscriptionSetup newSubscription = objectMapper.convertValue(current_subscription, SubscriptionSetup.class);
-                            newSubscription.setChangeBeforeUpdatesSeconds((int) current_subscription.get("changeBeforeUpdateSeconds"));
+                            newSubscription.setChangeBeforeUpdatesSeconds((int) current_subscription.get("changeBeforeUpdatesSeconds"));
 
-                            newSubscription.setInternalId((int) ((LinkedHashMap<?, ?>) ((LinkedHashMap<?, ?>) obj).get("subscription")).get("id"));
+                            newSubscription.setInternalId((int) current_subscription.get("id"));
 
                             List<Map<String, Object>> urlMapsList = (List<Map<String, Object>>) ((LinkedHashMap<?, ?>) obj).get("urlMaps");
                             Map<RequestType, String> urlMap = new HashMap<>();
@@ -169,6 +162,8 @@ public class IshtarCall extends BaseRouteBuilder {
                             newSubscription.setIdMappingPrefixes(idMappingPrefixesList);
                             results.add(newSubscription);
                         }
+                    } else {
+                        log.warn("IshtarCall : subscriptionResult null");
                     }
                     subscriptionConfig.getSubscriptions().addAll(results);
                 })
