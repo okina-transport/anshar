@@ -54,7 +54,7 @@ public class AlertMapper {
     }
 
     private static void mapSeverity(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert) {
-        if (!alert.hasSeverityLevel()){
+        if (!alert.hasSeverityLevel()) {
             return;
         }
 
@@ -63,7 +63,7 @@ public class AlertMapper {
 
     private static SeverityEnumeration convertSeverity(GtfsRealtime.Alert.SeverityLevel severityLevel) {
 
-        switch(severityLevel){
+        switch (severityLevel) {
             case UNKNOWN_SEVERITY:
                 return SeverityEnumeration.UNKNOWN;
             case INFO:
@@ -78,7 +78,7 @@ public class AlertMapper {
     }
 
     private static void mapEffect(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert) {
-        if (!alert.hasEffect()){
+        if (!alert.hasEffect()) {
             return;
         }
 
@@ -92,7 +92,7 @@ public class AlertMapper {
 
     private static ServiceConditionEnumeration convertEffectToCondition(GtfsRealtime.Alert.Effect effect) {
 
-        switch (effect){
+        switch (effect) {
             case NO_SERVICE:
                 return ServiceConditionEnumeration.NO_SERVICE;
             case REDUCED_SERVICE:
@@ -167,11 +167,11 @@ public class AlertMapper {
      */
     private static void addAffectedStop(AffectsScopeStructure affects, GtfsRealtime.EntitySelector informedEntity, String datasetId) {
 
-        if (stopPlaceService == null){
+        if (stopPlaceService == null) {
             stopPlaceService = ApplicationContextHolder.getContext().getBean(StopPlaceUpdaterService.class);
         }
         String stopId = informedEntity.getStopId();
-        if(stopPlaceService.isKnownId(datasetId + ":StopPlace:" + stopId)){
+        if (stopPlaceService.isKnownId(datasetId + ":StopPlace:" + stopId)) {
             addStopPlace(affects, stopId);
         } else {
             addStopPoint(affects, stopId);
@@ -179,8 +179,8 @@ public class AlertMapper {
     }
 
     private static void addStopPlace(AffectsScopeStructure affects, String stopId) {
-        if(affects.getStopPlaces() == null){
-            AffectsScopeStructure.StopPlaces newStopPlaces= new AffectsScopeStructure.StopPlaces();
+        if (affects.getStopPlaces() == null) {
+            AffectsScopeStructure.StopPlaces newStopPlaces = new AffectsScopeStructure.StopPlaces();
             affects.setStopPlaces(newStopPlaces);
         } else {
             for (AffectedStopPlaceStructure affectedStopPlace : affects.getStopPlaces().getAffectedStopPlaces()) {
@@ -314,7 +314,6 @@ public class AlertMapper {
     }
 
 
-
     private static List<AffectedVehicleJourneyStructure> getVehicleJourneys(GtfsRealtime.EntitySelector informedEntity) {
         AffectsScopeStructure.VehicleJourneys vehicleJourneys = new AffectsScopeStructure.VehicleJourneys();
 
@@ -415,7 +414,7 @@ public class AlertMapper {
                 ZonedDateTime timestamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timeRange.getStart() * 1000), zoneId);
                 validityPeriod.setStartTime(timestamp);
             } else {
-                ZonedDateTime timestamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(Long.MIN_VALUE), zoneId);
+                ZonedDateTime timestamp = ZonedDateTime.now();
                 validityPeriod.setStartTime(timestamp);
             }
 
