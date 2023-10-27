@@ -127,11 +127,6 @@ public class SubscriptionInitializer implements CamelContextAware {
                     throw new ServiceConfigurationError("Configuration is not valid for subscription " + subscriptionSetup);
                 }
 
-                if (subscriptionNames.contains(subscriptionSetup.getVendor())) {
-                    //Verify vendor-uniqueness
-                    throw new ServiceConfigurationError("Vendor is NOT unique for vendor=" + subscriptionSetup.getVendor());
-                }
-
 
                 List<ValueAdapter> valueAdapters = new ArrayList<>();
 

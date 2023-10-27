@@ -132,6 +132,29 @@ public class SubscriptionConfig {
         }
     }
 
+    public void mergeSubscriptions(List<SubscriptionSetup> incomingSubscriptions) {
+        for (SubscriptionSetup incomingSubscription : incomingSubscriptions) {
+
+            Optional<SubscriptionSetup> existingSubscription = getExistingSubscription(incomingSubscription);
+            if (existingSubscription.isPresent()) {
+                existingSubscription.get().setActive(incomingSubscription.isActive());
+            } else {
+                subscriptions.add(incomingSubscription);
+            }
+        }
+
+
+    }
+
+    private Optional<SubscriptionSetup> getExistingSubscription(SubscriptionSetup incomingSubscription) {
+        for (SubscriptionSetup subscription : subscriptions) {
+            if (incomingSubscription.getSubscriptionId().equals(subscription.getSubscriptionId())) {
+                return Optional.of(subscription);
+            }
+        }
+        return Optional.empty();
+    }
+
     private Optional<GtfsRTApi> getExistingGtfsAPI(GtfsRTApi incomingAPI) {
 
         for (GtfsRTApi existingGtfsRTApi : gtfsRTApis) {
