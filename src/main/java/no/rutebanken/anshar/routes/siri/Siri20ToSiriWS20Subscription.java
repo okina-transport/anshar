@@ -88,7 +88,7 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
                     .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                     .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Extract SOAP version and convert to raw SIRI
                 .end()
-                .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+//                .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .process(p -> {
                     InputStream body = p.getIn().getBody(InputStream.class);
                     handler.handleIncomingSiri(subscriptionSetup.getSubscriptionId(), body);
@@ -174,7 +174,7 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
                 .choice().when(simple("${in.body} != null"))
                     .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Extract SOAP version and convert to raw SIRI
                 .end()
-                .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+//                .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .process(p -> {
                     InputStream body = p.getIn().getBody(InputStream.class);
                     if (body != null && body.available() > 0) {
