@@ -88,7 +88,7 @@ public class IshtarCall extends BaseRouteBuilder {
                             jsonMap.remove("updateDatetime"); // Ignorer la propriété
                             SiriApi newSiri = objectMapper.convertValue(jsonMap, SiriApi.class);
                             siriResults.add(newSiri);
-                            
+
                         }
                     }
                     subscriptionConfig.mergeSiriApis(siriResults);
@@ -133,7 +133,12 @@ public class IshtarCall extends BaseRouteBuilder {
                             if (current_subscription == null) {
                                 current_subscription = (LinkedHashMap<?, ?>) obj;
                             }
+
+                            List<LinkedHashMap<String, String>> customHeaders = (List<LinkedHashMap<String, String>>) current_subscription.get("customHeaders");
+                            current_subscription.remove("customHeaders");
+
                             SubscriptionSetup newSubscription = objectMapper.convertValue(current_subscription, SubscriptionSetup.class);
+                            addCustomHeaders(newSubscription, customHeaders);
                             newSubscription.setChangeBeforeUpdatesSeconds((int) current_subscription.get("changeBeforeUpdatesSeconds"));
 
                             newSubscription.setInternalId((int) current_subscription.get("id"));
@@ -141,22 +146,13 @@ public class IshtarCall extends BaseRouteBuilder {
                             List<Map<String, Object>> urlMapsList = (List<Map<String, Object>>) ((LinkedHashMap<?, ?>) obj).get("urlMaps");
                             Map<RequestType, String> urlMap = new HashMap<>();
                             for (Map<String, Object> urlMapData : urlMapsList) {
-                                LinkedHashMap<?, ?> current_urlMap = ((LinkedHashMap<?, ?>) ((LinkedHashMap<?, ?>) urlMapData).get("urlMaps"));
-                                RequestType requestType = RequestType.valueOf(current_urlMap.get("name").toString());
-                                String url = current_urlMap.get("url").toString();
+
+                                RequestType requestType = RequestType.valueOf(urlMapData.get("name").toString());
+                                String url = urlMapData.get("url").toString();
                                 urlMap.put(requestType, url);
                             }
                             newSubscription.setUrlMap(urlMap);
 
-                            List<Map<String, Object>> customHeadersList = (List<Map<String, Object>>) ((LinkedHashMap<?, ?>) obj).get("customHeaders");
-                            Map<String, Object> customHeaders = new HashMap<>();
-                            for (Map<String, Object> customHeaderData : customHeadersList) {
-                                LinkedHashMap<?, ?> current_customHeaders = ((LinkedHashMap<?, ?>) ((LinkedHashMap<?, ?>) customHeaderData).get("customHeaders"));
-                                String name = current_customHeaders.get("name").toString();
-                                Object value = current_customHeaders.get("value").toString();
-                                customHeaders.put(name, value);
-                            }
-                            newSubscription.setCustomHeaders(customHeaders);
 
                             List<String> idMappingPrefixesList = (List<String>) ((LinkedHashMap<?, ?>) obj).get("idMappingPrefixes");
                             newSubscription.setIdMappingPrefixes(idMappingPrefixesList);
@@ -165,9 +161,20 @@ public class IshtarCall extends BaseRouteBuilder {
                     } else {
                         log.warn("IshtarCall : subscriptionResult null");
                     }
-                    subscriptionConfig.getSubscriptions().addAll(results);
+                    subscriptionConfig.mergeSubscriptions(results);
                 })
                 .bean(SubscriptionInitializer.class, "createSubscriptions")
                 .end();
+    }
+
+    private void addCustomHeaders(SubscriptionSetup newSubscription, List<LinkedHashMap<String, String>> customHeadersFromJSON) {
+        Map<String, Object> customHeaders = new HashMap<>();
+        for (LinkedHashMap<String, String> customHeaderData : customHeadersFromJSON) {
+
+            String name = customHeaderData.get("name").toString();
+            Object value = customHeaderData.get("value").toString();
+            customHeaders.put(name, value);
+        }
+        newSubscription.setCustomHeaders(customHeaders);
     }
 }
