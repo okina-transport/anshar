@@ -269,21 +269,27 @@ public class AnsharConfiguration {
     public List<AppMode> getAppModes() {
         return appModes;
     }
+
     public boolean processET() {
         return (appModes.isEmpty() || appModes.contains(AppMode.DATA_ET));
     }
+
     public boolean processVM() {
         return (appModes.isEmpty() || appModes.contains(AppMode.DATA_VM));
     }
+
     public boolean processSX() {
         return (appModes.isEmpty() || appModes.contains(AppMode.DATA_SX));
     }
+
     public boolean processSM() {
         return (appModes.isEmpty() || appModes.contains(AppMode.DATA_SM));
     }
+
     public boolean processGM() {
         return (appModes.isEmpty() || appModes.contains(AppMode.DATA_GM));
     }
+
     public boolean processFM() {
         return (appModes.isEmpty() || appModes.contains(AppMode.DATA_FM));
     }
@@ -291,6 +297,7 @@ public class AnsharConfiguration {
     public boolean processAdmin() {
         return (appModes.isEmpty() || appModes.contains(AppMode.PROXY));
     }
+
     public boolean processData() {
         return (appModes.isEmpty() || ((appModes.contains(AppMode.DATA_ET) | appModes.contains(AppMode.DATA_VM) | appModes.contains(AppMode.DATA_SX))));
     }
@@ -301,18 +308,22 @@ public class AnsharConfiguration {
 
     public boolean isCurrentInstanceLeader() {
 
-        if (isCurrentInstanceLeader == null){
+        if (isCurrentInstanceLeader == null) {
             initCurrentInstanceLeader();
         }
         return isCurrentInstanceLeader;
     }
 
+    public void setSxGraceperiodMinutes(long sxGraceperiodMinutes) {
+        this.sxGraceperiodMinutes = sxGraceperiodMinutes;
+    }
+
     private void initCurrentInstanceLeader() {
-        if (!lockMap.containsKey(CURRENT_INSTANCE_LEADER_KEY)){
+        if (!lockMap.containsKey(CURRENT_INSTANCE_LEADER_KEY)) {
             lockMap.set(CURRENT_INSTANCE_LEADER_KEY, Instant.now());
             isCurrentInstanceLeader = true;
             logger.info("=====> Current instance is leader. Will launch all GTFS-RT or SIRI Requests   <=================");
-        }else{
+        } else {
             isCurrentInstanceLeader = false;
             logger.info("=====> Current instance is not leader. Will not launch any GTFS-RT or SIRI Requests   <=================");
         }

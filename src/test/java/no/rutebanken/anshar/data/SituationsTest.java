@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.data;
 
+import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
@@ -38,6 +39,9 @@ public class SituationsTest extends SpringBootBaseTest {
     @Autowired
     private SiriObjectFactory siriObjectFactory;
 
+    @Autowired
+    private AnsharConfiguration configuration;
+
     @BeforeEach
     public void init() {
         situations.clearAll();
@@ -52,6 +56,24 @@ public class SituationsTest extends SpringBootBaseTest {
         situations.add("test", element);
 
         assertEquals(previousSize + 1, situations.getAll().size(), "Situation not added");
+    }
+
+    @Test
+    public void testRemoveSituation() throws InterruptedException {
+
+        configuration.setSxGraceperiodMinutes(0);
+        int initialSize = situations.getAll().size();
+        PtSituationElement element = TestObjectFactory.createPtSituationElement("atb", "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusMinutes(1));
+
+        situations.add("test", element);
+        assertEquals(initialSize + 1, situations.getAll().size(), "Situation not added");
+
+        // On attend une minute pour que la perturbation soit périmée .Normalement, elle doit être supprimée du cache
+        Thread.sleep(70 * 1000);
+
+
+        assertEquals(initialSize, situations.getAll().size(), "Situation not removed after expiration");
+
     }
 
     @Test
@@ -138,7 +160,7 @@ public class SituationsTest extends SpringBootBaseTest {
         assertEquals(previousSize + 4, situations.getAll().size());
     }
 
-//    @Test
+    //    @Test
     public void testGetUpdatesOnlyFromCache() {
 
         int previousSize = situations.getAll().size();

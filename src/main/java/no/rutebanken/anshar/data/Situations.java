@@ -325,6 +325,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
         sxList.forEach(situation -> {
             TimingTracer timingTracer = new TimingTracer("single-sx");
 
+
             if (situation.getParticipantRef() == null) {
                 RequestorRef emptyReqRef = new RequestorRef();
                 emptyReqRef.setValue("Empty participant ref");
@@ -333,6 +334,13 @@ public class Situations extends SiriRepository<PtSituationElement> {
 
             SiriObjectStorageKey key = createKey(datasetId, situation);
             timingTracer.mark("createKey");
+
+            long expiration = getExpiration(situation);
+            if (expiration < 0 && situationElements.containsKey(key)) {
+                situationElements.remove(key);
+                checksumCache.remove(key);
+            }
+
             String currentChecksum = null;
             try {
                 currentChecksum = getChecksum(situation);
@@ -356,11 +364,11 @@ public class Situations extends SiriRepository<PtSituationElement> {
 
             if (keepByProgressStatus(situation) && updated) {
                 timingTracer.mark("keepByProgressStatus");
-                long expiration = getExpiration(situation);
                 timingTracer.mark("getExpiration");
                 if (expiration > 0) { //expiration < 0 => already expired
                     changes.put(key, situation);
                     checksumTmp.put(key, currentChecksum);
+                    situationElements.set(key, situation, expiration, TimeUnit.MILLISECONDS);
                 } else if (situationElements.containsKey(key)) {
                     // Situation is no longer valid
                     situationElements.delete(key);
@@ -386,8 +394,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
 
         checksumCache.setAll(checksumTmp);
         timingTracer.mark("checksumCache.setAll");
-        situationElements.setAll(changes);
-        timingTracer.mark("monitoredVehicles.setAll");
+
 
         markDataReceived(SiriDataType.SITUATION_EXCHANGE, datasetId, sxList.size(), changes.size(), alreadyExpiredCounter.getValue(), ignoredCounter.getValue());
         timingTracer.mark("markDataReceived");
