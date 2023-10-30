@@ -16,7 +16,6 @@ import org.springframework.stereotype.Component;
 import uk.org.siri.siri20.*;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -42,7 +41,6 @@ public class AlertReader extends AbstractSwallower {
     protected ProducerTemplate gtfsrtSxProducer;
 
 
-
     public AlertReader() {
         prefix = GTFSRT_SX_PREFIX;
         dataType = SiriDataType.SITUATION_EXCHANGE;
@@ -53,20 +51,19 @@ public class AlertReader extends AbstractSwallower {
     /**
      * Main function to ingest data : take a complete GTFS-RT object (FeedMessage), read and map data about Alerts and ingest it
      *
-     * @param completeGTFSRTMessage
-     *      The complete message (GTFS-RT format)
+     * @param completeGTFSRTMessage The complete message (GTFS-RT format)
      */
-    public void ingestAlertData(String datasetId, GtfsRealtime.FeedMessage completeGTFSRTMessage ){
+    public void ingestAlertData(String datasetId, GtfsRealtime.FeedMessage completeGTFSRTMessage) {
         List<PtSituationElement> situations = buildSituationList(completeGTFSRTMessage, datasetId);
         updateParticipantRef(datasetId, situations);
-        List<String> subscriptionList = getSubscriptions(situations) ;
+        List<String> subscriptionList = getSubscriptions(situations);
         checkAndCreateSubscriptions(subscriptionList, datasetId);
         buildSiriAndSend(situations, datasetId);
     }
 
     private void buildSiriAndSend(List<PtSituationElement> situations, String datasetId) {
 
-        if (situations.isEmpty()){
+        if (situations.isEmpty()) {
             logger.info("no situations to ingest");
             return;
         }
@@ -79,12 +76,12 @@ public class AlertReader extends AbstractSwallower {
         delStruct.setSituations(sitStruct);
         serviceDel.getSituationExchangeDeliveries().add(delStruct);
         siri.setServiceDelivery(serviceDel);
-        sendToRealTimeServer(gtfsrtSxProducer,siri, datasetId);
+        sendToRealTimeServer(gtfsrtSxProducer, siri, datasetId);
     }
 
-    private void updateParticipantRef(String datasetId,  List<PtSituationElement> situations){
+    private void updateParticipantRef(String datasetId, List<PtSituationElement> situations) {
         for (PtSituationElement situation : situations) {
-            if (situation.getParticipantRef() == null){
+            if (situation.getParticipantRef() == null) {
                 RequestorRef requestorRef = new RequestorRef();
                 requestorRef.setValue("MOBIITI");
                 situation.setParticipantRef(requestorRef);
@@ -101,10 +98,9 @@ public class AlertReader extends AbstractSwallower {
 
     /**
      * Read the complete GTS-RT message and build a list of situations to integrate
-     * @param feedMessage
-     *         The complete message (GTFS-RT format)
-     * @return
-     *         A list of situations, build by mapping alerts from GTFS-RT message
+     *
+     * @param feedMessage The complete message (GTFS-RT format)
+     * @return A list of situations, build by mapping alerts from GTFS-RT message
      */
     public List<PtSituationElement> buildSituationList(GtfsRealtime.FeedMessage feedMessage, String datasetId) {
         List<PtSituationElement> situtations = new ArrayList<>();
@@ -126,21 +122,41 @@ public class AlertReader extends AbstractSwallower {
 
     }
 
-    private boolean isEmptyAlert(GtfsRealtime.Alert alert){
+    private boolean isEmptyAlert(GtfsRealtime.Alert alert) {
 
-     return alert == null || alert.getInformedEntityCount() == 0 ||
-             alert.getHeaderText() == null ||  alert.getHeaderText().getTranslationList().size() == 0 ||
-             alert.getDescriptionText() == null || alert.getDescriptionText().getTranslationList().size() == 0;
+        return alert == null || alert.getInformedEntityCount() == 0 ||
+                alert.getHeaderText() == null || alert.getHeaderText().getTranslationList().size() == 0 ||
+                alert.getDescriptionText() == null || alert.getDescriptionText().getTranslationList().size() == 0 ||
+                hasNoStartAndNoEndDate(alert);
 
+    }
+
+    /**
+     * Checks if an alert has no start and no end defined
+     *
+     * @param alert
+     * @return true : no start date and no end end is defined at all
+     * false : at least one start or one end is defined in the alert
+     */
+    private boolean hasNoStartAndNoEndDate(GtfsRealtime.Alert alert) {
+        if (alert.getActivePeriodList().isEmpty()) {
+            return true;
+        }
+
+        for (GtfsRealtime.TimeRange timeRange : alert.getActivePeriodList()) {
+            if (timeRange.hasStart() || timeRange.hasEnd()) {
+                return false;
+            }
+        }
+        return true;
     }
 
 
     /**
      * Read all situation messages and build a list of subscriptions that must be checked(or created if not exists)
-     * @param situations
-     *      The list of situations
-     * @return
-     *      The list of subscription ids build by reading the situations
+     *
+     * @param situations The list of situations
+     * @return The list of subscription ids build by reading the situations
      */
     private List<String> getSubscriptions(List<PtSituationElement> situations) {
         return situations.stream()
@@ -148,15 +164,15 @@ public class AlertReader extends AbstractSwallower {
                 .collect(Collectors.toList());
     }
 
-    private String getSituationSubscriptionId (PtSituationElement situation){
+    private String getSituationSubscriptionId(PtSituationElement situation) {
         StringBuilder key = new StringBuilder();
 
-        if (situation.getSituationNumber() != null){
+        if (situation.getSituationNumber() != null) {
             key.append(situation.getSituationNumber().getValue());
             key.append(":");
         }
 
-        if (situation.getParticipantRef() != null){
+        if (situation.getParticipantRef() != null) {
             key.append(situation.getParticipantRef().getValue());
         }
 
@@ -181,12 +197,12 @@ public class AlertReader extends AbstractSwallower {
 
     /**
      * Create a new subscription for the id given in parameter
-     * @param subscriptionId
-     *      The id for which a subscription must be created
+     *
+     * @param subscriptionId The id for which a subscription must be created
      */
-    private void createNewSubscription(String subscriptionId, String datasetId){
+    private void createNewSubscription(String subscriptionId, String datasetId) {
         SubscriptionSetup setup = createStandardSubscription(subscriptionId, datasetId);
-        subscriptionManager.addSubscription(subscriptionId,setup);
+        subscriptionManager.addSubscription(subscriptionId, setup);
         subscriptionManager.addGTFSRTSubscription(subscriptionId);
     }
 
