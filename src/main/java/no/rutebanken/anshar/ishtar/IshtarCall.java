@@ -102,8 +102,7 @@ public class IshtarCall extends BaseRouteBuilder {
                     List<Object> allProcessing = body().getExpression().evaluate(exchange, List.class);
                     ArrayList<IdProcessingParameters> processingResults = new ArrayList<>();
                     ObjectMapper objectMapper = new ObjectMapper();
-                    // on vide les précédentes valeurs
-                    subscriptionConfig.getIdProcessingParameters().clear();
+
 
                     if (allProcessing != null) {
                         for (Object obj : allProcessing) {
@@ -114,7 +113,7 @@ public class IshtarCall extends BaseRouteBuilder {
                             processingResults.add(newProcessing);
                         }
                     }
-                    subscriptionConfig.getIdProcessingParameters().addAll(processingResults);
+                    subscriptionConfig.mergeIdProcessingParams(processingResults);
                 })
 
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))

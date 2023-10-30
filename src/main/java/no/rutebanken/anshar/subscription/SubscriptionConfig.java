@@ -45,7 +45,7 @@ public class SubscriptionConfig {
 
     private List<DiscoverySubscription> discoverySubscriptions = new ArrayList<>();
 
-    private List<IdProcessingParameters> idProcessingParametrers = new CopyOnWriteArrayList<>();
+    private List<IdProcessingParameters> idProcessingParameters = new CopyOnWriteArrayList<>();
 
     @Value("${anshar.subscriptions.datatypes.filter:}")
     List<SiriDataType> dataTypes;
@@ -81,7 +81,7 @@ public class SubscriptionConfig {
     }
 
     public List<IdProcessingParameters> getIdProcessingParameters() {
-        return idProcessingParametrers;
+        return idProcessingParameters;
     }
 
     public void setSiriApis(List<SiriApi> siriApis) {
@@ -90,6 +90,32 @@ public class SubscriptionConfig {
 
     public void setDiscoverySubscriptions(List<DiscoverySubscription> discoverySubscriptions) {
         this.discoverySubscriptions = discoverySubscriptions;
+    }
+
+    public void mergeIdProcessingParams(List<IdProcessingParameters> incomingParams) {
+        for (IdProcessingParameters incomingParam : incomingParams) {
+            Optional<IdProcessingParameters> existingOpt = getExistingIdProc(incomingParam);
+            if (existingOpt.isPresent()) {
+                //idProc is already existing in the list. Updating
+                IdProcessingParameters existingIdProc = existingOpt.get();
+                existingIdProc.setInputPrefixToRemove(incomingParam.getInputPrefixToRemove());
+                existingIdProc.setInputSuffixToRemove(incomingParam.getInputSuffixToRemove());
+                existingIdProc.setOutputPrefixToAdd(incomingParam.getOutputPrefixToAdd());
+                existingIdProc.setOutputSuffixToAdd(incomingParam.getOutputSuffixToAdd());
+            } else {
+                idProcessingParameters.add(incomingParam);
+            }
+        }
+    }
+
+    private Optional<IdProcessingParameters> getExistingIdProc(IdProcessingParameters incomingParam) {
+        for (IdProcessingParameters idProcessingParameter : idProcessingParameters) {
+            if (idProcessingParameter.getDatasetId().equals(incomingParam.getDatasetId()) &&
+                    idProcessingParameter.getObjectType().equals(incomingParam.getObjectType())) {
+                return Optional.of(idProcessingParameter);
+            }
+        }
+        return Optional.empty();
     }
 
 
@@ -167,7 +193,7 @@ public class SubscriptionConfig {
     }
 
     public Optional<IdProcessingParameters> getIdParametersForDataset(String datasetId, ObjectType objectType) {
-        for (IdProcessingParameters idProcessingParametrer : idProcessingParametrers) {
+        for (IdProcessingParameters idProcessingParametrer : idProcessingParameters) {
             if (datasetId != null && datasetId.equalsIgnoreCase(idProcessingParametrer.getDatasetId()) && objectType != null && objectType.equals(idProcessingParametrer.getObjectType())) {
                 return Optional.of(idProcessingParametrer);
             }
