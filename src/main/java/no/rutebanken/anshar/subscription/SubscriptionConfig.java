@@ -19,9 +19,9 @@ package no.rutebanken.anshar.subscription;
 import io.micrometer.core.instrument.util.StringUtils;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.api.SiriApi;
+import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
-import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.util.YamlPropertySourceFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -45,7 +45,7 @@ public class SubscriptionConfig {
 
     private List<DiscoverySubscription> discoverySubscriptions = new ArrayList<>();
 
-    private List<IdProcessingParameters> idProcessingParametrers = new CopyOnWriteArrayList<>();
+    private List<IdProcessingParameters> idProcessingParameters = new CopyOnWriteArrayList<>();
 
     @Value("${anshar.subscriptions.datatypes.filter:}")
     List<SiriDataType> dataTypes;
@@ -54,8 +54,8 @@ public class SubscriptionConfig {
     public List<SubscriptionSetup> getSubscriptions() {
         if (dataTypes != null && !dataTypes.isEmpty()) {
             return subscriptions.stream()
-                .filter(sub -> dataTypes.contains(sub.getSubscriptionType()))
-                .collect(Collectors.toList());
+                    .filter(sub -> dataTypes.contains(sub.getSubscriptionType()))
+                    .collect(Collectors.toList());
         }
         return subscriptions;
     }
@@ -81,7 +81,7 @@ public class SubscriptionConfig {
     }
 
     public List<IdProcessingParameters> getIdProcessingParameters() {
-        return idProcessingParametrers;
+        return idProcessingParameters;
     }
 
     public void setSiriApis(List<SiriApi> siriApis) {
@@ -92,8 +92,108 @@ public class SubscriptionConfig {
         this.discoverySubscriptions = discoverySubscriptions;
     }
 
-    public Optional<IdProcessingParameters> getIdParametersForDataset(String datasetId, ObjectType objectType){
-        for (IdProcessingParameters idProcessingParametrer : idProcessingParametrers) {
+    public void mergeIdProcessingParams(List<IdProcessingParameters> incomingParams) {
+        for (IdProcessingParameters incomingParam : incomingParams) {
+            Optional<IdProcessingParameters> existingOpt = getExistingIdProc(incomingParam);
+            if (existingOpt.isPresent()) {
+                //idProc is already existing in the list. Updating
+                IdProcessingParameters existingIdProc = existingOpt.get();
+                existingIdProc.setInputPrefixToRemove(incomingParam.getInputPrefixToRemove());
+                existingIdProc.setInputSuffixToRemove(incomingParam.getInputSuffixToRemove());
+                existingIdProc.setOutputPrefixToAdd(incomingParam.getOutputPrefixToAdd());
+                existingIdProc.setOutputSuffixToAdd(incomingParam.getOutputSuffixToAdd());
+            } else {
+                idProcessingParameters.add(incomingParam);
+            }
+        }
+    }
+
+    private Optional<IdProcessingParameters> getExistingIdProc(IdProcessingParameters incomingParam) {
+        for (IdProcessingParameters idProcessingParameter : idProcessingParameters) {
+            if (idProcessingParameter.getDatasetId().equals(incomingParam.getDatasetId()) &&
+                    idProcessingParameter.getObjectType().equals(incomingParam.getObjectType())) {
+                return Optional.of(idProcessingParameter);
+            }
+        }
+        return Optional.empty();
+    }
+
+
+    public void mergeSiriApis(List<SiriApi> incomingSiriApis) {
+        for (SiriApi incomingAPI : incomingSiriApis) {
+            Optional<SiriApi> existingOpt = getExistingSiriAPI(incomingAPI);
+            if (existingOpt.isPresent()) {
+                //API is already existing in the list. Updatig the status
+                existingOpt.get().setActive(incomingAPI.getActive());
+            } else {
+                siriApis.add(incomingAPI);
+            }
+        }
+
+
+    }
+
+    private Optional<SiriApi> getExistingSiriAPI(SiriApi incomingAPI) {
+        for (SiriApi existingSiriApi : siriApis) {
+            // same API = same URL & same datasetId & same type
+            if (existingSiriApi.getUrl().equals(incomingAPI.getUrl()) && existingSiriApi.getDatasetId().equals(incomingAPI.getDatasetId())
+                    && existingSiriApi.getType().equals(incomingAPI.getType())) {
+                return Optional.of(existingSiriApi);
+            }
+        }
+        return Optional.empty();
+
+    }
+
+
+    public void mergeGTFSRTApis(List<GtfsRTApi> incomingGtfsRTApis) {
+        for (GtfsRTApi incomingAPI : incomingGtfsRTApis) {
+            Optional<GtfsRTApi> existingOpt = getExistingGtfsAPI(incomingAPI);
+            if (existingOpt.isPresent()) {
+                //API is already existing in the list. Updatig the status
+                existingOpt.get().setActive(incomingAPI.getActive());
+            } else {
+                gtfsRTApis.add(incomingAPI);
+            }
+        }
+    }
+
+    public void mergeSubscriptions(List<SubscriptionSetup> incomingSubscriptions) {
+        for (SubscriptionSetup incomingSubscription : incomingSubscriptions) {
+
+            Optional<SubscriptionSetup> existingSubscription = getExistingSubscription(incomingSubscription);
+            if (existingSubscription.isPresent()) {
+                existingSubscription.get().setActive(incomingSubscription.isActive());
+            } else {
+                subscriptions.add(incomingSubscription);
+            }
+        }
+
+
+    }
+
+    private Optional<SubscriptionSetup> getExistingSubscription(SubscriptionSetup incomingSubscription) {
+        for (SubscriptionSetup subscription : subscriptions) {
+            if (incomingSubscription.getSubscriptionId().equals(subscription.getSubscriptionId())) {
+                return Optional.of(subscription);
+            }
+        }
+        return Optional.empty();
+    }
+
+    private Optional<GtfsRTApi> getExistingGtfsAPI(GtfsRTApi incomingAPI) {
+
+        for (GtfsRTApi existingGtfsRTApi : gtfsRTApis) {
+            // same API = same URL & same datasetId
+            if (existingGtfsRTApi.getUrl().equals(incomingAPI.getUrl()) && existingGtfsRTApi.getDatasetId().equals(incomingAPI.getDatasetId())) {
+                return Optional.of(existingGtfsRTApi);
+            }
+        }
+        return Optional.empty();
+    }
+
+    public Optional<IdProcessingParameters> getIdParametersForDataset(String datasetId, ObjectType objectType) {
+        for (IdProcessingParameters idProcessingParametrer : idProcessingParameters) {
             if (datasetId != null && datasetId.equalsIgnoreCase(idProcessingParametrer.getDatasetId()) && objectType != null && objectType.equals(idProcessingParametrer.getObjectType())) {
                 return Optional.of(idProcessingParametrer);
             }
@@ -101,16 +201,16 @@ public class SubscriptionConfig {
         return Optional.empty();
     }
 
-    public Map<ObjectType, Optional<IdProcessingParameters>> buildIdProcessingParams(String datasetId, Set<String> originalMonitoringRefs, ObjectType objectType){
+    public Map<ObjectType, Optional<IdProcessingParameters>> buildIdProcessingParams(String datasetId, Set<String> originalMonitoringRefs, ObjectType objectType) {
 
-        if(StringUtils.isEmpty(datasetId)){
+        if (StringUtils.isEmpty(datasetId)) {
             datasetId = findDatasetFromSearch(originalMonitoringRefs, objectType).orElse(null);
         }
 
         return buildIdProcessingParamsFromDataset(datasetId);
     }
 
-    private Optional<String> findDatasetFromSearch(Set<String> searchedIds, ObjectType objectType){
+    private Optional<String> findDatasetFromSearch(Set<String> searchedIds, ObjectType objectType) {
 
         Set<String> guessedDatasets = new HashSet<>();
 
@@ -118,14 +218,14 @@ public class SubscriptionConfig {
 
             for (IdProcessingParameters idProcessingParameter : getIdProcessingParameters()) {
 
-                if (StringUtils.isEmpty(idProcessingParameter.getOutputPrefixToAdd()) && StringUtils.isEmpty(idProcessingParameter.getOutputSuffixToAdd())){
+                if (StringUtils.isEmpty(idProcessingParameter.getOutputPrefixToAdd()) && StringUtils.isEmpty(idProcessingParameter.getOutputSuffixToAdd())) {
                     continue;
                 }
 
                 if (objectType != null && objectType.equals(idProcessingParameter.getObjectType()) &&
-                        (StringUtils.isEmpty(idProcessingParameter.getOutputPrefixToAdd())|| searchedId.startsWith(idProcessingParameter.getOutputPrefixToAdd()))
+                        (StringUtils.isEmpty(idProcessingParameter.getOutputPrefixToAdd()) || searchedId.startsWith(idProcessingParameter.getOutputPrefixToAdd()))
                         &&
-                        (StringUtils.isEmpty(idProcessingParameter.getOutputSuffixToAdd())|| searchedId.endsWith(idProcessingParameter.getOutputSuffixToAdd()))) {
+                        (StringUtils.isEmpty(idProcessingParameter.getOutputSuffixToAdd()) || searchedId.endsWith(idProcessingParameter.getOutputSuffixToAdd()))) {
                     guessedDatasets.add(idProcessingParameter.getDatasetId());
                 }
             }
@@ -135,7 +235,7 @@ public class SubscriptionConfig {
 
     }
 
-    public Map<ObjectType, Optional<IdProcessingParameters>> buildIdProcessingParamsFromDataset(String datasetId){
+    public Map<ObjectType, Optional<IdProcessingParameters>> buildIdProcessingParamsFromDataset(String datasetId) {
         Map<ObjectType, Optional<IdProcessingParameters>> resultmap = new HashMap<>();
         resultmap.put(ObjectType.STOP, getIdParametersForDataset(datasetId, ObjectType.STOP));
         resultmap.put(ObjectType.LINE, getIdParametersForDataset(datasetId, ObjectType.LINE));

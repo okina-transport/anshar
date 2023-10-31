@@ -27,12 +27,7 @@ import org.slf4j.LoggerFactory;
 import java.io.Serializable;
 import java.text.MessageFormat;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class SubscriptionSetup implements Serializable {
 
@@ -89,7 +84,7 @@ public class SubscriptionSetup implements Serializable {
     }
 
     public void setUseProvidedCodespaceId(
-        boolean useProvidedCodespaceId
+            boolean useProvidedCodespaceId
     ) {
         this.useProvidedCodespaceId = useProvidedCodespaceId;
     }
@@ -106,21 +101,21 @@ public class SubscriptionSetup implements Serializable {
     }
 
     /**
-     *
      * TODO MHI : voir si params supplémentaires nécessaires pour SM
-     * @param subscriptionType SX, VM, ET, SM
-     * @param address Base-URL for receiving incoming data
-     * @param heartbeatInterval Requested heartbeatinterval for subscriptions, Request-interval for Request/Response "subscriptions"
-     * @param operatorNamespace Namespace
-     * @param urlMap Operation-names and corresponding URL's
-     * @param version SIRI-version to use
-     * @param vendor Vendorname - information only
-     * @param serviceType SOAP/REST
+     *
+     * @param subscriptionType       SX, VM, ET, SM
+     * @param address                Base-URL for receiving incoming data
+     * @param heartbeatInterval      Requested heartbeatinterval for subscriptions, Request-interval for Request/Response "subscriptions"
+     * @param operatorNamespace      Namespace
+     * @param urlMap                 Operation-names and corresponding URL's
+     * @param version                SIRI-version to use
+     * @param vendor                 Vendorname - information only
+     * @param serviceType            SOAP/REST
      * @param filterMap
-     * @param subscriptionId Sets the subscriptionId to use
+     * @param subscriptionId         Sets the subscriptionId to use
      * @param requestorRef
      * @param durationOfSubscription Initial duration of subscription
-     * @param active Activates/deactivates subscription
+     * @param active                 Activates/deactivates subscription
      */
     public SubscriptionSetup(SiriDataType subscriptionType, SubscriptionMode subscriptionMode, String address, Duration heartbeatInterval, Duration updateInterval, String operatorNamespace, Map<RequestType, String> urlMap,
                              String version, String vendor, String datasetId, ServiceType serviceType, List<ValueAdapter> mappingAdapters, Map<Class, Set<Object>> filterMap, List<String> idMappingPrefixes,
@@ -150,21 +145,25 @@ public class SubscriptionSetup implements Serializable {
     }
 
     public String buildUrl(boolean includeServerAddress) {
-        return (includeServerAddress ? address:"") + MessageFormat.format("/{0}/{1}/{2}/{3}", version, serviceType == ServiceType.REST ? "rs" : "ws", vendor, subscriptionId);
+        return (includeServerAddress ? address : "") + MessageFormat.format("/{0}/{1}/{2}/{3}", version, serviceType == ServiceType.REST ? "rs" : "ws", vendor, subscriptionId);
     }
 
     public String getStartSubscriptionRouteName() {
         return getRouteName("start");
     }
+
     public String getCancelSubscriptionRouteName() {
         return getRouteName("cancel");
     }
+
     public String getCheckStatusRouteName() {
         return getRouteName("checkstatus");
     }
+
     public String getRequestResponseRouteName() {
         return getRouteName("request_response");
     }
+
     public String getServiceRequestRouteName() {
         return getRouteName("execute_request_response");
     }
@@ -193,7 +192,7 @@ public class SubscriptionSetup implements Serializable {
                 if (!url.startsWith("http") && !url.startsWith("https")) {
                     if (!url.isEmpty()) {
                         entry.setValue("http://" + url);
-                     //   logger.warn("Prefixing url with 'http://': ", entry.getValue());
+                        //   logger.warn("Prefixing url with 'http://': ", entry.getValue());
                     }
                 } else if (url.startsWith("https4")) {
                     entry.setValue(url.replaceFirst("https4://", "https://"));
@@ -257,6 +256,7 @@ public class SubscriptionSetup implements Serializable {
     public String toString() {
         return MessageFormat.format("[vendor={0}, subscriptionId={1}, internalId={2}]", vendor, subscriptionId, internalId);
     }
+
     public JSONObject toJSON() {
         JSONObject obj = new JSONObject();
         obj.put("internalId", getInternalId());
@@ -269,11 +269,11 @@ public class SubscriptionSetup implements Serializable {
         obj.put("serviceType", getServiceType().toString());
         obj.put("subscriptionType", getSubscriptionType().toString());
         obj.put("subscriptionMode", getSubscriptionMode().toString());
-        obj.put("heartbeatInterval", getHeartbeatInterval() != null ? getHeartbeatInterval().toString():"");
-        obj.put("previewInterval", getPreviewInterval() != null ? getPreviewInterval().toString():"");
-        obj.put("updateInterval", getUpdateInterval() != null ? getUpdateInterval().toString():"");
-        obj.put("changeBeforeUpdates", getChangeBeforeUpdates() != null ? getChangeBeforeUpdates().toString():"");
-        obj.put("incrementalUpdates", getIncrementalUpdates() != null ? getIncrementalUpdates().toString():"");
+        obj.put("heartbeatInterval", getHeartbeatInterval() != null ? getHeartbeatInterval().toString() : "");
+        obj.put("previewInterval", getPreviewInterval() != null ? getPreviewInterval().toString() : "");
+        obj.put("updateInterval", getUpdateInterval() != null ? getUpdateInterval().toString() : "");
+        obj.put("changeBeforeUpdates", getChangeBeforeUpdates() != null ? getChangeBeforeUpdates().toString() : "");
+        obj.put("incrementalUpdates", getIncrementalUpdates() != null ? getIncrementalUpdates().toString() : "");
         obj.put("durationOfSubscription", getDurationOfSubscription().toString());
         obj.put("requestorRef", getRequestorRef());
         obj.put("inboundUrl", buildUrl(true));
@@ -330,6 +330,7 @@ public class SubscriptionSetup implements Serializable {
             addFilterMap(new FilterMapPresets().get(preset));
         }
     }
+
     public void setFilterMap(Map<Class, Set<Object>> filterMap) {
         this.filterMap = filterMap;
     }
@@ -395,7 +396,7 @@ public class SubscriptionSetup implements Serializable {
         return lineRefValue;
     }
 
-    public void setLineRefValue(String lineRefValue){
+    public void setLineRefValue(String lineRefValue) {
         this.lineRefValue = lineRefValue;
     }
 
@@ -446,7 +447,7 @@ public class SubscriptionSetup implements Serializable {
 
     public enum ServiceType {SOAP, REST}
 
-    public enum SubscriptionMode {SUBSCRIBE, REQUEST_RESPONSE, POLLING_FETCHED_DELIVERY, FETCHED_DELIVERY, LITE, WEBSOCKET, BIG_DATA_EXPORT, VM_POSITION_FORWARDING}
+    public enum SubscriptionMode {SUBSCRIBE, REQUEST_RESPONSE, POLLING_FETCHED_DELIVERY, FETCHED_DELIVERY, LITE, LITE_XML, WEBSOCKET, BIG_DATA_EXPORT, VM_POSITION_FORWARDING}
 
     public void setIdMappingPrefixes(List<String> idMappingPrefixes) {
         this.idMappingPrefixes = idMappingPrefixes;
@@ -470,7 +471,7 @@ public class SubscriptionSetup implements Serializable {
 
     public void setAddress(String address) {
         if (address.endsWith("/")) {
-            address = address.substring(0, address.length()-1);
+            address = address.substring(0, address.length() - 1);
         }
         this.address = address;
     }
@@ -504,6 +505,7 @@ public class SubscriptionSetup implements Serializable {
     private void setPreviewInterval(Duration previewIntervalSeconds) {
         this.previewInterval = previewIntervalSeconds;
     }
+
     public void setChangeBeforeUpdatesSeconds(int seconds) {
         if (seconds > 0) {
             setChangeBeforeUpdates(Duration.ofSeconds(seconds));
@@ -591,6 +593,7 @@ public class SubscriptionSetup implements Serializable {
     public void setOauth2Config(Map<OAuthConfigElement, String> oauth2Config) {
         this.oauth2Config = oauth2Config;
     }
+
     public Map<OAuthConfigElement, String> getOauth2Config() {
         return oauth2Config;
     }

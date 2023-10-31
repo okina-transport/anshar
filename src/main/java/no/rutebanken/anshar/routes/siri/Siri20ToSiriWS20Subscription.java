@@ -75,9 +75,9 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
                 .setHeader("soapEnvelopeNamespace", constant(subscriptionSetup.getSoapenvNamespace())) // Need to make SOAP request with endpoint specific element namespace
                 .to("xslt-saxon:xsl/siri_raw_soap.xsl") // Convert SIRI raw request to SOAP version
                 .to("xslt-saxon:xsl/siri_14_20.xsl") // Convert SIRI raw request to SOAP version
-                .process(p->{
-                    logger.info("Subscription request content:"+p.getIn().getBody());
-                })
+//                .process(p->{
+//                    logger.info("Subscription request content:"+p.getIn().getBody());
+//                })
                 .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
                 .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
@@ -88,7 +88,7 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
                     .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                     .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Extract SOAP version and convert to raw SIRI
                 .end()
-                .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+//                .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .process(p -> {
                     InputStream body = p.getIn().getBody(InputStream.class);
                     handler.handleIncomingSiri(subscriptionSetup.getSubscriptionId(), body);
@@ -174,7 +174,7 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
                 .choice().when(simple("${in.body} != null"))
                     .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Extract SOAP version and convert to raw SIRI
                 .end()
-                .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+//                .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .process(p -> {
                     InputStream body = p.getIn().getBody(InputStream.class);
                     if (body != null && body.available() > 0) {

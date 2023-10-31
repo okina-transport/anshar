@@ -71,6 +71,9 @@ public class Situations extends SiriRepository<PtSituationElement> {
     @Autowired
     ExtendedHazelcastService hazelcastService;
 
+    @Autowired
+    private StopPlaceUpdaterService stopPlaceService;
+
     protected Situations() {
         super(SiriDataType.SITUATION_EXCHANGE);
     }
@@ -322,8 +325,22 @@ public class Situations extends SiriRepository<PtSituationElement> {
         sxList.forEach(situation -> {
             TimingTracer timingTracer = new TimingTracer("single-sx");
 
+
+            if (situation.getParticipantRef() == null) {
+                RequestorRef emptyReqRef = new RequestorRef();
+                emptyReqRef.setValue("Empty participant ref");
+                situation.setParticipantRef(emptyReqRef);
+            }
+
             SiriObjectStorageKey key = createKey(datasetId, situation);
             timingTracer.mark("createKey");
+
+            long expiration = getExpiration(situation);
+            if (expiration < 0 && situationElements.containsKey(key)) {
+                situationElements.remove(key);
+                checksumCache.remove(key);
+            }
+
             String currentChecksum = null;
             try {
                 currentChecksum = getChecksum(situation);
@@ -343,14 +360,15 @@ public class Situations extends SiriRepository<PtSituationElement> {
                 updated = true;
             }
             timingTracer.mark("compareChecksum");
+            updated = defineAffectedPoints(situation, datasetId) || updated;
 
             if (keepByProgressStatus(situation) && updated) {
                 timingTracer.mark("keepByProgressStatus");
-                long expiration = getExpiration(situation);
                 timingTracer.mark("getExpiration");
                 if (expiration > 0) { //expiration < 0 => already expired
                     changes.put(key, situation);
                     checksumTmp.put(key, currentChecksum);
+                    situationElements.set(key, situation, expiration, TimeUnit.MILLISECONDS);
                 } else if (situationElements.containsKey(key)) {
                     // Situation is no longer valid
                     situationElements.delete(key);
@@ -376,8 +394,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
 
         checksumCache.setAll(checksumTmp);
         timingTracer.mark("checksumCache.setAll");
-        situationElements.setAll(changes);
-        timingTracer.mark("monitoredVehicles.setAll");
+
 
         markDataReceived(SiriDataType.SITUATION_EXCHANGE, datasetId, sxList.size(), changes.size(), alreadyExpiredCounter.getValue(), ignoredCounter.getValue());
         timingTracer.mark("markDataReceived");
@@ -391,6 +408,38 @@ public class Situations extends SiriRepository<PtSituationElement> {
 
         return changes.values();
     }
+
+    private boolean defineAffectedPoints(PtSituationElement situation, String datasetId) {
+
+        if (situation.getAffects() == null || situation.getAffects().getStopPoints() == null
+                || situation.getAffects().getStopPoints().getAffectedStopPoints() == null) {
+            return false;
+        }
+        List<AffectedStopPointStructure> refId = situation.getAffects().getStopPoints().getAffectedStopPoints();
+        List<AffectedStopPointStructure> refIdStopPlace = refId.stream()
+                .filter(affectedStopPoint -> affectedStopPoint.getStopPointRef() != null && stopPlaceService.isKnownId(datasetId + ":StopPlace:" + affectedStopPoint.getStopPointRef().getValue()))
+                .collect(Collectors.toList());
+        List<AffectedStopPlaceStructure> affectedStopPlaceStructures = new ArrayList<>();
+
+        refIdStopPlace.forEach(affectedStopPoint -> {
+            AffectedStopPlaceStructure affectedStopPlaceStructure = new AffectedStopPlaceStructure();
+            StopPlaceRef stopPlaceRef = new StopPlaceRef();
+            stopPlaceRef.setValue(affectedStopPoint.getStopPointRef().getValue());
+            affectedStopPlaceStructure.setStopPlaceRef(stopPlaceRef);
+            affectedStopPlaceStructures.add(affectedStopPlaceStructure);
+        });
+
+        situation.getAffects().getStopPoints().getAffectedStopPoints().removeAll(refIdStopPlace);
+        if (!affectedStopPlaceStructures.isEmpty()) {
+
+            AffectsScopeStructure.StopPlaces newStopPlaces = new AffectsScopeStructure.StopPlaces();
+            newStopPlaces.getAffectedStopPlaces().addAll(affectedStopPlaceStructures);
+            situation.getAffects().setStopPlaces(newStopPlaces);
+            return true;
+        }
+        return false;
+    }
+
 
     public void removeSituation(String datasetId, PtSituationElement situation) {
 

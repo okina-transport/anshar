@@ -55,6 +55,7 @@ public class MessagingRoute extends RestRouteBuilder {
     private AdminRouteHelper adminRouteHelper;
 
     @Override
+    // @formatter:off
     public void configure() throws Exception {
 
         String messageQueueCamelRoutePrefix = configuration.getMessageQueueCamelRoutePrefix();
@@ -220,16 +221,31 @@ public class MessagingRoute extends RestRouteBuilder {
         ;
 
 
-        from("direct:handleSiriJsonResponse")
+
+        from("direct:handleSiriLiteResponse")
                 .choice()
-                .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.VEHICLE_MONITORING.name()))
-                .setHeader("target_topic", simple(pubsubQueueET))
-                .to("direct:transformSiriJsonToVM")
+                    .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.VEHICLE_MONITORING.name()))
+                        .setHeader("target_topic", simple(pubsubQueueVM))
+                    .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.SITUATION_EXCHANGE.name()))
+                        .setHeader("target_topic", simple(pubsubQueueSX))
+                    .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.STOP_MONITORING.name()))
+                        .setHeader("target_topic", simple(pubsubQueueSM))
+                    .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.ESTIMATED_TIMETABLE.name()))
+                        .setHeader("target_topic", simple(pubsubQueueET))
+                    .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.GENERAL_MESSAGE.name()))
+                        .setHeader("target_topic", simple(pubsubQueueGM))
+                    .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.FACILITY_MONITORING.name()))
+                        .setHeader("target_topic", simple(pubsubQueueFM))
+                    .otherwise()
+                        .log(LoggingLevel.ERROR, "Siri ignored. type not handled: ${header.InternalSiriDatatype}")
+                .end()
+
+                .choice()
+                    .when(header(SUBSCRIPTION_MODE).isEqualTo(SubscriptionSetup.SubscriptionMode.LITE.name()))
+                    .to("direct:transformSiriJsonToVM")
+                .end()
                 .to("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
-                .endChoice()
-                .otherwise()
-                .log(LoggingLevel.ERROR, "Siri json ignored. Conversion from json not implemented for type : ${header.InternalSiriDatatype}")
-                .routeId("handleSiriJsonResponse");
+                .routeId("handleSiriLiteResponse");
 
 
         from("direct:transformSiriJsonToVM")

@@ -31,11 +31,10 @@ public class TripUpdateMapper {
 
     /**
      * Read a tripUpdate and creates siri objects
-     * @param tripUpdate
-     *      GTFS-RT object to read
+     *
+     * @param tripUpdate GTFS-RT object to read
      * @param datasetId
-     * @return
-     *      A list of siri objects
+     * @return A list of siri objects
      */
     public List<MonitoredStopVisit> mapStopVisitFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate, String datasetId) {
         List<MonitoredStopVisit> stopVisitList = new ArrayList<>();
@@ -49,9 +48,9 @@ public class TripUpdateMapper {
         for (GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate : tripUpdate.getStopTimeUpdateList()) {
             MonitoredStopVisit stopVisit = new MonitoredStopVisit();
 
-            String stopId = getStopId(stopTimeUpdate,datasetId,tripId);
-            if (StringUtils.isEmpty(stopId)){
-                logger.error("Unable to determine stopId for dataset:{}, tripId:{}, stopSequence:{}, stopId:{}",datasetId,tripId,stopTimeUpdate.getStopSequence(),stopTimeUpdate.getStopId());
+            String stopId = getStopId(stopTimeUpdate, datasetId, tripId);
+            if (StringUtils.isEmpty(stopId)) {
+                logger.error("Unable to determine stopId for dataset:{}, tripId:{}, stopSequence:{}, stopId:{}", datasetId, tripId, stopTimeUpdate.getStopSequence(), stopTimeUpdate.getStopId());
             }
             mapMonitoringRef(stopVisit, stopId);
             MonitoredVehicleJourneyStructure monitoredVehicleStruct = new MonitoredVehicleJourneyStructure();
@@ -77,13 +76,11 @@ public class TripUpdateMapper {
     /**
      * Read the tripUpdate and map departure times (aimed and expected) to siri object
      *
-     * @param monitoredCallStructure
-     *      the siri object
-     * @param stopTimeUpdate
-     *      source object from GTFS-RT file that contains data to read
+     * @param monitoredCallStructure the siri object
+     * @param stopTimeUpdate         source object from GTFS-RT file that contains data to read
      */
     private static void mapDeparture(MonitoredCallStructure monitoredCallStructure, GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate) {
-        if (!stopTimeUpdate.hasDeparture()){
+        if (!stopTimeUpdate.hasDeparture() || stopTimeUpdate.getDeparture().getTime() == 0) {
             return;
         }
 
@@ -100,13 +97,11 @@ public class TripUpdateMapper {
     /**
      * Read the tripUpdate and map arrival times (aimed and expected) to siri object
      *
-     * @param monitoredCallStructure
-     *      the siri object
-     * @param stopTimeUpdate
-     *      source object from GTFS-RT file that contains data to read
+     * @param monitoredCallStructure the siri object
+     * @param stopTimeUpdate         source object from GTFS-RT file that contains data to read
      */
     private static void mapArrival(MonitoredCallStructure monitoredCallStructure, GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate) {
-        if (!stopTimeUpdate.hasArrival()){
+        if (!stopTimeUpdate.hasArrival() || stopTimeUpdate.getArrival().getTime() == 0) {
             return;
         }
 
@@ -122,10 +117,9 @@ public class TripUpdateMapper {
 
     /**
      * Read a tripUpdate and create a vehicleJourneyRef
-     * @param tripUpdate
-     *      the tripUpdate from which the vehicleJourney must be read
-     * @return
-     *      The vehicleJourneyRef
+     *
+     * @param tripUpdate the tripUpdate from which the vehicleJourney must be read
+     * @return The vehicleJourneyRef
      */
     private static FramedVehicleJourneyRefStructure createVehicleJourneyRef(GtfsRealtime.TripUpdate tripUpdate) {
         String tripId = tripUpdate.getTrip() != null ? tripUpdate.getTrip().getTripId() : "";
@@ -141,10 +135,9 @@ public class TripUpdateMapper {
 
     /**
      * Read the tripUpdate and create a lineRef with routeId included in tripUpdate
-     * @param tripUpdate
-     *      The trip update from which the routeId must be read
-     * @return
-     *      The lineRef containing the routeId
+     *
+     * @param tripUpdate The trip update from which the routeId must be read
+     * @return The lineRef containing the routeId
      */
     private static LineRef createLineRef(GtfsRealtime.TripUpdate tripUpdate) {
         String routeId = tripUpdate.getTrip() != null ? tripUpdate.getTrip().getRouteId() : "";
@@ -154,12 +147,12 @@ public class TripUpdateMapper {
         return lineRef;
     }
 
-    private String getStopId( GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate, String datasetId, String tripId){
-        if (stopTimeUpdate.hasStopId()){
+    private String getStopId(GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate, String datasetId, String tripId) {
+        if (stopTimeUpdate.hasStopId()) {
             return stopTimeUpdate.getStopId();
         }
 
-        return stopTimesService.getStopId(datasetId,tripId,stopTimeUpdate.getStopSequence()).orElse(null);
+        return stopTimesService.getStopId(datasetId, tripId, stopTimeUpdate.getStopSequence()).orElse(null);
     }
 
     private void mapMonitoringRef(MonitoredStopVisit stopVisit, String stopId) {
@@ -173,10 +166,8 @@ public class TripUpdateMapper {
     /**
      * Main function that converts tripUpdate (GTFS-RT) to estimated time table (SIRI)
      *
-     * @param tripUpdate
-     *      A tripUpdate coming from GTFS-RT
-     * @return
-     *      An estimated time table (SIRI format)
+     * @param tripUpdate A tripUpdate coming from GTFS-RT
+     * @return An estimated time table (SIRI format)
      */
     public static EstimatedVehicleJourney mapVehicleJourneyFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate) {
 
