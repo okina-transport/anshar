@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import uk.org.ifopt.siri20.StopPlaceRef;
 import uk.org.siri.siri20.*;
 
+import java.io.Serializable;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
@@ -151,7 +152,7 @@ public class AlertMapper {
 
             if (informedEntity.hasRouteId()) {
                 AffectedLineStructure affectedLine = getOrCreateLine(affectedNetwork, informedEntity);
-                addDestinationStop(affectedLine, informedEntity);
+                addAffectedStopInAffectedLine(affectedLine, informedEntity);
             }
         } else if (informedEntity.hasStopId()) {
             addAffectedStop(affects, informedEntity, datasetId);
@@ -223,7 +224,7 @@ public class AlertMapper {
      * @param affectedLine   the line on which affected stop must be added
      * @param informedEntity the entity for which affected stop must be recorded
      */
-    private static void addDestinationStop(AffectedLineStructure affectedLine, GtfsRealtime.EntitySelector informedEntity) {
+    private static void addAffectedStopInAffectedLine(AffectedLineStructure affectedLine, GtfsRealtime.EntitySelector informedEntity) {
 
         if (!informedEntity.hasStopId()) {
             return;
@@ -231,17 +232,60 @@ public class AlertMapper {
 
         String stopId = informedEntity.getStopId();
 
-        for (AffectedStopPointStructure destination : affectedLine.getDestinations()) {
-            if (destination.getStopPointRef().getValue().equals(stopId)) {
-                return;
-            }
+
+        if (isStopPointAlreadyAffected(stopId, affectedLine)) {
+            // StopPoint is already registered in affectedLine.
+            return;
+        }
+
+        // StopPoint is not already registered. need to create it
+
+
+        if (affectedLine.getRoutes() == null) {
+            AffectedLineStructure.Routes newRoutes = new AffectedLineStructure.Routes();
+            AffectedRouteStructure newAffectedRoute = new AffectedRouteStructure();
+            AffectedRouteStructure.StopPoints newStopPoints = new AffectedRouteStructure.StopPoints();
+            newAffectedRoute.setStopPoints(newStopPoints);
+            newRoutes.getAffectedRoutes().add(newAffectedRoute);
+            affectedLine.setRoutes(newRoutes);
         }
 
         AffectedStopPointStructure newStop = new AffectedStopPointStructure();
         StopPointRef newStopRef = new StopPointRef();
         newStopRef.setValue(stopId);
         newStop.setStopPointRef(newStopRef);
-        affectedLine.getDestinations().add(newStop);
+        affectedLine.getRoutes().getAffectedRoutes().get(0).getStopPoints().getAffectedStopPointsAndLinkProjectionToNextStopPoints().add(newStop);
+
+    }
+
+    /**
+     * Checks if a stopPoint is already affected in an affectedLine
+     *
+     * @param stopId       the stop to check
+     * @param affectedLine the line on which the check must be made
+     * @return true: stop already affected
+     * false : stop not existing in line
+     */
+    private static boolean isStopPointAlreadyAffected(String stopId, AffectedLineStructure affectedLine) {
+
+        if (affectedLine.getRoutes() == null || affectedLine.getRoutes().getAffectedRoutes().isEmpty()) {
+            return false;
+        }
+
+        AffectedRouteStructure firstRoute = affectedLine.getRoutes().getAffectedRoutes().get(0);
+
+        for (Serializable affectedStopPointsAndLinkProjectionToNextStopPoint : firstRoute.getStopPoints().getAffectedStopPointsAndLinkProjectionToNextStopPoints()) {
+
+            if (!(affectedStopPointsAndLinkProjectionToNextStopPoint instanceof AffectedStopPointStructure)) {
+                continue;
+            }
+
+            AffectedStopPointStructure currentAffectedStopPoint = (AffectedStopPointStructure) affectedStopPointsAndLinkProjectionToNextStopPoint;
+            if (currentAffectedStopPoint.getStopPointRef().getValue().equals(stopId)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
