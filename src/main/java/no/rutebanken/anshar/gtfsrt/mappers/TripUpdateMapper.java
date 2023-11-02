@@ -1,8 +1,8 @@
 package no.rutebanken.anshar.gtfsrt.mappers;
 
 import com.google.transit.realtime.GtfsRealtime;
-import net.logstash.logback.encoder.org.apache.commons.lang3.StringUtils;
 import no.rutebanken.anshar.routes.mapping.StopTimesService;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,10 +66,23 @@ public class TripUpdateMapper {
             mapDeparture(monitoredCallStructure, stopTimeUpdate);
             monitoredVehicleStruct.setMonitoredCall(monitoredCallStructure);
             stopVisit.setMonitoredVehicleJourney(monitoredVehicleStruct);
+            feedItemIdentifier(stopVisit, stopId);
             stopVisitList.add(stopVisit);
         }
 
+
         return stopVisitList;
+    }
+
+    /**
+     * Feeed itemIdentifier field with a concatenation between vehicleJourney and stop
+     *
+     * @param stopVisit the stopVisit on which itemIdentifier must be updated
+     * @param stopId    the stopId on which the visit occurs
+     */
+    private void feedItemIdentifier(MonitoredStopVisit stopVisit, String stopId) {
+        String vehicleJourneyRef = stopVisit.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().getDatedVehicleJourneyRef();
+        stopVisit.setItemIdentifier(vehicleJourneyRef + "-" + stopId);
     }
 
 
