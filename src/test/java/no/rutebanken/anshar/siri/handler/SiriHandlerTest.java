@@ -15,6 +15,8 @@
 
 package no.rutebanken.anshar.siri.handler;
 
+import com.hazelcast.map.IMap;
+import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.data.*;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
@@ -23,6 +25,7 @@ import no.rutebanken.anshar.routes.siri.SiriApisRequestHandlerRoute;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.commons.io.FileUtils;
@@ -80,6 +83,9 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
     @Autowired
     private SiriApisRequestHandlerRoute siriApisRequestHandlerRoute;
+
+    @Autowired
+    private SubscriptionConfig subscriptionConfig;
 
 
     @BeforeEach
@@ -1117,6 +1123,11 @@ public class SiriHandlerTest extends SpringBootBaseTest {
      **/
     @Test
     public void SX_DatasetId() throws JAXBException {
+
+        IMap<SiriObjectStorageKey, PtSituationElement> originalSaved = situations.getSituationElements();
+        HazelcastTestMap<PtSituationElement> testMap = new HazelcastTestMap<PtSituationElement>();
+        situations.setSituationElements(testMap);
+
         File fileInject1 = new File("src/test/resources/siri-sx-test1.zip");
         try {
             siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-sx", fileInject1, fileInject1.getPath(), "TEST1");
@@ -1150,15 +1161,34 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         assertNotNull(response.getServiceDelivery());
         assertEquals(1, response.getServiceDelivery().getSituationExchangeDeliveries().size());
         assertEquals("TEST1:J1", response.getServiceDelivery().getSituationExchangeDeliveries().get(0).getSituations().getPtSituationElements().get(0).getSituationNumber().getValue());
+        situations.setSituationElements(originalSaved);
     }
 
     /**
      * Situation exchange
      * sans datasetId
-     * retour rien
+     * retour tout
      **/
     @Test
     public void SX_No_DatasetId() throws JAXBException {
+
+        IMap<SiriObjectStorageKey, PtSituationElement> originalSaved = situations.getSituationElements();
+        HazelcastTestMap<PtSituationElement> testMap = new HazelcastTestMap<PtSituationElement>();
+        situations.setSituationElements(testMap);
+
+        List<GtfsRTApi> gtfsRTApiList = new ArrayList<>();
+        GtfsRTApi firstSub = new GtfsRTApi();
+        firstSub.setActive(true);
+        firstSub.setDatasetId("TEST1");
+        gtfsRTApiList.add(firstSub);
+
+        GtfsRTApi second = new GtfsRTApi();
+        second.setActive(true);
+        second.setDatasetId("TEST2");
+        gtfsRTApiList.add(second);
+        subscriptionConfig.setGtfsRTApis(gtfsRTApiList);
+
+
         File fileInject1 = new File("src/test/resources/siri-sx-test1.zip");
         try {
             siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-sx", fileInject1, fileInject1.getPath(), "TEST1");
@@ -1192,7 +1222,8 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertFalse(response.getServiceDelivery().getSituationExchangeDeliveries().isEmpty());
-        assertTrue(response.getServiceDelivery().getSituationExchangeDeliveries().get(0).getSituations().getPtSituationElements().isEmpty());
+        assertEquals(2, response.getServiceDelivery().getSituationExchangeDeliveries().get(0).getSituations().getPtSituationElements().size());
+        situations.setSituationElements(originalSaved);
     }
 
     /**

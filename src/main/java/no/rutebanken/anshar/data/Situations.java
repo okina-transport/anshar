@@ -17,6 +17,7 @@ package no.rutebanken.anshar.data;
 
 import com.hazelcast.map.IMap;
 import com.hazelcast.query.Predicate;
+import lombok.Getter;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
@@ -46,6 +47,7 @@ import java.util.stream.Collectors;
 public class Situations extends SiriRepository<PtSituationElement> {
     private static final Logger logger = LoggerFactory.getLogger(Situations.class);
 
+    @Getter
     @Autowired
     private IMap<SiriObjectStorageKey, PtSituationElement> situationElements;
 
@@ -489,4 +491,9 @@ public class Situations extends SiriRepository<PtSituationElement> {
     public void cleanChangesMap() {
         changesMap.clear();
     }
+
+    public void setSituationElements(IMap<SiriObjectStorageKey, PtSituationElement> situationElements) {
+        this.situationElements = situationElements;
+    }
+
 }

@@ -244,4 +244,17 @@ public class SubscriptionConfig {
         resultmap.put(ObjectType.NETWORK, getIdParametersForDataset(datasetId, ObjectType.NETWORK));
         return resultmap;
     }
+
+    public Set<String> getSXDatasetIds() {
+        Set<String> sxDatasetIds = subscriptions.stream()
+                .filter(subscription -> subscription.getSubscriptionType().equals(SiriDataType.SITUATION_EXCHANGE))
+                .map(SubscriptionSetup::getDatasetId)
+                .collect(Collectors.toSet());
+
+
+        for (GtfsRTApi gtfsRTApi : gtfsRTApis) {
+            sxDatasetIds.add(gtfsRTApi.getDatasetId());
+        }
+        return sxDatasetIds;
+    }
 }

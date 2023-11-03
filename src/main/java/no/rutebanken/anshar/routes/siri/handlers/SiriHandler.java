@@ -296,8 +296,7 @@ public class SiriHandler {
             }
 
             if (hasValues(serviceRequest.getSituationExchangeRequests())) {
-                valueAdapters = situationExchangeOutbound.getValueAdapters(datasetId, outboundIdMappingPolicy);
-                serviceResponse = situations.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize);
+                serviceResponse = situationExchangeOutbound.createServiceDelivery(requestorRef, datasetId, clientTrackingName, outboundIdMappingPolicy, maxSize);
             } else if (hasValues(serviceRequest.getVehicleMonitoringRequests())) {
                 Set<String> lineRefOriginalList = vehicleMonitoringOutbound.getLineRefOriginalList(serviceRequest, outboundIdMappingPolicy, datasetId);
                 Set<String> vehicleRefList = vehicleMonitoringOutbound.getVehicleRefList(serviceRequest);
@@ -390,18 +389,9 @@ public class SiriHandler {
             }
 
 
-            if (serviceResponse != null && !hasValues(serviceRequest.getStopMonitoringRequests())) {
+            if (serviceResponse != null) {
                 metrics.countOutgoingData(serviceResponse, SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE);
-                return SiriValueTransformer.transform(
-                        serviceResponse,
-                        valueAdapters,
-                        false,
-                        false
-                );
-            }
-            if (serviceResponse != null && hasValues(serviceRequest.getStopMonitoringRequests())) {
-                metrics.countOutgoingData(serviceResponse, SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE);
-                return serviceResponse;
+                return shouldExecuteLastIdTransformation(serviceRequest) ? SiriValueTransformer.transform(serviceResponse, valueAdapters, false, false) : serviceResponse;
             }
         } else if (incoming.getStopPointsRequest() != null) {
             // stop discovery request
@@ -410,8 +400,21 @@ public class SiriHandler {
             // lines discovery request (for vehicle monitoring)
             return discoveryLinesOutbound.getDiscoveryLines(datasetId, outboundIdMappingPolicy);
         }
-
         return null;
+    }
+
+
+    /**
+     * Defines if ids should be transformed at the end of the process.
+     * For stop monitoring and situation exchange : requests are done dataset by dataset and are already transformed
+     * For others : no transformations have been done. Need to execute a last transformation on the file
+     *
+     * @param serviceRequest original request made by user
+     * @return true : last id transformation must be executed
+     * false : last id transformation must not be done
+     */
+    private boolean shouldExecuteLastIdTransformation(ServiceRequest serviceRequest) {
+        return !hasValues(serviceRequest.getStopMonitoringRequests()) && !hasValues(serviceRequest.getSituationExchangeRequests());
     }
 
 
