@@ -169,7 +169,10 @@ public class SiriHandler {
                 inboundProcessSiriClientRequest(subscriptionId, xml); // Response to a request we made on behalf of one of the subscriptions
             } else {
                 Siri incoming = SiriValueTransformer.parseXml(xml); // Someone asking us for siri update
-                return outboundProcessSiriServerRequest(incoming, datasetId, excludedDatasetIdList, outboundIdMappingPolicy, maxSize, clientTrackingName);
+                Siri response = outboundProcessSiriServerRequest(incoming, datasetId, excludedDatasetIdList, outboundIdMappingPolicy, maxSize, clientTrackingName);
+                utils.handleFlexibleLines(response);
+                return response;
+
             }
         } catch (UnmarshalException e) {
             throw e;

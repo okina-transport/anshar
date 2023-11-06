@@ -15,21 +15,28 @@
 
 package no.rutebanken.anshar.data;
 
+import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
+import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
+import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
+import no.rutebanken.anshar.subscription.SubscriptionConfig;
+import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.PtSituationElement;
-import uk.org.siri.siri20.WorkflowStatusEnumeration;
+import uk.org.siri.siri20.*;
 
+import javax.xml.bind.UnmarshalException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
+import java.util.*;
 
 import static no.rutebanken.anshar.helpers.SleepUtil.sleep;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class SituationsTest extends SpringBootBaseTest {
 
@@ -37,10 +44,19 @@ public class SituationsTest extends SpringBootBaseTest {
     private Situations situations;
 
     @Autowired
+    private SubscriptionConfig subscriptionConfig;
+
+    @Autowired
     private SiriObjectFactory siriObjectFactory;
 
     @Autowired
     private AnsharConfiguration configuration;
+
+    @Autowired
+    private LineUpdaterService lineupdaterService;
+
+    @Autowired
+    private SiriHandler handler;
 
     @BeforeEach
     public void init() {
@@ -191,6 +207,103 @@ public class SituationsTest extends SpringBootBaseTest {
         sleep(50);
         //Verify that all elements still exist
         assertEquals(previousSize + 4, situations.getAll().size());
+    }
+
+    @Test
+    public void testFlexibleLineConversion() throws UnmarshalException {
+        String flexibleLineId = "PROV1:Line:35";
+        String standardlineId = "PROV2:Line:AAA";
+
+        List<GtfsRTApi> gtfsApis = new ArrayList<>();
+        GtfsRTApi api1 = new GtfsRTApi();
+        api1.setDatasetId("PROV1");
+        GtfsRTApi api2 = new GtfsRTApi();
+        api2.setDatasetId("PROV2");
+        gtfsApis.add(api1);
+        gtfsApis.add(api2);
+
+        subscriptionConfig.setGtfsRTApis(gtfsApis);
+
+        Map<String, Boolean> flexibleLineMap = new HashMap<>();
+        flexibleLineMap.put(flexibleLineId, true);
+        flexibleLineMap.put(standardlineId, false);
+        lineupdaterService.addFlexibleLines(flexibleLineMap);
+
+        String datasetId = "DATASET1";
+        String prefix = "cache-updates-sx-";
+        PtSituationElement sx1 = TestObjectFactory.createPtSituationElement("ruter", prefix + "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
+        addLineRef(sx1, flexibleLineId);
+
+        PtSituationElement sx2 = TestObjectFactory.createPtSituationElement("ruter", prefix + "2345", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
+        addLineRef(sx2, standardlineId);
+
+        situations.add(datasetId, sx1);
+        situations.add(datasetId, sx2);
+
+        Collection<PtSituationElement> sampleSit = situations.getAll();
+        assertFalse(sampleSit.isEmpty());
+
+        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <SituationExchangeRequest version=\"2.0\">\n" +
+                "        </SituationExchangeRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+
+
+        Siri response = handler.handleIncomingSiri(null, xml, "DATASET1", SiriHandler.getIdMappingPolicy("true", "false"), -1, null);
+
+
+        assertNotNull(response.getServiceDelivery());
+        assertNotNull(response.getServiceDelivery().getSituationExchangeDeliveries());
+        assertTrue(response.getServiceDelivery().getSituationExchangeDeliveries().size() > 0);
+        SituationExchangeDeliveryStructure del = response.getServiceDelivery().getSituationExchangeDeliveries().get(0);
+
+        assertNotNull(del.getSituations());
+        assertTrue(del.getSituations().getPtSituationElements().size() > 0);
+
+        for (PtSituationElement ptSituationElement : del.getSituations().getPtSituationElements()) {
+
+            assertNotNull(ptSituationElement.getAffects());
+            assertNotNull(ptSituationElement.getAffects().getNetworks());
+            assertNotNull(ptSituationElement.getAffects().getNetworks().getAffectedNetworks());
+            assertTrue(ptSituationElement.getAffects().getNetworks().getAffectedNetworks().size() > 0);
+
+            AffectsScopeStructure.Networks.AffectedNetwork affectNet = ptSituationElement.getAffects().getNetworks().getAffectedNetworks().get(0);
+
+            assertNotNull(affectNet.getAffectedLines());
+            assertTrue(affectNet.getAffectedLines().size() > 0);
+
+            AffectedLineStructure affectedLine = affectNet.getAffectedLines().get(0);
+
+            assertNotNull(affectedLine.getLineRef());
+            String lineId = affectedLine.getLineRef().getValue();
+            if (lineId.startsWith("PROV1")) {
+                assertEquals("PROV1:FlexibleLine:35", lineId);
+            } else {
+                assertEquals(standardlineId, lineId);
+            }
+        }
+    }
+
+    private void addLineRef(PtSituationElement sx, String lineId) {
+        AffectsScopeStructure affectedScope = new AffectsScopeStructure();
+        AffectsScopeStructure.Networks networks = new AffectsScopeStructure.Networks();
+        AffectsScopeStructure.Networks.AffectedNetwork affectNet = new AffectsScopeStructure.Networks.AffectedNetwork();
+
+        AffectedLineStructure affectedLineStructure = new AffectedLineStructure();
+        LineRef lineRef = new LineRef();
+        lineRef.setValue(lineId);
+        affectedLineStructure.setLineRef(lineRef);
+        affectNet.getAffectedLines().add(affectedLineStructure);
+        networks.getAffectedNetworks().add(affectNet);
+        affectedScope.setNetworks(networks);
+        sx.setAffects(affectedScope);
+
     }
 
 

@@ -3,28 +3,16 @@ package no.rutebanken.anshar.routes.siri.handlers;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
-import no.rutebanken.anshar.routes.siri.handlers.inbound.EstimatedTimetableInbound;
+import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.ErrorCodeStructure;
-import uk.org.siri.siri20.ErrorDescriptionStructure;
-import uk.org.siri.siri20.InvalidDataReferencesErrorStructure;
-import uk.org.siri.siri20.MonitoredStopVisit;
-import uk.org.siri.siri20.ServiceDeliveryErrorConditionElement;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.StopMonitoringDeliveryStructure;
-import uk.org.siri.siri20.VehicleMonitoringDeliveryStructure;
+import uk.org.siri.siri20.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,6 +25,69 @@ public class Utils {
 
     @Autowired
     private SubscriptionConfig subscriptionConfig;
+
+    @Autowired
+    private LineUpdaterService lineUpdaterService;
+
+
+    /**
+     * Read a siri and checks all line references : if a reference to a flexibleLine is found, replaces ":Line:" by "FlexibleLine"
+     *
+     * @param siri Siri object to update with flexible lines modifications
+     */
+    public void handleFlexibleLines(Siri siri) {
+
+
+        if (siri.getServiceDelivery() == null) {
+            return;
+        }
+
+        ServiceDelivery delivery = siri.getServiceDelivery();
+
+        if (delivery.getSituationExchangeDeliveries() != null && !delivery.getSituationExchangeDeliveries().isEmpty()) {
+            handleFlexibleLineInSX(delivery.getSituationExchangeDeliveries());
+        }
+    }
+
+    private void handleFlexibleLineInSX(List<SituationExchangeDeliveryStructure> situationExchangeDeliveries) {
+
+        for (SituationExchangeDeliveryStructure situationExchangeDelivery : situationExchangeDeliveries) {
+
+            if (situationExchangeDelivery.getSituations() == null || situationExchangeDelivery.getSituations().getPtSituationElements().isEmpty()) {
+                continue;
+            }
+
+            for (PtSituationElement ptSituationElement : situationExchangeDelivery.getSituations().getPtSituationElements()) {
+
+                if (ptSituationElement.getAffects() == null || ptSituationElement.getAffects().getNetworks() == null || ptSituationElement.getAffects().getNetworks().getAffectedNetworks().size() == 0) {
+                    continue;
+                }
+
+                for (AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork : ptSituationElement.getAffects().getNetworks().getAffectedNetworks()) {
+                    handleFlexibleLineInAffectedNetworks(affectedNetwork);
+                }
+            }
+        }
+    }
+
+    private void handleFlexibleLineInAffectedNetworks(AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork) {
+
+        if (affectedNetwork.getAffectedLines() == null || affectedNetwork.getAffectedLines().size() == 0) {
+            return;
+        }
+
+        for (AffectedLineStructure affectedLine : affectedNetwork.getAffectedLines()) {
+            if (affectedLine.getLineRef() == null) {
+                continue;
+            }
+
+            LineRef lineRef = affectedLine.getLineRef();
+            String originalLineId = lineRef.getValue();
+            if (lineUpdaterService.isLineFlexible(originalLineId.replace(":LOC", ""))) {
+                lineRef.setValue(originalLineId.replace(":Line", ":FlexibleLine"));
+            }
+        }
+    }
 
     public Set<String> convertFromAltIdsToImportedIdsLine(Set<String> originalMonitoringRefs, String datasetId) {
         return originalMonitoringRefs.stream()
