@@ -27,9 +27,11 @@ import org.apache.camel.Exchange;
 import org.apache.camel.Message;
 import org.apache.camel.http.common.HttpMethods;
 import org.apache.camel.model.rest.RestParamType;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri20.Siri;
@@ -57,6 +59,9 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
 
     @Autowired
     private AnsharConfiguration configuration;
+
+    @Value("${default.use.original.id:false}")
+    private boolean defaultUseOriginalId;
 
 
     public static final String TRANSFORM_VERSION = "TRANSFORM_VERSION";
@@ -218,8 +223,13 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                     String clientTrackingName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
 
                     InputStream xml = p.getIn().getBody(InputStream.class);
+                    String useOriginalId = (String) p.getIn().getHeader(PARAM_USE_ORIGINAL_ID);
 
-                    Siri response = handler.handleIncomingSiri(null, xml, datasetId, SiriHandler.getIdMappingPolicy((String) p.getIn().getHeader(PARAM_USE_ORIGINAL_ID), (String) p.getIn().getHeader(PARAM_USE_ALT_ID)), -1, clientTrackingName);
+                    if (StringUtils.isEmpty(useOriginalId)) {
+                        useOriginalId = Boolean.toString(defaultUseOriginalId);
+                    }
+
+                    Siri response = handler.handleIncomingSiri(null, xml, datasetId, SiriHandler.getIdMappingPolicy(useOriginalId, (String) p.getIn().getHeader(PARAM_USE_ALT_ID)), -1, clientTrackingName);
                     if (response != null) {
                         logger.info("Returning SubscriptionResponse");
 
@@ -274,6 +284,10 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
 
                     String useOriginalId = msg.getHeader(PARAM_USE_ORIGINAL_ID, String.class);
                     String useAltId = msg.getHeader(PARAM_USE_ALT_ID, String.class);
+
+                    if (StringUtils.isEmpty(useOriginalId)) {
+                        useOriginalId = Boolean.toString(defaultUseOriginalId);
+                    }
 
                     Siri response = handler.handleIncomingSiri(null, msg.getBody(InputStream.class), datasetId, excludedIdList, SiriHandler.getIdMappingPolicy(useOriginalId, useAltId), maxSize, clientTrackingName);
                     if (response != null) {
@@ -367,7 +381,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
             e.getOut().setHeaders(e.getIn().getHeaders());
             e.getOut().setBody(e.getIn().getBody());
 
-            if (!"2.0" .equals(subscriptionSetup.getVersion())) {
+            if (!"2.0".equals(subscriptionSetup.getVersion())) {
                 e.getOut().setHeader(TRANSFORM_VERSION, TRANSFORM_VERSION);
             }
 

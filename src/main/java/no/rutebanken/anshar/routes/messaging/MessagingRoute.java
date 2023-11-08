@@ -23,6 +23,7 @@ import org.apache.camel.Predicate;
 import org.apache.commons.lang3.StringUtils;
 import org.rutebanken.siri20.util.SiriXml;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri20.Siri;
 
@@ -53,6 +54,10 @@ public class MessagingRoute extends RestRouteBuilder {
 
     @Autowired
     private AdminRouteHelper adminRouteHelper;
+
+
+    @Value("${default.use.original.id:false}")
+    private boolean defaultUseOriginalId;
 
     @Override
     // @formatter:off
@@ -392,6 +397,10 @@ public class MessagingRoute extends RestRouteBuilder {
                     InputStream xml = p.getIn().getBody(InputStream.class);
                     String useOriginalId = p.getIn().getHeader(PARAM_USE_ORIGINAL_ID, String.class);
                     String useAltId = p.getIn().getHeader(PARAM_USE_ALT_ID, String.class);
+                    if (StringUtils.isEmpty(useOriginalId)){
+                        useOriginalId = Boolean.toString(defaultUseOriginalId);
+                    }
+
                     String clientTrackingName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
 
                     handler.handleIncomingSiri(subscriptionId, xml, datasetId, SiriHandler.getIdMappingPolicy(useOriginalId, useAltId), -1, clientTrackingName);
