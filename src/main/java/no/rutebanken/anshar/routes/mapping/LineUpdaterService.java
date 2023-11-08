@@ -71,6 +71,8 @@ public class LineUpdaterService {
             long t2 = System.currentTimeMillis();
 
             logger.info("Fetched mapping data - {} mappings, found {} duplicates. [fetched:{}ms]", areLineFlexible.size(), (t2 - t1));
+        } else {
+            logger.error("Blob is null. Can't update line mapping");
         }
     }
 
