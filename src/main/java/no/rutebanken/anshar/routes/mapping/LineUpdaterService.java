@@ -21,7 +21,7 @@ import java.util.concurrent.*;
 public class LineUpdaterService {
     private static final Logger logger = LoggerFactory.getLogger(LineUpdaterService.class);
 
-    @Value("${anshar.lineIds.path}")
+    @Value("${anshar.lineIds.file}")
     private String lineIdsPath;
 
     @Value("${anshar.line.ids.update.frequency.hours:10}")
