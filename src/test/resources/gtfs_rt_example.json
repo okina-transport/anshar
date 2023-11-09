@@ -10,9 +10,8 @@
       "alert": {
         "active_period": [
           {
-            "id": 1,
-            "startDate": 1693223526619,
-            "endDate": 4696716000000
+            "start": "1858283241",
+            "end": "4858283241"
           }
         ],
         "informed_entity": [
@@ -29,22 +28,28 @@
         "cause": "CONSTRUCTION",
         "effect": "STOP_MOVED",
         "url": {
-          "translation": [{
-            "text": "https://goo.gl/maps/aN21p7cmk9KxLm1u9",
-            "language": "fr"
-          }]
+          "translation": [
+            {
+              "text": "https://goo.gl/maps/aN21p7cmk9KxLm1u9",
+              "language": "fr"
+            }
+          ]
         },
         "header_text": {
-          "translation": [{
-            "text": "Modification d arret",
-            "language": "fr"
-          }]
+          "translation": [
+            {
+              "text": "Modification d arret",
+              "language": "fr"
+            }
+          ]
         },
         "description_text": {
-          "translation": [{
-            "text": "Rochefort sur Loire",
-            "language": "fr"
-          }]
+          "translation": [
+            {
+              "text": "Rochefort sur Loire",
+              "language": "fr"
+            }
+          ]
         },
         "severity_level": "WARNING"
       }
@@ -54,9 +59,8 @@
       "alert": {
         "active_period": [
           {
-            "id": 1,
-            "startDate": 1693223526619,
-            "endDate": 4696716000000
+            "start": "1858283241",
+            "end": "4858283241"
           }
         ],
         "informed_entity": [
@@ -70,22 +74,28 @@
         "cause": "CONSTRUCTION",
         "effect": "STOP_MOVED",
         "url": {
-          "translation": [{
-            "text": "https://goo.gl/maps/aN21p7cmk9KxLm1u9",
-            "language": "fr"
-          }]
+          "translation": [
+            {
+              "text": "https://goo.gl/maps/aN21p7cmk9KxLm1u9",
+              "language": "fr"
+            }
+          ]
         },
         "header_text": {
-          "translation": [{
-            "text": "Modification d arret",
-            "language": "fr"
-          }]
+          "translation": [
+            {
+              "text": "Modification d arret",
+              "language": "fr"
+            }
+          ]
         },
         "description_text": {
-          "translation": [{
-            "text": "Rochefort sur Loire",
-            "language": "fr"
-          }]
+          "translation": [
+            {
+              "text": "Rochefort sur Loire",
+              "language": "fr"
+            }
+          ]
         },
         "severity_level": "WARNING"
       }
@@ -95,9 +105,8 @@
       "alert": {
         "active_period": [
           {
-            "id": 1,
-            "startDate": 1693223526619,
-            "endDate": 4696716000000
+            "start": "1858283241",
+            "end": "4858283241"
           }
         ],
         "informed_entity": [
@@ -108,22 +117,28 @@
         "cause": "CONSTRUCTION",
         "effect": "STOP_MOVED",
         "url": {
-          "translation": [{
-            "text": "https://goo.gl/maps/aN21p7cmk9KxLm1u9",
-            "language": "fr"
-          }]
+          "translation": [
+            {
+              "text": "https://goo.gl/maps/aN21p7cmk9KxLm1u9",
+              "language": "fr"
+            }
+          ]
         },
         "header_text": {
-          "translation": [{
-            "text": "Modification d arret",
-            "language": "fr"
-          }]
+          "translation": [
+            {
+              "text": "Modification d arret",
+              "language": "fr"
+            }
+          ]
         },
         "description_text": {
-          "translation": [{
-            "text": "Rochefort sur Loire",
-            "language": "fr"
-          }]
+          "translation": [
+            {
+              "text": "Rochefort sur Loire",
+              "language": "fr"
+            }
+          ]
         },
         "severity_level": "WARNING"
       }
