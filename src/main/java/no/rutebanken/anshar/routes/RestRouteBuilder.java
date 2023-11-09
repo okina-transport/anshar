@@ -510,6 +510,19 @@ public class RestRouteBuilder extends RouteBuilder {
         }
     }
 
+    /**
+     * Determines if the current incoming message is related to a subscription request or termination
+     *
+     * @param e exchange with incoming data
+     * @return true : the current message is related to subscription
+     * false : the currect message is not related to subscription
+     */
+    protected boolean isSubscriptionMessage(Exchange e) {
+
+        String incomingMsg = e.getIn().getBody(String.class);
+        return incomingMsg.contains("SubscriptionRequest");
+    }
+
     protected boolean isTrackingHeaderAcceptable(Exchange e) {
         String camelHttpMethod = (String) e.getIn().getHeader("CamelHttpMethod");
 

@@ -67,6 +67,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
     public static final String TRANSFORM_VERSION = "TRANSFORM_VERSION";
     public static final String TRANSFORM_SOAP = "TRANSFORM_SOAP";
 
+    // @formatter:off
     @Override
     public void configure() throws Exception {
 
@@ -98,6 +99,16 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .post("/anshar/subscribe/{" + PARAM_DATASET_ID + "}").to("direct:process.subscription.request")
                 .description("Backwards compatible endpoint used for SIRI SubscriptionRequest limited to single dataprovider.")
                 .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.path).description("The id of the Codespace to limit data to").dataType("string").endParam()
+
+
+                .post("/anshar/siri").to("direct:process.unique.entry.point")
+                .description("Backwards compatible endpoint used for SIRI subscriptions or requests")
+
+                .post("/anshar/ws/siri").to("direct:process.soap.unique.entry.point")
+                .description("Backwards compatible endpoint used for SIRI subscriptions or requests")
+
+
+
 
                 .post("/services").to("direct:process.service.request")
                 .apiDocs(false)
@@ -144,6 +155,11 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .to("direct:process.service.request");
 
 
+        from("direct:set.soap.header.and.transform")
+                .process(e -> e.getIn().setHeader(TRANSFORM_SOAP, TRANSFORM_SOAP))
+                .to("direct:transform.siri");
+
+
         from("direct:process.incoming.request")
                 .removeHeaders("<Siri*") //Since Camel 3, entire body is also included as header
                 .to("log:incoming:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true&level=DEBUG")
@@ -180,6 +196,26 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .to("direct:transform.siri")
                 .process(e -> log.info(" transformé:" + e.getIn().getBody(String.class)))
                 .to("direct:process.subscription.request");
+
+
+        from("direct:process.unique.entry.point")
+                .choice()
+                .when(this::isSubscriptionMessage)
+                    .to("direct:process.subscription.request")
+                .otherwise()
+                    .to("direct:process.service.request")
+                .endChoice()
+                .routeId("process.unique.entry.point");
+
+
+        from("direct:process.soap.unique.entry.point")
+                .choice()
+                .when(this::isSubscriptionMessage)
+                    .to("direct:process.soap.subscription.request")
+                .otherwise()
+                    .to("direct:handle.soap.request")
+                .endChoice()
+                .routeId("process.soap.unique.entry.point");
 
 
         from("direct:process.subscription.request")
