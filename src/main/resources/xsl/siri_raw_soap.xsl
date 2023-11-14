@@ -112,13 +112,9 @@
     <xsl:template match="siri:CheckStatusResponse">
         <xsl:element name="soapenv:Envelope" namespace="{$soapEnvelopeNamespace}">
             <xsl:element name="soapenv:Body" namespace="{$soapEnvelopeNamespace}">
-                <xsl:element name="Answer">
-                    <xsl:element name="CheckStatusResponse">
-                        <!--                    <xsl:value-of select="../siri:CheckStatusResponse"/>-->
-                        <xsl:copy-of select="../siri:CheckStatusResponse" copy-namespaces="no">
-                        </xsl:copy-of>
-                    </xsl:element>
-                </xsl:element>
+                <!-- <xsl:value-of select="../siri:CheckStatusResponse"/>-->
+                <xsl:copy-of select="../siri:CheckStatusResponse" copy-namespaces="no">
+                </xsl:copy-of>
             </xsl:element>
         </xsl:element>
     </xsl:template>
