@@ -6,7 +6,8 @@ import java.time.format.DateTimeFormatter;
 public class DateUtils {
 
     public static ZonedDateTime convertStringToZonedDateTime(String dateTimeString) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX");
+        String pattern = dateTimeString.contains(".") ? "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSXXX" : "yyyy-MM-dd'T'HH:mm:ssXXX";
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(pattern);
         return ZonedDateTime.parse(dateTimeString, formatter);
     }
 }

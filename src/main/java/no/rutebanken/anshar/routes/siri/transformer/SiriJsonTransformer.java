@@ -107,7 +107,10 @@ public class SiriJsonTransformer {
                 logger.error("Error while creating duration for shortestPossibleCycle", e);
             }
         }
-        createdVehicleMonitoringStruct.getVehicleActivities().addAll(mapVehicleActivities(monitoringDelivery.getVehicleActivity()));
+        if (monitoringDelivery.getVehicleActivity() != null) {
+            createdVehicleMonitoringStruct.getVehicleActivities().addAll(mapVehicleActivities(monitoringDelivery.getVehicleActivity()));
+        }
+
         for (VehicleActivityStructure vehicleActivity : createdVehicleMonitoringStruct.getVehicleActivities()) {
             vehicleActivity.setValidUntilTime(createdVehicleMonitoringStruct.getValidUntil());
         }
