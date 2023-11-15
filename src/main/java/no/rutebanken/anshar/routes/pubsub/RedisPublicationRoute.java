@@ -16,8 +16,11 @@ import java.time.ZonedDateTime;
 public class RedisPublicationRoute extends RouteBuilder {
 
 
-    @Value("${redis.url:}")
-    protected String redisURL;
+    @Value("${spring.redis.host:0.0.0.0}")
+    protected String redisHost;
+
+    @Value("${spring.redis.port:6379}")
+    protected String redisPort;
 
     String vmChannel = "vmPublication";
 
@@ -44,7 +47,7 @@ public class RedisPublicationRoute extends RouteBuilder {
         from("direct:sendMessageToRedis")
                 .log(String.format("Publishing with redis in channel: %s, massage body: ${body}", header(RedisConstants.CHANNEL)))
                 .setHeader(RedisConstants.MESSAGE, body())
-                .to(String.format("spring-redis://%s?command=PUBLISH", redisURL));
+                .to(String.format("spring-redis://%s:%s?command=PUBLISH", redisHost, redisPort));
 
     }
 }

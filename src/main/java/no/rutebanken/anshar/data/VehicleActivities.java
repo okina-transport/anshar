@@ -71,7 +71,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
     @Autowired
     ExtendedHazelcastService hazelcastService;
 
-    @Value("${redis.publication:false}")
+    @Value("${anshar.redis.enabled:false}")
     private boolean redisPublication;
 
     protected VehicleActivities() {
