@@ -162,10 +162,9 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientTrackingName, List<String> excludedDatasetIds, int maxSize, long previewInterval, Set<String> searchedStopIds) {
 
-        if(StringUtils.isNotEmpty(datasetId)){
+        if (StringUtils.isNotEmpty(datasetId)) {
             requestorRefRepository.touchRequestorRef(requestorId, datasetId, clientTrackingName, SiriDataType.STOP_MONITORING);
-        }
-        else{
+        } else {
             requestorRefRepository.touchRequestorRef(requestorId, null, clientTrackingName, SiriDataType.STOP_MONITORING);
         }
 
@@ -182,10 +181,9 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         // Filter by (datasetId and/or searchedStopIds) OR (excludedDatasetIds and/or searchedStopIds)
         Set<SiriObjectStorageKey> requestedIds = new HashSet<>();
-        if(StringUtils.isNotEmpty(datasetId)){
+        if (StringUtils.isNotEmpty(datasetId)) {
             requestedIds.addAll(generateIdSet(datasetId, searchedStopIds, excludedDatasetIds));
-        }
-        else{
+        } else {
             requestedIds.addAll(generateIdSet(null, searchedStopIds, excludedDatasetIds));
         }
 
@@ -262,7 +260,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
             }
 
             //Update change-tracker
-            updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, requestedIds, trackingPeriodMinutes, TimeUnit.MINUTES);
+            // updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, requestedIds, trackingPeriodMinutes, TimeUnit.MINUTES);
 
         }
 
@@ -456,7 +454,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
                 });
 
-        logger.info("Updated {} (of {}) :: Ignored elements - Missing location:{}, Missing values: {}, Expired: {}, Not updated: {}", changes.size(), smList.size(), invalidLocationCounter.getValue(), notMeaningfulCounter.getValue(), outdatedCounter.getValue(), notUpdatedCounter.getValue());
+        logger.debug("Updated {} (of {}) :: Ignored elements - Missing location:{}, Missing values: {}, Expired: {}, Not updated: {}", changes.size(), smList.size(), invalidLocationCounter.getValue(), notMeaningfulCounter.getValue(), outdatedCounter.getValue(), notUpdatedCounter.getValue());
 
         markDataReceived(SiriDataType.STOP_MONITORING, datasetId, smList.size(), changes.size(), outdatedCounter.getValue(), (invalidLocationCounter.getValue() + notMeaningfulCounter.getValue() + notUpdatedCounter.getValue()));
 
@@ -560,7 +558,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         return results;
     }
 
-    public Set<String> getAllDatasetIds(){
+    public Set<String> getAllDatasetIds() {
         return monitoredStopVisits.keySet().stream().map(SiriObjectStorageKey::getCodespaceId).collect(Collectors.toSet());
     }
 }

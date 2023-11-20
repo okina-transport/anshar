@@ -639,7 +639,7 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
 
         });
 
-        logger.info("Updated {} (of {}), {} expired, {} without changes", changes.size(), etList.size(), outdatedCounter.getValue(), notUpdatedCounter.getValue());
+        logger.debug("Updated {} (of {}), {} expired, {} without changes", changes.size(), etList.size(), outdatedCounter.getValue(), notUpdatedCounter.getValue());
 
         markDataReceived(SiriDataType.ESTIMATED_TIMETABLE, datasetId, etList.size(), changes.size(), outdatedCounter.getValue(), notUpdatedCounter.getValue());
         TimingTracer timingTracer = new TimingTracer("all-et [" + changes.size() + " changes]");

@@ -18,11 +18,7 @@ package no.rutebanken.anshar.data;
 import com.google.common.collect.Maps;
 import com.hazelcast.core.EntryEvent;
 import com.hazelcast.map.IMap;
-import com.hazelcast.map.listener.EntryAddedListener;
-import com.hazelcast.map.listener.EntryEvictedListener;
-import com.hazelcast.map.listener.EntryExpiredListener;
-import com.hazelcast.map.listener.EntryRemovedListener;
-import com.hazelcast.map.listener.EntryUpdatedListener;
+import com.hazelcast.map.listener.*;
 import com.hazelcast.query.Predicate;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
@@ -41,13 +37,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -92,7 +82,7 @@ abstract class SiriRepository<T> {
 
     Map<SiriObjectStorageKey, T> cache = Maps.newConcurrentMap();
 
-    protected SiriRepository (SiriDataType siriDataType) {
+    protected SiriRepository(SiriDataType siriDataType) {
         this.SIRI_DATA_TYPE = siriDataType;
     }
 
@@ -149,19 +139,19 @@ abstract class SiriRepository<T> {
         } else {
             cache.putAll(allAsMap);
         }
-        logger.info("Cache initialized with {} elements in {} ms", cache.size(), (System.currentTimeMillis()-t1));
+        logger.info("Cache initialized with {} elements in {} ms", cache.size(), (System.currentTimeMillis() - t1));
     }
 
     /**
      * Links entries across provided Maps.
-     *
+     * <p>
      * TTL is set on main map, other maps are linked using EntryListeners:
-     *   When an object is removed/expired from the main map, it is also removed from the linked maps
+     * When an object is removed/expired from the main map, it is also removed from the linked maps
      *
      * @param map
      * @param linkedMaps
      */
-    void linkEntriesTtl(IMap<SiriObjectStorageKey, T> map,  IMap<String, Set<SiriObjectStorageKey>> linkedChangeMap, Map<SiriObjectStorageKey, ? extends Object>... linkedMaps) {
+    void linkEntriesTtl(IMap<SiriObjectStorageKey, T> map, IMap<String, Set<SiriObjectStorageKey>> linkedChangeMap, Map<SiriObjectStorageKey, ? extends Object>... linkedMaps) {
         {
 
             // Entry added - new data
@@ -205,6 +195,7 @@ abstract class SiriRepository<T> {
     ) {
         return getAllCachedUpdates(requestorId, datasetId, clientTrackingName, null);
     }
+
     public Collection<T> getAllCachedUpdates(
             String requestorId, String datasetId, String clientTrackingName, Integer maxSize
     ) {
@@ -215,18 +206,18 @@ abstract class SiriRepository<T> {
         if (requestorId != null) {
             try {
                 requestorRefRepository.touchRequestorRef(requestorId,
-                    datasetId,
-                    clientTrackingName,
-                    SIRI_DATA_TYPE
+                        datasetId,
+                        clientTrackingName,
+                        SIRI_DATA_TYPE
                 );
 
                 if (changesMap.containsKey(requestorId)) {
                     Set<SiriObjectStorageKey> changes = changesMap.get(requestorId);
 
                     changes = changes.stream()
-                        .filter((k) -> datasetId == null || k.getCodespaceId().equals(datasetId))
-                        .limit(maxSize)
-                        .collect(Collectors.toSet());
+                            .filter((k) -> datasetId == null || k.getCodespaceId().equals(datasetId))
+                            .limit(maxSize)
+                            .collect(Collectors.toSet());
 
                     List<T> updates = new ArrayList<>();
                     for (SiriObjectStorageKey key : changes) {
@@ -239,23 +230,23 @@ abstract class SiriRepository<T> {
                 }
             } finally {
                 updateChangeTrackers(lastUpdateRequested,
-                    changesMap,
-                    requestorId,
-                    new HashSet<>(),
-                    2,
-                    TimeUnit.MINUTES
+                        changesMap,
+                        requestorId,
+                        new HashSet<>(),
+                        2,
+                        TimeUnit.MINUTES
                 );
             }
         }
 
         return cache
-            .entrySet()
-            .stream()
-            .filter((entry) -> entry.getValue() != null)
-            .filter((entry) -> datasetId == null || entry.getKey().getCodespaceId().equals(datasetId))
-            .limit(maxSize)
-            .map(Map.Entry::getValue)
-            .collect(Collectors.toList());
+                .entrySet()
+                .stream()
+                .filter((entry) -> entry.getValue() != null)
+                .filter((entry) -> datasetId == null || entry.getKey().getCodespaceId().equals(datasetId))
+                .limit(maxSize)
+                .map(Map.Entry::getValue)
+                .collect(Collectors.toList());
     }
 
     void initBufferCommitter(ExtendedHazelcastService hazelcastService, IMap<String, Instant> lastUpdateRequested, IMap<String, Set<SiriObjectStorageKey>> changesMap, int commitFrequency) {
@@ -298,7 +289,7 @@ abstract class SiriRepository<T> {
 
                 if (!changesMap.isEmpty()) {
                     changesMap.executeOnEntries(new AppendChangesToSetEntryProcessor(bufferedChanges));
-                    logger.info("Updating changes for {} requestors ({}), committed {} changes, update took {} ms",
+                    logger.debug("Updating changes for {} requestors ({}), committed {} changes, update took {} ms",
                             changesMap.size(), this.getClass().getSimpleName(), bufferedChanges.size(), (System.currentTimeMillis() - t1));
                 }
             } else {
@@ -313,6 +304,7 @@ abstract class SiriRepository<T> {
 
     /**
      * Adds ids to local change-buffer
+     *
      * @param changes
      */
     void markIdsAsUpdated(Set<SiriObjectStorageKey> changes) {
@@ -346,7 +338,7 @@ abstract class SiriRepository<T> {
                 lastUpdateRequested.set(key, Instant.now(), trackingPeriodMinutes, timeUnit);
 
                 logger.debug("Replacing changes for requestor async {} took {} ms. ({})",
-                    key,(System.currentTimeMillis() - t1),this.getClass().getSimpleName());
+                        key, (System.currentTimeMillis() - t1), this.getClass().getSimpleName());
             } finally {
                 MDC.remove("camel.breadcrumbId");
             }
@@ -356,6 +348,7 @@ abstract class SiriRepository<T> {
 
     /**
      * Helper method to retrieve multiple values by ids
+     *
      * @param collection
      * @param ids
      * @return
@@ -373,6 +366,7 @@ abstract class SiriRepository<T> {
 
     /**
      * Returns values from provided Map where key starts with the provided datasetId
+     *
      * @param collection
      * @param datasetId
      * @return
@@ -392,10 +386,10 @@ abstract class SiriRepository<T> {
             // Return all IDs except 'excludedIds'
 
             requestedIds.addAll(idSet.stream()
-                                .filter(id -> !excludedDatasetIds.contains(id.getCodespaceId()))
-                                .collect(Collectors.toSet()));
+                    .filter(id -> !excludedDatasetIds.contains(id.getCodespaceId()))
+                    .collect(Collectors.toSet()));
 
-        } else if (datasetId != null && !datasetId.isEmpty()){
+        } else if (datasetId != null && !datasetId.isEmpty()) {
 
 
             // Return all IDs that matched datasetId
@@ -440,6 +434,7 @@ abstract class SiriRepository<T> {
 
     /**
      * Compares object-equality by calculating and comparing MD5-checksum
+     *
      * @param existing
      * @param updated
      * @return
@@ -476,23 +471,23 @@ abstract class SiriRepository<T> {
      * false : the key is not compliant
      */
     boolean isKeyCompliantWithFilters(SiriObjectStorageKey key, Set<String> linerefSet, Set<String> vehicleRefSet, Set<String> stopRefSet, String datasetId, List<String> excludedDatasetIds) {
-        if (datasetId != null && !datasetId.equals(key.getCodespaceId())){
+        if (datasetId != null && !datasetId.equals(key.getCodespaceId())) {
             return false;
         }
 
-        if (excludedDatasetIds != null && excludedDatasetIds.size() > 0 && excludedDatasetIds.contains(key.getCodespaceId())){
+        if (excludedDatasetIds != null && excludedDatasetIds.size() > 0 && excludedDatasetIds.contains(key.getCodespaceId())) {
             return false;
         }
 
-        if (linerefSet != null && linerefSet.size() > 0 && !linerefSet.contains(key.getLineRef())){
+        if (linerefSet != null && linerefSet.size() > 0 && !linerefSet.contains(key.getLineRef())) {
             return false;
         }
 
-        if (vehicleRefSet != null && vehicleRefSet.size() > 0 && !vehicleRefSet.contains(key.getKey())){
+        if (vehicleRefSet != null && vehicleRefSet.size() > 0 && !vehicleRefSet.contains(key.getKey())) {
             return false;
         }
 
-        if(stopRefSet != null && stopRefSet.size() > 0 && !stopRefSet.contains(key.getStopRef())){
+        if (stopRefSet != null && stopRefSet.size() > 0 && !stopRefSet.contains(key.getStopRef())) {
             return false;
         }
 

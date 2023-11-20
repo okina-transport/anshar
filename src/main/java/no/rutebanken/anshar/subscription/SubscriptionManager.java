@@ -189,7 +189,7 @@ public class SubscriptionManager {
 
         if (shouldLogSuccess) {
             if (monitoredRef != null) {
-                logger.info("Touched subscription {}, monitoredObjects:{}, success:{}", setup, monitoredRef, success);
+                logger.info("Touched monitoredObjects:{}", monitoredRef);
             } else {
                 logger.info("Touched subscription {}, success:{}", setup, success);
             }

@@ -392,7 +392,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
         });
         TimingTracer timingTracer = new TimingTracer("all-sx [" + changes.size() + " changes]");
 
-        logger.info("Updated {} (of {}) :: Already expired: {}, Unchanged: {}", changes.size(), sxList.size(), alreadyExpiredCounter.getValue(), ignoredCounter.getValue());
+        logger.debug("Updated {} (of {}) :: Already expired: {}, Unchanged: {}", changes.size(), sxList.size(), alreadyExpiredCounter.getValue(), ignoredCounter.getValue());
 
         checksumCache.setAll(checksumTmp);
         timingTracer.mark("checksumCache.setAll");

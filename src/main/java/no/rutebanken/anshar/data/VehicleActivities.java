@@ -273,14 +273,14 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
             requestedIds.removeIf(id -> !monitoredVehicles.containsKey(id));
 
             //Update change-tracker
-            updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, requestedIds, trackingPeriodMinutes, TimeUnit.MINUTES);
+            //updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, requestedIds, trackingPeriodMinutes, TimeUnit.MINUTES);
 
 
             MessageRefStructure msgRef = new MessageRefStructure();
             msgRef.setValue(requestorId);
             siri.getServiceDelivery().setRequestMessageRef(msgRef);
 
-            logger.info("Results found before filtering {}, {} left for requestorRef {}", sizeLimitedIds.size(), requestedIds.size(), requestorId);
+            logger.debug("Results found before filtering {}, {} left for requestorRef {}", sizeLimitedIds.size(), requestedIds.size(), requestorId);
         }
 
         return siri;
@@ -425,7 +425,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
 
         timingTracer.mark("monitoredVehicles.setAll");
 
-        logger.info("Updated {} (of {}) :: Ignored elements - Missing location:{}, Missing values: {}, Expired: {}, Not updated: {}", changes.size(), vmList.size(), invalidLocationCounter.getValue(), notMeaningfulCounter.getValue(), outdatedCounter.getValue(), notUpdatedCounter.getValue());
+        logger.debug("Updated {} (of {}) :: Ignored elements - Missing location:{}, Missing values: {}, Expired: {}, Not updated: {}", changes.size(), vmList.size(), invalidLocationCounter.getValue(), notMeaningfulCounter.getValue(), outdatedCounter.getValue(), notUpdatedCounter.getValue());
 
         markDataReceived(SiriDataType.VEHICLE_MONITORING, datasetId, vmList.size(), changes.size(), outdatedCounter.getValue(), (invalidLocationCounter.getValue() + notMeaningfulCounter.getValue() + notUpdatedCounter.getValue()));
 

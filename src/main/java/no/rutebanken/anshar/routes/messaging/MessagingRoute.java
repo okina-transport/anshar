@@ -315,7 +315,7 @@ public class MessagingRoute extends RestRouteBuilder {
         if (configuration.processSX()) {
             from(pubsubQueueSX + queueConsumerParameters)
                     .choice().when(readFromPubsub)
-                    .log("Processing data from " + pubsubQueueSX + ", size ${header.Content-Length}")
+                    .log(LoggingLevel.DEBUG, "Processing data from " + pubsubQueueSX + ", size ${header.Content-Length}")
                     .to("direct:decompress.jaxb")
                     .to("direct:process.queue.default.async")
                     .endChoice()
@@ -327,7 +327,7 @@ public class MessagingRoute extends RestRouteBuilder {
         if (configuration.processVM()) {
             from(pubsubQueueVM + queueConsumerParameters)
                     .choice().when(readFromPubsub)
-                    .log("Processing data from " + pubsubQueueVM + ", size ${header.Content-Length}")
+                    .log(LoggingLevel.DEBUG,"Processing data from " + pubsubQueueVM + ", size ${header.Content-Length}")
                     .to("direct:decompress.jaxb")
                     .to("direct:process.queue.default.async")
                     .endChoice()
@@ -339,7 +339,7 @@ public class MessagingRoute extends RestRouteBuilder {
         if (configuration.processET()) {
             from(pubsubQueueET + queueConsumerParameters)
                     .choice().when(readFromPubsub)
-                    .log("Processing data from " + pubsubQueueET + ", size ${header.Content-Length}")
+                    .log(LoggingLevel.DEBUG,"Processing data from " + pubsubQueueET + ", size ${header.Content-Length}")
                     .to("direct:decompress.jaxb")
                     .to("direct:process.queue.default.async")
                     .endChoice()
@@ -352,7 +352,7 @@ public class MessagingRoute extends RestRouteBuilder {
             from(pubsubQueueSM + queueConsumerParameters)
                     .choice().when(readFromPubsub)
                     .to("direct:decompress.jaxb")
-                    //.log("Processing data from " + pubsubQueueSM + ", size ${header.Content-Length}")
+                    .log(LoggingLevel.DEBUG,"Processing data from " + pubsubQueueSM + ", size ${header.Content-Length}")
                     .wireTap("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
                     .endChoice()
                     .startupOrder(100001)
