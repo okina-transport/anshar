@@ -137,7 +137,71 @@ public class ServerSubscriptionManager {
         return stats;
     }
 
-    public Siri handleSubscriptionRequest(SubscriptionRequest subscriptionRequest, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName) {
+    /**
+     * Handle subscription request that can contain one or multiple subcriptions
+     *
+     * @param subscriptionRequest
+     * @param datasetId
+     * @param outboundIdMappingPolicy
+     * @param clientTrackingName
+     * @return
+     */
+    public Siri handleMultipleSubscriptionsRequest(SubscriptionRequest subscriptionRequest, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName) {
+        if (subscriptionRequest.getStopMonitoringSubscriptionRequests() != null && subscriptionRequest.getStopMonitoringSubscriptionRequests().size() > 1) {
+            return handleMultipleStopMonitoringRequest(subscriptionRequest, datasetId, outboundIdMappingPolicy, clientTrackingName);
+        } else {
+            return handleSingleSubscriptionRequest(subscriptionRequest, datasetId, outboundIdMappingPolicy, clientTrackingName);
+        }
+    }
+
+    private Siri handleMultipleStopMonitoringRequest(SubscriptionRequest subscriptionRequest, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName) {
+
+        List<Siri> resultList = new ArrayList<>();
+        RequestorRef requestorRef = subscriptionRequest.getRequestorRef();
+        String consumerAddress = subscriptionRequest.getConsumerAddress();
+        SubscriptionContextStructure subscriptionContext = subscriptionRequest.getSubscriptionContext();
+        MessageQualifierStructure messageIdentifier = subscriptionRequest.getMessageIdentifier();
+
+        for (StopMonitoringSubscriptionStructure stopMonitoringSubscriptionRequest : subscriptionRequest.getStopMonitoringSubscriptionRequests()) {
+            SubscriptionRequest singleRequest = new SubscriptionRequest();
+            singleRequest.getStopMonitoringSubscriptionRequests().add(stopMonitoringSubscriptionRequest);
+            singleRequest.setRequestorRef(requestorRef);
+            singleRequest.setConsumerAddress(consumerAddress);
+            singleRequest.setSubscriptionContext(subscriptionContext);
+            singleRequest.setMessageIdentifier(messageIdentifier);
+
+            Siri currentResult = handleSingleSubscriptionRequest(singleRequest, datasetId, outboundIdMappingPolicy, clientTrackingName);
+            resultList.add(currentResult);
+        }
+
+        return aggregateResults(resultList);
+    }
+
+    private Siri aggregateResults(List<Siri> resultList) {
+
+        Siri result = null;
+        for (Siri currentSiri : resultList) {
+            if (result == null) {
+                result = currentSiri;
+                continue;
+            }
+            result.getSubscriptionResponse().getResponseStatuses().add(currentSiri.getSubscriptionResponse().getResponseStatuses().get(0));
+        }
+        return result;
+    }
+
+
+    /**
+     * Handle a subcription request that contains only one subscription
+     *
+     * @param subscriptionRequest
+     * @param datasetId
+     * @param outboundIdMappingPolicy
+     * @param clientTrackingName
+     * @return
+     */
+    public Siri handleSingleSubscriptionRequest(SubscriptionRequest subscriptionRequest, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName) {
+
 
         OutboundSubscriptionSetup subscription = createSubscription(subscriptionRequest, datasetId, outboundIdMappingPolicy, clientTrackingName);
 
