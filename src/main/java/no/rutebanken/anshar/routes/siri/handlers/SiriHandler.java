@@ -149,8 +149,14 @@ public class SiriHandler {
     }
 
     private Siri handleIncomingSiri(String subscriptionId, InputStream xml, String datasetId, int maxSize) throws UnmarshalException {
-        return handleIncomingSiri(subscriptionId, xml, datasetId, null, maxSize, null);
+        return handleIncomingSiri(subscriptionId, xml, datasetId, null, maxSize, null, false);
     }
+
+
+    public Siri handleIncomingSiri(String subscriptionId, InputStream xml, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String clientTrackingName) throws UnmarshalException {
+        return handleIncomingSiri(subscriptionId, xml, datasetId, outboundIdMappingPolicy, maxSize, clientTrackingName, false);
+    }
+
 
     /**
      * @param subscriptionId          SubscriptionId
@@ -159,17 +165,18 @@ public class SiriHandler {
      * @param outboundIdMappingPolicy Defines outbound idmapping-policy
      * @return the siri response
      */
-    public Siri handleIncomingSiri(String subscriptionId, InputStream xml, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String clientTrackingName) throws UnmarshalException {
-        return handleIncomingSiri(subscriptionId, xml, datasetId, null, outboundIdMappingPolicy, maxSize, clientTrackingName);
+    public Siri handleIncomingSiri(String subscriptionId, InputStream xml, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String clientTrackingName, boolean soapTransformation) throws UnmarshalException {
+        return handleIncomingSiri(subscriptionId, xml, datasetId, null, outboundIdMappingPolicy, maxSize, clientTrackingName, soapTransformation);
     }
 
-    public Siri handleIncomingSiri(String subscriptionId, InputStream xml, String datasetId, List<String> excludedDatasetIdList, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String clientTrackingName) throws UnmarshalException {
+    public Siri handleIncomingSiri(String subscriptionId, InputStream xml, String datasetId, List<String> excludedDatasetIdList, OutboundIdMappingPolicy outboundIdMappingPolicy,
+                                   int maxSize, String clientTrackingName, boolean soapTransformation) throws UnmarshalException {
         try {
             if (subscriptionId != null) {
                 inboundProcessSiriClientRequest(subscriptionId, xml); // Response to a request we made on behalf of one of the subscriptions
             } else {
                 Siri incoming = SiriValueTransformer.parseXml(xml); // Someone asking us for siri update
-                Siri response = outboundProcessSiriServerRequest(incoming, datasetId, excludedDatasetIdList, outboundIdMappingPolicy, maxSize, clientTrackingName);
+                Siri response = outboundProcessSiriServerRequest(incoming, datasetId, excludedDatasetIdList, outboundIdMappingPolicy, maxSize, clientTrackingName, soapTransformation);
                 utils.handleFlexibleLines(response);
                 return response;
 
@@ -253,7 +260,7 @@ public class SiriHandler {
      * @param incoming              incoming message
      * @param excludedDatasetIdList dataset to exclude
      */
-    private Siri outboundProcessSiriServerRequest(Siri incoming, String datasetId, List<String> excludedDatasetIdList, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String clientTrackingName) {
+    private Siri outboundProcessSiriServerRequest(Siri incoming, String datasetId, List<String> excludedDatasetIdList, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String clientTrackingName, boolean soapTransformation) {
 
         if (maxSize < 0) {
             maxSize = configuration.getDefaultMaxSize();
@@ -267,7 +274,7 @@ public class SiriHandler {
 
         if (incoming.getSubscriptionRequest() != null) {
             logger.info("Handling subscriptionrequest with ID-policy {}.", outboundIdMappingPolicy);
-            return serverSubscriptionManager.handleMultipleSubscriptionsRequest(incoming.getSubscriptionRequest(), datasetId, outboundIdMappingPolicy, clientTrackingName);
+            return serverSubscriptionManager.handleMultipleSubscriptionsRequest(incoming.getSubscriptionRequest(), datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation);
 
         } else if (incoming.getTerminateSubscriptionRequest() != null) {
             logger.info("Handling terminateSubscriptionrequest...");

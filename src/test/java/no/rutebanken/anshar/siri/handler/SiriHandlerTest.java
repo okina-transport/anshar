@@ -390,7 +390,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         File file = new File("src/test/resources/discoveryTest/stop_points_discovery_test.xml");
 
         try {
-            Siri result = handler.handleIncomingSiri(null, new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), null, null, null, -1, null);
+            Siri result = handler.handleIncomingSiri(null, new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), null, null, null, -1, null, false);
             assertNotNull(result.getStopPointsDelivery());
             assertNotNull(result.getStopPointsDelivery().getAnnotatedStopPointReves());
             assertEquals(2, result.getStopPointsDelivery().getAnnotatedStopPointReves().size());
@@ -418,7 +418,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         File file = new File("src/test/resources/discoveryTest/stop_points_discovery_test.xml");
 
         try {
-            Siri result = handler.handleIncomingSiri(null, new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), null, null, null, -1, null);
+            Siri result = handler.handleIncomingSiri(null, new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), null, null, null, -1, null, false);
             assertNotNull(result.getStopPointsDelivery());
             assertNotNull(result.getStopPointsDelivery().getAnnotatedStopPointReves());
             assertEquals(2, result.getStopPointsDelivery().getAnnotatedStopPointReves().size());
@@ -455,7 +455,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         File file = new File("src/test/resources/discoveryTest/lines_discovery_test.xml");
 
         try {
-            Siri result = handler.handleIncomingSiri(null, new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), null, null, null, -1, null);
+            Siri result = handler.handleIncomingSiri(null, new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), null, null, -1, null, false);
             assertNotNull(result.getLinesDelivery());
             assertNotNull(result.getLinesDelivery().getAnnotatedLineReves());
             assertEquals(4, result.getLinesDelivery().getAnnotatedLineReves().size());
@@ -493,7 +493,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         File file = new File("src/test/resources/discoveryTest/lines_discovery_test.xml");
 
         try {
-            Siri result = handler.handleIncomingSiri(null, new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), null, null, null, -1, null);
+            Siri result = handler.handleIncomingSiri(null, new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), null, null, -1, null, false);
             assertNotNull(result.getLinesDelivery());
             assertNotNull(result.getLinesDelivery().getAnnotatedLineReves());
             assertEquals(4, result.getLinesDelivery().getAnnotatedLineReves().size());

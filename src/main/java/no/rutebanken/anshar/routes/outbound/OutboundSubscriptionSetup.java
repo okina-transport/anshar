@@ -43,6 +43,8 @@ public class OutboundSubscriptionSetup implements Serializable {
     private boolean incrementalUpdates;
     private long updateInterval;
 
+    private boolean isSOAPSubscription;
+
     public OutboundSubscriptionSetup(ZonedDateTime requestTimestamp, SiriDataType subscriptionType, String address, long heartbeatInterval,
                                      boolean incrementalUpdates, long changeBeforeUpdates, long updateInterval,
                                      Map<Class, Set<String>> filterMap, List<ValueAdapter> valueAdapters,
@@ -133,6 +135,14 @@ public class OutboundSubscriptionSetup implements Serializable {
 
     public String getClientTrackingName() {
         return clientTrackingName;
+    }
+
+    public boolean isSOAPSubscription() {
+        return isSOAPSubscription;
+    }
+
+    public void setSOAPSubscription(boolean SOAPSubscription) {
+        isSOAPSubscription = SOAPSubscription;
     }
 
     public String toString() {

@@ -144,17 +144,18 @@ public class ServerSubscriptionManager {
      * @param datasetId
      * @param outboundIdMappingPolicy
      * @param clientTrackingName
+     * @param soapTransformation
      * @return
      */
-    public Siri handleMultipleSubscriptionsRequest(SubscriptionRequest subscriptionRequest, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName) {
+    public Siri handleMultipleSubscriptionsRequest(SubscriptionRequest subscriptionRequest, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName, boolean soapTransformation) {
         if (subscriptionRequest.getStopMonitoringSubscriptionRequests() != null && subscriptionRequest.getStopMonitoringSubscriptionRequests().size() > 1) {
-            return handleMultipleStopMonitoringRequest(subscriptionRequest, datasetId, outboundIdMappingPolicy, clientTrackingName);
+            return handleMultipleStopMonitoringRequest(subscriptionRequest, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation);
         } else {
-            return handleSingleSubscriptionRequest(subscriptionRequest, datasetId, outboundIdMappingPolicy, clientTrackingName);
+            return handleSingleSubscriptionRequest(subscriptionRequest, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation);
         }
     }
 
-    private Siri handleMultipleStopMonitoringRequest(SubscriptionRequest subscriptionRequest, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName) {
+    private Siri handleMultipleStopMonitoringRequest(SubscriptionRequest subscriptionRequest, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName, boolean soapTransformation) {
 
         List<Siri> resultList = new ArrayList<>();
         RequestorRef requestorRef = subscriptionRequest.getRequestorRef();
@@ -170,7 +171,7 @@ public class ServerSubscriptionManager {
             singleRequest.setSubscriptionContext(subscriptionContext);
             singleRequest.setMessageIdentifier(messageIdentifier);
 
-            Siri currentResult = handleSingleSubscriptionRequest(singleRequest, datasetId, outboundIdMappingPolicy, clientTrackingName);
+            Siri currentResult = handleSingleSubscriptionRequest(singleRequest, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation);
             resultList.add(currentResult);
         }
 
@@ -200,10 +201,11 @@ public class ServerSubscriptionManager {
      * @param clientTrackingName
      * @return
      */
-    public Siri handleSingleSubscriptionRequest(SubscriptionRequest subscriptionRequest, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName) {
+    public Siri handleSingleSubscriptionRequest(SubscriptionRequest subscriptionRequest, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName, boolean soapTransformation) {
 
 
         OutboundSubscriptionSetup subscription = createSubscription(subscriptionRequest, datasetId, outboundIdMappingPolicy, clientTrackingName);
+        subscription.setSOAPSubscription(soapTransformation);
 
         boolean hasError = false;
         String errorText = null;
