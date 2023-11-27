@@ -88,10 +88,13 @@
     <xsl:template match="siri:StopPointsDelivery">
         <xsl:element name="soapenv:Envelope" namespace="{$soapEnvelopeNamespace}">
             <xsl:element name="soapenv:Body" namespace="{$soapEnvelopeNamespace}">
-                <xsl:element name="StopPointsDiscoveryResponse">
-                    <xsl:copy-of select="./siri:AnnotatedStopPointRef" copy-namespaces="no">
+                <xsl:element name="StopPointsDiscoveryResponse" namespace="{$siriSoapNamespace}">
 
-                    </xsl:copy-of>
+                    <xsl:element name="Answer" namespace="{$siriSoapNamespace}">
+                        <xsl:copy-of select="./siri:AnnotatedStopPointRef" copy-namespaces="no">
+
+                        </xsl:copy-of>
+                    </xsl:element>
                 </xsl:element>
             </xsl:element>
         </xsl:element>
