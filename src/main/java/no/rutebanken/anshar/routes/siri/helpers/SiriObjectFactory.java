@@ -40,10 +40,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class SiriObjectFactory {
@@ -835,6 +832,24 @@ public class SiriObjectFactory {
         status.setStatus(true);
 
         response.getTerminationResponseStatuses().add(status);
+        siri.setTerminateSubscriptionResponse(response);
+        return siri;
+    }
+
+    public Siri createTerminateSubscriptionResponse(List<String> terminatedSubscriptions) {
+        Siri siri = createSiriObject();
+        TerminateSubscriptionResponseStructure response = new TerminateSubscriptionResponseStructure();
+        response.setResponseTimestamp(ZonedDateTime.now());
+
+        for (String terminatedSubscription : terminatedSubscriptions) {
+            TerminationResponseStatusStructure status = new TerminationResponseStatusStructure();
+            status.setSubscriptionRef(createSubscriptionIdentifier(terminatedSubscription));
+            status.setResponseTimestamp(ZonedDateTime.now());
+            status.setStatus(true);
+
+            response.getTerminationResponseStatuses().add(status);
+        }
+
         siri.setTerminateSubscriptionResponse(response);
         return siri;
     }

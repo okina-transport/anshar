@@ -280,15 +280,21 @@ public class SiriHandler {
             logger.info("Handling terminateSubscriptionrequest...");
             TerminateSubscriptionRequestStructure terminateSubscriptionRequest = incoming.getTerminateSubscriptionRequest();
             if (terminateSubscriptionRequest.getSubscriptionReves() != null && !terminateSubscriptionRequest.getSubscriptionReves().isEmpty()) {
-                String subscriptionRef = terminateSubscriptionRequest.getSubscriptionReves().get(0).getValue();
-                serverSubscriptionManager.terminateSubscription(subscriptionRef, configuration.processAdmin());
+                List<String> terminatedSubscriptions = new ArrayList<>();
+
+                for (SubscriptionQualifierStructure subscriptionReve : terminateSubscriptionRequest.getSubscriptionReves()) {
+                    String subscriptionRef = subscriptionReve.getValue();
+                    serverSubscriptionManager.terminateSubscription(subscriptionRef, configuration.processAdmin());
+                    terminatedSubscriptions.add(subscriptionRef);
+                }
+
                 if (configuration.processAdmin()) {
-                    return siriObjectFactory.createTerminateSubscriptionResponse(subscriptionRef);
+                    return siriObjectFactory.createTerminateSubscriptionResponse(terminatedSubscriptions);
                 }
             } else if (terminateSubscriptionRequest.getAll() != null) {
                 List<String> terminatedSubscriptions = serverSubscriptionManager.terminateAllsubscriptionsForRequestor(terminateSubscriptionRequest.getRequestorRef().getValue(), configuration.processAdmin());
                 if (configuration.processAdmin()) {
-                    return siriObjectFactory.createTerminateSubscriptionResponse(terminatedSubscriptions.stream().collect(Collectors.joining(",")));
+                    return siriObjectFactory.createTerminateSubscriptionResponse(terminatedSubscriptions);
                 }
             }
         } else if (incoming.getCheckStatusRequest() != null) {

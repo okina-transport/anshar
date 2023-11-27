@@ -274,8 +274,16 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                         p.getOut().setBody(response);
                     }
 
+                    p.getOut().setHeader(TRANSFORM_SOAP,p.getIn().getHeader(TRANSFORM_SOAP));
+
                 })
+                .choice()
+                .when(e -> TRANSFORM_SOAP.equals(e.getIn().getHeader(TRANSFORM_SOAP)))
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .to("xslt-saxon:xsl/siri_raw_soap.xsl")
+                .otherwise()
+                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .end()
                 .to("log:subResponse:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
         ;
 

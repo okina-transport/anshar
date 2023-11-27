@@ -133,6 +133,33 @@
         </xsl:element>
     </xsl:template>
 
+    <xsl:template match="siri:TerminateSubscriptionResponse">
+        <xsl:element name="soapenv:Envelope" namespace="{$soapEnvelopeNamespace}">
+            <xsl:element name="soapenv:Body" namespace="{$soapEnvelopeNamespace}">
+
+                <xsl:element name="DeleteSubscriptionResponse" namespace="{$siriSoapNamespace}">
+                    <xsl:element name="DeleteSubscriptionAnswerInfo" namespace="{$siriSoapNamespace}">
+                        <xsl:copy-of select="./siri:ResponseTimestamp" copy-namespaces="no"/>
+
+                    </xsl:element>
+
+                    <xsl:element name="Answer" namespace="{$siriSoapNamespace}">
+                        <xsl:copy-of select="./siri:ResponseTimestamp" copy-namespaces="no"/>
+
+                        <xsl:for-each select="./siri:TerminationResponseStatus">
+                            <xsl:element name="siri:{local-name()}">
+                                <xsl:copy-of select="./siri:SubscriptionRef" copy-namespaces="no"/>
+                                <xsl:copy-of select="./siri:Status" copy-namespaces="no"/>
+                            </xsl:element>
+                        </xsl:for-each>
+
+
+                    </xsl:element>
+
+                </xsl:element>
+            </xsl:element>
+        </xsl:element>
+    </xsl:template>
 
     <xsl:template match="*"/>
 
