@@ -13,6 +13,8 @@ import uk.org.siri.siri20.Siri;
 import javax.ws.rs.core.MediaType;
 import java.io.ByteArrayOutputStream;
 
+import static no.rutebanken.anshar.routes.validation.validators.Constants.HEARTBEAT_HEADER;
+
 @Service
 public class OutboundSiriDistributionRoute extends RouteBuilder {
 
@@ -22,6 +24,7 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
     @Autowired
     private PrometheusMetricsService metrics;
 
+    // @formatter:off
     @Override
     public void configure() {
 
@@ -65,7 +68,13 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
                 .removeHeader("showBody")
                 .toD("${header.endpoint}")
                 .bean(subscriptionManager, "clearFailTracker(${header.SubscriptionId})")
-                .log(LoggingLevel.INFO, "POST complete ${header.SubscriptionId} - Response: [${header.CamelHttpResponseCode} ${header.CamelHttpResponseText}]");
+                .choice()
+                .when(header(HEARTBEAT_HEADER).isEqualTo(simple(HEARTBEAT_HEADER)))
+                    .log(LoggingLevel.INFO, "HB-POST complete ${header.SubscriptionId} - Resp: [${header.CamelHttpResponseCode} ${header.CamelHttpResponseText}]")
+                .otherwise()
+                    .log(LoggingLevel.INFO, "DAT-POST complete ${header.SubscriptionId} - Resp: [${header.CamelHttpResponseCode} ${header.CamelHttpResponseText}]")
+                .endChoice()
+                .end();
 
     }
 }

@@ -35,6 +35,7 @@ import java.util.concurrent.ThreadFactory;
 
 import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_SOAP;
 import static no.rutebanken.anshar.routes.siri.transformer.SiriOutputTransformerRoute.OUTPUT_ADAPTERS_HEADER_NAME;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.HEARTBEAT_HEADER;
 
 @Service
 public class CamelRouteManager {
@@ -201,6 +202,10 @@ public class CamelRouteManager {
             headers.put(OUTPUT_ADAPTERS_HEADER_NAME, subscription.getValueAdapters());
             if (subscription.isSOAPSubscription()) {
                 headers.put(TRANSFORM_SOAP, TRANSFORM_SOAP);
+            }
+
+            if (payload.getHeartbeatNotification() != null) {
+                headers.put(HEARTBEAT_HEADER, HEARTBEAT_HEADER);
             }
 
             siriSubscriptionProcessor.sendBodyAndHeaders(payload, headers);

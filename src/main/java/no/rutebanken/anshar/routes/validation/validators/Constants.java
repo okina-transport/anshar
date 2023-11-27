@@ -48,6 +48,8 @@ public class Constants {
     public static final String MONITORED_CALL_STRUCTURE = MONITORED_VEHICLE_JOURNEY + "/MonitoredCall";
 
     public static final String DATASET_ID_HEADER_NAME = "datasetId";
+
+    public static final String HEARTBEAT_HEADER = "HeartBeat";
     public static final String URL_HEADER_NAME = "URL";
 
     public final static String GTFSRT_ET_PREFIX = "GTFS-RT_ET_";
