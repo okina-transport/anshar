@@ -120,7 +120,7 @@
                         <xsl:copy-of select="./siri:ResponseMessageIdentifier" copy-namespaces="no"/>
                         <xsl:copy-of select="./siri:RequestMessageRef" copy-namespaces="no"/>
                     </xsl:element>
-                    <xsl:element name="Answer">
+                    <xsl:element name="Answer" namespace="{$siriSoapNamespace}">
 
 
                         <xsl:copy-of select="./siri:Status" copy-namespaces="no"/>
