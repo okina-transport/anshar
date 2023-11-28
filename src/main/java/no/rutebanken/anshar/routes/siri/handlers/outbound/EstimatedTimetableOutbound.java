@@ -8,6 +8,7 @@ import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
+import no.rutebanken.anshar.util.IDUtils;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -39,7 +40,10 @@ public class EstimatedTimetableOutbound {
 
         Set<String> requestedLines = getRequestedLinesFromServiceRequest(datasetId, serviceRequest);
 
-        return estimatedTimetables.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize, previewIntervalInMillis, requestedLines);
+        Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParams(datasetId, requestedLines, ObjectType.LINE);
+        Set<String> revertedMonitoringRefs = IDUtils.revertMonitoringRefs(requestedLines, idMap.get(ObjectType.LINE));
+
+        return estimatedTimetables.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize, previewIntervalInMillis, revertedMonitoringRefs);
     }
 
 
