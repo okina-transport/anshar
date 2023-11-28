@@ -93,9 +93,6 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
     @PostConstruct
     private void initializeUpdateCommitter() {
         super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
-
-//        enableCache(monitoredVehicles);
-        linkEntriesTtl(monitoredVehicles, changesMap, checksumCache);
     }
 
     /**

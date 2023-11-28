@@ -83,10 +83,6 @@ public class Situations extends SiriRepository<PtSituationElement> {
     @PostConstruct
     private void initializeUpdateCommitter() {
         super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
-
-//        enableCache(situationElements);
-
-//        linkEntriesTtl(situationElements, changesMap, checksumCache);
     }
 
     /**
