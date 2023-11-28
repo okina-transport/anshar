@@ -806,7 +806,7 @@ public class SiriObjectFactory {
         ResponseStatus responseStatus = new ResponseStatus();
         responseStatus.setResponseTimestamp(ZonedDateTime.now());
         responseStatus.setRequestMessageRef(createMessageIdentifier());
-        responseStatus.setSubscriptionRef(createSubscriptionIdentifier(subscriptionRef));
+        responseStatus.setSubscriptionRef(createSubscriptionIdentifier(subscriptionRef.replace(" ", ";")));
         responseStatus.setStatus(status);
 
         if (errorText != null) {

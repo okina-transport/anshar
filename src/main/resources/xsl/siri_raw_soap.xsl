@@ -753,30 +753,28 @@
 
             <xsl:element name="soapenv:Body" namespace="{$soapEnvelopeNamespace}">
 
-                <xsl:element name="siri:ResponseStatus">
 
-                    <xsl:attribute name="version">
-                        <xsl:value-of select="1.4"/>
-                    </xsl:attribute>
-
-                    <xsl:element name="siri:ResponseTimestamp">
-                        <xsl:value-of select="./siri:ResponseTimestamp"/>
+                <xsl:element name="SubscribeResponse" namespace="{$siriSoapNamespace}">
+                    <xsl:element name="SubscriptionAnswerInfo" namespace="{$siriSoapNamespace}">
+                        <xsl:copy-of select="./siri:ResponseTimestamp" copy-namespaces="no"/>
+                        <xsl:copy-of select="./siri:ResponderRef" copy-namespaces="no"/>
+                        <xsl:copy-of select="./siri:RequestMessageRef" copy-namespaces="no"/>
+                        <xsl:copy-of select="./siri:RequestMessageRef" copy-namespaces="no"/>
                     </xsl:element>
 
-                    <xsl:element name="siri:RequestMessageRef">
-                        <xsl:value-of select="./siri:RequestMessageRef"/>
+                    <xsl:element name="Answer" namespace="{$siriSoapNamespace}">
+
+                        <xsl:for-each select="./siri:ResponseStatus">
+                            <xsl:element name="siri:{local-name()}">
+                                <xsl:copy-of select="./siri:ResponseTimestamp" copy-namespaces="no"/>
+                                <xsl:copy-of select="./siri:RequestMessageRef" copy-namespaces="no"/>
+                                <xsl:copy-of select="./siri:SubscriptionRef" copy-namespaces="no"/>
+                                <xsl:copy-of select="./siri:Status" copy-namespaces="no"/>
+
+                            </xsl:element>
+                        </xsl:for-each>
+
                     </xsl:element>
-
-
-                    <xsl:element name="siri:SubscriptionRef">
-                        <xsl:value-of select="siri:ResponseStatus/siri:SubscriptionRef"/>
-                    </xsl:element>
-
-                    <xsl:element name="siri:Status">
-                        <xsl:value-of select="siri:ResponseStatus/siri:Status"/>
-                    </xsl:element>
-
-
                 </xsl:element>
 
 
