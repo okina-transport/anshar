@@ -141,12 +141,12 @@
             <xsl:element name="soapenv:Body" namespace="{$soapEnvelopeNamespace}">
 
                 <xsl:element name="DeleteSubscriptionResponse" namespace="{$siriSoapNamespace}">
-                    <xsl:element name="DeleteSubscriptionAnswerInfo" namespace="{$siriSoapNamespace}">
+                    <xsl:element name="DeleteSubscriptionAnswerInfo" namespace="">
                         <xsl:copy-of select="./siri:ResponseTimestamp" copy-namespaces="no"/>
 
                     </xsl:element>
 
-                    <xsl:element name="Answer" namespace="{$siriSoapNamespace}">
+                    <xsl:element name="Answer" namespace="">
                         <xsl:copy-of select="./siri:ResponseTimestamp" copy-namespaces="no"/>
 
                         <xsl:for-each select="./siri:TerminationResponseStatus">
@@ -159,7 +159,7 @@
 
                     </xsl:element>
 
-                    <xsl:element name="AnswerExtension" namespace="{$siriSoapNamespace}">
+                    <xsl:element name="AnswerExtension" namespace="">
                     </xsl:element>
 
 
