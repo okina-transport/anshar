@@ -29,7 +29,7 @@ public class EstimatedTimetableOutbound {
     EstimatedTimetables estimatedTimetables;
 
 
-    public Siri getEstimatedTimetableServiceDelivery(String datasetId, List<String> excludedDatasetIdList, int maxSize, String clientTrackingName, ServiceRequest serviceRequest, String requestorRef) {
+    public Siri getEstimatedTimetableServiceDelivery(ServiceRequest serviceRequest, String datasetId, List<String> excludedDatasetIdList, int maxSize, String clientTrackingName, String requestorRef) {
         Duration previewInterval = serviceRequest.getEstimatedTimetableRequests().get(0).getPreviewInterval();
         long previewIntervalInMillis = -1;
 

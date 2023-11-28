@@ -706,7 +706,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     /**
      * Stop monitoring
      * id producteur
-     * userOriginalId true
+     * useOriginalId true
      * sans datasetId
      * retour rien
      **/
@@ -905,12 +905,73 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     }
 
     /**
+     * Stop monitoring
+     * sans id
+     * useOriginalId false
+     * pas de datasetId
+     * retour rien
+     **/
+    @Test
+    public void SM_No_Id_UseOriginalId_False_No_DatasetId() throws JAXBException {
+        initStopPlaceMapper();
+        File fileInject1 = new File("src/test/resources/siri-sm-test1.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-sm", fileInject1, fileInject1.getPath(), "TEST1");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        File fileInject2 = new File("src/test/resources/siri-sm-test2.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-sm", fileInject2, fileInject2.getPath(), "TEST2");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+        File fileInject3 = new File("src/test/resources/siri-sm-test3.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-sm", fileInject3, fileInject1.getPath(), "TEST3");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        File fileInject4 = new File("src/test/resources/siri-sm-test4.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-sm", fileInject4, fileInject2.getPath(), "TEST4");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        assertFalse(stopVisits.getAll().isEmpty());
+
+
+        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <StopMonitoringRequest version=\"2.0\">\n" +
+                "        </StopMonitoringRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+
+        Siri response = handler.handleIncomingSiri(null, xml, null, SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        assertNotNull(response);
+        assertNotNull(response.getServiceDelivery());
+        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
+        assertTrue(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty());
+    }
+
+    /**
      * Estimated timetable
+     * avec id
      * avec datasetId
+     * useOriginalId true
      * retour données producteurs identifiants locaux
      **/
     @Test
-    public void ET_DatasetId() throws JAXBException {
+    public void ET_Id_DatasetId_UseOriginalId_True() throws JAXBException {
+        initStopPlaceMapper();
         File fileInject1 = new File("src/test/resources/siri-et-test1.zip");
         try {
             siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-et", fileInject1, fileInject1.getPath(), "TEST1");
@@ -933,6 +994,63 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 "    <ServiceRequest>\n" +
                 "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
                 "        <EstimatedTimetableRequest version=\"2.0\">\n" +
+                "           <Lines>\n" +
+                "               <LineDirection>\n" +
+                "                   <LineRef>TEST1:Line:1:LOC</LineRef>\n" +
+                "               </LineDirection>\n" +
+                "           </Lines>\n" +
+                "        </EstimatedTimetableRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+
+        Siri response = handler.handleIncomingSiri(null, xml, "TEST1", SiriHandler.getIdMappingPolicy("true", "false"), -1, null);
+        assertNotNull(response);
+        assertNotNull(response.getServiceDelivery());
+        assertEquals(1, response.getServiceDelivery().getEstimatedTimetableDeliveries().size());
+        assertEquals("TEST1:Line:1:LOC", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getLineRef().getValue());
+        assertEquals("TEST1:VehicleJourney:1:LOC", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getDatedVehicleJourneyRef().getValue());
+        assertEquals("TEST1:StopPoint:SP:121:LOC", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getEstimatedCalls().getEstimatedCalls().get(0).getStopPointRef().getValue());
+    }
+
+    /**
+     * Estimated timetable
+     * avec id
+     * avec datasetId
+     * useOriginalId false
+     * retour données MOBIITI
+     **/
+    @Test
+    public void ET_Id_DatasetId_UseOriginalId_False() throws JAXBException {
+        initStopPlaceMapper();
+        File fileInject1 = new File("src/test/resources/siri-et-test1.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-et", fileInject1, fileInject1.getPath(), "TEST1");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        File fileInject2 = new File("src/test/resources/siri-et-test2.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-et", fileInject2, fileInject2.getPath(), "TEST2");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        assertFalse(estimatedTimetables.getAll().isEmpty());
+
+
+        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <EstimatedTimetableRequest version=\"2.0\">\n" +
+                "           <Lines>\n" +
+                "               <LineDirection>\n" +
+                "                   <LineRef>TEST1:Line:1:LOC</LineRef>\n" +
+                "               </LineDirection>\n" +
+                "           </Lines>\n" +
                 "        </EstimatedTimetableRequest>\n" +
                 "    </ServiceRequest>\n" +
                 "</Siri>";
@@ -943,17 +1061,121 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertEquals(1, response.getServiceDelivery().getEstimatedTimetableDeliveries().size());
-        assertEquals("TEST1:Line:1", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getLineRef().getValue());
-        assertEquals("TEST1:VehicleJourney:1", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getDatedVehicleJourneyRef().getValue());
+        assertEquals("TEST1:Line:1:LOC", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getLineRef().getValue());
+        assertEquals("TEST1:VehicleJourney:1:LOC", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getDatedVehicleJourneyRef().getValue());
+        assertEquals("MOBIITI:Quay:a", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getEstimatedCalls().getEstimatedCalls().get(0).getStopPointRef().getValue());
     }
 
     /**
      * Estimated timetable
+     * avec id
+     * sans datasetId
+     * useOriginalId true
+     * retour rien
+     **/
+    @Test
+    public void ET_Id_No_DatasetId_UseOriginalId_True() throws JAXBException {
+        initStopPlaceMapper();
+        File fileInject1 = new File("src/test/resources/siri-et-test1.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-et", fileInject1, fileInject1.getPath(), "TEST1");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        File fileInject2 = new File("src/test/resources/siri-et-test2.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-et", fileInject2, fileInject2.getPath(), "TEST2");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        assertFalse(estimatedTimetables.getAll().isEmpty());
+
+
+        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <EstimatedTimetableRequest version=\"2.0\">\n" +
+                "           <Lines>\n" +
+                "               <LineDirection>\n" +
+                "                   <LineRef>TEST1:Line:1:LOC</LineRef>\n" +
+                "               </LineDirection>\n" +
+                "           </Lines>\n" +
+                "        </EstimatedTimetableRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+
+        Siri response = handler.handleIncomingSiri(null, xml, null, SiriHandler.getIdMappingPolicy("true", "false"), -1, null);
+        assertNotNull(response);
+        assertNotNull(response.getServiceDelivery());
+        assertFalse(response.getServiceDelivery().getEstimatedTimetableDeliveries().isEmpty());
+        assertTrue(response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().isEmpty());
+    }
+
+    /**
+     * Estimated timetable
+     * avec id
+     * sans datasetId
+     * useOriginalId false
+     * retour rien
+     **/
+    @Test
+    public void ET_Id_No_DatasetId_UseOriginalId_False() throws JAXBException {
+        initStopPlaceMapper();
+        File fileInject1 = new File("src/test/resources/siri-et-test1.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-et", fileInject1, fileInject1.getPath(), "TEST1");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        File fileInject2 = new File("src/test/resources/siri-et-test2.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-et", fileInject2, fileInject2.getPath(), "TEST2");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        assertFalse(estimatedTimetables.getAll().isEmpty());
+
+
+        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <EstimatedTimetableRequest version=\"2.0\">\n" +
+                "           <Lines>\n" +
+                "               <LineDirection>\n" +
+                "                   <LineRef>TEST1:Line:1:LOC</LineRef>\n" +
+                "               </LineDirection>\n" +
+                "           </Lines>\n" +
+                "        </EstimatedTimetableRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+
+        Siri response = handler.handleIncomingSiri(null, xml, null, SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        assertNotNull(response);
+        assertNotNull(response.getServiceDelivery());
+        assertFalse(response.getServiceDelivery().getEstimatedTimetableDeliveries().isEmpty());
+        assertTrue(response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().isEmpty());
+    }
+
+    /**
+     * Estimated timetable
+     * sans id
+     * useOriginalId false
      * sans datasetId
      * retour rien
      **/
     @Test
-    public void ET_No_DatasetId() throws JAXBException {
+    public void ET_No_Id_No_DatasetId_UseOriginalId_False() throws JAXBException {
+        initStopPlaceMapper();
         File fileInject1 = new File("src/test/resources/siri-et-test1.zip");
         try {
             siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-et", fileInject1, fileInject1.getPath(), "TEST1");
@@ -987,6 +1209,53 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         assertNotNull(response.getServiceDelivery());
         assertFalse(response.getServiceDelivery().getEstimatedTimetableDeliveries().isEmpty());
         assertTrue(response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().isEmpty());
+    }
+
+    /**
+     * Estimated timetable
+     * sans id
+     * useOriginalId false
+     * avec datasetId
+     * retour tous les ET du datasetId
+     **/
+    @Test
+    public void ET_No_Id_DatasetId_UseOriginalId_False() throws JAXBException {
+        initStopPlaceMapper();
+        File fileInject1 = new File("src/test/resources/siri-et-test1.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-et", fileInject1, fileInject1.getPath(), "TEST1");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        File fileInject2 = new File("src/test/resources/siri-et-test2.zip");
+        try {
+            siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-et", fileInject2, fileInject2.getPath(), "TEST2");
+        } catch (IOException | SAXException | ParserConfigurationException | XMLStreamException e) {
+            e.printStackTrace();
+        }
+
+        assertFalse(estimatedTimetables.getAll().isEmpty());
+
+
+        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <EstimatedTimetableRequest version=\"2.0\">\n" +
+                "        </EstimatedTimetableRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+
+        Siri response = handler.handleIncomingSiri(null, xml, "TEST1", SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        assertNotNull(response);
+        assertNotNull(response.getServiceDelivery());
+        assertEquals(1, response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size());
+        assertEquals("TEST1:Line:1:LOC", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getLineRef().getValue());
+        assertEquals("TEST1:VehicleJourney:1:LOC", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getDatedVehicleJourneyRef().getValue());
+        assertEquals("MOBIITI:Quay:a", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getEstimatedCalls().getEstimatedCalls().get(0).getStopPointRef().getValue());
     }
 
     /**

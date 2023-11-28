@@ -339,9 +339,9 @@ public class SiriHandler {
 
             } else if (hasValues(serviceRequest.getEstimatedTimetableRequests())) {
                 valueAdapters = estimatedTimetableOutbound.getValueAdapters(datasetId, outboundIdMappingPolicy);
-                serviceResponse = estimatedTimetableOutbound.getEstimatedTimetableServiceDelivery(datasetId, excludedDatasetIdList, maxSize, clientTrackingName, serviceRequest, requestorRef);
+                serviceResponse = estimatedTimetableOutbound.getEstimatedTimetableServiceDelivery(serviceRequest, datasetId, excludedDatasetIdList, maxSize, clientTrackingName, requestorRef);
             } else if (hasValues(serviceRequest.getStopMonitoringRequests())) {
-                serviceResponse = stopMonitoringOutbound.getStopMonitoringServiceDelivery(serviceRequest, outboundIdMappingPolicy, datasetId, valueAdapters, serviceResponse, requestorRef, clientTrackingName, maxSize);
+                serviceResponse = stopMonitoringOutbound.getStopMonitoringServiceDelivery(serviceRequest, outboundIdMappingPolicy, datasetId, requestorRef, clientTrackingName, maxSize);
             } else if (hasValues(serviceRequest.getGeneralMessageRequests())) {
                 Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);
 
