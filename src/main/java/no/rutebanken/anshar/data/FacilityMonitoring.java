@@ -280,12 +280,9 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
     private Set<SiriObjectStorageKey> generateIdSet(String datasetId, Set<String> requestedFacilities, Set<String> requestedLineRef, Set<String> requestedVehicleRef,
                                                     Set<String> stopPointRef, List<String> excludedDatasetIds) {
         // Get all relevant ids
-
         Predicate<SiriObjectStorageKey, FacilityConditionStructure> predicate = SiriObjectStorageKeyUtil.getFacilityMonitoringPredicate(datasetId,requestedFacilities,
                 requestedLineRef, requestedVehicleRef, stopPointRef, excludedDatasetIds);
-        Set<SiriObjectStorageKey> idSet =new HashSet<>(facilityMonitoring.keySet(predicate));
-
-        return idSet;
+        return new HashSet<>(facilityMonitoring.keySet(predicate));
     }
 
     public void clearAll() {

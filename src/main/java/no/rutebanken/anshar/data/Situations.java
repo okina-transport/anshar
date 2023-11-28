@@ -169,7 +169,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
         }
 
         // Filter by datasetId
-        Set<SiriObjectStorageKey> requestedIds = generateIdSet(requestorId, datasetId);
+        Set<SiriObjectStorageKey> requestedIds = generateIdSet(datasetId);
 
         long t1 = System.currentTimeMillis();
 
@@ -219,20 +219,13 @@ public class Situations extends SiriRepository<PtSituationElement> {
     /**
      * Generates a set of keys that matches with user's request
      *
-     * @param requestorId user id
      * @param datasetId   dataset id
      * @return a set of keys matching with filters
      */
-    private Set<SiriObjectStorageKey> generateIdSet(String requestorId, String datasetId) {
-
+    private Set<SiriObjectStorageKey> generateIdSet(String datasetId) {
         // Get all relevant ids
-        Set<SiriObjectStorageKey> allIds = new HashSet<>();
-        Set<SiriObjectStorageKey> idSet = changesMap.getOrDefault(requestorId, allIds);
-
         Predicate<SiriObjectStorageKey, PtSituationElement> predicate = SiriObjectStorageKeyUtil.getSituationExchangePredicate(datasetId);
-        idSet.addAll(situationElements.keySet(predicate));
-
-        return idSet;
+        return new HashSet<>(situationElements.keySet(predicate));
     }
 
 
