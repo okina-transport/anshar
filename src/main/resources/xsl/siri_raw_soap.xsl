@@ -159,6 +159,10 @@
 
                     </xsl:element>
 
+                    <xsl:element name="AnswerExtension" namespace="{$siriSoapNamespace}">
+                    </xsl:element>
+
+
                 </xsl:element>
             </xsl:element>
         </xsl:element>
@@ -773,6 +777,10 @@
 
                             </xsl:element>
                         </xsl:for-each>
+                    </xsl:element>
+
+
+                    <xsl:element name="AnswerExtension" namespace="{$siriSoapNamespace}">
 
                     </xsl:element>
                 </xsl:element>
