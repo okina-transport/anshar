@@ -117,13 +117,13 @@
             <xsl:element name="soapenv:Body" namespace="{$soapEnvelopeNamespace}">
 
                 <xsl:element name="CheckStatusResponse" namespace="{$siriSoapNamespace}">
-                    <xsl:element name="CheckStatusAnswerInfo" namespace="{$siriSoapNamespace}">
+                    <xsl:element name="CheckStatusAnswerInfo" namespace="">
                         <xsl:copy-of select="./siri:ResponseTimestamp" copy-namespaces="no"/>
                         <xsl:copy-of select="./siri:ProducerRef" copy-namespaces="no"/>
                         <xsl:copy-of select="./siri:ResponseMessageIdentifier" copy-namespaces="no"/>
                         <xsl:copy-of select="./siri:RequestMessageRef" copy-namespaces="no"/>
                     </xsl:element>
-                    <xsl:element name="Answer" namespace="{$siriSoapNamespace}">
+                    <xsl:element name="Answer" namespace="">
 
 
                         <xsl:copy-of select="./siri:Status" copy-namespaces="no"/>
