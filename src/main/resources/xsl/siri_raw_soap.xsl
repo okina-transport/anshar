@@ -727,7 +727,7 @@
                         <xsl:copy-of select="../siri:ConsumerAddress" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:ResponseMessageIdentifier" copy-namespaces="no"/>
                     </xsl:element>
-                    <xsl:element name="Answer">
+                    <xsl:element name="Answer" namespace="">
                         <xsl:if test="local-name()='SituationExchangeDelivery'">
                             <xsl:element name="siri:SituationExchangeDelivery">
                                 <xsl:attribute name="version">
@@ -744,7 +744,7 @@
                             </xsl:element>
                         </xsl:if>
                     </xsl:element>
-                    <xsl:element name="RequestExtension"/>
+                    <xsl:element name="AnswerExtension" namespace=""/>
                 </xsl:element>
 
 
