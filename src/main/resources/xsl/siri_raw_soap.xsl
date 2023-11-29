@@ -492,7 +492,7 @@
                         <xsl:copy-of select="../siri:ConsumerAddress" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:ResponseMessageIdentifier" copy-namespaces="no"/>
                     </xsl:element>
-                    <xsl:element name="Answer">
+                    <xsl:element name="Answer" namespace="">
                         <xsl:if test="local-name()='StopMonitoringDelivery'">
                             <xsl:element name="siri:StopMonitoringDelivery">
                                 <xsl:attribute name="version">
@@ -509,7 +509,7 @@
                             </xsl:element>
                         </xsl:if>
                     </xsl:element>
-                    <xsl:element name="RequestExtension"/>
+                    <xsl:element name="AnswerExtension" namespace=""/>
                 </xsl:element>
             </xsl:element>
         </xsl:element>
@@ -536,7 +536,7 @@
                         <xsl:copy-of select="../siri:ErrorCondition" copy-namespaces="no"/>
                     </xsl:element>
 
-                    <xsl:element name="Answer">
+                    <xsl:element name="Answer" namespace="">
 
                         <xsl:if test="local-name()='EstimatedTimetableDelivery'">
                             <xsl:element name="siri:EstimatedTimetableDelivery">
@@ -582,7 +582,7 @@
                         <xsl:copy-of select="../siri:ErrorCondition" copy-namespaces="no"/>
                     </xsl:element>
 
-                    <xsl:element name="Answer">
+                    <xsl:element name="Answer" namespace="">
 
                         <xsl:if test="local-name()='GeneralMessageDelivery'">
                             <xsl:element name="siri:GeneralMessageDelivery">
@@ -629,7 +629,7 @@
                         <xsl:copy-of select="../siri:ErrorCondition" copy-namespaces="no"/>
                     </xsl:element>
 
-                    <xsl:element name="Answer">
+                    <xsl:element name="Answer" namespace="">
 
                         <xsl:if test="local-name()='FacilityMonitoringDelivery'">
                             <xsl:element name="siri:FacilityMonitoringDelivery">
@@ -678,7 +678,7 @@
                         <xsl:copy-of select="../siri:ResponseMessageIdentifier" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:ErrorCondition" copy-namespaces="no"/>
                     </xsl:element>
-                    <xsl:element name="Answer">
+                    <xsl:element name="Answer" namespace="">
                         <xsl:if test="local-name()='VehicleMonitoringDelivery'">
                             <xsl:element name="siri:VehicleMonitoringDelivery">
                                 <xsl:attribute name="version">
@@ -696,7 +696,7 @@
                             </xsl:element>
                         </xsl:if>
                     </xsl:element>
-                    <xsl:element name="RequestExtension"/>
+                    <xsl:element name="AnswerExtension" namespace=""/>
                 </xsl:element>
 
 
