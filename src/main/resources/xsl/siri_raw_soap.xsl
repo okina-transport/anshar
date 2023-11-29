@@ -765,7 +765,6 @@
                         <xsl:copy-of select="./siri:ResponseTimestamp" copy-namespaces="no"/>
                         <xsl:copy-of select="./siri:ResponderRef" copy-namespaces="no"/>
                         <xsl:copy-of select="./siri:RequestMessageRef" copy-namespaces="no"/>
-                        <xsl:copy-of select="./siri:RequestMessageRef" copy-namespaces="no"/>
                     </xsl:element>
 
                     <xsl:element name="Answer" namespace="">
