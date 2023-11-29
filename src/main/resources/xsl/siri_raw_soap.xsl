@@ -90,10 +90,16 @@
             <xsl:element name="soapenv:Body" namespace="{$soapEnvelopeNamespace}">
                 <xsl:element name="StopPointsDiscoveryResponse" namespace="{$siriSoapNamespace}">
 
-                    <xsl:element name="Answer" namespace="{$siriSoapNamespace}">
+                    <xsl:element name="Answer" namespace="">
+                        <xsl:copy-of select="./siri:ResponseTimestamp" copy-namespaces="no"/>
+                        <xsl:copy-of select="./siri:Status" copy-namespaces="no"/>
+
                         <xsl:copy-of select="./siri:AnnotatedStopPointRef" copy-namespaces="no">
 
                         </xsl:copy-of>
+                    </xsl:element>
+
+                    <xsl:element name="AnswerExtension" namespace="">
                     </xsl:element>
                 </xsl:element>
             </xsl:element>

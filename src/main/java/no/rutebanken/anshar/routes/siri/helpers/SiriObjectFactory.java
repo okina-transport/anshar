@@ -714,7 +714,9 @@ public class SiriObjectFactory {
     public Siri createStopPointsDiscoveryDelivery(Collection<AnnotatedStopPointStructure> elements) {
         Siri siri = createSiriObject();
         StopPointsDeliveryStructure spDelStruct = new StopPointsDeliveryStructure();
+        spDelStruct.setResponseTimestamp(ZonedDateTime.now());
         spDelStruct.getAnnotatedStopPointReves().addAll(elements);
+        spDelStruct.setStatus(true);
         siri.setStopPointsDelivery(spDelStruct);
         return siri;
     }
@@ -728,7 +730,9 @@ public class SiriObjectFactory {
     public Siri createLinesDiscoveryDelivery(Collection<AnnotatedLineRef> elements) {
         Siri siri = createSiriObject();
         LinesDeliveryStructure lineStruct = new LinesDeliveryStructure();
+        lineStruct.setResponseTimestamp(ZonedDateTime.now());
         lineStruct.getAnnotatedLineReves().addAll(elements);
+        lineStruct.setStatus(true);
         siri.setLinesDelivery(lineStruct);
         return siri;
     }
