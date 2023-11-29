@@ -130,6 +130,8 @@
 
                     </xsl:element>
 
+                    <xsl:element name="AnswerExtension" namespace="">
+                    </xsl:element>
 
                 </xsl:element>
             </xsl:element>
