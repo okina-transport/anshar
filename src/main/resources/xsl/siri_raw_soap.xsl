@@ -761,14 +761,14 @@
 
 
                 <xsl:element name="SubscribeResponse" namespace="{$siriSoapNamespace}">
-                    <xsl:element name="SubscriptionAnswerInfo" namespace="{$siriSoapNamespace}">
+                    <xsl:element name="SubscriptionAnswerInfo" namespace="">
                         <xsl:copy-of select="./siri:ResponseTimestamp" copy-namespaces="no"/>
                         <xsl:copy-of select="./siri:ResponderRef" copy-namespaces="no"/>
                         <xsl:copy-of select="./siri:RequestMessageRef" copy-namespaces="no"/>
                         <xsl:copy-of select="./siri:RequestMessageRef" copy-namespaces="no"/>
                     </xsl:element>
 
-                    <xsl:element name="Answer" namespace="{$siriSoapNamespace}">
+                    <xsl:element name="Answer" namespace="">
 
                         <xsl:for-each select="./siri:ResponseStatus">
                             <xsl:element name="siri:{local-name()}">
@@ -782,8 +782,7 @@
                     </xsl:element>
 
 
-                    <xsl:element name="AnswerExtension" namespace="{$siriSoapNamespace}">
-
+                    <xsl:element name="AnswerExtension" namespace="">
                     </xsl:element>
                 </xsl:element>
 
