@@ -781,7 +781,7 @@
                                 <xsl:copy-of select="./siri:RequestMessageRef" copy-namespaces="no"/>
                                 <xsl:copy-of select="./siri:SubscriptionRef" copy-namespaces="no"/>
                                 <xsl:copy-of select="./siri:Status" copy-namespaces="no"/>
-
+                                <xsl:copy-of select="./siri:ErrorCondition" copy-namespaces="no"/>
                             </xsl:element>
                         </xsl:for-each>
                     </xsl:element>
