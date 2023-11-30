@@ -17,7 +17,12 @@ package no.rutebanken.anshar.routes.outbound;
 
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
-import no.rutebanken.anshar.data.*;
+import no.rutebanken.anshar.data.EstimatedTimetables;
+import no.rutebanken.anshar.data.FacilityMonitoring;
+import no.rutebanken.anshar.data.GeneralMessages;
+import no.rutebanken.anshar.data.MonitoredStopVisits;
+import no.rutebanken.anshar.data.Situations;
+import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
@@ -25,15 +30,22 @@ import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.util.IDUtils;
-import org.checkerframework.checker.units.qual.A;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.org.siri.siri20.*;
-import uk.org.siri.www.siri.FacilityRefStructure;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @SuppressWarnings("unchecked")
@@ -83,7 +95,7 @@ public class SiriHelper {
             return getFilter(subscriptionRequest.getEstimatedTimetableSubscriptionRequests().get(0));
         } else if (containsValues(subscriptionRequest.getStopMonitoringSubscriptionRequests())) {
             return getFilter(subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0), outboundIdMappingPolicy, datasetId);
-        }else if (containsValues(subscriptionRequest.getGeneralMessageSubscriptionRequests())) {
+        } else if (containsValues(subscriptionRequest.getGeneralMessageSubscriptionRequests())) {
             return getFilter(subscriptionRequest.getGeneralMessageSubscriptionRequests().get(0), outboundIdMappingPolicy, datasetId);
         } else if (containsValues(subscriptionRequest.getFacilityMonitoringSubscriptionRequests())) {
             return getFilter(subscriptionRequest.getFacilityMonitoringSubscriptionRequests().get(0), outboundIdMappingPolicy, datasetId);
@@ -120,8 +132,8 @@ public class SiriHelper {
 
 
         Set<String> requestedChannels = requestedChennels.stream()
-                                                .map(InfoChannelRefStructure::getValue)
-                                                .collect(Collectors.toSet());
+                .map(InfoChannelRefStructure::getValue)
+                .collect(Collectors.toSet());
 
         Map<ObjectType, Optional<IdProcessingParameters>> idProcessingParams = subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);
 
@@ -204,7 +216,7 @@ public class SiriHelper {
 
         String requestedId = stopMonitoringSubscription.getStopMonitoringRequest().getMonitoringRef().getValue();
         List<String> originalRequestedIds = Collections.singletonList(requestedId);
-        if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)){
+        if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)) {
             originalRequestedIds = stopPlaceUpdaterService.canBeReverted(requestedId, datasetId) ? stopPlaceUpdaterService.getReverse(requestedId, datasetId) : Arrays.asList(requestedId);
         }
 
@@ -227,7 +239,7 @@ public class SiriHelper {
 
         String requestedId = stopMonitoringSubscription.getStopMonitoringRequest().getMonitoringRef().getValue();
         List<String> originalRequestedIds = new ArrayList<>();
-        if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)){
+        if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)) {
             originalRequestedIds = stopPlaceUpdaterService.canBeReverted(requestedId, datasetId) ? stopPlaceUpdaterService.getReverse(requestedId, datasetId) : Arrays.asList(requestedId);
         }
 
@@ -235,7 +247,6 @@ public class SiriHelper {
 
         return subscriptionConfig.buildIdProcessingParams(null, requestedIds, ObjectType.STOP);
     }
-
 
 
     Siri findInitialDeliveryData(OutboundSubscriptionSetup subscriptionRequest) {
@@ -342,11 +353,11 @@ public class SiriHelper {
             for (List<MonitoredStopVisit> list : etList) {
                 siriList.add(siriObjectFactory.createSMServiceDelivery(list));
             }
-        }else if (containsValues(payload.getServiceDelivery().getGeneralMessageDeliveries())) {
+        } else if (containsValues(payload.getServiceDelivery().getGeneralMessageDeliveries())) {
 
             List<GeneralMessage> generalMsgList = payload.getServiceDelivery()
-                                    .getGeneralMessageDeliveries().get(0)
-                                    .getGeneralMessages();
+                    .getGeneralMessageDeliveries().get(0)
+                    .getGeneralMessages();
 
             List<List> gmList = splitList(generalMsgList, maximumSizePerDelivery);
 
@@ -377,7 +388,7 @@ public class SiriHelper {
 
         List<List> list = new ArrayList<>();
         boolean hasMoreElements = true;
-        while(hasMoreElements) {
+        while (hasMoreElements) {
 
             list.add(fullList.subList(startIndex, endIndex));
             if (endIndex >= fullList.size()) {
@@ -395,8 +406,9 @@ public class SiriHelper {
 
 
     public static Siri filterSiriPayload(Siri siri, Map<Class, Set<String>> filter) {
-        return filterSiriPayload(siri,filter, true);
+        return filterSiriPayload(siri, filter, true);
     }
+
     public static Siri filterSiriPayload(Siri siri, Map<Class, Set<String>> filter, boolean shouldPerformDeepCopy) {
         if (filter == null || filter.isEmpty()) {
             logger.debug("No filter to apply");
@@ -406,13 +418,14 @@ public class SiriHelper {
         if (siri.getServiceDelivery() != null) {
 
             Siri filtered;
-            if (shouldPerformDeepCopy){
+            if (shouldPerformDeepCopy) {
                 try {
-                    filtered = SiriObjectFactory.deepCopy(siri);
+//                    filtered = SiriObjectFactory.deepCopy(siri);
+                    filtered = siri;
                 } catch (Exception e) {
                     return siri;
                 }
-            }else{
+            } else {
                 filtered = siri;
             }
 
@@ -424,9 +437,9 @@ public class SiriHelper {
                 return applyMultipleMatchFilter(filtered, filter);
             } else if (containsValues(filtered.getServiceDelivery().getStopMonitoringDeliveries())) {
                 return applySingleMatchFilter(filtered, filter);
-            } else if (containsValues(filtered.getServiceDelivery().getGeneralMessageDeliveries())){
+            } else if (containsValues(filtered.getServiceDelivery().getGeneralMessageDeliveries())) {
                 return applyGeneralMessageFilter(filtered, filter);
-            } else if (containsValues(filtered.getServiceDelivery().getFacilityMonitoringDeliveries())){
+            } else if (containsValues(filtered.getServiceDelivery().getFacilityMonitoringDeliveries())) {
                 return applyFacilityMonitoringFilter(filtered, filter);
             }
         }
@@ -446,7 +459,7 @@ public class SiriHelper {
             List<FacilityConditionStructure> filteredFacilityCondition = new ArrayList<>();
             for (FacilityConditionStructure facilityCondition : facilityMonitoringDelivery.getFacilityConditions()) {
 
-                if (facility.contains(facilityCondition.getFacilityRef().getValue())){
+                if (facility.contains(facilityCondition.getFacilityRef().getValue())) {
                     filteredFacilityCondition.add(facilityCondition);
                 }
             }
@@ -470,7 +483,7 @@ public class SiriHelper {
             List<GeneralMessage> filteredGeneralMessages = new ArrayList<>();
             for (GeneralMessage generalMessage : generalMessageDelivery.getGeneralMessages()) {
 
-                if (channels.contains(generalMessage.getInfoChannelRef().getValue())){
+                if (channels.contains(generalMessage.getInfoChannelRef().getValue())) {
                     filteredGeneralMessages.add(generalMessage);
                 }
             }
@@ -594,7 +607,6 @@ public class SiriHelper {
     }
 
 
-
     private static void filterMonitoringRef(Siri siri, Set<String> monitoringRef) {
         if (monitoringRef == null || monitoringRef.isEmpty()) {
             return;
@@ -606,7 +618,7 @@ public class SiriHelper {
             List<MonitoredStopVisit> monitoredStopVisits = delivery.getMonitoredStopVisits();
             List<MonitoredStopVisit> filteredStopVisits = new ArrayList<>();
             for (MonitoredStopVisit monitoredStopVisit : monitoredStopVisits) {
-                if (monitoringRef.contains(monitoredStopVisit.getMonitoringRef().getValue())){
+                if (monitoringRef.contains(monitoredStopVisit.getMonitoringRef().getValue())) {
                     filteredStopVisits.add(monitoredStopVisit);
                 }
             }
@@ -660,12 +672,19 @@ public class SiriHelper {
         return siri;
     }
 
-    public Siri getAllVM() { return siriObjectFactory.createVMServiceDelivery(vehicleActivities.getAll()); }
+    public Siri getAllVM() {
+        return siriObjectFactory.createVMServiceDelivery(vehicleActivities.getAll());
+    }
+
     public Siri getAllSX() {
         return siriObjectFactory.createSXServiceDelivery(situations.getAll());
     }
+
     public Siri getAllET() {
         return siriObjectFactory.createETServiceDelivery(estimatedTimetables.getAll());
     }
-    public Siri getAllSM() { return siriObjectFactory.createSMServiceDelivery(monitoredStopVisits.getAll()); }
+
+    public Siri getAllSM() {
+        return siriObjectFactory.createSMServiceDelivery(monitoredStopVisits.getAll());
+    }
 }
