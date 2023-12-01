@@ -109,10 +109,16 @@
     <xsl:template match="siri:LinesDelivery">
         <xsl:element name="soapenv:Envelope" namespace="{$soapEnvelopeNamespace}">
             <xsl:element name="soapenv:Body" namespace="{$soapEnvelopeNamespace}">
-                <xsl:element name="LinesDiscoveryResponse">
-                    <xsl:copy-of select="./siri:AnnotatedLineRef" copy-namespaces="no">
+                <xsl:element name="LinesDiscoveryResponse" namespace="{$siriSoapNamespace}">
 
-                    </xsl:copy-of>
+                    <xsl:element name="Answer" namespace="">
+                        <xsl:copy-of select="./siri:ResponseTimestamp" copy-namespaces="no"/>
+                        <xsl:copy-of select="./siri:Status" copy-namespaces="no"/>
+                        <xsl:copy-of select="./siri:AnnotatedLineRef" copy-namespaces="no"/>
+                    </xsl:element>
+
+                    <xsl:element name="AnswerExtension" namespace="">
+                    </xsl:element>
                 </xsl:element>
             </xsl:element>
         </xsl:element>
