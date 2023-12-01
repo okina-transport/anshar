@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class HeartbeatRoute extends BaseRouteBuilder {
 
-    private static final int HEARTBEAT_INTERVAL_MILLIS = 2000;
+    private static final int HEARTBEAT_INTERVAL_MILLIS = 60_000;
 
 
     @Autowired
@@ -49,7 +49,7 @@ public class HeartbeatRoute extends BaseRouteBuilder {
     @Autowired
     private SiriObjectFactory siriObjectFactory;
 
-    protected HeartbeatRoute(@Autowired  AnsharConfiguration config, @Autowired SubscriptionManager subscriptionManager) {
+    protected HeartbeatRoute(@Autowired AnsharConfiguration config, @Autowired SubscriptionManager subscriptionManager) {
         super(config, subscriptionManager);
     }
 
@@ -57,10 +57,10 @@ public class HeartbeatRoute extends BaseRouteBuilder {
     public void configure() throws Exception {
         final String routeId = "anshar.outbound.subscription.manager.route";
         singletonFrom("quartz://anshar.outbound.subscription.manager?trigger.repeatInterval=" + HEARTBEAT_INTERVAL_MILLIS,
-            routeId
+                routeId
         )
-            .choice()
-            .when(p -> isLeader(routeId))
+                .choice()
+                .when(p -> isLeader(routeId))
                 .process(p -> {
                     final Set<String> subscriptionIds = serverSubscriptionManager.subscriptions.keySet();
                     for (String subscriptionId : subscriptionIds) {
@@ -82,7 +82,7 @@ public class HeartbeatRoute extends BaseRouteBuilder {
                         }
                     }
                 })
-            .endChoice()
+                .endChoice()
         ;
     }
 }
