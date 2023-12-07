@@ -402,13 +402,7 @@ public class SiriHelper {
         }
 
         if (siri.getServiceDelivery() != null) {
-            if (containsValues(siri.getServiceDelivery().getStopMonitoringDeliveries())) {
-                return filterSiriByCreatingNewObject(siri, filter, shouldPerformDeepCopy);
-            } else {
-                //old way that uses kryo deep copy. In the future, all kind of Realtime data should not use this method
-                return filterSiriWithDeepCopy(siri, filter, shouldPerformDeepCopy);
-            }
-
+            return filterSiriByCreatingNewObject(siri, filter, shouldPerformDeepCopy);
         }
 
         return siri;
@@ -427,104 +421,191 @@ public class SiriHelper {
         if (containsValues(siri.getServiceDelivery().getStopMonitoringDeliveries())) {
             List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = getFilteredMonitoringRef(siri, filter.get(MonitoringRefStructure.class));
             serviceDel.getStopMonitoringDeliveries().addAll(stopMonitoringDeliveries);
+        } else if (containsValues(siri.getServiceDelivery().getEstimatedTimetableDeliveries())){
+            List<EstimatedTimetableDeliveryStructure> estimatedTimetableDeliveries = getFilteredEstimatedRef(siri, filter.get(LineRef.class), filter.get(VehicleRef.class));
+            serviceDel.getEstimatedTimetableDeliveries().addAll(estimatedTimetableDeliveries);
+        } else if (containsValues(siri.getServiceDelivery().getVehicleMonitoringDeliveries())){
+            List<VehicleMonitoringDeliveryStructure> vehicleMonitoringDeliveries = getFilteredVehicleRef(siri, filter.get(LineRef.class), filter.get(VehicleRef.class));
+            serviceDel.getVehicleMonitoringDeliveries().addAll(vehicleMonitoringDeliveries);
+        } else if (containsValues(siri.getServiceDelivery().getSituationExchangeDeliveries())){
+            List<SituationExchangeDeliveryStructure> situationExchangeDeliveries = getFilteredSituationRef(siri, filter.get(LineRef.class));
+            serviceDel.getSituationExchangeDeliveries().addAll(situationExchangeDeliveries);
+        } else if (containsValues(siri.getServiceDelivery().getFacilityMonitoringDeliveries())){
+            List<FacilityMonitoringDeliveryStructure> facilityMonitoringDeliveries = getFilteredFaciliesRef(siri, filter.get(FacilityStructure.class));
+            serviceDel.getFacilityMonitoringDeliveries().addAll(facilityMonitoringDeliveries);
+        } else if (containsValues(siri.getServiceDelivery().getGeneralMessageDeliveries())){
+            List<GeneralMessageDeliveryStructure> generalMessageDeliveries = getFilteredGeneralRef(siri, filter.get(InfoChannel.class));
+            serviceDel.getGeneralMessageDeliveries().addAll(generalMessageDeliveries);
+        } else {
+            return siri;
         }
 
         result.setServiceDelivery(serviceDel);
         return result;
     }
 
-    public static Siri filterSiriWithDeepCopy(Siri siri, Map<Class, Set<String>> filter, boolean shouldPerformDeepCopy) {
-        Siri filtered = new Siri();
-        if (shouldPerformDeepCopy) {
-            try {
-                filtered = SiriObjectFactory.deepCopy(siri);
-            } catch (Exception e) {
-                return siri;
-            }
-        } else {
-            filtered = siri;
-        }
-
-
-        if (containsValues(filtered.getServiceDelivery().getVehicleMonitoringDeliveries()) |
-                containsValues(filtered.getServiceDelivery().getEstimatedTimetableDeliveries())) {
-            return applySingleMatchFilter(filtered, filter);
-        } else if (containsValues(filtered.getServiceDelivery().getSituationExchangeDeliveries())) {
-            return applyMultipleMatchFilter(filtered, filter);
-        } else if (containsValues(filtered.getServiceDelivery().getStopMonitoringDeliveries())) {
-            return applySingleMatchFilter(filtered, filter);
-        } else if (containsValues(filtered.getServiceDelivery().getGeneralMessageDeliveries())) {
-            return applyGeneralMessageFilter(filtered, filter);
-        } else if (containsValues(filtered.getServiceDelivery().getFacilityMonitoringDeliveries())) {
-            return applyFacilityMonitoringFilter(filtered, filter);
-        }
-        return siri;
-    }
-
-    private static Siri applyFacilityMonitoringFilter(Siri filtered, Map<Class, Set<String>> filter) {
-
-        Set<String> facility = filter.get(FacilityStructure.class);
+    private static List<FacilityMonitoringDeliveryStructure> getFilteredFaciliesRef(Siri siri, Set<String> facility){
         if (facility == null || facility.isEmpty()) {
-            return filtered;
+            return null;
         }
 
-        for (FacilityMonitoringDeliveryStructure facilityMonitoringDelivery : filtered.getServiceDelivery().getFacilityMonitoringDeliveries()) {
+        //FM-deliveries
+        List<FacilityMonitoringDeliveryStructure> facilityMonitoringDeliveries = siri.getServiceDelivery().getFacilityMonitoringDeliveries();
+        List<FacilityMonitoringDeliveryStructure> results = new ArrayList<>();
 
+        for (FacilityMonitoringDeliveryStructure delivery : facilityMonitoringDeliveries) {
+            List<FacilityConditionStructure> facilityConditions = delivery.getFacilityConditions();
             List<FacilityConditionStructure> filteredFacilityCondition = new ArrayList<>();
-            for (FacilityConditionStructure facilityCondition : facilityMonitoringDelivery.getFacilityConditions()) {
+
+            for (FacilityConditionStructure facilityCondition : facilityConditions) {
 
                 if (facility.contains(facilityCondition.getFacilityRef().getValue())) {
                     filteredFacilityCondition.add(facilityCondition);
                 }
             }
+            if (!facilityConditions.isEmpty()) {
+                FacilityMonitoringDeliveryStructure facilityMonitoringDelStruct = new FacilityMonitoringDeliveryStructure();
+                facilityMonitoringDelStruct.setResponseTimestamp(delivery.getResponseTimestamp());
+                facilityMonitoringDelStruct.setVersion(delivery.getVersion());
 
-            facilityMonitoringDelivery.getFacilityConditions().clear();
-            facilityMonitoringDelivery.getFacilityConditions().addAll(filteredFacilityCondition);
+                facilityMonitoringDelStruct.getFacilityConditions().addAll(filteredFacilityCondition);
+                results.add(facilityMonitoringDelStruct);
+            }
         }
-        return filtered;
+        return results;
     }
 
+    private static List<EstimatedTimetableDeliveryStructure> getFilteredEstimatedRef(Siri siri,Set<String> lineRef, Set<String> vehicleRef){
 
-    private static Siri applyGeneralMessageFilter(Siri filtered, Map<Class, Set<String>> filter) {
+        List<EstimatedTimetableDeliveryStructure> results =new ArrayList<>();
 
-        Set<String> channels = filter.get(InfoChannel.class);
-        if (channels == null || channels.isEmpty()) {
-            return filtered;
+        //ET-deliveries
+        List<EstimatedTimetableDeliveryStructure> estimatedTimetableDeliveries = siri.getServiceDelivery().getEstimatedTimetableDeliveries();
+        for (EstimatedTimetableDeliveryStructure delivery : estimatedTimetableDeliveries) {
+            List<EstimatedVersionFrameStructure> etVersionFrames = delivery.getEstimatedJourneyVersionFrames();
+            List<EstimatedVersionFrameStructure> filteredVersionFrames = new ArrayList<>();
+
+            for (EstimatedVersionFrameStructure version : etVersionFrames) {
+                List<EstimatedVehicleJourney> matches = new ArrayList<>();
+                List<EstimatedVehicleJourney> estimatedVehicleJourneies = version.getEstimatedVehicleJourneies();
+                for (EstimatedVehicleJourney estimatedVehicleJourney : estimatedVehicleJourneies) {
+
+                    String lineRefValue = estimatedVehicleJourney.getLineRef() != null ? estimatedVehicleJourney.getLineRef().getValue() : null;
+                    String vehicleRefValue = estimatedVehicleJourney.getVehicleRef() != null ? estimatedVehicleJourney.getVehicleRef().getValue() : null;
+
+                    if(lineRef != null && !lineRef.isEmpty() && vehicleRef != null && !vehicleRef.isEmpty()){
+                        if(isLineRefMatch(lineRef, lineRefValue) && vehicleRef.contains(vehicleRefValue)){
+                            matches.add(estimatedVehicleJourney);
+                        }
+                    } else if (lineRef != null && !lineRef.isEmpty()){
+                        if (isLineRefMatch(lineRef, lineRefValue)) {
+                            matches.add(estimatedVehicleJourney);
+                        }
+                    } else if (vehicleRef != null && !vehicleRef.isEmpty()) {
+                        if (vehicleRef.contains(vehicleRefValue)) {
+                            matches.add(estimatedVehicleJourney);
+                        }
+                    }
+                }
+                version.getEstimatedVehicleJourneies().addAll(matches);
+                if(!matches.isEmpty()){
+                    filteredVersionFrames.add(version);
+                }
+            }
+
+            if (!etVersionFrames.isEmpty()) {
+                EstimatedTimetableDeliveryStructure estimatedTimetableDelStruct = new EstimatedTimetableDeliveryStructure();
+                estimatedTimetableDelStruct.setResponseTimestamp(delivery.getResponseTimestamp());
+                estimatedTimetableDelStruct.setVersion(delivery.getVersion());
+
+                estimatedTimetableDelStruct.getEstimatedJourneyVersionFrames().addAll(filteredVersionFrames);
+                results.add(estimatedTimetableDelStruct);
+            }
         }
+        return results;
+    }
 
-        for (GeneralMessageDeliveryStructure generalMessageDelivery : filtered.getServiceDelivery().getGeneralMessageDeliveries()) {
+    private static List<GeneralMessageDeliveryStructure> getFilteredGeneralRef(Siri siri, Set<String> channels){
+        if (channels == null || channels.isEmpty()) {
+            return null;
+        }
+        List<GeneralMessageDeliveryStructure> results =new ArrayList<>();
 
+        //GM-deliveries
+        List<GeneralMessageDeliveryStructure> estimatedTimetableDeliveries = siri.getServiceDelivery().getGeneralMessageDeliveries();
+        for (GeneralMessageDeliveryStructure delivery : estimatedTimetableDeliveries) {
+
+            List<GeneralMessage> generalMessages = delivery.getGeneralMessages();
             List<GeneralMessage> filteredGeneralMessages = new ArrayList<>();
-            for (GeneralMessage generalMessage : generalMessageDelivery.getGeneralMessages()) {
+            for (GeneralMessage generalMessage : generalMessages) {
 
                 if (channels.contains(generalMessage.getInfoChannelRef().getValue())) {
                     filteredGeneralMessages.add(generalMessage);
                 }
             }
+            if (!generalMessages.isEmpty()) {
+                GeneralMessageDeliveryStructure generalMessageDelStruct = new GeneralMessageDeliveryStructure();
+                generalMessageDelStruct.setResponseTimestamp(delivery.getResponseTimestamp());
+                generalMessageDelStruct.setVersion(delivery.getVersion());
 
-            generalMessageDelivery.getGeneralMessages().clear();
-            generalMessageDelivery.getGeneralMessages().addAll(filteredGeneralMessages);
+                generalMessageDelStruct.getGeneralMessages().addAll(filteredGeneralMessages);
+                results.add(generalMessageDelStruct);
+            }
         }
-        return filtered;
+        return results;
+
     }
 
-    /*
-     * Filters elements with 1 - one - possible match per element
-     */
-    private static Siri applySingleMatchFilter(Siri siri, Map<Class, Set<String>> filter) {
-
-
-        filterLineRef(siri, filter.get(LineRef.class));
-        filterVehicleRef(siri, filter.get(VehicleRef.class));
-        filterMonitoringRef(siri, filter.get(MonitoringRefStructure.class));
-
-        return siri;
-    }
-
-    private static void filterLineRef(Siri siri, Set<String> linerefValues) {
+    private static List<SituationExchangeDeliveryStructure> getFilteredSituationRef(Siri siri,Set<String> linerefValues) {
         if (linerefValues == null || linerefValues.isEmpty()) {
-            return;
+            return null;
         }
+
+        List<SituationExchangeDeliveryStructure> results =new ArrayList<>();
+
+        //SX-deliveries
+        List<SituationExchangeDeliveryStructure> situationExchangeDeliveries = siri.getServiceDelivery().getSituationExchangeDeliveries();
+        for (SituationExchangeDeliveryStructure delivery : situationExchangeDeliveries) {
+            SituationExchangeDeliveryStructure.Situations situations = delivery.getSituations();
+            List<PtSituationElement> ptSituationElements = situations.getPtSituationElements();
+
+            List<PtSituationElement> filteredSituationElements = new ArrayList<>();
+
+            for (PtSituationElement s : ptSituationElements) {
+                if (s.getAffects() != null &&
+                        s.getAffects().getNetworks() != null &&
+                        s.getAffects().getNetworks().getAffectedNetworks() != null) {
+
+                    List<AffectsScopeStructure.Networks.AffectedNetwork> affectedNetworks = s.getAffects().getNetworks().getAffectedNetworks();
+                    for (AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork : affectedNetworks) {
+                        List<AffectedLineStructure> affectedLines = affectedNetwork.getAffectedLines();
+                        if (affectedLines != null) {
+                            for (AffectedLineStructure affectedLine : affectedLines) {
+                                LineRef lineRef = affectedLine.getLineRef();
+                                if (!filteredSituationElements.contains(s) && lineRef != null) {
+                                    if (isLineRefMatch(linerefValues, lineRef.getValue())) {
+                                        filteredSituationElements.add(s);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (!ptSituationElements.isEmpty()) {
+                SituationExchangeDeliveryStructure situationDelStruct = new SituationExchangeDeliveryStructure();
+                situationDelStruct.setResponseTimestamp(delivery.getResponseTimestamp());
+                situationDelStruct.setVersion(delivery.getVersion());
+
+                situationDelStruct.getSituations().getPtSituationElements().addAll(filteredSituationElements);
+                results.add(situationDelStruct);
+            }
+        }
+        return results;
+    }
+
+    private static List<VehicleMonitoringDeliveryStructure> getFilteredVehicleRef(Siri siri,Set<String> lineRef, Set<String> vehicleRef) {
+        List<VehicleMonitoringDeliveryStructure> results = new ArrayList<>();
 
         //VM-deliveries
         List<VehicleMonitoringDeliveryStructure> vehicleMonitoringDeliveries = siri.getServiceDelivery().getVehicleMonitoringDeliveries();
@@ -535,95 +616,40 @@ public class SiriHelper {
             for (VehicleActivityStructure vehicleActivity : vehicleActivities) {
                 VehicleActivityStructure.MonitoredVehicleJourney monitoredVehicleJourney = vehicleActivity.getMonitoredVehicleJourney();
                 if (monitoredVehicleJourney != null) {
-                    if (monitoredVehicleJourney.getLineRef() != null) {
-                        if (isLineRefMatch(linerefValues, monitoredVehicleJourney.getLineRef().getValue())) {
+
+                    String lineRefValue = monitoredVehicleJourney.getLineRef() != null ? monitoredVehicleJourney.getLineRef().getValue() : null;
+                    String vehicleRefValue = monitoredVehicleJourney.getVehicleRef() != null ? monitoredVehicleJourney.getVehicleRef().getValue() : null;
+
+                    if(lineRef != null && !lineRef.isEmpty() && vehicleRef != null && !vehicleRef.isEmpty()){
+                        if(isLineRefMatch(lineRef, lineRefValue) && vehicleRef.contains(vehicleRefValue)){
+                            filteredActivities.add(vehicleActivity);
+                        }
+                    } else if (lineRef != null && !lineRef.isEmpty()){
+                        if (isLineRefMatch(lineRef, lineRefValue)) {
+                            filteredActivities.add(vehicleActivity);
+                        }
+                    } else if (vehicleRef != null && !vehicleRef.isEmpty()) {
+                        if (vehicleRef.contains(vehicleRefValue)) {
                             filteredActivities.add(vehicleActivity);
                         }
                     }
                 }
             }
-            delivery.getVehicleActivities().clear();
-            delivery.getVehicleActivities().addAll(filteredActivities);
-        }
+            if(!vehicleActivities.isEmpty()){
+                VehicleMonitoringDeliveryStructure vehicleMonitoringDelStruct = new VehicleMonitoringDeliveryStructure();
+                vehicleMonitoringDelStruct.setVersion(delivery.getVersion());
+                vehicleMonitoringDelStruct.setResponseTimestamp(delivery.getResponseTimestamp());
 
-        //ET-deliveries
-        List<EstimatedTimetableDeliveryStructure> etDeliveries = siri.getServiceDelivery().getEstimatedTimetableDeliveries();
-        for (EstimatedTimetableDeliveryStructure delivery : etDeliveries) {
-            List<EstimatedVersionFrameStructure> etVersionFrames = delivery.getEstimatedJourneyVersionFrames();
-
-            for (EstimatedVersionFrameStructure version : etVersionFrames) {
-                List<EstimatedVehicleJourney> matches = new ArrayList<>();
-                List<EstimatedVehicleJourney> estimatedVehicleJourneies = version.getEstimatedVehicleJourneies();
-                for (EstimatedVehicleJourney estimatedVehicleJourney : estimatedVehicleJourneies) {
-                    if (estimatedVehicleJourney.getLineRef() != null) {
-                        if (isLineRefMatch(linerefValues, estimatedVehicleJourney.getLineRef().getValue())) {
-                            matches.add(estimatedVehicleJourney);
-                        }
-                    }
-                }
-                version.getEstimatedVehicleJourneies().clear();
-                version.getEstimatedVehicleJourneies().addAll(matches);
+                vehicleMonitoringDelStruct.getVehicleActivities().addAll(filteredActivities);
+                results.add(vehicleMonitoringDelStruct);
             }
         }
-    }
-
-    private static boolean isLineRefMatch(Set<String> linerefValues, String completeValue) {
-        if (completeValue.contains(SiriValueTransformer.SEPARATOR)) {
-            String mappedId = OutboundIdAdapter.getMappedId(completeValue);
-            String originalId = OutboundIdAdapter.getOriginalId(completeValue);
-            return linerefValues.contains(mappedId) || linerefValues.contains(originalId);
-        } else return linerefValues.contains(completeValue);
-    }
-
-    private static void filterVehicleRef(Siri siri, Set<String> vehiclerefValues) {
-        if (vehiclerefValues == null || vehiclerefValues.isEmpty()) {
-            return;
-        }
-        //VM-deliveries
-        List<VehicleMonitoringDeliveryStructure> vehicleMonitoringDeliveries = siri.getServiceDelivery().getVehicleMonitoringDeliveries();
-        for (VehicleMonitoringDeliveryStructure delivery : vehicleMonitoringDeliveries) {
-            List<VehicleActivityStructure> vehicleActivities = delivery.getVehicleActivities();
-            List<VehicleActivityStructure> filteredActivities = new ArrayList<>();
-
-            for (VehicleActivityStructure vehicleActivity : vehicleActivities) {
-                VehicleActivityStructure.MonitoredVehicleJourney monitoredVehicleJourney = vehicleActivity.getMonitoredVehicleJourney();
-                if (monitoredVehicleJourney != null) {
-                    if (monitoredVehicleJourney.getVehicleRef() != null) {
-                        if (vehiclerefValues.contains(monitoredVehicleJourney.getVehicleRef().getValue())) {
-                            filteredActivities.add(vehicleActivity);
-                        }
-                    }
-                }
-            }
-            delivery.getVehicleActivities().clear();
-            delivery.getVehicleActivities().addAll(filteredActivities);
-        }
-
-        //ET-deliveries
-        List<EstimatedTimetableDeliveryStructure> etDeliveries = siri.getServiceDelivery().getEstimatedTimetableDeliveries();
-        for (EstimatedTimetableDeliveryStructure delivery : etDeliveries) {
-            List<EstimatedVersionFrameStructure> etVersionFrames = delivery.getEstimatedJourneyVersionFrames();
-
-            for (EstimatedVersionFrameStructure version : etVersionFrames) {
-                List<EstimatedVehicleJourney> matches = new ArrayList<>();
-                List<EstimatedVehicleJourney> estimatedVehicleJourneies = version.getEstimatedVehicleJourneies();
-                for (EstimatedVehicleJourney estimatedVehicleJourney : estimatedVehicleJourneies) {
-                    if (estimatedVehicleJourney.getVehicleRef() != null) {
-                        if (vehiclerefValues.contains(estimatedVehicleJourney.getVehicleRef().getValue())) {
-                            matches.add(estimatedVehicleJourney);
-                        }
-                    }
-                }
-                version.getEstimatedVehicleJourneies().clear();
-                version.getEstimatedVehicleJourneies().addAll(matches);
-            }
-        }
+        return results;
     }
 
     private static List<StopMonitoringDeliveryStructure> getFilteredMonitoringRef(Siri siri, Set<String> monitoringRef) {
         if (monitoringRef == null || monitoringRef.isEmpty()) {
             return null;
-
         }
         List<StopMonitoringDeliveryStructure> results = new ArrayList<>();
 
@@ -649,70 +675,15 @@ public class SiriHelper {
         return results;
     }
 
-
-    private static void filterMonitoringRef(Siri siri, Set<String> monitoringRef) {
-        if (monitoringRef == null || monitoringRef.isEmpty()) {
-            return;
-
+    private static boolean isLineRefMatch(Set<String> linerefValues, String completeValue) {
+        if(completeValue == null){
+            return false;
         }
-        //SM-deliveries
-        List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = siri.getServiceDelivery().getStopMonitoringDeliveries();
-        for (StopMonitoringDeliveryStructure delivery : stopMonitoringDeliveries) {
-            List<MonitoredStopVisit> monitoredStopVisits = delivery.getMonitoredStopVisits();
-            List<MonitoredStopVisit> filteredStopVisits = new ArrayList<>();
-            for (MonitoredStopVisit monitoredStopVisit : monitoredStopVisits) {
-                if (monitoringRef.contains(monitoredStopVisit.getMonitoringRef().getValue())) {
-                    filteredStopVisits.add(monitoredStopVisit);
-                }
-            }
-            delivery.getMonitoredStopVisits().clear();
-            delivery.getMonitoredStopVisits().addAll(filteredStopVisits);
-        }
-    }
-
-
-    /*
-     * Filters elements with multiple possible matches per element
-     */
-    private static Siri applyMultipleMatchFilter(Siri siri, Map<Class, Set<String>> filter) {
-
-        Set<String> linerefValues = filter.get(LineRef.class);
-        if (linerefValues == null || linerefValues.isEmpty()) {
-            return siri;
-        }
-        List<SituationExchangeDeliveryStructure> situationExchangeDeliveries = siri.getServiceDelivery().getSituationExchangeDeliveries();
-        for (SituationExchangeDeliveryStructure delivery : situationExchangeDeliveries) {
-            SituationExchangeDeliveryStructure.Situations situations = delivery.getSituations();
-
-
-            List<PtSituationElement> ptSituationElements = situations.getPtSituationElements();
-            List<PtSituationElement> filteredSituationElements = new ArrayList<>();
-            for (PtSituationElement s : ptSituationElements) {
-                if (s.getAffects() != null &&
-                        s.getAffects().getNetworks() != null &&
-                        s.getAffects().getNetworks().getAffectedNetworks() != null) {
-
-                    List<AffectsScopeStructure.Networks.AffectedNetwork> affectedNetworks = s.getAffects().getNetworks().getAffectedNetworks();
-                    for (AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork : affectedNetworks) {
-                        List<AffectedLineStructure> affectedLines = affectedNetwork.getAffectedLines();
-                        if (affectedLines != null) {
-                            for (AffectedLineStructure affectedLine : affectedLines) {
-                                LineRef lineRef = affectedLine.getLineRef();
-                                if (!filteredSituationElements.contains(s) && lineRef != null) {
-                                    if (isLineRefMatch(linerefValues, lineRef.getValue())) {
-                                        filteredSituationElements.add(s);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            situations.getPtSituationElements().clear();
-            situations.getPtSituationElements().addAll(filteredSituationElements);
-        }
-
-        return siri;
+        if (completeValue.contains(SiriValueTransformer.SEPARATOR)) {
+            String mappedId = OutboundIdAdapter.getMappedId(completeValue);
+            String originalId = OutboundIdAdapter.getOriginalId(completeValue);
+            return linerefValues.contains(mappedId) || linerefValues.contains(originalId);
+        } else return linerefValues.contains(completeValue);
     }
 
     public Siri getAllVM() {
