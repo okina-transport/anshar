@@ -28,16 +28,14 @@ import org.springframework.stereotype.Service;
 import uk.org.siri.siri20.*;
 
 import java.net.SocketException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
+import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_SOAP;
 import static no.rutebanken.anshar.routes.siri.transformer.SiriOutputTransformerRoute.OUTPUT_ADAPTERS_HEADER_NAME;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.HEARTBEAT_HEADER;
 
 @Service
 public class CamelRouteManager {
@@ -100,7 +98,7 @@ public class CamelRouteManager {
                 }
 
                 // On ne notifie pas les abonnés si (temps estimé (TR) - temps attendu (TH)) < changeBeforeUpdates de l'abonnement
-                if(subscriptionRequest.getChangeBeforeUpdates() > 0){
+                if (subscriptionRequest.getChangeBeforeUpdates() > 0) {
                     removeVehicleMonitoringIfChangeBeforeUpdates(splitSiri, subscriptionRequest);
                 }
 
@@ -202,6 +200,13 @@ public class CamelRouteManager {
             headers.put("SubscriptionId", subscription.getSubscriptionId());
             headers.put("showBody", showBody);
             headers.put(OUTPUT_ADAPTERS_HEADER_NAME, subscription.getValueAdapters());
+            if (subscription.isSOAPSubscription()) {
+                headers.put(TRANSFORM_SOAP, TRANSFORM_SOAP);
+            }
+
+            if (payload.getHeartbeatNotification() != null) {
+                headers.put(HEARTBEAT_HEADER, HEARTBEAT_HEADER);
+            }
 
             siriSubscriptionProcessor.sendBodyAndHeaders(payload, headers);
         }

@@ -87,13 +87,6 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
     @PostConstruct
     private void initializeUpdateCommitter() {
         super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
-//        enableCache(timetableDeliveries,
-//            // Only cache monitored/cancelled/extra trips
-//            value -> (Boolean.TRUE.equals(value.isMonitored()) |
-//                Boolean.TRUE.equals(value.isCancellation()) |
-//                Boolean.TRUE.equals(value.isExtraJourney()))
-        //);
-        linkEntriesTtl(timetableDeliveries, changesMap, checksumCache, idStartTimeMap);
     }
 
     /**
@@ -226,7 +219,7 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
         }
 
         // Filter by datasetId OR excludedDatasetIds
-        Set<SiriObjectStorageKey> requestedIds = generateIdSet(requestorId, datasetId, excludedDatasetIds, requestedLines);
+        Set<SiriObjectStorageKey> requestedIds = generateIdSet(datasetId, excludedDatasetIds, requestedLines);
 
         final ZonedDateTime previewExpiry = ZonedDateTime.now().plusSeconds(previewInterval / 1000);
 
@@ -310,22 +303,15 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
     /**
      * Generates a set of keys that matches with user's request
      *
-     * @param requestorId        user id
      * @param datasetId          dataset id
      * @param excludedDatasetIds dataset ids excluded
      * @param requestedLines
      * @return a set of keys matching with filters
      */
-    private Set<SiriObjectStorageKey> generateIdSet(String requestorId, String datasetId, List<String> excludedDatasetIds, Set<String> requestedLines) {
-
+    private Set<SiriObjectStorageKey> generateIdSet(String datasetId, List<String> excludedDatasetIds, Set<String> requestedLines) {
         // Get all relevant ids
-        Set<SiriObjectStorageKey> allIds = new HashSet<>();
-        Set<SiriObjectStorageKey> idSet = changesMap.getOrDefault(requestorId, allIds);
-
         com.hazelcast.query.Predicate<SiriObjectStorageKey, EstimatedVehicleJourney> predicate = SiriObjectStorageKeyUtil.getEstimateTimetablePredicate(requestedLines, null, datasetId, excludedDatasetIds);
-        idSet.addAll(timetableDeliveries.keySet(predicate));
-
-        return idSet;
+        return new HashSet<>(timetableDeliveries.keySet(predicate));
     }
 
     /**

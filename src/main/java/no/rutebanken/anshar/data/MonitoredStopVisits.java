@@ -277,12 +277,8 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
      */
     private Set<SiriObjectStorageKey> generateIdSet(String datasetId, Set<String> searchedStopRefs, List<String> excludedDatasetIds) {
         // Get all relevant ids
-        Set<SiriObjectStorageKey> idSet = new HashSet<>();
-
         Predicate<SiriObjectStorageKey, MonitoredStopVisit> predicate = SiriObjectStorageKeyUtil.getStopPredicate(searchedStopRefs, datasetId, excludedDatasetIds);
-        idSet.addAll(monitoredStopVisits.keySet(predicate));
-
-        return idSet;
+        return new HashSet<>(monitoredStopVisits.keySet(predicate));
     }
 
 

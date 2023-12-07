@@ -23,6 +23,7 @@ import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.support.builder.Namespaces;
 import org.apache.http.HttpHeaders;
+import org.eclipse.jetty.io.EofException;
 import org.entur.protobuf.mapper.SiriMapper;
 import org.rutebanken.siri20.util.SiriJson;
 import org.slf4j.Logger;
@@ -103,6 +104,11 @@ public class RestRouteBuilder extends RouteBuilder {
                 .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("401"))
                 .setBody(simple("Unauthorized"))
         ;
+
+        onException(EofException.class)
+                .process(e -> {
+                    logger.error("EOF error body:" + e.getIn().getBody(String.class));
+                });
 
         onException(IllegalArgumentException.class)
                 .handled(true)

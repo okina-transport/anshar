@@ -277,13 +277,9 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
      * @return a set of keys matching with filters
      */
     private Set<SiriObjectStorageKey> generateIdSet(String datasetId, List<InfoChannelRefStructure> requestedChannels) {
-
         // Get all relevant ids
-
         Predicate<SiriObjectStorageKey, GeneralMessage> predicate = SiriObjectStorageKeyUtil.getGeneralMessagePredicate(datasetId,requestedChannels);
-        Set<SiriObjectStorageKey> idSet =new HashSet<>(generalMessages.keySet(predicate));
-
-        return idSet;
+        return new HashSet<>(generalMessages.keySet(predicate));
     }
 
     public void clearAll() {

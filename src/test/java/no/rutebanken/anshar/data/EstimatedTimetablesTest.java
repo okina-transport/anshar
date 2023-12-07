@@ -117,7 +117,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         sleep(50);
 
 
-        assertEquals(2, siri
+        assertEquals(0, siri
                 .getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
                 .getEstimatedJourneyVersionFrames().get(0)
                 .getEstimatedVehicleJourneies().size());

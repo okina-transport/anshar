@@ -265,15 +265,25 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                         useOriginalId = Boolean.toString(defaultUseOriginalId);
                     }
 
-                    Siri response = handler.handleIncomingSiri(null, xml, datasetId, SiriHandler.getIdMappingPolicy(useOriginalId, (String) p.getIn().getHeader(PARAM_USE_ALT_ID)), -1, clientTrackingName);
+                    boolean soapTransformation = TRANSFORM_SOAP.equals(p.getIn().getHeader(TRANSFORM_SOAP));
+
+                    Siri response = handler.handleIncomingSiri(null, xml, datasetId, SiriHandler.getIdMappingPolicy(useOriginalId, (String) p.getIn().getHeader(PARAM_USE_ALT_ID)), -1, clientTrackingName, soapTransformation);
                     if (response != null) {
                         logger.info("Returning SubscriptionResponse");
 
                         p.getOut().setBody(response);
                     }
 
+                    p.getOut().setHeader(TRANSFORM_SOAP,p.getIn().getHeader(TRANSFORM_SOAP));
+
                 })
+                .choice()
+                .when(e -> TRANSFORM_SOAP.equals(e.getIn().getHeader(TRANSFORM_SOAP)))
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .to("xslt-saxon:xsl/siri_raw_soap.xsl")
+                .otherwise()
+                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .end()
                 .to("log:subResponse:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
         ;
 
@@ -325,7 +335,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                         useOriginalId = Boolean.toString(defaultUseOriginalId);
                     }
 
-                    Siri response = handler.handleIncomingSiri(null, msg.getBody(InputStream.class), datasetId, excludedIdList, SiriHandler.getIdMappingPolicy(useOriginalId, useAltId), maxSize, clientTrackingName);
+                    Siri response = handler.handleIncomingSiri(null, msg.getBody(InputStream.class), datasetId, excludedIdList, SiriHandler.getIdMappingPolicy(useOriginalId, useAltId), maxSize, clientTrackingName, false);
                     if (response != null) {
                         logger.debug("Found ServiceRequest-response, streaming response");
 

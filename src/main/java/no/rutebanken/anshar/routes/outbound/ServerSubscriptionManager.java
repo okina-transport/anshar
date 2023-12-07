@@ -137,9 +137,75 @@ public class ServerSubscriptionManager {
         return stats;
     }
 
-    public Siri handleSubscriptionRequest(SubscriptionRequest subscriptionRequest, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName) {
+    /**
+     * Handle subscription request that can contain one or multiple subcriptions
+     *
+     * @param subscriptionRequest
+     * @param datasetId
+     * @param outboundIdMappingPolicy
+     * @param clientTrackingName
+     * @param soapTransformation
+     * @return
+     */
+    public Siri handleMultipleSubscriptionsRequest(SubscriptionRequest subscriptionRequest, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName, boolean soapTransformation) {
+        if (subscriptionRequest.getStopMonitoringSubscriptionRequests() != null && subscriptionRequest.getStopMonitoringSubscriptionRequests().size() > 1) {
+            return handleMultipleStopMonitoringRequest(subscriptionRequest, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation);
+        } else {
+            return handleSingleSubscriptionRequest(subscriptionRequest, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation);
+        }
+    }
+
+    private Siri handleMultipleStopMonitoringRequest(SubscriptionRequest subscriptionRequest, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName, boolean soapTransformation) {
+
+        List<Siri> resultList = new ArrayList<>();
+        RequestorRef requestorRef = subscriptionRequest.getRequestorRef();
+        String consumerAddress = subscriptionRequest.getConsumerAddress();
+        SubscriptionContextStructure subscriptionContext = subscriptionRequest.getSubscriptionContext();
+        MessageQualifierStructure messageIdentifier = subscriptionRequest.getMessageIdentifier();
+
+        for (StopMonitoringSubscriptionStructure stopMonitoringSubscriptionRequest : subscriptionRequest.getStopMonitoringSubscriptionRequests()) {
+            SubscriptionRequest singleRequest = new SubscriptionRequest();
+            singleRequest.getStopMonitoringSubscriptionRequests().add(stopMonitoringSubscriptionRequest);
+            singleRequest.setRequestorRef(requestorRef);
+            singleRequest.setConsumerAddress(consumerAddress);
+            singleRequest.setSubscriptionContext(subscriptionContext);
+            singleRequest.setMessageIdentifier(messageIdentifier);
+
+            Siri currentResult = handleSingleSubscriptionRequest(singleRequest, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation);
+            resultList.add(currentResult);
+        }
+
+        return aggregateResults(resultList);
+    }
+
+    private Siri aggregateResults(List<Siri> resultList) {
+
+        Siri result = null;
+        for (Siri currentSiri : resultList) {
+            if (result == null) {
+                result = currentSiri;
+                continue;
+            }
+            result.getSubscriptionResponse().getResponseStatuses().add(currentSiri.getSubscriptionResponse().getResponseStatuses().get(0));
+        }
+        return result;
+    }
+
+
+    /**
+     * Handle a subcription request that contains only one subscription
+     *
+     * @param subscriptionRequest
+     * @param datasetId
+     * @param outboundIdMappingPolicy
+     * @param clientTrackingName
+     * @return
+     */
+    public Siri handleSingleSubscriptionRequest(SubscriptionRequest subscriptionRequest, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName, boolean soapTransformation) {
+
 
         OutboundSubscriptionSetup subscription = createSubscription(subscriptionRequest, datasetId, outboundIdMappingPolicy, clientTrackingName);
+        subscription.setSOAPSubscription(soapTransformation);
 
         boolean hasError = false;
         String errorText = null;
@@ -170,25 +236,25 @@ public class ServerSubscriptionManager {
 
             Siri subscriptionResponse = siriObjectFactory.createSubscriptionResponse(subscription.getSubscriptionId(), true, null);
 
-            final String breadcrumbId = MDC.get("camel.breadcrumbId");
-            Executors.newSingleThreadScheduledExecutor().execute(() -> {
-                try {
-                    MDC.put("camel.breadcrumbId", breadcrumbId);
-
-                    //Send initial ServiceDelivery
-                    logger.info("Find initial delivery for {}", subscription);
-                    Siri delivery = siriHelper.findInitialDeliveryData(subscription);
-
-                    if (delivery != null) {
-                        logger.info("Sending initial delivery to {}", subscription.getAddress());
-                        camelRouteManager.pushSiriData(delivery, subscription, false);
-                    } else {
-                        logger.info("No initial delivery found for {}", subscription);
-                    }
-                } finally {
-                    MDC.remove("camel.breadcrumbId");
-                }
-            });
+//            final String breadcrumbId = MDC.get("camel.breadcrumbId");
+//            Executors.newSingleThreadScheduledExecutor().execute(() -> {
+//                try {
+//                    MDC.put("camel.breadcrumbId", breadcrumbId);
+//
+//                    //Send initial ServiceDelivery
+//                    logger.info("Find initial delivery for {}", subscription);
+//                    Siri delivery = siriHelper.findInitialDeliveryData(subscription);
+//
+//                    if (delivery != null) {
+//                        logger.info("Sending initial delivery to {}", subscription.getAddress());
+//                        camelRouteManager.pushSiriData(delivery, subscription, false);
+//                    } else {
+//                        logger.info("No initial delivery found for {}", subscription);
+//                    }
+//                } finally {
+//                    MDC.remove("camel.breadcrumbId");
+//                }
+//            });
             return subscriptionResponse;
         }
     }

@@ -261,11 +261,8 @@ public class GeneralMessagesCancellations extends SiriRepository<GeneralMessageC
     private Set<SiriObjectStorageKey> generateIdSet(String datasetId, List<InfoChannelRefStructure> requestedChannels) {
 
         // Get all relevant ids
-
         Predicate<SiriObjectStorageKey, GeneralMessageCancellation> predicate = SiriObjectStorageKeyUtil.getGeneralMessageCancellationsPredicate(datasetId, requestedChannels);
-        Set<SiriObjectStorageKey> idSet = new HashSet<>(generalMessagesCancellations.keySet(predicate));
-
-        return idSet;
+        return new HashSet<>(generalMessagesCancellations.keySet(predicate));
     }
 
     public void clearAll() {

@@ -93,9 +93,6 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
     @PostConstruct
     private void initializeUpdateCommitter() {
         super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
-
-//        enableCache(monitoredVehicles);
-        linkEntriesTtl(monitoredVehicles, changesMap, checksumCache);
     }
 
     /**
@@ -249,7 +246,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
         }
 
         // Filter by datasetId and/or (linerefSet and vehicleRefSet) OR excludedDatasetIds and/or (linerefSet and vehicleRefSet)
-        Set<SiriObjectStorageKey> requestedIds = generateIdSet(requestorId, linerefSet, vehicleRefSet, datasetId, excludedDatasetIds);
+        Set<SiriObjectStorageKey> requestedIds = generateIdSet(linerefSet, vehicleRefSet, datasetId, excludedDatasetIds);
 
         Set<SiriObjectStorageKey> sizeLimitedIds = requestedIds.stream().limit(maxSize).collect(Collectors.toSet());
 
@@ -290,27 +287,16 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
     /**
      * Generates a set of keys that must be recovered from cache, matching the user's request
      *
-     * @param requestorId        user id
      * @param linerefSet         Line filters
      * @param vehicleRefSet      Vehicle v=filters
      * @param datasetId
      * @param excludedDatasetIds
      * @return A set of keys that matches with line filters and vehicle filters
      */
-    private Set<SiriObjectStorageKey> generateIdSet(String requestorId, Set<String> linerefSet, Set<String> vehicleRefSet, String datasetId, List<String> excludedDatasetIds) {
+    private Set<SiriObjectStorageKey> generateIdSet(Set<String> linerefSet, Set<String> vehicleRefSet, String datasetId, List<String> excludedDatasetIds) {
         // Get all relevant ids
-        Set<SiriObjectStorageKey> allIds = new HashSet<>();
-        Set<SiriObjectStorageKey> idSet;
-
-        idSet = changesMap.getOrDefault(requestorId, allIds);
-        idSet = idSet.stream()
-                .filter(key -> isKeyCompliantWithFilters(key, linerefSet, vehicleRefSet, null, datasetId, excludedDatasetIds))
-                .collect(Collectors.toSet());
-
-
         Predicate<SiriObjectStorageKey, VehicleActivityStructure> predicate = SiriObjectStorageKeyUtil.getVehiclePredicate(linerefSet, vehicleRefSet, datasetId, excludedDatasetIds);
-        idSet.addAll(monitoredVehicles.keySet(predicate));
-        return idSet;
+        return new HashSet<>(monitoredVehicles.keySet(predicate));
     }
 
     public long getExpiration(VehicleActivityStructure a) {

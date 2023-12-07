@@ -113,11 +113,12 @@ public class StopMonitoringOutbound {
         return importedIds;
     }
 
-    public Siri getStopMonitoringServiceDelivery(ServiceRequest serviceRequest, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId, List<ValueAdapter> valueAdapters, Siri serviceResponse, String requestorRef, String clientTrackingName, int maxSize){
+    public Siri getStopMonitoringServiceDelivery(ServiceRequest serviceRequest, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId, String requestorRef, String clientTrackingName, int maxSize){
         Set<String> originalMonitoringRefs = getMonitoringRefs(serviceRequest);
         Set<String> importedIds = getImportedIds(outboundIdMappingPolicy, originalMonitoringRefs, datasetId);
 
         List<Siri> siriList = new ArrayList<>();
+        Siri serviceResponse;
         if(StringUtils.isEmpty(datasetId) && outboundIdMappingPolicy.equals(OutboundIdMappingPolicy.DEFAULT) && !importedIds.isEmpty()){
             Set<String> datasetIds = monitoredStopVisits.getAllDatasetIds();
             for(String datasetIdFromList : datasetIds){

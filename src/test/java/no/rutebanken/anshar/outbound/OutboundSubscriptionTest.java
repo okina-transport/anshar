@@ -15,10 +15,7 @@ import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.stream.XMLStreamException;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class OutboundSubscriptionTest extends SpringBootBaseTest {
 
@@ -94,9 +91,9 @@ public class OutboundSubscriptionTest extends SpringBootBaseTest {
                 "\t</SubscriptionRequest>\n" +
                 "</Siri>";
 
-
-        final Siri siriSX = serverSubscriptionManager.handleSubscriptionRequest(SiriXml.parseXml(sxSubscription).getSubscriptionRequest(), null, null, null);
-        final Siri siriET = serverSubscriptionManager.handleSubscriptionRequest(SiriXml.parseXml(etSubscription).getSubscriptionRequest(), null, null, null);
+        boolean soapTransformation = false;
+        final Siri siriSX = serverSubscriptionManager.handleMultipleSubscriptionsRequest(SiriXml.parseXml(sxSubscription).getSubscriptionRequest(), null, null, null, soapTransformation);
+        final Siri siriET = serverSubscriptionManager.handleMultipleSubscriptionsRequest(SiriXml.parseXml(etSubscription).getSubscriptionRequest(), null, null, null, soapTransformation);
 
         assertNotNull(siriSX);
         assertNotNull(siriET);

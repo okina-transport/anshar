@@ -40,10 +40,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class SiriObjectFactory {
@@ -717,7 +714,9 @@ public class SiriObjectFactory {
     public Siri createStopPointsDiscoveryDelivery(Collection<AnnotatedStopPointStructure> elements) {
         Siri siri = createSiriObject();
         StopPointsDeliveryStructure spDelStruct = new StopPointsDeliveryStructure();
+        spDelStruct.setResponseTimestamp(ZonedDateTime.now());
         spDelStruct.getAnnotatedStopPointReves().addAll(elements);
+        spDelStruct.setStatus(true);
         siri.setStopPointsDelivery(spDelStruct);
         return siri;
     }
@@ -731,7 +730,9 @@ public class SiriObjectFactory {
     public Siri createLinesDiscoveryDelivery(Collection<AnnotatedLineRef> elements) {
         Siri siri = createSiriObject();
         LinesDeliveryStructure lineStruct = new LinesDeliveryStructure();
+        lineStruct.setResponseTimestamp(ZonedDateTime.now());
         lineStruct.getAnnotatedLineReves().addAll(elements);
+        lineStruct.setStatus(true);
         siri.setLinesDelivery(lineStruct);
         return siri;
     }
@@ -809,7 +810,7 @@ public class SiriObjectFactory {
         ResponseStatus responseStatus = new ResponseStatus();
         responseStatus.setResponseTimestamp(ZonedDateTime.now());
         responseStatus.setRequestMessageRef(createMessageIdentifier());
-        responseStatus.setSubscriptionRef(createSubscriptionIdentifier(subscriptionRef));
+        responseStatus.setSubscriptionRef(createSubscriptionIdentifier(subscriptionRef.replace(" ", ";")));
         responseStatus.setStatus(status);
 
         if (errorText != null) {
@@ -835,6 +836,24 @@ public class SiriObjectFactory {
         status.setStatus(true);
 
         response.getTerminationResponseStatuses().add(status);
+        siri.setTerminateSubscriptionResponse(response);
+        return siri;
+    }
+
+    public Siri createTerminateSubscriptionResponse(List<String> terminatedSubscriptions) {
+        Siri siri = createSiriObject();
+        TerminateSubscriptionResponseStructure response = new TerminateSubscriptionResponseStructure();
+        response.setResponseTimestamp(ZonedDateTime.now());
+
+        for (String terminatedSubscription : terminatedSubscriptions) {
+            TerminationResponseStatusStructure status = new TerminationResponseStatusStructure();
+            status.setSubscriptionRef(createSubscriptionIdentifier(terminatedSubscription));
+            status.setResponseTimestamp(ZonedDateTime.now());
+            status.setStatus(true);
+
+            response.getTerminationResponseStatuses().add(status);
+        }
+
         siri.setTerminateSubscriptionResponse(response);
         return siri;
     }

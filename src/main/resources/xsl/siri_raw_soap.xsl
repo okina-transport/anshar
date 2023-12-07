@@ -88,10 +88,19 @@
     <xsl:template match="siri:StopPointsDelivery">
         <xsl:element name="soapenv:Envelope" namespace="{$soapEnvelopeNamespace}">
             <xsl:element name="soapenv:Body" namespace="{$soapEnvelopeNamespace}">
-                <xsl:element name="StopPointsDiscoveryResponse">
-                    <xsl:copy-of select="./siri:AnnotatedStopPointRef" copy-namespaces="no">
+                <xsl:element name="StopPointsDiscoveryResponse" namespace="{$siriSoapNamespace}">
 
-                    </xsl:copy-of>
+                    <xsl:element name="Answer" namespace="">
+                        <xsl:copy-of select="./siri:ResponseTimestamp" copy-namespaces="no"/>
+                        <xsl:copy-of select="./siri:Status" copy-namespaces="no"/>
+
+                        <xsl:copy-of select="./siri:AnnotatedStopPointRef" copy-namespaces="no">
+
+                        </xsl:copy-of>
+                    </xsl:element>
+
+                    <xsl:element name="AnswerExtension" namespace="">
+                    </xsl:element>
                 </xsl:element>
             </xsl:element>
         </xsl:element>
@@ -100,10 +109,16 @@
     <xsl:template match="siri:LinesDelivery">
         <xsl:element name="soapenv:Envelope" namespace="{$soapEnvelopeNamespace}">
             <xsl:element name="soapenv:Body" namespace="{$soapEnvelopeNamespace}">
-                <xsl:element name="LinesDiscoveryResponse">
-                    <xsl:copy-of select="./siri:AnnotatedLineRef" copy-namespaces="no">
+                <xsl:element name="LinesDiscoveryResponse" namespace="{$siriSoapNamespace}">
 
-                    </xsl:copy-of>
+                    <xsl:element name="Answer" namespace="">
+                        <xsl:copy-of select="./siri:ResponseTimestamp" copy-namespaces="no"/>
+                        <xsl:copy-of select="./siri:Status" copy-namespaces="no"/>
+                        <xsl:copy-of select="./siri:AnnotatedLineRef" copy-namespaces="no"/>
+                    </xsl:element>
+
+                    <xsl:element name="AnswerExtension" namespace="">
+                    </xsl:element>
                 </xsl:element>
             </xsl:element>
         </xsl:element>
@@ -112,13 +127,60 @@
     <xsl:template match="siri:CheckStatusResponse">
         <xsl:element name="soapenv:Envelope" namespace="{$soapEnvelopeNamespace}">
             <xsl:element name="soapenv:Body" namespace="{$soapEnvelopeNamespace}">
-                <!-- <xsl:value-of select="../siri:CheckStatusResponse"/>-->
-                <xsl:copy-of select="../siri:CheckStatusResponse" copy-namespaces="no">
-                </xsl:copy-of>
+
+                <xsl:element name="CheckStatusResponse" namespace="{$siriSoapNamespace}">
+                    <xsl:element name="CheckStatusAnswerInfo" namespace="">
+                        <xsl:copy-of select="./siri:ResponseTimestamp" copy-namespaces="no"/>
+                        <xsl:copy-of select="./siri:ProducerRef" copy-namespaces="no"/>
+                        <xsl:copy-of select="./siri:ResponseMessageIdentifier" copy-namespaces="no"/>
+                        <xsl:copy-of select="./siri:RequestMessageRef" copy-namespaces="no"/>
+                    </xsl:element>
+                    <xsl:element name="Answer" namespace="">
+
+
+                        <xsl:copy-of select="./siri:Status" copy-namespaces="no"/>
+
+                    </xsl:element>
+
+                    <xsl:element name="AnswerExtension" namespace="">
+                    </xsl:element>
+
+                </xsl:element>
             </xsl:element>
         </xsl:element>
     </xsl:template>
 
+    <xsl:template match="siri:TerminateSubscriptionResponse">
+        <xsl:element name="soapenv:Envelope" namespace="{$soapEnvelopeNamespace}">
+            <xsl:element name="soapenv:Body" namespace="{$soapEnvelopeNamespace}">
+
+                <xsl:element name="DeleteSubscriptionResponse" namespace="{$siriSoapNamespace}">
+                    <xsl:element name="DeleteSubscriptionAnswerInfo" namespace="">
+                        <xsl:copy-of select="./siri:ResponseTimestamp" copy-namespaces="no"/>
+
+                    </xsl:element>
+
+                    <xsl:element name="Answer" namespace="">
+                        <xsl:copy-of select="./siri:ResponseTimestamp" copy-namespaces="no"/>
+
+                        <xsl:for-each select="./siri:TerminationResponseStatus">
+                            <xsl:element name="siri:{local-name()}">
+                                <xsl:copy-of select="./siri:SubscriptionRef" copy-namespaces="no"/>
+                                <xsl:copy-of select="./siri:Status" copy-namespaces="no"/>
+                            </xsl:element>
+                        </xsl:for-each>
+
+
+                    </xsl:element>
+
+                    <xsl:element name="AnswerExtension" namespace="">
+                    </xsl:element>
+
+
+                </xsl:element>
+            </xsl:element>
+        </xsl:element>
+    </xsl:template>
 
     <xsl:template match="*"/>
 
@@ -442,7 +504,7 @@
                         <xsl:copy-of select="../siri:ConsumerAddress" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:ResponseMessageIdentifier" copy-namespaces="no"/>
                     </xsl:element>
-                    <xsl:element name="Answer">
+                    <xsl:element name="Answer" namespace="">
                         <xsl:if test="local-name()='StopMonitoringDelivery'">
                             <xsl:element name="siri:StopMonitoringDelivery">
                                 <xsl:attribute name="version">
@@ -459,7 +521,7 @@
                             </xsl:element>
                         </xsl:if>
                     </xsl:element>
-                    <xsl:element name="RequestExtension"/>
+                    <xsl:element name="AnswerExtension" namespace=""/>
                 </xsl:element>
             </xsl:element>
         </xsl:element>
@@ -486,7 +548,7 @@
                         <xsl:copy-of select="../siri:ErrorCondition" copy-namespaces="no"/>
                     </xsl:element>
 
-                    <xsl:element name="Answer">
+                    <xsl:element name="Answer" namespace="">
 
                         <xsl:if test="local-name()='EstimatedTimetableDelivery'">
                             <xsl:element name="siri:EstimatedTimetableDelivery">
@@ -532,7 +594,7 @@
                         <xsl:copy-of select="../siri:ErrorCondition" copy-namespaces="no"/>
                     </xsl:element>
 
-                    <xsl:element name="Answer">
+                    <xsl:element name="Answer" namespace="">
 
                         <xsl:if test="local-name()='GeneralMessageDelivery'">
                             <xsl:element name="siri:GeneralMessageDelivery">
@@ -579,7 +641,7 @@
                         <xsl:copy-of select="../siri:ErrorCondition" copy-namespaces="no"/>
                     </xsl:element>
 
-                    <xsl:element name="Answer">
+                    <xsl:element name="Answer" namespace="">
 
                         <xsl:if test="local-name()='FacilityMonitoringDelivery'">
                             <xsl:element name="siri:FacilityMonitoringDelivery">
@@ -628,7 +690,7 @@
                         <xsl:copy-of select="../siri:ResponseMessageIdentifier" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:ErrorCondition" copy-namespaces="no"/>
                     </xsl:element>
-                    <xsl:element name="Answer">
+                    <xsl:element name="Answer" namespace="">
                         <xsl:if test="local-name()='VehicleMonitoringDelivery'">
                             <xsl:element name="siri:VehicleMonitoringDelivery">
                                 <xsl:attribute name="version">
@@ -646,7 +708,7 @@
                             </xsl:element>
                         </xsl:if>
                     </xsl:element>
-                    <xsl:element name="RequestExtension"/>
+                    <xsl:element name="AnswerExtension" namespace=""/>
                 </xsl:element>
 
 
@@ -677,7 +739,7 @@
                         <xsl:copy-of select="../siri:ConsumerAddress" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:ResponseMessageIdentifier" copy-namespaces="no"/>
                     </xsl:element>
-                    <xsl:element name="Answer">
+                    <xsl:element name="Answer" namespace="">
                         <xsl:if test="local-name()='SituationExchangeDelivery'">
                             <xsl:element name="siri:SituationExchangeDelivery">
                                 <xsl:attribute name="version">
@@ -694,7 +756,7 @@
                             </xsl:element>
                         </xsl:if>
                     </xsl:element>
-                    <xsl:element name="RequestExtension"/>
+                    <xsl:element name="AnswerExtension" namespace=""/>
                 </xsl:element>
 
 
@@ -709,30 +771,30 @@
 
             <xsl:element name="soapenv:Body" namespace="{$soapEnvelopeNamespace}">
 
-                <xsl:element name="siri:ResponseStatus">
 
-                    <xsl:attribute name="version">
-                        <xsl:value-of select="1.4"/>
-                    </xsl:attribute>
-
-                    <xsl:element name="siri:ResponseTimestamp">
-                        <xsl:value-of select="./siri:ResponseTimestamp"/>
+                <xsl:element name="SubscribeResponse" namespace="{$siriSoapNamespace}">
+                    <xsl:element name="SubscriptionAnswerInfo" namespace="">
+                        <xsl:copy-of select="./siri:ResponseTimestamp" copy-namespaces="no"/>
+                        <xsl:copy-of select="./siri:ResponderRef" copy-namespaces="no"/>
+                        <xsl:copy-of select="./siri:RequestMessageRef" copy-namespaces="no"/>
                     </xsl:element>
 
-                    <xsl:element name="siri:RequestMessageRef">
-                        <xsl:value-of select="./siri:RequestMessageRef"/>
+                    <xsl:element name="Answer" namespace="">
+
+                        <xsl:for-each select="./siri:ResponseStatus">
+                            <xsl:element name="siri:{local-name()}">
+                                <xsl:copy-of select="./siri:ResponseTimestamp" copy-namespaces="no"/>
+                                <xsl:copy-of select="./siri:RequestMessageRef" copy-namespaces="no"/>
+                                <xsl:copy-of select="./siri:SubscriptionRef" copy-namespaces="no"/>
+                                <xsl:copy-of select="./siri:Status" copy-namespaces="no"/>
+                                <xsl:copy-of select="./siri:ErrorCondition" copy-namespaces="no"/>
+                            </xsl:element>
+                        </xsl:for-each>
                     </xsl:element>
 
 
-                    <xsl:element name="siri:SubscriptionRef">
-                        <xsl:value-of select="siri:ResponseStatus/siri:SubscriptionRef"/>
+                    <xsl:element name="AnswerExtension" namespace="">
                     </xsl:element>
-
-                    <xsl:element name="siri:Status">
-                        <xsl:value-of select="siri:ResponseStatus/siri:Status"/>
-                    </xsl:element>
-
-
                 </xsl:element>
 
 

@@ -70,6 +70,7 @@ public class VMRequestResponseTest extends BaseHttpTest {
                 .when()
                 .contentType(ContentType.XML)
                 .body(SiriXml.toXml(siriRequest))
+                .header("datasetId", "TTT")
                 .post("anshar/services")
                 .then()
                 .statusCode(200)
