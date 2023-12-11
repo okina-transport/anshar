@@ -79,6 +79,7 @@ public class MessagingRoute extends RestRouteBuilder {
         final String externalSiriSMQueue = messageQueueCamelRoutePrefix + "anshar.external.siri.sm.data";
         final String externalSiriSXQueue = messageQueueCamelRoutePrefix + "anshar.external.siri.sx.data";
         final String externalSiriVMQueue = messageQueueCamelRoutePrefix + "anshar.external.siri.vm.data";
+        final String externalSiriETQueue = messageQueueCamelRoutePrefix + "anshar.external.siri.et.data";
 
 
         if (messageQueueCamelRoutePrefix.contains("direct")) {
@@ -152,6 +153,18 @@ public class MessagingRoute extends RestRouteBuilder {
                 })
                 .to("direct:transform.siri")
                 .bean(ExternalDataHandler.class, "processIncomingSiriSM")
+        ;
+
+        from(externalSiriETQueue)
+                .process(e -> {
+                    String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
+                    e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
+
+                    String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
+                    e.getIn().setHeader(URL_HEADER_NAME, url);
+                })
+                .to("direct:transform.siri")
+                .bean(ExternalDataHandler.class, "processIncomingSiriET")
         ;
 
         from(externalSiriSXQueue)

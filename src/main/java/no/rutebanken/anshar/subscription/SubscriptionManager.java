@@ -496,6 +496,11 @@ public class SubscriptionManager {
                 .anyMatch(subscription -> subscription.getStopMonitoringRefValue().equals(stopMonitoringRef) && datasetId.equals(subscription.getDatasetId()));
     }
 
+    public boolean isEstimatedTimetableSubscriptionExisting(String stopMonitoringRef, String datasetId) {
+        return getAllSubscriptions(ESTIMATED_TIMETABLE).stream()
+                .anyMatch(subscription -> subscription.getStopMonitoringRefValue().equals(stopMonitoringRef) && datasetId.equals(subscription.getDatasetId()));
+    }
+
     public boolean isSituationExchangeSubscriptionExisting(String situationNumber, String datasetId) {
         return getAllSubscriptions(SITUATION_EXCHANGE).stream()
                 .anyMatch(subscription -> subscription.getSubscriptionId().equals(situationNumber) && datasetId.equals(subscription.getDatasetId()));
