@@ -498,7 +498,7 @@ public class SubscriptionManager {
 
     public boolean isEstimatedTimetableSubscriptionExisting(String stopMonitoringRef, String datasetId) {
         return getAllSubscriptions(ESTIMATED_TIMETABLE).stream()
-                .anyMatch(subscription -> subscription.getStopMonitoringRefValue().equals(stopMonitoringRef) && datasetId.equals(subscription.getDatasetId()));
+                .anyMatch(subscription -> subscription.getStopMonitoringRefValue() != null && subscription.getStopMonitoringRefValue().equals(stopMonitoringRef) && datasetId.equals(subscription.getDatasetId()));
     }
 
     public boolean isSituationExchangeSubscriptionExisting(String situationNumber, String datasetId) {
