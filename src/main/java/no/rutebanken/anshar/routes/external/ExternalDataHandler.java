@@ -70,6 +70,13 @@ public class ExternalDataHandler {
                 stopMonitoringInbound.ingestStopVisits(datasetId, stopVisitToIngest);
             }
 
+            List<MonitoredStopVisitCancellation> stopVisitToCancel = collectStopVisitsCancellations(siri);
+
+            if (stopVisitToCancel.size() > 0) {
+                stopMonitoringInbound.cancelStopVisits(datasetId, stopVisitToCancel);
+            }
+
+
         } catch (JAXBException | XMLStreamException jaxbException) {
             logger.error("Error while unmarshalling siri message from external", e);
         }
@@ -272,6 +279,17 @@ public class ExternalDataHandler {
 
             for (StopMonitoringDeliveryStructure stopMonitoringDelivery : siri.getServiceDelivery().getStopMonitoringDeliveries()) {
                 resultList.addAll(stopMonitoringDelivery.getMonitoredStopVisits());
+            }
+        }
+        return resultList;
+    }
+
+    private List<MonitoredStopVisitCancellation> collectStopVisitsCancellations(Siri siri) {
+        List<MonitoredStopVisitCancellation> resultList = new ArrayList<>();
+        if (siri.getServiceDelivery() != null && siri.getServiceDelivery().getStopMonitoringDeliveries() != null) {
+
+            for (StopMonitoringDeliveryStructure stopMonitoringDelivery : siri.getServiceDelivery().getStopMonitoringDeliveries()) {
+                resultList.addAll(stopMonitoringDelivery.getMonitoredStopVisitCancellations());
             }
         }
         return resultList;

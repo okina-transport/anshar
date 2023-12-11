@@ -557,4 +557,15 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     public Set<String> getAllDatasetIds() {
         return monitoredStopVisits.keySet().stream().map(SiriObjectStorageKey::getCodespaceId).collect(Collectors.toSet());
     }
+
+    public void cancelStopVsits(String datasetId, List<MonitoredStopVisitCancellation> incomingMonitoredStopVisitsCancellations) {
+        for (MonitoredStopVisitCancellation incomingMonitoredStopVisitsCancellation : incomingMonitoredStopVisitsCancellations) {
+            String lineName = StopMonitoringUtils.getLineName(incomingMonitoredStopVisitsCancellation).orElse(null);
+            String vehicleJourneyName = StopMonitoringUtils.getVehicleJourneyName(incomingMonitoredStopVisitsCancellation).orElse(null);
+            String keyCriteria = incomingMonitoredStopVisitsCancellation.getItemRef() != null ? incomingMonitoredStopVisitsCancellation.getItemRef().getValue() : incomingMonitoredStopVisitsCancellation.getRecordedAtTime().format(DateTimeFormatter.ISO_DATE);
+            SiriObjectStorageKey key = createKey(datasetId, keyCriteria, incomingMonitoredStopVisitsCancellation.getMonitoringRef().getValue(), vehicleJourneyName, lineName);
+            monitoredStopVisits.delete(key);
+            logger.debug("SM - key deleted:" + key);
+        }
+    }
 }

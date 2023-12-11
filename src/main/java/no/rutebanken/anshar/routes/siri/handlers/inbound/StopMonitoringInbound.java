@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri20.MonitoredStopVisit;
+import uk.org.siri.siri20.MonitoredStopVisitCancellation;
 import uk.org.siri.siri20.Siri;
 import uk.org.siri.siri20.StopMonitoringDeliveryStructure;
 
@@ -36,7 +37,7 @@ public class StopMonitoringInbound {
     @Autowired
     private SubscriptionManager subscriptionManager;
 
-    public boolean ingestStopVisitFromApi(SiriDataType dataFormat, String dataSetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList){
+    public boolean ingestStopVisitFromApi(SiriDataType dataFormat, String dataSetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList) {
         logger.debug("Got SM-delivery: Subscription [{}] {}", subscriptionSetupList);
         List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = incoming.getServiceDelivery().getStopMonitoringDeliveries();
         List<MonitoredStopVisit> addedOrUpdated = new ArrayList<>();
@@ -69,12 +70,17 @@ public class StopMonitoringInbound {
 
         return !addedOrUpdated.isEmpty();
     }
+
     public Collection<MonitoredStopVisit> ingestStopVisits(String datasetId, List<MonitoredStopVisit> incomingMonitoredStopVisits) {
         Collection<MonitoredStopVisit> result = monitoredStopVisits.addAll(datasetId, incomingMonitoredStopVisits);
         if (result.size() > 0) {
             serverSubscriptionManager.pushUpdatesAsync(SiriDataType.STOP_MONITORING, incomingMonitoredStopVisits, datasetId);
         }
         return result;
+    }
+
+    public void cancelStopVisits(String datasetId, List<MonitoredStopVisitCancellation> incomingMonitoredStopVisitsCancellations) {
+        monitoredStopVisits.cancelStopVsits(datasetId, incomingMonitoredStopVisitsCancellations);
     }
 
     public boolean ingestStopVisit(SubscriptionSetup subscriptionSetup, Siri incoming) {
