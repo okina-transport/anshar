@@ -34,6 +34,7 @@ import uk.org.siri.siri20.*;
 
 import javax.annotation.PostConstruct;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -47,6 +48,8 @@ import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapte
 @Repository
 public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney> {
     private static final Logger logger = LoggerFactory.getLogger(EstimatedTimetables.class);
+
+    private static final ZoneId DEFAULT_ZONE_ID = ZoneId.of("Europe/Paris");
 
     @Autowired
     private IMap<SiriObjectStorageKey, EstimatedVehicleJourney> timetableDeliveries;
@@ -221,7 +224,7 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
         // Filter by datasetId OR excludedDatasetIds
         Set<SiriObjectStorageKey> requestedIds = generateIdSet(datasetId, excludedDatasetIds, requestedLines);
 
-        final ZonedDateTime previewExpiry = ZonedDateTime.now().plusSeconds(previewInterval / 1000);
+        final ZonedDateTime previewExpiry = ZonedDateTime.now(DEFAULT_ZONE_ID).plusSeconds(previewInterval / 1000);
 
         Set<SiriObjectStorageKey> startTimes = new HashSet<>();
 
@@ -377,7 +380,7 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
         if (requestorId != null) {
 
             Set<SiriObjectStorageKey> idSet = changesMap.get(requestorId);
-            lastUpdateRequested.put(requestorId, Instant.now(), configuration.getTrackingPeriodMinutes(), TimeUnit.MINUTES);
+            lastUpdateRequested.put(requestorId, Instant.now(DEFAULT_ZONE_ID), configuration.getTrackingPeriodMinutes(), TimeUnit.MINUTES);
 
             if (idSet != null) {
                 Set<SiriObjectStorageKey> datasetFilteredIdSet = new HashSet<>();
@@ -448,14 +451,14 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
         final SiriObjectStorageKey key = createKey(vehicleJourney.getDataSource(), vehicleJourney);
         logger.warn("Unable to find aimed time for VehicleJourney with key {}, returning 'now'", key);
 
-        return ZonedDateTime.now();
+        return ZonedDateTime.now(DEFAULT_ZONE_ID);
     }
 
     public long getExpiration(EstimatedVehicleJourney vehicleJourney) {
         ZonedDateTime expiryTimestamp = getLatestArrivalTime(vehicleJourney);
 
         if (expiryTimestamp != null) {
-            return ZonedDateTime.now().until(expiryTimestamp.plus(configuration.getEtGraceperiodMinutes(), ChronoUnit.MINUTES), ChronoUnit.MILLIS);
+            return ZonedDateTime.now(DEFAULT_ZONE_ID).until(expiryTimestamp.plus(configuration.getEtGraceperiodMinutes(), ChronoUnit.MINUTES), ChronoUnit.MILLIS);
         } else {
             return -1;
         }
@@ -615,8 +618,11 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
                 } else {
                     outdatedCounter.increment();
                     timingTracer.mark("outdatedCounter.increment");
+                    logger.debug("ET -exp < 0:" + expiration);
                 }
 
+            } else {
+                logger.debug("ET - keep false ");
             }
             long elapsed = timingTracer.getTotalTime();
             if (elapsed > 500) {
