@@ -140,6 +140,7 @@ public class ExternalDataHandler {
             setup.setVendor("OKINA");
             setup.setContentType("ExternalSiri");
             setup.setActive(true);
+            setup.setStopMonitoringRefValue(subscriptionId);
 
             setup.setName(subscriptionId);
             setup.setSubscriptionType(SiriDataType.ESTIMATED_TIMETABLE);
