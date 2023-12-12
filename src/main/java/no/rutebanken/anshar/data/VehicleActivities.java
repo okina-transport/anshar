@@ -85,6 +85,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
     public void sendMessageToRedis(Map<SiriObjectStorageKey, VehicleActivityStructure> message) {
 
         for (Map.Entry<SiriObjectStorageKey, VehicleActivityStructure> vmEntry : message.entrySet()) {
+            logger.debug("Sending to redis :" + vmEntry.getKey());
             redisProducer.sendBody(vmEntry.getValue());
         }
 
@@ -406,6 +407,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
         timingTracer.mark("checksumCache.setAll");
         monitoredVehicles.setAll(changes);
         if (redisPublication) {
+            logger.debug("Redis publication enabled");
             sendMessageToRedis(changes);
         }
 
