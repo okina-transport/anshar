@@ -142,9 +142,9 @@ public class ExternalDataHandler {
             setup.setActive(true);
             setup.setStopMonitoringRefValue(subscriptionId);
 
-            setup.setName(subscriptionId);
+            setup.setName("ET-" + subscriptionId);
             setup.setSubscriptionType(SiriDataType.ESTIMATED_TIMETABLE);
-            setup.setSubscriptionId(subscriptionId);
+            setup.setSubscriptionId("ET-" + subscriptionId);
             Map<RequestType, String> urlMap = new HashMap<>();
             urlMap.put(RequestType.GET_ESTIMATED_TIMETABLE, url);
             setup.setUrlMap(urlMap);
@@ -329,9 +329,9 @@ public class ExternalDataHandler {
             setup.setActive(true);
             setup.setStopMonitoringRefValue(subscriptionId);
 
-            setup.setName(subscriptionId);
+            setup.setName("SM-" + subscriptionId);
             setup.setSubscriptionType(SiriDataType.STOP_MONITORING);
-            setup.setSubscriptionId(subscriptionId);
+            setup.setSubscriptionId("SM-" + subscriptionId);
             Map<RequestType, String> urlMap = new HashMap<>();
             urlMap.put(RequestType.GET_STOP_MONITORING, url);
             setup.setUrlMap(urlMap);
