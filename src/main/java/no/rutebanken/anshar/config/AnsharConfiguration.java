@@ -23,8 +23,10 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
+import javax.annotation.PostConstruct;
 import java.time.Instant;
 import java.util.List;
+import java.util.TimeZone;
 
 @Configuration
 public class AnsharConfiguration {
@@ -327,5 +329,10 @@ public class AnsharConfiguration {
             isCurrentInstanceLeader = false;
             logger.info("=====> Current instance is not leader. Will not launch any GTFS-RT or SIRI Requests   <=================");
         }
+    }
+
+    @PostConstruct
+    public void init() {
+        TimeZone.setDefault(TimeZone.getTimeZone("Europe/Paris"));
     }
 }
