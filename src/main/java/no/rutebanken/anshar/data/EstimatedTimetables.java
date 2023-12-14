@@ -599,24 +599,12 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
                             et.setMonitored(true);
                         }
                     }
-
-                    cache.put(key, et);
-                    changes.put(key, et);
-                    timingTracer.mark("changes.put");
-
-                    checksumCacheTmp.put(key, currentChecksum);
-                    timingTracer.mark("checksumCache.put");
-
-                    idStartTimeMapTmp.put(key, getFirstAimedTime(et));
-                    timingTracer.mark("idStartTimeMap.put");
-
-                    expirationMap.put(key, expiration);
+                    timetableDeliveries.set(key, et, expiration, TimeUnit.MILLISECONDS);
 
                 } else {
                     outdatedCounter.increment();
                     timingTracer.mark("outdatedCounter.increment");
                 }
-
             }
             long elapsed = timingTracer.getTotalTime();
             if (elapsed > 500) {
@@ -630,18 +618,6 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
         markDataReceived(SiriDataType.ESTIMATED_TIMETABLE, datasetId, etList.size(), changes.size(), outdatedCounter.getValue(), notUpdatedCounter.getValue());
         TimingTracer timingTracer = new TimingTracer("all-et [" + changes.size() + " changes]");
 
-        // TTL is set in EntryListener when objects are added to main map
-        checksumCache.setAll(checksumCacheTmp);
-        timingTracer.mark("checksumCache.setAll");
-
-        idStartTimeMap.setAll(idStartTimeMapTmp);
-        timingTracer.mark("idStartTimeMap.setAll");
-
-        timetableDeliveries.setAll(changes);
-        timingTracer.mark("timetableDeliveries.setAll");
-
-        markIdsAsUpdated(changes.keySet());
-        timingTracer.mark("markIdsAsUpdated");
         if (timingTracer.getTotalTime() > 3000) {
             logger.info(timingTracer.toString());
         }
