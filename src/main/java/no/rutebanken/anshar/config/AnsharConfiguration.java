@@ -142,6 +142,9 @@ public class AnsharConfiguration {
     @Qualifier("getLockMap")
     private IMap<String, Instant> lockMap;
 
+    @Value("${anshar.default.time.zone}")
+    private String defaultTimeZone;
+
     private Boolean isCurrentInstanceLeader;
 
     public String getHazelcastManagementUrl() {
@@ -333,6 +336,6 @@ public class AnsharConfiguration {
 
     @PostConstruct
     public void init() {
-        TimeZone.setDefault(TimeZone.getTimeZone("Europe/Paris"));
+        TimeZone.setDefault(TimeZone.getTimeZone(defaultTimeZone));
     }
 }
