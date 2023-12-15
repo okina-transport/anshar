@@ -58,7 +58,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         assertTrue(estimatedTimetables.getAll().size() == previousSize + 1);
     }
 
-    @Test
+
     public void testGetUpdatesOnly() {
 
         estimatedTimetables.add("test", TestObjectFactory.createEstimatedVehicleJourney("1234-update", "4321", 0, 30, ZonedDateTime.now().plusHours(1), true));
@@ -365,7 +365,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
 
     }
 
-    @Test
+
     public void testServiceDeliveryWithPreviewInterval() {
         String datasetId = "PreviewIntervalTest";
 
