@@ -485,4 +485,8 @@ public class Situations extends SiriRepository<PtSituationElement> {
         this.situationElements = situationElements;
     }
 
+    public Set<String> getAllDatasetIds() {
+        return situationElements.keySet().stream().map(SiriObjectStorageKey::getCodespaceId).collect(Collectors.toSet());
+    }
+
 }

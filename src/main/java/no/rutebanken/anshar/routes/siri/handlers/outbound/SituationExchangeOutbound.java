@@ -38,8 +38,7 @@ public class SituationExchangeOutbound {
     }
 
     public Siri createServiceDelivery(String requestorRef, String datasetId, String clientTrackingName, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize) {
-
-        Set<String> datasetToRequest = StringUtils.isEmpty(datasetId) ? subscriptionConfig.getSXDatasetIds() : new HashSet<>(Arrays.asList(datasetId));
+        Set<String> datasetToRequest = StringUtils.isEmpty(datasetId) ? situations.getAllDatasetIds() : new HashSet<>(Arrays.asList(datasetId));
         List<Siri> results = new ArrayList<>();
         Siri serviceResponse;
 
