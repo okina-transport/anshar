@@ -139,6 +139,7 @@
 
 
                         <xsl:copy-of select="./siri:Status" copy-namespaces="no"/>
+                        <xsl:copy-of select="./siri:ServiceStartedTime" copy-namespaces="no"/>
 
                     </xsl:element>
 
