@@ -45,7 +45,7 @@ public class ValidationRoute extends RestRouteBuilder {
                 .get("/{" + PARAM_CODESPACE + "}").produces(MediaType.TEXT_HTML).to("direct:validation.list")
                 .get("/report").produces(MediaType.TEXT_HTML).to("direct:validation.report")
                 .put("/toggle").produces(MediaType.TEXT_HTML).to("direct:validation.toggle")
-                .get("/siri").produces(MediaType.APPLICATION_XML).to("direct:validation.siri")
+                .get("/siri").produces(MediaType.TEXT_XML).to("direct:validation.siri")
         ;
 
         from("direct:validation.toggle")

@@ -74,7 +74,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
         super.configure();
 
         rest("anshar").tag("siri")
-                .consumes(MediaType.APPLICATION_XML).produces(MediaType.APPLICATION_XML)
+                .consumes(MediaType.TEXT_XML).produces(MediaType.TEXT_XML)
 
                 .post("/anshar/services").to("direct:process.service.request")
                 .param().required(false).name(PARAM_EXCLUDED_DATASET_ID).type(RestParamType.query).description("Comma-separated list of dataset-IDs to be excluded from response (SIRI ET and VM)").dataType("string").endParam()
@@ -280,9 +280,15 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .choice()
                 .when(e -> TRANSFORM_SOAP.equals(e.getIn().getHeader(TRANSFORM_SOAP)))
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .process(e->{
+                    e.getIn().setHeader(Exchange.CONTENT_TYPE,MediaType.TEXT_XML);
+                })
                 .to("xslt-saxon:xsl/siri_raw_soap.xsl")
                 .otherwise()
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .process(e->{
+                    e.getIn().setHeader(Exchange.CONTENT_TYPE,MediaType.TEXT_XML);
+                })
                 .end()
                 .to("log:subResponse:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
         ;

@@ -205,7 +205,7 @@ public class RestRouteBuilder extends RouteBuilder {
                 from("direct:redirect.request.et")
                         // Setting default encoding if none is set
                         .choice().when(header("Content-Type").isEqualTo(""))
-                        .setHeader("Content-Type", simple(MediaType.APPLICATION_XML))
+                        .setHeader("Content-Type", simple(MediaType.TEXT_XML))
                         .end()
 
                         //Force forwarding parameters - if used in query
@@ -263,7 +263,7 @@ public class RestRouteBuilder extends RouteBuilder {
                 from("direct:redirect.request.vm")
                         // Setting default encoding if none is set
                         .choice().when(header("Content-Type").isEqualTo(""))
-                        .setHeader("Content-Type", simple(MediaType.APPLICATION_XML))
+                        .setHeader("Content-Type", simple(MediaType.TEXT_XML))
                         .end()
 
                         //Force forwarding parameters - if used in query
@@ -322,7 +322,7 @@ public class RestRouteBuilder extends RouteBuilder {
                 from("direct:redirect.request.sx")
                         // Setting default encoding if none is set
                         .choice().when(header("Content-Type").isEqualTo(""))
-                        .setHeader("Content-Type", simple(MediaType.APPLICATION_XML))
+                        .setHeader("Content-Type", simple(MediaType.TEXT_XML))
                         .end()
 
                         //Force forwarding parameters - if used in query
@@ -381,7 +381,7 @@ public class RestRouteBuilder extends RouteBuilder {
                 from("direct:redirect.request.sm")
                         // Setting default encoding if none is set
                         .choice().when(header("Content-Type").isEqualTo(""))
-                        .setHeader("Content-Type", simple(MediaType.APPLICATION_XML))
+                        .setHeader("Content-Type", simple(MediaType.TEXT_XML))
                         .end()
 
                         //Force forwarding parameters - if used in query
@@ -442,7 +442,7 @@ public class RestRouteBuilder extends RouteBuilder {
                 from("direct:redirect.request.gm")
                         // Setting default encoding if none is set
                         .choice().when(header("Content-Type").isEqualTo(""))
-                        .setHeader("Content-Type", simple(MediaType.APPLICATION_XML))
+                        .setHeader("Content-Type", simple(MediaType.TEXT_XML))
                         .end()
 
                         //Force forwarding parameters - if used in query
@@ -502,7 +502,7 @@ public class RestRouteBuilder extends RouteBuilder {
                 from("direct:redirect.request.fm")
                         // Setting default encoding if none is set
                         .choice().when(header("Content-Type").isEqualTo(""))
-                        .setHeader("Content-Type", simple(MediaType.APPLICATION_XML))
+                        .setHeader("Content-Type", simple(MediaType.TEXT_XML))
                         .end()
 
                         //Force forwarding parameters - if used in query
@@ -630,8 +630,8 @@ public class RestRouteBuilder extends RouteBuilder {
                 CustomSiriXml.toXml(response, null, new FileOutputStream(file));
             }
         } else {
-            p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_XML);
-            out.setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_XML);
+            p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_XML);
+            out.setHeader(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_XML);
             CustomSiriXml.toXml(response, null, out.getOutputStream());
 
         }

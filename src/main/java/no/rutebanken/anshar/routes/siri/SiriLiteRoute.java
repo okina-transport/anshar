@@ -768,7 +768,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
             throw new IllegalArgumentException(errorMsg);
         }
 
-        String mediaType = "json".equals(format) ? MediaType.APPLICATION_JSON : MediaType.APPLICATION_XML;
+        String mediaType = "json".equals(format) ? MediaType.APPLICATION_JSON : MediaType.TEXT_XML;
         e.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, mediaType);
 
     }
