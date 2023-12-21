@@ -49,13 +49,21 @@
         <xsl:element name="soapenv:Envelope" namespace="{$soapEnvelopeNamespace}">
             <xsl:element name="soapenv:Header" namespace="{$soapEnvelopeNamespace}"/>
             <xsl:element name="soapenv:Body" namespace="{$soapEnvelopeNamespace}">
-                <xsl:element name="HeartbeatNotifyInfo">
-                    <xsl:copy-of select="./siri:RequestTimestamp" copy-namespaces="no"/>
-                    <xsl:copy-of select="./siri:ProducerRef" copy-namespaces="no"/>
-                </xsl:element>
-                <xsl:element name="Notification">
-                    <xsl:copy-of select="./siri:Status" copy-namespaces="no"/>
-                    <xsl:copy-of select="./siri:ServiceStartedTime" copy-namespaces="no"/>
+
+
+                <xsl:element name="NotifyHeartbeat" namespace="{$siriSoapNamespace}">
+
+                    <xsl:element name="HeartbeatNotifyInfo">
+                        <xsl:copy-of select="./siri:RequestTimestamp" copy-namespaces="no"/>
+                        <xsl:copy-of select="./siri:ProducerRef" copy-namespaces="no"/>
+                    </xsl:element>
+                    <xsl:element name="Notification">
+                        <xsl:copy-of select="./siri:Status" copy-namespaces="no"/>
+                        <xsl:copy-of select="./siri:ServiceStartedTime" copy-namespaces="no"/>
+
+                    </xsl:element>
+                    <xsl:element name="SiriExtension">
+                    </xsl:element>
 
                 </xsl:element>
             </xsl:element>
