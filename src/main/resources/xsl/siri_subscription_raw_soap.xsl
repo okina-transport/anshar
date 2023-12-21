@@ -115,7 +115,7 @@
                             </xsl:element>
                         </xsl:if>
                     </xsl:element>
-                    <xsl:element name="RequestExtension"/>
+                    <xsl:element name="SiriExtension"/>
                 </xsl:element>
             </xsl:element>
         </xsl:element>
