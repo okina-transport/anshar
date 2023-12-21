@@ -424,6 +424,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
                     if (monitoredStopVisit.getMonitoredVehicleJourney() != null && monitoredStopVisit.getMonitoredVehicleJourney().getPublishedLineNames().size() == 1) {
                         NaturalLanguageStringStructure emptyPubLine = new NaturalLanguageStringStructure();
+                        emptyPubLine.setLang("FR");
                         emptyPubLine.setValue(" ");
                         monitoredStopVisit.getMonitoredVehicleJourney().getPublishedLineNames().add(emptyPubLine);
                     }
