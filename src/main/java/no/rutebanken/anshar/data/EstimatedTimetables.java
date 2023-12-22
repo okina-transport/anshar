@@ -600,6 +600,7 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
                         }
                     }
                     timetableDeliveries.set(key, et, expiration, TimeUnit.MILLISECONDS);
+                    changes.put(key, et);
 
                 } else {
                     outdatedCounter.increment();
