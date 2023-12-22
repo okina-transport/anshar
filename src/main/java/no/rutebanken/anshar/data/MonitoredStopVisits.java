@@ -441,6 +441,13 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
                         monitoredStopVisit.getMonitoredVehicleJourney().setDestinationRef(destinationRef);
                     }
 
+                    if (monitoredStopVisit.getMonitoredVehicleJourney().getDestinationNames().isEmpty()) {
+                        NaturalLanguageStringStructure emptyDestinationName = new NaturalLanguageStringStructure();
+                        emptyDestinationName.setLang("EN");
+                        emptyDestinationName.setValue("EmptyDestination");
+                        monitoredStopVisit.getMonitoredVehicleJourney().getDestinationNames().add(emptyDestinationName);
+                    }
+
 
                     if (updated) {
                         checksumCache.put(key, currentChecksum, 5, TimeUnit.MINUTES); //Keeping all checksums for at least 5 minutes to avoid stale data
