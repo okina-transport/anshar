@@ -437,7 +437,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
                     if (monitoredStopVisit.getMonitoredVehicleJourney().getDestinationRef() == null) {
                         DestinationRef destinationRef = new DestinationRef();
-                        destinationRef.setValue(" ");
+                        destinationRef.setValue("EmptyDestination");
                         monitoredStopVisit.getMonitoredVehicleJourney().setDestinationRef(destinationRef);
                     }
 
