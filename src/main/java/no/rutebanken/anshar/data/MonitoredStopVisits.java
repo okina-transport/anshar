@@ -431,7 +431,8 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
                     if (monitoredStopVisit.getMonitoredVehicleJourney().getJourneyPatternRef() == null) {
                         JourneyPatternRef journeyPatternRef = new JourneyPatternRef();
-                        journeyPatternRef.setValue(" ");
+                        String journeyPatternRefStr = monitoredStopVisit.getMonitoredVehicleJourney().getLineRef() != null ? monitoredStopVisit.getMonitoredVehicleJourney().getLineRef().getValue() : "EmptyJourneyPatternRef";
+                        journeyPatternRef.setValue(journeyPatternRefStr);
                         monitoredStopVisit.getMonitoredVehicleJourney().setJourneyPatternRef(journeyPatternRef);
                     }
 
