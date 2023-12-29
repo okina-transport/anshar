@@ -15,9 +15,13 @@
 
 package no.rutebanken.anshar.routes.admin;
 
+import no.rutebanken.anshar.config.IdProcessingParameters;
+import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.*;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
+import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.json.simple.JSONArray;
@@ -59,6 +63,12 @@ public class AdminRouteHelper {
 
     @Autowired
     private MonitoredStopVisits monitoredStopVisits;
+
+    @Autowired
+    private SubscriptionConfig subscriptionConfig;
+
+    @Autowired
+    StopPlaceUpdaterService stopPlaceUpdaterService;
 
 
     protected boolean shutdownTriggered;
@@ -122,8 +132,8 @@ public class AdminRouteHelper {
 
     private JSONObject getTextJson(DefaultedTextStructure summary) {
         JSONObject obj = new JSONObject();
-        obj.put("value", summary.getValue() != null ? summary.getValue():"");
-        obj.put("lang", summary.getLang() != null ? summary.getLang():"");
+        obj.put("value", summary.getValue() != null ? summary.getValue() : "");
+        obj.put("lang", summary.getLang() != null ? summary.getLang() : "");
         return obj;
     }
 
@@ -136,7 +146,7 @@ public class AdminRouteHelper {
                 JSONObject json = new JSONObject();
 
                 json.put("startTime", validity.getStartTime());
-                json.put("endTime", validity.getEndTime() != null ?  validity.getEndTime():"");
+                json.put("endTime", validity.getEndTime() != null ? validity.getEndTime() : "");
                 jsonArray.add(json);
             }
         }
@@ -188,15 +198,15 @@ public class AdminRouteHelper {
             default:
                 //Ignore
         }
-        logger.info("Flushing all data of type {} for {} took {} ms", dataType, datasetId, (System.currentTimeMillis()-t1));
+        logger.info("Flushing all data of type {} for {} took {} ms", dataType, datasetId, (System.currentTimeMillis() - t1));
     }
 
     static JSONObject mergeJsonStats(String jsonProxyStats, String jsonVmStats, String jsonEtStats, String jsonSxStats) {
         try {
             JSONObject proxyStats = (JSONObject) new JSONParser().parse(jsonProxyStats);
-            JSONObject vmStats    = (JSONObject) new JSONParser().parse(jsonVmStats);
-            JSONObject etStats    = (JSONObject) new JSONParser().parse(jsonEtStats);
-            JSONObject sxStats    = (JSONObject) new JSONParser().parse(jsonSxStats);
+            JSONObject vmStats = (JSONObject) new JSONParser().parse(jsonVmStats);
+            JSONObject etStats = (JSONObject) new JSONParser().parse(jsonEtStats);
+            JSONObject sxStats = (JSONObject) new JSONParser().parse(jsonSxStats);
 
             mergeDataDistributionStats(proxyStats, vmStats, etStats, sxStats);
 
@@ -208,7 +218,7 @@ public class AdminRouteHelper {
 
             mergeMetadata(proxyStats, vmStats, etStats, sxStats);
 
-            return proxyStats ;
+            return proxyStats;
         } catch (ParseException e) {
             e.printStackTrace();
         }
@@ -284,6 +294,7 @@ public class AdminRouteHelper {
             distribution.add(counter);
         }
     }
+
     private static void mergeSubscriptionStats(JSONObject proxyStats, JSONObject vmStats, JSONObject etStats, JSONObject sxStats) {
         JSONArray subscriptionTypes = (JSONArray) proxyStats.get("types");
         JSONArray vmSubscriptionTypes = (JSONArray) vmStats.get("types");
@@ -383,7 +394,7 @@ public class AdminRouteHelper {
                 JSONArray pollingArray = (JSONArray) pollingObj.get("polling");
                 for (Object obj : vmPolling) {
                     JSONObject value = (JSONObject) obj;
-                    pollingArray.addAll((JSONArray)value.get("polling"));
+                    pollingArray.addAll((JSONArray) value.get("polling"));
                     if (value.get("typeName").equals(SiriDataType.VEHICLE_MONITORING.name())) {
                         for (Object pollingClient : (JSONArray) value.get("polling")) {
                             if (!pollingArray.contains(pollingClient)) {
@@ -410,7 +421,7 @@ public class AdminRouteHelper {
     }
 
 
-    public JSONObject buildSynthesisData(){
+    public JSONObject buildSynthesisData() {
         logger.debug("Start synthesis stats");
         JSONObject result = new JSONObject();
         JSONArray smStats = new JSONArray();
@@ -418,9 +429,9 @@ public class AdminRouteHelper {
         List<SubscriptionSetup> smSubscriptions = subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING);
 
         List<String> datasetIds = smSubscriptions.stream()
-                                        .map(SubscriptionSetup::getDatasetId)
-                                        .distinct()
-                                        .collect(Collectors.toList());
+                .map(SubscriptionSetup::getDatasetId)
+                .distinct()
+                .collect(Collectors.toList());
 
 
         Map<String, Integer> nbOfItemsByDataset = monitoredStopVisits.getNbOfItemsByDataset(datasetIds);
@@ -428,9 +439,9 @@ public class AdminRouteHelper {
         for (String datasetId : datasetIds) {
 
             List<String> monitoringRefList = subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING).stream()
-                                                                .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))
-                                                                .map(SubscriptionSetup::getStopMonitoringRefValue)
-                                                                .collect(Collectors.toList());
+                    .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))
+                    .map(SubscriptionSetup::getStopMonitoringRefValue)
+                    .collect(Collectors.toList());
 
             JSONObject stat = new JSONObject();
             stat.put("datasetId", datasetId);
@@ -442,11 +453,40 @@ public class AdminRouteHelper {
         }
 
         result.put("smStats", smStats);
+
+
+        Set<SiriObjectStorageKey> keysets = monitoredStopVisits.getAllKeySets();
+
+        List<String> stopList = keysets.stream()
+                .map(this::convertStopKeyToOriginalId)
+                .distinct()
+                .collect(Collectors.toList());
+
+
+        List<String> stopsWithoutMapping = stopList.stream()
+                .filter(stop -> !stopPlaceUpdaterService.isKnownId(stop))
+                .collect(Collectors.toList());
+
+        result.put("unmappedStops", stopsWithoutMapping);
         return result;
     }
 
+    private String convertStopKeyToOriginalId(SiriObjectStorageKey key) {
 
+        String datasetId = key.getCodespaceId();
+        String rawId = key.getStopRef();
+
+        Optional<IdProcessingParameters> idProcParamsOpt = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.STOP);
+
+        if (idProcParamsOpt.isPresent()) {
+            IdProcessingParameters idProcParam = idProcParamsOpt.get();
+            return idProcParam.applyTransformationToString(rawId);
+        } else {
+            return rawId;
+        }
+    }
 }
+
 class DataCounter {
     long vm, et, sx;
 }

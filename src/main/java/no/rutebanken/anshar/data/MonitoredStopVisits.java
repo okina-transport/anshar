@@ -100,6 +100,10 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         return monitoredStopVisits.values();
     }
 
+    public Set<SiriObjectStorageKey> getAllKeySets() {
+        return monitoredStopVisits.keySet();
+    }
+
     @Override
     Map<SiriObjectStorageKey, MonitoredStopVisit> getAllAsMap() {
         return monitoredStopVisits;
