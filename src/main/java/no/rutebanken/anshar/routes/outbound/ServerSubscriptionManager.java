@@ -130,11 +130,37 @@ public class ServerSubscriptionManager {
             obj.put("requestReceived", formatter.format(subscription.getRequestTimestamp()));
             obj.put("initialTerminationTime", formatter.format(subscription.getInitialTerminationTime()));
             obj.put("clientTrackingName", subscription.getClientTrackingName() != null ? subscription.getClientTrackingName() : "");
+            obj.put("filteredRefs", getFilteredRefs(subscription.getFilterMap()));
 
             stats.add(obj);
         }
 
         return stats;
+    }
+
+    private String getFilteredRefs(Map<Class, Set<String>> filterMap) {
+        StringBuilder filteredRefs = new StringBuilder();
+        boolean hasStopsFiltered = false;
+
+        if (filterMap != null) {
+
+            if (filterMap.containsKey(MonitoringRefStructure.class)) {
+                String stopRefs = String.join(",", filterMap.get(MonitoringRefStructure.class));
+                filteredRefs.append("stops:" + stopRefs);
+                hasStopsFiltered = true;
+            }
+
+            if (filterMap.containsKey(LineRef.class)) {
+
+                if (hasStopsFiltered) {
+                    filteredRefs.append("/");
+                }
+
+                String lineRefs = String.join(",", filterMap.get(LineRef.class));
+                filteredRefs.append("lines:" + lineRefs);
+            }
+        }
+        return filteredRefs.toString();
     }
 
     /**
