@@ -422,11 +422,13 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
                         updated = true;
                     }
 
-                    if (monitoredStopVisit.getMonitoredVehicleJourney() != null && monitoredStopVisit.getMonitoredVehicleJourney().getPublishedLineNames().size() == 1) {
-                        NaturalLanguageStringStructure emptyPubLine = new NaturalLanguageStringStructure();
-                        emptyPubLine.setLang("FR");
-                        emptyPubLine.setValue(" ");
-                        monitoredStopVisit.getMonitoredVehicleJourney().getPublishedLineNames().add(emptyPubLine);
+                    if (monitoredStopVisit.getMonitoredVehicleJourney() != null && monitoredStopVisit.getMonitoredVehicleJourney().getPublishedLineNames().size() < 2) {
+                        while (monitoredStopVisit.getMonitoredVehicleJourney().getPublishedLineNames().size() < 2) {
+                            NaturalLanguageStringStructure emptyPubLine = new NaturalLanguageStringStructure();
+                            emptyPubLine.setLang("FR");
+                            emptyPubLine.setValue(" ");
+                            monitoredStopVisit.getMonitoredVehicleJourney().getPublishedLineNames().add(emptyPubLine);
+                        }
                     }
 
                     if (monitoredStopVisit.getMonitoredVehicleJourney().getJourneyPatternRef() == null) {
