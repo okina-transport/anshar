@@ -3,25 +3,16 @@ package no.rutebanken.anshar.routes;
 import com.sun.xml.bind.marshaller.NamespacePrefixMapper;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
-import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.subscription.DiscoverySubscriptionCreator;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
-import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
-import org.apache.camel.Produce;
-import org.apache.camel.ProducerTemplate;
 import org.apache.camel.component.http.HttpMethods;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri20.Siri;
-
-import java.io.InputStream;
-
-import static no.rutebanken.anshar.routes.siri.helpers.SiriRequestFactory.getCamelUrl;
 
 @Component
 public class DiscoverySubscriptionsRouteBuilder extends BaseRouteBuilder {
@@ -59,8 +50,18 @@ public class DiscoverySubscriptionsRouteBuilder extends BaseRouteBuilder {
 
 
         if (subscriptionConfig.getDiscoverySubscriptions().size() > 0) {
+
+            //1er lancement au démarrage de l'appli
+            singletonFrom("quartz://anshar/create_discovery_subscriptions?trigger.repeatInterval=1&trigger.repeatCount=0",
+                    "create_discovery_subscriptions")
+                    .log("Subscriptions by discovery launched")
+                    .bean(DiscoverySubscriptionCreator.class, "createDiscoverySubscriptions")
+                    .end();
+
+            //Lancement suivants toutes les 24 heures
             singletonFrom("quartz://anshar/create_discovery_subscriptions?trigger.repeatInterval=" + INTERVAL_IN_MILLIS,
                     "create_discovery_subscriptions")
+                    .log("Subscriptions by discovery launched")
                     .bean(DiscoverySubscriptionCreator.class, "createDiscoverySubscriptions")
                     .end();
         } else {
@@ -81,9 +82,9 @@ public class DiscoverySubscriptionsRouteBuilder extends BaseRouteBuilder {
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
                 .toD("${header.endpointUrl}")
                 .choice().when(simple("${in.body} != null"))
-                    .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
-                    .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Extract SOAP version and convert to raw SIRI
-                     .bean(DiscoverySubscriptionCreator.class, "createSubscriptionsFromProviderResponse")
+                .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
+                .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Extract SOAP version and convert to raw SIRI
+                .bean(DiscoverySubscriptionCreator.class, "createSubscriptionsFromProviderResponse")
 
                 .end()
 
