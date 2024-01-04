@@ -52,7 +52,7 @@ public class DiscoverySubscriptionsRouteBuilder extends BaseRouteBuilder {
         if (subscriptionConfig.getDiscoverySubscriptions().size() > 0) {
 
             //1er lancement au démarrage de l'appli
-            singletonFrom("quartz://anshar/create_discovery_subscriptions?trigger.repeatInterval=1&trigger.repeatCount=0",
+            singletonFrom("quartz://anshar/create_discovery_subscriptions_first_launch?trigger.repeatInterval=1&trigger.repeatCount=0",
                     "create_discovery_subscriptions_first_launch")
                     .log("Subscriptions by discovery launched")
                     .bean(DiscoverySubscriptionCreator.class, "createDiscoverySubscriptions")
