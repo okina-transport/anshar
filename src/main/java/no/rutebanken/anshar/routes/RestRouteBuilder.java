@@ -526,7 +526,7 @@ public class RestRouteBuilder extends RouteBuilder {
     protected boolean isSubscriptionMessage(Exchange e) {
 
         String incomingMsg = e.getIn().getBody(String.class);
-        return incomingMsg.contains("SubscriptionRequest");
+        return incomingMsg.contains("SubscriptionRequest") || incomingMsg.contains("DeleteSubscription");
     }
 
     protected boolean isTrackingHeaderAcceptable(Exchange e) {
