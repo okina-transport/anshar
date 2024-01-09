@@ -20,12 +20,7 @@ import org.junit.Ignore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.CallStatusEnumeration;
-import uk.org.siri.siri20.MonitoredCallStructure;
-import uk.org.siri.siri20.MonitoredStopVisit;
-import uk.org.siri.siri20.MonitoredVehicleJourneyStructure;
-import uk.org.siri.siri20.MonitoringRefStructure;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri20.*;
 
 import java.time.ZonedDateTime;
 import java.util.Arrays;
@@ -110,6 +105,43 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
 
         //Verify that element added is vendor-specific
         assertEquals(previousSize + 2, monitoredStopVisits.getAll("test").size());
+    }
+
+
+    @Test
+    public void testUpdatedMonitoredStopvisitCancellation() {
+        int previousSize = monitoredStopVisits.getAll().size();
+
+        //Add element
+        String stopReference = UUID.randomUUID().toString();
+        String itempIdentifier = UUID.randomUUID().toString();
+        String itemIdentifier2 = UUID.randomUUID().toString();
+        String tripId = UUID.randomUUID().toString();
+        String routeId = UUID.randomUUID().toString();
+        MonitoredStopVisit element = createMonitoredStopVisit(ZonedDateTime.now(), stopReference, itempIdentifier);
+        monitoredStopVisits.add("test", element);
+        //Verify that element is added
+        assertEquals(previousSize + 1, monitoredStopVisits.getAll().size());
+
+        //Update element
+        MonitoredStopVisitCancellation elementCancelled = createMonitoredStopVisitCancellation(ZonedDateTime.now(), stopReference, itempIdentifier);
+
+        monitoredStopVisits.cancelStopVsits("test", List.of(elementCancelled));
+
+        assertEquals(previousSize , monitoredStopVisits.getAll().size());
+
+        MonitoredStopVisit element2 = createMonitoredCompleteStopVisit(ZonedDateTime.now().plusMinutes(1), stopReference, tripId, itemIdentifier2, routeId);
+        monitoredStopVisits.add("test2", element2);
+        //Verify that element is added
+        assertEquals(previousSize + 1, monitoredStopVisits.getAll().size());
+
+        //Update element
+        MonitoredStopVisitCancellation elementCancelled2 = createMonitoredStopVisitCompleteCancellation(ZonedDateTime.now().plusMinutes(1), stopReference, tripId, itemIdentifier2, routeId);
+
+        monitoredStopVisits.cancelStopVsits("test2", List.of(elementCancelled2));
+
+        //Verify that existing element is updated
+        assertEquals(previousSize , monitoredStopVisits.getAll().size());
     }
 
 
@@ -217,7 +249,80 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
         return element;
     }
 
+    private MonitoredStopVisit createMonitoredCompleteStopVisit(ZonedDateTime recordedAtTime, String stopReference, String tripId, String itemIdentifier, String routeId) {
+        MonitoredStopVisit element = new MonitoredStopVisit();
 
+        element.setRecordedAtTime(recordedAtTime);
+        MonitoringRefStructure monitoringRefStructure = new MonitoringRefStructure();
+        monitoringRefStructure.setValue(stopReference);
+        element.setMonitoringRef(monitoringRefStructure);
+
+        FramedVehicleJourneyRefStructure vehicleJourneyRef = new FramedVehicleJourneyRefStructure();
+        vehicleJourneyRef.setDatedVehicleJourneyRef(tripId);
+
+        DataFrameRefStructure dataFrameRef = new DataFrameRefStructure();
+        dataFrameRef.setValue(tripId);
+        vehicleJourneyRef.setDataFrameRef(dataFrameRef);
+
+        LineRef lineRef = new LineRef();
+        lineRef.setValue(routeId);
+
+        MonitoredVehicleJourneyStructure monitoredVehicleJourneyStructure = new MonitoredVehicleJourneyStructure();
+        MonitoredCallStructure monitoredCallStructure = new MonitoredCallStructure();
+        monitoredCallStructure.setExpectedArrivalTime(ZonedDateTime.now().plusHours(1));
+        monitoredVehicleJourneyStructure.setLineRef(lineRef);
+        monitoredVehicleJourneyStructure.setFramedVehicleJourneyRef(vehicleJourneyRef);
+        monitoredVehicleJourneyStructure.setMonitoredCall(monitoredCallStructure);
+
+        element.setMonitoredVehicleJourney(monitoredVehicleJourneyStructure);
+
+        element.setItemIdentifier(itemIdentifier);
+        return element;
+    }
+
+    private MonitoredStopVisitCancellation createMonitoredStopVisitCancellation(ZonedDateTime recordedAtTime, String stopReference, String itemIdentifier) {
+        MonitoredStopVisitCancellation element = new MonitoredStopVisitCancellation();
+
+        element.setRecordedAtTime(recordedAtTime);
+        MonitoringRefStructure monitoringRefStructure = new MonitoringRefStructure();
+        monitoringRefStructure.setValue(stopReference);
+        element.setMonitoringRef(monitoringRefStructure);
+
+        ItemRefStructure itemRefStructure = new ItemRefStructure();
+        itemRefStructure.setValue(itemIdentifier);
+
+        element.setItemRef(itemRefStructure);
+
+        return element;
+    }
+
+    private MonitoredStopVisitCancellation createMonitoredStopVisitCompleteCancellation(ZonedDateTime recordedAtTime, String stopReference, String tripId, String itemIdentifier, String routeId) {
+        MonitoredStopVisitCancellation element = new MonitoredStopVisitCancellation();
+
+        element.setRecordedAtTime(recordedAtTime);
+        MonitoringRefStructure monitoringRefStructure = new MonitoringRefStructure();
+        monitoringRefStructure.setValue(stopReference);
+        element.setMonitoringRef(monitoringRefStructure);
+
+        FramedVehicleJourneyRefStructure vehicleJourneyRef = new FramedVehicleJourneyRefStructure();
+        vehicleJourneyRef.setDatedVehicleJourneyRef(tripId);
+
+        DataFrameRefStructure dataFrameRef = new DataFrameRefStructure();
+        dataFrameRef.setValue(tripId);
+        vehicleJourneyRef.setDataFrameRef(dataFrameRef);
+        element.setVehicleJourneyRef(vehicleJourneyRef);
+
+        LineRef lineRef = new LineRef();
+        lineRef.setValue(routeId);
+        element.setLineRef(lineRef);
+
+        ItemRefStructure itemRefStructure = new ItemRefStructure();
+        itemRefStructure.setValue(itemIdentifier);
+
+        element.setItemRef(itemRefStructure);
+
+        return element;
+    }
     @Test
     @Ignore // TODO MHI à faire
     public void testExcludeDatasetIds() {

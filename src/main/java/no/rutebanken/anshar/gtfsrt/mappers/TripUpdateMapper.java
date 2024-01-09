@@ -13,8 +13,7 @@ import java.math.BigInteger;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 
 /***
@@ -44,6 +43,10 @@ public class TripUpdateMapper {
         FramedVehicleJourneyRefStructure vehicleJourneyRef = createVehicleJourneyRef(tripUpdate);
 
         String tripId = tripUpdate.getTrip().getTripId();
+        if(tripUpdate.getTrip().getScheduleRelationship() != null && GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED.equals(
+        tripUpdate.getTrip().getScheduleRelationship())){
+            return Collections.emptyList();
+        }
 
         for (GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate : tripUpdate.getStopTimeUpdateList()) {
             MonitoredStopVisit stopVisit = new MonitoredStopVisit();
@@ -53,6 +56,7 @@ public class TripUpdateMapper {
                 logger.error("Unable to determine stopId for dataset:{}, tripId:{}, stopSequence:{}, stopId:{}", datasetId, tripId, stopTimeUpdate.getStopSequence(), stopTimeUpdate.getStopId());
             }
             mapMonitoringRef(stopVisit, stopId);
+
             MonitoredVehicleJourneyStructure monitoredVehicleStruct = new MonitoredVehicleJourneyStructure();
             monitoredVehicleStruct.setLineRef(lineRef);
             monitoredVehicleStruct.setFramedVehicleJourneyRef(vehicleJourneyRef);
@@ -258,5 +262,48 @@ public class TripUpdateMapper {
 
     }
 
+    /**
+     * Read a tripUpdate and creates siri objects
+     *
+     * @param tripUpdate GTFS-RT object to read
+     * @param datasetId
+     * @return A list of siri objects
+     */
+    public List<MonitoredStopVisitCancellation> mapStopCancellationFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate, String datasetId) {
+        if(tripUpdate.getTrip().getScheduleRelationship() != null && !GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED.equals(
+                tripUpdate.getTrip().getScheduleRelationship())){
+            return Collections.emptyList();
+        }
+        List<MonitoredStopVisitCancellation> stopVisitCancellations = new ArrayList<>();
+        LineRef lineRef = createLineRef(tripUpdate);
 
+        FramedVehicleJourneyRefStructure vehicleJourneyRef = createVehicleJourneyRef(tripUpdate);
+        String tripId = tripUpdate.getTrip().getTripId();
+
+        for (GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate : tripUpdate.getStopTimeUpdateList()) {
+            MonitoredStopVisitCancellation monitoredStopVisitCancellation = new MonitoredStopVisitCancellation();
+
+            String stopId = getStopId(stopTimeUpdate, datasetId, tripId);
+
+            if (StringUtils.isEmpty(stopId)) {
+                logger.error("Unable to determine stopId for dataset:{}, tripId:{}, stopSequence:{}, stopId:{}", datasetId, tripId, stopTimeUpdate.getStopSequence(), stopTimeUpdate.getStopId());
+            }
+            MonitoringRefStructure monitoringRefStruct = new MonitoringRefStructure();
+            monitoringRefStruct.setValue(stopId);
+            monitoredStopVisitCancellation.setMonitoringRef(monitoringRefStruct);
+            monitoredStopVisitCancellation.setVehicleJourneyRef(vehicleJourneyRef);
+            monitoredStopVisitCancellation.setLineRef(lineRef);
+
+            ItemRefStructure itemRefStructure = new ItemRefStructure();
+
+            //This id has to permit to recognize the SM "datasetId-tripId-stopId-lineId"
+            itemRefStructure.setValue(datasetId + "-" + tripId + "-" + stopId + "-" + lineRef.getValue());
+
+            monitoredStopVisitCancellation.setItemRef(itemRefStructure);
+
+            stopVisitCancellations.add(monitoredStopVisitCancellation);
+        }
+
+        return stopVisitCancellations;
+    }
 }
