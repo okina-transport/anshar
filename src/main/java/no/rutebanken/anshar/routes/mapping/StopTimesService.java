@@ -45,13 +45,21 @@ public class StopTimesService {
     @Value("${anshar.stop.times.root.directory}")
     private String stopTimesRootDir;
 
+    @Value("${anshar.trips.root.directory}")
+    private String tripsRootDir;
+
     @Autowired
     SubscriptionConfig subscriptionConfig;
 
     //datasetId -> tripId -> sequence
     private Map<String, Map<String, Map<Integer,String>>> stopTimesCache = new HashMap();
 
-    private FilenameFilter filenameFilter = (f, name) -> name.startsWith("stop_times_") && name.endsWith(".txt");
+    //datasetId -> 0tripId -> routeId
+    private Map<String, Map<String, String>> tripsCache = new HashMap();
+
+    private FilenameFilter stopTimesFilter = (f, name) -> name.startsWith("stop_times_") && name.endsWith(".txt");
+    private FilenameFilter tripsFilter = (f, name) -> name.startsWith("trips_") && name.endsWith(".txt");
+
 
     @PostConstruct
     private void initialize() {
@@ -82,6 +90,7 @@ public class StopTimesService {
 
         for (String dataset : datasetList) {
             updateStopTimesCacheForDatasetId(dataset);
+            updateTripsCacheForDatasetId(dataset);
         }
     }
 
@@ -100,11 +109,35 @@ public class StopTimesService {
         logger.info("Starting updating stop times cache for dataset : " + datasetId);
 
 
-        String[] fileList = organisationDirectory.list(filenameFilter);
+        String[] fileList = organisationDirectory.list(stopTimesFilter);
 
         for (String fileName : fileList) {
             File fileToRead = new File(organisationDirectory, fileName);
             feedCacheWithFile(fileToRead, datasetId);
+        }
+
+        logger.info("Feeding cache completed for datasetId: " + datasetId);
+    }
+
+    /**
+     * Refresh the cache containing data from stop_times files, for a particular datasetId
+     * @param datasetId
+     *  the dataset for which cache must be refreshed
+     */
+    private void updateTripsCacheForDatasetId(String datasetId) {
+
+        File organisationDirectory = new File(tripsRootDir, datasetId);
+        if (!organisationDirectory.exists()){
+            return;
+        }
+        logger.info("Starting updating trips cache for dataset : " + datasetId);
+
+
+        String[] fileList = organisationDirectory.list(tripsFilter);
+
+        for (String fileName : fileList) {
+            File fileToRead = new File(organisationDirectory, fileName);
+            feedCacheWithTripsFile(fileToRead, datasetId);
         }
 
         logger.info("Feeding cache completed for datasetId: " + datasetId);
@@ -122,6 +155,7 @@ public class StopTimesService {
 
         try{
             Iterable<CSVRecord> records = CSVUtils.getRecords(fileToRead);
+
 
             Map<String, Map<Integer,String>> currentDatasetCache;
 
@@ -149,6 +183,42 @@ public class StopTimesService {
                 currentTripCache.put(sequence, stopId);
             }
             logger.info("Feeding cache with stop_times file: " + fileToRead.getAbsolutePath() + " completed");
+
+        }catch (IOException | IllegalArgumentException e){
+            logger.error("Unable to feed cache with file:" + fileToRead.getAbsolutePath(), e);
+        }
+    }
+
+    /**
+     * Refresh the cache for a particular file/datasetId
+     * @param fileToRead
+     *  the stop_times file
+     * @param datasetId
+     *  the datasetId
+     */
+    private void feedCacheWithTripsFile(File fileToRead, String datasetId) {
+
+        try{
+            Iterable<CSVRecord> records = CSVUtils.getRecords(fileToRead);
+
+            Map<String,String> currentDatasetCache;
+
+            if (tripsCache.containsKey(datasetId)){
+                currentDatasetCache = tripsCache.get(datasetId);
+            }else{
+                currentDatasetCache = new HashMap<>();
+                tripsCache.put(datasetId, currentDatasetCache);
+            }
+
+            for (CSVRecord record : records) {
+
+                String routeId = record.get("route_id");
+                String tripId = record.get("trip_id");
+
+                currentDatasetCache.put(tripId,routeId);
+
+            }
+            logger.info("Feeding cache with trips file: " + fileToRead.getAbsolutePath() + " completed");
 
         }catch (IOException | IllegalArgumentException e){
             logger.error("Unable to feed cache with file:" + fileToRead.getAbsolutePath(), e);
@@ -185,6 +255,58 @@ public class StopTimesService {
            }
 
            return Optional.of(tripMap.get(stopSequence));
+    }
+
+    /**
+     * Read the cache and recover a stop_id, for a given datasetId/tripId/stopSequence
+     * @param datasetId
+     *  the datasetId for which the stop_id must be recovered
+     * @param tripId
+     *  the trip_id for which the stop_id must be recovered
+     * @return
+     */
+    public Optional<String> getDestinationId(String datasetId, String tripId){
+
+        if (!stopTimesCache.containsKey(datasetId)){
+            return Optional.empty();
+        }
+
+        Map<String, Map<Integer, String>> datasetMap = stopTimesCache.get(datasetId);
+
+        if (!datasetMap.containsKey(tripId)){
+            return Optional.empty();
+        }
+
+        Map<Integer, String> tripMap = datasetMap.get(tripId);
+
+        Integer maxKey = tripMap.keySet().stream().max(Integer::compareTo).orElse(null);
+
+        if (maxKey != null) {
+            return Optional.of(tripMap.get(maxKey));
+        } else {
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Read the cache and recover a stop_id, for a given datasetId/tripId/stopSequence
+     * @param datasetId
+     *  the datasetId for which the stop_id must be recovered
+     * @param tripId
+     *  the trip_id for which the stop_id must be recovered
+     * @return
+     */
+    public Optional<String> getRouteId(String datasetId, String tripId){
+
+        if (!tripsCache.containsKey(datasetId)){
+            return Optional.empty();
+        }
+
+        Map<String, String> datasetMap = tripsCache.get(datasetId);
+
+        String routeId = datasetMap.get(tripId);
+
+        return Optional.of(routeId);
     }
 
 }

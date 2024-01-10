@@ -39,7 +39,7 @@ public class TripUpdateMapper {
         List<MonitoredStopVisit> stopVisitList = new ArrayList<>();
 
 
-        LineRef lineRef = createLineRef(tripUpdate);
+
         FramedVehicleJourneyRefStructure vehicleJourneyRef = createVehicleJourneyRef(tripUpdate);
 
         String tripId = tripUpdate.getTrip().getTripId();
@@ -47,6 +47,9 @@ public class TripUpdateMapper {
         tripUpdate.getTrip().getScheduleRelationship())){
             return Collections.emptyList();
         }
+        LineRef lineRef = createLineRef(tripUpdate, datasetId, tripId);
+        DestinationRef destinationRef = createDestinationRef(datasetId, tripId);
+        NaturalLanguageStringStructure destinationName = createDestinationName(destinationRef);
 
         for (GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate : tripUpdate.getStopTimeUpdateList()) {
             MonitoredStopVisit stopVisit = new MonitoredStopVisit();
@@ -59,6 +62,8 @@ public class TripUpdateMapper {
 
             MonitoredVehicleJourneyStructure monitoredVehicleStruct = new MonitoredVehicleJourneyStructure();
             monitoredVehicleStruct.setLineRef(lineRef);
+            monitoredVehicleStruct.setDestinationRef(destinationRef);
+            monitoredVehicleStruct.getDestinationNames().add(destinationName);
             monitoredVehicleStruct.setFramedVehicleJourneyRef(vehicleJourneyRef);
             monitoredVehicleStruct.setMonitored(true);
             MonitoredCallStructure monitoredCallStructure = new MonitoredCallStructure();
@@ -156,12 +161,26 @@ public class TripUpdateMapper {
      * @param tripUpdate The trip update from which the routeId must be read
      * @return The lineRef containing the routeId
      */
-    private static LineRef createLineRef(GtfsRealtime.TripUpdate tripUpdate) {
-        String routeId = tripUpdate.getTrip() != null ? tripUpdate.getTrip().getRouteId() : "";
+    private LineRef createLineRef(GtfsRealtime.TripUpdate tripUpdate, String datasetId, String tripId) {
+        String routeId = tripUpdate.getTrip() != null && StringUtils.isNotEmpty(tripUpdate.getTrip().getRouteId())? tripUpdate.getTrip().getRouteId() : stopTimesService.getRouteId(datasetId, tripId).isPresent() ?
+                stopTimesService.getRouteId(datasetId, tripId).get() : "";
         LineRef lineRef = new LineRef();
 
         lineRef.setValue(routeId);
         return lineRef;
+    }
+
+    private DestinationRef createDestinationRef(String datasetId, String tripId) {
+
+        DestinationRef destinationRef = new DestinationRef();
+        destinationRef.setValue(stopTimesService.getDestinationId(datasetId,tripId).isPresent() ? stopTimesService.getDestinationId(datasetId,tripId).get() : "");
+        return destinationRef;
+    }
+
+    private NaturalLanguageStringStructure createDestinationName(DestinationRef destinationRef) {
+        NaturalLanguageStringStructure naturalLanguageStringStructure = new NaturalLanguageStringStructure();
+        naturalLanguageStringStructure.setValue(destinationRef.getValue());
+        return naturalLanguageStringStructure;
     }
 
     private String getStopId(GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate, String datasetId, String tripId) {
@@ -275,10 +294,11 @@ public class TripUpdateMapper {
             return Collections.emptyList();
         }
         List<MonitoredStopVisitCancellation> stopVisitCancellations = new ArrayList<>();
-        LineRef lineRef = createLineRef(tripUpdate);
 
         FramedVehicleJourneyRefStructure vehicleJourneyRef = createVehicleJourneyRef(tripUpdate);
         String tripId = tripUpdate.getTrip().getTripId();
+
+        LineRef lineRef = createLineRef(tripUpdate, datasetId, tripId);
 
         for (GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate : tripUpdate.getStopTimeUpdateList()) {
             MonitoredStopVisitCancellation monitoredStopVisitCancellation = new MonitoredStopVisitCancellation();
