@@ -97,13 +97,19 @@ public class TripUpdateMapper {
             return;
         }
 
-        long aimedDepartureSeconds = stopTimeUpdate.getDeparture().getTime();
-        ZonedDateTime aimedDeparture = ZonedDateTime.ofInstant(Instant.ofEpochMilli(aimedDepartureSeconds * 1000), ZoneId.systemDefault());
-        monitoredCallStructure.setAimedDepartureTime(aimedDeparture);
-
-        long expectedSeconds = aimedDepartureSeconds + stopTimeUpdate.getDeparture().getDelay();
-        ZonedDateTime expectedDeparture = ZonedDateTime.ofInstant(Instant.ofEpochMilli(expectedSeconds * 1000), ZoneId.systemDefault());
+        long departureTimeSeconds = stopTimeUpdate.getDeparture().getTime();
+        ZonedDateTime expectedDeparture = ZonedDateTime.ofInstant(Instant.ofEpochMilli(departureTimeSeconds * 1000), ZoneId.systemDefault());
         monitoredCallStructure.setExpectedDepartureTime(expectedDeparture);
+
+        ZonedDateTime aimedDeparture;
+        if (stopTimeUpdate.getDeparture().getDelay() != 0) {
+            long aimedDepartureSeconds = departureTimeSeconds - stopTimeUpdate.getDeparture().getDelay();
+            aimedDeparture = ZonedDateTime.ofInstant(Instant.ofEpochMilli(aimedDepartureSeconds * 1000), ZoneId.systemDefault());
+        } else {
+            aimedDeparture = expectedDeparture;
+        }
+
+        monitoredCallStructure.setAimedDepartureTime(aimedDeparture);
     }
 
 
@@ -118,14 +124,19 @@ public class TripUpdateMapper {
             return;
         }
 
-        long aimedArrivalSeconds = stopTimeUpdate.getArrival().getTime();
-        ZonedDateTime aimedArrival = ZonedDateTime.ofInstant(Instant.ofEpochMilli(aimedArrivalSeconds * 1000), ZoneId.systemDefault());
-        monitoredCallStructure.setAimedArrivalTime(aimedArrival);
-
-        long expectedSeconds = aimedArrivalSeconds + stopTimeUpdate.getArrival().getDelay();
-        ZonedDateTime expectedArrival = ZonedDateTime.ofInstant(Instant.ofEpochMilli(expectedSeconds * 1000), ZoneId.systemDefault());
+        long arrivalTimeSeconds = stopTimeUpdate.getArrival().getTime();
+        ZonedDateTime expectedArrival = ZonedDateTime.ofInstant(Instant.ofEpochMilli(arrivalTimeSeconds * 1000), ZoneId.systemDefault());
         monitoredCallStructure.setExpectedArrivalTime(expectedArrival);
 
+        ZonedDateTime aimedArrival;
+
+        if (stopTimeUpdate.getArrival().getDelay() != 0) {
+            long aimedArrivalSeconds = arrivalTimeSeconds - stopTimeUpdate.getArrival().getDelay();
+            aimedArrival = ZonedDateTime.ofInstant(Instant.ofEpochMilli(aimedArrivalSeconds * 1000), ZoneId.systemDefault());
+        } else {
+            aimedArrival = expectedArrival;
+        }
+        monitoredCallStructure.setAimedArrivalTime(aimedArrival);
     }
 
     /**
