@@ -130,10 +130,13 @@ public class AlertMapper {
 
         for (GtfsRealtime.EntitySelector informedEntity : informedEntities) {
 
-            vehicleJourneys.getAffectedVehicleJourneies().addAll(getVehicleJourneys(informedEntity));
+            if (informedEntity.hasTrip()) {
+                vehicleJourneys.getAffectedVehicleJourneies().addAll(getVehicleJourneys(informedEntity));
+                affectStruct.setVehicleJourneys(vehicleJourneys);
+            }
             recordAffect(affectStruct, informedEntity, datasetId);
         }
-        affectStruct.setVehicleJourneys(vehicleJourneys);
+
         ptSituationElement.setAffects(affectStruct);
     }
 
@@ -391,6 +394,10 @@ public class AlertMapper {
             lineRef.setValue(tripDescriptor.getRouteId());
             vehicleJourney.setLineRef(lineRef);
         }
+
+        FramedVehicleJourneyRefStructure vehicleJourneyRef = new FramedVehicleJourneyRefStructure();
+        vehicleJourneyRef.setDatedVehicleJourneyRef(tripDescriptor.getTripId());
+        vehicleJourney.setFramedVehicleJourneyRef(vehicleJourneyRef);
 
 
     }
