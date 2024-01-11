@@ -10,9 +10,7 @@ import org.springframework.stereotype.Component;
 import uk.org.siri.siri20.*;
 
 import java.math.BigInteger;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.util.*;
 
 
@@ -72,7 +70,7 @@ public class TripUpdateMapper {
             monitoredCallStructure.setStopPointRef(stopPointRef);
             monitoredCallStructure.setOrder(BigInteger.valueOf(stopTimeUpdate.getStopSequence()));
             mapArrival(monitoredCallStructure, stopTimeUpdate);
-            mapDeparture(monitoredCallStructure, stopTimeUpdate);
+            mapDeparture(monitoredCallStructure, stopTimeUpdate, datasetId, tripId);
             monitoredVehicleStruct.setMonitoredCall(monitoredCallStructure);
             stopVisit.setMonitoredVehicleJourney(monitoredVehicleStruct);
             feedItemIdentifier(stopVisit, stopId);
@@ -101,20 +99,24 @@ public class TripUpdateMapper {
      * @param monitoredCallStructure the siri object
      * @param stopTimeUpdate         source object from GTFS-RT file that contains data to read
      */
-    private static void mapDeparture(MonitoredCallStructure monitoredCallStructure, GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate) {
+    private void mapDeparture(MonitoredCallStructure monitoredCallStructure, GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate, String datasetId, String tripId) {
         if (!stopTimeUpdate.hasDeparture() || stopTimeUpdate.getDeparture().getTime() == 0) {
             return;
         }
 
-        long aimedDepartureSeconds = stopTimeUpdate.getDeparture().getTime();
-        ZonedDateTime aimedDeparture = ZonedDateTime.ofInstant(Instant.ofEpochMilli(aimedDepartureSeconds * 1000), ZoneId.systemDefault());
-        monitoredCallStructure.setAimedDepartureTime(aimedDeparture);
-
-        long expectedSeconds = aimedDepartureSeconds + stopTimeUpdate.getDeparture().getDelay();
-        ZonedDateTime expectedDeparture = ZonedDateTime.ofInstant(Instant.ofEpochMilli(expectedSeconds * 1000), ZoneId.systemDefault());
+        long departureTimeSeconds = stopTimeUpdate.getDeparture().getTime();
+        ZonedDateTime expectedDeparture = ZonedDateTime.ofInstant(Instant.ofEpochMilli(departureTimeSeconds * 1000), ZoneId.systemDefault());
         monitoredCallStructure.setExpectedDepartureTime(expectedDeparture);
-    }
 
+        long aimedDepartureSeconds = departureTimeSeconds - stopTimeUpdate.getDeparture().getDelay();
+        LocalDate localDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(aimedDepartureSeconds * 1000), ZoneId.systemDefault()).toLocalDate();
+
+        ZonedDateTime aimedDeparture = stopTimesService.getDepartureTime(datasetId, tripId, stopTimeUpdate.getStopSequence()).isPresent() ?
+                ZonedDateTime.of(localDate, LocalTime.parse(stopTimesService.getDepartureTime(datasetId, tripId, stopTimeUpdate.getStopSequence()).get()),  ZoneId.systemDefault()) :
+                ZonedDateTime.ofInstant(Instant.ofEpochMilli(aimedDepartureSeconds * 1000), ZoneId.systemDefault());;
+
+        monitoredCallStructure.setAimedDepartureTime(aimedDeparture);
+    }
 
     /**
      * Read the tripUpdate and map arrival times (aimed and expected) to siri object
@@ -187,7 +189,6 @@ public class TripUpdateMapper {
         if (stopTimeUpdate.hasStopId()) {
             return stopTimeUpdate.getStopId();
         }
-
         return stopTimesService.getStopId(datasetId, tripId, stopTimeUpdate.getStopSequence()).orElse(null);
     }
 

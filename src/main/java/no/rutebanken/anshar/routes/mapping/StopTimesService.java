@@ -4,6 +4,7 @@ import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.util.CSVUtils;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,7 +53,7 @@ public class StopTimesService {
     SubscriptionConfig subscriptionConfig;
 
     //datasetId -> tripId -> sequence
-    private Map<String, Map<String, Map<Integer,String>>> stopTimesCache = new HashMap();
+    private Map<String, Map<String, Map<Integer, Pair<String, String>>>> stopTimesCache = new HashMap();
 
     //datasetId -> 0tripId -> routeId
     private Map<String, Map<String, String>> tripsCache = new HashMap();
@@ -157,7 +158,7 @@ public class StopTimesService {
             Iterable<CSVRecord> records = CSVUtils.getRecords(fileToRead);
 
 
-            Map<String, Map<Integer,String>> currentDatasetCache;
+            Map<String, Map<Integer, Pair<String, String>>> currentDatasetCache;
 
             if (stopTimesCache.containsKey(datasetId)){
                 currentDatasetCache = stopTimesCache.get(datasetId);
@@ -170,9 +171,10 @@ public class StopTimesService {
 
                 String stopId = record.get("stop_id");
                 String tripId = record.get("trip_id");
+                String departureTime = record.get("departure_time");
                 Integer sequence = Integer.parseInt(record.get("stop_sequence"));
 
-                Map<Integer,String> currentTripCache;
+                Map<Integer, Pair<String, String>> currentTripCache;
 
                 if (currentDatasetCache.containsKey(tripId)){
                     currentTripCache = currentDatasetCache.get(tripId);
@@ -180,7 +182,8 @@ public class StopTimesService {
                     currentTripCache = new HashMap<>();
                     currentDatasetCache.put(tripId,currentTripCache);
                 }
-                currentTripCache.put(sequence, stopId);
+                //todo la pair datasetId/stopId dois contenir une séquence et une date
+                currentTripCache.put(sequence, Pair.of(stopId, departureTime));
             }
             logger.info("Feeding cache with stop_times file: " + fileToRead.getAbsolutePath() + " completed");
 
@@ -225,7 +228,6 @@ public class StopTimesService {
         }
     }
 
-
     /**
      * Read the cache and recover a stop_id, for a given datasetId/tripId/stopSequence
      * @param datasetId
@@ -242,19 +244,19 @@ public class StopTimesService {
                return Optional.empty();
            }
 
-        Map<String, Map<Integer, String>> datasetMap = stopTimesCache.get(datasetId);
+        Map<String, Map<Integer, Pair<String, String>>> datasetMap = stopTimesCache.get(datasetId);
 
            if (!datasetMap.containsKey(tripId)){
                return Optional.empty();
            }
 
-        Map<Integer, String> tripMap = datasetMap.get(tripId);
+        Map<Integer, Pair<String, String>> tripMap = datasetMap.get(tripId);
 
            if (!tripMap.containsKey(stopSequence)){
                return Optional.empty();
            }
 
-           return Optional.of(tripMap.get(stopSequence));
+           return Optional.of(tripMap.get(stopSequence).getLeft());
     }
 
     /**
@@ -271,18 +273,18 @@ public class StopTimesService {
             return Optional.empty();
         }
 
-        Map<String, Map<Integer, String>> datasetMap = stopTimesCache.get(datasetId);
+        Map<String, Map<Integer, Pair<String, String>>> datasetMap = stopTimesCache.get(datasetId);
 
         if (!datasetMap.containsKey(tripId)){
             return Optional.empty();
         }
 
-        Map<Integer, String> tripMap = datasetMap.get(tripId);
+        Map<Integer, Pair<String, String>> tripMap = datasetMap.get(tripId);
 
         Integer maxKey = tripMap.keySet().stream().max(Integer::compareTo).orElse(null);
 
         if (maxKey != null) {
-            return Optional.of(tripMap.get(maxKey));
+            return Optional.of(tripMap.get(maxKey).getLeft());
         } else {
             return Optional.empty();
         }
@@ -307,6 +309,37 @@ public class StopTimesService {
         String routeId = datasetMap.get(tripId);
 
         return Optional.of(routeId);
+    }
+
+    /**
+     * Read the cache and recover a stop_id, for a given datasetId/tripId/stopSequence
+     * @param datasetId
+     *  the datasetId for which the stop_id must be recovered
+     * @param tripId
+     *  the trip_id for which the stop_id must be recovered
+     * @param stopSequence
+     *  the stop_sequence for which the stop_id must be recovered
+     * @return
+     */
+    public Optional<String> getDepartureTime(String datasetId, String tripId, Integer stopSequence){
+
+        if (!stopTimesCache.containsKey(datasetId)){
+            return Optional.empty();
+        }
+
+        Map<String, Map<Integer, Pair<String, String>>> datasetMap = stopTimesCache.get(datasetId);
+
+        if (!datasetMap.containsKey(tripId)){
+            return Optional.empty();
+        }
+
+        Map<Integer, Pair<String, String>> tripMap = datasetMap.get(tripId);
+
+        if (!tripMap.containsKey(stopSequence)){
+            return Optional.empty();
+        }
+
+        return Optional.of(tripMap.get(stopSequence).getRight());
     }
 
 }
