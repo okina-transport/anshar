@@ -11,7 +11,9 @@ import uk.org.siri.siri20.*;
 
 import java.math.BigInteger;
 import java.time.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 
 /***
@@ -35,7 +37,6 @@ public class TripUpdateMapper {
      */
     public List<MonitoredStopVisit> mapStopVisitFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate, String datasetId) {
         List<MonitoredStopVisit> stopVisitList = new ArrayList<>();
-
 
 
         FramedVehicleJourneyRefStructure vehicleJourneyRef = createVehicleJourneyRef(tripUpdate);
@@ -118,6 +119,7 @@ public class TripUpdateMapper {
         monitoredCallStructure.setAimedDepartureTime(aimedDeparture);
     }
 
+
     /**
      * Read the tripUpdate and map arrival times (aimed and expected) to siri object
      *
@@ -129,14 +131,19 @@ public class TripUpdateMapper {
             return;
         }
 
-        long aimedArrivalSeconds = stopTimeUpdate.getArrival().getTime();
-        ZonedDateTime aimedArrival = ZonedDateTime.ofInstant(Instant.ofEpochMilli(aimedArrivalSeconds * 1000), ZoneId.systemDefault());
-        monitoredCallStructure.setAimedArrivalTime(aimedArrival);
-
-        long expectedSeconds = aimedArrivalSeconds + stopTimeUpdate.getArrival().getDelay();
-        ZonedDateTime expectedArrival = ZonedDateTime.ofInstant(Instant.ofEpochMilli(expectedSeconds * 1000), ZoneId.systemDefault());
+        long arrivalTimeSeconds = stopTimeUpdate.getArrival().getTime();
+        ZonedDateTime expectedArrival = ZonedDateTime.ofInstant(Instant.ofEpochMilli(arrivalTimeSeconds * 1000), ZoneId.systemDefault());
         monitoredCallStructure.setExpectedArrivalTime(expectedArrival);
 
+        ZonedDateTime aimedArrival;
+
+        if (stopTimeUpdate.getArrival().getDelay() != 0) {
+            long aimedArrivalSeconds = arrivalTimeSeconds - stopTimeUpdate.getArrival().getDelay();
+            aimedArrival = ZonedDateTime.ofInstant(Instant.ofEpochMilli(aimedArrivalSeconds * 1000), ZoneId.systemDefault());
+        } else {
+            aimedArrival = expectedArrival;
+        }
+        monitoredCallStructure.setAimedArrivalTime(aimedArrival);
     }
 
     /**
@@ -290,8 +297,8 @@ public class TripUpdateMapper {
      * @return A list of siri objects
      */
     public List<MonitoredStopVisitCancellation> mapStopCancellationFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate, String datasetId) {
-        if(tripUpdate.getTrip().getScheduleRelationship() != null && !GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED.equals(
-                tripUpdate.getTrip().getScheduleRelationship())){
+        if (tripUpdate.getTrip().getScheduleRelationship() != null && !GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED.equals(
+                tripUpdate.getTrip().getScheduleRelationship())) {
             return Collections.emptyList();
         }
         List<MonitoredStopVisitCancellation> stopVisitCancellations = new ArrayList<>();
