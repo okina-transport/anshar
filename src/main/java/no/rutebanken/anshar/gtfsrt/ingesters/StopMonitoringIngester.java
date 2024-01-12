@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri20.MonitoredStopVisit;
+import uk.org.siri.siri20.MonitoredStopVisitCancellation;
 import uk.org.siri.siri20.Siri;
 
 import javax.xml.bind.JAXBException;
@@ -57,6 +58,12 @@ public class StopMonitoringIngester extends RestRouteBuilder {
 
             for (MonitoredStopVisit visit : ingestedVisits) {
                 subscriptionManager.touchSubscription(GTFSRT_SM_PREFIX + visit.getMonitoringRef().getValue(),false);
+            }
+
+            List<MonitoredStopVisitCancellation> stopVisitToCancel = siri.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisitCancellations();
+
+            if (stopVisitToCancel != null && stopVisitToCancel.size() > 0) {
+                stopMonitoringInbound.cancelStopVisits(datasetId, stopVisitToCancel);
             }
 
             logger.info("GTFS-RT - Ingested  stop Times {} on {} . datasetId:{}, URL:{}", ingestedVisits.size(), stopVisits.size(), datasetId, url);

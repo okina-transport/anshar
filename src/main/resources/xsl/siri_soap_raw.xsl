@@ -647,6 +647,58 @@
                         </xsl:element>
 
 
+                        <xsl:for-each select="Request/siril:EstimatedTimetableSubscriptionRequest">
+
+                            <xsl:element name="EstimatedTimetableSubscriptionRequest"
+                                         namespace="http://www.siri.org.uk/siri">
+                                <xsl:for-each select="siril:SubscriptionIdentifier">
+                                    <xsl:element name="{local-name()}" namespace="http://www.siri.org.uk/siri">
+                                        <xsl:apply-templates select="* | node()"/>
+                                    </xsl:element>
+                                </xsl:for-each>
+
+                                <xsl:for-each select="siril:InitialTerminationTime">
+                                    <xsl:element name="{local-name()}" namespace="http://www.siri.org.uk/siri">
+                                        <xsl:apply-templates select="* | node()"/>
+                                    </xsl:element>
+                                </xsl:for-each>
+
+                                <xsl:for-each select="siril:EstimatedTimetableRequest">
+                                    <xsl:element name="EstimatedTimetableRequest"
+                                                 namespace="http://www.siri.org.uk/siri">
+                                        <xsl:copy-of select="*" copy-namespaces="no"/>
+                                    </xsl:element>
+                                </xsl:for-each>
+
+                            </xsl:element>
+                        </xsl:for-each>
+
+                        <xsl:for-each select="Request/siril:SituationExchangeSubscriptionRequest">
+
+                            <xsl:element name="SituationExchangeSubscriptionRequest"
+                                         namespace="http://www.siri.org.uk/siri">
+                                <xsl:for-each select="siril:SubscriptionIdentifier">
+                                    <xsl:element name="{local-name()}" namespace="http://www.siri.org.uk/siri">
+                                        <xsl:apply-templates select="* | node()"/>
+                                    </xsl:element>
+                                </xsl:for-each>
+
+                                <xsl:for-each select="siril:InitialTerminationTime">
+                                    <xsl:element name="{local-name()}" namespace="http://www.siri.org.uk/siri">
+                                        <xsl:apply-templates select="* | node()"/>
+                                    </xsl:element>
+                                </xsl:for-each>
+
+                                <xsl:for-each select="siril:SituationExchangeRequest">
+                                    <xsl:element name="SituationExchangeRequest"
+                                                 namespace="http://www.siri.org.uk/siri">
+                                        <xsl:copy-of select="*" copy-namespaces="no"/>
+                                    </xsl:element>
+                                </xsl:for-each>
+
+                            </xsl:element>
+                        </xsl:for-each>
+
                         <xsl:for-each select="Request/siril:StopMonitoringSubscriptionRequest">
                             <xsl:element name="StopMonitoringSubscriptionRequest"
                                          namespace="http://www.siri.org.uk/siri">
@@ -696,6 +748,8 @@
                                         <xsl:copy-of select="*" copy-namespaces="no"/>
                                     </xsl:element>
                                 </xsl:for-each>
+
+                                <xsl:copy-of select="siril:IncrementalUpdates" copy-namespaces="no"/>
 
                             </xsl:element>
 

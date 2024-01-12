@@ -373,6 +373,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
                         if (expiration > 0 && keep) {
                             changes.put(key, activity);
                             checksumCacheTmp.put(key, currentChecksum);
+                            monitoredVehicles.set(key, activity, expiration, TimeUnit.MILLISECONDS);
                         } else {
                             outdatedCounter.increment();
 
@@ -405,7 +406,6 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
 
         checksumCache.setAll(checksumCacheTmp);
         timingTracer.mark("checksumCache.setAll");
-        monitoredVehicles.setAll(changes);
         if (redisPublication) {
             logger.debug("Redis publication enabled");
             sendMessageToRedis(changes);

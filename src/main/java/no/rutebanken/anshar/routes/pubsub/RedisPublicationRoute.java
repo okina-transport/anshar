@@ -2,6 +2,7 @@ package no.rutebanken.anshar.routes.pubsub;
 
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.redis.RedisConstants;
+import org.apache.commons.lang3.StringUtils;
 import org.rutebanken.siri20.util.SiriJson;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -24,6 +25,9 @@ public class RedisPublicationRoute extends RouteBuilder {
 
     String vmChannel = "vmPublication";
 
+    @Value("${anshar.redis.additionnal.network.vm}")
+    protected String additionalNetworkVM;
+
     @Override
     public void configure() throws Exception {
 
@@ -31,6 +35,13 @@ public class RedisPublicationRoute extends RouteBuilder {
                 .setHeader(RedisConstants.CHANNEL, constant(vmChannel))
                 .process(e -> {
                     VehicleActivityStructure vehAct = e.getIn().getBody(VehicleActivityStructure.class);
+
+
+                    if (StringUtils.isNotEmpty(additionalNetworkVM) && vehAct.getVehicleMonitoringRef() != null) {
+                        String oldVehicleRef = vehAct.getVehicleMonitoringRef().getValue();
+                        vehAct.getVehicleMonitoringRef().setValue(additionalNetworkVM + ":" + oldVehicleRef);
+                    }
+
                     Siri siriResp = new Siri();
                     ServiceDelivery serviceDelivery = new ServiceDelivery();
                     serviceDelivery.setResponseTimestamp(ZonedDateTime.now());

@@ -35,10 +35,10 @@
 
     <table class="table">
         <thead>
-            <th align="center">datasetId</th>
-            <th align="center">Status</th>
-            <th align="center">Nb of stops</th>
-            <th align="center">Nb of items</th>
+        <th align="center">datasetId</th>
+        <th align="center">Status</th>
+        <th align="center">Nb of stops</th>
+        <th align="center">Nb of items</th>
         </thead>
         <tbody>
         <#list body.smStats as smStat>
@@ -56,18 +56,40 @@
             </td>
             <td align="center" style="vertical-align: middle; font-size: larger">
                 ${smStat.status}
-           </td>
+            </td>
             <td align="center" style="vertical-align: middle; font-size: larger">
                 ${smStat.nbOfStops}
             </td>
             <td align="center" style="vertical-align: middle; font-size: larger">
                 ${smStat.nbOfMsg}
             </td>
-        </tr>
+            </tr>
         </#list>
         </tbody>
     </table>
 
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
+    <h4> STOPS WITHOUT MAPPING </h4>
+    <table class="table">
+        <thead>
+        <th align="center">Stops not existing in theorical data</th>
+
+        </thead>
+        <tbody>
+        <#list body.unmappedStops as unmappedStop>
+
+
+            <td align="center" style="vertical-align: middle; font-size: larger">
+                ${unmappedStop}
+            </td>
+            </tr>
+        </#list>
+        </tbody>
+    </table>
 
 </div>
 </body>

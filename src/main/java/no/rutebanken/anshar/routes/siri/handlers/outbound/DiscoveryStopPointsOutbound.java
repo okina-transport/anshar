@@ -18,9 +18,11 @@ import uk.org.siri.siri20.AnnotatedStopPointStructure;
 import uk.org.siri.siri20.Siri;
 import uk.org.siri.siri20.StopPointRef;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
 @Service
 public class DiscoveryStopPointsOutbound {
 
@@ -49,6 +51,11 @@ public class DiscoveryStopPointsOutbound {
      */
     public Siri getDiscoveryStopPoints(String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy) {
 
+        if (datasetId == null && !OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)) {
+            // no result if user chose original format without specifying a dataset
+            return siriObjectFactory.createStopPointsDiscoveryDelivery(new ArrayList<>());
+        }
+
         List<SubscriptionSetup> subscriptionList = subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING).stream()
                 .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))
                 .collect(Collectors.toList());
@@ -67,7 +74,8 @@ public class DiscoveryStopPointsOutbound {
 
         if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)) {
             monitoringRefList = monitoringRefList.stream()
-                    .map(id -> stopPlaceUpdaterService.isKnownId(id) ? stopPlaceUpdaterService.get(id) : id)
+                    .filter(stopPlaceUpdaterService::isKnownId)
+                    .map(stopPlaceUpdaterService::get)
                     .collect(Collectors.toList());
 
         } else if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy) && datasetId != null) {

@@ -82,18 +82,20 @@ public class TripUpdateReader extends AbstractSwallower {
         if (configuration.processSM()){
             //// STOP VISITS
             List<MonitoredStopVisit> stopVisits = buildStopVisitList(completeGTFSRTMessage, datasetId);
+            List<MonitoredStopVisitCancellation> stopCancellations = buildStopCancellationList(completeGTFSRTMessage, datasetId);
             List<String> visitSubscriptionList = getSubscriptionsFromVisits(stopVisits) ;
             checkAndCreateSubscriptions(visitSubscriptionList, GTFSRT_SM_PREFIX, SiriDataType.STOP_MONITORING, RequestType.GET_STOP_MONITORING, datasetId);
-            buildSiriSMAndSend(stopVisits, datasetId);
+            buildSiriSMAndSend(stopVisits, stopCancellations, datasetId);
         }
 
     }
 
-    private void buildSiriSMAndSend(List<MonitoredStopVisit> stopVisits, String datasetId) {
+    private void buildSiriSMAndSend(List<MonitoredStopVisit> stopVisits, List<MonitoredStopVisitCancellation> stopCancellation, String datasetId) {
         Siri siri = new Siri();
         ServiceDelivery serviceDel = new ServiceDelivery();
         StopMonitoringDeliveryStructure stopDelStruct = new StopMonitoringDeliveryStructure();
         stopDelStruct.getMonitoredStopVisits().addAll(stopVisits);
+        stopDelStruct.getMonitoredStopVisitCancellations().addAll(stopCancellation);
         serviceDel.getStopMonitoringDeliveries().add(stopDelStruct);
         siri.setServiceDelivery(serviceDel);
         sendToRealTimeServer(gtfsrtSmProducer,siri, datasetId);
@@ -155,6 +157,33 @@ public class TripUpdateReader extends AbstractSwallower {
 
         return stopVisits;
 
+    }
+
+    /**
+     * Read the complete GTS-RT message and build a list of stop visits to integrate
+     * @param feedMessage
+     *         The complete message (GTFS-RT format)
+     * @param datasetId
+     * @return
+     *         A list of visits, build by mapping trip updates from GTFS-RT message
+     */
+    private List<MonitoredStopVisitCancellation> buildStopCancellationList(GtfsRealtime.FeedMessage feedMessage, String datasetId) {
+        List<MonitoredStopVisitCancellation> stopVisitCancellations = new ArrayList<>();
+
+            long recordedAtTimeLong = feedMessage.getHeader().getTimestamp();
+            ZonedDateTime recordedAtTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(recordedAtTimeLong * 1000), ZoneId.systemDefault());
+
+            for (GtfsRealtime.FeedEntity feedEntity : feedMessage.getEntityList()) {
+                if (feedEntity.getTripUpdate() == null)
+                    continue;
+
+                List<MonitoredStopVisitCancellation> currentStopCancellationList = tripUpdateMapper.mapStopCancellationFromTripUpdate(feedEntity.getTripUpdate(), datasetId);
+                stopVisitCancellations.addAll(currentStopCancellationList);
+            }
+
+        stopVisitCancellations.forEach(stopVisit -> stopVisit.setRecordedAtTime(recordedAtTime));
+
+            return stopVisitCancellations;
     }
 
     /**

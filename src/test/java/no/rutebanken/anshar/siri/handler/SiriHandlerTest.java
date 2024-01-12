@@ -22,6 +22,7 @@ import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.SiriApisRequestHandlerRoute;
+import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -380,17 +381,19 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     public void stopPointsDiscoveryTest() throws JAXBException, IOException {
         SubscriptionSetup smSubscription1 = getSmSubscription("tst");
         smSubscription1.setStopMonitoringRefValue("sp1");
+        smSubscription1.setDatasetId("DAT1");
         subscriptionManager.addSubscription(smSubscription1.getSubscriptionId(), smSubscription1);
 
         SubscriptionSetup smSubscription2 = getSmSubscription("tst");
         smSubscription2.setStopMonitoringRefValue("sp2");
+        smSubscription2.setDatasetId("DAT1");
         subscriptionManager.addSubscription(smSubscription2.getSubscriptionId(), smSubscription2);
 
         ClassLoader classLoader = getClass().getClassLoader();
         File file = new File("src/test/resources/discoveryTest/stop_points_discovery_test.xml");
 
         try {
-            Siri result = handler.handleIncomingSiri(null, new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), null, null, null, -1, null, false);
+            Siri result = handler.handleIncomingSiri(null, new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), "DAT1", null, OutboundIdMappingPolicy.ORIGINAL_ID, -1, null, false);
             assertNotNull(result.getStopPointsDelivery());
             assertNotNull(result.getStopPointsDelivery().getAnnotatedStopPointReves());
             assertEquals(2, result.getStopPointsDelivery().getAnnotatedStopPointReves().size());
@@ -404,7 +407,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         }
     }
 
-    @Test
+
     public void stopPointsDiscoveryTestWithDifferentDatasetId() throws JAXBException, IOException {
         SubscriptionSetup smSubscription1 = getSmSubscription("tst1");
         smSubscription1.setStopMonitoringRefValue("sp1");

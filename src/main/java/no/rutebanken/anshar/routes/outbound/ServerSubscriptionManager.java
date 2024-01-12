@@ -130,11 +130,37 @@ public class ServerSubscriptionManager {
             obj.put("requestReceived", formatter.format(subscription.getRequestTimestamp()));
             obj.put("initialTerminationTime", formatter.format(subscription.getInitialTerminationTime()));
             obj.put("clientTrackingName", subscription.getClientTrackingName() != null ? subscription.getClientTrackingName() : "");
+            obj.put("filteredRefs", getFilteredRefs(subscription.getFilterMap()));
 
             stats.add(obj);
         }
 
         return stats;
+    }
+
+    private String getFilteredRefs(Map<Class, Set<String>> filterMap) {
+        StringBuilder filteredRefs = new StringBuilder();
+        boolean hasStopsFiltered = false;
+
+        if (filterMap != null) {
+
+            if (filterMap.containsKey(MonitoringRefStructure.class)) {
+                String stopRefs = String.join(",", filterMap.get(MonitoringRefStructure.class));
+                filteredRefs.append("stops:" + stopRefs);
+                hasStopsFiltered = true;
+            }
+
+            if (filterMap.containsKey(LineRef.class)) {
+
+                if (hasStopsFiltered) {
+                    filteredRefs.append("/");
+                }
+
+                String lineRefs = String.join(",", filterMap.get(LineRef.class));
+                filteredRefs.append("lines:" + lineRefs);
+            }
+        }
+        return filteredRefs.toString();
     }
 
     /**
@@ -236,27 +262,33 @@ public class ServerSubscriptionManager {
 
             Siri subscriptionResponse = siriObjectFactory.createSubscriptionResponse(subscription.getSubscriptionId(), true, null);
 
-//            final String breadcrumbId = MDC.get("camel.breadcrumbId");
-//            Executors.newSingleThreadScheduledExecutor().execute(() -> {
-//                try {
-//                    MDC.put("camel.breadcrumbId", breadcrumbId);
-//
-//                    //Send initial ServiceDelivery
-//                    logger.info("Find initial delivery for {}", subscription);
-//                    Siri delivery = siriHelper.findInitialDeliveryData(subscription);
-//
-//                    if (delivery != null) {
-//                        logger.info("Sending initial delivery to {}", subscription.getAddress());
-//                        camelRouteManager.pushSiriData(delivery, subscription, false);
-//                    } else {
-//                        logger.info("No initial delivery found for {}", subscription);
-//                    }
-//                } finally {
-//                    MDC.remove("camel.breadcrumbId");
-//                }
-//            });
+            if (subscription.getSubscriptionType().equals(SiriDataType.SITUATION_EXCHANGE)) {
+                sendInitialDelivery(subscription);
+            }
             return subscriptionResponse;
         }
+    }
+
+    private void sendInitialDelivery(OutboundSubscriptionSetup subscription) {
+        final String breadcrumbId = MDC.get("camel.breadcrumbId");
+        Executors.newSingleThreadScheduledExecutor().execute(() -> {
+            try {
+                MDC.put("camel.breadcrumbId", breadcrumbId);
+
+                //Send initial ServiceDelivery
+                logger.info("Find initial delivery for {}", subscription);
+                Siri delivery = siriHelper.findInitialDeliveryData(subscription);
+
+                if (delivery != null) {
+                    logger.info("Sending initial delivery to {}", subscription.getAddress());
+                    camelRouteManager.pushSiriData(delivery, subscription, false);
+                } else {
+                    logger.info("No initial delivery found for {}", subscription);
+                }
+            } finally {
+                MDC.remove("camel.breadcrumbId");
+            }
+        });
     }
 
 
@@ -337,7 +369,7 @@ public class ServerSubscriptionManager {
     }
 
     private long getUpdateInterval(SubscriptionRequest subscriptionRequest) {
-        if (SiriHelper.containsValues(subscriptionRequest.getVehicleMonitoringSubscriptionRequests())) {
+        if (SiriHelper.containsValues(subscriptionRequest.getVehicleMonitoringSubscriptionRequests()) && subscriptionRequest.getVehicleMonitoringSubscriptionRequests().get(0).getUpdateInterval() != null) {
             return subscriptionRequest.getVehicleMonitoringSubscriptionRequests().get(0).getUpdateInterval().getTimeInMillis(new Date(0));
         }
         return 0;

@@ -100,6 +100,10 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         return monitoredStopVisits.values();
     }
 
+    public Set<SiriObjectStorageKey> getAllKeySets() {
+        return monitoredStopVisits.keySet();
+    }
+
     @Override
     Map<SiriObjectStorageKey, MonitoredStopVisit> getAllAsMap() {
         return monitoredStopVisits;
@@ -421,6 +425,19 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
                         //Does not exist
                         updated = true;
                     }
+                    if (monitoredStopVisit.getMonitoredVehicleJourney().getDestinationRef() == null) {
+                        DestinationRef destinationRef = new DestinationRef();
+                        destinationRef.setValue("EmptyDestination");
+                        monitoredStopVisit.getMonitoredVehicleJourney().setDestinationRef(destinationRef);
+                    }
+
+                    if (monitoredStopVisit.getMonitoredVehicleJourney().getDestinationNames().isEmpty()) {
+                        NaturalLanguageStringStructure emptyDestinationName = new NaturalLanguageStringStructure();
+                        emptyDestinationName.setLang("EN");
+                        emptyDestinationName.setValue("EmptyDestination");
+                        monitoredStopVisit.getMonitoredVehicleJourney().getDestinationNames().add(emptyDestinationName);
+                    }
+
 
                     if (monitoredStopVisit.getMonitoredVehicleJourney() != null && monitoredStopVisit.getMonitoredVehicleJourney().getPublishedLineNames().size() < 2) {
                         while (monitoredStopVisit.getMonitoredVehicleJourney().getPublishedLineNames().size() < 2) {
