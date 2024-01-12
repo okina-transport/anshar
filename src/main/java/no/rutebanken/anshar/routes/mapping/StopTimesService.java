@@ -182,7 +182,6 @@ public class StopTimesService {
                     currentTripCache = new HashMap<>();
                     currentDatasetCache.put(tripId,currentTripCache);
                 }
-                //todo la pair datasetId/stopId dois contenir une séquence et une date
                 currentTripCache.put(sequence, Pair.of(stopId, departureTime));
             }
             logger.info("Feeding cache with stop_times file: " + fileToRead.getAbsolutePath() + " completed");
