@@ -10,9 +10,7 @@ import org.springframework.stereotype.Component;
 import uk.org.siri.siri20.*;
 
 import java.math.BigInteger;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -41,14 +39,16 @@ public class TripUpdateMapper {
         List<MonitoredStopVisit> stopVisitList = new ArrayList<>();
 
 
-        LineRef lineRef = createLineRef(tripUpdate);
         FramedVehicleJourneyRefStructure vehicleJourneyRef = createVehicleJourneyRef(tripUpdate);
 
         String tripId = tripUpdate.getTrip().getTripId();
-        if (tripUpdate.getTrip().getScheduleRelationship() != null && GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED.equals(
-                tripUpdate.getTrip().getScheduleRelationship())) {
+        if(tripUpdate.getTrip().getScheduleRelationship() != null && GtfsRealtime.TripDescriptor.ScheduleRelationship.UNSCHEDULED.equals(
+        tripUpdate.getTrip().getScheduleRelationship())){
             return Collections.emptyList();
         }
+        LineRef lineRef = createLineRef(tripUpdate, datasetId, tripId);
+        DestinationRef destinationRef = createDestinationRef(datasetId, tripId);
+        NaturalLanguageStringStructure destinationName = createDestinationName(destinationRef);
 
         for (GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate : tripUpdate.getStopTimeUpdateList()) {
             MonitoredStopVisit stopVisit = new MonitoredStopVisit();
@@ -61,6 +61,8 @@ public class TripUpdateMapper {
 
             MonitoredVehicleJourneyStructure monitoredVehicleStruct = new MonitoredVehicleJourneyStructure();
             monitoredVehicleStruct.setLineRef(lineRef);
+            monitoredVehicleStruct.setDestinationRef(destinationRef);
+            monitoredVehicleStruct.getDestinationNames().add(destinationName);
             monitoredVehicleStruct.setFramedVehicleJourneyRef(vehicleJourneyRef);
             monitoredVehicleStruct.setMonitored(true);
             MonitoredCallStructure monitoredCallStructure = new MonitoredCallStructure();
@@ -69,7 +71,7 @@ public class TripUpdateMapper {
             monitoredCallStructure.setStopPointRef(stopPointRef);
             monitoredCallStructure.setOrder(BigInteger.valueOf(stopTimeUpdate.getStopSequence()));
             mapArrival(monitoredCallStructure, stopTimeUpdate);
-            mapDeparture(monitoredCallStructure, stopTimeUpdate);
+            mapDeparture(monitoredCallStructure, stopTimeUpdate, datasetId, tripId);
             monitoredVehicleStruct.setMonitoredCall(monitoredCallStructure);
             stopVisit.setMonitoredVehicleJourney(monitoredVehicleStruct);
             feedItemIdentifier(stopVisit, stopId);
@@ -98,7 +100,7 @@ public class TripUpdateMapper {
      * @param monitoredCallStructure the siri object
      * @param stopTimeUpdate         source object from GTFS-RT file that contains data to read
      */
-    private static void mapDeparture(MonitoredCallStructure monitoredCallStructure, GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate) {
+    private void mapDeparture(MonitoredCallStructure monitoredCallStructure, GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate, String datasetId, String tripId) {
         if (!stopTimeUpdate.hasDeparture() || stopTimeUpdate.getDeparture().getTime() == 0) {
             return;
         }
@@ -107,13 +109,12 @@ public class TripUpdateMapper {
         ZonedDateTime expectedDeparture = ZonedDateTime.ofInstant(Instant.ofEpochMilli(departureTimeSeconds * 1000), ZoneId.systemDefault());
         monitoredCallStructure.setExpectedDepartureTime(expectedDeparture);
 
-        ZonedDateTime aimedDeparture;
-        if (stopTimeUpdate.getDeparture().getDelay() != 0) {
-            long aimedDepartureSeconds = departureTimeSeconds - stopTimeUpdate.getDeparture().getDelay();
-            aimedDeparture = ZonedDateTime.ofInstant(Instant.ofEpochMilli(aimedDepartureSeconds * 1000), ZoneId.systemDefault());
-        } else {
-            aimedDeparture = expectedDeparture;
-        }
+        long aimedDepartureSeconds = departureTimeSeconds - stopTimeUpdate.getDeparture().getDelay();
+        LocalDate localDate = ZonedDateTime.ofInstant(Instant.ofEpochMilli(aimedDepartureSeconds * 1000), ZoneId.systemDefault()).toLocalDate();
+
+        ZonedDateTime aimedDeparture = stopTimesService.getDepartureTime(datasetId, tripId, stopTimeUpdate.getStopSequence()).isPresent() ?
+                ZonedDateTime.of(localDate, LocalTime.parse(stopTimesService.getDepartureTime(datasetId, tripId, stopTimeUpdate.getStopSequence()).get()),  ZoneId.systemDefault()) :
+                ZonedDateTime.ofInstant(Instant.ofEpochMilli(aimedDepartureSeconds * 1000), ZoneId.systemDefault());;
 
         monitoredCallStructure.setAimedDepartureTime(aimedDeparture);
     }
@@ -169,19 +170,32 @@ public class TripUpdateMapper {
      * @param tripUpdate The trip update from which the routeId must be read
      * @return The lineRef containing the routeId
      */
-    private static LineRef createLineRef(GtfsRealtime.TripUpdate tripUpdate) {
-        String routeId = tripUpdate.getTrip() != null ? tripUpdate.getTrip().getRouteId() : "";
+    private LineRef createLineRef(GtfsRealtime.TripUpdate tripUpdate, String datasetId, String tripId) {
+        String routeId = tripUpdate.getTrip() != null && StringUtils.isNotEmpty(tripUpdate.getTrip().getRouteId())? tripUpdate.getTrip().getRouteId() : stopTimesService.getRouteId(datasetId, tripId).isPresent() ?
+                stopTimesService.getRouteId(datasetId, tripId).get() : "";
         LineRef lineRef = new LineRef();
 
         lineRef.setValue(routeId);
         return lineRef;
     }
 
+    private DestinationRef createDestinationRef(String datasetId, String tripId) {
+
+        DestinationRef destinationRef = new DestinationRef();
+        destinationRef.setValue(stopTimesService.getDestinationId(datasetId,tripId).isPresent() ? stopTimesService.getDestinationId(datasetId,tripId).get() : "");
+        return destinationRef;
+    }
+
+    private NaturalLanguageStringStructure createDestinationName(DestinationRef destinationRef) {
+        NaturalLanguageStringStructure naturalLanguageStringStructure = new NaturalLanguageStringStructure();
+        naturalLanguageStringStructure.setValue(destinationRef.getValue());
+        return naturalLanguageStringStructure;
+    }
+
     private String getStopId(GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate, String datasetId, String tripId) {
         if (stopTimeUpdate.hasStopId()) {
             return stopTimeUpdate.getStopId();
         }
-
         return stopTimesService.getStopId(datasetId, tripId, stopTimeUpdate.getStopSequence()).orElse(null);
     }
 
@@ -283,15 +297,16 @@ public class TripUpdateMapper {
      * @return A list of siri objects
      */
     public List<MonitoredStopVisitCancellation> mapStopCancellationFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate, String datasetId) {
-        if (tripUpdate.getTrip().getScheduleRelationship() != null && !GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED.equals(
+        if (tripUpdate.getTrip().getScheduleRelationship() != null && !GtfsRealtime.TripDescriptor.ScheduleRelationship.UNSCHEDULED.equals(
                 tripUpdate.getTrip().getScheduleRelationship())) {
             return Collections.emptyList();
         }
         List<MonitoredStopVisitCancellation> stopVisitCancellations = new ArrayList<>();
-        LineRef lineRef = createLineRef(tripUpdate);
 
         FramedVehicleJourneyRefStructure vehicleJourneyRef = createVehicleJourneyRef(tripUpdate);
         String tripId = tripUpdate.getTrip().getTripId();
+
+        LineRef lineRef = createLineRef(tripUpdate, datasetId, tripId);
 
         for (GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate : tripUpdate.getStopTimeUpdateList()) {
             MonitoredStopVisitCancellation monitoredStopVisitCancellation = new MonitoredStopVisitCancellation();
