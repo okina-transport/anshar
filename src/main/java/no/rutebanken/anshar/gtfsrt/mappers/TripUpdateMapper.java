@@ -42,7 +42,7 @@ public class TripUpdateMapper {
         FramedVehicleJourneyRefStructure vehicleJourneyRef = createVehicleJourneyRef(tripUpdate);
 
         String tripId = tripUpdate.getTrip().getTripId();
-        if(tripUpdate.getTrip().getScheduleRelationship() != null && GtfsRealtime.TripDescriptor.ScheduleRelationship.UNSCHEDULED.equals(
+        if(tripUpdate.getTrip().getScheduleRelationship() != null && GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED.equals(
         tripUpdate.getTrip().getScheduleRelationship())){
             return Collections.emptyList();
         }
@@ -297,7 +297,7 @@ public class TripUpdateMapper {
      * @return A list of siri objects
      */
     public List<MonitoredStopVisitCancellation> mapStopCancellationFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate, String datasetId) {
-        if (tripUpdate.getTrip().getScheduleRelationship() != null && !GtfsRealtime.TripDescriptor.ScheduleRelationship.UNSCHEDULED.equals(
+        if (tripUpdate.getTrip().getScheduleRelationship() != null && !GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED.equals(
                 tripUpdate.getTrip().getScheduleRelationship())) {
             return Collections.emptyList();
         }
