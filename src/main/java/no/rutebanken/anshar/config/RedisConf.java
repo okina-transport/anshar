@@ -19,6 +19,12 @@ public class RedisConf {
     @Value("${spring.data.redis.password}")
     String password;
 
+    @Value("${spring.redis.host}")
+    String host;
+
+    @Value("${spring.redis.port}")
+    int port;
+
     @Bean
     public RedisTemplate<Long, Book> redisTemplate(RedisConnectionFactory connectionFactory) {
         RedisTemplate<Long, Book> template = new RedisTemplate<>();
@@ -33,6 +39,10 @@ public class RedisConf {
         if (StringUtils.isNotEmpty(password)) {
             config.setPassword(password);
         }
+
+        config.setHostName(host);
+        config.setPort(port);
+
 
         return new LettuceConnectionFactory(config);
     }
