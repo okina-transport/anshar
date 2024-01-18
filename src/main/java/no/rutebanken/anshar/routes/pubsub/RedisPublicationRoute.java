@@ -58,7 +58,7 @@ public class RedisPublicationRoute extends RouteBuilder {
         from("direct:sendMessageToRedis")
                 .log(String.format("Publishing with redis in channel: %s, massage body: ${body}", header(RedisConstants.CHANNEL)))
                 .setHeader(RedisConstants.MESSAGE, body())
-                .to(String.format("spring-redis://%s:%s?command=PUBLISH", redisHost, redisPort));
+                .to(String.format("spring-redis://%s:%s?connectionFactory=#customRedisConnectionFactory&command=PUBLISH", redisHost, redisPort));
 
     }
 }
