@@ -7,6 +7,7 @@ import no.rutebanken.anshar.routes.siri.processor.routedata.NetexUpdaterService;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -58,10 +59,10 @@ public class BaneNorSiriStopAssignmentPopulaterTest {
 
         long start = System.currentTimeMillis();
         StopPlaceRegisterMappingFetcher mappingFetcher = new StopPlaceRegisterMappingFetcher();
-        Map<String, String> stopPlaceMapping = mappingFetcher.fetchStopPlaceMapping(new File("src/test/resources/jbv_code_mapping.csv").toURI().toString());
+        Map<String, Pair<String, String>> stopPlaceMapping = mappingFetcher.fetchStopPlaceMapping(new File("src/test/resources/jbv_code_mapping.csv").toURI().toString());
         logger.info("Got {} stopplace mappings in {} ms", stopPlaceMapping.size(), (System.currentTimeMillis()-start));
         BaneNorIdPlatformUpdaterService platformUpdaterService = Mockito.mock(BaneNorIdPlatformUpdaterService.class);
-        Mockito.when(platformUpdaterService.get(Mockito.anyString())).thenAnswer((Answer<String>) invocation -> stopPlaceMapping.get(invocation.getArguments()[0]));
+        Mockito.when(platformUpdaterService.get(Mockito.anyString())).thenAnswer((Answer<String>) invocation -> stopPlaceMapping.get(invocation.getArguments()[0]).getLeft());
         ApplicationContextHolder applicationContextHolder = new ApplicationContextHolder();
         ApplicationContext applicationContext = Mockito.mock(ApplicationContext.class);
         applicationContextHolder.setApplicationContext(applicationContext);

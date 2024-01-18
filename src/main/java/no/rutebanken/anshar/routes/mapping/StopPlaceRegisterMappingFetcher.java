@@ -17,6 +17,7 @@ package no.rutebanken.anshar.routes.mapping;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import no.rutebanken.anshar.routes.export.file.BlobStoreService;
+import org.apache.commons.lang3.tuple.Pair;
 import org.quartz.utils.counter.Counter;
 import org.quartz.utils.counter.CounterImpl;
 import org.slf4j.Logger;
@@ -55,9 +56,9 @@ public class StopPlaceRegisterMappingFetcher {
         return new HashMap<>();
     }
 
-    public Map<String, String> fetchStopPlaceMapping(String name) {
+    public Map<String, Pair<String,String>> fetchStopPlaceMapping(String name) {
 
-        Map<String, String> stopPlaceMappings = new HashMap<>();
+        Map<String, Pair<String,String>> stopPlaceMappings = new HashMap<>();
         if (name != null && !name.isEmpty()) {
 
             long t1 = System.currentTimeMillis();
@@ -73,11 +74,12 @@ public class StopPlaceRegisterMappingFetcher {
                     StringTokenizer tokenizer = new StringTokenizer(line, ",");
                     String id = tokenizer.nextToken();
                     String generatedId = tokenizer.nextToken();
+                    String stopName = tokenizer.nextToken();
 
                     if (stopPlaceMappings.containsKey(id)) {
                         duplicates.increment();
                     }
-                    stopPlaceMappings.put(id, generatedId);
+                    stopPlaceMappings.put(id, Pair.of(generatedId, stopName != null ? stopName : ""));
                 });
 
                 long t2 = System.currentTimeMillis();

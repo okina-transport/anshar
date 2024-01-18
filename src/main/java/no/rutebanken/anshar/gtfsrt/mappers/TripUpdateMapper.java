@@ -1,6 +1,7 @@
 package no.rutebanken.anshar.gtfsrt.mappers;
 
 import com.google.transit.realtime.GtfsRealtime;
+import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.mapping.StopTimesService;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -27,7 +28,8 @@ public class TripUpdateMapper {
     @Autowired
     StopTimesService stopTimesService;
 
-
+    @Autowired
+    StopPlaceUpdaterService stopPlaceService;
     /**
      * Read a tripUpdate and creates siri objects
      *
@@ -48,7 +50,7 @@ public class TripUpdateMapper {
         }
         LineRef lineRef = createLineRef(tripUpdate, datasetId, tripId);
         DestinationRef destinationRef = createDestinationRef(datasetId, tripId);
-        NaturalLanguageStringStructure destinationName = createDestinationName(destinationRef);
+        NaturalLanguageStringStructure destinationName = createDestinationName(destinationRef, datasetId);
 
         for (GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate : tripUpdate.getStopTimeUpdateList()) {
             MonitoredStopVisit stopVisit = new MonitoredStopVisit();
@@ -186,9 +188,10 @@ public class TripUpdateMapper {
         return destinationRef;
     }
 
-    private NaturalLanguageStringStructure createDestinationName(DestinationRef destinationRef) {
+    private NaturalLanguageStringStructure createDestinationName(DestinationRef destinationRef, String datasetId) {
+
         NaturalLanguageStringStructure naturalLanguageStringStructure = new NaturalLanguageStringStructure();
-        naturalLanguageStringStructure.setValue(destinationRef.getValue());
+        naturalLanguageStringStructure.setValue(stopPlaceService.getStopName(destinationRef.getValue(), datasetId));
         return naturalLanguageStringStructure;
     }
 

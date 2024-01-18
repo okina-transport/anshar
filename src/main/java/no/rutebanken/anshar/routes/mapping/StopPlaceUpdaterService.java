@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.routes.mapping;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,7 +35,7 @@ public class StopPlaceUpdaterService {
 
     private static final Object LOCK = new Object();
 
-    private transient final ConcurrentMap<String, String> stopPlaceMappings = new ConcurrentHashMap<>();
+    private transient final ConcurrentMap<String, Pair<String, String>> stopPlaceMappings = new ConcurrentHashMap<>();
 
     private transient final ConcurrentMap<String, List<String>> reverseStopPlaceMappings = new ConcurrentHashMap<>();
 
@@ -66,7 +67,7 @@ public class StopPlaceUpdaterService {
                 }
             }
         }
-        return stopPlaceMappings.get(id);
+        return stopPlaceMappings.get(id).getLeft();
     }
 
     public List<String> getReverse(String id, String datasetId) {
@@ -171,18 +172,19 @@ public class StopPlaceUpdaterService {
     private void updateStopPlaceMapping(String mappingUrl) {
         logger.info("Fetching mapping data - start. Fetching mapping-data from {}", mappingUrl);
 
-        Map<String, String> foundMappings = stopPlaceRegisterMappingFetcher.fetchStopPlaceMapping(mappingUrl);
+        Map<String, Pair<String,String>> foundMappings = stopPlaceRegisterMappingFetcher.fetchStopPlaceMapping(mappingUrl);
         stopPlaceMappings.putAll(foundMappings);
+
         validNsrIds.addAll(stopPlaceMappings.keySet());
 
-        for (Map.Entry<String, String> mappingEntry : foundMappings.entrySet()) {
+        for (Map.Entry<String, Pair<String,String>> mappingEntry : foundMappings.entrySet()) {
 
             List<String> providerIds;
-            if (reverseStopPlaceMappings.containsKey(mappingEntry.getValue())) {
-                providerIds = reverseStopPlaceMappings.get(mappingEntry.getValue());
+            if (reverseStopPlaceMappings.containsKey(mappingEntry.getValue().getLeft())) {
+                providerIds = reverseStopPlaceMappings.get(mappingEntry.getValue().getLeft());
             } else {
                 providerIds = new ArrayList<>();
-                reverseStopPlaceMappings.put(mappingEntry.getValue(), providerIds);
+                reverseStopPlaceMappings.put(mappingEntry.getValue().getLeft(), providerIds);
             }
 
             providerIds.add(mappingEntry.getKey());
@@ -217,7 +219,7 @@ public class StopPlaceUpdaterService {
 
 
     //Called from tests
-    public void addStopPlaceMappings(Map<String, String> stopPlaceMap) {
+    public void addStopPlaceMappings(Map<String, Pair<String, String>> stopPlaceMap) {
         this.stopPlaceMappings.putAll(stopPlaceMap);
     }
 
@@ -229,5 +231,19 @@ public class StopPlaceUpdaterService {
     //Called from tests
     public void addStopQuays(Collection<String> stopQuays) {
         this.validNsrIds.addAll(stopQuays);
+    }
+
+    public String getStopName(String stopId, String datasetId){
+        if (stopPlaceMappings.isEmpty()) {
+            // Avoid multiple calls at the same time.
+            // Could have used a timed lock here.
+            synchronized (LOCK) {
+                // Check again.
+                if (stopPlaceMappings.isEmpty()) {
+                    updateIdMapping();
+                }
+            }
+        }
+        return stopPlaceMappings.get(datasetId + ":Quay:" + stopId) != null ? stopPlaceMappings.get(datasetId + ":Quay:" + stopId).getRight() : stopPlaceMappings.get(datasetId + ":StopPlace:" + stopId).getRight();
     }
 }

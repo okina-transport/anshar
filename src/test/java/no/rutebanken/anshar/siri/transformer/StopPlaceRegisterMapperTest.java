@@ -21,6 +21,7 @@ import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import no.rutebanken.anshar.routes.siri.transformer.impl.StopPlaceRegisterMapper;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import uk.org.siri.siri20.JourneyPlaceRefStructure;
@@ -38,20 +39,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class StopPlaceRegisterMapperTest extends SpringBootBaseTest {
 
-    private Map<String, String> stopPlaceMap;
+    private Map<String, Pair<String, String>> stopPlaceMap;
     private Set<String> stopQuays;
 
     @BeforeEach
     public void setUp() throws Exception {
 
         stopPlaceMap = new HashMap<>();
-        stopPlaceMap.put("1234", "NSR:Quay:11223344");
-        stopPlaceMap.put("ABC:Quay:1234", "NSR:Quay:11223344");
-        stopPlaceMap.put("ABC:Quay:2345", "NSR:Quay:22334455");
-        stopPlaceMap.put("ABC:Quay:3456", "NSR:Quay:33445566");
-        stopPlaceMap.put("ABC:Quay:4567", "NSR:Quay:44556677");
-        stopPlaceMap.put("ABC:Quay:5678", "NSR:Quay:55667788");
-        stopPlaceMap.put("XYZ:Quay:5555", "NSR:Quay:44444444");
+        stopPlaceMap.put("1234", Pair.of("NSR:Quay:11223344", "test1"));
+        stopPlaceMap.put("ABC:Quay:1234", Pair.of("NSR:Quay:11223344", "test1"));
+        stopPlaceMap.put("ABC:Quay:2345", Pair.of("NSR:Quay:22334455", "test1"));
+        stopPlaceMap.put("ABC:Quay:3456", Pair.of("NSR:Quay:33445566", "test1"));
+        stopPlaceMap.put("ABC:Quay:4567", Pair.of("NSR:Quay:44556677", "test1"));
+        stopPlaceMap.put("ABC:Quay:5678", Pair.of("NSR:Quay:55667788", "test1"));
+        stopPlaceMap.put("XYZ:Quay:5555", Pair.of("NSR:Quay:44444444", "test1"));
 
         StopPlaceUpdaterService stopPlaceService = ApplicationContextHolder.getContext().getBean(StopPlaceUpdaterService.class);
 
@@ -59,7 +60,9 @@ public class StopPlaceRegisterMapperTest extends SpringBootBaseTest {
         stopPlaceService.addStopPlaceMappings(stopPlaceMap);
 
         stopQuays = new HashSet<>();
-        stopQuays.addAll(stopPlaceMap.values());
+        stopPlaceMap.values().stream()
+                .map(Pair::getLeft)
+                .forEach(stopQuays::add);
         stopQuays.add("NSR:StopPlace:1");
         stopQuays.add("NSR:Quay:1");
         stopQuays.add("NSR:Quay:2");
@@ -135,6 +138,7 @@ public class StopPlaceRegisterMapperTest extends SpringBootBaseTest {
         String datasetId = "TST_" + System.currentTimeMillis();
         String originalId = "4321";
         String mappedId = "NSR:Quay:44332211";
+        String stopName = "Eglise";
 
         StopPlaceRegisterMapper mapper = new StopPlaceRegisterMapper(SiriDataType.VEHICLE_MONITORING, datasetId,JourneyPlaceRefStructure.class, prefixes);
 
@@ -150,7 +154,7 @@ public class StopPlaceRegisterMapperTest extends SpringBootBaseTest {
 
 
         //Add new mapping-value
-        stopPlaceMap.put(originalId, mappedId);
+        stopPlaceMap.put(originalId, Pair.of(mappedId, stopName));
         stopPlaceService.addStopPlaceMappings(stopPlaceMap);
 
         assertEquals(mappedId, mapper.apply(originalId));

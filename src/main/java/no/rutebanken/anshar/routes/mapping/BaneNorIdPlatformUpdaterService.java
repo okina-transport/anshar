@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.routes.mapping;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,13 +24,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
-import java.io.IOException;
+import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 @Component
 @Configuration
@@ -86,10 +83,13 @@ public class BaneNorIdPlatformUpdaterService {
         }
     }
 
-    private void updateStopPlaceMapping() throws IOException {
+    private void updateStopPlaceMapping() {
         if (jbvCodeStopPlaceMappingPath != null && !jbvCodeStopPlaceMappingPath.isEmpty()) {
             logger.info("Fetching mapping-data from {}", jbvCodeStopPlaceMappingPath);
-            jbvCodeStopPlaceMappings.putAll(stopPlaceRegisterMappingFetcher.fetchStopPlaceMapping(jbvCodeStopPlaceMappingPath));
+
+            Map<String, Pair<String, String>> fetchedMapping = stopPlaceRegisterMappingFetcher.fetchStopPlaceMapping(jbvCodeStopPlaceMappingPath);
+
+            fetchedMapping.forEach((key, pair) -> jbvCodeStopPlaceMappings.put(key, pair.getLeft()));
         }
     }
 }
