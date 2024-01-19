@@ -41,6 +41,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.stream.Stream;
 
 @Service
 public class SiriObjectFactory {
@@ -668,12 +669,22 @@ public class SiriObjectFactory {
     }
 
     // TODO MHI
-    public Siri createSMServiceDelivery(Collection<MonitoredStopVisit> elements) {
+    public <T extends AbstractItemStructure> Siri createSMServiceDelivery(Collection<T> collections) {
         Siri siri = createSiriObject();
         ServiceDelivery delivery = createServiceDelivery();
         StopMonitoringDeliveryStructure deliveryStructure = new StopMonitoringDeliveryStructure();
         deliveryStructure.setVersion(SIRI_VERSION);
-        deliveryStructure.getMonitoredStopVisits().addAll(elements);
+
+        Stream.of(collections)
+                .flatMap(Collection::stream)
+                .forEach(element -> {
+                    if (element instanceof MonitoredStopVisit) {
+                        deliveryStructure.getMonitoredStopVisits().add((MonitoredStopVisit) element);
+                    } else if (element instanceof MonitoredStopVisitCancellation) {
+                        deliveryStructure.getMonitoredStopVisitCancellations().add((MonitoredStopVisitCancellation) element);
+                    }
+                });
+
         deliveryStructure.setResponseTimestamp(ZonedDateTime.now());
         delivery.getStopMonitoringDeliveries().add(deliveryStructure);
         siri.setServiceDelivery(delivery);
