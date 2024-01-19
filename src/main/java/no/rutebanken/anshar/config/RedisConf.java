@@ -15,6 +15,7 @@ import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactor
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.data.redis.serializer.SerializationException;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import java.awt.print.Book;
 
@@ -34,7 +35,7 @@ public class RedisConf {
     public RedisTemplate<Long, Book> redisTemplate(RedisConnectionFactory connectionFactory) {
         RedisTemplate<Long, Book> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
-        template.setValueSerializer(new JsonRedisSerializer());
+        template.setValueSerializer(new StringRedisSerializer());
 
         // Add some specific configuration here. Key serializers, etc.
         return template;
