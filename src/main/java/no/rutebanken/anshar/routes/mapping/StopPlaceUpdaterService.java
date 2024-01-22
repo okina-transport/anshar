@@ -67,7 +67,7 @@ public class StopPlaceUpdaterService {
                 }
             }
         }
-        return stopPlaceMappings.get(id).getLeft();
+        return stopPlaceMappings.get(id) != null ? stopPlaceMappings.get(id).getLeft() : null;
     }
 
     public List<String> getReverse(String id, String datasetId) {
