@@ -2,6 +2,7 @@ package no.rutebanken.anshar.routes.siri.handlers;
 
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
+import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
@@ -47,6 +48,97 @@ public class Utils {
         if (delivery.getSituationExchangeDeliveries() != null && !delivery.getSituationExchangeDeliveries().isEmpty()) {
             handleFlexibleLineInSX(delivery.getSituationExchangeDeliveries());
         }
+
+        if (delivery.getGeneralMessageDeliveries() != null && !delivery.getGeneralMessageDeliveries().isEmpty()) {
+            handleFlexibleLineInGM(delivery.getGeneralMessageDeliveries());
+        }
+
+        if (delivery.getEstimatedTimetableDeliveries() != null && !delivery.getEstimatedTimetableDeliveries().isEmpty()) {
+            handleFlexibleLineInET(delivery.getEstimatedTimetableDeliveries());
+        }
+
+        if (delivery.getVehicleMonitoringDeliveries() != null && !delivery.getVehicleMonitoringDeliveries().isEmpty()) {
+            handleFlexibleLineInVM(delivery.getVehicleMonitoringDeliveries());
+        }
+
+        if (delivery.getStopMonitoringDeliveries() != null && !delivery.getStopMonitoringDeliveries().isEmpty()) {
+            handleFlexibleLineInSM(delivery.getStopMonitoringDeliveries());
+        }
+    }
+
+    private void handleFlexibleLineInSM(List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries) {
+        for (StopMonitoringDeliveryStructure stopMonitoringDelivery : stopMonitoringDeliveries) {
+            if (stopMonitoringDelivery.getMonitoredStopVisits() == null || stopMonitoringDelivery.getMonitoredStopVisits().isEmpty()) {
+                continue;
+            }
+
+            for (MonitoredStopVisit monitoredStopVisit : stopMonitoringDelivery.getMonitoredStopVisits()) {
+
+                if (monitoredStopVisit.getMonitoredVehicleJourney() == null || monitoredStopVisit.getMonitoredVehicleJourney().getLineRef() == null) {
+                    continue;
+                }
+                handleFlexibleLineInLineRef(monitoredStopVisit.getMonitoredVehicleJourney().getLineRef());
+            }
+        }
+    }
+
+    private void handleFlexibleLineInVM(List<VehicleMonitoringDeliveryStructure> vehicleMonitoringDeliveries) {
+        for (VehicleMonitoringDeliveryStructure vehicleMonitoringDelivery : vehicleMonitoringDeliveries) {
+            if (vehicleMonitoringDelivery.getVehicleActivities() == null || vehicleMonitoringDelivery.getVehicleActivities().isEmpty()) {
+                continue;
+            }
+
+            for (VehicleActivityStructure vehicleActivity : vehicleMonitoringDelivery.getVehicleActivities()) {
+                if (vehicleActivity.getMonitoredVehicleJourney() != null) {
+                    if (vehicleActivity.getMonitoredVehicleJourney().getLineRef() != null) {
+                        handleFlexibleLineInLineRef(vehicleActivity.getMonitoredVehicleJourney().getLineRef());
+                    }
+                }
+            }
+        }
+    }
+
+    private void handleFlexibleLineInET(List<EstimatedTimetableDeliveryStructure> estimatedTimetableDeliveries) {
+        for (EstimatedTimetableDeliveryStructure estimatedTimetableDelivery : estimatedTimetableDeliveries) {
+            if (estimatedTimetableDelivery.getEstimatedJourneyVersionFrames() == null || estimatedTimetableDelivery.getEstimatedJourneyVersionFrames().isEmpty()) {
+                continue;
+            }
+            for (EstimatedVersionFrameStructure estimatedJourneyVersionFrame : estimatedTimetableDelivery.getEstimatedJourneyVersionFrames()) {
+                for (EstimatedVehicleJourney estimatedVehicleJourney : estimatedJourneyVersionFrame.getEstimatedVehicleJourneies()) {
+                    if (estimatedVehicleJourney.getLineRef() != null) {
+                        handleFlexibleLineInLineRef(estimatedVehicleJourney.getLineRef());
+                    }
+                }
+            }
+        }
+    }
+
+    private void handleFlexibleLineInGM(List<GeneralMessageDeliveryStructure> generalMessageDeliveries) {
+
+        for (GeneralMessageDeliveryStructure generalMessageDelivery : generalMessageDeliveries) {
+            if (generalMessageDelivery.getGeneralMessages() == null || generalMessageDelivery.getGeneralMessages().isEmpty()) {
+                continue;
+            }
+
+            for (GeneralMessage generalMessage : generalMessageDelivery.getGeneralMessages()) {
+                Object contentObj = generalMessage.getContent();
+                if (contentObj instanceof Content) {
+                    Content content = (Content) contentObj;
+                    if (content.getLineRefs() != null && !content.getLineRefs().isEmpty()) {
+                        List<String> convertedLineRfs = new ArrayList<>();
+
+                        for (String lineRef : content.getLineRefs()) {
+                            if (lineUpdaterService.isLineFlexible(lineRef.replace(":LOC", ""))) {
+                                convertedLineRfs.add(lineRef.replace(":Line", ":FlexibleLine"));
+                            } else {
+                                convertedLineRfs.add(lineRef);
+                            }
+                        }
+                        content.setLineRefs(convertedLineRfs);
+                    }
+                }
+            }
+        }
     }
 
     private void handleFlexibleLineInSX(List<SituationExchangeDeliveryStructure> situationExchangeDeliveries) {
@@ -80,12 +172,15 @@ public class Utils {
             if (affectedLine.getLineRef() == null) {
                 continue;
             }
-
             LineRef lineRef = affectedLine.getLineRef();
-            String originalLineId = lineRef.getValue();
-            if (lineUpdaterService.isLineFlexible(originalLineId.replace(":LOC", ""))) {
-                lineRef.setValue(originalLineId.replace(":Line", ":FlexibleLine"));
-            }
+            handleFlexibleLineInLineRef(lineRef);
+        }
+    }
+
+    private void handleFlexibleLineInLineRef(LineRef lineRef) {
+        String originalLineId = lineRef.getValue();
+        if (lineUpdaterService.isLineFlexible(originalLineId.replace(":LOC", ""))) {
+            lineRef.setValue(originalLineId.replace(":Line", ":FlexibleLine"));
         }
     }
 

@@ -15,14 +15,22 @@
 
 package no.rutebanken.anshar.data;
 
+import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
+import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
+import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
+import no.rutebanken.anshar.subscription.SubscriptionConfig;
+import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri20.*;
 
+import javax.xml.bind.UnmarshalException;
+import java.io.InputStream;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
 import java.util.*;
 
@@ -34,6 +42,15 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
 
     @Autowired
     private EstimatedTimetables estimatedTimetables;
+
+    @Autowired
+    private SiriHandler handler;
+
+    @Autowired
+    private SubscriptionConfig subscriptionConfig;
+
+    @Autowired
+    private LineUpdaterService lineupdaterService;
 
     @BeforeEach
     public void init() {
@@ -56,6 +73,76 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         estimatedTimetables.add("test", element);
 
         assertTrue(estimatedTimetables.getAll().size() == previousSize + 1);
+    }
+
+    @Test
+    public void testFlexibleLineConversion() throws UnmarshalException {
+        String flexibleLineId = "PROV1:Line:35";
+        String standardlineId = "PROV2:Line:AAA";
+
+        List<GtfsRTApi> gtfsApis = new ArrayList<>();
+        GtfsRTApi api1 = new GtfsRTApi();
+        api1.setDatasetId("PROV1");
+        GtfsRTApi api2 = new GtfsRTApi();
+        api2.setDatasetId("PROV2");
+        gtfsApis.add(api1);
+        gtfsApis.add(api2);
+
+        subscriptionConfig.setGtfsRTApis(gtfsApis);
+
+        Map<String, Boolean> flexibleLineMap = new HashMap<>();
+        flexibleLineMap.put(flexibleLineId, true);
+        flexibleLineMap.put(standardlineId, false);
+        lineupdaterService.addFlexibleLines(flexibleLineMap);
+
+        String datasetId = "DATASET1";
+
+
+        EstimatedVehicleJourney et1 = TestObjectFactory.createEstimatedVehicleJourney(standardlineId, "4321", 0, 30, ZonedDateTime.now().plusMinutes(1), true);
+        EstimatedVehicleJourney et2 = TestObjectFactory.createEstimatedVehicleJourney(flexibleLineId, "4322", 0, 30, ZonedDateTime.now().plusMinutes(1), true);
+
+        estimatedTimetables.add(datasetId, et1);
+        estimatedTimetables.add(datasetId, et2);
+
+
+        Collection<EstimatedVehicleJourney> ets = estimatedTimetables.getAll();
+        assertFalse(ets.isEmpty());
+
+
+        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <EstimatedTimetableRequest version=\"2.0\">\n" +
+                "        </EstimatedTimetableRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+
+        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+
+
+        Siri response = handler.handleIncomingSiri(null, xml, "DATASET1", SiriHandler.getIdMappingPolicy("true", "false"), -1, null);
+        assertNotNull(response.getServiceDelivery());
+
+        assertNotNull(response.getServiceDelivery().getEstimatedTimetableDeliveries());
+        assertTrue(response.getServiceDelivery().getEstimatedTimetableDeliveries().size() > 0);
+
+
+        for (EstimatedTimetableDeliveryStructure estimatedTimetableDelivery : response.getServiceDelivery().getEstimatedTimetableDeliveries()) {
+
+            for (EstimatedVersionFrameStructure estimatedJourneyVersionFrame : estimatedTimetableDelivery.getEstimatedJourneyVersionFrames()) {
+
+                for (EstimatedVehicleJourney estimatedVehicleJourney : estimatedJourneyVersionFrame.getEstimatedVehicleJourneies()) {
+                    String lineRef = estimatedVehicleJourney.getLineRef().getValue();
+                    if (lineRef.startsWith("PROV1")) {
+                        assertEquals("PROV1:FlexibleLine:35", lineRef);
+                    } else {
+                        assertEquals(standardlineId, lineRef);
+                    }
+                }
+            }
+        }
     }
 
 
