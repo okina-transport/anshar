@@ -244,6 +244,8 @@ public class StopPlaceUpdaterService {
                 }
             }
         }
-        return stopPlaceMappings.get(datasetId + ":Quay:" + stopId) != null ? stopPlaceMappings.get(datasetId + ":Quay:" + stopId).getRight() : stopPlaceMappings.get(datasetId + ":StopPlace:" + stopId).getRight();
+        return stopPlaceMappings.get(datasetId + ":Quay:" + stopId) != null ? stopPlaceMappings.get(datasetId + ":Quay:" + stopId).getRight() :
+                stopPlaceMappings.get(datasetId + ":StopPlace:" + stopId)  != null ? stopPlaceMappings.get(datasetId + ":StopPlace:" + stopId).getRight() :
+                null;
     }
 }
