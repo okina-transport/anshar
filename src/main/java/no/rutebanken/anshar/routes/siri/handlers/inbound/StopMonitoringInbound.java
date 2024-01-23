@@ -81,6 +81,7 @@ public class StopMonitoringInbound {
 
     public void cancelStopVisits(String datasetId, List<MonitoredStopVisitCancellation> incomingMonitoredStopVisitsCancellations) {
         monitoredStopVisits.cancelStopVsits(datasetId, incomingMonitoredStopVisitsCancellations);
+        serverSubscriptionManager.pushUpdatesAsync(SiriDataType.STOP_MONITORING, incomingMonitoredStopVisitsCancellations, datasetId);
     }
 
     public boolean ingestStopVisit(SubscriptionSetup subscriptionSetup, Siri incoming) {
@@ -94,16 +95,17 @@ public class StopMonitoringInbound {
                             if (sm.isStatus() != null && !sm.isStatus() || sm.getErrorCondition() != null) {
                                 logger.info(utils.getErrorContents(sm.getErrorCondition()));
                             } else {
-                                if (sm.getMonitoredStopVisits() != null) {
+                                if (sm.getMonitoredStopVisits() != null && !sm.getMonitoredStopVisits().isEmpty()) {
                                     addedOrUpdated.addAll(ingestStopVisits(subscriptionSetup.getDatasetId(), sm.getMonitoredStopVisits()));
+                                }
+                                if (sm.getMonitoredStopVisitCancellations() != null && !sm.getMonitoredStopVisitCancellations().isEmpty()) {
+                                    cancelStopVisits(subscriptionSetup.getDatasetId(), sm.getMonitoredStopVisitCancellations());
                                 }
                             }
                         }
                     }
             );
         }
-
-        serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
 
         subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdated.size());
 

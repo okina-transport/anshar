@@ -723,13 +723,14 @@ public class ServerSubscriptionManager {
     }
 
     // TODO MHI
-    private void pushUpdatedStopMonitoring(List<MonitoredStopVisit> addedOrUpdated, String datasetId, String breadcrumbId
+    private <T extends AbstractItemStructure> void pushUpdatedStopMonitoring(List<T> addedOrUpdated, String datasetId, String breadcrumbId
     ) {
         MDC.put("camel.breadcrumbId", breadcrumbId);
 
         if (addedOrUpdated == null || addedOrUpdated.isEmpty()) {
             return;
         }
+
         Siri delivery = siriObjectFactory.createSMServiceDelivery(addedOrUpdated);
 
         if (pushToTopicEnabled) {

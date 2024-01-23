@@ -31,6 +31,7 @@ import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -543,13 +544,13 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     }
 
     public void initStopPlaceMapper() {
-        Map<String, String> stopPlaceMap;
+        Map<String, Pair<String, String>> stopPlaceMap;
 
         stopPlaceMap = new HashMap<>();
-        stopPlaceMap.put("TEST1:StopPoint:SP:121:LOC", "MOBIITI:Quay:a");
-        stopPlaceMap.put("TEST2:StopPoint:SP:122:LOC", "MOBIITI:Quay:a");
-        stopPlaceMap.put("TEST3:StopPoint:SP:123:LOC", "MOBIITI:Quay:b");
-        stopPlaceMap.put("TEST4:StopPoint:SP:124:LOC", "MOBIITI:Quay:b");
+        stopPlaceMap.put("TEST1:StopPoint:SP:121:LOC", Pair.of("MOBIITI:Quay:a", "test1"));
+        stopPlaceMap.put("TEST2:StopPoint:SP:122:LOC", Pair.of("MOBIITI:Quay:a", "test2"));
+        stopPlaceMap.put("TEST3:StopPoint:SP:123:LOC", Pair.of("MOBIITI:Quay:b", "test3"));
+        stopPlaceMap.put("TEST4:StopPoint:SP:124:LOC", Pair.of("MOBIITI:Quay:b", "test4"));
 
         StopPlaceUpdaterService stopPlaceService = ApplicationContextHolder.getContext().getBean(StopPlaceUpdaterService.class);
 

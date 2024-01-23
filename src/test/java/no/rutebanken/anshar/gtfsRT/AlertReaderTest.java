@@ -9,6 +9,7 @@ import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,12 +74,12 @@ public class AlertReaderTest extends SpringBootBaseTest {
     }
 
     private void feedStopPlaceMappingsCache(){
-        Map<String, String> stopPlaceMap = new HashMap<>();
+        Map<String, Pair<String, String>> stopPlaceMap = new HashMap<>();
         try(FileReader fileReader = new FileReader("src/test/resources/stop_place_mapping.csv");
             CSVParser csvParser = CSVFormat.DEFAULT.parse(fileReader)) {
             for (CSVRecord record : csvParser) {
-                if (record.size() >= 2) {
-                    stopPlaceMap.put(record.get(0), record.get(1));
+                if (record.size() >= 3) {
+                    stopPlaceMap.put(record.get(0), Pair.of(record.get(1), record.get(2)));
                 }
             }
         } catch (IOException e) {

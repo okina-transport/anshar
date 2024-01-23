@@ -15,32 +15,47 @@
 
 package no.rutebanken.anshar.data;
 
+import no.rutebanken.anshar.api.GtfsRTApi;
+import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
+import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
+import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
+import no.rutebanken.anshar.subscription.SubscriptionConfig;
+import org.apache.commons.io.IOUtils;
 import org.junit.Ignore;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri20.*;
 
+import javax.xml.bind.UnmarshalException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 import static no.rutebanken.anshar.helpers.SleepUtil.sleep;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+
 
 public class MonitoredStopVisitsTest extends SpringBootBaseTest {
 
 
     @Autowired
     private MonitoredStopVisits monitoredStopVisits;
+
+    @Autowired
+    private SiriHandler handler;
+
+    @Autowired
+    private SubscriptionConfig subscriptionConfig;
+
+    @Autowired
+    private LineUpdaterService lineupdaterService;
 
     @BeforeEach
     public void init() {
@@ -54,7 +69,7 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
                 ZonedDateTime.now().plusMinutes(1), UUID.randomUUID().toString());
 
         monitoredStopVisits.add("test", element);
-        assertEquals("Vehicle not added", previousSize + 1, monitoredStopVisits.getAll().size());
+        assertEquals(previousSize + 1, monitoredStopVisits.getAll().size(), "Vehicle not added");
     }
 
     @Test
@@ -62,7 +77,82 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
         int previousSize = monitoredStopVisits.getAll().size();
 
         monitoredStopVisits.add("test", null);
-        assertEquals("Null-element added", previousSize, monitoredStopVisits.getAll().size());
+        assertEquals(previousSize, monitoredStopVisits.getAll().size(), "Null-element added");
+    }
+
+    @Test
+    public void testFlexibleLineConversion() throws UnmarshalException {
+        String flexibleLineId = "PROV1:Line:35";
+        String standardlineId = "PROV2:Line:AAA";
+
+        List<GtfsRTApi> gtfsApis = new ArrayList<>();
+        GtfsRTApi api1 = new GtfsRTApi();
+        api1.setDatasetId("PROV1");
+        GtfsRTApi api2 = new GtfsRTApi();
+        api2.setDatasetId("PROV2");
+        gtfsApis.add(api1);
+        gtfsApis.add(api2);
+
+        subscriptionConfig.setGtfsRTApis(gtfsApis);
+
+        Map<String, Boolean> flexibleLineMap = new HashMap<>();
+        flexibleLineMap.put(flexibleLineId, true);
+        flexibleLineMap.put(standardlineId, false);
+        lineupdaterService.addFlexibleLines(flexibleLineMap);
+
+        String datasetId = "DATASET1";
+
+
+        MonitoredStopVisit sm1 = TestObjectFactory.createMonitoredStopVisit(ZonedDateTime.now().plusMinutes(1), "aa");
+        addLineRef(sm1, standardlineId);
+
+        MonitoredStopVisit sm2 = TestObjectFactory.createMonitoredStopVisit(ZonedDateTime.now().plusMinutes(1), "aa");
+        addLineRef(sm2, flexibleLineId);
+
+        monitoredStopVisits.add(datasetId, sm1);
+        monitoredStopVisits.add(datasetId, sm2);
+
+
+        Collection<MonitoredStopVisit> sms = monitoredStopVisits.getAll();
+        assertFalse(sms.isEmpty());
+
+
+        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <StopMonitoringRequest version=\"2.0\">\n" +
+                "        </StopMonitoringRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+
+        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+
+
+        Siri response = handler.handleIncomingSiri(null, xml, "DATASET1", SiriHandler.getIdMappingPolicy("true", "false"), -1, null);
+        Assertions.assertNotNull(response.getServiceDelivery());
+
+        Assertions.assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries());
+        Assertions.assertTrue(response.getServiceDelivery().getStopMonitoringDeliveries().size() > 0);
+
+
+        for (StopMonitoringDeliveryStructure stopMonitoringDelivery : response.getServiceDelivery().getStopMonitoringDeliveries()) {
+            for (MonitoredStopVisit monitoredStopVisit : stopMonitoringDelivery.getMonitoredStopVisits()) {
+                String lineRef = monitoredStopVisit.getMonitoredVehicleJourney().getLineRef().getValue();
+                if (lineRef.startsWith("PROV1")) {
+                    assertEquals("PROV1:FlexibleLine:35", lineRef);
+                } else {
+                    assertEquals(standardlineId, lineRef);
+                }
+            }
+        }
+    }
+
+    private void addLineRef(MonitoredStopVisit sm1, String lineId) {
+        LineRef lineRef = new LineRef();
+        lineRef.setValue(lineId);
+        sm1.getMonitoredVehicleJourney().setLineRef(lineRef);
     }
 
     @Test
@@ -128,7 +218,7 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
 
         monitoredStopVisits.cancelStopVsits("test", List.of(elementCancelled));
 
-        assertEquals(previousSize , monitoredStopVisits.getAll().size());
+        assertEquals(previousSize, monitoredStopVisits.getAll().size());
 
         MonitoredStopVisit element2 = createMonitoredCompleteStopVisit(ZonedDateTime.now().plusMinutes(1), stopReference, tripId, itemIdentifier2, routeId);
         monitoredStopVisits.add("test2", element2);
@@ -141,7 +231,7 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
         monitoredStopVisits.cancelStopVsits("test2", List.of(elementCancelled2));
 
         //Verify that existing element is updated
-        assertEquals(previousSize , monitoredStopVisits.getAll().size());
+        assertEquals(previousSize, monitoredStopVisits.getAll().size());
     }
 
 
@@ -199,31 +289,29 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
     }
 
 
-
     @Test
     public void testGetUpdatesOnly() {
         int previousSize = monitoredStopVisits.getAll().size();
 
         String prefix = "updateOnly-";
-        monitoredStopVisits.add("test", createMonitoredStopVisit(ZonedDateTime.now(), prefix+"1234"));
-        monitoredStopVisits.add("test", createMonitoredStopVisit(ZonedDateTime.now(), prefix+"2345"));
-        monitoredStopVisits.add("test", createMonitoredStopVisit(ZonedDateTime.now(), prefix+"3456"));
+        monitoredStopVisits.add("test", createMonitoredStopVisit(ZonedDateTime.now(), prefix + "1234"));
+        monitoredStopVisits.add("test", createMonitoredStopVisit(ZonedDateTime.now(), prefix + "2345"));
+        monitoredStopVisits.add("test", createMonitoredStopVisit(ZonedDateTime.now(), prefix + "3456"));
 
         sleep(250);
 
         // Added 3
-        assertEquals(previousSize+3, monitoredStopVisits.getAllUpdates("1234-1234", null).size());
+        assertEquals(previousSize + 3, monitoredStopVisits.getAllUpdates("1234-1234", null).size());
 
-        monitoredStopVisits.add("test", createMonitoredStopVisit(ZonedDateTime.now(), prefix+"4567"));
+        monitoredStopVisits.add("test", createMonitoredStopVisit(ZonedDateTime.now(), prefix + "4567"));
         sleep(250);
 
         //Added one
         assertEquals(1, monitoredStopVisits.getAllUpdates("1234-1234", null).size());
 
 
-
         //Verify that all elements still exist
-        assertEquals(previousSize+4, monitoredStopVisits.getAll().size());
+        assertEquals(previousSize + 4, monitoredStopVisits.getAll().size());
     }
 
 
@@ -323,6 +411,7 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
 
         return element;
     }
+
     @Test
     @Ignore // TODO MHI à faire
     public void testExcludeDatasetIds() {
