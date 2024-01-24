@@ -338,7 +338,7 @@
         <dependency>
             <groupId>org.entur</groupId>
             <artifactId>siri-java-model</artifactId>
-            <version>0.14</version>
+            <version>0.15.1-mobi-iti-anshar</version>
         </dependency>
 
         <dependency>
