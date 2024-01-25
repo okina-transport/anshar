@@ -712,7 +712,7 @@ public class ServerSubscriptionManager {
                 )
                 .collect(Collectors.toList());
 
-        logger.info("Pushing {} ET updates to {} outbound subscriptions", addedOrUpdated.size(), recipients.size());
+        logger.debug("Pushing {} ET updates to {} outbound subscriptions", addedOrUpdated.size(), recipients.size());
 
         boolean logFullContents = true;
         for (OutboundSubscriptionSetup recipient : recipients) {
