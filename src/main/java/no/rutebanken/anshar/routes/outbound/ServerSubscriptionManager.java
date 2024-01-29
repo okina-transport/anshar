@@ -734,7 +734,7 @@ public class ServerSubscriptionManager {
         Siri delivery = siriObjectFactory.createSMServiceDelivery(addedOrUpdated);
 
         if (pushToTopicEnabled) {
-            siriSmTopicProducer.asyncSendBody(siriSmTopicProducer.getDefaultEndpoint(), delivery);
+            siriSmTopicProducer.asyncRequestBodyAndHeader(siriSmTopicProducer.getDefaultEndpoint(), delivery, CODESPACE_ID_KAFKA_HEADER_NAME, datasetId);
         }
 
         subscriptions.values().stream().filter(subscriptionRequest ->
