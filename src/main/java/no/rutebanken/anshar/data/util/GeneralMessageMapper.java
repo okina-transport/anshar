@@ -123,7 +123,7 @@ public class GeneralMessageMapper {
 
         if (currentMax == null) {
             currentMax = ZonedDateTime.now();
-            currentMax.plusYears(100);
+            currentMax.plusYears(2);
         }
 
         generalMessage.setValidUntilTime(currentMax);
