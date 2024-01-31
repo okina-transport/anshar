@@ -101,7 +101,6 @@ public class GeneralMessageMapper {
         }
     }
 
-
     private static String getMsgText(PtSituationElement situation) {
 
         StringBuilder sb = new StringBuilder();
@@ -123,7 +122,7 @@ public class GeneralMessageMapper {
 
         if (currentMax == null) {
             currentMax = ZonedDateTime.now();
-            currentMax.plusYears(2);
+            currentMax.plusYears(100);
         }
 
         generalMessage.setValidUntilTime(currentMax);
