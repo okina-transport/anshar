@@ -41,5 +41,43 @@ public class SendToActiveMQRouteBuilder  extends RouteBuilder {
                 .to(ACTIVEMQ_PREFIX + GTFSRT_ET_QUEUE)
         ;
 
+
+        from("direct:send.sm.to.kafka")
+                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .setExchangePattern(ExchangePattern.InOnly)
+                .to(ACTIVEMQ_PREFIX + SIRI_SM_KAFKA_QUEUE)
+        ;
+
+
+        from("direct:send.sx.to.kafka")
+                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .setExchangePattern(ExchangePattern.InOnly)
+                .to(ACTIVEMQ_PREFIX + SIRI_SX_KAFKA_QUEUE)
+        ;
+
+        from("direct:send.vm.to.kafka")
+                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .setExchangePattern(ExchangePattern.InOnly)
+                .to(ACTIVEMQ_PREFIX + SIRI_VM_KAFKA_QUEUE)
+        ;
+
+        from("direct:send.et.to.kafka")
+                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .setExchangePattern(ExchangePattern.InOnly)
+                .to(ACTIVEMQ_PREFIX + SIRI_ET_KAFKA_QUEUE)
+        ;
+
+        from("direct:send.gm.to.kafka")
+                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .setExchangePattern(ExchangePattern.InOnly)
+                .to(ACTIVEMQ_PREFIX + SIRI_GM_KAFKA_QUEUE)
+        ;
+
+        from("direct:send.fm.to.kafka")
+                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .setExchangePattern(ExchangePattern.InOnly)
+                .to(ACTIVEMQ_PREFIX + SIRI_FM_KAFKA_QUEUE)
+        ;
+
     }
 }

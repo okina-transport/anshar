@@ -64,6 +64,13 @@ public class Constants {
 
     public final static String SIRI_LITE_SERVICE_NAME = "SiriLiteServiceName";
 
+    public final static String SIRI_ET_KAFKA_QUEUE = "siri.estimated.timetable.kafka";
+    public final static String SIRI_SM_KAFKA_QUEUE = "siri.stop.monitoring.kafka";
+    public final static String SIRI_SX_KAFKA_QUEUE = "siri.situation.exchange.kafka";
+    public final static String SIRI_VM_KAFKA_QUEUE = "siri.vehicle.monitoring.kafka";
+    public final static String SIRI_GM_KAFKA_QUEUE = "siri.general.message.kafka";
+    public final static String SIRI_FM_KAFKA_QUEUE = "siri.facility.monitoring.kafka";
+
 
     // TODO MHI : implement validators for SM
 
