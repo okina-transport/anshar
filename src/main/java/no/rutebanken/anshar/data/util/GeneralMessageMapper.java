@@ -101,7 +101,6 @@ public class GeneralMessageMapper {
         }
     }
 
-
     private static String getMsgText(PtSituationElement situation) {
 
         StringBuilder sb = new StringBuilder();

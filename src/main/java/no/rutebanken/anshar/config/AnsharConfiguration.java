@@ -337,5 +337,6 @@ public class AnsharConfiguration {
     @PostConstruct
     public void init() {
         System.setProperty("default.time.zone", defaultTimeZone);
+        TimeZone.setDefault(TimeZone.getTimeZone(defaultTimeZone));
     }
 }
