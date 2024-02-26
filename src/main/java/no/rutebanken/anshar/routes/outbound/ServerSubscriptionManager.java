@@ -129,7 +129,6 @@ public class ServerSubscriptionManager {
     protected ProducerTemplate sendFMToKafka;
 
 
-
     public Collection getSubscriptions() {
         return Collections.unmodifiableCollection(subscriptions.values());
     }
@@ -377,7 +376,7 @@ public class ServerSubscriptionManager {
 
     private boolean getIncrementalUpdates(SubscriptionRequest subscriptionRequest) {
         if (SiriHelper.containsValues(subscriptionRequest.getVehicleMonitoringSubscriptionRequests())) {
-            return subscriptionRequest.getVehicleMonitoringSubscriptionRequests().get(0).isIncrementalUpdates();
+            return subscriptionRequest.getVehicleMonitoringSubscriptionRequests().get(0).isIncrementalUpdates() == null || subscriptionRequest.getVehicleMonitoringSubscriptionRequests().get(0).isIncrementalUpdates();
         }
         return true;
     }
