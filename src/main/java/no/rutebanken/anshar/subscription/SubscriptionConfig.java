@@ -210,7 +210,7 @@ public class SubscriptionConfig {
         return buildIdProcessingParamsFromDataset(datasetId);
     }
 
-    private Optional<String> findDatasetFromSearch(Set<String> searchedIds, ObjectType objectType) {
+    public Optional<String> findDatasetFromSearch(Set<String> searchedIds, ObjectType objectType) {
 
         Set<String> guessedDatasets = new HashSet<>();
 
