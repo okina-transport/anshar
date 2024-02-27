@@ -59,6 +59,7 @@ public class TripUpdateMapper {
             String stopId = getStopId(stopTimeUpdate, datasetId, tripId);
             if (StringUtils.isEmpty(stopId)) {
                 logger.error("Unable to determine stopId for dataset:{}, tripId:{}, stopSequence:{}, stopId:{}", datasetId, tripId, stopTimeUpdate.getStopSequence(), stopTimeUpdate.getStopId());
+                continue;
             }
             mapMonitoringRef(stopVisit, stopId);
 

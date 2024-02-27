@@ -198,9 +198,34 @@ public class ServerSubscriptionManager {
     public Siri handleMultipleSubscriptionsRequest(SubscriptionRequest subscriptionRequest, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName, boolean soapTransformation) {
         if (subscriptionRequest.getStopMonitoringSubscriptionRequests() != null && subscriptionRequest.getStopMonitoringSubscriptionRequests().size() > 1) {
             return handleMultipleStopMonitoringRequest(subscriptionRequest, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation);
+        } else if (subscriptionRequest.getVehicleMonitoringSubscriptionRequests() != null && subscriptionRequest.getVehicleMonitoringSubscriptionRequests().size() > 1) {
+            return handleMultipleVehicleMonitoringRequest(subscriptionRequest, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation);
         } else {
             return handleSingleSubscriptionRequest(subscriptionRequest, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation);
         }
+    }
+
+    private Siri handleMultipleVehicleMonitoringRequest(SubscriptionRequest subscriptionRequest, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName, boolean soapTransformation) {
+
+        List<Siri> resultList = new ArrayList<>();
+        RequestorRef requestorRef = subscriptionRequest.getRequestorRef();
+        String consumerAddress = subscriptionRequest.getConsumerAddress();
+        SubscriptionContextStructure subscriptionContext = subscriptionRequest.getSubscriptionContext();
+        MessageQualifierStructure messageIdentifier = subscriptionRequest.getMessageIdentifier();
+
+        for (VehicleMonitoringSubscriptionStructure vehicleMonitoringSubscriptionRequest : subscriptionRequest.getVehicleMonitoringSubscriptionRequests()) {
+            SubscriptionRequest singleRequest = new SubscriptionRequest();
+            singleRequest.getVehicleMonitoringSubscriptionRequests().add(vehicleMonitoringSubscriptionRequest);
+            singleRequest.setRequestorRef(requestorRef);
+            singleRequest.setConsumerAddress(consumerAddress);
+            singleRequest.setSubscriptionContext(subscriptionContext);
+            singleRequest.setMessageIdentifier(messageIdentifier);
+
+            Siri currentResult = handleSingleSubscriptionRequest(singleRequest, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation);
+            resultList.add(currentResult);
+        }
+
+        return aggregateResults(resultList);
     }
 
     private Siri handleMultipleStopMonitoringRequest(SubscriptionRequest subscriptionRequest, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName, boolean soapTransformation) {
