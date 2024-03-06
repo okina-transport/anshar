@@ -22,6 +22,7 @@ import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri20.Siri;
 
@@ -49,6 +50,10 @@ public class HeartbeatRoute extends BaseRouteBuilder {
     @Autowired
     private SiriObjectFactory siriObjectFactory;
 
+    @Value("${outbound.heartbeat.enabled:false}")
+    private boolean outboundHeartbeatEnabled;
+
+
     protected HeartbeatRoute(@Autowired AnsharConfiguration config, @Autowired SubscriptionManager subscriptionManager) {
         super(config, subscriptionManager);
     }
@@ -69,7 +74,7 @@ public class HeartbeatRoute extends BaseRouteBuilder {
                         if (outboundSubscriptionSetup != null) {
                             if (LocalDateTime.now().isAfter(outboundSubscriptionSetup.getInitialTerminationTime().toLocalDateTime())) {
                                 serverSubscriptionManager.terminateSubscription(outboundSubscriptionSetup.getSubscriptionId(), true);
-                            } else if (!heartbeatTimestampMap.containsKey(subscriptionId)) {
+                            } else if (outboundHeartbeatEnabled && !heartbeatTimestampMap.containsKey(subscriptionId)) {
                                 final long heartbeatInterval = outboundSubscriptionSetup.getHeartbeatInterval();
 
                                 Siri heartbeatNotification = siriObjectFactory.createHeartbeatNotification(outboundSubscriptionSetup.getSubscriptionId());
