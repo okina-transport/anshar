@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.routes.external;
 
+import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.EstimatedTimetableInbound;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.SituationExchangeInbound;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.StopMonitoringInbound;
@@ -50,6 +51,9 @@ public class ExternalDataHandler {
     @Autowired
     private SubscriptionManager subscriptionManager;
 
+    @Autowired
+    private PrometheusMetricsService metrics;
+
     public void processIncomingSiriSM(Exchange e) {
         InputStream xml = e.getIn().getBody(InputStream.class);
         try {
@@ -65,6 +69,7 @@ public class ExternalDataHandler {
             checkAndCreateSMSubscription(siri, datasetId, url);
 
             List<MonitoredStopVisit> stopVisitToIngest = collectStopVisits(siri);
+            metrics.registerIncomingDataFromExternalSource(SiriDataType.STOP_MONITORING, datasetId, stopVisitToIngest.size());
 
             if (stopVisitToIngest.size() > 0) {
                 stopMonitoringInbound.ingestStopVisits(datasetId, stopVisitToIngest);
