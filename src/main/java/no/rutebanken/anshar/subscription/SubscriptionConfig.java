@@ -23,6 +23,8 @@ import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.util.YamlPropertySourceFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
@@ -36,6 +38,8 @@ import java.util.stream.Collectors;
 @ConfigurationProperties(prefix = "anshar")
 @Configuration
 public class SubscriptionConfig {
+
+    private static final Logger logger = LoggerFactory.getLogger(SubscriptionConfig.class);
 
     private List<SubscriptionSetup> subscriptions = new CopyOnWriteArrayList();
 
@@ -152,8 +156,10 @@ public class SubscriptionConfig {
             if (existingOpt.isPresent()) {
                 //API is already existing in the list. Updatig the status
                 existingOpt.get().setActive(incomingAPI.getActive());
+                logger.info("gtfsrt already existing.updating. " + incomingAPI.getDatasetId() + "-" + incomingAPI.getUrl());
             } else {
                 gtfsRTApis.add(incomingAPI);
+                logger.info("new gtfsrt adding. " + incomingAPI.getDatasetId() + "-" + incomingAPI.getUrl());
             }
         }
     }
