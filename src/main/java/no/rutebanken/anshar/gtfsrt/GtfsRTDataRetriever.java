@@ -43,48 +43,56 @@ public class GtfsRTDataRetriever {
     private AnsharConfiguration configuration;
 
 
-    public void getGTFSRTData() throws IOException {
+    public void getGTFSRTData() {
         logger.info("Démarrage récupération des flux GTFS-RT");
 
         for (GtfsRTApi gtfsRTApi : subscriptionConfig.getGtfsRTApis()) {
-
-            if (gtfsRTApi.getActive() != null && !gtfsRTApi.getActive()) {
-                logger.info("GTRS-RT flow disabled:" + gtfsRTApi.getDatasetId() + " - " + gtfsRTApi.getUrl());
-                continue;
+            try {
+                recoverDataForApi(gtfsRTApi);
+            } catch (Exception e) {
+                logger.error("Error on GTFSRT feed:" + gtfsRTApi.getDatasetId() + " - " + gtfsRTApi.getUrl());
             }
-
-
-            logger.info("======> Reading GTFS-RT for datasetId:" + gtfsRTApi.getDatasetId() + " and  URL:" + gtfsRTApi.getUrl());
-            Optional<GtfsRealtime.FeedMessage> completeGTFSFeedOpt = buildMessageFromApi(gtfsRTApi);
-            if (completeGTFSFeedOpt.isEmpty()) {
-                continue;
-            }
-
-            GtfsRealtime.FeedMessage completeGTFSFeed = completeGTFSFeedOpt.get();
-            if (completeGTFSFeed.getEntityList().size() == 0) {
-                logger.info("Flux vide détecté sur le datasetId :" + gtfsRTApi.getDatasetId());
-                continue;
-            }
-
-
-            tripUpdateReader.setUrl(gtfsRTApi.getUrl());
-            tripUpdateReader.ingestTripUpdateData(gtfsRTApi.getDatasetId(), completeGTFSFeed);
-
-            if (configuration.processVM()) {
-                vehiclePositionReader.setUrl(gtfsRTApi.getUrl());
-                vehiclePositionReader.ingestVehiclePositionData(gtfsRTApi.getDatasetId(), completeGTFSFeed);
-            }
-
-            if (configuration.processSX()) {
-                alertReader.setUrl(gtfsRTApi.getUrl());
-                alertReader.ingestAlertData(gtfsRTApi.getDatasetId(), completeGTFSFeed);
-            }
-            logger.info("GTFS-RT Reading completed for datasetId:" + gtfsRTApi.getDatasetId() + " and  URL:" + gtfsRTApi.getUrl());
-
         }
 
         logger.info("Intégration des flux GTFS-RT terminée");
 
+    }
+
+    private void recoverDataForApi(GtfsRTApi gtfsRTApi) {
+
+        if (gtfsRTApi.getActive() != null && !gtfsRTApi.getActive()) {
+            logger.info("GTRS-RT flow disabled:" + gtfsRTApi.getDatasetId() + " - " + gtfsRTApi.getUrl());
+            return;
+        }
+
+
+        logger.info("======> Reading GTFS-RT for datasetId:" + gtfsRTApi.getDatasetId() + " and  URL:" + gtfsRTApi.getUrl());
+        Optional<GtfsRealtime.FeedMessage> completeGTFSFeedOpt = buildMessageFromApi(gtfsRTApi);
+        if (completeGTFSFeedOpt.isEmpty()) {
+            logger.info("Empty feed for datasetId:" + gtfsRTApi.getDatasetId() + " and  URL:" + gtfsRTApi.getUrl());
+            return;
+        }
+
+        GtfsRealtime.FeedMessage completeGTFSFeed = completeGTFSFeedOpt.get();
+        if (completeGTFSFeed.getEntityList().size() == 0) {
+            logger.info("Flux vide détecté sur le datasetId :" + gtfsRTApi.getDatasetId());
+            return;
+        }
+
+
+        tripUpdateReader.setUrl(gtfsRTApi.getUrl());
+        tripUpdateReader.ingestTripUpdateData(gtfsRTApi.getDatasetId(), completeGTFSFeed);
+
+        if (configuration.processVM()) {
+            vehiclePositionReader.setUrl(gtfsRTApi.getUrl());
+            vehiclePositionReader.ingestVehiclePositionData(gtfsRTApi.getDatasetId(), completeGTFSFeed);
+        }
+
+        if (configuration.processSX()) {
+            alertReader.setUrl(gtfsRTApi.getUrl());
+            alertReader.ingestAlertData(gtfsRTApi.getDatasetId(), completeGTFSFeed);
+        }
+        logger.info("GTFS-RT Reading completed for datasetId:" + gtfsRTApi.getDatasetId() + " and  URL:" + gtfsRTApi.getUrl());
     }
 
     /**
