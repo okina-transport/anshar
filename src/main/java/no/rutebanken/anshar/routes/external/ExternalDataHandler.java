@@ -93,7 +93,10 @@ public class ExternalDataHandler {
                 stopMonitoringInbound.cancelStopVisits(datasetId, stopVisitToCancel);
             }
             timingTracer.mark("cancel ingest completed");
-            logger.info(timingTracer.toString());
+
+            if (timingTracer.getTotalTime() > 3000) {
+                logger.info(timingTracer.toString());
+            }
 
         } catch (JAXBException | XMLStreamException jaxbException) {
             logger.error("Error while unmarshalling siri message from external", e);
