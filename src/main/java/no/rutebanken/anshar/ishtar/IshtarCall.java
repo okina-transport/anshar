@@ -67,6 +67,8 @@ public class IshtarCall extends BaseRouteBuilder {
                             gtfsResults.add(newGtfs);
                         }
                     }
+                    log.info("Recovered GTFSRT-APIs:" + gtfsResults.size());
+                    log.info("Existing GTFSRT-APIs:" + subscriptionConfig.getGtfsRTApis().size());
                     subscriptionConfig.mergeGTFSRTApis(gtfsResults);
                 })
 

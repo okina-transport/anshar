@@ -32,11 +32,7 @@ import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.EstimatedVersionFrameStructure;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.SituationExchangeDeliveryStructure;
-import uk.org.siri.siri20.VehicleMonitoringDeliveryStructure;
+import uk.org.siri.siri20.*;
 
 import javax.annotation.PreDestroy;
 import java.util.ArrayList;
@@ -67,6 +63,8 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
     private static final String METRICS_PREFIX = "app.anshar.";
     private static final String DATA_COUNTER_NAME = METRICS_PREFIX + "data.counter";
     private static final String DATA_TOTAL_COUNTER_NAME = METRICS_PREFIX + "data.total";
+
+    private static final String DATA_EXTERNAL_SOURCE_TOTAL_COUNTER_NAME = METRICS_PREFIX + "data.external.source.total";
     private static final String DATA_SUCCESS_COUNTER_NAME = METRICS_PREFIX + "data.success";
     private static final String DATA_EXPIRED_COUNTER_NAME = METRICS_PREFIX + "data.expired";
     private static final String DATA_IGNORED_COUNTER_NAME = METRICS_PREFIX + "data.ignored";
@@ -94,11 +92,20 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
         counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType.name()));
         counterTags.add(new ImmutableTag(AGENCY_TAG_NAME, agencyId));
 
-        counter(DATA_TOTAL_COUNTER_NAME,   counterTags).increment(total);
+        counter(DATA_TOTAL_COUNTER_NAME, counterTags).increment(total);
         counter(DATA_SUCCESS_COUNTER_NAME, counterTags).increment(updated);
         counter(DATA_EXPIRED_COUNTER_NAME, counterTags).increment(expired);
         counter(DATA_IGNORED_COUNTER_NAME, counterTags).increment(ignored);
     }
+
+    public void registerIncomingDataFromExternalSource(SiriDataType dataType, String agencyId, long total) {
+        List<Tag> counterTags = new ArrayList<>();
+        counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType.name()));
+        counterTags.add(new ImmutableTag(AGENCY_TAG_NAME, agencyId));
+
+        counter(DATA_EXTERNAL_SOURCE_TOTAL_COUNTER_NAME, counterTags).increment(total);
+    }
+
 
     public void registerDataMapping(SiriDataType dataType, String agencyId, MappingNames mappingName, int mappedCount) {
 
@@ -112,9 +119,11 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
     }
 
     public enum KafkaStatus {SENT, ACKED, FAILED}
+
     public void registerAckedKafkaRecord(String topic) {
         registerKafkaRecord(topic, KafkaStatus.ACKED);
     }
+
     public void registerKafkaRecord(String topic, KafkaStatus status) {
         List<Tag> counterTags = new ArrayList<>();
         counterTags.add(new ImmutableTag(KAFKA_TOPIC_NAME, topic));
@@ -133,21 +142,21 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
                 if (timetableDeliveryStructure != null && timetableDeliveryStructure.getEstimatedJourneyVersionFrames() != null &&
                         !timetableDeliveryStructure.getEstimatedJourneyVersionFrames().isEmpty()) {
                     EstimatedVersionFrameStructure estimatedVersionFrameStructure = timetableDeliveryStructure.getEstimatedJourneyVersionFrames().get(0);
-                    if (estimatedVersionFrameStructure != null &&  estimatedVersionFrameStructure.getEstimatedVehicleJourneies() != null) {
+                    if (estimatedVersionFrameStructure != null && estimatedVersionFrameStructure.getEstimatedVehicleJourneies() != null) {
 
                         dataType = SiriDataType.ESTIMATED_TIMETABLE;
                         count = estimatedVersionFrameStructure.getEstimatedVehicleJourneies().size();
                     }
                 }
             } else if (siri.getServiceDelivery().getVehicleMonitoringDeliveries() != null &&
-                        !siri.getServiceDelivery().getVehicleMonitoringDeliveries().isEmpty()) {
+                    !siri.getServiceDelivery().getVehicleMonitoringDeliveries().isEmpty()) {
                 VehicleMonitoringDeliveryStructure deliveryStructure = siri.getServiceDelivery().getVehicleMonitoringDeliveries().get(0);
                 if (deliveryStructure != null) {
                     dataType = SiriDataType.VEHICLE_MONITORING;
                     count = deliveryStructure.getVehicleActivities().size();
                 }
             } else if (siri.getServiceDelivery().getSituationExchangeDeliveries() != null &&
-                        !siri.getServiceDelivery().getSituationExchangeDeliveries().isEmpty()) {
+                    !siri.getServiceDelivery().getSituationExchangeDeliveries().isEmpty()) {
                 SituationExchangeDeliveryStructure deliveryStructure = siri.getServiceDelivery().getSituationExchangeDeliveries().get(0);
                 if (deliveryStructure != null && deliveryStructure.getSituations() != null) {
                     dataType = SiriDataType.SITUATION_EXCHANGE;
@@ -160,7 +169,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
     }
 
     public void addValidationMetrics(
-        SiriDataType dataType, String codespaceId, ValidationType validationType, String message, Integer count
+            SiriDataType dataType, String codespaceId, ValidationType validationType, String message, Integer count
     ) {
         List<Tag> counterTags = new ArrayList<>();
         counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType.name()));
@@ -172,13 +181,13 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
     }
 
     public void addValidationResult(
-        SiriDataType dataType, String codespaceId, boolean schemaValid, boolean profileValid
+            SiriDataType dataType, String codespaceId, boolean schemaValid, boolean profileValid
     ) {
         List<Tag> counterTags = new ArrayList<>();
         counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType.name()));
         counterTags.add(new ImmutableTag(CODESPACE_TAG_NAME, codespaceId));
-        counterTags.add(new ImmutableTag(SCHEMA_VALID_TAG_NAME, ""+schemaValid));
-        counterTags.add(new ImmutableTag(PROFILE_VALID_TAG_NAME, ""+profileValid));
+        counterTags.add(new ImmutableTag(SCHEMA_VALID_TAG_NAME, "" + schemaValid));
+        counterTags.add(new ImmutableTag(PROFILE_VALID_TAG_NAME, "" + profileValid));
 
         counter(DATA_VALIDATION_RESULT_COUNTER, counterTags).increment();
     }
@@ -249,7 +258,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
             String gauge_baseName = METRICS_PREFIX + "subscription";
 
             String gauge_failing = gauge_baseName + ".failing";
-            String gauge_data_failing = gauge_baseName + ".data_failing" ;
+            String gauge_data_failing = gauge_baseName + ".data_failing";
 
 
             List<Tag> counterTags = new ArrayList<>();
@@ -261,18 +270,18 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
             //Flag as failing when ACTIVE, and NOT HEALTHY
             gauge(gauge_failing, getTagsWithTimeLimit(counterTags, "now"), subscription.getSubscriptionId(), value ->
                     (manager.isActiveSubscription(subscription.getSubscriptionId()) &&
-                            !manager.isSubscriptionHealthy(subscription.getSubscriptionId())) ? 1:0);
+                            !manager.isSubscriptionHealthy(subscription.getSubscriptionId())) ? 1 : 0);
 
             //Set flag as data failing when ACTIVE, and NOT receiving data
 
             gauge(gauge_data_failing, getTagsWithTimeLimit(counterTags, "5min"), subscription.getSubscriptionId(), value ->
-                    isSubscriptionFailing(manager, subscription, 5*60));
+                    isSubscriptionFailing(manager, subscription, 5 * 60));
 
             gauge(gauge_data_failing, getTagsWithTimeLimit(counterTags, "15min"), subscription.getSubscriptionId(), value ->
-                    isSubscriptionFailing(manager, subscription, 15*60));
+                    isSubscriptionFailing(manager, subscription, 15 * 60));
 
             gauge(gauge_data_failing, getTagsWithTimeLimit(counterTags, "30min"), subscription.getSubscriptionId(), value ->
-                    isSubscriptionFailing(manager, subscription, 30*60));
+                    isSubscriptionFailing(manager, subscription, 30 * 60));
         }
     }
 

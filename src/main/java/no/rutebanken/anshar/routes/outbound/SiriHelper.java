@@ -157,8 +157,17 @@ public class SiriHelper {
         if (lineRef != null) {
 
             Set<String> linerefValues = new HashSet<>();
-            linerefValues.add(lineRef.getValue());
-
+            String rawLineValue = lineRef.getValue();
+            Set<String> searchedValues = new HashSet<>();
+            searchedValues.add(rawLineValue);
+            Optional<String> datasetOpt = subscriptionConfig.findDatasetFromSearch(searchedValues, ObjectType.LINE);
+            if (datasetOpt.isPresent()) {
+                Optional<IdProcessingParameters> idProcLineOpt = subscriptionConfig.getIdParametersForDataset(datasetOpt.get(), ObjectType.LINE);
+                Set<String> revertedLineIds = IDUtils.revertMonitoringRefs(searchedValues, idProcLineOpt);
+                linerefValues.addAll(revertedLineIds);
+            } else {
+                linerefValues.addAll(searchedValues);
+            }
             filterMap.put(LineRef.class, linerefValues);
         }
         return filterMap;
@@ -232,6 +241,16 @@ public class SiriHelper {
         HashSet<String> requestedIds = new HashSet<>(originalRequestedIds);
 
         return subscriptionConfig.buildIdProcessingParams(null, requestedIds, ObjectType.STOP);
+    }
+
+    public Map<ObjectType, Optional<IdProcessingParameters>> getIdProcessingParamsFromSubscription(VehicleMonitoringSubscriptionStructure vehMonitoringSubscription, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
+
+        String requestedId = vehMonitoringSubscription.getVehicleMonitoringRequest().getLineRef().getValue();
+
+        HashSet<String> requestedIds = new HashSet<>();
+        requestedIds.add(requestedId);
+
+        return subscriptionConfig.buildIdProcessingParams(null, requestedIds, ObjectType.LINE);
     }
 
 

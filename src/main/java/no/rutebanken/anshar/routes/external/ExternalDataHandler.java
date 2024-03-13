@@ -1,5 +1,7 @@
 package no.rutebanken.anshar.routes.external;
 
+import no.rutebanken.anshar.data.util.TimingTracer;
+import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.EstimatedTimetableInbound;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.SituationExchangeInbound;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.StopMonitoringInbound;
@@ -50,10 +52,17 @@ public class ExternalDataHandler {
     @Autowired
     private SubscriptionManager subscriptionManager;
 
+    @Autowired
+    private PrometheusMetricsService metrics;
+
     public void processIncomingSiriSM(Exchange e) {
         InputStream xml = e.getIn().getBody(InputStream.class);
         try {
+            TimingTracer timingTracer = new TimingTracer("externalDataHandler-SM");
+
             Siri siri = SiriValueTransformer.parseXml(xml);
+            timingTracer.mark("siri transform");
+
             String datasetId = e.getIn().getHeader(DATASET_ID_HEADER_NAME, String.class);
             String url = e.getIn().getHeader(URL_HEADER_NAME, String.class);
 
@@ -64,18 +73,30 @@ public class ExternalDataHandler {
 
             checkAndCreateSMSubscription(siri, datasetId, url);
 
+            timingTracer.mark("subscription created");
+
             List<MonitoredStopVisit> stopVisitToIngest = collectStopVisits(siri);
+            timingTracer.mark("collectStopVisit");
+            metrics.registerIncomingDataFromExternalSource(SiriDataType.STOP_MONITORING, datasetId, stopVisitToIngest.size());
+
+            timingTracer.mark("metrics");
 
             if (stopVisitToIngest.size() > 0) {
                 stopMonitoringInbound.ingestStopVisits(datasetId, stopVisitToIngest);
             }
+
+            timingTracer.mark("ingest completed");
 
             List<MonitoredStopVisitCancellation> stopVisitToCancel = collectStopVisitsCancellations(siri);
 
             if (stopVisitToCancel.size() > 0) {
                 stopMonitoringInbound.cancelStopVisits(datasetId, stopVisitToCancel);
             }
+            timingTracer.mark("cancel ingest completed");
 
+            if (timingTracer.getTotalTime() > 3000) {
+                logger.info(timingTracer.toString());
+            }
 
         } catch (JAXBException | XMLStreamException jaxbException) {
             logger.error("Error while unmarshalling siri message from external", e);

@@ -59,6 +59,12 @@ public class MessagingRoute extends RestRouteBuilder {
     @Value("${default.use.original.id:false}")
     private boolean defaultUseOriginalId;
 
+    @Value("${anshar.external.sm.queue}")
+    private String externalSMQueue;
+
+    @Value("${anshar.external.et.queue}")
+    private String externalETQueue;
+
     @Override
     // @formatter:off
     public void configure() throws Exception {
@@ -76,10 +82,10 @@ public class MessagingRoute extends RestRouteBuilder {
         final String pubsubQueueFM = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_FM;
         final String pubsubQueueDefault = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_DEFAULT;
 
-        final String externalSiriSMQueue = messageQueueCamelRoutePrefix + "anshar.external.siri.sm.data";
+        final String externalSiriSMQueue = messageQueueCamelRoutePrefix + externalSMQueue;
         final String externalSiriSXQueue = messageQueueCamelRoutePrefix + "anshar.external.siri.sx.data";
         final String externalSiriVMQueue = messageQueueCamelRoutePrefix + "anshar.external.siri.vm.data";
-        final String externalSiriETQueue = messageQueueCamelRoutePrefix + "anshar.external.siri.et.data";
+        final String externalSiriETQueue = messageQueueCamelRoutePrefix + externalETQueue;
 
 
         if (messageQueueCamelRoutePrefix.contains("direct")) {
@@ -144,6 +150,7 @@ public class MessagingRoute extends RestRouteBuilder {
         ;
 
         from(externalSiriSMQueue)
+                .threads(20)
                 .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);

@@ -64,7 +64,7 @@ public class AlertReader extends AbstractSwallower {
     private void buildSiriAndSend(List<PtSituationElement> situations, String datasetId) {
 
         if (situations.isEmpty()) {
-            logger.info("no situations to ingest");
+            logger.info("no situations to ingest on dataset :" + datasetId);
             return;
         }
 
