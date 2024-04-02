@@ -89,6 +89,9 @@ public class ServerSubscriptionManager {
     @Value("${anshar.outbound.pubsub.topic.enabled}")
     private boolean pushToTopicEnabled;
 
+    @Value("${external.sx.consumer.enabled}")
+    private boolean pushToExternalSxConsumer;
+
     @Produce(uri = "direct:send.to.pubsub.topic.estimated_timetable")
     protected ProducerTemplate siriEtTopicProducer;
 
@@ -115,6 +118,9 @@ public class ServerSubscriptionManager {
 
     @Produce(uri = "direct:send.sx.to.kafka")
     protected ProducerTemplate sendSXToKafka;
+
+    @Produce(uri = "direct:send.sx.to.external.consumer")
+    protected ProducerTemplate sendSXToExternalConsumer;
 
     @Produce(uri = "direct:send.vm.to.kafka")
     protected ProducerTemplate sendVMToKafka;
@@ -636,6 +642,11 @@ public class ServerSubscriptionManager {
         if (pushToTopicEnabled) {
             siriSxTopicProducer.asyncRequestBodyAndHeader(siriSxTopicProducer.getDefaultEndpoint(), delivery, CODESPACE_ID_KAFKA_HEADER_NAME, datasetId);
         }
+
+        if (pushToExternalSxConsumer) {
+            sendSXToExternalConsumer.asyncRequestBodyAndHeader(sendSXToExternalConsumer.getDefaultEndpoint(), delivery, CODESPACE_ID_KAFKA_HEADER_NAME, datasetId);
+        }
+
 
         if (sendActivemqKafka) {
             Map<String, Object> headers = new HashMap<>();
