@@ -444,6 +444,7 @@ public class SiriObjectFactory {
         StopMonitoringRequestStructure smRequest = new StopMonitoringRequestStructure();
         smRequest.setRequestTimestamp(ZonedDateTime.now());
         smRequest.setVersion(SIRI_VERSION);
+        smRequest.setMessageIdentifier(createMessageIdentifier());
         if (stopMonitoringRefValue != null) {
             MonitoringRefStructure monitoringRefStructure = new MonitoringRefStructure();
             monitoringRefStructure.setValue(stopMonitoringRefValue);
