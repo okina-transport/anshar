@@ -317,6 +317,9 @@
                                             test="/siri:Siri/siri:SubscriptionRequest/siri:StopMonitoringSubscriptionRequest">
                                         <xsl:element name="siri:StopMonitoringSubscriptionRequest">
                                             <xsl:copy-of
+                                                    select="siri:StopMonitoringSubscriptionRequest/siri:SubscriberRef"
+                                                    copy-namespaces="no"/>
+                                            <xsl:copy-of
                                                     select="siri:StopMonitoringSubscriptionRequest/siri:SubscriptionIdentifier"
                                                     copy-namespaces="no"/>
                                             <xsl:copy-of
