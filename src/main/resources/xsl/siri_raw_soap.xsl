@@ -260,6 +260,9 @@
                                             test="/siri:Siri/siri:SubscriptionRequest/siri:VehicleMonitoringSubscriptionRequest">
                                         <xsl:element name="siri:VehicleMonitoringSubscriptionRequest">
                                             <xsl:copy-of
+                                                    select="siri:VehicleMonitoringSubscriptionRequest/siri:SubscriberRef"
+                                                    copy-namespaces="no"/>
+                                            <xsl:copy-of
                                                     select="siri:VehicleMonitoringSubscriptionRequest/siri:SubscriptionIdentifier"
                                                     copy-namespaces="no"/>
                                             <xsl:copy-of
