@@ -469,7 +469,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
                 CoordinatesStructure coordinates = vehicleLocation.getCoordinates();
                 List<String> values = coordinates.getValues();
                 for (String value : values) {
-                    logger.info("Found coordinates: {}", value);
+                    logger.debug("Found coordinates: {}", value);
                 }
             }
         } else {
