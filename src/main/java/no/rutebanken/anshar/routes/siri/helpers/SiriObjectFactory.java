@@ -348,6 +348,7 @@ public class SiriObjectFactory {
         VehicleMonitoringRequestStructure vmRequest = new VehicleMonitoringRequestStructure();
         vmRequest.setRequestTimestamp(ZonedDateTime.now());
         vmRequest.setVersion(SIRI_VERSION);
+        vmRequest.setMessageIdentifier(createMessageIdentifier());
 
         if (vehicleMonitoringRefValue != null) {
             VehicleMonitoringRefStructure vehicleMonitoringRef = new VehicleMonitoringRefStructure();
