@@ -107,7 +107,7 @@ public class MessagingRoute extends RestRouteBuilder {
                 .bean(EstimatedTimetableIngester.class, "processIncomingETFromGTFSRT")
         ;
 
-        from(messageQueueCamelRoutePrefix + GTFSRT_SM_QUEUE)
+        from(messageQueueCamelRoutePrefix + GTFSRT_SM_QUEUE + "?asyncConsumer=true&disableReplyTo=true&concurrentConsumers=20")
                 .threads(20)
                 .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
@@ -135,7 +135,7 @@ public class MessagingRoute extends RestRouteBuilder {
                 .bean(SituationExchangeIngester.class, "processIncomingSXFromGTFSRT")
         ;
 
-        from(messageQueueCamelRoutePrefix + GTFSRT_VM_QUEUE)
+        from(messageQueueCamelRoutePrefix + GTFSRT_VM_QUEUE + "?asyncConsumer=true&disableReplyTo=true&concurrentConsumers=20")
                 .threads(20)
                 .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
