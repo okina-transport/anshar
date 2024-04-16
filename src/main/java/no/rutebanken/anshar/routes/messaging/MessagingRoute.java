@@ -65,6 +65,9 @@ public class MessagingRoute extends RestRouteBuilder {
     @Value("${anshar.external.et.queue}")
     private String externalETQueue;
 
+    @Value("${anshar.internal.gtfsrt.stop.monitoring}")
+    private String internalGtfsrtSMQueue;
+
     @Override
     // @formatter:off
     public void configure() throws Exception {
@@ -107,7 +110,7 @@ public class MessagingRoute extends RestRouteBuilder {
                 .bean(EstimatedTimetableIngester.class, "processIncomingETFromGTFSRT")
         ;
 
-        from(messageQueueCamelRoutePrefix + GTFSRT_SM_QUEUE )
+        from(internalGtfsrtSMQueue)
                 .threads(20)
                 .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
