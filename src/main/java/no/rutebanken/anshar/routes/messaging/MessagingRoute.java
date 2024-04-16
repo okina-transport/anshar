@@ -108,7 +108,7 @@ public class MessagingRoute extends RestRouteBuilder {
         ;
 
         from(messageQueueCamelRoutePrefix + GTFSRT_SM_QUEUE)
-                .threads(3)
+                .threads(20)
                 .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
@@ -136,7 +136,7 @@ public class MessagingRoute extends RestRouteBuilder {
         ;
 
         from(messageQueueCamelRoutePrefix + GTFSRT_VM_QUEUE)
-                .threads(3)
+                .threads(20)
                 .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);

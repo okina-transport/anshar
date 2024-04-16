@@ -57,10 +57,10 @@ public class Constants {
     public final static String GTFSRT_VM_PREFIX = "GTFS-RT_VM_";
     public final static String GTFSRT_SX_PREFIX = "GTFS-RT_SX_";
 
-    public final static String GTFSRT_ET_QUEUE = "gtfsrt.estimated.timetable";
-    public final static String GTFSRT_SM_QUEUE = "gtfsrt.stop.monitoring";
-    public final static String GTFSRT_SX_QUEUE = "gtfsrt.situation.exchange";
-    public final static String GTFSRT_VM_QUEUE = "gtfsrt.vehicle.monitoring";
+    public final static String GTFSRT_ET_QUEUE = "gtfsrt.estimated.timetable?asyncConsumer=true&disableReplyTo=true&concurrentConsumers=20";
+    public final static String GTFSRT_SM_QUEUE = "gtfsrt.stop.monitoring?asyncConsumer=true&disableReplyTo=true&concurrentConsumers=20";
+    public final static String GTFSRT_SX_QUEUE = "gtfsrt.situation.exchange?asyncConsumer=true&disableReplyTo=true&concurrentConsumers=20";
+    public final static String GTFSRT_VM_QUEUE = "gtfsrt.vehicle.monitoring?asyncConsumer=true&disableReplyTo=true&concurrentConsumers=20";
 
     public final static String SIRI_LITE_SERVICE_NAME = "SiriLiteServiceName";
 
