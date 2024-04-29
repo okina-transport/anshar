@@ -2,7 +2,7 @@ package no.rutebanken.anshar.gtfsrt.ingesters;
 
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
-import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
+import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.VehicleMonitoringInbound;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.MonitoredStopVisit;
 import uk.org.siri.siri20.Siri;
 import uk.org.siri.siri20.VehicleActivityStructure;
 
@@ -37,6 +36,9 @@ public class VehicleMonitoringIngester extends RestRouteBuilder {
     @Autowired
     private VehicleMonitoringInbound vehicleMonitoringInbound;
 
+    @Autowired
+    private HealthManager healthManager;
+
     public void processIncomingVMFromGTFSRT(Exchange e) {
         InputStream xml = e.getIn().getBody(InputStream.class);
         try {
@@ -45,14 +47,16 @@ public class VehicleMonitoringIngester extends RestRouteBuilder {
             String url = e.getIn().getHeader(URL_HEADER_NAME, String.class);
 
 
-            if (siri.getServiceDelivery() == null || siri.getServiceDelivery().getVehicleMonitoringDeliveries() == null){
+            if (siri.getServiceDelivery() == null || siri.getServiceDelivery().getVehicleMonitoringDeliveries() == null) {
                 logger.info("Empty VehicleMonitoring from GTFS-RT on dataset:" + datasetId);
                 return;
             }
 
+            healthManager.dataReceived();
+
             List<VehicleActivityStructure> vehicleActivities = siri.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities();
             Collection<VehicleActivityStructure> ingestedVehicleJourneys = vehicleMonitoringInbound.ingestVehicleActivities(datasetId, vehicleActivities);
-            for ( VehicleActivityStructure  vehicleActivity : ingestedVehicleJourneys) {
+            for (VehicleActivityStructure vehicleActivity : ingestedVehicleJourneys) {
                 subscriptionManager.touchSubscription(GTFSRT_VM_PREFIX + vehicleActivity.getMonitoredVehicleJourney().getLineRef().getValue(), false);
             }
 
