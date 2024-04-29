@@ -2,6 +2,7 @@ package no.rutebanken.anshar.gtfsrt.ingesters;
 
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
+import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.EstimatedTimetableInbound;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
@@ -19,9 +20,7 @@ import java.io.InputStream;
 import java.util.Collection;
 import java.util.List;
 
-import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASET_ID_HEADER_NAME;
-import static no.rutebanken.anshar.routes.validation.validators.Constants.GTFSRT_ET_PREFIX;
-import static no.rutebanken.anshar.routes.validation.validators.Constants.URL_HEADER_NAME;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
 
 @Service
 public class EstimatedTimetableIngester extends RestRouteBuilder {
@@ -37,6 +36,9 @@ public class EstimatedTimetableIngester extends RestRouteBuilder {
     @Autowired
     private EstimatedTimetableInbound estimatedTimetableInbound;
 
+    @Autowired
+    private HealthManager healthManager;
+
     public void processIncomingETFromGTFSRT(Exchange e) {
         InputStream xml = e.getIn().getBody(InputStream.class);
         try {
@@ -45,10 +47,12 @@ public class EstimatedTimetableIngester extends RestRouteBuilder {
             String url = e.getIn().getHeader(URL_HEADER_NAME, String.class);
 
             if (siri.getServiceDelivery() == null || siri.getServiceDelivery().getEstimatedTimetableDeliveries() == null
-                    || siri.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames() == null){
+                    || siri.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames() == null) {
                 logger.info("Empty EstimatedTimetables from GTFS-RT on dataset:" + datasetId);
                 return;
             }
+
+            healthManager.dataReceived();
 
             List<EstimatedVehicleJourney> estimatedVehicleJourneys = siri.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies();
             Collection<EstimatedVehicleJourney> ingestedEstimatedTimetables = estimatedTimetableInbound.ingestEstimatedTimeTables(datasetId, estimatedVehicleJourneys);
