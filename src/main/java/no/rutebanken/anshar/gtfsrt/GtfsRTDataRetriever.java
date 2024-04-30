@@ -51,6 +51,7 @@ public class GtfsRTDataRetriever {
                 recoverDataForApi(gtfsRTApi);
             } catch (Exception e) {
                 logger.error("Error on GTFSRT feed:" + gtfsRTApi.getDatasetId() + " - " + gtfsRTApi.getUrl());
+                logger.error("Error detail", e);
             }
         }
 
