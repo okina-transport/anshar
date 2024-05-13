@@ -332,7 +332,7 @@ public class SubscriptionInitializer implements CamelContextAware {
                 Preconditions.checkNotNull(urlMap.get(RequestType.GET_ESTIMATED_TIMETABLE), "GET_ESTIMATED_TIMETABLE-url is missing. " + s);
             } else if (SiriDataType.STOP_MONITORING.equals(s.getSubscriptionType())) {
                 Preconditions.checkNotNull(urlMap.get(RequestType.GET_STOP_MONITORING), "GET_STOP_MONITORING-url is missing. " + s);
-                Preconditions.checkNotNull(s.getStopMonitoringRefValue(), "stopMonitoringRefValue is missing. " + s);
+                Preconditions.checkNotNull(s.getStopMonitoringRefValues(), "stopMonitoringRefValue is missing. " + s);
             } else {
                 Preconditions.checkArgument(false, "URLs not configured correctly");
             }

@@ -62,7 +62,7 @@ public class StopMonitoringInbound {
         for (SubscriptionSetup subscriptionSetup : subscriptionSetupList) {
             List<MonitoredStopVisit> addedOrUpdatedBySubscription = addedOrUpdated
                     .stream()
-                    .filter(monitoredStopVisit -> monitoredStopVisit.getMonitoringRef().getValue().equals(subscriptionSetup.getStopMonitoringRefValue()))
+                    .filter(monitoredStopVisit -> subscriptionSetup.getStopMonitoringRefValues().contains(monitoredStopVisit.getMonitoringRef().getValue()))
                     .collect(Collectors.toList());
             subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdatedBySubscription.size());
 //                        logger.info("Active SM-elements: {}, current delivery: {}, {}", monitoredStopVisits.getSize(), addedOrUpdatedBySubscription.size(), subscriptionSetup);

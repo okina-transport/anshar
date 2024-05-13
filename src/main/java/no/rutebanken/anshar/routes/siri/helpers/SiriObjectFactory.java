@@ -119,7 +119,7 @@ public class SiriObjectFactory {
                     subscriptionSetup.getAddressFieldName(),
                     subscriptionSetup.getIncrementalUpdates(),
                     subscriptionSetup.getVehicleMonitoringRefValue(),
-                    subscriptionSetup.getLineRefValue()
+                    subscriptionSetup.getLineRefValues()
             );
         }
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.ESTIMATED_TIMETABLE)) {
@@ -147,7 +147,7 @@ public class SiriObjectFactory {
                     subscriptionSetup.getIncrementalUpdates(),
                     subscriptionSetup.getPreviewInterval(),
                     subscriptionSetup.getChangeBeforeUpdates(),
-                    subscriptionSetup.getStopMonitoringRefValue());
+                    subscriptionSetup.getStopMonitoringRefValues());
         }
 
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.GENERAL_MESSAGE)) {
@@ -200,9 +200,14 @@ public class SiriObjectFactory {
             request.getEstimatedTimetableRequests().add(etRequestStruct);
         }
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
-            StopMonitoringRequestStructure smRequestStruct = createStopMonitoringRequestStructure(subscriptionSetup);
-            request.setMessageIdentifier(smRequestStruct.getMessageIdentifier());
-            request.getStopMonitoringRequests().add(smRequestStruct);
+
+            for (String stopMonitoringRefValue : subscriptionSetup.getStopMonitoringRefValues()) {
+                StopMonitoringRequestStructure smRequestStruct = createStopMonitoringRequestStructure(subscriptionSetup, stopMonitoringRefValue);
+                request.setMessageIdentifier(smRequestStruct.getMessageIdentifier());
+                request.getStopMonitoringRequests().add(smRequestStruct);
+            }
+
+
         }
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.GENERAL_MESSAGE)) {
             GeneralMessageRequestStructure gmRequestStruct = createGeneralMessageRequestStructure(subscriptionSetup);
@@ -275,8 +280,7 @@ public class SiriObjectFactory {
         return etRequest;
     }
 
-    // TODO MHI
-    private static StopMonitoringRequestStructure createStopMonitoringRequestStructure(SubscriptionSetup subscriptionSetup) {
+    private static StopMonitoringRequestStructure createStopMonitoringRequestStructure(SubscriptionSetup subscriptionSetup, String stopMonitoringRefValue) {
         StopMonitoringRequestStructure smRequest = new StopMonitoringRequestStructure();
         smRequest.setRequestTimestamp(ZonedDateTime.now());
         smRequest.setVersion(SIRI_VERSION);
@@ -284,9 +288,9 @@ public class SiriObjectFactory {
         if (subscriptionSetup.getPreviewInterval() != null) {
             smRequest.setPreviewInterval(createDataTypeFactory().newDuration(subscriptionSetup.getPreviewInterval().toString()));
         }
-        if (subscriptionSetup.getStopMonitoringRefValue() != null) {
+        if (subscriptionSetup.getStopMonitoringRefValues() != null) {
             MonitoringRefStructure monitoringRefStructure = new MonitoringRefStructure();
-            monitoringRefStructure.setValue(subscriptionSetup.getStopMonitoringRefValue());
+            monitoringRefStructure.setValue(stopMonitoringRefValue);
             smRequest.setMonitoringRef(monitoringRefStructure);
         }
         return smRequest;
@@ -342,8 +346,22 @@ public class SiriObjectFactory {
     }
 
     private static SubscriptionRequest createVehicleMonitoringSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap,
-                                                                                  Duration updateInterval, Duration changeBeforeUpdates, String addressFieldName, Boolean incrementalUpdates, String vehicleMonitoringRefValue, String lineRefValue) {
+                                                                                  Duration updateInterval, Duration changeBeforeUpdates, String addressFieldName, Boolean incrementalUpdates, String vehicleMonitoringRefValue, List<String> lineRefValues) {
         SubscriptionRequest request = createSubscriptionRequest(requestorRef, heartbeatInterval, address, addressFieldName);
+
+        int requestNb = 0;
+        for (String lineRefValue : lineRefValues) {
+            VehicleMonitoringSubscriptionStructure vmSubscriptionReq = createVMSubsRequestStructure(request, subscriptionDuration, filterMap, updateInterval, changeBeforeUpdates, incrementalUpdates, vehicleMonitoringRefValue, lineRefValue, subscriptionId, requestNb);
+            request.getVehicleMonitoringSubscriptionRequests().add(vmSubscriptionReq);
+            requestNb++;
+        }
+
+        return request;
+    }
+
+    private static VehicleMonitoringSubscriptionStructure createVMSubsRequestStructure(SubscriptionRequest request, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap,
+                                                                                       Duration updateInterval, Duration changeBeforeUpdates, Boolean incrementalUpdates, String vehicleMonitoringRefValue, String lineRefValue, String subscriptionId, int requestNb) {
+
 
         VehicleMonitoringRequestStructure vmRequest = new VehicleMonitoringRequestStructure();
         vmRequest.setRequestTimestamp(ZonedDateTime.now());
@@ -381,7 +399,7 @@ public class SiriObjectFactory {
 
         VehicleMonitoringSubscriptionStructure vmSubscriptionReq = new VehicleMonitoringSubscriptionStructure();
         vmSubscriptionReq.setVehicleMonitoringRequest(vmRequest);
-        vmSubscriptionReq.setSubscriptionIdentifier(createSubscriptionIdentifier(subscriptionId));
+        vmSubscriptionReq.setSubscriptionIdentifier(createSubscriptionIdentifier(subscriptionId + "-" + requestNb));
         vmSubscriptionReq.setInitialTerminationTime(ZonedDateTime.now().plusSeconds(subscriptionDuration.getSeconds()));
         vmSubscriptionReq.setSubscriberRef(request.getRequestorRef());
 
@@ -393,10 +411,8 @@ public class SiriObjectFactory {
         if (changeBeforeUpdates != null) {
             vmSubscriptionReq.setChangeBeforeUpdates(createDataTypeFactory().newDuration(changeBeforeUpdates.toString()));
         }
+        return vmSubscriptionReq;
 
-        request.getVehicleMonitoringSubscriptionRequests().add(vmSubscriptionReq);
-
-        return request;
     }
 
     private static SubscriptionRequest createGeneralMessageSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address,
@@ -439,8 +455,23 @@ public class SiriObjectFactory {
         return request;
     }
 
-    private static SubscriptionRequest createStopMonitoringSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap, String addressFieldName, Boolean incrementalUpdates, Duration previewInterval, Duration changeBeforeUpdates, String stopMonitoringRefValue) {
+    private static SubscriptionRequest createStopMonitoringSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap, String addressFieldName, Boolean incrementalUpdates, Duration previewInterval, Duration changeBeforeUpdates, List<String> stopMonitoringRefValues) {
         SubscriptionRequest request = createSubscriptionRequest(requestorRef, heartbeatInterval, address, addressFieldName);
+        int requestNb = 0;
+        for (String stopMonitoringRefValue : stopMonitoringRefValues) {
+
+            String subIdentifier = subscriptionId + "-" + requestNb;
+            StopMonitoringSubscriptionStructure smSubscriptionReq = createStopMonitoringRefStructure(requestorRef, subIdentifier, heartbeatInterval, address, subscriptionDuration, filterMap, addressFieldName, incrementalUpdates, previewInterval,
+                    changeBeforeUpdates, stopMonitoringRefValue, request);
+            request.getStopMonitoringSubscriptionRequests().add(smSubscriptionReq);
+            requestNb++;
+        }
+
+        return request;
+    }
+
+    private static StopMonitoringSubscriptionStructure createStopMonitoringRefStructure(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap, String addressFieldName, Boolean incrementalUpdates, Duration previewInterval, Duration changeBeforeUpdates, String stopMonitoringRefValue, SubscriptionRequest request) {
+
 
         StopMonitoringRequestStructure smRequest = new StopMonitoringRequestStructure();
         smRequest.setRequestTimestamp(ZonedDateTime.now());
@@ -477,9 +508,8 @@ public class SiriObjectFactory {
 
         smSubscriptionReq.setIncrementalUpdates(incrementalUpdates);
 
-        request.getStopMonitoringSubscriptionRequests().add(smSubscriptionReq);
+        return smSubscriptionReq;
 
-        return request;
     }
 
 

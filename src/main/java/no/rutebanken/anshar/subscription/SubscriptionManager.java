@@ -464,7 +464,7 @@ public class SubscriptionManager {
      */
     public boolean isLineRefExistingInSubscriptions(String lineRef) {
         for (SubscriptionSetup subscription : subscriptions.values()) {
-            if (subscription.getLineRefValue() != null && subscription.getLineRefValue().equals(lineRef))
+            if (subscription.getLineRefValues().contains(lineRef))
                 return true;
         }
         return false;
@@ -493,12 +493,12 @@ public class SubscriptionManager {
 
     public boolean isStopMonitoringSubscriptionExisting(String stopMonitoringRef, String datasetId) {
         return getAllSubscriptions(SiriDataType.STOP_MONITORING).stream()
-                .anyMatch(subscription -> subscription.getStopMonitoringRefValue().equals(stopMonitoringRef) && datasetId.equals(subscription.getDatasetId()));
+                .anyMatch(subscription -> subscription.getStopMonitoringRefValues().contains(stopMonitoringRef) && datasetId.equals(subscription.getDatasetId()));
     }
 
     public boolean isEstimatedTimetableSubscriptionExisting(String stopMonitoringRef, String datasetId) {
         return getAllSubscriptions(ESTIMATED_TIMETABLE).stream()
-                .anyMatch(subscription -> subscription.getStopMonitoringRefValue() != null && subscription.getStopMonitoringRefValue().equals(stopMonitoringRef) && datasetId.equals(subscription.getDatasetId()));
+                .anyMatch(subscription -> subscription.getStopMonitoringRefValues() != null && subscription.getStopMonitoringRefValues().contains(stopMonitoringRef) && datasetId.equals(subscription.getDatasetId()));
     }
 
     public boolean isSituationExchangeSubscriptionExisting(String situationNumber, String datasetId) {

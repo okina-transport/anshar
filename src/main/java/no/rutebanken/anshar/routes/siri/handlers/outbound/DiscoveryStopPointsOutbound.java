@@ -70,6 +70,7 @@ public class DiscoveryStopPointsOutbound {
 
         List<String> monitoringRefList = subscriptionList.stream()
                 .map(subscription -> extractAndTransformStopId(subscription, idProcessingMap))
+                .flatMap(List::stream)
                 .collect(Collectors.toList());
 
         if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)) {
@@ -101,11 +102,16 @@ public class DiscoveryStopPointsOutbound {
      * @param idProcessingMap   the map that associate datasetId to idProcessingParams
      * @return the transformed stop id
      */
-    private String extractAndTransformStopId(SubscriptionSetup subscriptionSetup, Map<String, IdProcessingParameters> idProcessingMap) {
-        String stopId = subscriptionSetup.getStopMonitoringRefValue();
+    private List<String> extractAndTransformStopId(SubscriptionSetup subscriptionSetup, Map<String, IdProcessingParameters> idProcessingMap) {
+        List<String> stopIds = subscriptionSetup.getStopMonitoringRefValues();
         String datasetId = subscriptionSetup.getDatasetId();
+        List<String> results = new ArrayList<>();
 
-        return idProcessingMap.containsKey(datasetId) ? idProcessingMap.get(datasetId).applyTransformationToString(stopId) : stopId;
+        for (String stopId : stopIds) {
+            results.add(idProcessingMap.containsKey(datasetId) ? idProcessingMap.get(datasetId).applyTransformationToString(stopId) : stopId);
+        }
+
+        return results;
     }
 
     /**

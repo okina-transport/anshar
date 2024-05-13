@@ -161,7 +161,7 @@ public class ExternalDataHandler {
             setup.setVendor("OKINA");
             setup.setContentType("ExternalSiri");
             setup.setActive(true);
-            setup.setStopMonitoringRefValue(subscriptionId);
+            setup.getStopMonitoringRefValues().add(subscriptionId);
             String etSubscriptionId = "ET-" + subscriptionId;
             setup.setName(etSubscriptionId);
             setup.setSubscriptionType(SiriDataType.ESTIMATED_TIMETABLE);
@@ -348,7 +348,7 @@ public class ExternalDataHandler {
             setup.setVendor("OKINA");
             setup.setContentType("ExternalSiri");
             setup.setActive(true);
-            setup.setStopMonitoringRefValue(subscriptionId);
+            setup.getStopMonitoringRefValues().add(subscriptionId);
 
             setup.setName("SM-" + subscriptionId);
             setup.setSubscriptionType(SiriDataType.STOP_MONITORING);

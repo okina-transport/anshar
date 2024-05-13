@@ -138,8 +138,8 @@ public class DiscoverySubscriptionCreator {
         idMappingPrefixes.add(discoveryParams.getDatasetId());
         newSubscription.setIdMappingPrefixes(idMappingPrefixes);
         newSubscription.setRestartTime("03:20");
-        newSubscription.setStopMonitoringRefValue(stopMonitoringValue);
-        newSubscription.setLineRefValue(lineRefValue);
+        newSubscription.getStopMonitoringRefValues().add(stopMonitoringValue);
+        newSubscription.getLineRefValues().add(lineRefValue);
         newSubscription.setActive(true);
         return newSubscription;
     }

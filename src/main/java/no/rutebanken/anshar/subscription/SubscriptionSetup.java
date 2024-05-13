@@ -63,8 +63,8 @@ public class SubscriptionSetup implements Serializable {
     private Boolean incrementalUpdates;
     private String contentType;
     private String vehicleMonitoringRefValue;
-    private String lineRefValue;
-    private String stopMonitoringRefValue;
+    private List<String> lineRefValues;
+    private List<String> stopMonitoringRefValues;
     private boolean validation;
     private String restartTime;
 
@@ -392,25 +392,32 @@ public class SubscriptionSetup implements Serializable {
         return vehicleMonitoringRefValue;
     }
 
-    public String getLineRefValue() {
-        return lineRefValue;
+
+    public List<String> getLineRefValues() {
+        if (lineRefValues == null) {
+            lineRefValues = new ArrayList<>();
+        }
+        return lineRefValues;
     }
 
-    public void setLineRefValue(String lineRefValue) {
-        this.lineRefValue = lineRefValue;
+    public void setLineRefValues(List<String> lineRefValues) {
+        this.lineRefValues = lineRefValues;
     }
-
 
     public void setVehicleMonitoringRefValue(String vehicleMonitoringRefValue) {
         this.vehicleMonitoringRefValue = vehicleMonitoringRefValue;
     }
 
-    public String getStopMonitoringRefValue() {
-        return stopMonitoringRefValue;
+    public List<String> getStopMonitoringRefValues() {
+
+        if (stopMonitoringRefValues == null) {
+            stopMonitoringRefValues = new ArrayList<>();
+        }
+        return stopMonitoringRefValues;
     }
 
-    public void setStopMonitoringRefValue(String stopMonitoringRefValue) {
-        this.stopMonitoringRefValue = stopMonitoringRefValue;
+    public void setStopMonitoringRefValue(List<String> stopMonitoringRefValues) {
+        this.stopMonitoringRefValues = stopMonitoringRefValues;
     }
 
     public Duration getChangeBeforeUpdates() {

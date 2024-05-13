@@ -16,12 +16,9 @@ import uk.org.siri.siri20.AnnotatedLineRef;
 import uk.org.siri.siri20.LineRef;
 import uk.org.siri.siri20.Siri;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
+
 @Service
 public class DiscoveryLinesOutbound {
 
@@ -65,6 +62,7 @@ public class DiscoveryLinesOutbound {
 
         Set<String> lineRefSetVM = subscriptionListVM.stream()
                 .map(subscription -> extractAndTransformLineId(subscription, idProcessingMap))
+                .flatMap(Collection::stream)
                 .filter(lineRef -> lineRef != null)
                 .collect(Collectors.toSet());
 
@@ -109,11 +107,15 @@ public class DiscoveryLinesOutbound {
      * @param idProcessingMap   the map that associate datasetId to idProcessingParams
      * @return the transformed line id
      */
-    private String extractAndTransformLineId(SubscriptionSetup subscriptionSetup, Map<String, IdProcessingParameters> idProcessingMap) {
-        String lineId = subscriptionSetup.getLineRefValue();
-        String datasetId = subscriptionSetup.getDatasetId();
+    private List<String> extractAndTransformLineId(SubscriptionSetup subscriptionSetup, Map<String, IdProcessingParameters> idProcessingMap) {
+        List<String> results = new ArrayList<>();
 
-        return idProcessingMap.containsKey(datasetId) ? idProcessingMap.get(datasetId).applyTransformationToString(lineId) : lineId;
+        for (String lineRefValue : subscriptionSetup.getLineRefValues()) {
+            String datasetId = subscriptionSetup.getDatasetId();
+            results.add(idProcessingMap.containsKey(datasetId) ? idProcessingMap.get(datasetId).applyTransformationToString(lineRefValue) : lineRefValue);
+        }
+
+        return results;
     }
 
     /**

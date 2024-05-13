@@ -258,33 +258,28 @@
                                     </xsl:when>
                                     <xsl:when
                                             test="/siri:Siri/siri:SubscriptionRequest/siri:VehicleMonitoringSubscriptionRequest">
-                                        <xsl:element name="siri:VehicleMonitoringSubscriptionRequest">
-                                            <xsl:copy-of
-                                                    select="siri:VehicleMonitoringSubscriptionRequest/siri:SubscriberRef"
-                                                    copy-namespaces="no"/>
-                                            <xsl:copy-of
-                                                    select="siri:VehicleMonitoringSubscriptionRequest/siri:SubscriptionIdentifier"
-                                                    copy-namespaces="no"/>
-                                            <xsl:copy-of
-                                                    select="siri:VehicleMonitoringSubscriptionRequest/siri:InitialTerminationTime"
-                                                    copy-namespaces="no"/>
 
-                                            <xsl:element name="siri:VehicleMonitoringRequest">
-                                                <xsl:attribute name="version">
-                                                    <!-- <xsl:value-of select="siri:SituationExchangeSubscriptionRequest/siri:SituationExchangeRequest/@version"/> -->
-                                                    <xsl:value-of select="1.4"/>
-                                                </xsl:attribute>
-                                                <xsl:copy-of
-                                                        select="siri:VehicleMonitoringSubscriptionRequest/siri:VehicleMonitoringRequest/*"
-                                                        copy-namespaces="no"/>
+                                        <xsl:for-each select="./siri:VehicleMonitoringSubscriptionRequest">
+
+
+                                            <xsl:element name="siri:{local-name()}">
+
+
+                                                <xsl:copy-of select="./siri:SubscriberRef" copy-namespaces="no"/>
+                                                <xsl:copy-of select="./siri:SubscriptionIdentifier"
+                                                             copy-namespaces="no"/>
+                                                <xsl:copy-of select="./siri:InitialTerminationTime"
+                                                             copy-namespaces="no"/>
+
+                                                <xsl:copy-of select="./siri:VehicleMonitoringRequest"
+                                                             copy-namespaces="no"/>
+
+                                                <xsl:copy-of select="./siri:ChangeBeforeUpdates"
+                                                             copy-namespaces="no"/>
+
                                             </xsl:element>
-                                            <xsl:copy-of
-                                                    select="siri:VehicleMonitoringSubscriptionRequest/siri:IncrementalUpdates"
-                                                    copy-namespaces="no"/>
-                                            <xsl:copy-of
-                                                    select="siri:VehicleMonitoringSubscriptionRequest/siri:ChangeBeforeUpdates"
-                                                    copy-namespaces="no"/>
-                                        </xsl:element>
+                                        </xsl:for-each>
+
                                     </xsl:when>
                                     <xsl:when
                                             test="/siri:Siri/siri:SubscriptionRequest/siri:EstimatedTimetableSubscriptionRequest">
@@ -318,32 +313,29 @@
                                     </xsl:when>
                                     <xsl:when
                                             test="/siri:Siri/siri:SubscriptionRequest/siri:StopMonitoringSubscriptionRequest">
-                                        <xsl:element name="siri:StopMonitoringSubscriptionRequest">
-                                            <xsl:copy-of
-                                                    select="siri:StopMonitoringSubscriptionRequest/siri:SubscriberRef"
-                                                    copy-namespaces="no"/>
-                                            <xsl:copy-of
-                                                    select="siri:StopMonitoringSubscriptionRequest/siri:SubscriptionIdentifier"
-                                                    copy-namespaces="no"/>
-                                            <xsl:copy-of
-                                                    select="siri:StopMonitoringSubscriptionRequest/siri:InitialTerminationTime"
-                                                    copy-namespaces="no"/>
 
-                                            <xsl:element name="siri:StopMonitoringRequest">
-                                                <xsl:attribute name="version">
-                                                    <xsl:value-of select="1.4"/>
-                                                </xsl:attribute>
-                                                <xsl:copy-of
-                                                        select="siri:StopMonitoringSubscriptionRequest/siri:StopMonitoringRequest/*"
-                                                        copy-namespaces="no"/>
+
+                                        <xsl:for-each select="./siri:StopMonitoringSubscriptionRequest">
+
+
+                                            <xsl:element name="siri:{local-name()}">
+
+
+                                                <xsl:copy-of select="./siri:SubscriberRef" copy-namespaces="no"/>
+                                                <xsl:copy-of select="./siri:SubscriptionIdentifier"
+                                                             copy-namespaces="no"/>
+                                                <xsl:copy-of select="./siri:InitialTerminationTime"
+                                                             copy-namespaces="no"/>
+
+                                                <xsl:copy-of select="./siri:StopMonitoringRequest"
+                                                             copy-namespaces="no"/>
+
+                                                <xsl:copy-of select="./siri:ChangeBeforeUpdates"
+                                                             copy-namespaces="no"/>
+
                                             </xsl:element>
-                                            <xsl:copy-of
-                                                    select="siri:StopMonitoringSubscriptionRequest/siri:IncrementalUpdates"
-                                                    copy-namespaces="no"/>
-                                            <xsl:copy-of
-                                                    select="siri:StopMonitoringSubscriptionRequest/siri:ChangeBeforeUpdates"
-                                                    copy-namespaces="no"/>
-                                        </xsl:element>
+                                        </xsl:for-each>
+
                                     </xsl:when>
 
                                     <xsl:when

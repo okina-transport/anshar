@@ -14,14 +14,11 @@ import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
 import uk.org.siri.siri20.EstimatedVehicleJourney;
 import uk.org.siri.siri20.Siri;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getOriginalId;
+
 @Service
 public class EstimatedTimetableInbound {
 
@@ -70,13 +67,14 @@ public class EstimatedTimetableInbound {
         for (SubscriptionSetup subscriptionSetup : subscriptionSetupList) {
             List<EstimatedVehicleJourney> addedOrUpdatedBySubscription = addedOrUpdated
                     .stream()
-                    .filter(estimatedVehicleJourney -> estimatedVehicleJourney.getLineRef().getValue().equals(subscriptionSetup.getLineRefValue()))
+                    .filter(estimatedVehicleJourney -> subscriptionSetup.getLineRefValues().contains(estimatedVehicleJourney.getLineRef().getValue()))
                     .collect(Collectors.toList());
             subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdatedBySubscription.size());
 //                        logger.info("Active ET-elements: {}, current delivery: {}, {}", estimatedTimetables.getSize(), addedOrUpdatedBySubscription.size(), subscriptionSetup);
         }
         return !addedOrUpdated.isEmpty();
     }
+
     public Map<String, List<EstimatedVehicleJourney>> splitEstimatedTimetablesByCodespace(List<EstimatedVehicleJourney> estimatedVehicleJourneys) {
         Map<String, List<EstimatedVehicleJourney>> result = new HashMap<>();
         for (EstimatedVehicleJourney etElement : estimatedVehicleJourneys) {

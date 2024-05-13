@@ -28,7 +28,10 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.UUID;
 
 import static no.rutebanken.anshar.subscription.SubscriptionSetup.ServiceType.SOAP;
 
@@ -55,7 +58,7 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
     @Override
     public void configure() throws Exception {
 
-        if (!configuration.isCurrentInstanceLeader()){
+        if (!configuration.isCurrentInstanceLeader()) {
             log.info("Instance non leader. Pas de récupération SIRI par API");
             return;
         }
@@ -73,7 +76,7 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
 
         for (SiriApi siriApi : siriApis) {
 
-            if (!shouldSiriApiBeRecovered(siriApi.getType())){
+            if (!shouldSiriApiBeRecovered(siriApi.getType())) {
                 continue;
             }
 
@@ -99,26 +102,26 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
 
     /**
      * Checks if the current anshar instance is allowed to get siri API data
-     *      e.g : if the current instance is running with DATA_SM app_mode, it is only allowed to recover siri-sm data
-     * @return
-     *      true : the current instance of anshar is allowed to get data from this siri api
-     *      false : the current instace of anshar must not recover data from this siri api
+     * e.g : if the current instance is running with DATA_SM app_mode, it is only allowed to recover siri-sm data
+     *
+     * @return true : the current instance of anshar is allowed to get data from this siri api
+     * false : the current instace of anshar must not recover data from this siri api
      */
-    private boolean shouldSiriApiBeRecovered(String subscriptionType){
+    private boolean shouldSiriApiBeRecovered(String subscriptionType) {
 
-        if ("siri-sm".equals(subscriptionType) && configuration.processSM()){
+        if ("siri-sm".equals(subscriptionType) && configuration.processSM()) {
             return true;
         }
 
-        if ("siri-sx".equals(subscriptionType) && configuration.processSX()){
+        if ("siri-sx".equals(subscriptionType) && configuration.processSX()) {
             return true;
         }
 
-        if ("siri-et".equals(subscriptionType) && configuration.processET()){
+        if ("siri-et".equals(subscriptionType) && configuration.processET()) {
             return true;
         }
 
-        if ("siri-vm".equals(subscriptionType) && configuration.processVM()){
+        if ("siri-vm".equals(subscriptionType) && configuration.processVM()) {
             return true;
         }
 
@@ -132,20 +135,47 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
 
         List<SubscriptionSetup> subscriptionSetupList = new ArrayList<>();
         List<String> ids = new ArrayList<>();
+        String globalSubscriptionId = "SIRI-API_" + dataFormat + "_" + provider;
+
         for (String monitoringId : monitoringIds) {
 
-            String subId;
-            if (!subscriptionManager.isSiriAPISubscriptionExisting(provider + monitoringId)){
-                SubscriptionSetup subscriptionSetup = createSubscriptionSetup(dataFormat, monitoringId, url, provider);
-                subscriptionManager.addSubscription(subscriptionSetup.getSubscriptionId(), subscriptionSetup);
-                subscriptionSetupList.add(subscriptionSetup);
-                subId = subscriptionSetup.getSubscriptionId();
+            String subId = null;
+            if (!subscriptionManager.isSiriAPISubscriptionExisting(provider + monitoringId)) {
+
+                // 1 subscription by type (SM/ET/SX/VM) and by datasetId
+                SubscriptionSetup globalSub = subscriptionManager.getSubscriptionBySubscriptionId(globalSubscriptionId);
+
+
+                if (globalSub != null) {
+                    if (!globalSub.getStopMonitoringRefValues().contains(monitoringId)) {
+                        globalSub.getStopMonitoringRefValues().add(monitoringId);
+                    }
+                    subId = globalSub.getSubscriptionId();
+                } else {
+                    SubscriptionSetup subscriptionSetup = createSubscriptionSetup(dataFormat, monitoringId, url, provider);
+                    subscriptionSetup.setSubscriptionId(globalSubscriptionId);
+                    subscriptionSetup.setVendor(globalSubscriptionId);
+                    subscriptionSetup.setName(globalSubscriptionId);
+                    if ("siri-sm".equals(dataFormat) && !subscriptionSetup.getStopMonitoringRefValues().contains(monitoringId)) {
+                        subscriptionSetup.getStopMonitoringRefValues().add(monitoringId);
+                    }
+
+                    if ("siri-vm".equals(dataFormat) && !subscriptionSetup.getLineRefValues().contains(monitoringId)) {
+                        subscriptionSetup.getLineRefValues().add(monitoringId);
+                    }
+
+                    subscriptionManager.addSubscription(globalSubscriptionId, subscriptionSetup);
+                    subscriptionSetupList.add(subscriptionSetup);
+                    subId = subscriptionSetup.getSubscriptionId();
+                }
                 subscriptionManager.addSiriAPISubscription(provider + monitoringId, subId);
-            } else{
-                subId = subscriptionManager.getSubscriptionForMonitoringRef(provider + monitoringId);
+
+
+            } else {
+                subId = subscriptionManager.getSubscriptionForMonitoringRef(globalSubscriptionId);
             }
 
-            if (!ids.contains(subId)){
+            if (subId != null && !ids.contains(subId)) {
                 ids.add(subId);
             }
         }
@@ -198,7 +228,7 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
         switch (subscriptionType) {
             case "siri-sm":
                 subscriptionSetup.setSubscriptionType(SiriDataType.STOP_MONITORING);
-                subscriptionSetup.setStopMonitoringRefValue(monitoringId);
+                subscriptionSetup.getStopMonitoringRefValues().add(monitoringId);
                 subscriptionSetup.getUrlMap().put(RequestType.GET_STOP_MONITORING, url);
                 subscriptionSetup.setRequestorRef("AURA_OKINA_SM");
                 subscriptionSetup.setVendor("AURA-MULTITUD-CITYWAY-SIRI-SM-" + monitoringId);
@@ -206,7 +236,7 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
                 break;
             case "siri-et":
                 subscriptionSetup.setSubscriptionType(SiriDataType.ESTIMATED_TIMETABLE);
-                subscriptionSetup.setStopMonitoringRefValue(monitoringId);
+                subscriptionSetup.getStopMonitoringRefValues().add(monitoringId);
                 subscriptionSetup.getUrlMap().put(RequestType.GET_ESTIMATED_TIMETABLE, url);
                 subscriptionSetup.setRequestorRef("AURA_OKINA_ET");
                 subscriptionSetup.setVendor("AURA-MULTITUD-CITYWAY-SIRI-ET-" + monitoringId);

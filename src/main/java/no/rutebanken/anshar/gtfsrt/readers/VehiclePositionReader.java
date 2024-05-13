@@ -1,7 +1,6 @@
 package no.rutebanken.anshar.gtfsrt.readers;
 
 import com.google.transit.realtime.GtfsRealtime;
-
 import net.logstash.logback.encoder.org.apache.commons.lang3.StringUtils;
 import no.rutebanken.anshar.gtfsrt.mappers.VehiclePositionMapper;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
@@ -15,14 +14,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import uk.org.siri.siri20.*;
-
+import uk.org.siri.siri20.ServiceDelivery;
+import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri20.VehicleActivityStructure;
+import uk.org.siri.siri20.VehicleMonitoringDeliveryStructure;
 
 import java.math.BigDecimal;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -58,14 +57,13 @@ public class VehiclePositionReader extends AbstractSwallower {
     /**
      * Main function to ingest data : take a complete GTFS-RT object (FeedMessage), read and map data about vehiclePositions and ingest it
      *
-     * @param completeGTFSRTMessage
-     *      The complete message (GTFS-RT format)
+     * @param completeGTFSRTMessage The complete message (GTFS-RT format)
      */
-    public void ingestVehiclePositionData(String datasetId, GtfsRealtime.FeedMessage completeGTFSRTMessage ){
+    public void ingestVehiclePositionData(String datasetId, GtfsRealtime.FeedMessage completeGTFSRTMessage) {
         List<VehicleActivityStructure> vehicleActivities = buildVehicleActivityList(completeGTFSRTMessage);
 
 
-        if (vehicleActivities.size() == 0){
+        if (vehicleActivities.size() == 0) {
             logger.info("No vehicle activities in GTFS RT feed");
             return;
         }
@@ -76,7 +74,7 @@ public class VehiclePositionReader extends AbstractSwallower {
     }
 
     private void buildSiriAndSend(List<VehicleActivityStructure> vehicleActivities, String datasetId) {
-        if (vehicleActivities.isEmpty()){
+        if (vehicleActivities.isEmpty()) {
             logger.info("no vehicleActivities to ingest");
             return;
         }
@@ -87,15 +85,14 @@ public class VehiclePositionReader extends AbstractSwallower {
         vehicleMonStruct.getVehicleActivities().addAll(vehicleActivities);
         serviceDel.getVehicleMonitoringDeliveries().add(vehicleMonStruct);
         siri.setServiceDelivery(serviceDel);
-        sendToRealTimeServer(gtfsrtVmProducer,siri, datasetId);
+        sendToRealTimeServer(gtfsrtVmProducer, siri, datasetId);
     }
 
     /**
      * Read the complete GTS-RT message and build a list of vehicle activities to integrate
-     * @param feedMessage
-     *         The complete message (GTFS-RT format)
-     * @return
-     *         A list of vehicle activities, build by mapping vehicle positions from GTFS-RT message
+     *
+     * @param feedMessage The complete message (GTFS-RT format)
+     * @return A list of vehicle activities, build by mapping vehicle positions from GTFS-RT message
      */
     private List<VehicleActivityStructure> buildVehicleActivityList(GtfsRealtime.FeedMessage feedMessage) {
         List<VehicleActivityStructure> vehicleActivities = new ArrayList<>();
@@ -107,7 +104,7 @@ public class VehiclePositionReader extends AbstractSwallower {
 
             VehicleActivityStructure vehicleActivity = VehiclePositionMapper.mapVehicleActivityFromVehiclePosition(feedEntity.getVehicle());
 
-            if (isEmptyVehicleRef(vehicleActivity)  && isEmptyLocation(vehicleActivity)){
+            if (isEmptyVehicleRef(vehicleActivity) && isEmptyLocation(vehicleActivity)) {
                 continue;
             }
             ZonedDateTime dateTime = ZonedDateTime.now();
@@ -117,26 +114,25 @@ public class VehiclePositionReader extends AbstractSwallower {
         return vehicleActivities;
     }
 
-    private boolean isEmptyLocation(VehicleActivityStructure vehicleActivity){
+    private boolean isEmptyLocation(VehicleActivityStructure vehicleActivity) {
         VehicleActivityStructure.MonitoredVehicleJourney vehicleJourney = vehicleActivity.getMonitoredVehicleJourney();
         return vehicleJourney.getVehicleLocation() == null || vehicleJourney.getVehicleLocation().getLatitude().compareTo(BigDecimal.ZERO) == 0;
     }
 
-    private boolean isEmptyVehicleRef(VehicleActivityStructure vehicleActivity){
+    private boolean isEmptyVehicleRef(VehicleActivityStructure vehicleActivity) {
         return vehicleActivity.getVehicleMonitoringRef() == null || StringUtils.isEmpty(vehicleActivity.getVehicleMonitoringRef().getValue());
     }
 
 
     /**
      * Read all vehicleActivities messages and build a list of subscriptions that must be checked(or created if not exists)
-     * @param vehicleActivities
-     *      The list of vehicleActivities
-     * @return
-     *      The list of subscription ids build by reading the vehicle activities
+     *
+     * @param vehicleActivities The list of vehicleActivities
+     * @return The list of subscription ids build by reading the vehicle activities
      */
     private List<String> getSubscriptions(List<VehicleActivityStructure> vehicleActivities) {
         return vehicleActivities.stream()
-                .filter(vehicleActivity -> vehicleActivity.getMonitoredVehicleJourney() != null &&  vehicleActivity.getMonitoredVehicleJourney().getLineRef() != null)
+                .filter(vehicleActivity -> vehicleActivity.getMonitoredVehicleJourney() != null && vehicleActivity.getMonitoredVehicleJourney().getLineRef() != null)
                 .map(vehicleActivity -> vehicleActivity.getMonitoredVehicleJourney().getLineRef().getValue())
                 .collect(Collectors.toList());
     }
@@ -150,23 +146,36 @@ public class VehiclePositionReader extends AbstractSwallower {
     private void checkAndCreateSubscriptions(List<String> subscriptionsList, String datasetId) {
 
         for (String subscriptionId : subscriptionsList) {
-            if (subscriptionManager.isGTFSRTSubscriptionExisting(prefix + subscriptionId))
+            if (subscriptionManager.isGTFSRTSubscriptionExisting(prefix + datasetId + "_" + subscriptionId))
                 //A subscription is already existing for this Line. No need to create one
                 continue;
             createNewSubscription(subscriptionId, datasetId);
-            subscriptionManager.addGTFSRTSubscription(subscriptionId);
+            subscriptionManager.addGTFSRTSubscription(prefix + datasetId + "_" + subscriptionId);
         }
     }
 
     /**
      * Create a new subscription for the id given in parameter
-     * @param objectRef
-     *      The object id for which a subscription must be created
+     *
+     * @param objectRef The object id for which a subscription must be created
      */
-    private void createNewSubscription(String objectRef, String datasetId){
-        SubscriptionSetup setup = createStandardSubscription(objectRef, datasetId);
-        setup.setLineRefValue(objectRef);
-        subscriptionManager.addSubscription(objectRef, setup);
+    private void createNewSubscription(String objectRef, String datasetId) {
+
+        // 1 subscription by type (SM/ET/SX/VM) and by datasetId
+        String globalSubscriptionId = prefix + datasetId;
+        SubscriptionSetup globalSub = subscriptionManager.getSubscriptionBySubscriptionId(globalSubscriptionId);
+
+        if (globalSub != null) {
+            if (!globalSub.getLineRefValues().contains(objectRef)) {
+                globalSub.getLineRefValues().add(objectRef);
+            }
+        } else {
+            SubscriptionSetup setup = createStandardSubscription(objectRef, datasetId);
+            setup.setName(globalSubscriptionId);
+            setup.setSubscriptionId(globalSubscriptionId);
+            setup.getLineRefValues().add(objectRef);
+            subscriptionManager.addSubscription(globalSubscriptionId, setup);
+        }
     }
 
 }

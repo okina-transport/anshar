@@ -188,7 +188,7 @@ public class AlertReader extends AbstractSwallower {
     private void checkAndCreateSubscriptions(List<String> subscriptionsList, String datasetId) {
 
         for (String subsId : subscriptionsList) {
-            if (subscriptionManager.isGTFSRTSubscriptionExisting(prefix + subsId))
+            if (subscriptionManager.isGTFSRTSubscriptionExisting(prefix + datasetId))
                 //A subscription is already existing for this situation. No need to create one
                 continue;
             createNewSubscription(subsId, datasetId);
@@ -202,8 +202,10 @@ public class AlertReader extends AbstractSwallower {
      */
     private void createNewSubscription(String subscriptionId, String datasetId) {
         SubscriptionSetup setup = createStandardSubscription(subscriptionId, datasetId);
-        subscriptionManager.addSubscription(subscriptionId, setup);
-        subscriptionManager.addGTFSRTSubscription(subscriptionId);
+        setup.setSubscriptionId(prefix + datasetId);
+        setup.setName(prefix + datasetId);
+        subscriptionManager.addSubscription(prefix + datasetId, setup);
+        subscriptionManager.addGTFSRTSubscription(prefix + datasetId);
     }
 
 }

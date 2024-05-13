@@ -440,7 +440,8 @@ public class AdminRouteHelper {
 
             List<String> monitoringRefList = subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING).stream()
                     .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))
-                    .map(SubscriptionSetup::getStopMonitoringRefValue)
+                    .map(SubscriptionSetup::getStopMonitoringRefValues)
+                    .flatMap(List::stream)
                     .collect(Collectors.toList());
 
             JSONObject stat = new JSONObject();

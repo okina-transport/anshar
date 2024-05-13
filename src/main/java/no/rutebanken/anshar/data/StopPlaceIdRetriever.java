@@ -43,26 +43,27 @@ public class StopPlaceIdRetriever {
 
     public void getStopPlaceIds() throws IOException {
 
-        if (isProcessAlreadyLaunched){
+        if (isProcessAlreadyLaunched) {
             logger.info("Process already launched. Exiting");
             return;
         }
 
         isProcessAlreadyLaunched = true;
 
-        try{
+        try {
 
             List<String> stopPointList = subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING).stream()
-                                                            .map(SubscriptionSetup::getStopMonitoringRefValue)
-                                                            .filter(stopPointId -> !idCache.isKnownImportedId(stopPointId))
-                                                            .collect(Collectors.toList());
+                    .map(SubscriptionSetup::getStopMonitoringRefValues)
+                    .flatMap(List::stream)
+                    .filter(stopPointId -> !idCache.isKnownImportedId(stopPointId))
+                    .collect(Collectors.toList());
 
 
             stopPointList.forEach(this::getNetexIdForPoint);
 
-        }catch(Exception e){
+        } catch (Exception e) {
             logger.error("Error on stopPlace id recovering", e);
-        }finally {
+        } finally {
             isProcessAlreadyLaunched = false;
         }
 
@@ -72,15 +73,15 @@ public class StopPlaceIdRetriever {
     /**
      * Launch a query to stop place repository to check if id is existng in theorical offer.
      * If a netex id is found in theorical offer, the association : imported-id/netex-id is saved into id cache
-     * @param stopPointId
-     *  the searchedimported-id
+     *
+     * @param stopPointId the searchedimported-id
      */
-    private void getNetexIdForPoint(String stopPointId){
+    private void getNetexIdForPoint(String stopPointId) {
 
-        try{
+        try {
 
             String extracted = extractId(stopPointId);
-            URL url = new URL(stopPlaceApiURL+"?importedId=" + extracted);
+            URL url = new URL(stopPlaceApiURL + "?importedId=" + extracted);
             HttpURLConnection connection = null;
             connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
@@ -88,14 +89,14 @@ public class StopPlaceIdRetriever {
             connection.setDoOutput(true);
             connection.setRequestProperty("Authorization", "Bearer " + tokenService.getToken());
             InputStream inputStream = connection.getInputStream();
-            String netexId = new BufferedReader( new InputStreamReader(inputStream, StandardCharsets.UTF_8)).lines() .collect(Collectors.joining("\n"));
+            String netexId = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8)).lines().collect(Collectors.joining("\n"));
 
-            if (StringUtils.isNotEmpty(netexId)){
+            if (StringUtils.isNotEmpty(netexId)) {
                 logger.info("Netex id :" + netexId + " has been found for point:" + stopPointId);
                 idCache.addNewAssociationToCache(stopPointId, netexId);
             }
 
-        }catch(Exception e){
+        } catch (Exception e) {
             //do nothing
         }
     }
@@ -103,17 +104,15 @@ public class StopPlaceIdRetriever {
     /**
      * Extract stopCode from a raw Id with ":" separators
      *
-     * @param rawId
-     *      the raw id with : separators (e.g: SIRI_NVP_037:StopPoint:BP:MADU01:LOC)
-     * @return
-     *      the stop code
+     * @param rawId the raw id with : separators (e.g: SIRI_NVP_037:StopPoint:BP:MADU01:LOC)
+     * @return the stop code
      */
-    private String extractId(String rawId){
-        if(rawId.contains(":")){
-            String idWithoutLoc = rawId.replace(":LOC","");
+    private String extractId(String rawId) {
+        if (rawId.contains(":")) {
+            String idWithoutLoc = rawId.replace(":LOC", "");
             String[] idTab = idWithoutLoc.split(":");
             return idTab[idTab.length - 1];
-        }else{
+        } else {
             return rawId;
         }
     }
