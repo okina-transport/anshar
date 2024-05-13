@@ -211,7 +211,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 "</siri:Siri>\n";
         try {
             SubscriptionSetup smSubscription = getSmSubscription("tst");
-            smSubscription.setStopMonitoringRefValue("sp3");
+            smSubscription.getStopMonitoringRefValues().add("sp3");
             subscriptionManager.addSubscription(smSubscription.getSubscriptionId(), smSubscription);
             handler.handleIncomingSiri(smSubscription.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes()));
         } catch (Throwable t) {
@@ -241,7 +241,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         try {
             SubscriptionSetup fmSubscription = getFmSubscription("tst");
-            fmSubscription.setStopMonitoringRefValue("sp3");
+            fmSubscription.getStopMonitoringRefValues().add("sp3");
             subscriptionManager.addSubscription(fmSubscription.getSubscriptionId(), fmSubscription);
             handler.handleIncomingSiri(fmSubscription.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes()));
         } catch (Throwable t) {
@@ -281,7 +281,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     @Test
     public void testCitywaySmCompliance() throws JAXBException {
         SubscriptionSetup smSubscription = getSmSubscription("tst");
-        smSubscription.setStopMonitoringRefValue("sp4");
+        smSubscription.getStopMonitoringRefValues().add("sp4");
         subscriptionManager.addSubscription(smSubscription.getSubscriptionId(), smSubscription);
         ClassLoader classLoader = getClass().getClassLoader();
         File file = new File("src/test/resources/PT_RT_STOPTIME_TEST_siri-sm_dynamic.xml");
@@ -381,12 +381,12 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     @Test
     public void stopPointsDiscoveryTest() throws JAXBException, IOException {
         SubscriptionSetup smSubscription1 = getSmSubscription("tst");
-        smSubscription1.setStopMonitoringRefValue("sp1");
+        smSubscription1.getStopMonitoringRefValues().add("sp1");
         smSubscription1.setDatasetId("DAT1");
         subscriptionManager.addSubscription(smSubscription1.getSubscriptionId(), smSubscription1);
 
         SubscriptionSetup smSubscription2 = getSmSubscription("tst");
-        smSubscription2.setStopMonitoringRefValue("sp2");
+        smSubscription2.getStopMonitoringRefValues().add("sp2");
         smSubscription2.setDatasetId("DAT1");
         subscriptionManager.addSubscription(smSubscription2.getSubscriptionId(), smSubscription2);
 
@@ -411,11 +411,11 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
     public void stopPointsDiscoveryTestWithDifferentDatasetId() throws JAXBException, IOException {
         SubscriptionSetup smSubscription1 = getSmSubscription("tst1");
-        smSubscription1.setStopMonitoringRefValue("sp1");
+        smSubscription1.getStopMonitoringRefValues().add("sp1");
         subscriptionManager.addSubscription(smSubscription1.getSubscriptionId(), smSubscription1);
 
         SubscriptionSetup smSubscription2 = getSmSubscription("tst2");
-        smSubscription2.setStopMonitoringRefValue("sp2");
+        smSubscription2.getStopMonitoringRefValues().add("sp2");
         subscriptionManager.addSubscription(smSubscription2.getSubscriptionId(), smSubscription2);
 
         ClassLoader classLoader = getClass().getClassLoader();
@@ -441,15 +441,15 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     public void linesDiscoveryTest() throws JAXBException, IOException {
         estimatedTimetables.clearAll();
         SubscriptionSetup vmSubscription1 = getVmSubscription("tst");
-        vmSubscription1.setLineRefValue("line1");
+        vmSubscription1.getLineRefValues().add("line1");
         subscriptionManager.addSubscription(vmSubscription1.getSubscriptionId(), vmSubscription1);
 
         SubscriptionSetup vmSubscription2 = getVmSubscription("tst");
-        vmSubscription2.setLineRefValue("line2");
+        vmSubscription2.getLineRefValues().add("line2");
         subscriptionManager.addSubscription(vmSubscription2.getSubscriptionId(), vmSubscription2);
 
         SubscriptionSetup vmSubscription3 = getVmSubscription("tst");
-        vmSubscription3.setLineRefValue("line3");
+        vmSubscription3.getLineRefValues().add("line3");
         subscriptionManager.addSubscription(vmSubscription3.getSubscriptionId(), vmSubscription3);
 
         estimatedTimetables.add(getVmSubscription("tst").getDatasetId(), createEstimatedVehicleJourney("line3", "vehicle3", 0, 30, ZonedDateTime.now().plusHours(1), true));
@@ -479,15 +479,15 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     public void linesDiscoveryTestWithDifferentDatasetId() throws JAXBException, IOException {
         estimatedTimetables.clearAll();
         SubscriptionSetup vmSubscription1 = getVmSubscription("tst1");
-        vmSubscription1.setLineRefValue("line1");
+        vmSubscription1.getLineRefValues().add("line1");
         subscriptionManager.addSubscription(vmSubscription1.getSubscriptionId(), vmSubscription1);
 
         SubscriptionSetup vmSubscription2 = getVmSubscription("tst2");
-        vmSubscription2.setLineRefValue("line2");
+        vmSubscription2.getLineRefValues().add("line2");
         subscriptionManager.addSubscription(vmSubscription2.getSubscriptionId(), vmSubscription2);
 
         SubscriptionSetup vmSubscription3 = getVmSubscription("tst3");
-        vmSubscription3.setLineRefValue("line3");
+        vmSubscription3.getLineRefValues().add("line3");
         subscriptionManager.addSubscription(vmSubscription3.getSubscriptionId(), vmSubscription3);
 
         estimatedTimetables.add(getVmSubscription("tst3").getDatasetId(), createEstimatedVehicleJourney("line3", "vehicle3", 0, 30, ZonedDateTime.now().plusHours(1), true));

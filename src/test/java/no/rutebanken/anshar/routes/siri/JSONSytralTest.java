@@ -21,12 +21,7 @@ import uk.org.siri.siri20.MonitoredStopVisit;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 class JSONSytralTest extends SpringBootBaseTest {
@@ -39,7 +34,7 @@ class JSONSytralTest extends SpringBootBaseTest {
 
     private static final int DEFAULT_HEARTBEAT_SECONDS = 300;
 
-    protected String url="http://defURL";
+    protected String url = "http://defURL";
     protected String prefix = "SY";
     protected SiriDataType dataType = SiriDataType.STOP_MONITORING;
     protected RequestType requestType = RequestType.GET_STOP_MONITORING;
@@ -61,16 +56,16 @@ class JSONSytralTest extends SpringBootBaseTest {
 
             List<MonitoredStopVisit> createdstopVisits = SytralJSONMapper.convertToSiriSM(values);
 
-            List<String> visitSubscriptionList = getSubscriptionsFromVisits(createdstopVisits) ;
+            List<String> visitSubscriptionList = getSubscriptionsFromVisits(createdstopVisits);
 
-             //// STOP VISITS
+            //// STOP VISITS
             checkAndCreateSubscriptions(visitSubscriptionList, "SYTRAL_SM_", SiriDataType.STOP_MONITORING, RequestType.GET_STOP_MONITORING, "SYTRAL");
 
             Collection<MonitoredStopVisit> ingestedVisits = stopMonitoringInbound.ingestStopVisits("SYTRAL", createdstopVisits);
 
-                for (MonitoredStopVisit visit : ingestedVisits) {
-                    subscriptionManager.touchSubscription("SYTRAL_" + visit.getMonitoringRef().getValue(),false);
-                }
+            for (MonitoredStopVisit visit : ingestedVisits) {
+                subscriptionManager.touchSubscription("SYTRAL_" + visit.getMonitoringRef().getValue(), false);
+            }
 
             System.out.println("a");
             long endTime = DateTime.now().toInstant().getMillis();
@@ -78,12 +73,10 @@ class JSONSytralTest extends SpringBootBaseTest {
             log.info("JSON integration completed  in {} seconds ", processTime);
 
 
-
-
             Set<String> searchedStopIds = new HashSet<>();
             searchedStopIds.add("35998");
 
-          //  Siri siriResult = stopVisits.createServiceDelivery("requestorId", null, "track", null, 10000000, -10000, searchedStopIds);
+            //  Siri siriResult = stopVisits.createServiceDelivery("requestorId", null, "track", null, 10000000, -10000, searchedStopIds);
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -95,15 +88,14 @@ class JSONSytralTest extends SpringBootBaseTest {
 
     /**
      * Read all stopVisit messages and build a list of subscriptions that must be checked(or created if not exists)
-     * @param stopVisits
-     *      The list of stop visits
-     * @return
-     *      The list of subscription ids build by reading the visits
+     *
+     * @param stopVisits The list of stop visits
+     * @return The list of subscription ids build by reading the visits
      */
     private List<String> getSubscriptionsFromVisits(List<MonitoredStopVisit> stopVisits) {
 
         return stopVisits.stream()
-                .filter(visit -> visit.getMonitoringRef() != null &&  visit.getMonitoringRef().getValue() != null)
+                .filter(visit -> visit.getMonitoringRef() != null && visit.getMonitoringRef().getValue() != null)
                 .map(visit -> visit.getMonitoringRef().getValue())
                 .collect(Collectors.toList());
 
@@ -129,25 +121,25 @@ class JSONSytralTest extends SpringBootBaseTest {
 
     /**
      * Create a new subscription for the ref given in parameter
-     * @param ref
-     *      The id for which a subscription must be created
+     *
+     * @param ref          The id for which a subscription must be created
      * @param customPrefix
      * @param dataType
      * @param requestType
      */
-    private void createNewSubscription(String ref, String customPrefix, SiriDataType dataType, RequestType requestType, String datasetId){
+    private void createNewSubscription(String ref, String customPrefix, SiriDataType dataType, RequestType requestType, String datasetId) {
         SubscriptionSetup setup = createStandardSubscription(ref, datasetId);
         String subscriptionId = customPrefix + ref;
         setup.setName(subscriptionId);
         setup.setSubscriptionType(dataType);
         setup.setSubscriptionId(subscriptionId);
         setup.getUrlMap().clear();
-        setup.getUrlMap().put(requestType,url);
-        setup.setStopMonitoringRefValue(ref);
-        subscriptionManager.addSubscription(ref,setup);
+        setup.getUrlMap().put(requestType, url);
+        setup.getStopMonitoringRefValues().add(ref);
+        subscriptionManager.addSubscription(ref, setup);
     }
 
-    protected SubscriptionSetup createStandardSubscription(String objectRef, String datasetId){
+    protected SubscriptionSetup createStandardSubscription(String objectRef, String datasetId) {
         SubscriptionSetup setup = new SubscriptionSetup();
         setup.setDatasetId(datasetId);
         setup.setHeartbeatIntervalSeconds(DEFAULT_HEARTBEAT_SECONDS);
@@ -165,14 +157,12 @@ class JSONSytralTest extends SpringBootBaseTest {
         setup.setSubscriptionType(dataType);
         setup.setSubscriptionId(subscriptionId);
         Map<RequestType, String> urlMap = new HashMap<>();
-        urlMap.put(requestType,url);
+        urlMap.put(requestType, url);
         setup.setUrlMap(urlMap);
 
 
         return setup;
     }
-
-
 
 
 }

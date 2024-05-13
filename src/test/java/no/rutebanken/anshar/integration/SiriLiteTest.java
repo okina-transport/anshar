@@ -143,12 +143,12 @@ public class SiriLiteTest extends BaseHttpTest {
 
         if (subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING).size() == 0) {
             SubscriptionSetup subscriptionSetup = TestObjectFactory.getSubscriptionSetup(SiriDataType.STOP_MONITORING);
-            subscriptionSetup.setStopMonitoringRefValue(stopReference1);
+            subscriptionSetup.getStopMonitoringRefValues().add(stopReference1);
             subscriptionSetup.setDatasetId("DAT1");
             subscriptionManager.addSubscription("sub1", subscriptionSetup);
 
             SubscriptionSetup subscriptionSetup2 = TestObjectFactory.getSubscriptionSetup(SiriDataType.STOP_MONITORING);
-            subscriptionSetup2.setStopMonitoringRefValue(stopReference2);
+            subscriptionSetup2.getStopMonitoringRefValues().add(stopReference2);
             subscriptionSetup2.setDatasetId("DAT1");
             subscriptionManager.addSubscription("sub2", subscriptionSetup2);
         }
