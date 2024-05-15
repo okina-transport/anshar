@@ -2,14 +2,12 @@ package no.rutebanken.anshar.routes.siri.handlers.outbound;
 
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
+import no.rutebanken.anshar.data.DiscoveryCache;
 import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.handlers.Utils;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
-import no.rutebanken.anshar.subscription.SiriDataType;
-import no.rutebanken.anshar.subscription.SubscriptionManager;
-import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,9 +16,7 @@ import uk.org.siri.siri20.AnnotatedStopPointStructure;
 import uk.org.siri.siri20.Siri;
 import uk.org.siri.siri20.StopPointRef;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,9 +28,6 @@ public class DiscoveryStopPointsOutbound {
     private ExternalIdsService externalIdsService;
 
     @Autowired
-    private SubscriptionManager subscriptionManager;
-
-    @Autowired
     private SiriObjectFactory siriObjectFactory;
 
     @Autowired
@@ -42,6 +35,9 @@ public class DiscoveryStopPointsOutbound {
 
     @Autowired
     private StopPlaceUpdaterService stopPlaceUpdaterService;
+
+    @Autowired
+    private DiscoveryCache discoveryCache;
 
 
     /**
@@ -56,37 +52,45 @@ public class DiscoveryStopPointsOutbound {
             return siriObjectFactory.createStopPointsDiscoveryDelivery(new ArrayList<>());
         }
 
-        List<SubscriptionSetup> subscriptionList = subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING).stream()
-                .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))
-                .collect(Collectors.toList());
 
-        List<String> datasetList = subscriptionList.stream()
-                .map(SubscriptionSetup::getDatasetId)
-                .distinct()
-                .collect(Collectors.toList());
+        Map<String, Set<String>> stopsByDatasetId;
+
+        if (datasetId == null) {
+            stopsByDatasetId = discoveryCache.getDiscoveryStops();
+        } else {
+            stopsByDatasetId = new HashMap<>();
+            stopsByDatasetId.put(datasetId, discoveryCache.getDiscoveryStopsForDataset(datasetId));
+        }
+
+
+        Set<String> datasetList = stopsByDatasetId.keySet();
 
         Map<String, IdProcessingParameters> idProcessingMap = utils.buildIdProcessingMap(datasetList, ObjectType.STOP);
 
+        Set<String> monitoringRefList = new HashSet<>();
 
-        List<String> monitoringRefList = subscriptionList.stream()
-                .map(subscription -> extractAndTransformStopId(subscription, idProcessingMap))
-                .flatMap(List::stream)
-                .collect(Collectors.toList());
+        for (Map.Entry<String, Set<String>> stopsByDatasetEntry : stopsByDatasetId.entrySet()) {
+            //for each datasetId
+            Set<String> stopList = stopsByDatasetEntry.getValue();
+
+            if (stopList == null || stopList.isEmpty()) {
+                continue;
+            }
+            monitoringRefList.addAll(extractAndTransformStopId(stopsByDatasetEntry.getKey(), stopList, idProcessingMap));
+        }
 
         if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)) {
             monitoringRefList = monitoringRefList.stream()
                     .filter(stopPlaceUpdaterService::isKnownId)
                     .map(stopPlaceUpdaterService::get)
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toSet());
 
         } else if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy) && datasetId != null) {
             monitoringRefList = monitoringRefList.stream()
                     .map(id -> externalIdsService.getAltId(datasetId, id, ObjectType.STOP).orElse(id))
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toSet());
         }
 
-
-        //  traceUnknownStopPoints(monitoringRefList);
 
         List<AnnotatedStopPointStructure> resultList = monitoringRefList.stream()
                 .map(this::convertKeyToPointStructure)
@@ -95,23 +99,20 @@ public class DiscoveryStopPointsOutbound {
         return siriObjectFactory.createStopPointsDiscoveryDelivery(resultList);
     }
 
-    /**
-     * Extract a stopId from a subscriptionSetup and transforms it, with idProcessingParams
-     *
-     * @param subscriptionSetup the subscriptionSetup for which the stop id must be recovered
-     * @param idProcessingMap   the map that associate datasetId to idProcessingParams
-     * @return the transformed stop id
-     */
-    private List<String> extractAndTransformStopId(SubscriptionSetup subscriptionSetup, Map<String, IdProcessingParameters> idProcessingMap) {
-        List<String> stopIds = subscriptionSetup.getStopMonitoringRefValues();
-        String datasetId = subscriptionSetup.getDatasetId();
-        List<String> results = new ArrayList<>();
 
-        for (String stopId : stopIds) {
-            results.add(idProcessingMap.containsKey(datasetId) ? idProcessingMap.get(datasetId).applyTransformationToString(stopId) : stopId);
+    private Set<String> extractAndTransformStopId(String datasetId, Set<String> stopIds, Map<String, IdProcessingParameters> idProcessingMap) {
+
+        if (!idProcessingMap.containsKey(datasetId)) {
+            //no idProcessingMap, no transformation
+            return stopIds;
         }
 
-        return results;
+        IdProcessingParameters idProcessing = idProcessingMap.get(datasetId);
+
+        return stopIds.stream()
+                .map(idProcessing::applyTransformationToString)
+                .collect(Collectors.toSet());
+
     }
 
     /**

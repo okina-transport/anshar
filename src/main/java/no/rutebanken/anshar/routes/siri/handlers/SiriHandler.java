@@ -19,6 +19,7 @@ import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.*;
+import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
@@ -272,6 +273,7 @@ public class SiriHandler {
 
         List<ValueAdapter> valueAdapters = new ArrayList();
 
+        Siri results;
         if (incoming.getSubscriptionRequest() != null) {
             logger.info("Handling subscriptionrequest with ID-policy {}.", outboundIdMappingPolicy);
             return serverSubscriptionManager.handleMultipleSubscriptionsRequest(incoming.getSubscriptionRequest(), datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation);
@@ -410,11 +412,22 @@ public class SiriHandler {
                 return shouldExecuteLastIdTransformation(serviceRequest) ? SiriValueTransformer.transform(serviceResponse, valueAdapters, false, false) : serviceResponse;
             }
         } else if (incoming.getStopPointsRequest() != null) {
+            TimingTracer timingTracer = new TimingTracer("StopDiscovery-" + datasetId);
             // stop discovery request
-            return discoveryStopPointsOutbound.getDiscoveryStopPoints(datasetId, outboundIdMappingPolicy);
+            results = discoveryStopPointsOutbound.getDiscoveryStopPoints(datasetId, outboundIdMappingPolicy);
+            timingTracer.mark("extraction completed");
+            if (timingTracer.getTotalTime() > 3000) {
+                logger.warn(timingTracer.toString());
+            }
+            return results;
         } else if (incoming.getLinesRequest() != null) {
+            TimingTracer timingTracer = new TimingTracer("LinesDiscovery-" + datasetId);
             // lines discovery request (for vehicle monitoring)
-            return discoveryLinesOutbound.getDiscoveryLines(datasetId, outboundIdMappingPolicy);
+            results = discoveryLinesOutbound.getDiscoveryLines(datasetId, outboundIdMappingPolicy);
+            timingTracer.mark("extraction completed");
+            if (timingTracer.getTotalTime() > 3000) {
+                logger.warn(timingTracer.toString());
+            }
         }
         return null;
     }

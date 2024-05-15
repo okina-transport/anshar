@@ -2,6 +2,7 @@ package no.rutebanken.anshar.gtfsrt.readers;
 
 import com.google.transit.realtime.GtfsRealtime;
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.data.DiscoveryCache;
 import no.rutebanken.anshar.gtfsrt.mappers.TripUpdateMapper;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -53,6 +54,9 @@ public class TripUpdateReader extends AbstractSwallower {
 
     @Produce(uri = "direct:send.sm.to.realtime.server")
     protected ProducerTemplate gtfsrtSmProducer;
+
+    @Autowired
+    private DiscoveryCache discoveryCache;
 
 
     public TripUpdateReader() {
@@ -229,7 +233,7 @@ public class TripUpdateReader extends AbstractSwallower {
                 //A subscription is already existing for this vehicle journey. No need to create one
                 continue;
 
-
+            discoveryCache.addStop(datasetId, subscriptionId);
             createNewSubscription(subscriptionId, customPrefix, dataType, requestType, datasetId);
             subscriptionManager.addGTFSRTSubscription(customPrefix + datasetId + "_" + subscriptionId);
         }

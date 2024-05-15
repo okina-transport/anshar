@@ -2,6 +2,7 @@ package no.rutebanken.anshar.routes.siri.handlers.outbound;
 
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
+import no.rutebanken.anshar.data.DiscoveryCache;
 import no.rutebanken.anshar.data.EstimatedTimetables;
 import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
@@ -37,6 +38,9 @@ public class DiscoveryLinesOutbound {
     @Autowired
     private Utils utils;
 
+    @Autowired
+    private DiscoveryCache discoveryCache;
+
     /**
      * Creates a siri response with all lines existing in the cache, for vehicle Monitoring
      *
@@ -47,24 +51,33 @@ public class DiscoveryLinesOutbound {
         List<SiriDataType> siriDataTypes = new ArrayList<>();
         siriDataTypes.add(SiriDataType.VEHICLE_MONITORING);
 
-        List<SubscriptionSetup> subscriptionListVM = subscriptionManager.getAllSubscriptions(SiriDataType.VEHICLE_MONITORING).stream()
-                .filter(subscriptionSetup -> (datasetId == null || subscriptionSetup.getDatasetId().equals(datasetId)))
-                .collect(Collectors.toList());
+        Map<String, Set<String>> linesByDataset;
 
+        if (datasetId == null) {
+            linesByDataset = discoveryCache.getDiscoveryLines();
+        } else {
+            linesByDataset = new HashMap<>();
+            linesByDataset.put(datasetId, discoveryCache.getDiscoveryLinesForDataset(datasetId));
+        }
 
-        List<String> datasetList = subscriptionListVM.stream()
-                .map(SubscriptionSetup::getDatasetId)
-                .distinct()
-                .collect(Collectors.toList());
+        Set<String> datasetList = linesByDataset.keySet();
 
 
         Map<String, IdProcessingParameters> idProcessingMap = utils.buildIdProcessingMap(datasetList, ObjectType.LINE);
 
-        Set<String> lineRefSetVM = subscriptionListVM.stream()
-                .map(subscription -> extractAndTransformLineId(subscription, idProcessingMap))
-                .flatMap(Collection::stream)
-                .filter(lineRef -> lineRef != null)
-                .collect(Collectors.toSet());
+        Set<String> lineRefSetVM = new HashSet<>();
+
+
+        for (Map.Entry<String, Set<String>> linesByDatasetEntry : linesByDataset.entrySet()) {
+            //for each datasetId
+            Set<String> lineList = linesByDatasetEntry.getValue();
+            if (lineList == null || lineList.isEmpty()) {
+                continue;
+            }
+
+            lineRefSetVM.addAll(extractAndTransformLineId(linesByDatasetEntry.getKey(), lineList, idProcessingMap));
+        }
+
 
         if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy) && datasetId != null) {
             lineRefSetVM = lineRefSetVM.stream()
@@ -116,6 +129,19 @@ public class DiscoveryLinesOutbound {
         }
 
         return results;
+    }
+
+    private Set<String> extractAndTransformLineId(String datasetId, Set<String> lineIds, Map<String, IdProcessingParameters> idProcessingMap) {
+        if (!idProcessingMap.containsKey(datasetId)) {
+            //no idProcessingMap, no transformation
+            return lineIds;
+        }
+
+        IdProcessingParameters idProcessing = idProcessingMap.get(datasetId);
+
+        return lineIds.stream()
+                .map(idProcessing::applyTransformationToString)
+                .collect(Collectors.toSet());
     }
 
     /**

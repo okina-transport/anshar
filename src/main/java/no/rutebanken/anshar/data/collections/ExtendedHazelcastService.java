@@ -20,15 +20,14 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.hazelcast.cluster.Cluster;
 import com.hazelcast.cluster.Member;
 import com.hazelcast.collection.ISet;
-import com.hazelcast.config.*;
+import com.hazelcast.config.CacheDeserializedValues;
+import com.hazelcast.config.MapConfig;
+import com.hazelcast.config.SerializerConfig;
 import com.hazelcast.core.DistributedObject;
-import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.LifecycleEvent;
 import com.hazelcast.map.IMap;
-import com.hazelcast.query.Predicate;
 import com.hazelcast.replicatedmap.ReplicatedMap;
-import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.RequestorRefStats;
 import no.rutebanken.anshar.data.SiriObjectStorageKey;
 import no.rutebanken.anshar.routes.outbound.OutboundSubscriptionSetup;
@@ -39,7 +38,6 @@ import org.json.simple.JSONObject;
 import org.rutebanken.hazelcasthelper.service.HazelCastService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -47,9 +45,7 @@ import org.springframework.stereotype.Service;
 import uk.org.siri.siri20.*;
 
 import javax.annotation.PreDestroy;
-import java.lang.invoke.SerializedLambda;
 import java.math.BigInteger;
-import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -147,6 +143,16 @@ public class ExtendedHazelcastService extends HazelCastService {
     @Bean
     public IMap<SiriObjectStorageKey, MonitoredStopVisit> getMonitoredStopVisits() {
         return hazelcast.getMap("anshar.sm");
+    }
+
+    @Bean
+    public IMap<String, Set<String>> getDiscoveryStops() {
+        return hazelcast.getMap("anshar.discovery.stops");
+    }
+
+    @Bean
+    public IMap<String, Set<String>> getDiscoveryLines() {
+        return hazelcast.getMap("anshar.discovery.lines");
     }
 
     @Bean

@@ -2,6 +2,7 @@ package no.rutebanken.anshar.gtfsrt.readers;
 
 import com.google.transit.realtime.GtfsRealtime;
 import net.logstash.logback.encoder.org.apache.commons.lang3.StringUtils;
+import no.rutebanken.anshar.data.DiscoveryCache;
 import no.rutebanken.anshar.gtfsrt.mappers.VehiclePositionMapper;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -46,6 +47,9 @@ public class VehiclePositionReader extends AbstractSwallower {
 
     @Produce(uri = "direct:send.vm.to.realtime.server")
     protected ProducerTemplate gtfsrtVmProducer;
+
+    @Autowired
+    private DiscoveryCache discoveryCache;
 
 
     public VehiclePositionReader() {
@@ -149,6 +153,8 @@ public class VehiclePositionReader extends AbstractSwallower {
             if (subscriptionManager.isGTFSRTSubscriptionExisting(prefix + datasetId + "_" + subscriptionId))
                 //A subscription is already existing for this Line. No need to create one
                 continue;
+
+            discoveryCache.addLine(datasetId, subscriptionId);
             createNewSubscription(subscriptionId, datasetId);
             subscriptionManager.addGTFSRTSubscription(prefix + datasetId + "_" + subscriptionId);
         }

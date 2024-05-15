@@ -292,7 +292,7 @@ public class Utils {
      * @param datasetList
      * @return
      */
-    public Map<String, IdProcessingParameters> buildIdProcessingMap(List<String> datasetList, ObjectType objectType) {
+    public Map<String, IdProcessingParameters> buildIdProcessingMap(Set<String> datasetList, ObjectType objectType) {
         Map<String, IdProcessingParameters> resultMap = new HashMap<>();
 
         for (String dataset : datasetList) {

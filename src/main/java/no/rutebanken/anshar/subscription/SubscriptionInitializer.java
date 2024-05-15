@@ -17,6 +17,7 @@ package no.rutebanken.anshar.subscription;
 
 import com.google.common.base.Preconditions;
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.data.DiscoveryCache;
 import no.rutebanken.anshar.routes.siri.*;
 import no.rutebanken.anshar.routes.siri.adapters.Mapping;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
@@ -52,6 +53,9 @@ public class SubscriptionInitializer implements CamelContextAware {
 
     @Autowired
     private AnsharConfiguration configuration;
+
+    @Autowired
+    private DiscoveryCache discoveryCache;
 
     private CamelContext camelContext;
 
@@ -120,6 +124,15 @@ public class SubscriptionInitializer implements CamelContextAware {
             logger.info("Initializing {} subscriptions", activeSubscriptions.size());
             // Validation and consistency-verification
             for (SubscriptionSetup subscriptionSetup : activeSubscriptions) {
+
+
+                if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
+                    discoveryCache.addStops(subscriptionSetup.getDatasetId(), subscriptionSetup.getStopMonitoringRefValues());
+                }
+
+                if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.VEHICLE_MONITORING)) {
+                    discoveryCache.addLines(subscriptionSetup.getDatasetId(), subscriptionSetup.getLineRefValues());
+                }
 
                 subscriptionSetup.setAddress(configuration.getInboundUrl());
 
