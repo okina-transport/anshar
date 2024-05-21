@@ -383,6 +383,8 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
     @Test
     public void stopPointsDiscoveryTest() throws JAXBException, IOException {
+        discoveryCache.clearDiscoveryStops();
+
         SubscriptionSetup smSubscription1 = getSmSubscription("tst");
         smSubscription1.getStopMonitoringRefValues().add("sp1");
         smSubscription1.setDatasetId("DAT1");
