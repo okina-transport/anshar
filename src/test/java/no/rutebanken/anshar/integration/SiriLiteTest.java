@@ -60,6 +60,9 @@ public class SiriLiteTest extends BaseHttpTest {
     @Autowired
     private SubscriptionManager subscriptionManager;
 
+    @Autowired
+    private DiscoveryCache discoveryCache;
+
 
     private String lineRef1 = "TEST:Line:1";
     private String lineRef2 = "TEST:Line:2";
@@ -206,6 +209,10 @@ public class SiriLiteTest extends BaseHttpTest {
 
     @Test
     public void testStopDiscoveryJSON() {
+
+        discoveryCache.addStop("DAT1", stopReference1);
+        discoveryCache.addStop("DAT1", stopReference2);
+
         given()
                 .header("useOriginalId", "true")
                 .header("datasetId", "DAT1")

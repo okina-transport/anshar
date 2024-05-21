@@ -89,6 +89,9 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     @Autowired
     private SubscriptionConfig subscriptionConfig;
 
+    @Autowired
+    private DiscoveryCache discoveryCache;
+
 
     @BeforeEach
     public void init() {
@@ -389,6 +392,8 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         smSubscription2.getStopMonitoringRefValues().add("sp2");
         smSubscription2.setDatasetId("DAT1");
         subscriptionManager.addSubscription(smSubscription2.getSubscriptionId(), smSubscription2);
+        discoveryCache.addStop("DAT1", "sp1");
+        discoveryCache.addStop("DAT1", "sp2");
 
         ClassLoader classLoader = getClass().getClassLoader();
         File file = new File("src/test/resources/discoveryTest/stop_points_discovery_test.xml");
@@ -439,21 +444,27 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
     @Test
     public void linesDiscoveryTest() throws JAXBException, IOException {
-        estimatedTimetables.clearAll();
-        SubscriptionSetup vmSubscription1 = getVmSubscription("tst");
-        vmSubscription1.getLineRefValues().add("line1");
-        subscriptionManager.addSubscription(vmSubscription1.getSubscriptionId(), vmSubscription1);
+//        estimatedTimetables.clearAll();
+//        SubscriptionSetup vmSubscription1 = getVmSubscription("tst");
+//        vmSubscription1.getLineRefValues().add("line1");
+//        subscriptionManager.addSubscription(vmSubscription1.getSubscriptionId(), vmSubscription1);
+//
+//        SubscriptionSetup vmSubscription2 = getVmSubscription("tst");
+//        vmSubscription2.getLineRefValues().add("line2");
+//        subscriptionManager.addSubscription(vmSubscription2.getSubscriptionId(), vmSubscription2);
+//
+//        SubscriptionSetup vmSubscription3 = getVmSubscription("tst");
+//        vmSubscription3.getLineRefValues().add("line3");
+//        subscriptionManager.addSubscription(vmSubscription3.getSubscriptionId(), vmSubscription3);
+//
+//        estimatedTimetables.add(getVmSubscription("tst").getDatasetId(), createEstimatedVehicleJourney("line3", "vehicle3", 0, 30, ZonedDateTime.now().plusHours(1), true));
+//        estimatedTimetables.add(getVmSubscription("tst").getDatasetId(), createEstimatedVehicleJourney("line4", "vehicle4", 0, 30, ZonedDateTime.now().plusHours(1), true));
+//
 
-        SubscriptionSetup vmSubscription2 = getVmSubscription("tst");
-        vmSubscription2.getLineRefValues().add("line2");
-        subscriptionManager.addSubscription(vmSubscription2.getSubscriptionId(), vmSubscription2);
-
-        SubscriptionSetup vmSubscription3 = getVmSubscription("tst");
-        vmSubscription3.getLineRefValues().add("line3");
-        subscriptionManager.addSubscription(vmSubscription3.getSubscriptionId(), vmSubscription3);
-
-        estimatedTimetables.add(getVmSubscription("tst").getDatasetId(), createEstimatedVehicleJourney("line3", "vehicle3", 0, 30, ZonedDateTime.now().plusHours(1), true));
-        estimatedTimetables.add(getVmSubscription("tst").getDatasetId(), createEstimatedVehicleJourney("line4", "vehicle4", 0, 30, ZonedDateTime.now().plusHours(1), true));
+        discoveryCache.addLine("DAT1", "line1");
+        discoveryCache.addLine("DAT1", "line2");
+        discoveryCache.addLine("DAT1", "line3");
+        discoveryCache.addLine("DAT1", "line4");
 
         ClassLoader classLoader = getClass().getClassLoader();
         File file = new File("src/test/resources/discoveryTest/lines_discovery_test.xml");
@@ -492,6 +503,12 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         estimatedTimetables.add(getVmSubscription("tst3").getDatasetId(), createEstimatedVehicleJourney("line3", "vehicle3", 0, 30, ZonedDateTime.now().plusHours(1), true));
         estimatedTimetables.add(getVmSubscription("tst4").getDatasetId(), createEstimatedVehicleJourney("line4", "vehicle4", 0, 30, ZonedDateTime.now().plusHours(1), true));
+
+
+        discoveryCache.addLine("tst1", "line1");
+        discoveryCache.addLine("tst2", "line2");
+        discoveryCache.addLine("tst3", "line3");
+        discoveryCache.addLine("tst4", "line4");
 
         ClassLoader classLoader = getClass().getClassLoader();
         File file = new File("src/test/resources/discoveryTest/lines_discovery_test.xml");

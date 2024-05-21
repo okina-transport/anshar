@@ -18,38 +18,28 @@ package no.rutebanken.anshar.siri;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
-import org.apache.commons.lang3.NotImplementedException;
 import org.junit.jupiter.api.Test;
-import uk.org.siri.siri20.EstimatedTimetableRequestStructure;
-import uk.org.siri.siri20.EstimatedTimetableSubscriptionStructure;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.SituationExchangeRequestStructure;
-import uk.org.siri.siri20.SituationExchangeSubscriptionStructure;
-import uk.org.siri.siri20.StopMonitoringRequestStructure;
-import uk.org.siri.siri20.StopMonitoringSubscriptionStructure;
-import uk.org.siri.siri20.VehicleMonitoringRequestStructure;
-import uk.org.siri.siri20.VehicleMonitoringSubscriptionStructure;
+import uk.org.siri.siri20.*;
 
 import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class SiriObjectFactoryTest {
 
     private final int hoursUntilInitialTermination = 1;
 
     @Test
-    public void testCreateVMSubscription(){
+    public void testCreateVMSubscription() {
 
         SubscriptionSetup subscriptionSetup = createSubscriptionSetup(SiriDataType.VEHICLE_MONITORING,
                 SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE,
                 UUID.randomUUID().toString());
+
+        subscriptionSetup.getLineRefValues().add("line1");
 
         Siri vmSubscriptionRequest = SiriObjectFactory.createSubscriptionRequest(subscriptionSetup);
         assertNotNull(vmSubscriptionRequest.getSubscriptionRequest());
@@ -61,23 +51,23 @@ public class SiriObjectFactoryTest {
         VehicleMonitoringSubscriptionStructure subscription = subscriptionRequests.get(0);
         assertNotNull(subscription.getSubscriptionIdentifier());
         assertNotNull(subscription.getSubscriptionIdentifier().getValue());
-        assertEquals(subscriptionSetup.getSubscriptionId(), subscription.getSubscriptionIdentifier().getValue());
+        assertEquals(subscriptionSetup.getSubscriptionId() + "-0", subscription.getSubscriptionIdentifier().getValue());
 
         ZonedDateTime initialTerminationTime = subscription.getInitialTerminationTime();
 
         assertTrue(
-            ZonedDateTime.now().plusHours(hoursUntilInitialTermination).minusMinutes(1).isBefore(initialTerminationTime),
-            "Initial terminationtime has not been calculated correctly"
+                ZonedDateTime.now().plusHours(hoursUntilInitialTermination).minusMinutes(1).isBefore(initialTerminationTime),
+                "Initial terminationtime has not been calculated correctly"
         );
         assertTrue(
-            ZonedDateTime.now().plusHours(hoursUntilInitialTermination).plusMinutes(1).isAfter(initialTerminationTime),
-            "Initial terminationtime has not been calculated correctly"
+                ZonedDateTime.now().plusHours(hoursUntilInitialTermination).plusMinutes(1).isAfter(initialTerminationTime),
+                "Initial terminationtime has not been calculated correctly"
         );
 
     }
 
     @Test
-    public void testCreateVMServiceRequest(){
+    public void testCreateVMServiceRequest() {
 
         SubscriptionSetup subscriptionSetup = createSubscriptionSetup(SiriDataType.VEHICLE_MONITORING,
                 SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE,
@@ -98,7 +88,7 @@ public class SiriObjectFactoryTest {
     }
 
     @Test
-    public void testCreateSXSubscription(){
+    public void testCreateSXSubscription() {
 
         SubscriptionSetup subscriptionSetup = createSubscriptionSetup(SiriDataType.SITUATION_EXCHANGE,
                 SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE,
@@ -120,24 +110,24 @@ public class SiriObjectFactoryTest {
         ZonedDateTime initialTerminationTime = subscription.getInitialTerminationTime();
 
         assertTrue(
-            ZonedDateTime.now().plusHours(hoursUntilInitialTermination).minusMinutes(1).isBefore(initialTerminationTime),
-            "Initial terminationtime has not been calculated correctly"
+                ZonedDateTime.now().plusHours(hoursUntilInitialTermination).minusMinutes(1).isBefore(initialTerminationTime),
+                "Initial terminationtime has not been calculated correctly"
         );
         assertTrue(
-            ZonedDateTime.now().plusHours(hoursUntilInitialTermination).plusMinutes(1).isAfter(initialTerminationTime),
-            "Initial terminationtime has not been calculated correctly"
+                ZonedDateTime.now().plusHours(hoursUntilInitialTermination).plusMinutes(1).isAfter(initialTerminationTime),
+                "Initial terminationtime has not been calculated correctly"
         );
-
 
 
     }
 
     @Test
-    public void testCreateSMSubscription(){
+    public void testCreateSMSubscription() {
 
         SubscriptionSetup subscriptionSetup = createSubscriptionSetup(SiriDataType.STOP_MONITORING,
                 SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE,
                 UUID.randomUUID().toString());
+        subscriptionSetup.getStopMonitoringRefValues().add("stopPoint1");
 
         Siri smSubscriptionRequest = SiriObjectFactory.createSubscriptionRequest(subscriptionSetup);
         assertNotNull(smSubscriptionRequest.getSubscriptionRequest());
@@ -150,17 +140,17 @@ public class SiriObjectFactoryTest {
         StopMonitoringSubscriptionStructure subscription = subscriptionRequests.get(0);
         assertNotNull(subscription.getSubscriptionIdentifier());
         assertNotNull(subscription.getSubscriptionIdentifier().getValue());
-        assertEquals(subscriptionSetup.getSubscriptionId(), subscription.getSubscriptionIdentifier().getValue());
+        assertEquals(subscriptionSetup.getSubscriptionId() + "-0", subscription.getSubscriptionIdentifier().getValue());
 
         ZonedDateTime initialTerminationTime = subscription.getInitialTerminationTime();
 
-        assertTrue(ZonedDateTime.now().plusHours(hoursUntilInitialTermination).minusMinutes(1).isBefore(initialTerminationTime),"Initial terminationtime has not been calculated correctly");
-        assertTrue( ZonedDateTime.now().plusHours(hoursUntilInitialTermination).plusMinutes(1).isAfter(initialTerminationTime),"Initial terminationtime has not been calculated correctly");
+        assertTrue(ZonedDateTime.now().plusHours(hoursUntilInitialTermination).minusMinutes(1).isBefore(initialTerminationTime), "Initial terminationtime has not been calculated correctly");
+        assertTrue(ZonedDateTime.now().plusHours(hoursUntilInitialTermination).plusMinutes(1).isAfter(initialTerminationTime), "Initial terminationtime has not been calculated correctly");
 
     }
 
     @Test
-    public void testCreateSubscriptionCustomAddressfield(){
+    public void testCreateSubscriptionCustomAddressfield() {
 
         SubscriptionSetup sxSubscriptionSetup = createSubscriptionSetup(SiriDataType.SITUATION_EXCHANGE,
                 SubscriptionSetup.SubscriptionMode.SUBSCRIBE,
@@ -204,7 +194,7 @@ public class SiriObjectFactoryTest {
     }
 
     @Test
-    public void testCreateSXServiceRequest(){
+    public void testCreateSXServiceRequest() {
 
         SubscriptionSetup subscriptionSetup = createSubscriptionSetup(SiriDataType.SITUATION_EXCHANGE,
                 SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE,
@@ -225,7 +215,7 @@ public class SiriObjectFactoryTest {
     }
 
     @Test
-    public void testCreateETSubscription(){
+    public void testCreateETSubscription() {
 
         SubscriptionSetup subscriptionSetup = createSubscriptionSetup(SiriDataType.ESTIMATED_TIMETABLE,
                 SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE,
@@ -247,19 +237,19 @@ public class SiriObjectFactoryTest {
         ZonedDateTime initialTerminationTime = subscription.getInitialTerminationTime();
 
         assertTrue(
-            ZonedDateTime.now().plusHours(hoursUntilInitialTermination).minusMinutes(1).isBefore(initialTerminationTime),
-            "Initial terminationtime has not been calculated correctly"
+                ZonedDateTime.now().plusHours(hoursUntilInitialTermination).minusMinutes(1).isBefore(initialTerminationTime),
+                "Initial terminationtime has not been calculated correctly"
         );
         assertTrue(
-            ZonedDateTime.now().plusHours(hoursUntilInitialTermination).plusMinutes(1).isAfter(initialTerminationTime),
-            "Initial terminationtime has not been calculated correctly"
+                ZonedDateTime.now().plusHours(hoursUntilInitialTermination).plusMinutes(1).isAfter(initialTerminationTime),
+                "Initial terminationtime has not been calculated correctly"
         );
 
 
     }
 
     @Test
-    public void testCreateETServiceRequest(){
+    public void testCreateETServiceRequest() {
 
         SubscriptionSetup subscriptionSetup = createSubscriptionSetup(SiriDataType.ESTIMATED_TIMETABLE,
                 SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE,
@@ -281,11 +271,13 @@ public class SiriObjectFactoryTest {
 
 
     @Test
-    public void testCreateSMServiceRequest(){
+    public void testCreateSMServiceRequest() {
 
         SubscriptionSetup subscriptionSetup = createSubscriptionSetup(SiriDataType.STOP_MONITORING,
                 SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE,
                 UUID.randomUUID().toString());
+
+        subscriptionSetup.getStopMonitoringRefValues().add("stopPoint1");
 
         Siri smRequest = SiriObjectFactory.createServiceRequest(subscriptionSetup);
         assertNull(smRequest.getSubscriptionRequest());
@@ -302,7 +294,7 @@ public class SiriObjectFactoryTest {
     }
 
     @Test
-    public void testCreateTerminateSubscriptionRequest(){
+    public void testCreateTerminateSubscriptionRequest() {
 
         SubscriptionSetup subscriptionSetup = createSubscriptionSetup(SiriDataType.VEHICLE_MONITORING,
                 SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE,
@@ -313,7 +305,7 @@ public class SiriObjectFactoryTest {
     }
 
     @Test
-    public void testCreateNullTerminateSubscriptionRequest(){
+    public void testCreateNullTerminateSubscriptionRequest() {
 
         Siri request = SiriObjectFactory.createTerminateSubscriptionRequest(null);
         assertNull(request);

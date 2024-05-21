@@ -428,6 +428,7 @@ public class SiriHandler {
             if (timingTracer.getTotalTime() > 3000) {
                 logger.warn(timingTracer.toString());
             }
+            return results;
         }
         return null;
     }
