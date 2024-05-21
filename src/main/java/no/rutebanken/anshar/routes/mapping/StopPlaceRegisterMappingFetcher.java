@@ -56,9 +56,9 @@ public class StopPlaceRegisterMappingFetcher {
         return new HashMap<>();
     }
 
-    public Map<String, Pair<String,String>> fetchStopPlaceMapping(String name) {
+    public Map<String, Pair<String, String>> fetchStopPlaceMapping(String name) {
 
-        Map<String, Pair<String,String>> stopPlaceMappings = new HashMap<>();
+        Map<String, Pair<String, String>> stopPlaceMappings = new HashMap<>();
         if (name != null && !name.isEmpty()) {
 
             long t1 = System.currentTimeMillis();
@@ -74,7 +74,12 @@ public class StopPlaceRegisterMappingFetcher {
                     StringTokenizer tokenizer = new StringTokenizer(line, ",");
                     String id = tokenizer.nextToken();
                     String generatedId = tokenizer.nextToken();
-                    String stopName = tokenizer.nextToken();
+
+                    String stopName = null;
+                    if (tokenizer.hasMoreTokens()) {
+                        stopName = tokenizer.nextToken();
+                    }
+
 
                     if (stopPlaceMappings.containsKey(id)) {
                         duplicates.increment();
