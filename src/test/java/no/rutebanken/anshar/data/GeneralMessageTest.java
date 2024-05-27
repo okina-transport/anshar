@@ -1,6 +1,7 @@
 package no.rutebanken.anshar.data;
 
 import no.rutebanken.anshar.api.GtfsRTApi;
+import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
@@ -105,7 +106,12 @@ public class GeneralMessageTest extends SpringBootBaseTest {
         InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
 
 
-        Siri response = handler.handleIncomingSiri(null, xml, "DATASET1", SiriHandler.getIdMappingPolicy("true", "false"), -1, null);
+        IncomingSiriParameters params = new IncomingSiriParameters();
+        params.setIncomingSiriStream(xml);
+        params.setDatasetId("DATASET1");
+        params.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("true", "false"));
+        params.setMaxSize(-1);
+        Siri response = handler.handleIncomingSiri(params);
         assertNotNull(response.getServiceDelivery());
 
         assertNotNull(response.getServiceDelivery().getGeneralMessageDeliveries());
@@ -268,7 +274,13 @@ public class GeneralMessageTest extends SpringBootBaseTest {
         InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
         ;
 
-        Siri response = handler.handleIncomingSiri(null, xml, "TEST", SiriHandler.getIdMappingPolicy("false", "true"), -1, null);
+        IncomingSiriParameters params = new IncomingSiriParameters();
+        params.setIncomingSiriStream(xml);
+        params.setDatasetId("TEST");
+        params.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("false", "true"));
+        params.setMaxSize(-1);
+
+        Siri response = handler.handleIncomingSiri(params);
         assertNotNull(response);
 
         //Check that response contains the general Message + the general Message cancellation

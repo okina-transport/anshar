@@ -16,6 +16,7 @@
 package no.rutebanken.anshar.routes.siri;
 
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.data.util.CustomSiriXml;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
@@ -267,7 +268,16 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
 
                     boolean soapTransformation = TRANSFORM_SOAP.equals(p.getIn().getHeader(TRANSFORM_SOAP));
 
-                    Siri response = handler.handleIncomingSiri(null, xml, datasetId, SiriHandler.getIdMappingPolicy(useOriginalId, (String) p.getIn().getHeader(PARAM_USE_ALT_ID)), -1, clientTrackingName, soapTransformation);
+                    IncomingSiriParameters incomingSiriParameters = new IncomingSiriParameters();
+                    incomingSiriParameters.setIncomingSiriStream(xml);
+                    incomingSiriParameters.setDatasetId(datasetId);
+                    incomingSiriParameters.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy(useOriginalId, (String) p.getIn().getHeader(PARAM_USE_ALT_ID)));
+                    incomingSiriParameters.setMaxSize(-1);
+                    incomingSiriParameters.setClientTrackingName(clientTrackingName);
+                    incomingSiriParameters.setSoapTransformation(soapTransformation);
+                    incomingSiriParameters.setUseOriginalId(Boolean.valueOf(useOriginalId));
+
+                    Siri response = handler.handleIncomingSiri(incomingSiriParameters);
                     if (response != null) {
                         logger.info("Returning SubscriptionResponse");
 
@@ -341,7 +351,17 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                         useOriginalId = Boolean.toString(defaultUseOriginalId);
                     }
 
-                    Siri response = handler.handleIncomingSiri(null, msg.getBody(InputStream.class), datasetId, excludedIdList, SiriHandler.getIdMappingPolicy(useOriginalId, useAltId), maxSize, clientTrackingName, false);
+                    IncomingSiriParameters incomingSiriParameters = new IncomingSiriParameters();
+                    incomingSiriParameters.setIncomingSiriStream(msg.getBody(InputStream.class));
+                    incomingSiriParameters.setDatasetId(datasetId);
+                    incomingSiriParameters.setExcludedDatasetIdList(excludedIdList);
+                    incomingSiriParameters.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy(useOriginalId, useAltId));
+                    incomingSiriParameters.setMaxSize(maxSize);
+                    incomingSiriParameters.setClientTrackingName(clientTrackingName);
+                    incomingSiriParameters.setSoapTransformation(false);
+                    incomingSiriParameters.setUseOriginalId(Boolean.valueOf(useOriginalId));
+
+                    Siri response = handler.handleIncomingSiri(incomingSiriParameters);
                     if (response != null) {
                         logger.debug("Found ServiceRequest-response, streaming response");
 

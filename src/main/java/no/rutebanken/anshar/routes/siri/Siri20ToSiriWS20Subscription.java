@@ -17,6 +17,7 @@ package no.rutebanken.anshar.routes.siri;
 
 import com.sun.xml.bind.marshaller.NamespacePrefixMapper;
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.helpers.SiriRequestFactory;
@@ -94,7 +95,7 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
 //                .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .process(p -> {
                     InputStream body = p.getIn().getBody(InputStream.class);
-                    handler.handleIncomingSiri(subscriptionSetup.getSubscriptionId(), body);
+                    handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), body));
                 })
                 .choice()
                 .when(p -> subscriptionSetup.isDataSupplyRequestForInitialDelivery())
@@ -133,7 +134,7 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
                         if ("200".equals(responseCode)) {
                             InputStream body = p.getIn().getBody(InputStream.class);
                             if (body != null && body.available() > 0) {
-                                handler.handleIncomingSiri(subscriptionSetup.getSubscriptionId(), body);
+                                handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), body));
                             }
                         } else {
                             logger.info("CheckStatus NOT OK - Remote service is down [{}]",
@@ -180,7 +181,7 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
                 .process(p -> {
                     InputStream body = p.getIn().getBody(InputStream.class);
                     if (body != null && body.available() > 0) {
-                        handler.handleIncomingSiri(subscriptionSetup.getSubscriptionId(), body);
+                        handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), body));
                     }
                 })
                 .routeId("cancel.ws.20.subscription." + subscriptionSetup.getVendor())

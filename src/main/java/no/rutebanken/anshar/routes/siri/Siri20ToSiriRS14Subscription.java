@@ -16,6 +16,7 @@
 package no.rutebanken.anshar.routes.siri;
 
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.helpers.SiriRequestFactory;
@@ -49,8 +50,8 @@ public class Siri20ToSiriRS14Subscription extends SiriSubscriptionRouteBuilder {
 
     @Override
     public void configure() throws Exception {
-    	
-    	
+
+
         Map<RequestType, String> urlMap = subscriptionSetup.getUrlMap();
 
         SiriRequestFactory helper = new SiriRequestFactory(subscriptionSetup);
@@ -68,16 +69,16 @@ public class Siri20ToSiriRS14Subscription extends SiriSubscriptionRouteBuilder {
                 .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
                 .process(addCustomHeaders())
-                .process(p->{
-                    logger.info("Subscription request content:"+p.getIn().getBody());
+                .process(p -> {
+                    logger.info("Subscription request content:" + p.getIn().getBody());
                 })
                 .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .doTry()
-                    .to(getCamelUrl(urlMap.get(RequestType.SUBSCRIBE), getTimeout()))
-                    .to("log:received response:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .to(getCamelUrl(urlMap.get(RequestType.SUBSCRIBE), getTimeout()))
+                .to("log:received response:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .doCatch(ConnectException.class)
-                    .log("Caught ConnectException - subscription not started - will try again: "+ subscriptionSetup.toString())
-                    .process(p -> p.getOut().setBody(null))
+                .log("Caught ConnectException - subscription not started - will try again: " + subscriptionSetup.toString())
+                .process(p -> p.getOut().setBody(null))
                 .endDoTry()
                 .process(p -> {
 
@@ -89,10 +90,10 @@ public class Siri20ToSiriRS14Subscription extends SiriSubscriptionRouteBuilder {
                     InputStream body = p.getIn().getBody(InputStream.class);
 
                     if (body != null && body.available() > 0) {
-                        handler.handleIncomingSiri(subscriptionSetup.getSubscriptionId(), body);
+                        handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), body));
                     }
                 })
-                .routeId("start.rs.14.subscription."+subscriptionSetup.getVendor())
+                .routeId("start.rs.14.subscription." + subscriptionSetup.getVendor())
         ;
 
         //Cancel subscription
@@ -116,10 +117,13 @@ public class Siri20ToSiriRS14Subscription extends SiriSubscriptionRouteBuilder {
                     InputStream body = p.getIn().getBody(InputStream.class);
                     logger.info("Response body [{}]", body);
                     if (body != null && body.available() > 0) {
-                        handler.handleIncomingSiri(subscriptionSetup.getSubscriptionId(), body);
+                        IncomingSiriParameters incomingSiriParameters = new IncomingSiriParameters();
+                        incomingSiriParameters.setIncomingSiriStream(body);
+                        incomingSiriParameters.setDatasetId(subscriptionSetup.getDatasetId());
+                        handler.handleIncomingSiri(incomingSiriParameters);
                     }
                 })
-                .routeId("cancel.rs.14.subscription."+subscriptionSetup.getVendor())
+                .routeId("cancel.rs.14.subscription." + subscriptionSetup.getVendor())
         ;
         initTriggerRoutes();
     }

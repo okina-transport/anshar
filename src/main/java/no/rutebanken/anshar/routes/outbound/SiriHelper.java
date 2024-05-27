@@ -20,6 +20,7 @@ import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.*;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
+import no.rutebanken.anshar.routes.siri.handlers.outbound.SituationExchangeOutbound;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
@@ -65,7 +66,11 @@ public class SiriHelper {
     @Autowired
     private SubscriptionConfig subscriptionConfig;
 
+    @Autowired
+    private SituationExchangeOutbound situationExchangeOutbound;
+
     private final SiriObjectFactory siriObjectFactory;
+
 
     public SiriHelper(@Autowired SiriObjectFactory siriObjectFactory) {
         this.siriObjectFactory = siriObjectFactory;
@@ -260,9 +265,9 @@ public class SiriHelper {
         switch (subscriptionRequest.getSubscriptionType()) {
 
             case SITUATION_EXCHANGE:
-                Collection<PtSituationElement> situationElementList = situations.getAll(subscriptionRequest.getDatasetId());
-                logger.info("Initial SX-delivery: {} elements", situationElementList.size());
-                delivery = siriObjectFactory.createSXServiceDelivery(situationElementList);
+                OutboundIdMappingPolicy policy = subscriptionRequest.isUseOriginalId() ? OutboundIdMappingPolicy.ORIGINAL_ID : OutboundIdMappingPolicy.DEFAULT;
+                delivery = situationExchangeOutbound.createServiceDelivery(subscriptionRequest.getRequestorRef(), subscriptionRequest.getDatasetId(), subscriptionRequest.getClientTrackingName(), policy, -1);
+                logger.info("Initial SX-delivery: {} elements", delivery.getServiceDelivery().getSituationExchangeDeliveries().size());
                 break;
 
             case VEHICLE_MONITORING:

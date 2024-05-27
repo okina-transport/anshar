@@ -92,8 +92,10 @@ public class OutboundSubscriptionTest extends SpringBootBaseTest {
                 "</Siri>";
 
         boolean soapTransformation = false;
-        final Siri siriSX = serverSubscriptionManager.handleMultipleSubscriptionsRequest(SiriXml.parseXml(sxSubscription).getSubscriptionRequest(), null, null, null, soapTransformation);
-        final Siri siriET = serverSubscriptionManager.handleMultipleSubscriptionsRequest(SiriXml.parseXml(etSubscription).getSubscriptionRequest(), null, null, null, soapTransformation);
+
+
+        final Siri siriSX = serverSubscriptionManager.handleMultipleSubscriptionsRequest(SiriXml.parseXml(sxSubscription).getSubscriptionRequest(), null, null, null, soapTransformation, true);
+        final Siri siriET = serverSubscriptionManager.handleMultipleSubscriptionsRequest(SiriXml.parseXml(etSubscription).getSubscriptionRequest(), null, null, null, soapTransformation, true);
 
         assertNotNull(siriSX);
         assertNotNull(siriET);
