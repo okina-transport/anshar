@@ -17,6 +17,7 @@ package no.rutebanken.anshar.data;
 
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
@@ -254,8 +255,13 @@ public class SituationsTest extends SpringBootBaseTest {
 
         InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
 
+        IncomingSiriParameters params = new IncomingSiriParameters();
+        params.setIncomingSiriStream(xml);
+        params.setDatasetId("DATASET1");
+        params.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("true", "false"));
+        params.setMaxSize(-1);
 
-        Siri response = handler.handleIncomingSiri(null, xml, "DATASET1", SiriHandler.getIdMappingPolicy("true", "false"), -1, null);
+        Siri response = handler.handleIncomingSiri(params);
 
 
         assertNotNull(response.getServiceDelivery());

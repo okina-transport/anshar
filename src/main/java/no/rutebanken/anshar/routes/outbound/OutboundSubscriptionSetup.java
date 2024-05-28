@@ -42,13 +42,14 @@ public class OutboundSubscriptionSetup implements Serializable {
     private long changeBeforeUpdates;
     private boolean incrementalUpdates;
     private long updateInterval;
+    private boolean useOriginalId;
 
     private boolean isSOAPSubscription;
 
     public OutboundSubscriptionSetup(ZonedDateTime requestTimestamp, SiriDataType subscriptionType, String address, long heartbeatInterval,
                                      boolean incrementalUpdates, long changeBeforeUpdates, long updateInterval,
                                      Map<Class, Set<String>> filterMap, List<ValueAdapter> valueAdapters,
-                                     String subscriptionId, String requestorRef, ZonedDateTime initialTerminationTime, String datasetId, String clientTrackingName) {
+                                     String subscriptionId, String requestorRef, ZonedDateTime initialTerminationTime, String datasetId, String clientTrackingName, boolean useOriginalId) {
         this.requestTimestamp = requestTimestamp;
         this.subscriptionType = subscriptionType;
         this.address = address;
@@ -63,6 +64,7 @@ public class OutboundSubscriptionSetup implements Serializable {
         this.initialTerminationTime = initialTerminationTime;
         this.datasetId = datasetId;
         this.clientTrackingName = clientTrackingName;
+        this.useOriginalId = useOriginalId;
     }
 
     OutboundSubscriptionSetup(SiriDataType subscriptionType, String address, int timeToLive, List<ValueAdapter> outboundAdapters, String subscriptionId) {
@@ -143,6 +145,10 @@ public class OutboundSubscriptionSetup implements Serializable {
 
     public void setSOAPSubscription(boolean SOAPSubscription) {
         isSOAPSubscription = SOAPSubscription;
+    }
+
+    public boolean isUseOriginalId() {
+        return useOriginalId;
     }
 
     public String toString() {

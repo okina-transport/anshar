@@ -27,7 +27,7 @@
 
     <groupId>no.rutebanken.anshar</groupId>
     <artifactId>anshar</artifactId>
-    <version>1.4.4-mobi-iti-SNAPSHOT</version>
+    <version>1.4.5-mobi-iti-SNAPSHOT</version>
     <packaging>jar</packaging>
 
 
@@ -135,6 +135,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
             <version>${spring-boot.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mock-server</groupId>
+            <artifactId>mockserver-netty</artifactId>
+            <version>5.15.0</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.lettuce</groupId>

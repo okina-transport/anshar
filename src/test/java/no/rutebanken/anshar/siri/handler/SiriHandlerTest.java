@@ -17,6 +17,7 @@ package no.rutebanken.anshar.siri.handler;
 
 import com.hazelcast.map.IMap;
 import no.rutebanken.anshar.api.GtfsRTApi;
+import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.data.*;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
@@ -128,7 +129,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         try {
             SubscriptionSetup sxSubscription = getSxSubscription("tst");
             subscriptionManager.addSubscription(sxSubscription.getSubscriptionId(), sxSubscription);
-            handler.handleIncomingSiri(sxSubscription.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes()));
+            handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(sxSubscription.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes())));
         } catch (Throwable t) {
             fail("Handling empty response caused exception");
         }
@@ -158,7 +159,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         try {
             SubscriptionSetup etSubscription = getEtSubscription("tst");
             subscriptionManager.addSubscription(etSubscription.getSubscriptionId(), etSubscription);
-            handler.handleIncomingSiri(etSubscription.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes()));
+            handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(etSubscription.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes())));
         } catch (Throwable t) {
             fail("Handling empty response caused exception");
         }
@@ -187,7 +188,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         try {
             SubscriptionSetup vmSubscription = getVmSubscription("tst");
             subscriptionManager.addSubscription(vmSubscription.getSubscriptionId(), vmSubscription);
-            handler.handleIncomingSiri(vmSubscription.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes()));
+            handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(vmSubscription.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes())));
         } catch (Throwable t) {
             fail("Handling empty response caused exception");
         }
@@ -216,7 +217,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
             SubscriptionSetup smSubscription = getSmSubscription("tst");
             smSubscription.getStopMonitoringRefValues().add("sp3");
             subscriptionManager.addSubscription(smSubscription.getSubscriptionId(), smSubscription);
-            handler.handleIncomingSiri(smSubscription.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes()));
+            handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(smSubscription.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes())));
         } catch (Throwable t) {
             fail("Handling empty response caused exception");
         }
@@ -246,7 +247,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
             SubscriptionSetup fmSubscription = getFmSubscription("tst");
             fmSubscription.getStopMonitoringRefValues().add("sp3");
             subscriptionManager.addSubscription(fmSubscription.getSubscriptionId(), fmSubscription);
-            handler.handleIncomingSiri(fmSubscription.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes()));
+            handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(fmSubscription.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes())));
         } catch (Throwable t) {
             fail("Handling empty response caused exception");
         }
@@ -266,7 +267,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         File file = new File("src/test/resources/PT_EVENT_CG38_siri-sx_dynamic.xml");
 
         try {
-            handler.handleIncomingSiri(sxSubscription.getSubscriptionId(), new ByteArrayInputStream(FileUtils.readFileToByteArray(file)));
+            handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(sxSubscription.getSubscriptionId(), new ByteArrayInputStream(FileUtils.readFileToByteArray(file))));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -290,7 +291,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         File file = new File("src/test/resources/PT_RT_STOPTIME_TEST_siri-sm_dynamic.xml");
 
         try {
-            handler.handleIncomingSiri(smSubscription.getSubscriptionId(), new ByteArrayInputStream(FileUtils.readFileToByteArray(file)));
+            handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(smSubscription.getSubscriptionId(), new ByteArrayInputStream(FileUtils.readFileToByteArray(file))));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -308,7 +309,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         File file = new File("src/test/resources/fm_example_expired_delivery.xml");
 
         try {
-            handler.handleIncomingSiri(fmSubscription.getSubscriptionId(), new ByteArrayInputStream(FileUtils.readFileToByteArray(file)));
+            handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(fmSubscription.getSubscriptionId(), new ByteArrayInputStream(FileUtils.readFileToByteArray(file))));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -331,7 +332,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         File file = new File("src/test/resources/fm_example_delivery.xml");
 
         try {
-            handler.handleIncomingSiri(fmSubscription.getSubscriptionId(), new ByteArrayInputStream(FileUtils.readFileToByteArray(file)));
+            handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(fmSubscription.getSubscriptionId(), new ByteArrayInputStream(FileUtils.readFileToByteArray(file))));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -349,7 +350,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         File file = new File("src/test/resources/gm_example_delivery.xml");
 
         try {
-            handler.handleIncomingSiri(gmSubscription.getSubscriptionId(), new ByteArrayInputStream(FileUtils.readFileToByteArray(file)));
+            handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(gmSubscription.getSubscriptionId(), new ByteArrayInputStream(FileUtils.readFileToByteArray(file))));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -372,7 +373,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         File file = new File("src/test/resources/PT_RT_STOPTIME_STAS_siri-et_dynamic.xml");
 
         try {
-            handler.handleIncomingSiri(etSubscription.getSubscriptionId(), new ByteArrayInputStream(FileUtils.readFileToByteArray(file)));
+            handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(etSubscription.getSubscriptionId(), new ByteArrayInputStream(FileUtils.readFileToByteArray(file))));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -401,7 +402,14 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         File file = new File("src/test/resources/discoveryTest/stop_points_discovery_test.xml");
 
         try {
-            Siri result = handler.handleIncomingSiri(null, new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), "DAT1", null, OutboundIdMappingPolicy.ORIGINAL_ID, -1, null, false);
+            IncomingSiriParameters params = new IncomingSiriParameters();
+            params.setIncomingSiriStream(new ByteArrayInputStream(FileUtils.readFileToByteArray(file)));
+            params.setDatasetId("DAT1");
+            params.setOutboundIdMappingPolicy(OutboundIdMappingPolicy.ORIGINAL_ID);
+            params.setMaxSize(-1);
+            params.setSoapTransformation(false);
+
+            Siri result = handler.handleIncomingSiri(params);
             assertNotNull(result.getStopPointsDelivery());
             assertNotNull(result.getStopPointsDelivery().getAnnotatedStopPointReves());
             assertEquals(2, result.getStopPointsDelivery().getAnnotatedStopPointReves().size());
@@ -429,7 +437,13 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         File file = new File("src/test/resources/discoveryTest/stop_points_discovery_test.xml");
 
         try {
-            Siri result = handler.handleIncomingSiri(null, new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), null, null, null, -1, null, false);
+            IncomingSiriParameters params = new IncomingSiriParameters();
+            params.setIncomingSiriStream(new ByteArrayInputStream(FileUtils.readFileToByteArray(file)));
+            params.setMaxSize(-1);
+            params.setSoapTransformation(false);
+
+
+            Siri result = handler.handleIncomingSiri(params);
             assertNotNull(result.getStopPointsDelivery());
             assertNotNull(result.getStopPointsDelivery().getAnnotatedStopPointReves());
             assertEquals(2, result.getStopPointsDelivery().getAnnotatedStopPointReves().size());
@@ -472,7 +486,12 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         File file = new File("src/test/resources/discoveryTest/lines_discovery_test.xml");
 
         try {
-            Siri result = handler.handleIncomingSiri(null, new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), null, null, -1, null, false);
+            IncomingSiriParameters params = new IncomingSiriParameters();
+            params.setIncomingSiriStream(new ByteArrayInputStream(FileUtils.readFileToByteArray(file)));
+            params.setMaxSize(-1);
+            params.setSoapTransformation(false);
+
+            Siri result = handler.handleIncomingSiri(params);
             assertNotNull(result.getLinesDelivery());
             assertNotNull(result.getLinesDelivery().getAnnotatedLineReves());
             assertEquals(4, result.getLinesDelivery().getAnnotatedLineReves().size());
@@ -516,7 +535,12 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         File file = new File("src/test/resources/discoveryTest/lines_discovery_test.xml");
 
         try {
-            Siri result = handler.handleIncomingSiri(null, new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), null, null, -1, null, false);
+            IncomingSiriParameters params = new IncomingSiriParameters();
+            params.setIncomingSiriStream(new ByteArrayInputStream(FileUtils.readFileToByteArray(file)));
+            params.setMaxSize(-1);
+            params.setSoapTransformation(false);
+
+            Siri result = handler.handleIncomingSiri(params);
             assertNotNull(result.getLinesDelivery());
             assertNotNull(result.getLinesDelivery().getAnnotatedLineReves());
             assertEquals(4, result.getLinesDelivery().getAnnotatedLineReves().size());
@@ -544,7 +568,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         File file = new File("src/test/resources/siri-sx_validity_period_start_time.xml");
 
         try {
-            handler.handleIncomingSiri(sxSubscription.getSubscriptionId(), new ByteArrayInputStream(FileUtils.readFileToByteArray(file)));
+            handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(sxSubscription.getSubscriptionId(), new ByteArrayInputStream(FileUtils.readFileToByteArray(file))));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -714,7 +738,13 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
         ;
 
-        Siri response = handler.handleIncomingSiri(null, xml, "TEST1", SiriHandler.getIdMappingPolicy("true", "false"), -1, null);
+        IncomingSiriParameters params = new IncomingSiriParameters();
+        params.setIncomingSiriStream(xml);
+        params.setDatasetId("TEST1");
+        params.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("true", "false"));
+        params.setMaxSize(-1);
+
+        Siri response = handler.handleIncomingSiri(params);
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
@@ -764,8 +794,12 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 "</Siri>";
 
         InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+        IncomingSiriParameters params = new IncomingSiriParameters();
+        params.setIncomingSiriStream(xml);
+        params.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("true", "false"));
+        params.setMaxSize(-1);
 
-        Siri response = handler.handleIncomingSiri(null, xml, null, SiriHandler.getIdMappingPolicy("true", "false"), -1, null);
+        Siri response = handler.handleIncomingSiri(params);
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
@@ -810,8 +844,12 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 "</Siri>";
 
         InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+        IncomingSiriParameters params = new IncomingSiriParameters();
+        params.setIncomingSiriStream(xml);
+        params.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("false", "false"));
+        params.setMaxSize(-1);
 
-        Siri response = handler.handleIncomingSiri(null, xml, null, SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        Siri response = handler.handleIncomingSiri(params);
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
@@ -856,8 +894,14 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 "</Siri>";
 
         InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+        IncomingSiriParameters params = new IncomingSiriParameters();
+        params.setIncomingSiriStream(xml);
+        params.setMaxSize(-1);
+        params.setDatasetId("TEST1");
+        params.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("false", "false"));
 
-        Siri response = handler.handleIncomingSiri(null, xml, "TEST1", SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+
+        Siri response = handler.handleIncomingSiri(params);
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
@@ -914,8 +958,14 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 "</Siri>";
 
         InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+        IncomingSiriParameters params = new IncomingSiriParameters();
+        params.setIncomingSiriStream(xml);
+        params.setDatasetId("TEST1");
+        params.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("false", "false"));
+        params.setMaxSize(-1);
 
-        Siri response = handler.handleIncomingSiri(null, xml, "TEST1", SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+
+        Siri response = handler.handleIncomingSiri(params);
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
@@ -978,7 +1028,11 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
 
-        Siri response = handler.handleIncomingSiri(null, xml, null, SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        IncomingSiriParameters params = new IncomingSiriParameters();
+        params.setIncomingSiriStream(xml);
+        params.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("false", "false"));
+        params.setMaxSize(-1);
+        Siri response = handler.handleIncomingSiri(params);
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
@@ -1028,7 +1082,13 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
 
-        Siri response = handler.handleIncomingSiri(null, xml, "TEST1", SiriHandler.getIdMappingPolicy("true", "false"), -1, null);
+        IncomingSiriParameters params = new IncomingSiriParameters();
+        params.setIncomingSiriStream(xml);
+        params.setDatasetId("TEST1");
+        params.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("true", "false"));
+        params.setMaxSize(-1);
+
+        Siri response = handler.handleIncomingSiri(params);
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertEquals(1, response.getServiceDelivery().getEstimatedTimetableDeliveries().size());
@@ -1080,7 +1140,13 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
 
-        Siri response = handler.handleIncomingSiri(null, xml, "TEST1", SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        IncomingSiriParameters params = new IncomingSiriParameters();
+        params.setIncomingSiriStream(xml);
+        params.setDatasetId("TEST1");
+        params.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("false", "false"));
+        params.setMaxSize(-1);
+
+        Siri response = handler.handleIncomingSiri(params);
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertEquals(1, response.getServiceDelivery().getEstimatedTimetableDeliveries().size());
@@ -1131,8 +1197,12 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 "</Siri>";
 
         InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+        IncomingSiriParameters params = new IncomingSiriParameters();
+        params.setIncomingSiriStream(xml);
+        params.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("true", "false"));
+        params.setMaxSize(-1);
 
-        Siri response = handler.handleIncomingSiri(null, xml, null, SiriHandler.getIdMappingPolicy("true", "false"), -1, null);
+        Siri response = handler.handleIncomingSiri(params);
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertFalse(response.getServiceDelivery().getEstimatedTimetableDeliveries().isEmpty());
@@ -1181,8 +1251,12 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 "</Siri>";
 
         InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+        IncomingSiriParameters params = new IncomingSiriParameters();
+        params.setIncomingSiriStream(xml);
+        params.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("false", "false"));
+        params.setMaxSize(-1);
 
-        Siri response = handler.handleIncomingSiri(null, xml, null, SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        Siri response = handler.handleIncomingSiri(params);
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertFalse(response.getServiceDelivery().getEstimatedTimetableDeliveries().isEmpty());
@@ -1226,8 +1300,12 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 "</Siri>";
 
         InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+        IncomingSiriParameters params = new IncomingSiriParameters();
+        params.setIncomingSiriStream(xml);
+        params.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("false", "false"));
+        params.setMaxSize(-1);
 
-        Siri response = handler.handleIncomingSiri(null, xml, null, SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        Siri response = handler.handleIncomingSiri(params);
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertFalse(response.getServiceDelivery().getEstimatedTimetableDeliveries().isEmpty());
@@ -1271,8 +1349,13 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 "</Siri>";
 
         InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+        IncomingSiriParameters params = new IncomingSiriParameters();
+        params.setIncomingSiriStream(xml);
+        params.setDatasetId("TEST1");
+        params.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("false", "false"));
+        params.setMaxSize(-1);
 
-        Siri response = handler.handleIncomingSiri(null, xml, "TEST1", SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        Siri response = handler.handleIncomingSiri(params);
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertEquals(1, response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size());
@@ -1317,8 +1400,14 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 "</Siri>";
 
         InputStream xmlLineRef = IOUtils.toInputStream(stringXmlLineRef, StandardCharsets.UTF_8);
+        IncomingSiriParameters params = new IncomingSiriParameters();
+        params.setIncomingSiriStream(xmlLineRef);
+        params.setDatasetId("TEST1");
+        params.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("true", "false"));
+        params.setMaxSize(-1);
 
-        Siri responseLineRef = handler.handleIncomingSiri(null, xmlLineRef, "TEST1", SiriHandler.getIdMappingPolicy("true", "false"), -1, null);
+
+        Siri responseLineRef = handler.handleIncomingSiri(params);
         assertNotNull(responseLineRef);
         assertNotNull(responseLineRef.getServiceDelivery());
         assertFalse(responseLineRef.getServiceDelivery().getVehicleMonitoringDeliveries().isEmpty());
@@ -1381,8 +1470,12 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 "</Siri>";
 
         InputStream xmlLineRef = IOUtils.toInputStream(stringXmlLineRef, StandardCharsets.UTF_8);
+        IncomingSiriParameters params = new IncomingSiriParameters();
+        params.setIncomingSiriStream(xmlLineRef);
+        params.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("false", "false"));
+        params.setMaxSize(-1);
 
-        Siri responseLineRef = handler.handleIncomingSiri(null, xmlLineRef, null, SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        Siri responseLineRef = handler.handleIncomingSiri(params);
         assertNotNull(responseLineRef);
         assertNotNull(responseLineRef.getServiceDelivery());
         assertFalse(responseLineRef.getServiceDelivery().getVehicleMonitoringDeliveries().isEmpty());
@@ -1447,8 +1540,13 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 "</Siri>";
 
         InputStream xmlLine = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+        IncomingSiriParameters parameters = new IncomingSiriParameters();
+        parameters.setIncomingSiriStream(xmlLine);
+        parameters.setDatasetId("TEST1");
+        parameters.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("false", "false"));
+        parameters.setMaxSize(-1);
 
-        Siri response = handler.handleIncomingSiri(null, xmlLine, "TEST1", SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        Siri response = handler.handleIncomingSiri(parameters);
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertEquals(1, response.getServiceDelivery().getSituationExchangeDeliveries().size());
@@ -1511,7 +1609,12 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
 
-        Siri response = handler.handleIncomingSiri(null, xml, null, SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        IncomingSiriParameters parameters = new IncomingSiriParameters();
+        parameters.setIncomingSiriStream(xml);
+        parameters.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("false", "false"));
+        parameters.setMaxSize(-1);
+
+        Siri response = handler.handleIncomingSiri(parameters);
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertFalse(response.getServiceDelivery().getSituationExchangeDeliveries().isEmpty());
@@ -1556,9 +1659,15 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 "</Siri>";
 
         InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
-        ;
 
-        Siri response = handler.handleIncomingSiri(null, xml, "TEST1", SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+
+        IncomingSiriParameters parameters = new IncomingSiriParameters();
+        parameters.setIncomingSiriStream(xml);
+        parameters.setDatasetId("TEST1");
+        parameters.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("false", "false"));
+        parameters.setMaxSize(-1);
+
+        Siri response = handler.handleIncomingSiri(parameters);
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertFalse(response.getServiceDelivery().getFacilityMonitoringDeliveries().isEmpty());
@@ -1603,7 +1712,12 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
 
-        Siri response = handler.handleIncomingSiri(null, xml, null, SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        IncomingSiriParameters parameters = new IncomingSiriParameters();
+        parameters.setIncomingSiriStream(xml);
+        parameters.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("false", "false"));
+        parameters.setMaxSize(-1);
+
+        Siri response = handler.handleIncomingSiri(parameters);
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertTrue(response.getServiceDelivery().getFacilityMonitoringDeliveries().isEmpty());
@@ -1646,7 +1760,13 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         InputStream xmlLine = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
 
-        Siri response = handler.handleIncomingSiri(null, xmlLine, "TEST1", SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        IncomingSiriParameters parameters = new IncomingSiriParameters();
+        parameters.setIncomingSiriStream(xmlLine);
+        parameters.setDatasetId("TEST1");
+        parameters.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("false", "false"));
+        parameters.setMaxSize(-1);
+
+        Siri response = handler.handleIncomingSiri(parameters);
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertEquals(1, response.getServiceDelivery().getGeneralMessageDeliveries().size());
@@ -1688,11 +1808,20 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
 
-        Siri response = handler.handleIncomingSiri(null, xml, null, SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        Siri response = handler.handleIncomingSiri(createDefaultParameters(xml));
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertFalse(response.getServiceDelivery().getGeneralMessageDeliveries().isEmpty());
         assertTrue(response.getServiceDelivery().getGeneralMessageDeliveries().get(0).getGeneralMessages().isEmpty());
+    }
+
+
+    private IncomingSiriParameters createDefaultParameters(InputStream xml) {
+        IncomingSiriParameters parameters = new IncomingSiriParameters();
+        parameters.setIncomingSiriStream(xml);
+        parameters.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("false", "false"));
+        parameters.setMaxSize(-1);
+        return parameters;
     }
 
 
@@ -1733,7 +1862,10 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
 
-        Siri response = handler.handleIncomingSiri(null, xml, "TEST1", SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        IncomingSiriParameters parameters = createDefaultParameters(xml);
+        parameters.setDatasetId("TEST1");
+
+        Siri response = handler.handleIncomingSiri(parameters);
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
@@ -1782,7 +1914,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
 
-        Siri response = handler.handleIncomingSiri(null, xml, null, SiriHandler.getIdMappingPolicy("false", "false"), -1, null);
+        Siri response = handler.handleIncomingSiri(createDefaultParameters(xml));
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
@@ -1822,7 +1954,11 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
 
-        Siri response = handler.handleIncomingSiri(null, xml, "TEST1", SiriHandler.getIdMappingPolicy("false", "true"), -1, null);
+        IncomingSiriParameters parameters = createDefaultParameters(xml);
+        parameters.setDatasetId("TEST1");
+        parameters.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("false", "true"));
+
+        Siri response = handler.handleIncomingSiri(parameters);
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
@@ -1860,7 +1996,10 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
 
-        Siri response = handler.handleIncomingSiri(null, xml, null, SiriHandler.getIdMappingPolicy("false", "true"), -1, null);
+        IncomingSiriParameters parameters = createDefaultParameters(xml);
+        parameters.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("false", "true"));
+
+        Siri response = handler.handleIncomingSiri(parameters);
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
@@ -1901,9 +2040,12 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
 
         InputStream xmlLineRef12 = IOUtils.toInputStream(stringXmlLineRef12, StandardCharsets.UTF_8);
-        ;
 
-        Siri responseLineRef12 = handler.handleIncomingSiri(null, xmlLineRef12, "TEST", SiriHandler.getIdMappingPolicy("false", "true"), -1, null);
+        IncomingSiriParameters parameters = createDefaultParameters(xmlLineRef12);
+        parameters.setDatasetId("TEST");
+        parameters.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("false", "true"));
+
+        Siri responseLineRef12 = handler.handleIncomingSiri(parameters);
         assertNotNull(responseLineRef12);
         assertNotNull(responseLineRef12.getServiceDelivery());
         assertFalse(responseLineRef12.getServiceDelivery().getVehicleMonitoringDeliveries().isEmpty());
@@ -1928,7 +2070,11 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         InputStream xmlLineRef34 = IOUtils.toInputStream(stringXmlLineRef34, StandardCharsets.UTF_8);
         ;
 
-        Siri responseLineRef34 = handler.handleIncomingSiri(null, xmlLineRef34, "TEST", SiriHandler.getIdMappingPolicy("false", "true"), -1, null);
+        parameters = createDefaultParameters(xmlLineRef34);
+        parameters.setDatasetId("TEST");
+        parameters.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("false", "true"));
+
+        Siri responseLineRef34 = handler.handleIncomingSiri(parameters);
         assertNotNull(responseLineRef34);
         assertNotNull(responseLineRef34.getServiceDelivery());
         assertFalse(responseLineRef34.getServiceDelivery().getVehicleMonitoringDeliveries().isEmpty());
