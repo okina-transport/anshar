@@ -55,7 +55,7 @@ public class SituationExchangeInbound {
                                 logger.info(utils.getErrorContents(sx.getErrorCondition()));
                             } else {
                                 if (sx.getSituations() != null && sx.getSituations().getPtSituationElements() != null) {
-                                    Collection<PtSituationElement> ingested = ingestSituations(dataSetId, sx.getSituations().getPtSituationElements());
+                                    Collection<PtSituationElement> ingested = ingestSituations(dataSetId, sx.getSituations().getPtSituationElements(), false);
                                     addedOrUpdated.addAll(ingested);
                                     serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, dataSetId);
                                 }
@@ -94,7 +94,7 @@ public class SituationExchangeInbound {
                                             // List containing added situations for current codespace
                                             List<PtSituationElement> addedSituations = new ArrayList();
 
-                                            Collection<PtSituationElement> ingested = ingestSituations(codespace, situationsByCodespace.get(codespace));
+                                            Collection<PtSituationElement> ingested = ingestSituations(codespace, situationsByCodespace.get(codespace), false);
                                             addedSituations.addAll(ingested);
 
                                             // Push updates to subscribers on this codespace
@@ -106,7 +106,7 @@ public class SituationExchangeInbound {
                                         }
 
                                     } else {
-                                        Collection<PtSituationElement> ingested = ingestSituations(subscriptionSetup.getDatasetId(), sx.getSituations().getPtSituationElements());
+                                        Collection<PtSituationElement> ingested = ingestSituations(subscriptionSetup.getDatasetId(), sx.getSituations().getPtSituationElements(), false);
                                         addedOrUpdated.addAll(ingested);
                                         serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
                                     }
@@ -146,9 +146,18 @@ public class SituationExchangeInbound {
         return result;
     }
 
-    public Collection<PtSituationElement> ingestSituations(String datasetId, List<PtSituationElement> incomingSituations) {
+
+    /**
+     * Ingest incoming situation into cache
+     *
+     * @param datasetId          dataset of the subscription
+     * @param incomingSituations incoming situations to ingest
+     * @param publishToOutbound  if publication should be published or not to the outboud subcriptions
+     * @return
+     */
+    public Collection<PtSituationElement> ingestSituations(String datasetId, List<PtSituationElement> incomingSituations, boolean publishToOutbound) {
         Collection<PtSituationElement> result = situations.addAll(datasetId, incomingSituations);
-        if (!result.isEmpty()) {
+        if (publishToOutbound && !result.isEmpty()) {
             serverSubscriptionManager.pushUpdatesAsync(SiriDataType.SITUATION_EXCHANGE, incomingSituations, datasetId);
         }
 

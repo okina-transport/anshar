@@ -76,7 +76,7 @@ public class DisruptionRetriever {
 
     void ingestDisruption(String disruptionsString) throws JsonProcessingException {
 
-        if (StringUtils.isEmpty(disruptionsString)){
+        if (StringUtils.isEmpty(disruptionsString)) {
             logger.info("Pas de nouvelle perturbation");
             return;
         }
@@ -111,9 +111,9 @@ public class DisruptionRetriever {
             totalSituationCount = totalSituationCount + situations.size();
 
 
-            List<String> subscriptionList = getSubscriptions(situations) ;
+            List<String> subscriptionList = getSubscriptions(situations);
             checkAndCreateSubscriptions(subscriptionList);
-            ingestedSituations.addAll(situationExchangeInbound.ingestSituations(currentDisruptionEntry.getKey(), situations));
+            ingestedSituations.addAll(situationExchangeInbound.ingestSituations(currentDisruptionEntry.getKey(), situations, true));
 
         }
 
@@ -140,9 +140,9 @@ public class DisruptionRetriever {
         for (Disruption disruption : disruptionsToIngest) {
             List<Disruption> currentDisruptionList;
             String organization = disruption.getOrganization();
-            if (resultMap.containsKey(organization)){
+            if (resultMap.containsKey(organization)) {
                 currentDisruptionList = resultMap.get(organization);
-            }else{
+            } else {
                 currentDisruptionList = new ArrayList<>();
                 resultMap.put(organization, currentDisruptionList);
             }
@@ -154,10 +154,9 @@ public class DisruptionRetriever {
 
     /**
      * Read all situation messages and build a list of subscriptions that must be checked(or created if not exists)
-     * @param situations
-     *      The list of situations
-     * @return
-     *      The list of subscription ids build by reading the situations
+     *
+     * @param situations The list of situations
+     * @return The list of subscription ids build by reading the situations
      */
     private List<String> getSubscriptions(List<PtSituationElement> situations) {
         return situations.stream()
@@ -183,15 +182,15 @@ public class DisruptionRetriever {
 
     /**
      * Create a new subscription for the id given in parameter
-     * @param subscriptionId
-     *      The id for which a subscription must be created
+     *
+     * @param subscriptionId The id for which a subscription must be created
      */
-    private void createNewSubscription(String subscriptionId){
+    private void createNewSubscription(String subscriptionId) {
         SubscriptionSetup setup = createStandardSubscription(subscriptionId);
-        subscriptionManager.addSubscription(subscriptionId,setup);
+        subscriptionManager.addSubscription(subscriptionId, setup);
     }
 
-    protected SubscriptionSetup createStandardSubscription(String objectRef){
+    protected SubscriptionSetup createStandardSubscription(String objectRef) {
         SubscriptionSetup setup = new SubscriptionSetup();
         setup.setDatasetId("OKINA-DISRUPTION-SERVICE");
         setup.setHeartbeatIntervalSeconds(DEFAULT_HEARTBEAT_SECONDS);

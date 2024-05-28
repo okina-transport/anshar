@@ -410,6 +410,8 @@ public class ServerSubscriptionManager {
     private boolean getIncrementalUpdates(SubscriptionRequest subscriptionRequest) {
         if (SiriHelper.containsValues(subscriptionRequest.getVehicleMonitoringSubscriptionRequests())) {
             return subscriptionRequest.getVehicleMonitoringSubscriptionRequests().get(0).isIncrementalUpdates() == null || subscriptionRequest.getVehicleMonitoringSubscriptionRequests().get(0).isIncrementalUpdates();
+        } else if (SiriHelper.containsValues(subscriptionRequest.getSituationExchangeSubscriptionRequests())) {
+            return subscriptionRequest.getSituationExchangeSubscriptionRequests().get(0).isIncrementalUpdates() == null || subscriptionRequest.getSituationExchangeSubscriptionRequests().get(0).isIncrementalUpdates();
         }
         return true;
     }
