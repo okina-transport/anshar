@@ -152,12 +152,12 @@ public class CamelRouteManager {
         OutboundIdMappingPolicy mappingPolicy;
         List<Siri> results = new ArrayList<>();
 
-        //TODO remplacer par isUseOriginalId après MEP
-        if (true) {
+        if (subscriptionRequest != null && subscriptionRequest.isUseOriginalId()) {
             mappingPolicy = OutboundIdMappingPolicy.ORIGINAL_ID;
         } else {
             mappingPolicy = OutboundIdMappingPolicy.DEFAULT;
         }
+
 
         Siri completeSx = situationExchangeOutbound.createServiceDelivery(subscriptionRequest.getRequestorRef(), subscriptionRequest.getDatasetId(), subscriptionRequest.getClientTrackingName(), mappingPolicy, 10000);
         results.add(completeSx);
