@@ -41,7 +41,7 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
                 .log(LoggingLevel.DEBUG, "POST data to ${header.SubscriptionId}")
                 .setHeader("CamelHttpMethod", constant("POST"))
                 .setHeader(Exchange.CONTENT_TYPE, constant("text/xml; charset=utf-8"))
-                .bean(metrics, "countOutgoingData(${body}, SUBSCRIBE)")
+                .bean(metrics, "countOutgoingData(${body},${header.requestorRef} , SUBSCRIBE)")
                 .to("direct:siri.transform.data")
                 .process(p -> {
                     Siri response = p.getIn().getBody(Siri.class);

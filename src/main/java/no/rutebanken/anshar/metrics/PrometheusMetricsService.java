@@ -44,6 +44,8 @@ import java.util.Map;
 public class PrometheusMetricsService extends PrometheusMeterRegistry {
 
     private static final String DATATYPE_TAG_NAME = "dataType";
+
+    private static final String REQUESTOR_REF_TAG_NAME = "requestorRef";
     private static final String AGENCY_TAG_NAME = "agency";
     private static final String MAPPING_ID_TAG = "mappingId";
     private static final String MAPPING_NAME_TAG = "mappingName";
@@ -133,6 +135,10 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
     }
 
     public void countOutgoingData(Siri siri, SubscriptionSetup.SubscriptionMode mode) {
+        countOutgoingData(siri, null, mode);
+    }
+
+    public void countOutgoingData(Siri siri, String requestorRef, SubscriptionSetup.SubscriptionMode mode) {
         SiriDataType dataType = null;
         int count = 0;
         if (siri != null && siri.getServiceDelivery() != null) {
@@ -162,8 +168,15 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
                     dataType = SiriDataType.SITUATION_EXCHANGE;
                     count = deliveryStructure.getSituations().getPtSituationElements().size();
                 }
+            } else if (siri.getServiceDelivery().getStopMonitoringDeliveries() != null &&
+                    !siri.getServiceDelivery().getStopMonitoringDeliveries().isEmpty()) {
+                StopMonitoringDeliveryStructure deliveryStructure = siri.getServiceDelivery().getStopMonitoringDeliveries().get(0);
+                if (deliveryStructure != null) {
+                    dataType = SiriDataType.STOP_MONITORING;
+                    count = deliveryStructure.getMonitoredStopVisits().size();
+                }
             }
-            countOutgoingData(dataType, mode, count);
+            countOutgoingData(requestorRef, dataType, mode, count);
         }
 
     }
@@ -192,11 +205,12 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
         counter(DATA_VALIDATION_RESULT_COUNTER, counterTags).increment();
     }
 
-    private void countOutgoingData(SiriDataType dataType, SubscriptionSetup.SubscriptionMode mode, long objectCount) {
+    private void countOutgoingData(String requestorRef, SiriDataType dataType, SubscriptionSetup.SubscriptionMode mode, long objectCount) {
         if (dataType != null && objectCount > 0) {
             List<Tag> counterTags = new ArrayList<>();
             counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType.name()));
             counterTags.add(new ImmutableTag("mode", mode.name()));
+            counterTags.add(new ImmutableTag(REQUESTOR_REF_TAG_NAME, requestorRef));
 
             counter(DATA_OUTBOUND_COUNTER_NAME, counterTags).increment(objectCount);
         }
