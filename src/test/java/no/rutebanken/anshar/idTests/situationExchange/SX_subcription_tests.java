@@ -88,7 +88,7 @@ public class SX_subcription_tests extends SpringBootBaseTest {
         List<PtSituationElement> situationsToIngest = new ArrayList<>();
         situationsToIngest.add(situation1);
 
-        situationExchangeInbound.ingestSituations("DAT1", situationsToIngest);
+        situationExchangeInbound.ingestSituations("DAT1", situationsToIngest, true);
 
         String expectedXml = "toto";
 
