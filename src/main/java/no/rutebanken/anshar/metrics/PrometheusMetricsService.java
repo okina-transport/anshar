@@ -30,6 +30,7 @@ import no.rutebanken.anshar.routes.validation.ValidationType;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.org.siri.siri20.*;
@@ -210,7 +211,11 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
             List<Tag> counterTags = new ArrayList<>();
             counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType.name()));
             counterTags.add(new ImmutableTag("mode", mode.name()));
-            counterTags.add(new ImmutableTag(REQUESTOR_REF_TAG_NAME, requestorRef));
+
+            if (StringUtils.isNotEmpty(requestorRef)) {
+                counterTags.add(new ImmutableTag(REQUESTOR_REF_TAG_NAME, requestorRef));
+            }
+
 
             counter(DATA_OUTBOUND_COUNTER_NAME, counterTags).increment(objectCount);
         }
