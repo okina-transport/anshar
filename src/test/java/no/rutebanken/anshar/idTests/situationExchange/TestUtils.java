@@ -1,11 +1,21 @@
 package no.rutebanken.anshar.idTests.situationExchange;
 
+import org.mockserver.integration.ClientAndServer;
+import org.mockserver.model.HttpRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import uk.org.siri.siri20.*;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.mockserver.model.HttpRequest.request;
+import static org.mockserver.model.StringBody.subString;
+import static org.mockserver.verify.VerificationTimes.exactly;
+
 public class TestUtils {
+
+    private static final Logger logger = LoggerFactory.getLogger(TestUtils.class);
 
     public static PtSituationElement createSituationForLine(String situationNumber, String lineCode) {
         PtSituationElement situation = new PtSituationElement();
@@ -25,6 +35,30 @@ public class TestUtils {
         situation.setAffects(affectedStruct);
         return situation;
     }
+
+    public static void verifyStringInResponse(ClientAndServer mockServer, String stringToCheck) {
+        mockServer.verify(
+                request()
+                        .withMethod("POST")
+                        .withPath("/incomingSiri")
+                        .withBody(subString(stringToCheck)),
+                exactly(1));
+
+    }
+
+    public static void printReceivedRequests(ClientAndServer mockServer) {
+        HttpRequest[] recordedRequests = mockServer.retrieveRecordedRequests(
+                request()
+                        .withMethod("POST")
+                        .withPath("/incomingSiri")
+        );
+
+        for (HttpRequest recordedRequest : recordedRequests) {
+            logger.info("Requête reçue: " + recordedRequest);
+        }
+
+    }
+
 
     public static void addAffectedStop(PtSituationElement situation, String stopCode) {
         AffectedStopPointStructure affectedStopStruct = new AffectedStopPointStructure();
