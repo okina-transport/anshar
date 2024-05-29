@@ -17,6 +17,9 @@ package no.rutebanken.anshar.routes.outbound;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import no.rutebanken.anshar.data.VehicleActivities;
+import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
+import no.rutebanken.anshar.routes.siri.handlers.outbound.SituationExchangeOutbound;
+import no.rutebanken.anshar.subscription.SiriDataType;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
 import org.slf4j.Logger;
@@ -62,6 +65,9 @@ public class CamelRouteManager {
     @Autowired
     private VehicleActivities vehicleActivities;
 
+    @Autowired
+    private SituationExchangeOutbound situationExchangeOutbound;
+
     /**
      * Splits SIRI-data if applicable, and pushes data to external subscription
      *
@@ -104,7 +110,13 @@ public class CamelRouteManager {
 
                 // On remplace les données partielles reçues par l'intégralité de la donnée si incrementalUpdate de l'abonnement est à false
                 if (!subscriptionRequest.getIncrementalUpdates()) {
-                    splitSiri = replaceByCompleteData(subscriptionRequest);
+
+                    if (SiriDataType.VEHICLE_MONITORING.equals(subscriptionRequest.getSubscriptionType())) {
+                        splitSiri = replaceByCompleteVMData(subscriptionRequest);
+                    } else if (SiriDataType.SITUATION_EXCHANGE.equals(subscriptionRequest.getSubscriptionType())) {
+                        splitSiri = replaceByCompleteSXData(subscriptionRequest);
+                    }
+
                 }
 
                 for (Siri siri : splitSiri) {
@@ -136,7 +148,23 @@ public class CamelRouteManager {
         });
     }
 
-    private List<Siri> replaceByCompleteData(OutboundSubscriptionSetup subscriptionRequest) {
+    private List<Siri> replaceByCompleteSXData(OutboundSubscriptionSetup subscriptionRequest) {
+        OutboundIdMappingPolicy mappingPolicy;
+        List<Siri> results = new ArrayList<>();
+
+        if (subscriptionRequest != null && subscriptionRequest.isUseOriginalId()) {
+            mappingPolicy = OutboundIdMappingPolicy.ORIGINAL_ID;
+        } else {
+            mappingPolicy = OutboundIdMappingPolicy.DEFAULT;
+        }
+
+
+        Siri completeSx = situationExchangeOutbound.createServiceDelivery(subscriptionRequest.getRequestorRef(), subscriptionRequest.getDatasetId(), subscriptionRequest.getClientTrackingName(), mappingPolicy, 10000);
+        results.add(completeSx);
+        return results;
+    }
+
+    private List<Siri> replaceByCompleteVMData(OutboundSubscriptionSetup subscriptionRequest) {
         return Collections.singletonList(vehicleActivities.createServiceDelivery(subscriptionRequest.getRequestorRef(), subscriptionRequest.getDatasetId(), subscriptionRequest.getClientTrackingName(),
                 null, Integer.MAX_VALUE, subscriptionRequest.getFilterMap().get(LineRef.class), subscriptionRequest.getFilterMap().get(VehicleRef.class)));
     }
@@ -199,6 +227,7 @@ public class CamelRouteManager {
             headers.put("endpoint", remoteEndPoint);
             headers.put("SubscriptionId", subscription.getSubscriptionId());
             headers.put("showBody", showBody);
+            headers.put("requestorRef", subscription.getRequestorRef());
             headers.put(OUTPUT_ADAPTERS_HEADER_NAME, subscription.getValueAdapters());
             if (subscription.isSOAPSubscription()) {
                 headers.put(TRANSFORM_SOAP, TRANSFORM_SOAP);

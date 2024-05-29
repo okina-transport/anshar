@@ -191,7 +191,7 @@ public class ExternalDataHandler {
             List<PtSituationElement> situationsToIngest = collectSituations(siri);
 
             if (situationsToIngest.size() > 0) {
-                situationExchangeInbound.ingestSituations(datasetId, situationsToIngest);
+                situationExchangeInbound.ingestSituations(datasetId, situationsToIngest, true);
             }
 
         } catch (JAXBException | XMLStreamException jaxbException) {

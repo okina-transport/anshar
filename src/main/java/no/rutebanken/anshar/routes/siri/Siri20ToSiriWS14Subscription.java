@@ -17,6 +17,7 @@ package no.rutebanken.anshar.routes.siri;
 
 import com.sun.xml.bind.marshaller.NamespacePrefixMapper;
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.helpers.SiriRequestFactory;
@@ -76,20 +77,20 @@ public class Siri20ToSiriWS14Subscription extends SiriSubscriptionRouteBuilder {
                 .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
                 .process(addCustomHeaders())
-                .process(p->{
-                    logger.info("Subscription request content:"+p.getIn().getBody());
+                .process(p -> {
+                    logger.info("Subscription request content:" + p.getIn().getBody());
                 })
                 .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .doTry()
-                    .to(getCamelUrl(urlMap.get(RequestType.SUBSCRIBE), getTimeout()))
-                    .to("log:received response:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .to(getCamelUrl(urlMap.get(RequestType.SUBSCRIBE), getTimeout()))
+                .to("log:received response:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .doCatch(ConnectException.class)
-                    .log("Caught ConnectException - subscription not started - will try again: "+ subscriptionSetup.toString())
-                    .process(p -> p.getOut().setBody(null))
+                .log("Caught ConnectException - subscription not started - will try again: " + subscriptionSetup.toString())
+                .process(p -> p.getOut().setBody(null))
                 .endDoTry()
                 .choice().when(simple("${in.body} != null"))
-                    .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false") // Extract SOAP version and convert to raw SIRI
-                    .to("xslt-saxon:xsl/siri_14_20.xsl?allowStAX=false") // Convert from v1.4 to 2.0
+                .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false") // Extract SOAP version and convert to raw SIRI
+                .to("xslt-saxon:xsl/siri_14_20.xsl?allowStAX=false") // Convert from v1.4 to 2.0
                 .end()
                 .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .process(p -> {
@@ -104,12 +105,13 @@ public class Siri20ToSiriWS14Subscription extends SiriSubscriptionRouteBuilder {
 
                     InputStream body = p.getIn().getBody(InputStream.class);
                     if (body != null && body.available() > 0) {
-                        handler.handleIncomingSiri(subscriptionSetup.getSubscriptionId(), body);
+
+                        handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), body));
                     }
 
                     if (subscriptionSetup.getSubscriptionMode().equals(FETCHED_DELIVERY) &&
                             !subscriptionManager.isSubscriptionReceivingData(subscriptionSetup.getSubscriptionId(),
-                                    subscriptionSetup.getHeartbeatInterval().toMillis()/1000)) {
+                                    subscriptionSetup.getHeartbeatInterval().toMillis() / 1000)) {
                         logger.info("No data received since last CheckStatusRequest - triggering DataSupplyRequest.");
                         p.getOut().setHeader("routename", subscriptionSetup.getServiceRequestRouteName());
                     }
@@ -117,10 +119,10 @@ public class Siri20ToSiriWS14Subscription extends SiriSubscriptionRouteBuilder {
 
                 })
                 .choice()
-                    .when(header("routename").isNotNull())
-                        .toD("direct:${header.routename}")
-                    .endChoice()
-                .routeId("start.ws.14.subscription."+subscriptionSetup.getVendor())
+                .when(header("routename").isNotNull())
+                .toD("direct:${header.routename}")
+                .endChoice()
+                .routeId("start.ws.14.subscription." + subscriptionSetup.getVendor())
         ;
 
         //Cancel subscription
@@ -141,18 +143,18 @@ public class Siri20ToSiriWS14Subscription extends SiriSubscriptionRouteBuilder {
                 .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .to(getCamelUrl(urlMap.get(RequestType.DELETE_SUBSCRIPTION), getTimeout()))
                 .choice().when(simple("${in.body} != null"))
-                    .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false") // Extract SOAP version and convert to raw SIRI
-                    .to("xslt-saxon:xsl/siri_14_20.xsl?allowStAX=false") // Convert from v1.4 to 2.0
+                .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false") // Extract SOAP version and convert to raw SIRI
+                .to("xslt-saxon:xsl/siri_14_20.xsl?allowStAX=false") // Convert from v1.4 to 2.0
                 .end()
                 .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .process(p -> {
                     InputStream body = p.getIn().getBody(InputStream.class);
                     logger.info("Response body [{}]", body);
                     if (body != null && body.available() > 0) {
-                        handler.handleIncomingSiri(subscriptionSetup.getSubscriptionId(), body);
+                        handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), body));
                     }
                 })
-                .routeId("cancel.ws.14.subscription."+subscriptionSetup.getVendor())
+                .routeId("cancel.ws.14.subscription." + subscriptionSetup.getVendor())
         ;
 
         initTriggerRoutes();

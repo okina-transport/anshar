@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.data;
 
+import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
@@ -76,7 +77,7 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
 
         manager.addSubscription(subscriptionSetup.getSubscriptionId(), subscriptionSetup);
 
-        handler.handleIncomingSiri(subscriptionSetup.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes()));
+        handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes())));
 
         vehicleActivities.commitChanges();
 
@@ -95,7 +96,7 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
 
         manager.updateSubscription(subscriptionSetup);
 
-        handler.handleIncomingSiri(subscriptionSetup.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes()));
+        handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes())));
 
         vehicleActivities.commitChanges();
 
@@ -121,7 +122,7 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
         manager.addSubscription(subscriptionSetup.getSubscriptionId(), subscriptionSetup);
 
 
-        handler.handleIncomingSiri(subscriptionSetup.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes()));
+        handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes())));
 
         estimatedTimetables.commitChanges();
 
@@ -137,7 +138,7 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
         manager.updateSubscription(subscriptionSetup);
         estimatedTimetables.clearAll();
 
-        handler.handleIncomingSiri(subscriptionSetup.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes()));
+        handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes())));
 
         estimatedTimetables.commitChanges();
 
@@ -164,7 +165,7 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
 
         manager.addSubscription(subscriptionSetup.getSubscriptionId(), subscriptionSetup);
 
-        handler.handleIncomingSiri(subscriptionSetup.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes()));
+        handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes())));
 
         situations.commitChanges();
 
@@ -181,7 +182,7 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
         subscriptionSetup.setUseProvidedCodespaceId(true);
         manager.updateSubscription(subscriptionSetup);
 
-        handler.handleIncomingSiri(subscriptionSetup.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes()));
+        handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes())));
 
         situations.commitChanges();
 
@@ -197,7 +198,7 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
     private PtSituationElement createSX(String codespaceId) {
         PtSituationElement situation = new PtSituationElement();
         SituationNumber sitNumber = new SituationNumber();
-        sitNumber.setValue("TST:SituationNumber:" + (int)(Math.random()*10000));
+        sitNumber.setValue("TST:SituationNumber:" + (int) (Math.random() * 10000));
         situation.setSituationNumber(sitNumber);
         RequestorRef participantRef = new RequestorRef();
         participantRef.setValue(codespaceId);
@@ -226,7 +227,7 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
         mvj.setVehicleLocation(location);
 
         VehicleRef vehicleRef = new VehicleRef();
-        vehicleRef.setValue("TST:Vehicle:" + (int)(Math.random()*10000));
+        vehicleRef.setValue("TST:Vehicle:" + (int) (Math.random() * 10000));
         mvj.setVehicleRef(vehicleRef);
 
         element.setMonitoredVehicleJourney(mvj);

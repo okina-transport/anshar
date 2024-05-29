@@ -1,6 +1,7 @@
 package no.rutebanken.anshar.routes.messaging;
 
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.gtfsrt.ingesters.EstimatedTimetableIngester;
 import no.rutebanken.anshar.gtfsrt.ingesters.SituationExchangeIngester;
 import no.rutebanken.anshar.gtfsrt.ingesters.StopMonitoringIngester;
@@ -426,7 +427,15 @@ public class MessagingRoute extends RestRouteBuilder {
 
                     String clientTrackingName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
 
-                    handler.handleIncomingSiri(subscriptionId, xml, datasetId, SiriHandler.getIdMappingPolicy(useOriginalId, useAltId), -1, clientTrackingName);
+                    IncomingSiriParameters incomingSiriParameters = new IncomingSiriParameters();
+                    incomingSiriParameters.setIncomingSiriStream(xml);
+                    incomingSiriParameters.setSubscriptionId(subscriptionId);
+                    incomingSiriParameters.setDatasetId(datasetId);
+                    incomingSiriParameters.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy(useOriginalId, useAltId));
+                    incomingSiriParameters.setMaxSize(-1);
+                    incomingSiriParameters.setClientTrackingName(clientTrackingName);
+
+                    handler.handleIncomingSiri(incomingSiriParameters);
 
                 })
                 .routeId("incoming.processor.default")
