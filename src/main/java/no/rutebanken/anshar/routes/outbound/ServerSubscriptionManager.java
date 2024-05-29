@@ -343,6 +343,8 @@ public class ServerSubscriptionManager {
                 } else {
                     logger.info("No initial delivery found for {}", subscription);
                 }
+            } catch (Exception e) {
+                logger.error("Error while sending initial delivery", e);
             } finally {
                 MDC.remove("camel.breadcrumbId");
             }

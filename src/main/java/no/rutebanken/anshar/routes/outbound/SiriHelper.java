@@ -266,7 +266,7 @@ public class SiriHelper {
 
             case SITUATION_EXCHANGE:
                 OutboundIdMappingPolicy policy = subscriptionRequest.isUseOriginalId() ? OutboundIdMappingPolicy.ORIGINAL_ID : OutboundIdMappingPolicy.DEFAULT;
-                delivery = situationExchangeOutbound.createServiceDelivery(subscriptionRequest.getRequestorRef(), subscriptionRequest.getDatasetId(), subscriptionRequest.getClientTrackingName(), policy, -1);
+                delivery = situationExchangeOutbound.createServiceDelivery(subscriptionRequest.getRequestorRef(), subscriptionRequest.getDatasetId(), subscriptionRequest.getClientTrackingName(), policy, 1000);
                 logger.info("Initial SX-delivery: {} elements", delivery.getServiceDelivery().getSituationExchangeDeliveries().size());
                 break;
 
