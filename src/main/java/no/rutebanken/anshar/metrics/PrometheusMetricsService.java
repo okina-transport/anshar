@@ -31,6 +31,8 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.org.siri.siri20.*;
@@ -43,6 +45,8 @@ import java.util.Map;
 
 @Component
 public class PrometheusMetricsService extends PrometheusMeterRegistry {
+
+    private static final Logger logger = LoggerFactory.getLogger(PrometheusMetricsService.class);
 
     private static final String DATATYPE_TAG_NAME = "dataType";
 
@@ -177,6 +181,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
                     count = deliveryStructure.getMonitoredStopVisits().size();
                 }
             }
+            logger.info("countOutgoingData - count:" + count + ", reqRef:" + requestorRef + ", dataType:" + dataType + ", mode:" + mode);
             countOutgoingData(requestorRef, dataType, mode, count);
         }
 
