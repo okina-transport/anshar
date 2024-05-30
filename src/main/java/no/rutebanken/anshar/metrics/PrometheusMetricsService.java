@@ -217,9 +217,10 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
             counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType.name()));
             counterTags.add(new ImmutableTag("mode", mode.name()));
 
-            if (StringUtils.isNotEmpty(requestorRef)) {
-                counterTags.add(new ImmutableTag(REQUESTOR_REF_TAG_NAME, requestorRef));
+            if (StringUtils.isEmpty(requestorRef)) {
+                requestorRef = "emptyRequestorRef";
             }
+            counterTags.add(new ImmutableTag(REQUESTOR_REF_TAG_NAME, requestorRef));
 
 
             counter(DATA_OUTBOUND_COUNTER_NAME, counterTags).increment(objectCount);
