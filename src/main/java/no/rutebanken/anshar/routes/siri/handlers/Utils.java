@@ -304,14 +304,10 @@ public class Utils {
      * @return map with key = datasetId and value = idProcessingParams for this objectType
      */
     public Map<String, IdProcessingParameters> buildIdProcessingMapByObjectType(ObjectType objectType) {
-        Map<String, IdProcessingParameters> resultMap = new HashMap<>();
-        List<IdProcessingParameters> idProcessingParameters = subscriptionConfig.getIdProcessingParameters();
-        for (IdProcessingParameters ipp : idProcessingParameters) {
-            if (ipp.getObjectType() == objectType) {
-                resultMap.put(ipp.getDatasetId(), ipp);
-            }
-        }
-        return resultMap;
+        return subscriptionConfig.getIdProcessingParameters()
+                .stream()
+                .filter(ipp -> ipp.getObjectType() == objectType)
+                .collect(Collectors.toMap(IdProcessingParameters::getDatasetId, ipp -> ipp));
     }
 
     /**
