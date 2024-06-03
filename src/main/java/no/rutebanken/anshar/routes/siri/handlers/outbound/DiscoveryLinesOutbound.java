@@ -8,9 +8,6 @@ import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.handlers.Utils;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
-import no.rutebanken.anshar.subscription.SiriDataType;
-import no.rutebanken.anshar.subscription.SubscriptionManager;
-import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri20.AnnotatedLineRef;
@@ -25,9 +22,6 @@ public class DiscoveryLinesOutbound {
 
     @Autowired
     private ExternalIdsService externalIdsService;
-
-    @Autowired
-    private SubscriptionManager subscriptionManager;
 
     @Autowired
     private EstimatedTimetables estimatedTimetables;
@@ -47,10 +41,6 @@ public class DiscoveryLinesOutbound {
      * @return the siri response with all points
      */
     public Siri getDiscoveryLines(String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy) {
-
-        List<SiriDataType> siriDataTypes = new ArrayList<>();
-        siriDataTypes.add(SiriDataType.VEHICLE_MONITORING);
-
         Map<String, Set<String>> linesByDataset;
 
         if (datasetId == null) {
@@ -63,7 +53,6 @@ public class DiscoveryLinesOutbound {
         Map<String, IdProcessingParameters> idProcessingMap = utils.buildIdProcessingMapByObjectType(ObjectType.LINE);
 
         Set<String> lineRefSetVM = new HashSet<>();
-
 
         for (Map.Entry<String, Set<String>> linesByDatasetEntry : linesByDataset.entrySet()) {
             //for each datasetId
@@ -108,24 +97,6 @@ public class DiscoveryLinesOutbound {
 
         return siriObjectFactory.createLinesDiscoveryDelivery(resultList);
 
-    }
-
-    /**
-     * Extract a lineId from a subscriptionSetup and transforms it, with idProcessingParams
-     *
-     * @param subscriptionSetup the subscriptionSetup for which the stop id must be recovered
-     * @param idProcessingMap   the map that associate datasetId to idProcessingParams
-     * @return the transformed line id
-     */
-    private List<String> extractAndTransformLineId(SubscriptionSetup subscriptionSetup, Map<String, IdProcessingParameters> idProcessingMap) {
-        List<String> results = new ArrayList<>();
-
-        for (String lineRefValue : subscriptionSetup.getLineRefValues()) {
-            String datasetId = subscriptionSetup.getDatasetId();
-            results.add(idProcessingMap.containsKey(datasetId) ? idProcessingMap.get(datasetId).applyTransformationToString(lineRefValue) : lineRefValue);
-        }
-
-        return results;
     }
 
     private Set<String> extractAndTransformLineId(String datasetId, Set<String> lineIds, Map<String, IdProcessingParameters> idProcessingMap) {

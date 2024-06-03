@@ -151,7 +151,7 @@ public class Utils {
 
             for (PtSituationElement ptSituationElement : situationExchangeDelivery.getSituations().getPtSituationElements()) {
 
-                if (ptSituationElement.getAffects() == null || ptSituationElement.getAffects().getNetworks() == null || ptSituationElement.getAffects().getNetworks().getAffectedNetworks().size() == 0) {
+                if (ptSituationElement.getAffects() == null || ptSituationElement.getAffects().getNetworks() == null || ptSituationElement.getAffects().getNetworks().getAffectedNetworks().isEmpty()) {
                     continue;
                 }
 
@@ -164,7 +164,7 @@ public class Utils {
 
     private void handleFlexibleLineInAffectedNetworks(AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork) {
 
-        if (affectedNetwork.getAffectedLines() == null || affectedNetwork.getAffectedLines().size() == 0) {
+        if (affectedNetwork.getAffectedLines() == null || affectedNetwork.getAffectedLines().isEmpty()) {
             return;
         }
 
@@ -288,9 +288,6 @@ public class Utils {
 
     /**
      * Builds a map with key = datasetId and value = idProcessingParams for this dataset and objectType = stop
-     *
-     * @param datasetList
-     * @return
      */
     public Map<String, IdProcessingParameters> buildIdProcessingMap(Set<String> datasetList, ObjectType objectType) {
         Map<String, IdProcessingParameters> resultMap = new HashMap<>();
@@ -344,7 +341,7 @@ public class Utils {
     /**
      * Count the number of vehicleActivities existing in the response
      *
-     * @param siri
+     * @param siri siri response to process
      * @return the number of vehicle activities
      */
     public int countVehicleActivityResults(Siri siri) {
