@@ -303,6 +303,21 @@ public class Utils {
     }
 
     /**
+     * @param objectType objectType to filter idProcessingParameters
+     * @return map with key = datasetId and value = idProcessingParams for this objectType
+     */
+    public Map<String, IdProcessingParameters> buildIdProcessingMapByObjectType(ObjectType objectType) {
+        Map<String, IdProcessingParameters> resultMap = new HashMap<>();
+        List<IdProcessingParameters> idProcessingParameters = subscriptionConfig.getIdProcessingParameters();
+        for (IdProcessingParameters ipp : idProcessingParameters) {
+            if (ipp.getObjectType() == objectType) {
+                resultMap.put(ipp.getDatasetId(), ipp);
+            }
+        }
+        return resultMap;
+    }
+
+    /**
      * Check if there are invalid references and write them to server response
      *
      * @param siri                  the response that will be sent to client

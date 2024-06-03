@@ -60,10 +60,7 @@ public class DiscoveryLinesOutbound {
             linesByDataset.put(datasetId, discoveryCache.getDiscoveryLinesForDataset(datasetId));
         }
 
-        Set<String> datasetList = linesByDataset.keySet();
-
-
-        Map<String, IdProcessingParameters> idProcessingMap = utils.buildIdProcessingMap(datasetList, ObjectType.LINE);
+        Map<String, IdProcessingParameters> idProcessingMap = utils.buildIdProcessingMapByObjectType(ObjectType.LINE);
 
         Set<String> lineRefSetVM = new HashSet<>();
 
