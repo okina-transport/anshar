@@ -696,6 +696,9 @@
                                     </xsl:element>
                                 </xsl:for-each>
 
+
+                                <xsl:copy-of select="siril:IncrementalUpdates" copy-namespaces="no"/>
+
                             </xsl:element>
                         </xsl:for-each>
 
