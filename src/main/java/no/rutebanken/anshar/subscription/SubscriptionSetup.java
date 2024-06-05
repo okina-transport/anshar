@@ -67,6 +67,7 @@ public class SubscriptionSetup implements Serializable {
     private List<String> stopMonitoringRefValues;
     private boolean validation;
     private String restartTime;
+    private Boolean revertIds;
 
     private Map<OAuthConfigElement, String> oauth2Config;
 
@@ -101,8 +102,6 @@ public class SubscriptionSetup implements Serializable {
     }
 
     /**
-     * TODO MHI : voir si params supplémentaires nécessaires pour SM
-     *
      * @param subscriptionType       SX, VM, ET, SM
      * @param address                Base-URL for receiving incoming data
      * @param heartbeatInterval      Requested heartbeatinterval for subscriptions, Request-interval for Request/Response "subscriptions"
@@ -251,6 +250,14 @@ public class SubscriptionSetup implements Serializable {
 
     public void setDataSupplyRequestForInitialDelivery(boolean dataSupplyRequestForInitialDelivery) {
         this.dataSupplyRequestForInitialDelivery = dataSupplyRequestForInitialDelivery;
+    }
+
+    public Boolean getRevertIds() {
+        return revertIds;
+    }
+
+    public void setRevertIds(Boolean revertIds) {
+        this.revertIds = revertIds;
     }
 
     public String toString() {

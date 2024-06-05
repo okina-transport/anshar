@@ -42,6 +42,9 @@ public class SituationExchangeInbound {
     @Autowired
     private GeneralMessages generalMessages;
 
+    @Autowired
+    private SuperIdReversionProcess reversionIdProcess;
+
     public boolean ingestSituationExchangeFromApi(SiriDataType dataFormat, String dataSetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList) {
         boolean deliveryContainsData;
         List<SituationExchangeDeliveryStructure> situationExchangeDeliveries = incoming.getServiceDelivery().getSituationExchangeDeliveries();
@@ -76,6 +79,10 @@ public class SituationExchangeInbound {
     public boolean ingestSituationExchange(SubscriptionSetup subscriptionSetup, Siri incoming) {
         List<SituationExchangeDeliveryStructure> situationExchangeDeliveries = incoming.getServiceDelivery().getSituationExchangeDeliveries();
         logger.info("Got SX-delivery: Subscription [{}]", subscriptionSetup);
+
+        if (subscriptionSetup.getRevertIds() != null && subscriptionSetup.getRevertIds()) {
+            incoming = reversionIdProcess.revertIds(incoming, subscriptionSetup.getDatasetId());
+        }
 
         List<PtSituationElement> addedOrUpdated = new ArrayList<>();
         if (situationExchangeDeliveries != null) {
@@ -123,6 +130,7 @@ public class SituationExchangeInbound {
 
         return !addedOrUpdated.isEmpty();
     }
+
 
     public Map<String, List<PtSituationElement>> splitSituationsByCodespace(List<PtSituationElement> ptSituationElements) {
         Map<String, List<PtSituationElement>> result = new HashMap<>();

@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.org.siri.siri20.*;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -73,6 +74,21 @@ public class TestUtils {
 
     }
 
+    public static void addAffectedStopInRoute(PtSituationElement situation, String stopCode) {
+        AffectedLineStructure line = situation.getAffects().getNetworks().getAffectedNetworks().get(0).getAffectedLines().get(0);
+        AffectedStopPointStructure affectedStopStruct = new AffectedStopPointStructure();
+        StopPointRef stopRef = new StopPointRef();
+        stopRef.setValue(stopCode);
+        affectedStopStruct.setStopPointRef(stopRef);
+        AffectedLineStructure.Routes routes = new AffectedLineStructure.Routes();
+        AffectedRouteStructure affectedRoute = new AffectedRouteStructure();
+        AffectedRouteStructure.StopPoints stopPoints = new AffectedRouteStructure.StopPoints();
+        stopPoints.getAffectedStopPointsAndLinkProjectionToNextStopPoints().add(affectedStopStruct);
+        affectedRoute.setStopPoints(stopPoints);
+        routes.getAffectedRoutes().add(affectedRoute);
+        line.setRoutes(routes);
+    }
+
     public static List<PtSituationElement> extractSituationsFromSiri(Siri siri) {
         List<PtSituationElement> results = new ArrayList<>();
         if (siri.getServiceDelivery() == null || siri.getServiceDelivery().getSituationExchangeDeliveries() == null || siri.getServiceDelivery().getSituationExchangeDeliveries().isEmpty()) {
@@ -117,5 +133,25 @@ public class TestUtils {
         }
 
         return situation.getAffects().getStopPoints().getAffectedStopPoints().get(0).getStopPointRef().getValue();
+    }
+
+    public static String getStopRefInRoute(PtSituationElement situation) {
+        if (situation.getAffects() == null || situation.getAffects().getNetworks() == null || situation.getAffects().getNetworks().getAffectedNetworks() == null
+                || situation.getAffects().getNetworks().getAffectedNetworks().get(0).getAffectedLines() == null) {
+            return null;
+        }
+
+        AffectedLineStructure line = situation.getAffects().getNetworks().getAffectedNetworks().get(0).getAffectedLines().get(0);
+        if (line.getRoutes() == null || line.getRoutes().getAffectedRoutes() == null) {
+            return null;
+        }
+
+        Serializable stop = line.getRoutes().getAffectedRoutes().get(0).getStopPoints().getAffectedStopPointsAndLinkProjectionToNextStopPoints().get(0);
+        if (stop instanceof AffectedStopPointStructure) {
+            AffectedStopPointStructure affectedStop = (AffectedStopPointStructure) stop;
+            return affectedStop.getStopPointRef().getValue();
+        }
+
+        return null;
     }
 }

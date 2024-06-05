@@ -360,7 +360,7 @@ public class HazelcastTestMap<T> implements IMap {
     @Nonnull
     @Override
     public Set keySet() {
-        return null;
+        return map.keySet();
     }
 
     @Nonnull
