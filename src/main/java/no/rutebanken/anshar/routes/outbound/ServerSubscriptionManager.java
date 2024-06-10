@@ -18,6 +18,7 @@ package no.rutebanken.anshar.routes.outbound;
 import com.hazelcast.map.IMap;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
+import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
@@ -138,6 +139,9 @@ public class ServerSubscriptionManager {
 
     @Autowired
     private SubscriptionConfig incomingSubscriptionConfig;
+
+    @Autowired
+    private StopPlaceUpdaterService stopPlaceUpdaterService;
 
 
     public Collection getSubscriptions() {
@@ -654,6 +658,7 @@ public class ServerSubscriptionManager {
         }
 
         if (pushToExternalSxConsumer) {
+            delivery = fillStopNames(delivery, datasetId);
             sendSXToExternalConsumer.asyncRequestBodyAndHeader(sendSXToExternalConsumer.getDefaultEndpoint(), delivery, CODESPACE_ID_KAFKA_HEADER_NAME, datasetId);
         }
 
@@ -689,6 +694,37 @@ public class ServerSubscriptionManager {
         }
 
         MDC.remove("camel.breadcrumbId");
+    }
+
+    private Siri fillStopNames(Siri delivery, String datasetId) {
+
+        if (delivery.getServiceDelivery() == null || delivery.getServiceDelivery().getSituationExchangeDeliveries() == null || delivery.getServiceDelivery().getSituationExchangeDeliveries().isEmpty()) {
+            return delivery;
+        }
+
+        for (SituationExchangeDeliveryStructure situationExchangeDelivery : delivery.getServiceDelivery().getSituationExchangeDeliveries()) {
+            if (situationExchangeDelivery.getSituations() == null) {
+                continue;
+            }
+            for (PtSituationElement ptSituationElement : situationExchangeDelivery.getSituations().getPtSituationElements()) {
+                if (ptSituationElement.getAffects() == null || ptSituationElement.getAffects().getStopPoints() == null) {
+                    continue;
+                }
+                for (AffectedStopPointStructure affectedStopPoint : ptSituationElement.getAffects().getStopPoints().getAffectedStopPoints()) {
+                    if (affectedStopPoint.getStopPointRef() == null) {
+                        continue;
+                    }
+
+                    String stopPointRef = affectedStopPoint.getStopPointRef().getValue();
+                    String stopName = stopPlaceUpdaterService.getStopName(stopPointRef, datasetId);
+                    NaturalLanguageStringStructure stopNameLangStruct = new NaturalLanguageStringStructure();
+                    stopNameLangStruct.setValue(stopName);
+                    stopNameLangStruct.setLang("FR");
+                    affectedStopPoint.getStopPointNames().add(stopNameLangStruct);
+                }
+            }
+        }
+        return delivery;
     }
 
 
