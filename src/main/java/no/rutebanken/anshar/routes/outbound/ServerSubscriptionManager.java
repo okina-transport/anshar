@@ -28,6 +28,7 @@ import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
+import org.apache.commons.lang3.StringUtils;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.slf4j.Logger;
@@ -717,10 +718,14 @@ public class ServerSubscriptionManager {
 
                     String stopPointRef = affectedStopPoint.getStopPointRef().getValue();
                     String stopName = stopPlaceUpdaterService.getStopName(stopPointRef, datasetId);
-                    NaturalLanguageStringStructure stopNameLangStruct = new NaturalLanguageStringStructure();
-                    stopNameLangStruct.setValue(stopName);
-                    stopNameLangStruct.setLang("FR");
-                    affectedStopPoint.getStopPointNames().add(stopNameLangStruct);
+                    logger.info(" fillStopNames - stopPointRef:" + stopPointRef + " , stopName:" + stopName);
+
+                    if (StringUtils.isNotEmpty(stopName)) {
+                        NaturalLanguageStringStructure stopNameLangStruct = new NaturalLanguageStringStructure();
+                        stopNameLangStruct.setValue(stopName);
+                        stopNameLangStruct.setLang("FR");
+                        affectedStopPoint.getStopPointNames().add(stopNameLangStruct);
+                    }
                 }
             }
         }
