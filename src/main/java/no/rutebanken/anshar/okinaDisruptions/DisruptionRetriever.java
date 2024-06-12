@@ -113,7 +113,7 @@ public class DisruptionRetriever {
 
             List<String> subscriptionList = getSubscriptions(situations);
             checkAndCreateSubscriptions(subscriptionList);
-            ingestedSituations.addAll(situationExchangeInbound.ingestSituations(currentDisruptionEntry.getKey(), situations, true));
+            ingestedSituations.addAll(situationExchangeInbound.ingestSituations(currentDisruptionEntry.getKey().toUpperCase(), situations, true));
 
         }
 
