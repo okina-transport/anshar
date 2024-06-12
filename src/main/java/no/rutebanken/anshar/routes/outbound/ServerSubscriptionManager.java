@@ -718,7 +718,7 @@ public class ServerSubscriptionManager {
 
                     String stopPointRef = affectedStopPoint.getStopPointRef().getValue();
                     String stopName = stopPlaceUpdaterService.getStopName(stopPointRef, datasetId);
-                    logger.info(" fillStopNames - stopPointRef:" + stopPointRef + " , stopName:" + stopName);
+                    logger.info(" fillStopNames - datasetId:" + datasetId + ", stopPointRef:" + stopPointRef + " , stopName:" + stopName);
 
                     if (StringUtils.isNotEmpty(stopName)) {
                         NaturalLanguageStringStructure stopNameLangStruct = new NaturalLanguageStringStructure();
