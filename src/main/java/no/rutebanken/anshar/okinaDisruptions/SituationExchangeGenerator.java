@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 
 public class SituationExchangeGenerator {
@@ -23,10 +22,10 @@ public class SituationExchangeGenerator {
         mapReasons(ptSituationElement, disruption);
         mapAffects(ptSituationElement, disruption);
         mapImage(ptSituationElement, disruption);
-        if (disruption.getSeverity() != null){
+        if (disruption.getSeverity() != null) {
             ptSituationElement.setSeverity(SeverityEnumeration.valueOf(disruption.getSeverity()));
         }
-        if (disruption.getEffect() != null){
+        if (disruption.getEffect() != null) {
             PtConsequencesStructure ptConsequencesStructure = new PtConsequencesStructure();
             PtConsequenceStructure ptConsequenceStructure = new PtConsequenceStructure();
             ptConsequenceStructure.getConditions().add(ServiceConditionEnumeration.valueOf(disruption.getEffect()));
@@ -124,7 +123,7 @@ public class SituationExchangeGenerator {
 
             AffectedStopPointStructure stopPoint = new AffectedStopPointStructure();
             StopPointRef stopPointRef = new StopPointRef();
-            stopPointRef.setValue(disruption.getOrganization().toUpperCase(Locale.ROOT) + ":Quay:" + stopArea.getObjectId());
+            stopPointRef.setValue(stopArea.getObjectId());
             stopPoint.setStopPointRef(stopPointRef);
             stopPoints.getAffectedStopPoints().add(stopPoint);
         }
