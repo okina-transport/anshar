@@ -69,9 +69,9 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
                 .bean(subscriptionManager, "clearFailTracker(${header.SubscriptionId})")
                 .choice()
                 .when(header(HEARTBEAT_HEADER).isEqualTo(simple(HEARTBEAT_HEADER)))
-                    .log(LoggingLevel.INFO, "HB-POST complete ${header.SubscriptionId} - Resp: [${header.CamelHttpResponseCode} ${header.CamelHttpResponseText}]")
+                    .log(LoggingLevel.DEBUG, "HB-POST complete ${header.SubscriptionId} - Resp: [${header.CamelHttpResponseCode} ${header.CamelHttpResponseText}]")
                 .otherwise()
-                    .log(LoggingLevel.INFO, "DAT-POST complete ${header.SubscriptionId} - Resp: [${header.CamelHttpResponseCode} ${header.CamelHttpResponseText}]")
+                    .log(LoggingLevel.DEBUG, "DAT-POST complete ${header.SubscriptionId} - Resp: [${header.CamelHttpResponseCode} ${header.CamelHttpResponseText}]")
                 .endChoice()
                 .end();
 
