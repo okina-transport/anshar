@@ -14,6 +14,7 @@ import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.apache.camel.Exchange;
+import org.apache.camel.LoggingLevel;
 import org.apache.camel.component.http.HttpMethods;
 import org.apache.camel.model.dataformat.JsonLibrary;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +28,6 @@ public class IshtarCall extends BaseRouteBuilder {
 
     @Value("${ishtar.interval.millis:180000}")
     private int INTERVAL_IN_MILLIS_ISHTAR;
-
 
     @Value("${ishtar.server.url}")
     private String ishtarUrl;
@@ -46,7 +46,20 @@ public class IshtarCall extends BaseRouteBuilder {
             return;
         }
 
-        singletonFrom("quartz://anshar/getAllDataFromIshtar?trigger.repeatInterval=" + INTERVAL_IN_MILLIS_ISHTAR, "getAllDataFromIshtar")
+        singletonFrom("quartz://anshar/autoGetAllDataFromIshtar?trigger.repeatInterval=" + INTERVAL_IN_MILLIS_ISHTAR,
+                "autoGetAllDataFromIshtar")
+                .bean(this, "callDataFromIshtar")
+                .end();
+
+        from("direct:startDataFetch")
+                .routeId("startDataFetch")
+                .removeHeaders("*")
+                .log(LoggingLevel.INFO, "--> ISHTAR : start synchronize data")
+                .to("direct:getAllDataFromIshtar")
+                .end();
+
+        from("direct:getAllDataFromIshtar")
+                .routeId("getAllDataFromIshtar")
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))
                 .setHeader("Accept", constant("application/json, text/plain, */*"))
                 .toD(ishtarUrl + "/gtfs-rt-apis/all")
@@ -166,6 +179,10 @@ public class IshtarCall extends BaseRouteBuilder {
                 })
                 .bean(SubscriptionInitializer.class, "createSubscriptions")
                 .end();
+    }
+
+    public void callDataFromIshtar() {
+        getContext().createProducerTemplate().sendBody("direct:getAllDataFromIshtar", null);
     }
 
     private void addCustomHeaders(SubscriptionSetup newSubscription, List<LinkedHashMap<String, String>> customHeadersFromJSON) {

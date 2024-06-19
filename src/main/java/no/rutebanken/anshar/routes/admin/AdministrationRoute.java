@@ -118,6 +118,7 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .get("/unmapped/{datasetId}").produces(MediaType.TEXT_HTML).to(UNMAPPED_ROUTE)
                 .get("/situations/{datasetId}").produces(MediaType.TEXT_HTML).to(SITUATIONS_ROUTE)
                 .get("/synthesis").produces(MediaType.TEXT_HTML).to(SYNTHESIS_ROUTE)
+                .get("/synchronize/data").to("direct:startDataFetch")
         ;
 
         if (autoLockVerificationEnabled) {
