@@ -22,6 +22,7 @@ public class SituationExchangeGenerator {
         mapReasons(ptSituationElement, disruption);
         mapAffects(ptSituationElement, disruption);
         mapImage(ptSituationElement, disruption);
+        mapProgress(ptSituationElement, disruption);
         if (disruption.getSeverity() != null) {
             ptSituationElement.setSeverity(SeverityEnumeration.valueOf(disruption.getSeverity()));
         }
@@ -34,6 +35,15 @@ public class SituationExchangeGenerator {
         }
 
         return ptSituationElement;
+    }
+
+    private static void mapProgress(PtSituationElement ptSituationElement, Disruption disruption) {
+
+        if (disruption.getDeleteDateTime() != null){
+            ptSituationElement.setProgress(WorkflowStatusEnumeration.CLOSED);
+        }
+
+        if (disruption.getDiffusion() != null WAI)
     }
 
     private static void mapImage(PtSituationElement ptSituationElement, Disruption disruption) {
