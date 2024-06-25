@@ -22,7 +22,6 @@ import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
-import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,9 +45,6 @@ public class SituationsTest extends SpringBootBaseTest {
 
     @Autowired
     private SubscriptionConfig subscriptionConfig;
-
-    @Autowired
-    private SiriObjectFactory siriObjectFactory;
 
     @Autowired
     private AnsharConfiguration configuration;
@@ -114,37 +110,36 @@ public class SituationsTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testUpdatedSituation() {
-        int previousSize = situations.getAll().size();
+    public void test_add__when_adding_situation_with_same_datasetid_and_participantref_and_situation_number__should_not_add_situations() {
+        PtSituationElement original = TestObjectFactory.createPtSituationElement("ruter", "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
+        PtSituationElement update = TestObjectFactory.createPtSituationElement("ruter", "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
 
-        PtSituationElement element = TestObjectFactory.createPtSituationElement("ruter", "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
-        situations.add("test", element);
-        int expectedSize = previousSize + 1;
-        assertEquals(expectedSize, situations.getAll().size());
+        situations.add("test", original);
+        situations.add("test", update);
 
-        PtSituationElement element2 = TestObjectFactory.createPtSituationElement("ruter", "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
-        situations.add("test", element2);
-        assertEquals(expectedSize, situations.getAll().size());
+        assertEquals(1, situations.getAll().size(), "should not have duplicate situation");
+    }
 
-        PtSituationElement element3 = TestObjectFactory.createPtSituationElement("kolumbus", "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
-        situations.add("test", element3);
-        expectedSize++;
-        assertEquals(expectedSize, situations.getAll().size());
+    @Test
+    public void test_add__when_adding_situation_with_different_datasetid__should_add_situations() {
+        PtSituationElement original = TestObjectFactory.createPtSituationElement("ruter", "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
+        PtSituationElement originalCopy = TestObjectFactory.createPtSituationElement("ruter", "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
 
-        PtSituationElement element4 = TestObjectFactory.createPtSituationElement("ruter", "1235", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
-        situations.add("test", element4);
+        situations.add("test", original);
+        situations.add("test2", originalCopy);
 
-        expectedSize++;
-        assertEquals(expectedSize, situations.getAll().size());
+        assertEquals(2, situations.getAll().size(), "should have 2 situations");
+    }
 
-        PtSituationElement element5 = TestObjectFactory.createPtSituationElement("ruter", "1235", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
-        situations.add("test2", element5);
+    @Test
+    public void test_add__when_adding_situation_with_same_datasetid_and_different_participantref_and_same_situation_number__should_not_add_situations() {
+        PtSituationElement original = TestObjectFactory.createPtSituationElement("ruter", "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
+        PtSituationElement originalWithDifferentParticipantRef = TestObjectFactory.createPtSituationElement("mobiiti", "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
 
-        expectedSize++;
-        assertEquals(expectedSize, situations.getAll().size());
+        situations.add("test", original);
+        situations.add("test", originalWithDifferentParticipantRef);
 
-        assertTrue(situations.getAll("test2").size() == previousSize + 1);
-        assertTrue(situations.getAll("test").size() == expectedSize - 1);
+        assertEquals(1, situations.getAll().size(), "should not have duplicate situation");
     }
 
     @Test
@@ -177,38 +172,38 @@ public class SituationsTest extends SpringBootBaseTest {
         assertEquals(previousSize + 4, situations.getAll().size());
     }
 
-    //    @Test
-    public void testGetUpdatesOnlyFromCache() {
-
-        int previousSize = situations.getAll().size();
-
-        String prefix = "cache-updates-sx-";
-        String datasetId = "cache-sx-datasetid";
-
-        situations.add(datasetId, TestObjectFactory.createPtSituationElement("ruter", prefix + "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1)));
-        situations.add(datasetId, TestObjectFactory.createPtSituationElement("ruter", prefix + "2345", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1)));
-        situations.add(datasetId, TestObjectFactory.createPtSituationElement("ruter", prefix + "3456", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1)));
-
-        sleep(50);
-        // Added 3
-        assertEquals(previousSize + 3, situations.getAllCachedUpdates("1234-1234-cache", datasetId,
-                null
-        ).size());
-
-        situations.add(datasetId, TestObjectFactory.createPtSituationElement("ruter", prefix + "4567", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1)));
-
-        sleep(50);
-
-        //Added one
-        assertEquals(1, situations.getAllCachedUpdates("1234-1234-cache", datasetId, null).size());
-        sleep(50);
-
-        //None added
-        assertEquals(0, situations.getAllCachedUpdates("1234-1234-cache", datasetId, null).size());
-        sleep(50);
-        //Verify that all elements still exist
-        assertEquals(previousSize + 4, situations.getAll().size());
-    }
+    // @Test
+//    public void testGetUpdatesOnlyFromCache() {
+//
+//        int previousSize = situations.getAll().size();
+//
+//        String prefix = "cache-updates-sx-";
+//        String datasetId = "cache-sx-datasetid";
+//
+//        situations.add(datasetId, TestObjectFactory.createPtSituationElement("ruter", prefix + "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1)));
+//        situations.add(datasetId, TestObjectFactory.createPtSituationElement("ruter", prefix + "2345", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1)));
+//        situations.add(datasetId, TestObjectFactory.createPtSituationElement("ruter", prefix + "3456", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1)));
+//
+//        sleep(50);
+//        // Added 3
+//        assertEquals(previousSize + 3, situations.getAllCachedUpdates("1234-1234-cache", datasetId,
+//                null
+//        ).size());
+//
+//        situations.add(datasetId, TestObjectFactory.createPtSituationElement("ruter", prefix + "4567", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1)));
+//
+//        sleep(50);
+//
+//        //Added one
+//        assertEquals(1, situations.getAllCachedUpdates("1234-1234-cache", datasetId, null).size());
+//        sleep(50);
+//
+//        //None added
+//        assertEquals(0, situations.getAllCachedUpdates("1234-1234-cache", datasetId, null).size());
+//        sleep(50);
+//        //Verify that all elements still exist
+//        assertEquals(previousSize + 4, situations.getAll().size());
+//    }
 
     @Test
     public void testFlexibleLineConversion() throws UnmarshalException {
@@ -266,23 +261,23 @@ public class SituationsTest extends SpringBootBaseTest {
 
         assertNotNull(response.getServiceDelivery());
         assertNotNull(response.getServiceDelivery().getSituationExchangeDeliveries());
-        assertTrue(response.getServiceDelivery().getSituationExchangeDeliveries().size() > 0);
+        assertFalse(response.getServiceDelivery().getSituationExchangeDeliveries().isEmpty());
         SituationExchangeDeliveryStructure del = response.getServiceDelivery().getSituationExchangeDeliveries().get(0);
 
         assertNotNull(del.getSituations());
-        assertTrue(del.getSituations().getPtSituationElements().size() > 0);
+        assertFalse(del.getSituations().getPtSituationElements().isEmpty());
 
         for (PtSituationElement ptSituationElement : del.getSituations().getPtSituationElements()) {
 
             assertNotNull(ptSituationElement.getAffects());
             assertNotNull(ptSituationElement.getAffects().getNetworks());
             assertNotNull(ptSituationElement.getAffects().getNetworks().getAffectedNetworks());
-            assertTrue(ptSituationElement.getAffects().getNetworks().getAffectedNetworks().size() > 0);
+            assertFalse(ptSituationElement.getAffects().getNetworks().getAffectedNetworks().isEmpty());
 
             AffectsScopeStructure.Networks.AffectedNetwork affectNet = ptSituationElement.getAffects().getNetworks().getAffectedNetworks().get(0);
 
             assertNotNull(affectNet.getAffectedLines());
-            assertTrue(affectNet.getAffectedLines().size() > 0);
+            assertFalse(affectNet.getAffectedLines().isEmpty());
 
             AffectedLineStructure affectedLine = affectNet.getAffectedLines().get(0);
 

@@ -18,6 +18,7 @@ package no.rutebanken.anshar.data;
 import com.hazelcast.map.IMap;
 import com.hazelcast.query.Predicate;
 import lombok.Getter;
+import lombok.Setter;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
@@ -48,6 +49,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
     private static final Logger logger = LoggerFactory.getLogger(Situations.class);
 
     @Getter
+    @Setter
     @Autowired
     private IMap<SiriObjectStorageKey, PtSituationElement> situationElements;
 
@@ -126,13 +128,6 @@ public class Situations extends SiriRepository<PtSituationElement> {
         });
         logger.debug("Calculating data-distribution (SX) took {} ms: {}", (System.currentTimeMillis() - t1), sizeMap);
         return sizeMap;
-    }
-
-
-    public Integer getDatasetSize(String datasetId) {
-        return Math.toIntExact(situationElements.keySet().stream()
-                .filter(key -> datasetId.equals(key.getCodespaceId()))
-                .count());
     }
 
     @Override
@@ -300,7 +295,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
         }
 
         if (expiry != null && expiry.getYear() < 2100) {
-            return ZonedDateTime.now().until(expiry.plus(configuration.getSxGraceperiodMinutes(), ChronoUnit.MINUTES), ChronoUnit.MILLIS);
+            return ZonedDateTime.now().until(expiry.plusMinutes(configuration.getSxGraceperiodMinutes()), ChronoUnit.MILLIS);
         } else {
             // No expiration set - keep "forever"
             return ZonedDateTime.now().until(ZonedDateTime.now().plusYears(10), ChronoUnit.MILLIS);
@@ -345,7 +340,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
             boolean updated;
             if (existingChecksum != null && situationElements.containsKey(key)) { // Checksum not compared if actual situation does not exist
                 //Exists - compare values
-                updated = !(currentChecksum.equals(existingChecksum));
+                updated = !Objects.equals(currentChecksum, existingChecksum);
             } else {
                 //Does not exist
                 updated = true;
@@ -467,22 +462,12 @@ public class Situations extends SiriRepository<PtSituationElement> {
     }
 
     private static SiriObjectStorageKey createKey(String datasetId, PtSituationElement element) {
-        StringBuilder key = new StringBuilder();
-
-        key.append(datasetId).append(":")
-                .append((element.getSituationNumber() != null ? element.getSituationNumber().getValue() : "null"))
-                .append(":")
-                .append((element.getParticipantRef() != null ? element.getParticipantRef().getValue() : "null"));
-
-        return new SiriObjectStorageKey(datasetId, null, key.toString());
+        String situationNumber = element.getSituationNumber() != null ? element.getSituationNumber().getValue() : "null";
+        return new SiriObjectStorageKey(datasetId, null, String.format("%s:%s", datasetId, situationNumber));
     }
 
     public void cleanChangesMap() {
         changesMap.clear();
-    }
-
-    public void setSituationElements(IMap<SiriObjectStorageKey, PtSituationElement> situationElements) {
-        this.situationElements = situationElements;
     }
 
     public Set<String> getAllDatasetIds() {
