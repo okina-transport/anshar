@@ -181,7 +181,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
                     count = deliveryStructure.getMonitoredStopVisits().size();
                 }
             }
-            logger.info("countOutgoingData - count:" + count + ", reqRef:" + requestorRef + ", dataType:" + dataType + ", mode:" + mode);
+            logger.debug("countOutgoingData - count:" + count + ", reqRef:" + requestorRef + ", dataType:" + dataType + ", mode:" + mode);
             countOutgoingData(requestorRef, dataType, mode, count);
         }
 
