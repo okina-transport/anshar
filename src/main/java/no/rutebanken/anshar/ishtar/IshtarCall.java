@@ -54,6 +54,10 @@ public class IshtarCall extends BaseRouteBuilder {
         from("direct:startDataFetch")
                 .routeId("startDataFetch")
                 .removeHeaders("*")
+                .setHeader("Access-Control-Allow-Origin", constant("*"))
+                .setHeader("Access-Control-Allow-Methods", constant("GET, OPTIONS"))
+                .setHeader("Access-Control-Allow-Headers", constant("Authorization, Content-Type"))
+                .setBody(constant(""))
                 .log(LoggingLevel.INFO, "--> ISHTAR : start synchronize data")
                 .to("direct:getAllDataFromIshtar")
                 .end();
