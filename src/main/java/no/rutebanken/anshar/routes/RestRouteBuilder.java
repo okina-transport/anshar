@@ -85,6 +85,10 @@ public class RestRouteBuilder extends RouteBuilder {
 //                .endpointProperty("httpBindingRef", "#contentEncodingRequestFilter")
                 .apiProperty("api.title", "Realtime").apiProperty("api.version", "1.0")
                 .apiProperty("cors", "true")
+                .enableCORS(true)
+                .corsAllowCredentials(true)
+                .corsHeaderProperty("Access-Control-Allow-Origin","*")
+                .corsHeaderProperty("Access-Control-Allow-Headers","Origin, Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, Authorization")
         ;
 
         onException(ConnectException.class)
