@@ -60,6 +60,12 @@ public class IshtarCall extends BaseRouteBuilder {
 
         from("direct:getAllDataFromIshtar")
                 .routeId("getAllDataFromIshtar")
+                .onException(Exception.class)
+                    .handled(true)
+                    .log(LoggingLevel.ERROR, "--> ISHTAR : error during data synchronization : ${exception.message}")
+                    .setHeader(Exchange.HTTP_RESPONSE_CODE, constant(500))
+                    .setBody(simple("Error during data synchronization : ${exception.message}"))
+                    .end()
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))
                 .setHeader("Accept", constant("application/json, text/plain, */*"))
                 .toD(ishtarUrl + "/gtfs-rt-apis/all")
@@ -138,6 +144,7 @@ public class IshtarCall extends BaseRouteBuilder {
                 .process(exchange -> {
                     ObjectMapper objectMapper = new ObjectMapper();
                     objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+                    objectMapper.configure(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true);
                     List subscriptionResult = body().getExpression().evaluate(exchange, List.class);
                     ArrayList<SubscriptionSetup> results = new ArrayList<>();
 
