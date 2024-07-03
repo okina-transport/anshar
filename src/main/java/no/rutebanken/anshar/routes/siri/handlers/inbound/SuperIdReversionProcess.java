@@ -79,6 +79,18 @@ public class SuperIdReversionProcess {
         if (affectedNetwork.getAffectedLines() != null) {
             affectedNetwork.getAffectedLines().forEach(affectedLine -> revertIdInLine(affectedLine, datasetId));
         }
+
+        if (affectedNetwork.getNetworkRef() != null) {
+            String networkRef = affectedNetwork.getNetworkRef().getValue();
+
+            String prefix = superIdentifier + ":Network:";
+
+            if (networkRef.startsWith(prefix)) {
+                networkRef = networkRef.substring(prefix.length());
+            }
+            affectedNetwork.getNetworkRef().setValue(networkRef);
+
+        }
     }
 
     private void revertIdInLine(AffectedLineStructure affectedLine, String datasetId) {
