@@ -74,6 +74,42 @@ public class TestUtils {
 
     }
 
+    public static void addAffectedLine(PtSituationElement situation, String lineRef) {
+        AffectsScopeStructure.Networks networks = new AffectsScopeStructure.Networks();
+        AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork = new AffectsScopeStructure.Networks.AffectedNetwork();
+        AffectedLineStructure affectedLine = new AffectedLineStructure();
+
+        LineRef lineRefStruct = new LineRef();
+        lineRefStruct.setValue(lineRef);
+        affectedLine.setLineRef(lineRefStruct);
+
+        affectedNetwork.getAffectedLines().add(affectedLine);
+        networks.getAffectedNetworks().add(affectedNetwork);
+        AffectsScopeStructure.Networks networkList = situation.getAffects().getNetworks();
+        if (networkList != null) {
+            networkList.getAffectedNetworks().add(affectedNetwork);
+        } else {
+            situation.getAffects().setNetworks(networks);
+        }
+
+    }
+
+    public static void addAffectedNetwork(PtSituationElement situation, String networkRef) {
+        AffectsScopeStructure.Networks networks = new AffectsScopeStructure.Networks();
+        AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork = new AffectsScopeStructure.Networks.AffectedNetwork();
+        NetworkRefStructure networkRefStructure = new NetworkRefStructure();
+        networkRefStructure.setValue(networkRef);
+        affectedNetwork.setNetworkRef(networkRefStructure);
+
+        networks.getAffectedNetworks().add(affectedNetwork);
+        AffectsScopeStructure.Networks networkList = situation.getAffects().getNetworks();
+        if (networkList != null) {
+            networkList.getAffectedNetworks().add(affectedNetwork);
+        } else {
+            situation.getAffects().setNetworks(networks);
+        }
+    }
+
     public static void addAffectedStopInRoute(PtSituationElement situation, String stopCode) {
         AffectedLineStructure line = situation.getAffects().getNetworks().getAffectedNetworks().get(0).getAffectedLines().get(0);
         AffectedStopPointStructure affectedStopStruct = new AffectedStopPointStructure();
@@ -124,6 +160,16 @@ public class TestUtils {
         }
 
         return situation.getAffects().getNetworks().getAffectedNetworks().get(0).getAffectedLines().get(0).getLineRef().getValue();
+    }
+
+
+    public static String getNetworkRef(PtSituationElement situation) {
+        if (situation.getAffects() == null || situation.getAffects().getNetworks() == null || situation.getAffects().getNetworks().getAffectedNetworks() == null
+                || situation.getAffects().getNetworks().getAffectedNetworks().get(1).getAffectedLines() == null) {
+            return null;
+        }
+
+        return situation.getAffects().getNetworks().getAffectedNetworks().get(1).getNetworkRef().getValue();
     }
 
     public static String getStopRef(PtSituationElement situation) {

@@ -53,6 +53,7 @@ public class SX_revert_incoming_id_tests extends SpringBootBaseTest {
 
     private static String OLD_LINE1_REF = "OLDPREFLINE1:L1:LOC";
     private static String NEW_LINE1_REF = "NEWPREFLINE1:L1:LOC2";
+    private static String NEW_NETWORK_REF = "NEWPREFNETWORK1:network1:LOC2";
 
     private static String OLD_STOP1_REF = "OLDPREFSTOP1:stop1:LOC";
     private static String NEW_STOP1_REF = "DAT1:stop1:LOC2";
@@ -132,6 +133,9 @@ public class SX_revert_incoming_id_tests extends SpringBootBaseTest {
         PtSituationElement situation1 = TestUtils.createSituationForLine(sitNumber1, "MOBIITI:Line:L1:LOC");
         TestUtils.addAffectedStop(situation1, "MOBIITI:Quay:a");
         TestUtils.addAffectedStopInRoute(situation1, "MOBIITI:Quay:a");
+        TestUtils.addAffectedNetwork(situation1, "MOBIITI:Network:network1");
+
+
         List<PtSituationElement> situationsToAdd = new ArrayList();
         situationsToAdd.add(situation1);
 
@@ -178,6 +182,7 @@ public class SX_revert_incoming_id_tests extends SpringBootBaseTest {
         assertEquals(NEW_LINE1_REF, TestUtils.getLineRef(result1));
         assertEquals(NEW_STOP1_REF, TestUtils.getStopRef(result1));
         assertEquals(NEW_STOP1_REF, TestUtils.getStopRefInRoute(result1));
+        assertEquals(NEW_NETWORK_REF, TestUtils.getNetworkRef(result1));
 
 
         situations.setSituationElements(originalSaved);
