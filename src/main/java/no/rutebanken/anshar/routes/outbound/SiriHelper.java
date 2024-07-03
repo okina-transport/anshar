@@ -163,6 +163,7 @@ public class SiriHelper {
 
             Set<String> linerefValues = new HashSet<>();
             String rawLineValue = lineRef.getValue();
+            rawLineValue = rawLineValue.replaceAll(":FlexibleLine:", ":Line:");
             Set<String> searchedValues = new HashSet<>();
             searchedValues.add(rawLineValue);
             Optional<String> datasetOpt = subscriptionConfig.findDatasetFromSearch(searchedValues, ObjectType.LINE);
