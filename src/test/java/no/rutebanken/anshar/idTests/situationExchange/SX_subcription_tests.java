@@ -7,6 +7,7 @@ import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.HazelcastTestMap;
 import no.rutebanken.anshar.data.SiriObjectStorageKey;
 import no.rutebanken.anshar.data.Situations;
+import no.rutebanken.anshar.idTests.TestUtils;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.outbound.OutboundSubscriptionSetup;

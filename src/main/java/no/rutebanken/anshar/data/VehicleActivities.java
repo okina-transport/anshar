@@ -19,12 +19,14 @@ import com.hazelcast.map.IMap;
 import com.hazelcast.query.Predicate;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
+import no.rutebanken.anshar.data.util.CustomStringUtils;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
+import org.apache.commons.lang3.StringUtils;
 import org.quartz.utils.counter.Counter;
 import org.quartz.utils.counter.CounterImpl;
 import org.slf4j.Logger;
@@ -371,6 +373,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
                         timingTracer.mark("getExpiration");
 
                         if (expiration > 0 && keep) {
+                            replaceSpecialCharacters(activity);
                             changes.put(key, activity);
                             checksumCacheTmp.put(key, currentChecksum);
                             monitoredVehicles.set(key, activity, expiration, TimeUnit.MILLISECONDS);
@@ -426,6 +429,17 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
         }
 
         return changes.values();
+    }
+
+    private void replaceSpecialCharacters(VehicleActivityStructure activity) {
+        if (activity.getMonitoredVehicleJourney() == null || activity.getMonitoredVehicleJourney().getFramedVehicleJourneyRef() == null ||
+                StringUtils.isEmpty(activity.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().getDatedVehicleJourneyRef())) {
+            return;
+        }
+
+        String vehicleJourneyRef = activity.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().getDatedVehicleJourneyRef();
+        activity.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().setDatedVehicleJourneyRef(CustomStringUtils.removeSpecialCharacters(vehicleJourneyRef, "ServiceJourney"));
+
     }
 
     public VehicleActivityStructure add(String datasetId, VehicleActivityStructure activity) {

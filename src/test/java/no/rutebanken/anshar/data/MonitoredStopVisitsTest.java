@@ -37,6 +37,7 @@ import java.time.ZonedDateTime;
 import java.util.*;
 
 import static no.rutebanken.anshar.helpers.SleepUtil.sleep;
+import static no.rutebanken.anshar.idTests.TestUtils.*;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -323,105 +324,8 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
     }
 
 
-    private MonitoredStopVisit createMonitoredStopVisit(ZonedDateTime recordedAtTime, String stopReference) {
-        return createMonitoredStopVisit(recordedAtTime, stopReference, UUID.randomUUID().toString());
-    }
-
-    private MonitoredStopVisit createMonitoredStopVisit(ZonedDateTime recordedAtTime, String stopReference, String itemIdentifier) {
-        MonitoredStopVisit element = new MonitoredStopVisit();
-
-        element.setRecordedAtTime(recordedAtTime);
-        MonitoringRefStructure monitoringRefStructure = new MonitoringRefStructure();
-        monitoringRefStructure.setValue(stopReference);
-        element.setMonitoringRef(monitoringRefStructure);
-
-        MonitoredVehicleJourneyStructure monitoredVehicleJourneyStructure = new MonitoredVehicleJourneyStructure();
-        MonitoredCallStructure monitoredCallStructure = new MonitoredCallStructure();
-        monitoredCallStructure.setExpectedArrivalTime(ZonedDateTime.now().plusHours(1));
-        monitoredVehicleJourneyStructure.setMonitoredCall(monitoredCallStructure);
-        element.setMonitoredVehicleJourney(monitoredVehicleJourneyStructure);
-
-        element.setItemIdentifier(itemIdentifier);
-        return element;
-    }
-
-    private MonitoredStopVisit createMonitoredCompleteStopVisit(ZonedDateTime recordedAtTime, String stopReference, String tripId, String itemIdentifier, String routeId) {
-        MonitoredStopVisit element = new MonitoredStopVisit();
-
-        element.setRecordedAtTime(recordedAtTime);
-        MonitoringRefStructure monitoringRefStructure = new MonitoringRefStructure();
-        monitoringRefStructure.setValue(stopReference);
-        element.setMonitoringRef(monitoringRefStructure);
-
-        FramedVehicleJourneyRefStructure vehicleJourneyRef = new FramedVehicleJourneyRefStructure();
-        vehicleJourneyRef.setDatedVehicleJourneyRef(tripId);
-
-        DataFrameRefStructure dataFrameRef = new DataFrameRefStructure();
-        dataFrameRef.setValue(tripId);
-        vehicleJourneyRef.setDataFrameRef(dataFrameRef);
-
-        LineRef lineRef = new LineRef();
-        lineRef.setValue(routeId);
-
-        MonitoredVehicleJourneyStructure monitoredVehicleJourneyStructure = new MonitoredVehicleJourneyStructure();
-        MonitoredCallStructure monitoredCallStructure = new MonitoredCallStructure();
-        monitoredCallStructure.setExpectedArrivalTime(ZonedDateTime.now().plusHours(1));
-        monitoredVehicleJourneyStructure.setLineRef(lineRef);
-        monitoredVehicleJourneyStructure.setFramedVehicleJourneyRef(vehicleJourneyRef);
-        monitoredVehicleJourneyStructure.setMonitoredCall(monitoredCallStructure);
-
-        element.setMonitoredVehicleJourney(monitoredVehicleJourneyStructure);
-
-        element.setItemIdentifier(itemIdentifier);
-        return element;
-    }
-
-    private MonitoredStopVisitCancellation createMonitoredStopVisitCancellation(ZonedDateTime recordedAtTime, String stopReference, String itemIdentifier) {
-        MonitoredStopVisitCancellation element = new MonitoredStopVisitCancellation();
-
-        element.setRecordedAtTime(recordedAtTime);
-        MonitoringRefStructure monitoringRefStructure = new MonitoringRefStructure();
-        monitoringRefStructure.setValue(stopReference);
-        element.setMonitoringRef(monitoringRefStructure);
-
-        ItemRefStructure itemRefStructure = new ItemRefStructure();
-        itemRefStructure.setValue(itemIdentifier);
-
-        element.setItemRef(itemRefStructure);
-
-        return element;
-    }
-
-    private MonitoredStopVisitCancellation createMonitoredStopVisitCompleteCancellation(ZonedDateTime recordedAtTime, String stopReference, String tripId, String itemIdentifier, String routeId) {
-        MonitoredStopVisitCancellation element = new MonitoredStopVisitCancellation();
-
-        element.setRecordedAtTime(recordedAtTime);
-        MonitoringRefStructure monitoringRefStructure = new MonitoringRefStructure();
-        monitoringRefStructure.setValue(stopReference);
-        element.setMonitoringRef(monitoringRefStructure);
-
-        FramedVehicleJourneyRefStructure vehicleJourneyRef = new FramedVehicleJourneyRefStructure();
-        vehicleJourneyRef.setDatedVehicleJourneyRef(tripId);
-
-        DataFrameRefStructure dataFrameRef = new DataFrameRefStructure();
-        dataFrameRef.setValue(tripId);
-        vehicleJourneyRef.setDataFrameRef(dataFrameRef);
-        element.setVehicleJourneyRef(vehicleJourneyRef);
-
-        LineRef lineRef = new LineRef();
-        lineRef.setValue(routeId);
-        element.setLineRef(lineRef);
-
-        ItemRefStructure itemRefStructure = new ItemRefStructure();
-        itemRefStructure.setValue(itemIdentifier);
-
-        element.setItemRef(itemRefStructure);
-
-        return element;
-    }
-
     @Test
-    @Ignore // TODO MHI à faire
+    @Ignore
     public void testExcludeDatasetIds() {
 
         String prefix = "excludedOnly-";

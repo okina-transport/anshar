@@ -1,4 +1,4 @@
-package no.rutebanken.anshar.idTests.situationExchange;
+package no.rutebanken.anshar.idTests;
 
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.model.HttpRequest;
@@ -7,8 +7,10 @@ import org.slf4j.LoggerFactory;
 import uk.org.siri.siri20.*;
 
 import java.io.Serializable;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.StringBody.subString;
@@ -199,5 +201,102 @@ public class TestUtils {
         }
 
         return null;
+    }
+
+    public static MonitoredStopVisit createMonitoredStopVisit(ZonedDateTime recordedAtTime, String stopReference) {
+        return createMonitoredStopVisit(recordedAtTime, stopReference, UUID.randomUUID().toString());
+    }
+
+    public static MonitoredStopVisit createMonitoredStopVisit(ZonedDateTime recordedAtTime, String stopReference, String itemIdentifier) {
+        MonitoredStopVisit element = new MonitoredStopVisit();
+
+        element.setRecordedAtTime(recordedAtTime);
+        MonitoringRefStructure monitoringRefStructure = new MonitoringRefStructure();
+        monitoringRefStructure.setValue(stopReference);
+        element.setMonitoringRef(monitoringRefStructure);
+
+        MonitoredVehicleJourneyStructure monitoredVehicleJourneyStructure = new MonitoredVehicleJourneyStructure();
+        MonitoredCallStructure monitoredCallStructure = new MonitoredCallStructure();
+        monitoredCallStructure.setExpectedArrivalTime(ZonedDateTime.now().plusHours(1));
+        monitoredVehicleJourneyStructure.setMonitoredCall(monitoredCallStructure);
+        element.setMonitoredVehicleJourney(monitoredVehicleJourneyStructure);
+
+        element.setItemIdentifier(itemIdentifier);
+        return element;
+    }
+
+    public static MonitoredStopVisit createMonitoredCompleteStopVisit(ZonedDateTime recordedAtTime, String stopReference, String tripId, String itemIdentifier, String routeId) {
+        MonitoredStopVisit element = new MonitoredStopVisit();
+
+        element.setRecordedAtTime(recordedAtTime);
+        MonitoringRefStructure monitoringRefStructure = new MonitoringRefStructure();
+        monitoringRefStructure.setValue(stopReference);
+        element.setMonitoringRef(monitoringRefStructure);
+
+        FramedVehicleJourneyRefStructure vehicleJourneyRef = new FramedVehicleJourneyRefStructure();
+        vehicleJourneyRef.setDatedVehicleJourneyRef(tripId);
+
+        DataFrameRefStructure dataFrameRef = new DataFrameRefStructure();
+        dataFrameRef.setValue(tripId);
+        vehicleJourneyRef.setDataFrameRef(dataFrameRef);
+
+        LineRef lineRef = new LineRef();
+        lineRef.setValue(routeId);
+
+        MonitoredVehicleJourneyStructure monitoredVehicleJourneyStructure = new MonitoredVehicleJourneyStructure();
+        MonitoredCallStructure monitoredCallStructure = new MonitoredCallStructure();
+        monitoredCallStructure.setExpectedArrivalTime(ZonedDateTime.now().plusHours(1));
+        monitoredVehicleJourneyStructure.setLineRef(lineRef);
+        monitoredVehicleJourneyStructure.setFramedVehicleJourneyRef(vehicleJourneyRef);
+        monitoredVehicleJourneyStructure.setMonitoredCall(monitoredCallStructure);
+
+        element.setMonitoredVehicleJourney(monitoredVehicleJourneyStructure);
+
+        element.setItemIdentifier(itemIdentifier);
+        return element;
+    }
+
+    public static MonitoredStopVisitCancellation createMonitoredStopVisitCancellation(ZonedDateTime recordedAtTime, String stopReference, String itemIdentifier) {
+        MonitoredStopVisitCancellation element = new MonitoredStopVisitCancellation();
+
+        element.setRecordedAtTime(recordedAtTime);
+        MonitoringRefStructure monitoringRefStructure = new MonitoringRefStructure();
+        monitoringRefStructure.setValue(stopReference);
+        element.setMonitoringRef(monitoringRefStructure);
+
+        ItemRefStructure itemRefStructure = new ItemRefStructure();
+        itemRefStructure.setValue(itemIdentifier);
+
+        element.setItemRef(itemRefStructure);
+
+        return element;
+    }
+
+    public static MonitoredStopVisitCancellation createMonitoredStopVisitCompleteCancellation(ZonedDateTime recordedAtTime, String stopReference, String tripId, String itemIdentifier, String routeId) {
+        MonitoredStopVisitCancellation element = new MonitoredStopVisitCancellation();
+
+        element.setRecordedAtTime(recordedAtTime);
+        MonitoringRefStructure monitoringRefStructure = new MonitoringRefStructure();
+        monitoringRefStructure.setValue(stopReference);
+        element.setMonitoringRef(monitoringRefStructure);
+
+        FramedVehicleJourneyRefStructure vehicleJourneyRef = new FramedVehicleJourneyRefStructure();
+        vehicleJourneyRef.setDatedVehicleJourneyRef(tripId);
+
+        DataFrameRefStructure dataFrameRef = new DataFrameRefStructure();
+        dataFrameRef.setValue(tripId);
+        vehicleJourneyRef.setDataFrameRef(dataFrameRef);
+        element.setVehicleJourneyRef(vehicleJourneyRef);
+
+        LineRef lineRef = new LineRef();
+        lineRef.setValue(routeId);
+        element.setLineRef(lineRef);
+
+        ItemRefStructure itemRefStructure = new ItemRefStructure();
+        itemRefStructure.setValue(itemIdentifier);
+
+        element.setItemRef(itemRefStructure);
+
+        return element;
     }
 }

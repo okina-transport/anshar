@@ -20,6 +20,7 @@ import com.hazelcast.query.Predicate;
 import com.hazelcast.replicatedmap.ReplicatedMap;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
+import no.rutebanken.anshar.data.util.CustomStringUtils;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -447,7 +448,9 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
                         long expiration = getExpiration(monitoredStopVisit);
 
+
                         if (expiration > 0 && keep) {
+                            replaceSpecialCharacters(monitoredStopVisit);
                             changes.add(key);
                             addedData.add(monitoredStopVisit);
                             monitoredStopVisits.set(key, monitoredStopVisit, expiration, TimeUnit.MILLISECONDS);
@@ -474,6 +477,15 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         markIdsAsUpdated(changes);
 
         return addedData;
+    }
+
+    private void replaceSpecialCharacters(MonitoredStopVisit monitoredStopVisit) {
+        if (monitoredStopVisit.getMonitoredVehicleJourney() == null || monitoredStopVisit.getMonitoredVehicleJourney().getFramedVehicleJourneyRef() == null ||
+                StringUtils.isEmpty(monitoredStopVisit.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().getDatedVehicleJourneyRef())) {
+            return;
+        }
+        String vehicleJourneyRef = monitoredStopVisit.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().getDatedVehicleJourneyRef();
+        monitoredStopVisit.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().setDatedVehicleJourneyRef(CustomStringUtils.removeSpecialCharacters(vehicleJourneyRef, "ServiceJourney"));
     }
 
     /**
