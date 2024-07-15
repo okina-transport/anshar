@@ -34,14 +34,23 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
+import uk.org.siri.siri21.EstimatedVersionFrameStructure;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.SituationExchangeDeliveryStructure;
+import uk.org.siri.siri21.VehicleMonitoringDeliveryStructure;
 
 import javax.annotation.PreDestroy;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
+
+import static no.rutebanken.anshar.subscription.SubscriptionSetup.SubscriptionMode.AVRO_PUBSUB;
 
 @Component
 public class PrometheusMetricsService extends PrometheusMeterRegistry {
@@ -54,6 +63,10 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
     private static final String AGENCY_TAG_NAME = "agency";
     private static final String MAPPING_ID_TAG = "mappingId";
     private static final String MAPPING_NAME_TAG = "mappingName";
+    private static final String SIRI_CONTENT_NAME_TAG = "siriContent";
+    private static final String SIRI_CONTENT_LABEL_TAG = "siriContentLabel";
+    private static final String SIRI_CONTENT_GROUP_TAG = "group";
+    private static final String SERVICE_JOURNEY_ID_TAG_NAME = "serviceJourney";
 
     private static final String KAFKA_STATUS_TAG = "kafkaStatus";
     private static final String KAFKA_TOPIC_NAME = "kafkaTopic";
@@ -76,13 +89,22 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
     private static final String DATA_EXPIRED_COUNTER_NAME = METRICS_PREFIX + "data.expired";
     private static final String DATA_IGNORED_COUNTER_NAME = METRICS_PREFIX + "data.ignored";
     private static final String DATA_OUTBOUND_COUNTER_NAME = METRICS_PREFIX + "data.outbound";
+    private static final String SUBSCRIPTION_OUTBOUND_COUNTER_NAME = METRICS_PREFIX + "subscription.outbound";
+    private static final String SUBSCRIPTION_OUTBOUND_CONCURRENT_REQUESTS = METRICS_PREFIX + "concurrent.outbound.requests";
+    private static final String SUBSCRIPTION_OUTBOUND_QUEUE = METRICS_PREFIX + "concurrent.outbound.queue";
 
     private static final String DATA_MAPPING_COUNTER_NAME = METRICS_PREFIX + "data.mapping";
+
+    private static final String SIRI_CONTENT_COUNTER_NAME = METRICS_PREFIX + "siri.content";
 
     private static final String KAFKA_COUNTER_NAME = METRICS_PREFIX + "data.kafka";
 
     private static final String DATA_VALIDATION_COUNTER = METRICS_PREFIX + "data.validation";
     private static final String DATA_VALIDATION_RESULT_COUNTER = METRICS_PREFIX + "data.validation.result";
+
+    @Value("${anshar.metrics.include.failing.subscriptions:false}")
+    private boolean includeSubscriptionFailingMetrics;
+    private Map<String, ExecutorService> outboundThreadFactoryMap;
 
     public PrometheusMetricsService() {
         super(PrometheusConfig.DEFAULT);
@@ -125,18 +147,35 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
         counter(DATA_MAPPING_COUNTER_NAME, counterTags).increment(mappedCount);
     }
 
-    public enum KafkaStatus {SENT, ACKED, FAILED}
+    public void registerSiriContent(SiriDataType dataType, String agencyId, String serviceJourneyId, SiriContent content) {
+        List<Tag> counterTags = new ArrayList<>();
+        counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType.name()));
+        if (agencyId != null) {
+            counterTags.add(new ImmutableTag(AGENCY_TAG_NAME, agencyId));
+        }
+        if (serviceJourneyId != null) {
+            counterTags.add(new ImmutableTag(SERVICE_JOURNEY_ID_TAG_NAME, serviceJourneyId));
+        }
+        counterTags.add(new ImmutableTag(SIRI_CONTENT_NAME_TAG, content.name()));
+        counterTags.add(new ImmutableTag(SIRI_CONTENT_LABEL_TAG, content.getLabel()));
+        counterTags.add(new ImmutableTag(SIRI_CONTENT_GROUP_TAG, content.getGroup().name()));
+
+        counter(SIRI_CONTENT_COUNTER_NAME, counterTags).increment();
+    }
 
     public void registerAckedKafkaRecord(String topic) {
         registerKafkaRecord(topic, KafkaStatus.ACKED);
     }
-
     public void registerKafkaRecord(String topic, KafkaStatus status) {
         List<Tag> counterTags = new ArrayList<>();
         counterTags.add(new ImmutableTag(KAFKA_TOPIC_NAME, topic));
         counterTags.add(new ImmutableTag(KAFKA_STATUS_TAG, status.name()));
 
         counter(KAFKA_COUNTER_NAME, counterTags).increment();
+    }
+
+    public void registerAvroPubsubRecord(SiriDataType dataType) {
+        countOutgoingData(dataType, AVRO_PUBSUB, 1);
     }
 
     public void countOutgoingData(Siri siri, SubscriptionSetup.SubscriptionMode mode) {
@@ -227,6 +266,17 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
         }
     }
 
+
+    public void markPostToSubscription(SiriDataType dataType, SubscriptionSetup.SubscriptionMode mode, String subscriptionId, int statusCode) {
+        List<Tag> counterTags = new ArrayList<>();
+        counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType.name()));
+        counterTags.add(new ImmutableTag("mode", mode.name()));
+        counterTags.add(new ImmutableTag("subscriptionId", subscriptionId));
+        counterTags.add(new ImmutableTag("statusCode", ""+statusCode));
+
+        counter(SUBSCRIPTION_OUTBOUND_COUNTER_NAME, counterTags).increment(1);
+    }
+
     final Map<String, Integer> gaugeValues = new HashMap<>();
 
     public void gaugeDataset(SiriDataType subscriptionType, String agencyId, Integer count) {
@@ -253,6 +303,12 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
             if (DATA_COUNTER_NAME.equals(meter.getId().getName())) {
                 this.remove(meter);
             }
+            if (SUBSCRIPTION_OUTBOUND_CONCURRENT_REQUESTS.equals(meter.getId().getName())) {
+                this.remove(meter);
+            }
+            if (SUBSCRIPTION_OUTBOUND_QUEUE.equals(meter.getId().getName())) {
+                this.remove(meter);
+            }
         }
 
         EstimatedTimetables estimatedTimetables = ApplicationContextHolder.getContext().getBean(EstimatedTimetables.class);
@@ -273,40 +329,48 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
             gaugeDataset(SiriDataType.VEHICLE_MONITORING, entry.getKey(), entry.getValue());
         }
 
-        // TODO MHI : add SM to prometheus
-
-        ReplicatedMap<String, SubscriptionSetup> subscriptions = manager.subscriptions;
-        for (SubscriptionSetup subscription : subscriptions.values()) {
-
-            SiriDataType subscriptionType = subscription.getSubscriptionType();
-
-            String gauge_baseName = METRICS_PREFIX + "subscription";
-
-            String gauge_failing = gauge_baseName + ".failing";
-            String gauge_data_failing = gauge_baseName + ".data_failing";
-
-
+        for (Map.Entry<String, ExecutorService> entry : outboundThreadFactoryMap.entrySet()) {
             List<Tag> counterTags = new ArrayList<>();
-            counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, subscriptionType.name()));
-            counterTags.add(new ImmutableTag(AGENCY_TAG_NAME, subscription.getDatasetId()));
-            counterTags.add(new ImmutableTag("vendor", subscription.getVendor()));
+            counterTags.add(new ImmutableTag("subscriptionId", entry.getKey()));
+            ThreadPoolExecutor executor = (ThreadPoolExecutor) entry.getValue();
+            gauge(SUBSCRIPTION_OUTBOUND_CONCURRENT_REQUESTS, counterTags, executor.getActiveCount());
+            gauge(SUBSCRIPTION_OUTBOUND_QUEUE, counterTags, executor.getQueue().size());
+        }
+
+        if (includeSubscriptionFailingMetrics) {
+            ReplicatedMap<String, SubscriptionSetup> subscriptions = manager.subscriptions;
+            for (SubscriptionSetup subscription : subscriptions.values()) {
+
+                SiriDataType subscriptionType = subscription.getSubscriptionType();
+
+                String gauge_baseName = METRICS_PREFIX + "subscription";
+
+                String gauge_failing = gauge_baseName + ".failing";
+                String gauge_data_failing = gauge_baseName + ".data_failing";
 
 
-            //Flag as failing when ACTIVE, and NOT HEALTHY
-            gauge(gauge_failing, getTagsWithTimeLimit(counterTags, "now"), subscription.getSubscriptionId(), value ->
-                    (manager.isActiveSubscription(subscription.getSubscriptionId()) &&
-                            !manager.isSubscriptionHealthy(subscription.getSubscriptionId())) ? 1 : 0);
+                List<Tag> counterTags = new ArrayList<>();
+                counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, subscriptionType.name()));
+                counterTags.add(new ImmutableTag(AGENCY_TAG_NAME, subscription.getDatasetId()));
+                counterTags.add(new ImmutableTag("vendor", subscription.getVendor()));
 
-            //Set flag as data failing when ACTIVE, and NOT receiving data
 
-            gauge(gauge_data_failing, getTagsWithTimeLimit(counterTags, "5min"), subscription.getSubscriptionId(), value ->
-                    isSubscriptionFailing(manager, subscription, 5 * 60));
+                //Flag as failing when ACTIVE, and NOT HEALTHY
+                gauge(gauge_failing, getTagsWithTimeLimit(counterTags, "now"), subscription.getSubscriptionId(), value ->
+                        (manager.isActiveSubscription(subscription.getSubscriptionId()) &&
+                                !manager.isSubscriptionHealthy(subscription.getSubscriptionId())) ? 1 : 0);
 
-            gauge(gauge_data_failing, getTagsWithTimeLimit(counterTags, "15min"), subscription.getSubscriptionId(), value ->
-                    isSubscriptionFailing(manager, subscription, 15 * 60));
+                //Set flag as data failing when ACTIVE, and NOT receiving data
 
-            gauge(gauge_data_failing, getTagsWithTimeLimit(counterTags, "30min"), subscription.getSubscriptionId(), value ->
-                    isSubscriptionFailing(manager, subscription, 30 * 60));
+                gauge(gauge_data_failing, getTagsWithTimeLimit(counterTags, "5min"), subscription.getSubscriptionId(), value ->
+                        isSubscriptionFailing(manager, subscription, 5 * 60));
+
+                gauge(gauge_data_failing, getTagsWithTimeLimit(counterTags, "15min"), subscription.getSubscriptionId(), value ->
+                        isSubscriptionFailing(manager, subscription, 15 * 60));
+
+                gauge(gauge_data_failing, getTagsWithTimeLimit(counterTags, "30min"), subscription.getSubscriptionId(), value ->
+                        isSubscriptionFailing(manager, subscription, 30 * 60));
+            }
         }
     }
 
@@ -322,5 +386,9 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
             return 1;
         }
         return 0;
+    }
+
+    public void registerOutboundThreadFactoryMap(Map<String, ExecutorService> threadFactoryMap) {
+        this.outboundThreadFactoryMap = threadFactoryMap;
     }
 }

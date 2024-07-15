@@ -19,7 +19,13 @@ import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.junit.jupiter.api.Test;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.EstimatedTimetableRequestStructure;
+import uk.org.siri.siri21.EstimatedTimetableSubscriptionStructure;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.SituationExchangeRequestStructure;
+import uk.org.siri.siri21.SituationExchangeSubscriptionStructure;
+import uk.org.siri.siri21.VehicleMonitoringRequestStructure;
+import uk.org.siri.siri21.VehicleMonitoringSubscriptionStructure;
 
 import java.time.ZonedDateTime;
 import java.util.HashMap;

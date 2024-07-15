@@ -27,7 +27,11 @@ import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.HalfOpenTimestampOutputRangeStructure;
+import uk.org.siri.siri21.PtSituationElement;
+import uk.org.siri.siri21.SituationNumber;
+import uk.org.siri.siri21.SituationVersion;
+import uk.org.siri.siri21.WorkflowStatusEnumeration;
 
 import javax.xml.bind.UnmarshalException;
 import java.io.InputStream;

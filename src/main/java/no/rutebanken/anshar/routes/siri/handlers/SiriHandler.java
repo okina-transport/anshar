@@ -15,6 +15,8 @@
 
 package no.rutebanken.anshar.routes.siri.handlers;
 
+import jakarta.xml.bind.JAXBException;
+import jakarta.xml.bind.UnmarshalException;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
@@ -37,12 +39,30 @@ import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import no.rutebanken.anshar.util.GeneralMessageHelper;
 import no.rutebanken.anshar.util.IDUtils;
-import org.rutebanken.siri20.util.SiriXml;
+import org.json.simple.JSONObject;
+import org.entur.siri21.util.SiriXml;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.ErrorCodeStructure;
+import uk.org.siri.siri21.ErrorDescriptionStructure;
+import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.LineRef;
+import uk.org.siri.siri21.PtSituationElement;
+import uk.org.siri.siri21.RequestorRef;
+import uk.org.siri.siri21.ServiceDeliveryErrorConditionElement;
+import uk.org.siri.siri21.ServiceRequest;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.SituationExchangeDeliveryStructure;
+import uk.org.siri.siri21.SubscriptionResponseStructure;
+import uk.org.siri.siri21.TerminateSubscriptionRequestStructure;
+import uk.org.siri.siri21.TerminateSubscriptionResponseStructure;
+import uk.org.siri.siri21.VehicleActivityStructure;
+import uk.org.siri.siri21.VehicleMonitoringDeliveryStructure;
+import uk.org.siri.siri21.VehicleMonitoringRequestStructure;
+import uk.org.siri.siri21.VehicleRef;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.UnmarshalException;
@@ -52,6 +72,7 @@ import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getOriginalId;
 
 @Service
 public class SiriHandler {
@@ -112,6 +133,7 @@ public class SiriHandler {
     @Autowired
     private DiscoveryLinesOutbound discoveryLinesOutbound;
 
+
     @Autowired
     private Utils utils;
 
@@ -169,7 +191,7 @@ public class SiriHandler {
     }
 
     public Siri handleSiriCacheRequest(
-            InputStream body, String datasetId, String clientTrackingName
+        InputStream body, String datasetId, String clientTrackingName
     ) throws XMLStreamException, JAXBException {
 
         Siri incoming = SiriValueTransformer.parseXml(body);
@@ -189,19 +211,19 @@ public class SiriHandler {
                 dataType = SiriDataType.SITUATION_EXCHANGE;
 
                 final Collection<PtSituationElement> elements = situations.getAllCachedUpdates(requestorRef,
-                        datasetId,
-                        clientTrackingName
+                    datasetId,
+                    clientTrackingName
                 );
                 logger.info("Returning {} elements from cache", elements.size());
-                serviceResponse = siriObjectFactory.createSXServiceDelivery(elements);
+                serviceResponse =  siriObjectFactory.createSXServiceDelivery(elements);
 
             } else if (hasValues(serviceRequest.getVehicleMonitoringRequests())) {
                 dataType = SiriDataType.VEHICLE_MONITORING;
 
                 final Collection<VehicleActivityStructure> elements = vehicleActivities.getAllCachedUpdates(
-                        requestorRef,
-                        datasetId,
-                        clientTrackingName
+                    requestorRef,
+                    datasetId,
+                    clientTrackingName
                 );
                 logger.info("Returning {} elements from cache", elements.size());
                 serviceResponse = siriObjectFactory.createVMServiceDelivery(elements);
@@ -219,8 +241,6 @@ public class SiriHandler {
 
             if (serviceResponse != null) {
                 metrics.countOutgoingData(serviceResponse, SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE);
-
-
                 return SiriValueTransformer.transform(
                         serviceResponse,
                         MappingAdapterPresets.getOutboundAdapters(dataType, OutboundIdMappingPolicy.DEFAULT, subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId)),
@@ -408,6 +428,7 @@ public class SiriHandler {
             }
             return results;
         }
+
         return null;
     }
 
@@ -433,8 +454,10 @@ public class SiriHandler {
     /**
      * Handling incoming requests from external servers
      *
-     * @param subscriptionId the subscription's id
-     * @param xml            the incoming message
+     * @param subscriptionId
+     * @param xml
+     * @return
+     * @throws JAXBException
      */
     private void inboundProcessSiriClientRequest(String subscriptionId, InputStream xml)
             throws XMLStreamException, JAXBException {
@@ -609,6 +632,86 @@ public class SiriHandler {
                 }
             }
         }
+    }
+
+    public static OutboundIdMappingPolicy getIdMappingPolicy(String useOriginalId, String altId) {
+        OutboundIdMappingPolicy outboundIdMappingPolicy = OutboundIdMappingPolicy.DEFAULT;
+        if (altId != null) {
+            if (Boolean.parseBoolean(altId)) {
+                outboundIdMappingPolicy = OutboundIdMappingPolicy.ALT_ID;
+            }
+        }
+
+        if (useOriginalId != null) {
+            if (Boolean.parseBoolean(useOriginalId)) {
+                outboundIdMappingPolicy = OutboundIdMappingPolicy.ORIGINAL_ID;
+            }
+        }
+        return outboundIdMappingPolicy;
+    }
+
+
+    /**
+     * Creates a json-string containing all potential errormessage-values
+     *
+     * @param errorCondition
+     * @return
+     */
+    private String getErrorContents(ServiceDeliveryErrorConditionElement errorCondition) {
+        String errorContents = "";
+        if (errorCondition != null) {
+            Map<String, String> errorMap = new HashMap<>();
+            String accessNotAllowed = getErrorText(errorCondition.getAccessNotAllowedError());
+            String allowedResourceUsageExceeded = getErrorText(errorCondition.getAllowedResourceUsageExceededError());
+            String beyondDataHorizon = getErrorText(errorCondition.getBeyondDataHorizon());
+            String capabilityNotSupportedError = getErrorText(errorCondition.getCapabilityNotSupportedError());
+            String endpointDeniedAccessError = getErrorText(errorCondition.getEndpointDeniedAccessError());
+            String endpointNotAvailableAccessError = getErrorText(errorCondition.getEndpointNotAvailableAccessError());
+            String invalidDataReferencesError = getErrorText(errorCondition.getInvalidDataReferencesError());
+            String parametersIgnoredError = getErrorText(errorCondition.getParametersIgnoredError());
+            String serviceNotAvailableError = getErrorText(errorCondition.getServiceNotAvailableError());
+            String unapprovedKeyAccessError = getErrorText(errorCondition.getUnapprovedKeyAccessError());
+            String unknownEndpointError = getErrorText(errorCondition.getUnknownEndpointError());
+            String unknownExtensionsError = getErrorText(errorCondition.getUnknownExtensionsError());
+            String unknownParticipantError = getErrorText(errorCondition.getUnknownParticipantError());
+            String noInfoForTopicError = getErrorText(errorCondition.getNoInfoForTopicError());
+            String otherError = getErrorText(errorCondition.getOtherError());
+
+            String description = getDescriptionText(errorCondition.getDescription());
+
+            if (accessNotAllowed != null) {errorMap.put("accessNotAllowed", accessNotAllowed);}
+            if (allowedResourceUsageExceeded != null) {errorMap.put("allowedResourceUsageExceeded", allowedResourceUsageExceeded);}
+            if (beyondDataHorizon != null) {errorMap.put("beyondDataHorizon", beyondDataHorizon);}
+            if (capabilityNotSupportedError != null) {errorMap.put("capabilityNotSupportedError", capabilityNotSupportedError);}
+            if (endpointDeniedAccessError != null) {errorMap.put("endpointDeniedAccessError", endpointDeniedAccessError);}
+            if (endpointNotAvailableAccessError != null) {errorMap.put("endpointNotAvailableAccessError", endpointNotAvailableAccessError);}
+            if (invalidDataReferencesError != null) {errorMap.put("invalidDataReferencesError", invalidDataReferencesError);}
+            if (parametersIgnoredError != null) {errorMap.put("parametersIgnoredError", parametersIgnoredError);}
+            if (serviceNotAvailableError != null) {errorMap.put("serviceNotAvailableError", serviceNotAvailableError);}
+            if (unapprovedKeyAccessError != null) {errorMap.put("unapprovedKeyAccessError", unapprovedKeyAccessError);}
+            if (unknownEndpointError != null) {errorMap.put("unknownEndpointError", unknownEndpointError);}
+            if (unknownExtensionsError != null) {errorMap.put("unknownExtensionsError", unknownExtensionsError);}
+            if (unknownParticipantError != null) {errorMap.put("unknownParticipantError", unknownParticipantError);}
+            if (noInfoForTopicError != null) {errorMap.put("noInfoForTopicError", noInfoForTopicError);}
+            if (otherError != null) {errorMap.put("otherError", otherError);}
+            if (description != null) {errorMap.put("description", description);}
+
+            errorContents = JSONObject.toJSONString(errorMap);
+        }
+        return errorContents;
+    }
+
+    private String getErrorText(ErrorCodeStructure accessNotAllowedError) {
+        if (accessNotAllowedError != null) {
+            return accessNotAllowedError.getErrorText();
+        }
+        return null;
+    }
+    private String getDescriptionText(ErrorDescriptionStructure description) {
+        if (description != null) {
+            return description.getValue();
+        }
+        return null;
     }
 
     public static OutboundIdMappingPolicy getIdMappingPolicy(String useOriginalId, String altId) {

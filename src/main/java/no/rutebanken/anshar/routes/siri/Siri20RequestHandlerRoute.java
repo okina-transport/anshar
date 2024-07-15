@@ -15,11 +15,14 @@
 
 package no.rutebanken.anshar.routes.siri;
 
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.ws.rs.core.MediaType;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.data.util.CustomSiriXml;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
+import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
@@ -31,11 +34,12 @@ import org.apache.camel.model.rest.RestParamType;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.Siri;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.MediaType;
@@ -48,7 +52,7 @@ import static no.rutebanken.anshar.routes.HttpParameter.*;
 @SuppressWarnings("unchecked")
 @Service
 @Configuration
-public class Siri20RequestHandlerRoute extends RestRouteBuilder implements CamelContextAware {
+public class Siri20RequestHandlerRoute extends RestRouteBuilder {
 
     private static final Logger logger = LoggerFactory.getLogger(Siri20RequestHandlerRoute.class);
 
@@ -162,6 +166,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
 
 
         from("direct:process.incoming.request")
+                .to("direct:set.mdc.subscriptionId")
                 .removeHeaders("<Siri*") //Since Camel 3, entire body is also included as header
                 .to("log:incoming:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true&level=DEBUG")
                 .choice()
@@ -265,6 +270,12 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                     if (StringUtils.isEmpty(useOriginalId)) {
                         useOriginalId = Boolean.toString(defaultUseOriginalId);
                     }
+
+                    //TODO GCA : faire un nouveau param siri version
+//                    if ("2.1".equals(p.getIn().getHeader(SIRI_VERSION_HEADER_NAME, String.class))) {
+//                        idMappingPolicy = OutboundIdMappingPolicy.SIRI_2_1;
+//                    }
+
 
                     boolean soapTransformation = TRANSFORM_SOAP.equals(p.getIn().getHeader(TRANSFORM_SOAP));
 

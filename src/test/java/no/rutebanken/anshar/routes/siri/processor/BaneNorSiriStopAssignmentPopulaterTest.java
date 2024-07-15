@@ -1,5 +1,9 @@
 package no.rutebanken.anshar.routes.siri.processor;
 
+import jakarta.xml.bind.JAXBContext;
+import jakarta.xml.bind.JAXBException;
+import jakarta.xml.bind.Marshaller;
+import jakarta.xml.bind.Unmarshaller;
 import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.mapping.BaneNorIdPlatformUpdaterService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceRegisterMappingFetcher;
@@ -15,17 +19,13 @@ import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
-import uk.org.siri.siri20.EstimatedCall;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.EstimatedVersionFrameStructure;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.StopAssignmentStructure;
+import uk.org.siri.siri21.EstimatedCall;
+import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.EstimatedVersionFrameStructure;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.StopAssignmentStructure;
 
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.Marshaller;
-import javax.xml.bind.Unmarshaller;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
@@ -106,7 +106,7 @@ public class BaneNorSiriStopAssignmentPopulaterTest {
                                 boolean noStopAssignment = false;
                                 for (EstimatedCall estimatedCall : estimatedVehicleJourney.getEstimatedCalls().getEstimatedCalls()) {
                                     int order = estimatedCall.getOrder().intValue();
-                                    StopAssignmentStructure stopAssignment = (order>1) ? estimatedCall.getArrivalStopAssignment() : estimatedCall.getDepartureStopAssignment();
+                                    StopAssignmentStructure stopAssignment = (order>1) ? estimatedCall.getArrivalStopAssignments().get(0) : estimatedCall.getDepartureStopAssignments().get(0);
                                     if (stopAssignment == null) {
                                         noStopAssignment = true;
                                     } else {

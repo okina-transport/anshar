@@ -33,6 +33,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.StringTokenizer;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 public class StopPlaceRegisterMappingFetcher {
@@ -63,7 +64,7 @@ public class StopPlaceRegisterMappingFetcher {
 
             long t1 = System.currentTimeMillis();
 
-            Counter duplicates = new CounterImpl(0);
+            AtomicInteger duplicates = new AtomicInteger(0);
 
             final InputStream blob = blobStoreService.getBlob(name);
 
@@ -82,14 +83,14 @@ public class StopPlaceRegisterMappingFetcher {
 
 
                     if (stopPlaceMappings.containsKey(id)) {
-                        duplicates.increment();
+                        duplicates.incrementAndGet();
                     }
                     stopPlaceMappings.put(id, Pair.of(generatedId, stopName != null ? stopName : ""));
                 });
 
                 long t2 = System.currentTimeMillis();
 
-                logger.info("Fetched mapping data - {} mappings, found {} duplicates. [fetched:{}ms]", stopPlaceMappings.size(), duplicates.getValue(), (t2 - t1));
+                logger.info("Fetched mapping data - {} mappings, found {} duplicates. [fetched:{}ms]", stopPlaceMappings.size(), duplicates.get(), (t2 - t1));
                 return stopPlaceMappings;
             }
         }

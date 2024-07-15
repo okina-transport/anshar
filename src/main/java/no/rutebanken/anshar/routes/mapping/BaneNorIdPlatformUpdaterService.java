@@ -24,9 +24,13 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
-import java.util.Map;
+import java.io.IOException;
 import java.util.Random;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 @Component
 @Configuration
@@ -42,6 +46,13 @@ public class BaneNorIdPlatformUpdaterService {
 
     @Value("${anshar.mapping.update.frequency.min:60}")
     private int updateFrequency = 60;
+
+
+    @Value("${anshar.startup.wait.for.netex.initialization:false}")
+    private boolean delayStartupForInitialization;
+
+    @Value("${anshar.startup.load.mapping.data:true}")
+    private boolean loadMappingData;
 
     @Autowired
     private StopPlaceRegisterMappingFetcher stopPlaceRegisterMappingFetcher;
@@ -62,7 +73,16 @@ public class BaneNorIdPlatformUpdaterService {
 
     @PostConstruct
     private void initialize() {
-        updateIdMapping();
+        if (!loadMappingData) {
+            logger.info("Loading Station-data disabled.");
+            return;
+        }
+        int initialDelay = 0;
+        if (delayStartupForInitialization) {
+            initialDelay = updateFrequency;
+            updateIdMapping();
+        }
+
         ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
         int initialDelay = updateFrequency + new Random().nextInt(10);
@@ -73,13 +93,15 @@ public class BaneNorIdPlatformUpdaterService {
     }
 
     private void updateIdMapping() {
-        try {
-            // re-entrant
-            synchronized (LOCK) {
-                updateStopPlaceMapping();
+        if (loadMappingData) {
+            try {
+                // re-entrant
+                synchronized (LOCK) {
+                    updateStopPlaceMapping();
+                }
+            } catch (Exception e) {
+                logger.warn("Fetching data - caused exception", e);
             }
-        } catch (Exception e) {
-            logger.warn("Fetching data - caused exception", e);
         }
     }
 

@@ -83,8 +83,8 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
                 .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
                 .process(addCustomHeaders())
-                .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
-                .to(getCamelUrl(urlMap.get(RequestType.SUBSCRIBE), getTimeout()))
+                .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .to(getCamelUrl(urlMap.get(RequestType.SUBSCRIBE)))
                 .process(p -> {
                     logger.debug("Subscription response:" + p.getIn().getBody(String.class));
                 })
@@ -151,9 +151,9 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
                         }
 
 
-                    })
-                    .choice().when(header("routename").isNotNull()).toD("direct:${header.routename}").endChoice()
-                    .routeId("check.status.ws.20.subscription." + subscriptionSetup.getVendor());
+                })
+                .choice().when(header("routename").isNotNull()).toD("direct:${header.routename}").endChoice()
+                .routeId("check.status.ws.20.subscription." + subscriptionSetup.getVendor());
         }
 
         //Cancel subscription
@@ -172,8 +172,8 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
                 .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
                 .process(addCustomHeaders())
-                .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
-                .to(getCamelUrl(urlMap.get(RequestType.DELETE_SUBSCRIPTION), getTimeout()))
+                .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .to(getCamelUrl(urlMap.get(RequestType.DELETE_SUBSCRIPTION)))
                 .choice().when(simple("${in.body} != null"))
                 .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Extract SOAP version and convert to raw SIRI
                 .end()

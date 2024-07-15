@@ -30,7 +30,26 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.AffectedLineStructure;
+import uk.org.siri.siri21.AffectsScopeStructure;
+import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
+import uk.org.siri.siri21.EstimatedTimetableRequestStructure;
+import uk.org.siri.siri21.EstimatedTimetableSubscriptionStructure;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.EstimatedVersionFrameStructure;
+import uk.org.siri.siri21.LineDirectionStructure;
+import uk.org.siri.siri21.LineRef;
+import uk.org.siri.siri21.PtSituationElement;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.SituationExchangeDeliveryStructure;
+import uk.org.siri.siri21.SituationExchangeRequestStructure;
+import uk.org.siri.siri21.SituationExchangeSubscriptionStructure;
+import uk.org.siri.siri21.SubscriptionRequest;
+import uk.org.siri.siri21.VehicleActivityStructure;
+import uk.org.siri.siri21.VehicleMonitoringDeliveryStructure;
+import uk.org.siri.siri21.VehicleMonitoringRequestStructure;
+import uk.org.siri.siri21.VehicleMonitoringSubscriptionStructure;
+import uk.org.siri.siri21.VehicleRef;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -762,3 +781,20 @@ public class SiriHelper {
         return siriObjectFactory.createSMServiceDelivery(monitoredStopVisits.getAll());
     }
 }
+
+    public static String resolveSiriVersionStr(SiriValidator.Version version) {
+        switch (version) {
+            case VERSION_1_0:
+                return "1.0";
+            case VERSION_1_3:
+                return "1.3";
+            case VERSION_1_4:
+                return "1.4";
+            case VERSION_2_0:
+                return "2.0";
+            case VERSION_2_1:
+                return "2.1";
+            default:
+                return FALLBACK_SIRI_VERSION;
+        }
+    }

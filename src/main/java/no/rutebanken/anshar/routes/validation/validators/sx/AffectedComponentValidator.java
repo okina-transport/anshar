@@ -16,15 +16,15 @@
 package no.rutebanken.anshar.routes.validation.validators.sx;
 
 import com.google.common.collect.Sets;
+import jakarta.xml.bind.ValidationEvent;
 import no.rutebanken.anshar.routes.validation.validators.CustomValidator;
 import no.rutebanken.anshar.routes.validation.validators.Validator;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Node;
-import uk.org.ifopt.siri20.AccessibilityFeatureEnumeration;
-import uk.org.ifopt.siri20.StopPlaceComponentTypeEnumeration;
+import uk.org.ifopt.siri21.AccessibilityFeatureEnumeration;
+import uk.org.ifopt.siri21.StopPlaceComponentTypeEnumeration;
 
-import javax.xml.bind.ValidationEvent;
 import java.util.Set;
 
 import static no.rutebanken.anshar.routes.validation.validators.Constants.AFFECTED_COMPONENTS;

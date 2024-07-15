@@ -31,9 +31,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.AbstractItemStructure;
+import uk.org.siri.siri21.CoordinatesStructure;
+import uk.org.siri.siri21.LocationStructure;
+import uk.org.siri.siri21.MessageRefStructure;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.VehicleActivityStructure;
+import uk.org.siri.siri21.VehicleRef;
+
 
 import javax.annotation.PostConstruct;
 import java.time.Instant;
@@ -43,7 +49,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-@Repository
+@Component
 public class VehicleActivities extends SiriRepository<VehicleActivityStructure> {
     private static final Logger logger = LoggerFactory.getLogger(VehicleActivities.class);
 
@@ -147,7 +153,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
     @Override
     public void clearAllByDatasetId(String datasetId) {
 
-        Set<SiriObjectStorageKey> idsToRemove = monitoredVehicles.keySet(createCodespacePredicate(datasetId));
+        Set<SiriObjectStorageKey> idsToRemove = monitoredVehicles.keySet(createHzCodespacePredicate(datasetId));
 
         logger.warn("Removing all data ({} ids) for {}", idsToRemove.size(), datasetId);
 
@@ -221,7 +227,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
     public Siri createServiceDelivery(final String lineRef) {
         SortedSet<VehicleActivityStructure> vehicleActivityStructures = new TreeSet<>(Comparator.comparing(AbstractItemStructure::getRecordedAtTime));
 
-        final Set<SiriObjectStorageKey> lineRefKeys = monitoredVehicles.keySet(createLineRefPredicate(lineRef));
+        final Set<SiriObjectStorageKey> lineRefKeys = monitoredVehicles.keySet(createHzLineRefPredicate(lineRef));
 
         vehicleActivityStructures.addAll(monitoredVehicles.getAll(lineRefKeys).values());
 
@@ -315,10 +321,10 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
         Map<SiriObjectStorageKey, VehicleActivityStructure> changes = new HashMap<>();
         Map<SiriObjectStorageKey, String> checksumCacheTmp = new HashMap<>();
 
-        Counter invalidLocationCounter = new CounterImpl(0);
-        Counter notMeaningfulCounter = new CounterImpl(0);
-        Counter outdatedCounter = new CounterImpl(0);
-        Counter notUpdatedCounter = new CounterImpl(0);
+        AtomicInteger invalidLocationCounter = new AtomicInteger(0);
+        AtomicInteger notMeaningfulCounter = new AtomicInteger(0);
+        AtomicInteger outdatedCounter = new AtomicInteger(0);
+        AtomicInteger notUpdatedCounter = new AtomicInteger(0);
 
         vmList.stream()
                 .filter(activity -> activity.getMonitoredVehicleJourney() != null)
@@ -347,7 +353,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
 //                    if (existingChecksum != null && monitoredVehicles.containsKey(key)) {
                     if (existingChecksum != null) {
                         //Exists - compare values
-                        updated = !(currentChecksum.equals(existingChecksum));
+                        updated =  !(currentChecksum.equals(existingChecksum));
                     } else {
                         //Does not exist
                         updated = true;
@@ -393,7 +399,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
 //                        timingTracer.mark("isActivityMeaningful");
 
                     } else {
-                        notUpdatedCounter.increment();
+                        notUpdatedCounter.incrementAndGet();
                     }
 
                     long elapsed = timingTracer.getTotalTime();
@@ -415,7 +421,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
 
         logger.debug("Updated {} (of {}) :: Ignored elements - Missing location:{}, Missing values: {}, Expired: {}, Not updated: {}", changes.size(), vmList.size(), invalidLocationCounter.getValue(), notMeaningfulCounter.getValue(), outdatedCounter.getValue(), notUpdatedCounter.getValue());
 
-        markDataReceived(SiriDataType.VEHICLE_MONITORING, datasetId, vmList.size(), changes.size(), outdatedCounter.getValue(), (invalidLocationCounter.getValue() + notMeaningfulCounter.getValue() + notUpdatedCounter.getValue()));
+        markDataReceived(SiriDataType.VEHICLE_MONITORING, datasetId, vmList.size(), changes.size(), outdatedCounter.get(), (invalidLocationCounter.get() + notMeaningfulCounter.get() + notUpdatedCounter.get()));
 
         timingTracer.mark("markDataReceived");
         markIdsAsUpdated(changes.keySet());
@@ -426,6 +432,28 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
         }
 
         return changes.values();
+    }
+
+    private static boolean isUpdated(String currentChecksum, String existingChecksum) {
+        return currentChecksum == null || !currentChecksum.equals(existingChecksum);
+    }
+
+    private static String calculateChecksum(VehicleActivityStructure vehicleActivityStructure) {
+        String existingChecksum = null;
+        if (vehicleActivityStructure != null) {
+            ZonedDateTime validUntilTime = vehicleActivityStructure.getValidUntilTime();
+            try {
+                // Calculate checksum without "ValidUntilTime" - thus ignoring "fake" updates where only validity is updated
+                vehicleActivityStructure.setValidUntilTime(null);
+                existingChecksum = getChecksum(vehicleActivityStructure);
+            } catch (Exception e) {
+                //Ignore - data will be updated
+            } finally {
+                //Set original ValidUntilTime back
+                vehicleActivityStructure.setValidUntilTime(validUntilTime);
+            }
+        }
+        return existingChecksum;
     }
 
     public VehicleActivityStructure add(String datasetId, VehicleActivityStructure activity) {
@@ -514,14 +542,13 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
 
     /**
      * Creates unique key - assumes that any operator has a set of unique VehicleRefs
-     *
      * @param datasetId
      * @param monitoredVehicleJourney
-     * @param vehicleRefvalue
      * @return
      */
-    private SiriObjectStorageKey createKey(String datasetId, VehicleActivityStructure.MonitoredVehicleJourney monitoredVehicleJourney, String vehicleRefvalue) {
+    private SiriObjectStorageKey createKey(String datasetId, VehicleActivityStructure.MonitoredVehicleJourney monitoredVehicleJourney) {
         StringBuilder key = new StringBuilder();
+
 
         if (monitoredVehicleJourney.getVehicleRef() != null) {
             VehicleRef vehicleRef = monitoredVehicleJourney.getVehicleRef();

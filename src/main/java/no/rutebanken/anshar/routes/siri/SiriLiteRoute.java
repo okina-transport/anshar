@@ -15,6 +15,8 @@
 
 package no.rutebanken.anshar.routes.siri;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import io.micrometer.core.instrument.util.StringUtils;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.*;
@@ -37,8 +39,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.VehicleActivityStructure;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.VehicleActivityStructure;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -676,11 +678,12 @@ public class SiriLiteRoute extends RestRouteBuilder {
                     String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
                     String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
                     Integer maxSize = p.getIn().getHeader(PARAM_MAX_SIZE, Integer.class);
+                    String lineRef = p.getIn().getHeader(PARAM_LINE_REF, String.class);
                     String clientTrackingName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
 
                     logger.info("Fetching cached ET-data");
                     Siri response = siriObjectFactory.createETServiceDelivery(estimatedTimetables.getAllCachedUpdates(requestorId,
-                            datasetId, clientTrackingName, maxSize
+                            datasetId, lineRef, clientTrackingName, maxSize
                     ));
 
                     List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
@@ -786,7 +789,6 @@ public class SiriLiteRoute extends RestRouteBuilder {
     /**
      * If http-parameter requestorId is not provided in request, it will be generated based on
      * client IP and requested resource for uniqueness
-     *
      * @param request
      * @return
      */

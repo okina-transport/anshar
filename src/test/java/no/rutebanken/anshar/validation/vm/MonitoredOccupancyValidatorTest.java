@@ -15,15 +15,16 @@
 
 package no.rutebanken.anshar.validation.vm;
 
+import jakarta.xml.bind.ValidationEvent;
 import no.rutebanken.anshar.routes.validation.validators.vm.MonitoredOccupancyValidator;
 import no.rutebanken.anshar.validation.CustomValidatorTest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import uk.org.siri.siri20.OccupancyEnumeration;
+import uk.org.siri.siri21.OccupancyEnumeration;
 
-import javax.xml.bind.ValidationEvent;
-
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class MonitoredOccupancyValidatorTest extends CustomValidatorTest {
 
@@ -37,9 +38,12 @@ public class MonitoredOccupancyValidatorTest extends CustomValidatorTest {
 
     @Test
     public void testValidOccupancy() throws Exception {
-        assertNull(validator.isValid(createXmlNode(fieldName, OccupancyEnumeration.FULL.value())));
+        assertNull(validator.isValid(createXmlNode(fieldName, OccupancyEnumeration.UNKNOWN.value())));
+        assertNull(validator.isValid(createXmlNode(fieldName, OccupancyEnumeration.MANY_SEATS_AVAILABLE.value())));
         assertNull(validator.isValid(createXmlNode(fieldName, OccupancyEnumeration.SEATS_AVAILABLE.value())));
         assertNull(validator.isValid(createXmlNode(fieldName, OccupancyEnumeration.STANDING_AVAILABLE.value())));
+        assertNull(validator.isValid(createXmlNode(fieldName, OccupancyEnumeration.FULL.value())));
+        assertNull(validator.isValid(createXmlNode(fieldName, OccupancyEnumeration.NOT_ACCEPTING_PASSENGERS.value())));
     }
 
     @Test

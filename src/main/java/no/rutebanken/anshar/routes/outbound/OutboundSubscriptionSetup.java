@@ -17,6 +17,7 @@ package no.rutebanken.anshar.routes.outbound;
 
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import org.entur.siri.validator.SiriValidator;
 
 import java.io.Serializable;
 import java.text.MessageFormat;
@@ -27,6 +28,7 @@ import java.util.Set;
 
 public class OutboundSubscriptionSetup implements Serializable {
 
+    private SiriValidator.Version siriVersion = SiriValidator.Version.VERSION_2_0;
     private ZonedDateTime requestTimestamp;
     private final SiriDataType subscriptionType;
     private final String address;
@@ -47,9 +49,8 @@ public class OutboundSubscriptionSetup implements Serializable {
     private boolean isSOAPSubscription;
 
     public OutboundSubscriptionSetup(ZonedDateTime requestTimestamp, SiriDataType subscriptionType, String address, long heartbeatInterval,
-                                     boolean incrementalUpdates, long changeBeforeUpdates, long updateInterval,
-                                     Map<Class, Set<String>> filterMap, List<ValueAdapter> valueAdapters,
-                                     String subscriptionId, String requestorRef, ZonedDateTime initialTerminationTime, String datasetId, String clientTrackingName, boolean useOriginalId) {
+                                     long changeBeforeUpdates, Map<Class, Set<String>> filterMap, List<ValueAdapter> valueAdapters,
+                                     String subscriptionId, String requestorRef, ZonedDateTime initialTerminationTime, String datasetId, String clientTrackingName,  SiriValidator.Version siriVersion) {
         this.requestTimestamp = requestTimestamp;
         this.subscriptionType = subscriptionType;
         this.address = address;
@@ -65,6 +66,7 @@ public class OutboundSubscriptionSetup implements Serializable {
         this.datasetId = datasetId;
         this.clientTrackingName = clientTrackingName;
         this.useOriginalId = useOriginalId;
+        this.siriVersion = siriVersion;
     }
 
     OutboundSubscriptionSetup(SiriDataType subscriptionType, String address, int timeToLive, List<ValueAdapter> outboundAdapters, String subscriptionId) {
@@ -150,6 +152,11 @@ public class OutboundSubscriptionSetup implements Serializable {
     public boolean isUseOriginalId() {
         return useOriginalId;
     }
+
+    public SiriValidator.Version getSiriVersion() {
+        return siriVersion;
+    }
+
 
     public String toString() {
         return MessageFormat.format("[subscriptionId={0}, clientTrackingName={1}, requestorRef={2}, address={3}]", subscriptionId, clientTrackingName, requestorRef, address);

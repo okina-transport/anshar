@@ -20,7 +20,7 @@ import no.rutebanken.anshar.routes.validation.validators.LimitedSubsetValidator;
 import no.rutebanken.anshar.routes.validation.validators.Validator;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri20.OccupancyEnumeration;
+import uk.org.siri.siri21.OccupancyEnumeration;
 
 import static no.rutebanken.anshar.routes.validation.validators.Constants.ESTIMATED_VEHICLE_JOURNEY;
 
@@ -41,8 +41,11 @@ public class OccupancyValidator extends LimitedSubsetValidator {
         path = ESTIMATED_VEHICLE_JOURNEY + FIELD_DELIMITER + FIELDNAME;
         expectedValues = Sets.newHashSet(
                 OccupancyEnumeration.FULL.value(),
+                OccupancyEnumeration.STANDING_AVAILABLE.value(),
                 OccupancyEnumeration.SEATS_AVAILABLE.value(),
-                OccupancyEnumeration.STANDING_AVAILABLE.value()
+                OccupancyEnumeration.MANY_SEATS_AVAILABLE.value(),
+                OccupancyEnumeration.NOT_ACCEPTING_PASSENGERS.value(),
+                OccupancyEnumeration.UNKNOWN.value()
         );
     }
 

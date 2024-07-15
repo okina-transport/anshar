@@ -23,6 +23,11 @@ import com.hazelcast.collection.ISet;
 import com.hazelcast.config.CacheDeserializedValues;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.SerializerConfig;
+import com.hazelcast.config.EvictionConfig;
+import com.hazelcast.config.EvictionPolicy;
+import com.hazelcast.config.InMemoryFormat;
+import com.hazelcast.config.MaxSizePolicy;
+import com.hazelcast.config.NearCacheConfig;
 import com.hazelcast.core.DistributedObject;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.LifecycleEvent;
@@ -36,13 +41,17 @@ import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.rutebanken.hazelcasthelper.service.HazelCastService;
+import org.rutebanken.hazelcasthelper.service.KubernetesService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.PtSituationElement;
+import uk.org.siri.siri21.VehicleActivityStructure;
 
 import javax.annotation.PreDestroy;
 import java.math.BigInteger;
@@ -50,7 +59,6 @@ import java.net.UnknownHostException;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.*;
-
 
 @Service
 @Configuration
@@ -88,13 +96,13 @@ public class ExtendedHazelcastService extends HazelCastService {
         return hazelcast;
     }
 
-    @Override
-    public void updateDefaultMapConfig(MapConfig defaultMapConfig) {
-        defaultMapConfig.setAsyncBackupCount(0);
-        defaultMapConfig.setBackupCount(0);
-        defaultMapConfig.setCacheDeserializedValues(CacheDeserializedValues.NEVER);
-
-    }
+//    @Override
+//    public void updateDefaultMapConfig(MapConfig defaultMapConfig) {
+//        defaultMapConfig.setAsyncBackupCount(0);
+//        defaultMapConfig.setBackupCount(0);
+//        defaultMapConfig.setCacheDeserializedValues(CacheDeserializedValues.NEVER);
+//
+//    }
 
     @Override
     public List<SerializerConfig> getSerializerConfigs() {
@@ -118,6 +126,21 @@ public class ExtendedHazelcastService extends HazelCastService {
                         .setImplementation(new KryoSerializer())
 
         );
+    }
+
+    @Override
+    public void updateDefaultMapConfig(MapConfig mapConfig) {
+        NearCacheConfig nearCacheConfig = new NearCacheConfig("default");
+        EvictionConfig evictionConfig = new EvictionConfig()
+                .setEvictionPolicy(EvictionPolicy.NONE)
+                .setMaxSizePolicy(MaxSizePolicy.ENTRY_COUNT)
+                .setSize(5000);
+
+        nearCacheConfig
+                .setInMemoryFormat(InMemoryFormat.OBJECT)
+                .setEvictionConfig(evictionConfig);
+
+        mapConfig.setNearCacheConfig(nearCacheConfig);
     }
 
     @Bean
@@ -379,38 +402,37 @@ public class ExtendedHazelcastService extends HazelCastService {
         JSONObject root = new JSONObject();
         JSONArray clusterMembers = new JSONArray();
         Cluster cluster = hazelcast.getCluster();
+        if (cluster != null) {
+            Set<Member> members = cluster.getMembers();
+            if (members != null && !members.isEmpty()) {
+                for (Member member : members) {
 
-        Set<Member> members = cluster.getMembers();
-        if (!members.isEmpty()) {
-            for (Member member : members) {
+                    JSONObject obj = new JSONObject();
+                    obj.put("uuid", member.getUuid().toString());
+                    obj.put("host", member.getAddress().getHost());
+                    obj.put("port", member.getAddress().getPort());
+                    obj.put("local", member.localMember());
 
-                JSONObject obj = new JSONObject();
-                obj.put("uuid", member.getUuid().toString());
-                obj.put("host", member.getAddress().getHost());
-                obj.put("port", member.getAddress().getPort());
-                obj.put("local", member.localMember());
+                    if (includeStats) {
+                        JSONObject stats = new JSONObject();
+                        Collection<DistributedObject> distributedObjects = hazelcast.getDistributedObjects();
+                        for (DistributedObject distributedObject : distributedObjects) {
 
-                if (includeStats) {
-                    JSONObject stats = new JSONObject();
-                    Collection<DistributedObject> distributedObjects = hazelcast.getDistributedObjects();
-                    for (DistributedObject distributedObject : distributedObjects) {
-
-                        try {
-                            String jsonValue = jsonMapper.writeValueAsString(hazelcast.getMap(distributedObject.getName()).getLocalMapStats());
-                            stats.put(distributedObject.getName(), new org.json.JSONObject(jsonValue));
-                        } catch (JsonProcessingException e) {
-                            e.printStackTrace();
+                            try {
+                                String jsonValue = jsonMapper.writeValueAsString(hazelcast.getMap(distributedObject.getName()).getLocalMapStats());
+                                stats.put(distributedObject.getName(), new org.json.JSONObject(jsonValue));
+                            } catch (JsonProcessingException e) {
+                                e.printStackTrace();
+                            }
                         }
-                    }
 
-                    obj.put("localmapstats", stats);
+                        obj.put("localmapstats", stats);
+                    }
+                    clusterMembers.add(obj);
                 }
-                clusterMembers.add(obj);
             }
         }
-
         root.put("members", clusterMembers);
         return root.toString();
-
     }
 }

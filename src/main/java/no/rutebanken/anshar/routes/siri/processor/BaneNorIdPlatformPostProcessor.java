@@ -21,18 +21,19 @@ import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
-import uk.org.siri.siri20.EstimatedCall;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.EstimatedVersionFrameStructure;
-import uk.org.siri.siri20.NaturalLanguageStringStructure;
-import uk.org.siri.siri20.RecordedCall;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.EstimatedCall;
+import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.EstimatedVersionFrameStructure;
+import uk.org.siri.siri21.NaturalLanguageStringStructure;
+import uk.org.siri.siri21.RecordedCall;
+import uk.org.siri.siri21.Siri;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static no.rutebanken.anshar.routes.siri.processor.BaneNorSiriEtRewriter.foreignStops;
 import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.STOP_AND_PLATFORM_TO_NSR;
 
 public class BaneNorIdPlatformPostProcessor extends ValueAdapter implements PostProcessor {
@@ -57,6 +58,8 @@ public class BaneNorIdPlatformPostProcessor extends ValueAdapter implements Post
             platform = arrivalPlatformName.getValue();
         } else if (departurePlatformName != null) {
             platform = departurePlatformName.getValue();
+        } else if (foreignStops.contains(stopPointRefValue)){
+            platform = "1";
         }
 
         if (stopPlaceService == null) {

@@ -37,7 +37,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.xml.sax.SAXException;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.Siri;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.UnmarshalException;

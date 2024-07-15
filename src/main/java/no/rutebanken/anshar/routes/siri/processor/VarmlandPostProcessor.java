@@ -17,18 +17,19 @@
 package no.rutebanken.anshar.routes.siri.processor;
 
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
-import uk.org.siri.siri20.DataFrameRefStructure;
-import uk.org.siri.siri20.EstimatedCall;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.EstimatedVersionFrameStructure;
-import uk.org.siri.siri20.FramedVehicleJourneyRefStructure;
-import uk.org.siri.siri20.LineRef;
-import uk.org.siri.siri20.RecordedCall;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.StopPointRef;
-import uk.org.siri.siri20.VehicleActivityStructure;
-import uk.org.siri.siri20.VehicleMonitoringDeliveryStructure;
+import uk.org.siri.siri21.DataFrameRefStructure;
+import uk.org.siri.siri21.EstimatedCall;
+import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.EstimatedVersionFrameStructure;
+import uk.org.siri.siri21.FramedVehicleJourneyRefStructure;
+import uk.org.siri.siri21.LineRef;
+import uk.org.siri.siri21.RecordedCall;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.StopAssignmentStructure;
+import uk.org.siri.siri21.StopPointRefStructure;
+import uk.org.siri.siri21.VehicleActivityStructure;
+import uk.org.siri.siri21.VehicleMonitoringDeliveryStructure;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -105,6 +106,9 @@ public class VarmlandPostProcessor extends ValueAdapter implements PostProcessor
                             if (recordedCalls != null) {
                                 for (RecordedCall call : recordedCalls.getRecordedCalls()) {
                                     call.setStopPointRef(replacePrefix(call.getStopPointRef()));
+
+                                    cleanupStopAssignments(call.getArrivalStopAssignments());
+                                    cleanupStopAssignments(call.getDepartureStopAssignments());
                                 }
                             }
 
@@ -112,6 +116,9 @@ public class VarmlandPostProcessor extends ValueAdapter implements PostProcessor
                             if (estimatedCalls != null) {
                                 for (EstimatedCall call : estimatedCalls.getEstimatedCalls()) {
                                     call.setStopPointRef(replacePrefix(call.getStopPointRef()));
+
+                                    cleanupStopAssignments(call.getArrivalStopAssignments());
+                                    cleanupStopAssignments(call.getDepartureStopAssignments());
                                 }
                             }
                         }
@@ -121,7 +128,17 @@ public class VarmlandPostProcessor extends ValueAdapter implements PostProcessor
         }
     }
 
-    private StopPointRef replacePrefix(StopPointRef stopPointRef) {
+    private static void cleanupStopAssignments(List<StopAssignmentStructure> stopAssignments) {
+        if (stopAssignments != null && !stopAssignments.isEmpty()) {
+            for (StopAssignmentStructure stopAssignment : stopAssignments) {
+                if (stopAssignment.getExpectedQuayRef() == null && stopAssignment.getActualQuayRef() != null) {
+                    stopAssignment.setExpectedQuayRef(stopAssignment.getActualQuayRef());
+                }
+            }
+        }
+    }
+
+    private StopPointRefStructure replacePrefix(StopPointRefStructure stopPointRef) {
 
         if (stopPointRef != null) {
             stopPointRef.setValue(stopPointRef.getValue().replaceFirst(prefixPattern, replacement));

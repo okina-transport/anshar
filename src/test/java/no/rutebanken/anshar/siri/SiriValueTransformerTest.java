@@ -28,15 +28,15 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import org.junit.jupiter.api.Test;
-import uk.org.siri.siri20.BlockRefStructure;
-import uk.org.siri.siri20.DestinationRef;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.EstimatedVersionFrameStructure;
-import uk.org.siri.siri20.JourneyPlaceRefStructure;
-import uk.org.siri.siri20.LineRef;
-import uk.org.siri.siri20.ServiceDelivery;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.BlockRefStructure;
+import uk.org.siri.siri21.DestinationRef;
+import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.EstimatedVersionFrameStructure;
+import uk.org.siri.siri21.JourneyPlaceRefStructure;
+import uk.org.siri.siri21.LineRef;
+import uk.org.siri.siri21.ServiceDelivery;
+import uk.org.siri.siri21.Siri;
 
 import javax.xml.bind.JAXBException;
 import java.io.IOException;
@@ -333,7 +333,7 @@ public class SiriValueTransformerTest extends SpringBootBaseTest {
 
     private Siri createSiriObject(String lineRefValue, String blockRefValue, String originStopPointValue, String destinationStopPointValue) {
         Siri siri = new Siri();
-            ServiceDelivery serviceDelivery = new ServiceDelivery();
+        ServiceDelivery serviceDelivery = new ServiceDelivery();
         EstimatedTimetableDeliveryStructure estimatedTimetableDelivery = new EstimatedTimetableDeliveryStructure();
         EstimatedVersionFrameStructure estimatedJourneyVersionFrame = new EstimatedVersionFrameStructure();
         EstimatedVehicleJourney estimatedVehicleJourney = new EstimatedVehicleJourney();

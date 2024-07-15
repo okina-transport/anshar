@@ -15,6 +15,11 @@
 
 package no.rutebanken.anshar.routes;
 
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.xml.bind.JAXBException;
+import jakarta.xml.bind.UnmarshalException;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.util.CustomSiriXml;
 import org.apache.camel.Exchange;
@@ -22,17 +27,24 @@ import org.apache.camel.InvalidPayloadException;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.support.builder.Namespaces;
+import org.entur.avro.realtime.siri.converter.jaxb2avro.Jaxb2AvroConverter;
+import org.entur.avro.realtime.siri.model.SiriRecord;
 import org.apache.http.HttpHeaders;
-import org.eclipse.jetty.io.EofException;
 import org.entur.protobuf.mapper.SiriMapper;
-import org.rutebanken.siri20.util.SiriJson;
+import org.entur.siri21.util.SiriJson;
+import org.entur.siri21.util.SiriXml;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
+import uk.org.siri.siri20.ServiceDelivery;
+import uk.org.siri.siri20.SituationExchangeDeliveryStructure;
+import uk.org.siri.siri20.VehicleMonitoringDeliveryStructure;
+import uk.org.siri.siri21.Siri;
 
+import javax.xml.stream.XMLStreamException;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.MediaType;
 import javax.xml.bind.JAXBException;
@@ -44,11 +56,13 @@ import java.net.ConnectException;
 import java.util.HashMap;
 import java.util.Map;
 
+import static no.rutebanken.anshar.routes.HttpParameter.SIRI_VERSION_HEADER_NAME;
+
 public class RestRouteBuilder extends RouteBuilder {
 
     private static final Logger logger = LoggerFactory.getLogger(RestRouteBuilder.class);
 
-    protected Namespaces nameSpace = new Namespaces("siri", "http://www.siri.org.uk/siri")
+    protected Namespaces ns = new Namespaces("siri", "http://www.siri.org.uk/siri")
             .add("xsd", "http://www.w3.org/2001/XMLSchema");
 
 
@@ -203,7 +217,7 @@ public class RestRouteBuilder extends RouteBuilder {
                 // Data-instances should never redirect requests
                 from("direct:redirect.request.et")
                         .log("Ignore redirect")
-                ;
+                        ;
 
             } else {
                 from("direct:redirect.request.et")
@@ -549,7 +563,6 @@ public class RestRouteBuilder extends RouteBuilder {
 
     /**
      * Returns true if Et-Client-header is blocked - request should be ignored
-     *
      * @param e
      * @return
      */
@@ -612,16 +625,26 @@ public class RestRouteBuilder extends RouteBuilder {
 
         return values;
     }
+    protected void streamOutput(Exchange p, Siri response, HttpServletResponse out) throws IOException, JAXBException,XMLStreamException {
+        boolean siri21Version = false;
+        if ("2.1".equals(p.getIn().getHeader(SIRI_VERSION_HEADER_NAME))) {
+            siri21Version = true;
+        }
 
-    protected void streamOutput(Exchange p, Siri response, HttpServletResponse out) throws IOException, JAXBException {
 
         if (MediaType.APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE)) |
-                MediaType.APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
+            MediaType.APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
             p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
-            out.setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
-            SiriJson.toJson(response, out.getOutputStream());
+            if (siri21Version) {
+                SiriJson.toJson(response, out.getOutputStream());
+            } else {
+                org.rutebanken.siri20.util.SiriJson.toJson(
+                        downgradeSiriVersion(response),
+                        out.getOutputStream()
+                );
+            }
         } else if ("application/x-protobuf".equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE)) |
-                "application/x-protobuf".equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
+            "application/x-protobuf".equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
             try {
                 final byte[] bytes = SiriMapper.mapToPbf(response).toByteArray();
                 p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, "application/x-protobuf");
@@ -633,16 +656,68 @@ public class RestRouteBuilder extends RouteBuilder {
                 log.error("Caught NullPointerException, data written to " + file.getAbsolutePath(), npe);
                 CustomSiriXml.toXml(response, null, new FileOutputStream(file));
             }
-        } else {
+        } else if ("application/avro".equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE)) |
+            "application/avro".equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
+        try {
+            final SiriRecord siriRecord = Jaxb2AvroConverter.convert(response);
+
+            p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, "application/avro");
+            SiriRecord.getEncoder().encode(siriRecord, out.getOutputStream());
+
+        } catch (NullPointerException npe) {
+            File file = new File("ET-" + System.currentTimeMillis() + ".xml");
+            log.error("Caught NullPointerException, data written to " + file.getAbsolutePath(), npe);
+            SiriXml.toXml(response, null, new FileOutputStream(file));
+        }
+    }
+        else if ("application/avro+json".equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE)) |
+            "application/avro+json".equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
+        try {
+            final SiriRecord siriRecord = Jaxb2AvroConverter.convert(response);
+
+            p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
+
+            out.getOutputStream().write(siriRecord.toString().getBytes());
+
+        } catch (NullPointerException npe) {
+            File file = new File("ET-" + System.currentTimeMillis() + ".xml");
+            log.error("Caught NullPointerException, data written to " + file.getAbsolutePath(), npe);
+            SiriXml.toXml(response, null, new FileOutputStream(file));
+        }
+    }
+        else {
             p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_XML);
             out.setHeader(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_XML);
             CustomSiriXml.toXml(response, null, out.getOutputStream());
-
         }
         p.getMessage().setBody(out.getOutputStream());
     }
 
-}
+    public static uk.org.siri.siri20.Siri downgradeSiriVersion(Siri response) throws JAXBException, XMLStreamException {
+        uk.org.siri.siri20.Siri siri20Response;
+        String siri2_0Xml = SiriXml.toXml(response);
+        siri20Response = org.rutebanken.siri20.util.SiriXml.parseXml(siri2_0Xml);
+        siri20Response.setVersion("2.0");
+        ServiceDelivery serviceDelivery = siri20Response.getServiceDelivery();
+        if (serviceDelivery != null) {
+            if (!serviceDelivery.getEstimatedTimetableDeliveries().isEmpty()) {
+                for (EstimatedTimetableDeliveryStructure delivery : serviceDelivery.getEstimatedTimetableDeliveries()) {
+                    delivery.setVersion("2.0");
+                }
+            }
+            if (!serviceDelivery.getVehicleMonitoringDeliveries().isEmpty()) {
+                for (VehicleMonitoringDeliveryStructure delivery : serviceDelivery.getVehicleMonitoringDeliveries()) {
+                    delivery.setVersion("2.0");
+                }
+            }
+            if (!serviceDelivery.getSituationExchangeDeliveries().isEmpty()) {
+                for (SituationExchangeDeliveryStructure delivery : serviceDelivery.getSituationExchangeDeliveries()) {
+                    delivery.setVersion("2.0");
+                }
+            }
+        }
+        return siri20Response;
+    }
 
 // To be removed according to task ROR-521
 //@Component

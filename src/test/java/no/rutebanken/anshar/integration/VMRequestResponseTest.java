@@ -23,9 +23,15 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.rutebanken.siri20.util.SiriXml;
+import org.entur.siri21.util.SiriXml;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.CourseOfJourneyRefStructure;
+import uk.org.siri.siri21.DirectionRefStructure;
+import uk.org.siri.siri21.LineRef;
+import uk.org.siri.siri21.LocationStructure;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.VehicleActivityStructure;
+import uk.org.siri.siri21.VehicleRef;
 
 import java.math.BigDecimal;
 import java.time.ZonedDateTime;

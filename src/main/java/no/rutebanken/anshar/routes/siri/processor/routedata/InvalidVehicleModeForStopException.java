@@ -1,11 +1,11 @@
 package no.rutebanken.anshar.routes.siri.processor.routedata;
 
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.VehicleModesEnumeration;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.VehicleModesEnumeration;
 
 import java.util.List;
 
-import static no.rutebanken.anshar.routes.siri.processor.routedata.ExceptionUtils.resolveServiceJourneyId;
+import static no.rutebanken.anshar.util.SiriUtils.resolveServiceJourneyId;
 
 public class InvalidVehicleModeForStopException extends Throwable {
 

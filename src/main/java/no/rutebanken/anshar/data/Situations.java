@@ -32,9 +32,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Repository;
-import uk.org.ifopt.siri20.StopPlaceRef;
-import uk.org.siri.siri20.*;
+import org.springframework.stereotype.Component;
+import uk.org.siri.siri21.HalfOpenTimestampOutputRangeStructure;
+import uk.org.siri.siri21.MessageRefStructure;
+import uk.org.siri.siri21.PtSituationElement;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.SituationVersion;
 
 import javax.annotation.PostConstruct;
 import java.time.Instant;
@@ -42,20 +45,21 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-@Repository
+@Component
 public class Situations extends SiriRepository<PtSituationElement> {
     private static final Logger logger = LoggerFactory.getLogger(Situations.class);
 
     @Getter
     @Setter
     @Autowired
-    private IMap<SiriObjectStorageKey, PtSituationElement> situationElements;
+    private IMap<SiriObjectStorageKey , PtSituationElement>  situationElements;
 
     @Autowired
     @Qualifier("getSxChecksumMap")
-    private IMap<SiriObjectStorageKey, String> checksumCache;
+    private IMap<SiriObjectStorageKey,String> checksumCache;
 
     @Autowired
     @Qualifier("getSituationChangesMap")
@@ -85,6 +89,10 @@ public class Situations extends SiriRepository<PtSituationElement> {
     @PostConstruct
     private void initializeUpdateCommitter() {
         super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
+
+        enableCache(situationElements);
+
+        linkEntriesTtl(situationElements, changesMap, checksumCache);
     }
 
     /**
@@ -130,10 +138,17 @@ public class Situations extends SiriRepository<PtSituationElement> {
         return sizeMap;
     }
 
+
+    public Integer getDatasetSize(String datasetId) {
+        return Math.toIntExact(situationElements.keySet().stream()
+                .filter(key -> datasetId.equals(key.getCodespaceId()))
+                .count());
+    }
+
     @Override
     public void clearAllByDatasetId(String datasetId) {
 
-        Set<SiriObjectStorageKey> idsToRemove = situationElements.keySet(createCodespacePredicate(datasetId));
+        Set<SiriObjectStorageKey> idsToRemove = situationElements.keySet(createHzCodespacePredicate(datasetId));
 
         logger.warn("Removing all data ({} ids) for {}", idsToRemove.size(), datasetId);
 
@@ -295,10 +310,10 @@ public class Situations extends SiriRepository<PtSituationElement> {
         }
 
         if (expiry != null && expiry.getYear() < 2100) {
-            return ZonedDateTime.now().until(expiry.plusMinutes(configuration.getSxGraceperiodMinutes()), ChronoUnit.MILLIS);
+            return ZonedDateTime.now().until(expiry.plus(configuration.getSxGraceperiodMinutes(), ChronoUnit.MINUTES), ChronoUnit.MILLIS);
         } else {
             // No expiration set - keep "forever"
-            return ZonedDateTime.now().until(ZonedDateTime.now().plusYears(10), ChronoUnit.MILLIS);
+            return  ZonedDateTime.now().until(ZonedDateTime.now().plusYears(10), ChronoUnit.MILLIS);
         }
     }
 
@@ -306,8 +321,8 @@ public class Situations extends SiriRepository<PtSituationElement> {
         Map<SiriObjectStorageKey, PtSituationElement> changes = new HashMap<>();
         Map<SiriObjectStorageKey, String> checksumTmp = new HashMap<>();
 
-        Counter alreadyExpiredCounter = new CounterImpl(0);
-        Counter ignoredCounter = new CounterImpl(0);
+        AtomicInteger alreadyExpiredCounter = new AtomicInteger(0);
+        AtomicInteger ignoredCounter = new AtomicInteger(0);
         sxList.forEach(situation -> {
             TimingTracer timingTracer = new TimingTracer("single-sx");
 
@@ -350,6 +365,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
 
             if (keepByProgressStatus(situation) && updated) {
                 timingTracer.mark("keepByProgressStatus");
+                long expiration = getExpiration(situation);
                 timingTracer.mark("getExpiration");
                 if (expiration > 0) { //expiration < 0 => already expired
                     changes.put(key, situation);
@@ -382,7 +398,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
         timingTracer.mark("checksumCache.setAll");
 
 
-        markDataReceived(SiriDataType.SITUATION_EXCHANGE, datasetId, sxList.size(), changes.size(), alreadyExpiredCounter.getValue(), ignoredCounter.getValue());
+        markDataReceived(SiriDataType.SITUATION_EXCHANGE, datasetId, sxList.size(), changes.size(), alreadyExpiredCounter.get(), ignoredCounter.get());
         timingTracer.mark("markDataReceived");
 
         markIdsAsUpdated(changes.keySet());
@@ -473,5 +489,4 @@ public class Situations extends SiriRepository<PtSituationElement> {
     public Set<String> getAllDatasetIds() {
         return situationElements.keySet().stream().map(SiriObjectStorageKey::getCodespaceId).collect(Collectors.toSet());
     }
-
 }

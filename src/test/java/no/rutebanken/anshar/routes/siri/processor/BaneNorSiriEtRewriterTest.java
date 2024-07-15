@@ -4,14 +4,13 @@ import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.siri.processor.routedata.NetexUpdaterService;
 import no.rutebanken.anshar.routes.siri.processor.routedata.StopTime;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.EstimatedVersionFrameStructure;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.EstimatedVersionFrameStructure;
+import uk.org.siri.siri21.Siri;
 
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoField;
@@ -22,9 +21,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static no.rutebanken.anshar.routes.siri.processor.BaneNorSiriStopAssignmentPopulaterTest.unmarshallSiriFile;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
@@ -39,7 +38,7 @@ public class BaneNorSiriEtRewriterTest extends SpringBootBaseTest {
         rewriter = new BaneNorSiriEtRewriter("BNR");
     }
 
-    @Disabled("Ignored because of excessive memory-usage which breaks CircleCI")
+//    @Disabled("Ignored because of excessive memory-usage which breaks CircleCI")
     @Test
     public void testMapping() throws Exception {
         logger.info("Reads routedata...");
@@ -68,6 +67,18 @@ public class BaneNorSiriEtRewriterTest extends SpringBootBaseTest {
         // Remove from trainNumbersToStopsBefore before content-comparison
         trainNumbersToStopsBefore.remove("861");
         trainNumbersToStopsBefore.remove("863");
+
+
+        // Trainnumber 390 and 391 should be merged according to Vy-hack
+        assertTrue(trainNumbersToStopsBefore.containsKey("390")); // ET-data ignored, stops will be created from plan-data
+        assertFalse(trainNumbersToStopsAfter.containsKey("390"));
+
+        assertTrue(trainNumbersToStopsBefore.containsKey("391")); // ET-data has its train-number updated according to rules in hack
+        assertFalse(trainNumbersToStopsAfter.containsKey("391"));
+
+        // Remove from trainNumbersToStopsBefore before content-comparison
+        trainNumbersToStopsBefore.remove("390");
+        trainNumbersToStopsBefore.remove("391");
 
         assertEquals(trainNumbersToStopsBefore.size(), trainNumbersToStopsAfter.size());
         for (Map.Entry<String, List<String>> before : trainNumbersToStopsBefore.entrySet()) {

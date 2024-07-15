@@ -17,19 +17,17 @@ package no.rutebanken.anshar.routes.siri.processor;
 
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
-import uk.org.siri.siri20.EstimatedCall;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.EstimatedVersionFrameStructure;
-import uk.org.siri.siri20.NaturalLanguageStringStructure;
-import uk.org.siri.siri20.RecordedCall;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.EstimatedCall;
+import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.EstimatedVersionFrameStructure;
+import uk.org.siri.siri21.RecordedCall;
+import uk.org.siri.siri21.Siri;
 
 import java.math.BigInteger;
 import java.util.List;
 
 import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.ADD_ORDER_TO_CALLS;
-import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.OVERRIDE_EMPTY_DESTINATION_DISPLAY_FOR_EXTRA_JOURNEYS;
 
 public class AddOrderToAllCallsPostProcessor extends ValueAdapter implements PostProcessor {
 
@@ -55,18 +53,24 @@ public class AddOrderToAllCallsPostProcessor extends ValueAdapter implements Pos
                         List<EstimatedVehicleJourney> estimatedVehicleJourneies = estimatedJourneyVersionFrame.getEstimatedVehicleJourneies();
                         for (EstimatedVehicleJourney estimatedVehicleJourney : estimatedVehicleJourneies) {
 
-                            int counter = 0;
+                            int updatedOrderIndex = 0;
+                            int ruleAppliedCounter = 0;
                             final EstimatedVehicleJourney.RecordedCalls recordedCallsObj = estimatedVehicleJourney.getRecordedCalls();
                             if (recordedCallsObj != null) {
                                 final List<RecordedCall> recordedCalls = recordedCallsObj.getRecordedCalls();
                                 for (RecordedCall call : recordedCalls) {
                                     if (call.getOrder() == null) {
-                                        counter++;
+                                        updatedOrderIndex++;
                                         if (call.getVisitNumber() != null) {
                                             call.setOrder(call.getVisitNumber());
+                                            updatedOrderIndex = call.getVisitNumber().intValue();
+                                            ruleAppliedCounter++;
                                         } else {
-                                            call.setOrder(BigInteger.valueOf(counter));
+                                            call.setOrder(BigInteger.valueOf(updatedOrderIndex));
+                                            ruleAppliedCounter++;
                                         }
+                                    } else {
+                                        updatedOrderIndex = call.getOrder().intValue();
                                     }
                                 }
                             }
@@ -76,21 +80,26 @@ public class AddOrderToAllCallsPostProcessor extends ValueAdapter implements Pos
                                 final List<EstimatedCall> estimatedCalls = estimatedCallsObj.getEstimatedCalls();
                                 for (EstimatedCall call : estimatedCalls) {
                                     if (call.getOrder() == null) {
-                                        counter++;
+                                        updatedOrderIndex++;
                                         if (call.getVisitNumber() != null) {
                                             call.setOrder(call.getVisitNumber());
+                                            updatedOrderIndex = call.getVisitNumber().intValue();
+                                            ruleAppliedCounter++;
                                         } else {
-                                            call.setOrder(BigInteger.valueOf(counter));
+                                            call.setOrder(BigInteger.valueOf(updatedOrderIndex));
+                                            ruleAppliedCounter++;
                                         }
+                                    } else {
+                                        updatedOrderIndex = call.getOrder().intValue();
                                     }
                                 }
                             }
-                            if (counter > 0) {
+                            if (ruleAppliedCounter > 0) {
                                 getMetricsService().registerDataMapping(
                                     SiriDataType.ESTIMATED_TIMETABLE,
                                     datasetId,
                                     ADD_ORDER_TO_CALLS,
-                                    counter
+                                    ruleAppliedCounter
                                 );
                             }
                         }

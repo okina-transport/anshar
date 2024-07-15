@@ -2,7 +2,9 @@ package no.rutebanken.anshar.routes.pubsub;
 
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.LoggingLevel;
+import no.rutebanken.anshar.routes.avro.AvroConvertorProcessor;
 import org.apache.camel.builder.RouteBuilder;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +28,9 @@ public class PubsubTopicRoute extends RouteBuilder {
     @Value("${anshar.outbound.pubsub.topic.enabled}")
     private boolean pushToTopicEnabled;
 
+    @Autowired
+    private AvroConvertorProcessor avroConvertorProcessor;
+
     private AtomicInteger etCounter = new AtomicInteger();
 
     private AtomicInteger vmCounter = new AtomicInteger();
@@ -43,7 +48,6 @@ public class PubsubTopicRoute extends RouteBuilder {
              * message to protobuf, and posts to Cloud Pubsub
              */
             from("direct:send.to.pubsub.topic.estimated_timetable")
-                    .setExchangePattern(ExchangePattern.InOnly)
                     .to("direct:siri.transform.data")
                     .to("xslt-saxon:xsl/splitAndFilterNotMonitored.xsl")
                     .split().tokenizeXML("Siri").streaming()
@@ -58,7 +62,6 @@ public class PubsubTopicRoute extends RouteBuilder {
              * message to protobuf, and posts to Cloud Pubsub
              */
             from("direct:send.to.pubsub.topic.vehicle_monitoring")
-                    .setExchangePattern(ExchangePattern.InOnly)
                     .to("direct:siri.transform.data")
                     .to("xslt-saxon:xsl/split.xsl")
                     .split().tokenizeXML("Siri").streaming()
@@ -72,7 +75,6 @@ public class PubsubTopicRoute extends RouteBuilder {
              * message to protobuf, and posts to Cloud Pubsub
              */
             from("direct:send.to.pubsub.topic.situation_exchange")
-                    .setExchangePattern(ExchangePattern.InOnly)
                     .to("direct:siri.transform.data")
                     .to("xslt-saxon:xsl/split.xsl")
                     .split().tokenizeXML("Siri").streaming()
@@ -80,6 +82,24 @@ public class PubsubTopicRoute extends RouteBuilder {
                     .to("direct:map.jaxb.to.protobuf")
                     .wireTap("direct:log.pubsub.sx.traffic")
                     .to(sxTopic)
+            ;
+
+            from("direct:publish.et.avro")
+                    .process(avroConvertorProcessor)
+                    .wireTap("direct:publish.et.avro.kafka")
+                    .wireTap("direct:publish.et.avro.pubsub")
+            ;
+
+            from("direct:publish.vm.avro")
+                    .process(avroConvertorProcessor)
+                    .wireTap("direct:publish.vm.avro.kafka")
+                    .wireTap("direct:publish.vm.avro.pubsub")
+            ;
+
+            from("direct:publish.sx.avro")
+                    .process(avroConvertorProcessor)
+                    .wireTap("direct:publish.sx.avro.kafka")
+                    .wireTap("direct:publish.sx.avro.pubsub")
             ;
 
             /**

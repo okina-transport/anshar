@@ -1,19 +1,24 @@
 package no.rutebanken.anshar.outbound;
 
+import jakarta.xml.bind.JAXBException;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
+import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
+import org.entur.siri21.util.SiriXml;
 import org.junit.jupiter.api.Test;
 import org.rutebanken.siri20.util.SiriXml;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.SubscriptionContextStructure;
-import uk.org.siri.siri20.SubscriptionRequest;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.SubscriptionContextStructure;
+import uk.org.siri.siri21.SubscriptionRequest;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.stream.XMLStreamException;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -122,6 +127,4 @@ public class OutboundSubscriptionTest extends SpringBootBaseTest {
         subscriptionRequest.setSubscriptionContext(context);
         return subscriptionRequest;
     }
-
-    // TODO MHI : test for SM subscription
 }

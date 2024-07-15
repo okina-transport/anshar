@@ -21,16 +21,16 @@ import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.LineRef;
-import uk.org.siri.siri20.MonitoredStopVisit;
-import uk.org.siri.siri20.MonitoringRefStructure;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.StopMonitoringDeliveryStructure;
-import uk.org.siri.siri20.StopMonitoringRequestStructure;
-import uk.org.siri.siri20.StopMonitoringSubscriptionStructure;
-import uk.org.siri.siri20.SubscriptionRequest;
-import uk.org.siri.siri20.VehicleActivityStructure;
-import uk.org.siri.siri20.VehicleRef;
+import uk.org.siri.siri21.LineRef;
+import uk.org.siri.siri21.MonitoredStopVisit;
+import uk.org.siri.siri21.MonitoringRefStructure;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.StopMonitoringDeliveryStructure;
+import uk.org.siri.siri21.StopMonitoringRequestStructure;
+import uk.org.siri.siri21.StopMonitoringSubscriptionStructure;
+import uk.org.siri.siri21.SubscriptionRequest;
+import uk.org.siri.siri21.VehicleActivityStructure;
+import uk.org.siri.siri21.VehicleRef;
 
 import java.util.*;
 
@@ -63,8 +63,8 @@ public class SiriHelperTest  extends SpringBootBaseTest {
 
 
         assertFalse(
-            filterMatchingLineRef_1.equals(filterMatchingLineRef_2),
-            "Filters are not unique"
+                filterMatchingLineRef_1.equals(filterMatchingLineRef_2),
+                "Filters are not unique"
         );
 
         Siri serviceDelivery = siriObjectFactory.createVMServiceDelivery(vmElements);
@@ -99,8 +99,8 @@ public class SiriHelperTest  extends SpringBootBaseTest {
             assertNotNull(activityStructure.getMonitoredVehicleJourney().getLineRef());
 
             assertTrue(
-                matchingValues.contains(activityStructure.getMonitoredVehicleJourney().getLineRef().getValue()),
-                "Filtered LineRef does not match"
+                    matchingValues.contains(activityStructure.getMonitoredVehicleJourney().getLineRef().getValue()),
+                    "Filtered LineRef does not match"
             );
         }
 
@@ -126,12 +126,12 @@ public class SiriHelperTest  extends SpringBootBaseTest {
             assertNotNull(activityStructure.getMonitoredVehicleJourney().getVehicleRef());
 
             assertTrue(
-                activityStructure.getMonitoredVehicleJourney().getLineRef().getValue().equals(filterMatchingLineRef_1),
-                "Filtered LineRef does not match"
+                    activityStructure.getMonitoredVehicleJourney().getLineRef().getValue().equals(filterMatchingLineRef_1),
+                    "Filtered LineRef does not match"
             );
             assertTrue(
-                activityStructure.getMonitoredVehicleJourney().getVehicleRef().getValue().equals(filterMatchingVehicleRef_1),
-                "Filtered VehicleRef does not match"
+                    activityStructure.getMonitoredVehicleJourney().getVehicleRef().getValue().equals(filterMatchingVehicleRef_1),
+                    "Filtered VehicleRef does not match"
             );
         }
     }
@@ -175,8 +175,8 @@ public class SiriHelperTest  extends SpringBootBaseTest {
         int filteredSizeAfter2 = filtered.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().size();
 
         assertNotEquals(
-            filtered.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getMonitoredVehicleJourney().getLineRef().getValue(),
-            filtered2.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getMonitoredVehicleJourney().getLineRef().getValue());
+                filtered.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getMonitoredVehicleJourney().getLineRef().getValue(),
+                filtered2.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().get(0).getMonitoredVehicleJourney().getLineRef().getValue());
         assertEquals(sizeAfter, sizeAfter2, "Original size does not match");
         assertEquals(filteredSizeAfter, filteredSizeAfter2, "Filtered size does not match");
     }

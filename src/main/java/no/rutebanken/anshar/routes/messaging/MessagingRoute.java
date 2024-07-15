@@ -22,13 +22,15 @@ import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.Predicate;
 import org.apache.commons.lang3.StringUtils;
-import org.rutebanken.siri20.util.SiriXml;
+import org.apache.camel.Processor;
+import org.apache.camel.util.CaseInsensitiveMap;
+import org.entur.siri21.util.SiriXml;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.Siri;
 
 import java.io.InputStream;
+import java.util.Map;
 
 import static no.rutebanken.anshar.routes.HttpParameter.*;
 import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_SOAP;
@@ -247,6 +249,7 @@ public class MessagingRoute extends RestRouteBuilder {
                 .toD("${header.target_topic}")
                 .log(LoggingLevel.DEBUG, "Data sent")
                 .end()
+                .routeId("add.to.queue")
         ;
 
 
@@ -327,15 +330,6 @@ public class MessagingRoute extends RestRouteBuilder {
         // When shutdown has been triggered - stop processing data from pubsub
         Predicate readFromPubsub = exchange -> adminRouteHelper.isNotShuttingDown();
 
-//        from(pubsubQueueDefault + queueConsumerParameters)
-//            .choice().when(readFromPubsub)
-//                .to("direct:decompress.jaxb")
-//                .log("Processing data from " + pubsubQueueDefault + ", size ${header.Content-Length}")
-//                .wireTap("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
-//            .endChoice()
-//            .startupOrder(100004)
-//            .routeId("incoming.transform.default")
-//        ;
         if (configuration.processSX()) {
             from(pubsubQueueSX + queueConsumerParameters)
                     .choice().when(readFromPubsub)
@@ -343,7 +337,6 @@ public class MessagingRoute extends RestRouteBuilder {
                     .to("direct:decompress.jaxb")
                     .to("direct:process.queue.default.async")
                     .endChoice()
-                    .startupOrder(100004)
                     .routeId("incoming.transform.sx")
             ;
         }
@@ -458,7 +451,7 @@ public class MessagingRoute extends RestRouteBuilder {
                 })
                 .choice()
                 .when(header("routename").isNotNull())
-                .toD("direct:${header.routename}")
+                    .toD("direct:${header.routename}")
                 .endChoice()
                 .routeId("incoming.processor.fetched_delivery")
         ;

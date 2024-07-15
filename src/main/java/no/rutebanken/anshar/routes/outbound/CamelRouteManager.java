@@ -16,10 +16,6 @@
 package no.rutebanken.anshar.routes.outbound;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import no.rutebanken.anshar.data.VehicleActivities;
-import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
-import no.rutebanken.anshar.routes.siri.handlers.outbound.SituationExchangeOutbound;
-import no.rutebanken.anshar.subscription.SiriDataType;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
 import org.slf4j.Logger;
@@ -28,17 +24,27 @@ import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
+import uk.org.siri.siri20.ServiceDelivery;
+import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri20.SituationExchangeDeliveryStructure;
+import uk.org.siri.siri20.VehicleMonitoringDeliveryStructure;
 
 import java.net.SocketException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
+
 import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_SOAP;
+import static no.rutebanken.anshar.routes.HttpParameter.SIRI_VERSION_HEADER_NAME;
 import static no.rutebanken.anshar.routes.siri.transformer.SiriOutputTransformerRoute.OUTPUT_ADAPTERS_HEADER_NAME;
 import static no.rutebanken.anshar.routes.validation.validators.Constants.HEARTBEAT_HEADER;
+
 
 @Service
 public class CamelRouteManager {
@@ -50,13 +56,16 @@ public class CamelRouteManager {
     @Autowired
     ServerSubscriptionManager subscriptionManager;
 
+    @Autowired
+    PrometheusMetricsService metricsService;
+
     @Value("${anshar.default.max.elements.per.delivery:1000}")
     private int maximumSizePerDelivery;
 
-    @Value("${anshar.default.max.threads.per.outbound.subscription:20}")
+    @Value("${anshar.default.max.threads.per.outbound.subscription:5}")
     private int maximumThreadsPerOutboundSubscription;
 
-    @Produce(uri = "direct:send.to.external.subscription")
+    @Produce(value = "direct:send.to.external.subscription")
     protected ProducerTemplate siriSubscriptionProcessor;
 
     @Autowired
@@ -68,9 +77,14 @@ public class CamelRouteManager {
     @Autowired
     private SituationExchangeOutbound situationExchangeOutbound;
 
+    @PostConstruct
+    private void initThreadMetrics() {
+        metricsService.registerOutboundThreadFactoryMap(threadFactoryMap);
+    }
+
+
     /**
      * Splits SIRI-data if applicable, and pushes data to external subscription
-     *
      * @param payload
      * @param subscriptionRequest
      */
@@ -130,16 +144,25 @@ public class CamelRouteManager {
             } catch (Exception e) {
                 logger.info("Failed to push data for subscription {}: {}", subscriptionRequest, e);
 
+                int statusCode = -1;
                 if (e.getCause() instanceof SocketException) {
                     logger.info("Recipient is unreachable - ignoring");
                 } else {
                     String msg = e.getMessage();
                     if (e.getCause() != null) {
                         msg = e.getCause().getMessage();
+                        if (e.getCause() instanceof HttpOperationFailedException) {
+                            statusCode = ((HttpOperationFailedException) e.getCause()).getStatusCode();
+                        }
                     }
                     logger.info("Exception caught when pushing SIRI-data: {}", msg);
                 }
                 subscriptionManager.pushFailedForSubscription(subscriptionRequest.getSubscriptionId());
+
+                metricsService.markPostToSubscription(subscriptionRequest.getSubscriptionType(),
+                        SubscriptionSetup.SubscriptionMode.SUBSCRIBE,
+                        subscriptionRequest.getSubscriptionId(),
+                        statusCode);
 
                 removeDeadSubscriptionExecutors(subscriptionManager);
             } finally {
@@ -180,14 +203,13 @@ public class CamelRouteManager {
     }
 
     Map<String, ExecutorService> threadFactoryMap = new HashMap<>();
-
     private ExecutorService getOrCreateExecutorService(OutboundSubscriptionSetup subscriptionRequest) {
 
         final String subscriptionId = subscriptionRequest.getSubscriptionId();
         if (!threadFactoryMap.containsKey(subscriptionId)) {
-            ThreadFactory factory = new ThreadFactoryBuilder().setNameFormat("outbound" + subscriptionId).build();
+            ThreadFactory factory = new ThreadFactoryBuilder().setNameFormat("outbound"+subscriptionId).build();
 
-            threadFactoryMap.put(subscriptionId, Executors.newSingleThreadExecutor(factory));
+            threadFactoryMap.put(subscriptionId, Executors.newFixedThreadPool(maximumThreadsPerOutboundSubscription, factory));
         }
 
         return threadFactoryMap.get(subscriptionId);
@@ -196,7 +218,6 @@ public class CamelRouteManager {
 
     /**
      * Clean up dead ExecutorServices
-     *
      * @param subscriptionManager
      */
     private void removeDeadSubscriptionExecutors(ServerSubscriptionManager subscriptionManager) {
@@ -228,6 +249,7 @@ public class CamelRouteManager {
             headers.put("SubscriptionId", subscription.getSubscriptionId());
             headers.put("showBody", showBody);
             headers.put("requestorRef", subscription.getRequestorRef());
+            headers.put(SIRI_VERSION_HEADER_NAME, subscription.getSiriVersion());
             headers.put(OUTPUT_ADAPTERS_HEADER_NAME, subscription.getValueAdapters());
             if (subscription.isSOAPSubscription()) {
                 headers.put(TRANSFORM_SOAP, TRANSFORM_SOAP);
@@ -243,7 +265,6 @@ public class CamelRouteManager {
 
     /**
      * Returns false if payload contains an empty ServiceDelivery (i.e. no actual SIRI-data), otherwise it returns false
-     *
      * @param payload
      * @return
      */
