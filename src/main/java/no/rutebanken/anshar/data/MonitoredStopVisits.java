@@ -485,7 +485,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
             return;
         }
         String vehicleJourneyRef = monitoredStopVisit.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().getDatedVehicleJourneyRef();
-        monitoredStopVisit.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().setDatedVehicleJourneyRef(CustomStringUtils.removeSpecialCharacters(vehicleJourneyRef, "ServiceJourney"));
+        monitoredStopVisit.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().setDatedVehicleJourneyRef(CustomStringUtils.removeSpecialCharacters(vehicleJourneyRef));
     }
 
     /**

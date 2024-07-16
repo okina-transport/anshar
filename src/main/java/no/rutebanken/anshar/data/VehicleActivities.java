@@ -438,7 +438,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
         }
 
         String vehicleJourneyRef = activity.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().getDatedVehicleJourneyRef();
-        activity.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().setDatedVehicleJourneyRef(CustomStringUtils.removeSpecialCharacters(vehicleJourneyRef, "ServiceJourney"));
+        activity.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().setDatedVehicleJourneyRef(CustomStringUtils.removeSpecialCharacters(vehicleJourneyRef));
 
     }
 

@@ -19,11 +19,20 @@ public class CustomStringUtils {
             String prefix = matcher.group(1);
             String extracted = matcher.group(2);
             String suffix = matcher.group(3);
-            String modified = extracted.replace(":", "-").replace("|", "_");
+            String modified = removeSpecialCharacters(extracted);
             return prefix + modified + suffix;
         } else {
             return input;
         }
     }
+
+    public static String removeSpecialCharacters(String input) {
+        if (input == null || input.isEmpty()) {
+            return input;
+        }
+
+        return input.replace(":", "-").replace("|", "_");
+    }
+
 
 }
