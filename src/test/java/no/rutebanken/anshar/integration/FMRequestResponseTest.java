@@ -2,17 +2,17 @@ package no.rutebanken.anshar.integration;
 
 import io.restassured.http.ContentType;
 import no.rutebanken.anshar.data.FacilityMonitoring;
+import no.rutebanken.anshar.data.util.CustomSiriXml;
 import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.rutebanken.siri20.util.SiriXml;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.FacilityConditionStructure;
-import uk.org.siri.siri20.FacilityRef;
-import uk.org.siri.siri20.FacilityStructure;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.FacilityConditionStructure;
+import uk.org.siri.siri21.FacilityRef;
+import uk.org.siri.siri21.FacilityStructure;
+import uk.org.siri.siri21.Siri;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
@@ -40,7 +40,7 @@ public class FMRequestResponseTest extends BaseHttpTest {
         given()
                 .when()
                 .contentType(ContentType.XML)
-                .body(SiriXml.toXml(siriRequest))
+                .body(CustomSiriXml.toXml(siriRequest))
                 .post("anshar/services?datasetId=TTT")
                 .then()
                 .statusCode(200)

@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.data;
 
+import jakarta.xml.bind.UnmarshalException;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.helpers.TestObjectFactory;
@@ -26,17 +27,8 @@ import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri21.EstimatedCall;
-import uk.org.siri.siri21.EstimatedVehicleJourney;
-import uk.org.siri.siri21.Extensions;
-import uk.org.siri.siri21.LineRef;
-import uk.org.siri.siri21.NaturalLanguageStringStructure;
-import uk.org.siri.siri21.RecordedCall;
-import uk.org.siri.siri21.Siri;
-import uk.org.siri.siri21.StopPointRefStructure;
-import uk.org.siri.siri21.VehicleRef;
+import uk.org.siri.siri21.*;
 
-import javax.xml.bind.UnmarshalException;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -45,10 +37,7 @@ import java.util.*;
 
 import static no.rutebanken.anshar.helpers.SleepUtil.sleep;
 import static org.junit.Assert.assertNull;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 
 public class EstimatedTimetablesTest extends SpringBootBaseTest {
@@ -632,7 +621,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
     public void testSetDefaultRecordedAtTime() {
 
         String lineRefValue = "TST:Line:RecordedAtTime";
-        EstimatedVehicleJourney estimatedVehicleJourney = createEstimatedVehicleJourney(lineRefValue, "1234-RecordedAtTime", 1, 20, ZonedDateTime.now().plusMinutes(2), true);
+        EstimatedVehicleJourney estimatedVehicleJourney = TestObjectFactory.createEstimatedVehicleJourney(lineRefValue, "1234-RecordedAtTime", 1, 20, ZonedDateTime.now().plusMinutes(2), true);
         estimatedVehicleJourney.setRecordedAtTime(null);
         assertNull(estimatedVehicleJourney.getRecordedAtTime());
         estimatedTimetables.add("RAT", estimatedVehicleJourney);
@@ -657,7 +646,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         String lineRefValue = "TST:Line:RecordedAtTime";
         ZonedDateTime recordedAtTime = ZonedDateTime.now().minusSeconds(10);
 
-        EstimatedVehicleJourney estimatedVehicleJourney = createEstimatedVehicleJourney(lineRefValue, "1234-RecordedAtTime", 1, 20, ZonedDateTime.now().plusMinutes(2), true);
+        EstimatedVehicleJourney estimatedVehicleJourney = TestObjectFactory.createEstimatedVehicleJourney(lineRefValue, "1234-RecordedAtTime", 1, 20, ZonedDateTime.now().plusMinutes(2), true);
         estimatedVehicleJourney.setRecordedAtTime(recordedAtTime);
         assertNotNull(estimatedVehicleJourney.getRecordedAtTime());
         estimatedTimetables.add("RAT", estimatedVehicleJourney);
@@ -702,7 +691,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         for (int i = startOrder; i < callCount; i++) {
 
             StopPointRefStructure stopPointRef = new StopPointRefStructure();
-            stopPointRef.setValue("NSR:TEST:"+i);
+            stopPointRef.setValue("NSR:TEST:" + i);
 
             RecordedCall call = new RecordedCall();
             call.setStopPointRef(stopPointRef);

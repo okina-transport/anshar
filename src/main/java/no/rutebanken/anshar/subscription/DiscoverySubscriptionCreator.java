@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.subscription;
 
+import jakarta.xml.bind.JAXBException;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
@@ -12,9 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
-import javax.xml.bind.JAXBException;
 import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,7 +37,7 @@ public class DiscoverySubscriptionCreator {
     @Autowired
     private SubscriptionInitializer subscriptionInitializer;
 
-    @Produce(uri = "direct:send.discovery.request")
+    @Produce(value = "direct:send.discovery.request")
     protected ProducerTemplate discoveryRequestProducer;
 
     private static final String ENDPOINT_URL_HEADER = "endpointUrl";

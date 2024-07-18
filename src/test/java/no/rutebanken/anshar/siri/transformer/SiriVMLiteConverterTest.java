@@ -2,7 +2,7 @@ package no.rutebanken.anshar.siri.transformer;
 
 import no.rutebanken.anshar.routes.siri.transformer.SiriJsonTransformer;
 import org.junit.jupiter.api.Test;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;

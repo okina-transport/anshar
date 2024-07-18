@@ -4,7 +4,7 @@ import org.mockserver.integration.ClientAndServer;
 import org.mockserver.model.HttpRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -63,7 +63,7 @@ public class TestUtils {
 
     public static void addAffectedStop(PtSituationElement situation, String stopCode) {
         AffectedStopPointStructure affectedStopStruct = new AffectedStopPointStructure();
-        StopPointRef stopRef = new StopPointRef();
+        StopPointRefStructure stopRef = new StopPointRefStructure();
         stopRef.setValue(stopCode);
         affectedStopStruct.setStopPointRef(stopRef);
 
@@ -77,7 +77,7 @@ public class TestUtils {
     public static void addAffectedStopInRoute(PtSituationElement situation, String stopCode) {
         AffectedLineStructure line = situation.getAffects().getNetworks().getAffectedNetworks().get(0).getAffectedLines().get(0);
         AffectedStopPointStructure affectedStopStruct = new AffectedStopPointStructure();
-        StopPointRef stopRef = new StopPointRef();
+        StopPointRefStructure stopRef = new StopPointRefStructure();
         stopRef.setValue(stopCode);
         affectedStopStruct.setStopPointRef(stopRef);
         AffectedLineStructure.Routes routes = new AffectedLineStructure.Routes();

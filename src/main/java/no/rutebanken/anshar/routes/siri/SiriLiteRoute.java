@@ -15,9 +15,9 @@
 
 package no.rutebanken.anshar.routes.siri;
 
+import io.micrometer.core.instrument.util.StringUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import io.micrometer.core.instrument.util.StringUtils;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.*;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
@@ -42,8 +42,6 @@ import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.Siri;
 import uk.org.siri.siri21.VehicleActivityStructure;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.MediaType;
 import java.util.Collection;
 import java.util.HashSet;
@@ -678,12 +676,11 @@ public class SiriLiteRoute extends RestRouteBuilder {
                     String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
                     String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
                     Integer maxSize = p.getIn().getHeader(PARAM_MAX_SIZE, Integer.class);
-                    String lineRef = p.getIn().getHeader(PARAM_LINE_REF, String.class);
                     String clientTrackingName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
 
                     logger.info("Fetching cached ET-data");
                     Siri response = siriObjectFactory.createETServiceDelivery(estimatedTimetables.getAllCachedUpdates(requestorId,
-                            datasetId, lineRef, clientTrackingName, maxSize
+                            datasetId, clientTrackingName, maxSize
                     ));
 
                     List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(

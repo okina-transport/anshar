@@ -19,12 +19,7 @@ package no.rutebanken.anshar.routes.siri.processor;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
-import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri21.EstimatedVehicleJourney;
-import uk.org.siri.siri21.EstimatedVersionFrameStructure;
-import uk.org.siri.siri21.Siri;
-import uk.org.siri.siri21.VehicleActivityStructure;
-import uk.org.siri.siri21.VehicleMonitoringDeliveryStructure;
+import uk.org.siri.siri21.*;
 
 import java.util.List;
 
@@ -115,29 +110,29 @@ public class RuterOutboundDatedVehicleRefAdapter extends ValueAdapter implements
     }
 
     private void applyTransformationsInSituationExchanges(List<SituationExchangeDeliveryStructure> situationExchangeDeliveries) {
-        for (SituationExchangeDeliveryStructure situationExchangeDelivery : situationExchangeDeliveries){
+        for (SituationExchangeDeliveryStructure situationExchangeDelivery : situationExchangeDeliveries) {
             SituationExchangeDeliveryStructure.Situations situations = situationExchangeDelivery.getSituations();
-            if (situations != null && situations.getPtSituationElements() != null && situations.getPtSituationElements().size() > 0){
+            if (situations != null && situations.getPtSituationElements() != null && situations.getPtSituationElements().size() > 0) {
                 applyTransformationsInPtSituationElements(situations.getPtSituationElements());
             }
         }
     }
 
     private void applyTransformationsInPtSituationElements(List<PtSituationElement> ptSituationElements) {
-        for (PtSituationElement ptSituation : ptSituationElements){
-            if (ptSituation.getAffects() != null && ptSituation.getAffects().getVehicleJourneys() != null && ptSituation.getAffects().getVehicleJourneys().getAffectedVehicleJourneies() != null){
+        for (PtSituationElement ptSituation : ptSituationElements) {
+            if (ptSituation.getAffects() != null && ptSituation.getAffects().getVehicleJourneys() != null && ptSituation.getAffects().getVehicleJourneys().getAffectedVehicleJourneies() != null) {
                 appyTransformationsInAffectedVehicleJourneies(ptSituation.getAffects().getVehicleJourneys().getAffectedVehicleJourneies());
             }
         }
     }
 
     private void appyTransformationsInAffectedVehicleJourneies(List<AffectedVehicleJourneyStructure> affectedVehicleJourneies) {
-        for (AffectedVehicleJourneyStructure affectedVJStruct : affectedVehicleJourneies){
-            if (affectedVJStruct.getDatedVehicleJourneyReves() != null && affectedVJStruct.getDatedVehicleJourneyReves().size() > 0){
+        for (AffectedVehicleJourneyStructure affectedVJStruct : affectedVehicleJourneies) {
+            if (affectedVJStruct.getDatedVehicleJourneyReves() != null && affectedVJStruct.getDatedVehicleJourneyReves().size() > 0) {
                 applyTransformationsInVehicleJourneyReves(affectedVJStruct.getDatedVehicleJourneyReves());
             }
 
-            if (affectedVJStruct.getFramedVehicleJourneyRef() != null){
+            if (affectedVJStruct.getFramedVehicleJourneyRef() != null) {
                 applyTransformationInFramedVehicleJourneyRef(affectedVJStruct.getFramedVehicleJourneyRef());
             }
         }
@@ -145,14 +140,14 @@ public class RuterOutboundDatedVehicleRefAdapter extends ValueAdapter implements
 
     private void applyTransformationInFramedVehicleJourneyRef(FramedVehicleJourneyRefStructure framedVehicleJourneyRef) {
 
-        if (framedVehicleJourneyRef.getDatedVehicleJourneyRef() != null){
+        if (framedVehicleJourneyRef.getDatedVehicleJourneyRef() != null) {
             framedVehicleJourneyRef.setDatedVehicleJourneyRef(apply(framedVehicleJourneyRef.getDatedVehicleJourneyRef()));
         }
     }
 
     private void applyTransformationsInVehicleJourneyReves(List<DatedVehicleJourneyRef> datedVehicleJourneyReves) {
         for (DatedVehicleJourneyRef datedVehicleJourneyRef : datedVehicleJourneyReves) {
-            if (datedVehicleJourneyRef.getValue() != null){
+            if (datedVehicleJourneyRef.getValue() != null) {
                 datedVehicleJourneyRef.setValue(apply(datedVehicleJourneyRef.getValue()));
             }
         }

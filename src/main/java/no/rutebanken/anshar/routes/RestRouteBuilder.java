@@ -16,8 +16,6 @@
 package no.rutebanken.anshar.routes;
 
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.ws.rs.core.HttpHeaders;
-import jakarta.ws.rs.core.MediaType;
 import jakarta.xml.bind.JAXBException;
 import jakarta.xml.bind.UnmarshalException;
 import no.rutebanken.anshar.config.AnsharConfiguration;
@@ -27,9 +25,10 @@ import org.apache.camel.InvalidPayloadException;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.support.builder.Namespaces;
+import org.apache.http.HttpHeaders;
+import org.eclipse.jetty.io.EofException;
 import org.entur.avro.realtime.siri.converter.jaxb2avro.Jaxb2AvroConverter;
 import org.entur.avro.realtime.siri.model.SiriRecord;
-import org.apache.http.HttpHeaders;
 import org.entur.protobuf.mapper.SiriMapper;
 import org.entur.siri21.util.SiriJson;
 import org.entur.siri21.util.SiriXml;
@@ -44,11 +43,8 @@ import uk.org.siri.siri20.SituationExchangeDeliveryStructure;
 import uk.org.siri.siri20.VehicleMonitoringDeliveryStructure;
 import uk.org.siri.siri21.Siri;
 
-import javax.xml.stream.XMLStreamException;
-import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.MediaType;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.UnmarshalException;
+import javax.xml.stream.XMLStreamException;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -101,8 +97,8 @@ public class RestRouteBuilder extends RouteBuilder {
                 .apiProperty("cors", "true")
                 .enableCORS(true)
                 .corsAllowCredentials(true)
-                .corsHeaderProperty("Access-Control-Allow-Origin","*")
-                .corsHeaderProperty("Access-Control-Allow-Headers","Origin, Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, Authorization")
+                .corsHeaderProperty("Access-Control-Allow-Origin", "*")
+                .corsHeaderProperty("Access-Control-Allow-Headers", "Origin, Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, Authorization")
         ;
 
         onException(ConnectException.class)
@@ -217,7 +213,7 @@ public class RestRouteBuilder extends RouteBuilder {
                 // Data-instances should never redirect requests
                 from("direct:redirect.request.et")
                         .log("Ignore redirect")
-                        ;
+                ;
 
             } else {
                 from("direct:redirect.request.et")
@@ -563,6 +559,7 @@ public class RestRouteBuilder extends RouteBuilder {
 
     /**
      * Returns true if Et-Client-header is blocked - request should be ignored
+     *
      * @param e
      * @return
      */
@@ -625,7 +622,8 @@ public class RestRouteBuilder extends RouteBuilder {
 
         return values;
     }
-    protected void streamOutput(Exchange p, Siri response, HttpServletResponse out) throws IOException, JAXBException,XMLStreamException {
+
+    protected void streamOutput(Exchange p, Siri response, HttpServletResponse out) throws IOException, XMLStreamException, JAXBException {
         boolean siri21Version = false;
         if ("2.1".equals(p.getIn().getHeader(SIRI_VERSION_HEADER_NAME))) {
             siri21Version = true;
@@ -633,7 +631,7 @@ public class RestRouteBuilder extends RouteBuilder {
 
 
         if (MediaType.APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE)) |
-            MediaType.APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
+                MediaType.APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
             p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
             if (siri21Version) {
                 SiriJson.toJson(response, out.getOutputStream());
@@ -644,9 +642,9 @@ public class RestRouteBuilder extends RouteBuilder {
                 );
             }
         } else if ("application/x-protobuf".equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE)) |
-            "application/x-protobuf".equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
+                "application/x-protobuf".equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
             try {
-                final byte[] bytes = SiriMapper.mapToPbf(response).toByteArray();
+                final byte[] bytes = SiriMapper.mapToPbf(downgradeSiriVersion(response)).toByteArray();
                 p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, "application/x-protobuf");
                 out.setHeader(HttpHeaders.CONTENT_TYPE, "application/x-protobuf");
                 p.getMessage().setHeader(HttpHeaders.CONTENT_LENGTH, "" + bytes.length);
@@ -657,35 +655,33 @@ public class RestRouteBuilder extends RouteBuilder {
                 CustomSiriXml.toXml(response, null, new FileOutputStream(file));
             }
         } else if ("application/avro".equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE)) |
-            "application/avro".equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
-        try {
-            final SiriRecord siriRecord = Jaxb2AvroConverter.convert(response);
+                "application/avro".equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
+            try {
+                final SiriRecord siriRecord = Jaxb2AvroConverter.convert(response);
 
-            p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, "application/avro");
-            SiriRecord.getEncoder().encode(siriRecord, out.getOutputStream());
+                p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, "application/avro");
+                SiriRecord.getEncoder().encode(siriRecord, out.getOutputStream());
 
-        } catch (NullPointerException npe) {
-            File file = new File("ET-" + System.currentTimeMillis() + ".xml");
-            log.error("Caught NullPointerException, data written to " + file.getAbsolutePath(), npe);
-            SiriXml.toXml(response, null, new FileOutputStream(file));
-        }
-    }
-        else if ("application/avro+json".equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE)) |
-            "application/avro+json".equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
-        try {
-            final SiriRecord siriRecord = Jaxb2AvroConverter.convert(response);
+            } catch (NullPointerException npe) {
+                File file = new File("ET-" + System.currentTimeMillis() + ".xml");
+                log.error("Caught NullPointerException, data written to " + file.getAbsolutePath(), npe);
+                SiriXml.toXml(response, null, new FileOutputStream(file));
+            }
+        } else if ("application/avro+json".equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE)) |
+                "application/avro+json".equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
+            try {
+                final SiriRecord siriRecord = Jaxb2AvroConverter.convert(response);
 
-            p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
+                p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
 
-            out.getOutputStream().write(siriRecord.toString().getBytes());
+                out.getOutputStream().write(siriRecord.toString().getBytes());
 
-        } catch (NullPointerException npe) {
-            File file = new File("ET-" + System.currentTimeMillis() + ".xml");
-            log.error("Caught NullPointerException, data written to " + file.getAbsolutePath(), npe);
-            SiriXml.toXml(response, null, new FileOutputStream(file));
-        }
-    }
-        else {
+            } catch (NullPointerException npe) {
+                File file = new File("ET-" + System.currentTimeMillis() + ".xml");
+                log.error("Caught NullPointerException, data written to " + file.getAbsolutePath(), npe);
+                SiriXml.toXml(response, null, new FileOutputStream(file));
+            }
+        } else {
             p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_XML);
             out.setHeader(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_XML);
             CustomSiriXml.toXml(response, null, out.getOutputStream());
@@ -733,4 +729,4 @@ public class RestRouteBuilder extends RouteBuilder {
 //        }
 //        super.readRequest(request, message);
 //    }
-//}
+}

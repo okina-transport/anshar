@@ -12,9 +12,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.AnnotatedStopPointStructure;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.StopPointRef;
+import uk.org.siri.siri21.AnnotatedStopPointStructure;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.StopPointRefStructure;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -123,7 +123,7 @@ public class DiscoveryStopPointsOutbound {
      */
     private AnnotatedStopPointStructure convertKeyToPointStructure(String stopRef) {
         AnnotatedStopPointStructure pointStruct = new AnnotatedStopPointStructure();
-        StopPointRef stopPointRef = new StopPointRef();
+        StopPointRefStructure stopPointRef = new StopPointRefStructure();
         stopPointRef.setValue(stopRef);
         pointStruct.setStopPointRef(stopPointRef);
         pointStruct.setMonitored(true);

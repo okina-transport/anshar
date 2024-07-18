@@ -36,11 +36,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri21.EstimatedVersionFrameStructure;
-import uk.org.siri.siri21.Siri;
-import uk.org.siri.siri21.SituationExchangeDeliveryStructure;
-import uk.org.siri.siri21.VehicleMonitoringDeliveryStructure;
+import uk.org.siri.siri21.*;
 
 import javax.annotation.PreDestroy;
 import java.util.ArrayList;
@@ -166,6 +162,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
     public void registerAckedKafkaRecord(String topic) {
         registerKafkaRecord(topic, KafkaStatus.ACKED);
     }
+
     public void registerKafkaRecord(String topic, KafkaStatus status) {
         List<Tag> counterTags = new ArrayList<>();
         counterTags.add(new ImmutableTag(KAFKA_TOPIC_NAME, topic));
@@ -175,7 +172,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
     }
 
     public void registerAvroPubsubRecord(SiriDataType dataType) {
-        countOutgoingData(dataType, AVRO_PUBSUB, 1);
+        countOutgoingData(null, AVRO_PUBSUB);
     }
 
     public void countOutgoingData(Siri siri, SubscriptionSetup.SubscriptionMode mode) {
@@ -272,7 +269,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
         counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType.name()));
         counterTags.add(new ImmutableTag("mode", mode.name()));
         counterTags.add(new ImmutableTag("subscriptionId", subscriptionId));
-        counterTags.add(new ImmutableTag("statusCode", ""+statusCode));
+        counterTags.add(new ImmutableTag("statusCode", "" + statusCode));
 
         counter(SUBSCRIPTION_OUTBOUND_COUNTER_NAME, counterTags).increment(1);
     }

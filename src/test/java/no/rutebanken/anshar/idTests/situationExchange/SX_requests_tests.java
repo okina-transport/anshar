@@ -1,6 +1,7 @@
 package no.rutebanken.anshar.idTests.situationExchange;
 
 import com.hazelcast.map.IMap;
+import jakarta.xml.bind.JAXBException;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.config.ObjectType;
@@ -16,10 +17,9 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.PtSituationElement;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.PtSituationElement;
+import uk.org.siri.siri21.Siri;
 
-import javax.xml.bind.JAXBException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;

@@ -17,12 +17,13 @@ import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.apache.commons.lang3.tuple.Pair;
+import org.entur.siri.validator.SiriValidator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockserver.integration.ClientAndServer;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.PtSituationElement;
+import uk.org.siri.siri21.PtSituationElement;
 
 import javax.xml.bind.JAXBException;
 import java.time.ZonedDateTime;
@@ -243,7 +244,7 @@ public class SX_subcription_tests extends SpringBootBaseTest {
                 SiriDataType.SITUATION_EXCHANGE, address, 3600,
                 true, 30, 0,
                 new HashMap<>(), adapters,
-                "outSubId1", "requestorRef", ZonedDateTime.now().plusHours(1), "DAT1", "clientTrackingName", useOriginalId);
+                "outSubId1", "requestorRef", ZonedDateTime.now().plusHours(1), "DAT1", "clientTrackingName", useOriginalId, SiriValidator.Version.VERSION_2_0);
         return subscription;
     }
 }

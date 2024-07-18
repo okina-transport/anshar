@@ -1,7 +1,11 @@
 package no.rutebanken.anshar.okinaDisruptions;
 
 import no.rutebanken.anshar.okinaDisruptions.model.*;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri20.EnvironmentReasonEnumeration;
+import uk.org.siri.siri20.EquipmentReasonEnumeration;
+import uk.org.siri.siri20.MiscellaneousReasonEnumeration;
+import uk.org.siri.siri20.PersonnelReasonEnumeration;
+import uk.org.siri.siri21.*;
 
 import java.math.BigInteger;
 import java.time.Instant;
@@ -122,7 +126,7 @@ public class SituationExchangeGenerator {
         for (OkinaStopArea stopArea : disruption.getStopAreas()) {
 
             AffectedStopPointStructure stopPoint = new AffectedStopPointStructure();
-            StopPointRef stopPointRef = new StopPointRef();
+            StopPointRefStructure stopPointRef = new StopPointRefStructure();
             stopPointRef.setValue(stopArea.getObjectId());
             stopPoint.setStopPointRef(stopPointRef);
             stopPoints.getAffectedStopPoints().add(stopPoint);
@@ -168,7 +172,7 @@ public class SituationExchangeGenerator {
 
         NaturalLanguageStringStructure publishedName = new NaturalLanguageStringStructure();
         publishedName.setValue(course.getPublishedJourneyName());
-        vehicleJourney.setPublishedLineName(publishedName);
+        vehicleJourney.getPublishedLineNames().add(publishedName);
         FramedVehicleJourneyRefStructure vehicleJourneyRef = new FramedVehicleJourneyRefStructure();
         vehicleJourneyRef.setDatedVehicleJourneyRef(course.getObjectId());
         vehicleJourney.setFramedVehicleJourneyRef(vehicleJourneyRef);
@@ -179,22 +183,22 @@ public class SituationExchangeGenerator {
     private static void mapReasons(PtSituationElement ptSituationElement, Disruption disruption) {
 
         if (disruption.getCategory() == null) {
-            ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.UNKNOWN);
+            ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.UNKNOWN.value());
             return;
         }
 
         switch (disruption.getCategory()) {
             case "MiscellaneousReason":
-                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.valueOf(disruption.getReason()));
+                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.valueOf(disruption.getReason()).value());
                 break;
             case "EquipmentReason":
-                ptSituationElement.setEquipmentReason(EquipmentReasonEnumeration.valueOf(disruption.getReason()));
+                ptSituationElement.setEquipmentReason(EquipmentReasonEnumeration.valueOf(disruption.getReason()).value());
                 break;
             case "PersonnelReason":
-                ptSituationElement.setPersonnelReason(PersonnelReasonEnumeration.valueOf(disruption.getReason()));
+                ptSituationElement.setPersonnelReason(PersonnelReasonEnumeration.valueOf(disruption.getReason()).value());
                 break;
             case "EnvironmentReason":
-                ptSituationElement.setEnvironmentReason(EnvironmentReasonEnumeration.valueOf(disruption.getReason()));
+                ptSituationElement.setEnvironmentReason(EnvironmentReasonEnumeration.valueOf(disruption.getReason()).value());
                 break;
             default:
                 //Ignore
@@ -230,7 +234,7 @@ public class SituationExchangeGenerator {
                 ZonedDateTime endPublication = disruption.getPublicationEndDateTime().atZone(zoneId);
                 publicationWindow.setEndTime(endPublication);
             }
-            ptSituationElement.setPublicationWindow(publicationWindow);
+            ptSituationElement.getPublicationWindows().add(publicationWindow);
         }
     }
 

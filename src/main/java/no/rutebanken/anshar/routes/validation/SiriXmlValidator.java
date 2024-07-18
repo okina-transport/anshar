@@ -18,10 +18,7 @@ package no.rutebanken.anshar.routes.validation;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.hazelcast.map.IMap;
 import com.hazelcast.replicatedmap.ReplicatedMap;
-import jakarta.xml.bind.JAXBContext;
-import jakarta.xml.bind.JAXBException;
-import jakarta.xml.bind.Unmarshaller;
-import jakarta.xml.bind.ValidationEvent;
+import jakarta.xml.bind.*;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
@@ -48,10 +45,6 @@ import org.xml.sax.SAXException;
 import uk.org.siri.siri21.Siri;
 
 import javax.xml.XMLConstants;
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.Unmarshaller;
-import javax.xml.bind.ValidationEvent;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -64,10 +57,7 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -203,7 +193,7 @@ public class SiriXmlValidator extends ApplicationContextHolder {
                 unmarshaller.setEventHandler(schemaValidationHandler);
 
                 // Write full stream-contents to disk for easier debugging
-               // File targetFile = File.createTempFile(subscriptionSetup.getVendor() + "-", ".xml");
+                // File targetFile = File.createTempFile(subscriptionSetup.getVendor() + "-", ".xml");
 
 //                Files.copy(
 //                        xml,
@@ -669,7 +659,7 @@ public class SiriXmlValidator extends ApplicationContextHolder {
         int maxValidations = configuration.getMaxNumberOfValidations();
 
         long currentSize = validationSize.getOrDefault(subscriptionSetup.getSubscriptionId(), 0L);
-        long maxSize = configuration.getMaxTotalXmlSizeOfValidation()*1024*1024;
+        long maxSize = configuration.getMaxTotalXmlSizeOfValidation() * 1024 * 1024;
 
         JSONObject status = new JSONObject();
         status.put("validationActive", subscriptionSetup.isValidation());

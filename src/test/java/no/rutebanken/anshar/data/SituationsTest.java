@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.data;
 
+import jakarta.xml.bind.UnmarshalException;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
@@ -27,13 +28,8 @@ import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri21.HalfOpenTimestampOutputRangeStructure;
-import uk.org.siri.siri21.PtSituationElement;
-import uk.org.siri.siri21.SituationNumber;
-import uk.org.siri.siri21.SituationVersion;
-import uk.org.siri.siri21.WorkflowStatusEnumeration;
+import uk.org.siri.siri21.*;
 
-import javax.xml.bind.UnmarshalException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;

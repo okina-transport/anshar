@@ -2,10 +2,9 @@ package no.rutebanken.anshar.data;
 
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import no.rutebanken.anshar.data.util.GeneralMessageMapper;
-import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import org.junit.jupiter.api.Test;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import java.time.ZonedDateTime;
 
@@ -21,21 +20,21 @@ public class GeneralMessageMapperTest {
         ZonedDateTime from = ZonedDateTime.now();
         ZonedDateTime to = ZonedDateTime.now().plusHours(1);
 
-        PtSituationElement ptSituationElt = createPtSituationElement("partRef",situationNumber,from, to);
+        PtSituationElement ptSituationElt = createPtSituationElement("partRef", situationNumber, from, to);
 
         GeneralMessage convertedMessage = GeneralMessageMapper.mapToGeneralMessage(ptSituationElt);
-        assertEquals("France",convertedMessage.getFormatRef());
+        assertEquals("France", convertedMessage.getFormatRef());
         assertNotNull(convertedMessage.getRecordedAtTime());
-        assertEquals(situationNumber,convertedMessage.getItemIdentifier());
-        assertEquals(situationNumber,convertedMessage.getInfoMessageIdentifier().getValue());
-        assertEquals(situationNumber,convertedMessage.getSituationRef().getSituationSimpleRef().getValue());
-        assertEquals("Perturbation",convertedMessage.getInfoChannelRef().getValue());
-        assertEquals(to,convertedMessage.getValidUntilTime());
+        assertEquals(situationNumber, convertedMessage.getItemIdentifier());
+        assertEquals(situationNumber, convertedMessage.getInfoMessageIdentifier().getValue());
+        assertEquals(situationNumber, convertedMessage.getSituationRef().getSituationSimpleRef().getValue());
+        assertEquals("Perturbation", convertedMessage.getInfoChannelRef().getValue());
+        assertEquals(to, convertedMessage.getValidUntilTime());
 
         Content content = (Content) convertedMessage.getContent();
-        assertEquals("networkRef",content.getGroupOfLinesRefs().get(0));
-        assertEquals("lineRef",content.getLineRefs().get(0));
-        assertEquals("sp1",content.getStopPointRefs().get(0));
+        assertEquals("networkRef", content.getGroupOfLinesRefs().get(0));
+        assertEquals("lineRef", content.getLineRefs().get(0));
+        assertEquals("sp1", content.getStopPointRefs().get(0));
     }
 
 
@@ -74,7 +73,7 @@ public class GeneralMessageMapperTest {
 
         AffectsScopeStructure.StopPoints affectedStops = new AffectsScopeStructure.StopPoints();
         AffectedStopPointStructure affPointStruct = new AffectedStopPointStructure();
-        StopPointRef stopPointRef = new StopPointRef();
+        StopPointRefStructure stopPointRef = new StopPointRefStructure();
         stopPointRef.setValue("sp1");
         affPointStruct.setStopPointRef(stopPointRef);
         affectedStops.getAffectedStopPoints().add(affPointStruct);

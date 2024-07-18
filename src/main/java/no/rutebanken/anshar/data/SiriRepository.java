@@ -44,8 +44,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer.SEPARATOR;
-
 abstract class SiriRepository<T> {
 
     private IMap<String, Instant> lastUpdateRequested;
@@ -71,7 +69,7 @@ abstract class SiriRepository<T> {
 
     private static final Logger logger = LoggerFactory.getLogger(SiriRepository.class);
 
-    private PrometheusMetricsService metrics;
+    protected PrometheusMetricsService metrics;
 
     final Set<SiriObjectStorageKey> dirtyChanges = Collections.synchronizedSet(new HashSet<>());
 
@@ -373,7 +371,7 @@ abstract class SiriRepository<T> {
      */
     Collection<T> getValuesByDatasetId(IMap<SiriObjectStorageKey, T> collection, String datasetId) {
 
-        final Set<SiriObjectStorageKey> codespaceKeys = collection.keySet(createCodespacePredicate(datasetId));
+        final Set<SiriObjectStorageKey> codespaceKeys = collection.keySet(createHzCodespacePredicate(datasetId));
 
         return collection.getAll(codespaceKeys).values();
     }
@@ -408,29 +406,37 @@ abstract class SiriRepository<T> {
     abstract void clearAllByDatasetId(String datasetId);
 
 
-    Predicate<SiriObjectStorageKey, T> createCodespacePredicate(String datasetId) {
+    Predicate<SiriObjectStorageKey, T> createHzCodespacePredicate(String datasetId) {
         return entry -> {
-            if (entry.getKey().getCodespaceId() != null) {
-                final String codespaceId = entry.getKey().getCodespaceId();
-                return codespaceId.equals(datasetId);
-            }
-            return false;
+            return codespaceMatches(datasetId, entry.getKey());
         };
     }
 
-    Predicate<SiriObjectStorageKey, T> createLineRefPredicate(String lineRef) {
-        return entry -> {
-            String decodedLine = URLDecoder.decode(lineRef, StandardCharsets.UTF_8);
-            if (entry.getKey().getLineRef() != null) {
-                final String ref = entry.getKey().getLineRef();
+    private static boolean codespaceMatches(String datasetId, SiriObjectStorageKey entry) {
+        if (entry.getCodespaceId() != null) {
+            final String codespaceId = entry.getCodespaceId();
+            return codespaceId.equals(datasetId);
+        }
+        return false;
+    }
 
-                return ref.startsWith(decodedLine + SEPARATOR) ||
-                        ref.endsWith(SEPARATOR + decodedLine) ||
-                        ref.equalsIgnoreCase(decodedLine);
-            }
-            return false;
+
+    Predicate<SiriObjectStorageKey, T> createHzLineRefPredicate(String lineRef) {
+        return entry -> {
+            return lineRefMatches(lineRef, entry.getKey());
         };
     }
+
+    private static boolean lineRefMatches(String lineRef, SiriObjectStorageKey entry) {
+        String decodedLine = URLDecoder.decode(lineRef, StandardCharsets.UTF_8);
+        if (entry.getLineRef() != null) {
+            final String ref = entry.getLineRef();
+
+            return ref.equalsIgnoreCase(decodedLine);
+        }
+        return false;
+    }
+
 
     /**
      * Compares object-equality by calculating and comparing MD5-checksum

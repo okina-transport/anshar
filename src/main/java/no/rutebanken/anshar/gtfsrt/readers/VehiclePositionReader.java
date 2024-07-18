@@ -1,7 +1,6 @@
 package no.rutebanken.anshar.gtfsrt.readers;
 
 import com.google.transit.realtime.GtfsRealtime;
-import net.logstash.logback.encoder.org.apache.commons.lang3.StringUtils;
 import no.rutebanken.anshar.data.DiscoveryCache;
 import no.rutebanken.anshar.gtfsrt.mappers.VehiclePositionMapper;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
@@ -11,6 +10,7 @@ import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,7 +45,7 @@ public class VehiclePositionReader extends AbstractSwallower {
     @Autowired
     private SiriHandler handler;
 
-    @Produce(uri = "direct:send.vm.to.realtime.server")
+    @Produce(value = "direct:send.vm.to.realtime.server")
     protected ProducerTemplate gtfsrtVmProducer;
 
     @Autowired

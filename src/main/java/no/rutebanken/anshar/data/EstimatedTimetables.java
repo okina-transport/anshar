@@ -24,21 +24,12 @@ import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.metrics.SiriContent;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
-import org.quartz.utils.counter.Counter;
-import org.quartz.utils.counter.CounterImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri21.EstimatedCall;
-import uk.org.siri.siri21.EstimatedVehicleJourney;
-import uk.org.siri.siri21.MessageRefStructure;
-import uk.org.siri.siri21.QuayRefStructure;
-import uk.org.siri.siri21.RecordedCall;
-import uk.org.siri.siri21.Siri;
-import uk.org.siri.siri21.StopAssignmentStructure;
-import uk.org.siri.siri21.StopPointRefStructure;
+import uk.org.siri.siri21.*;
 
 import javax.annotation.PostConstruct;
 import java.time.Instant;
@@ -51,12 +42,11 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.OVERRIDE_MONITORED_FALSE;
-import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.OVERRIDE_MONITORED_NO_LONGER_TRUE;
 import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getMappedId;
 import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getOriginalId;
 
 @Component
-public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney> {
+public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney> {
     private final Logger logger = LoggerFactory.getLogger(EstimatedTimetables.class);
 
     private static final long ONE_WEEK_IN_MILLIS = 60 * 60 * 24 * 7 * 1000;
@@ -110,10 +100,10 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
     private void initializeUpdateCommitter() {
         super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
         enableCache(timetableDeliveries,
-            // Only cache monitored/cancelled/extra trips
-            value -> (Boolean.TRUE.equals(value.isMonitored()) |
-                Boolean.TRUE.equals(value.isCancellation()) |
-                Boolean.TRUE.equals(value.isExtraJourney()))
+                // Only cache monitored/cancelled/extra trips
+                value -> (Boolean.TRUE.equals(value.isMonitored()) |
+                        Boolean.TRUE.equals(value.isCancellation()) |
+                        Boolean.TRUE.equals(value.isExtraJourney()))
         );
         linkEntriesTtl(timetableDeliveries, changesMap, checksumCache, idStartTimeMap);
     }
@@ -328,6 +318,7 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
 
         return siri;
     }
+
     private void resolveContentMetrics(EstimatedVehicleJourney estimatedVehicleJourney, long expiration) {
 
 //        prepareMetrics();
@@ -447,6 +438,7 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
 
     /**
      * Returns true if EstimatedVehicleJourney has any cancellations or quay-changes
+     *
      * @param estimatedVehicleJourney
      * @return
      */
@@ -645,7 +637,6 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
     }
 
     public Collection<EstimatedVehicleJourney> addAll(String datasetId, List<EstimatedVehicleJourney> etList) {
-        prepareMetrics();
         Map<SiriObjectStorageKey, EstimatedVehicleJourney> changes = new HashMap();
 
         Map<SiriObjectStorageKey, String> checksumCacheTmp = new HashMap<>();
@@ -664,7 +655,7 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
             String currentChecksum = null;
 
             // Using "now" as default recordedAtTime
-            ZonedDateTime recordedAtTime = et.getRecordedAtTime() != null ? et.getRecordedAtTime(): ZonedDateTime.now();
+            ZonedDateTime recordedAtTime = et.getRecordedAtTime() != null ? et.getRecordedAtTime() : ZonedDateTime.now();
             try {
                 // Calculate checksum without "RecordedTime" - thus ignoring "fake" updates
                 et.setRecordedAtTime(null);
@@ -775,7 +766,7 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
 
         });
 
-        logger.debug("Updated {} (of {}), {} expired, {} without changes", changes.size(), etList.size(), outdatedCounter.getValue(), notUpdatedCounter.getValue());
+        logger.debug("Updated {} (of {}), {} expired, {} without changes", changes.size(), etList.size(), outdatedCounter.get(), notUpdatedCounter.get());
 
         markDataReceived(SiriDataType.ESTIMATED_TIMETABLE, datasetId, etList.size(), changes.size(), outdatedCounter.get(), notUpdatedCounter.get() + tooFarAheadCounter.get());
         TimingTracer timingTracer = new TimingTracer("all-et [" + changes.size() + " changes]");
@@ -831,8 +822,8 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
             String lastStopId = null;
             if (element.getEstimatedCalls() != null && element.getEstimatedCalls().getEstimatedCalls() != null && !element.getEstimatedCalls().getEstimatedCalls().isEmpty()) {
                 final List<EstimatedCall> estimatedCalls = element.getEstimatedCalls().getEstimatedCalls();
-                if (estimatedCalls.get(estimatedCalls.size()-1) != null) {
-                    final StopPointRefStructure stopPointRef = estimatedCalls.get(estimatedCalls.size()-1).getStopPointRef();
+                if (estimatedCalls.get(estimatedCalls.size() - 1) != null) {
+                    final StopPointRefStructure stopPointRef = estimatedCalls.get(estimatedCalls.size() - 1).getStopPointRef();
                     if (stopPointRef != null) {
                         lastStopId = getOriginalId(stopPointRef.getValue());
                     }
@@ -841,8 +832,8 @@ public class EstimatedTimetables  extends SiriRepository<EstimatedVehicleJourney
             if (lastStopId == null) {
                 if (element.getRecordedCalls() != null && element.getRecordedCalls().getRecordedCalls() != null && !element.getRecordedCalls().getRecordedCalls().isEmpty()) {
                     final List<RecordedCall> recordedCalls = element.getRecordedCalls().getRecordedCalls();
-                    if (recordedCalls.get(recordedCalls.size()-1) != null) {
-                        final StopPointRefStructure stopPointRef = recordedCalls.get(recordedCalls.size()-1).getStopPointRef();
+                    if (recordedCalls.get(recordedCalls.size() - 1) != null) {
+                        final StopPointRefStructure stopPointRef = recordedCalls.get(recordedCalls.size() - 1).getStopPointRef();
                         if (stopPointRef != null) {
                             lastStopId = getOriginalId(stopPointRef.getValue());
                         }

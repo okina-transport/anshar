@@ -1,7 +1,7 @@
 package no.rutebanken.anshar.util;
 
-import uk.org.siri.siri20.MonitoredStopVisit;
-import uk.org.siri.siri20.MonitoredStopVisitCancellation;
+import uk.org.siri.siri21.MonitoredStopVisit;
+import uk.org.siri.siri21.MonitoredStopVisitCancellation;
 
 import java.util.Optional;
 

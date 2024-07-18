@@ -3,13 +3,14 @@ package no.rutebanken.anshar.util;
 
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class SytralJSONMapper {
@@ -17,9 +18,8 @@ public class SytralJSONMapper {
 
     private final static DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    public static List<MonitoredStopVisit> convertToSiriSM(JSONArray values){
+    public static List<MonitoredStopVisit> convertToSiriSM(JSONArray values) {
         List<MonitoredStopVisit> resultList = new ArrayList<>();
-
 
 
         for (int i = 0; i < values.size(); i++) {
@@ -27,7 +27,7 @@ public class SytralJSONMapper {
             MonitoredStopVisit sm = convertToSiriSm(value);
             resultList.add(sm);
         }
-            return resultList;
+        return resultList;
     }
 
 
@@ -44,11 +44,11 @@ public class SytralJSONMapper {
 
         MonitoredVehicleJourneyStructure monitoredVehicleStruct = new MonitoredVehicleJourneyStructure();
         LineRef lineRef = new LineRef();
-        lineRef.setValue((String)value.get("ligne"));
+        lineRef.setValue((String) value.get("ligne"));
         monitoredVehicleStruct.setLineRef(lineRef);
 
 
-        String tripId = (String)value.get("coursetheorique");
+        String tripId = (String) value.get("coursetheorique");
         FramedVehicleJourneyRefStructure vehicleJourneyRef = new FramedVehicleJourneyRefStructure();
         vehicleJourneyRef.setDatedVehicleJourneyRef(tripId);
 
@@ -61,28 +61,26 @@ public class SytralJSONMapper {
 
 
         MonitoredCallStructure monitoredCallStructure = new MonitoredCallStructure();
-        StopPointRef stopPointRef = new StopPointRef();
+        StopPointRefStructure stopPointRef = new StopPointRefStructure();
         stopPointRef.setValue(stopPointId);
         monitoredCallStructure.setStopPointRef(stopPointRef);
 
 
-        ZonedDateTime aimedArrival = convertToZonedDateTime((String)value.get("heurepassage"));
+        ZonedDateTime aimedArrival = convertToZonedDateTime((String) value.get("heurepassage"));
         monitoredCallStructure.setAimedArrivalTime(aimedArrival);
 
         monitoredVehicleStruct.setMonitoredCall(monitoredCallStructure);
         sm.setMonitoredVehicleJourney(monitoredVehicleStruct);
-        sm.setRecordedAtTime(convertToZonedDateTime((String)value.get("last_update_fme")));
+        sm.setRecordedAtTime(convertToZonedDateTime((String) value.get("last_update_fme")));
 
 
         return sm;
     }
 
-    private static ZonedDateTime convertToZonedDateTime(String value){
+    private static ZonedDateTime convertToZonedDateTime(String value) {
         LocalDate date = LocalDate.parse(value, formatter);
-        return  date.atStartOfDay(ZoneId.systemDefault());
+        return date.atStartOfDay(ZoneId.systemDefault());
     }
-
-
 
 
 }

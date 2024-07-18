@@ -16,32 +16,32 @@
 package no.rutebanken.anshar.routes.outbound;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import no.rutebanken.anshar.data.VehicleActivities;
+import no.rutebanken.anshar.metrics.PrometheusMetricsService;
+import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
+import no.rutebanken.anshar.routes.siri.handlers.outbound.SituationExchangeOutbound;
+import no.rutebanken.anshar.subscription.SiriDataType;
+import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
+import org.apache.camel.http.base.HttpOperationFailedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.ServiceDelivery;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.SituationExchangeDeliveryStructure;
-import uk.org.siri.siri20.VehicleMonitoringDeliveryStructure;
+import uk.org.siri.siri21.*;
 
+import javax.annotation.PostConstruct;
 import java.net.SocketException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
-
-import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_SOAP;
 import static no.rutebanken.anshar.routes.HttpParameter.SIRI_VERSION_HEADER_NAME;
+import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_SOAP;
 import static no.rutebanken.anshar.routes.siri.transformer.SiriOutputTransformerRoute.OUTPUT_ADAPTERS_HEADER_NAME;
 import static no.rutebanken.anshar.routes.validation.validators.Constants.HEARTBEAT_HEADER;
 
@@ -85,6 +85,7 @@ public class CamelRouteManager {
 
     /**
      * Splits SIRI-data if applicable, and pushes data to external subscription
+     *
      * @param payload
      * @param subscriptionRequest
      */
@@ -203,11 +204,12 @@ public class CamelRouteManager {
     }
 
     Map<String, ExecutorService> threadFactoryMap = new HashMap<>();
+
     private ExecutorService getOrCreateExecutorService(OutboundSubscriptionSetup subscriptionRequest) {
 
         final String subscriptionId = subscriptionRequest.getSubscriptionId();
         if (!threadFactoryMap.containsKey(subscriptionId)) {
-            ThreadFactory factory = new ThreadFactoryBuilder().setNameFormat("outbound"+subscriptionId).build();
+            ThreadFactory factory = new ThreadFactoryBuilder().setNameFormat("outbound" + subscriptionId).build();
 
             threadFactoryMap.put(subscriptionId, Executors.newFixedThreadPool(maximumThreadsPerOutboundSubscription, factory));
         }
@@ -218,6 +220,7 @@ public class CamelRouteManager {
 
     /**
      * Clean up dead ExecutorServices
+     *
      * @param subscriptionManager
      */
     private void removeDeadSubscriptionExecutors(ServerSubscriptionManager subscriptionManager) {
@@ -265,6 +268,7 @@ public class CamelRouteManager {
 
     /**
      * Returns false if payload contains an empty ServiceDelivery (i.e. no actual SIRI-data), otherwise it returns false
+     *
      * @param payload
      * @return
      */

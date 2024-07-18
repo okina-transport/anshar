@@ -26,18 +26,13 @@ import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
-import org.quartz.utils.counter.Counter;
-import org.quartz.utils.counter.CounterImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri21.HalfOpenTimestampOutputRangeStructure;
-import uk.org.siri.siri21.MessageRefStructure;
-import uk.org.siri.siri21.PtSituationElement;
-import uk.org.siri.siri21.Siri;
-import uk.org.siri.siri21.SituationVersion;
+import uk.org.ifopt.siri21.StopPlaceRef;
+import uk.org.siri.siri21.*;
 
 import javax.annotation.PostConstruct;
 import java.time.Instant;
@@ -55,11 +50,11 @@ public class Situations extends SiriRepository<PtSituationElement> {
     @Getter
     @Setter
     @Autowired
-    private IMap<SiriObjectStorageKey , PtSituationElement>  situationElements;
+    private IMap<SiriObjectStorageKey, PtSituationElement> situationElements;
 
     @Autowired
     @Qualifier("getSxChecksumMap")
-    private IMap<SiriObjectStorageKey,String> checksumCache;
+    private IMap<SiriObjectStorageKey, String> checksumCache;
 
     @Autowired
     @Qualifier("getSituationChangesMap")
@@ -229,7 +224,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
     /**
      * Generates a set of keys that matches with user's request
      *
-     * @param datasetId   dataset id
+     * @param datasetId dataset id
      * @return a set of keys matching with filters
      */
     private Set<SiriObjectStorageKey> generateIdSet(String datasetId) {
@@ -313,7 +308,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
             return ZonedDateTime.now().until(expiry.plus(configuration.getSxGraceperiodMinutes(), ChronoUnit.MINUTES), ChronoUnit.MILLIS);
         } else {
             // No expiration set - keep "forever"
-            return  ZonedDateTime.now().until(ZonedDateTime.now().plusYears(10), ChronoUnit.MILLIS);
+            return ZonedDateTime.now().until(ZonedDateTime.now().plusYears(10), ChronoUnit.MILLIS);
         }
     }
 
@@ -365,7 +360,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
 
             if (keepByProgressStatus(situation) && updated) {
                 timingTracer.mark("keepByProgressStatus");
-                long expiration = getExpiration(situation);
+
                 timingTracer.mark("getExpiration");
                 if (expiration > 0) { //expiration < 0 => already expired
                     changes.put(key, situation);
@@ -379,10 +374,10 @@ public class Situations extends SiriRepository<PtSituationElement> {
                     timingTracer.mark("checksumCache.remove");
                 }
                 if (expiration < 0) {
-                    alreadyExpiredCounter.increment();
+                    alreadyExpiredCounter.incrementAndGet();
                 }
             } else {
-                ignoredCounter.increment();
+                ignoredCounter.incrementAndGet();
             }
 
             long elapsed = timingTracer.getTotalTime();
@@ -392,7 +387,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
         });
         TimingTracer timingTracer = new TimingTracer("all-sx [" + changes.size() + " changes]");
 
-        logger.debug("Updated {} (of {}) :: Already expired: {}, Unchanged: {}", changes.size(), sxList.size(), alreadyExpiredCounter.getValue(), ignoredCounter.getValue());
+        logger.debug("Updated {} (of {}) :: Already expired: {}, Unchanged: {}", changes.size(), sxList.size(), alreadyExpiredCounter.get(), ignoredCounter.get());
 
         checksumCache.setAll(checksumTmp);
         timingTracer.mark("checksumCache.setAll");

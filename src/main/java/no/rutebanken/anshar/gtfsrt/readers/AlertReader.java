@@ -37,7 +37,7 @@ public class AlertReader extends AbstractSwallower {
     @Autowired
     private SiriHandler handler;
 
-    @Produce(uri = "direct:send.sx.to.realtime.server")
+    @Produce(value = "direct:send.sx.to.realtime.server")
     protected ProducerTemplate gtfsrtSxProducer;
 
 

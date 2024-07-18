@@ -25,21 +25,13 @@ import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
-import org.quartz.utils.counter.Counter;
-import org.quartz.utils.counter.CounterImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Repository;
-import uk.org.siri.siri21.AbstractItemStructure;
-import uk.org.siri.siri21.CoordinatesStructure;
-import uk.org.siri.siri21.LocationStructure;
-import uk.org.siri.siri21.MessageRefStructure;
-import uk.org.siri.siri21.Siri;
-import uk.org.siri.siri21.VehicleActivityStructure;
-import uk.org.siri.siri21.VehicleRef;
-
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import uk.org.siri.siri21.*;
 
 import javax.annotation.PostConstruct;
 import java.time.Instant;
@@ -47,6 +39,7 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Component
@@ -85,7 +78,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
     }
 
 
-    @Produce(uri = "direct:sendVMToRedis")
+    @Produce(value = "direct:sendVMToRedis")
     private ProducerTemplate redisProducer;
 
     public void sendMessageToRedis(Map<SiriObjectStorageKey, VehicleActivityStructure> message) {
@@ -353,7 +346,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
 //                    if (existingChecksum != null && monitoredVehicles.containsKey(key)) {
                     if (existingChecksum != null) {
                         //Exists - compare values
-                        updated =  !(currentChecksum.equals(existingChecksum));
+                        updated = !(currentChecksum.equals(existingChecksum));
                     } else {
                         //Does not exist
                         updated = true;
@@ -381,7 +374,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
                             checksumCacheTmp.put(key, currentChecksum);
                             monitoredVehicles.set(key, activity, expiration, TimeUnit.MILLISECONDS);
                         } else {
-                            outdatedCounter.increment();
+                            outdatedCounter.incrementAndGet();
 
                             //Keeping all checksums for at least 5 minutes to avoid stale data
                             checksumCache.set(key, currentChecksum, 5, TimeUnit.MINUTES);
@@ -390,7 +383,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
                         }
 
                         if (!isLocationValid(activity)) {
-                            invalidLocationCounter.increment();
+                            invalidLocationCounter.incrementAndGet();
                         }
                         timingTracer.mark("isLocationValid");
 
@@ -419,7 +412,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
 
         timingTracer.mark("monitoredVehicles.setAll");
 
-        logger.debug("Updated {} (of {}) :: Ignored elements - Missing location:{}, Missing values: {}, Expired: {}, Not updated: {}", changes.size(), vmList.size(), invalidLocationCounter.getValue(), notMeaningfulCounter.getValue(), outdatedCounter.getValue(), notUpdatedCounter.getValue());
+        logger.debug("Updated {} (of {}) :: Ignored elements - Missing location:{}, Missing values: {}, Expired: {}, Not updated: {}", changes.size(), vmList.size(), invalidLocationCounter.get(), notMeaningfulCounter.get(), outdatedCounter.get(), notUpdatedCounter.get());
 
         markDataReceived(SiriDataType.VEHICLE_MONITORING, datasetId, vmList.size(), changes.size(), outdatedCounter.get(), (invalidLocationCounter.get() + notMeaningfulCounter.get() + notUpdatedCounter.get()));
 
@@ -540,15 +533,17 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
         return keep;
     }
 
+
     /**
      * Creates unique key - assumes that any operator has a set of unique VehicleRefs
+     *
      * @param datasetId
      * @param monitoredVehicleJourney
+     * @param vehicleRefvalue
      * @return
      */
-    private SiriObjectStorageKey createKey(String datasetId, VehicleActivityStructure.MonitoredVehicleJourney monitoredVehicleJourney) {
+    private SiriObjectStorageKey createKey(String datasetId, VehicleActivityStructure.MonitoredVehicleJourney monitoredVehicleJourney, String vehicleRefvalue) {
         StringBuilder key = new StringBuilder();
-
 
         if (monitoredVehicleJourney.getVehicleRef() != null) {
             VehicleRef vehicleRef = monitoredVehicleJourney.getVehicleRef();

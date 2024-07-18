@@ -10,9 +10,9 @@ import no.rutebanken.anshar.routes.siri.handlers.Utils;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.AnnotatedLineRef;
-import uk.org.siri.siri20.LineRef;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.AnnotatedLineRef;
+import uk.org.siri.siri21.LineRef;
+import uk.org.siri.siri21.Siri;
 
 import java.util.*;
 import java.util.stream.Collectors;

@@ -24,13 +24,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
-import java.io.IOException;
-import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.Map;
+import java.util.concurrent.*;
 
 @Component
 @Configuration
@@ -85,7 +80,6 @@ public class BaneNorIdPlatformUpdaterService {
 
         ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
-        int initialDelay = updateFrequency + new Random().nextInt(10);
         executor.scheduleAtFixedRate(this::updateIdMapping, initialDelay, updateFrequency, TimeUnit.MINUTES);
 
 

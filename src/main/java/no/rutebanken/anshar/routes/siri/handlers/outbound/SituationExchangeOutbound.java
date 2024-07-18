@@ -13,8 +13,8 @@ import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.PtSituationElement;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.PtSituationElement;
+import uk.org.siri.siri21.Siri;
 
 import java.util.*;
 

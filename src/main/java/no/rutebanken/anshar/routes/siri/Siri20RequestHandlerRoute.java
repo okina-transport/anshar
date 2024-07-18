@@ -22,11 +22,9 @@ import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.data.util.CustomSiriXml;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
-import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
-import org.apache.camel.CamelContextAware;
 import org.apache.camel.Exchange;
 import org.apache.camel.Message;
 import org.apache.camel.http.common.HttpMethods;
@@ -34,15 +32,12 @@ import org.apache.camel.model.rest.RestParamType;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.Siri;
 
-import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.core.MediaType;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.List;
@@ -232,19 +227,19 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder {
                 .endChoice()
                 .when(e -> isTrackingHeaderAcceptable(e))
                 .choice()
-                .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:VehicleMonitoringSubscriptionRequest", nameSpace)
+                .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:VehicleMonitoringSubscriptionRequest", ns)
                 .to("direct:process.vm.subscription.request")
-                .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:SituationExchangeSubscriptionRequest", nameSpace)
+                .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:SituationExchangeSubscriptionRequest", ns)
                 .to("direct:process.sx.subscription.request")
-                .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:EstimatedTimetableSubscriptionRequest", nameSpace)
+                .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:EstimatedTimetableSubscriptionRequest", ns)
                 .to("direct:process.et.subscription.request")
-                .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:StopMonitoringSubscriptionRequest", nameSpace)
+                .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:StopMonitoringSubscriptionRequest", ns)
                 .to("direct:process.sm.subscription.request")
-                .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:GeneralMessageSubscriptionRequest", nameSpace)
+                .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:GeneralMessageSubscriptionRequest", ns)
                 .to("direct:process.gm.subscription.request")
-                .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:FacilityMonitoringSubscriptionRequest", nameSpace)
+                .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:FacilityMonitoringSubscriptionRequest", ns)
                 .to("direct:process.fm.subscription.request")
-                .when().xpath("/siri:Siri/siri:TerminateSubscriptionRequest", nameSpace)
+                .when().xpath("/siri:Siri/siri:TerminateSubscriptionRequest", ns)
                 // Forwarding TerminateRequest to all data-instances
                 .wireTap("direct:process.et.subscription.request")
                 .wireTap("direct:process.vm.subscription.request")
@@ -316,23 +311,23 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder {
 
         from("direct:process.service.request")
                 .choice()
-                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:VehicleMonitoringRequest", nameSpace)
+                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:VehicleMonitoringRequest", ns)
                 .to("direct:process.vm.service.request")
-                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:SituationExchangeRequest", nameSpace)
+                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:SituationExchangeRequest", ns)
                 .to("direct:process.sx.service.request")
-                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:EstimatedTimetableRequest", nameSpace)
+                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:EstimatedTimetableRequest", ns)
                 .to("direct:process.et.service.request")
-                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:StopMonitoringRequest", nameSpace)
+                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:StopMonitoringRequest", ns)
                 .to("direct:process.sm.service.request")
-                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:GeneralMessageRequest", nameSpace)
+                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:GeneralMessageRequest", ns)
                 .to("direct:process.sm.service.request")
-                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:FacilityMonitoringRequest", nameSpace)
+                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:FacilityMonitoringRequest", ns)
                 .to("direct:process.fm.service.request")
-                .when().xpath("/siri:Siri/siri:StopPointsRequest", nameSpace)
+                .when().xpath("/siri:Siri/siri:StopPointsRequest", ns)
                 .to("direct:process.sm.service.request")
-                .when().xpath("/siri:Siri/siri:LinesRequest", nameSpace)
+                .when().xpath("/siri:Siri/siri:LinesRequest", ns)
                 .to("direct:process.vm.service.request")
-                .when().xpath("/siri:Siri/siri:CheckStatusRequest", nameSpace)
+                .when().xpath("/siri:Siri/siri:CheckStatusRequest", ns)
                 .to("direct:internal.process.service.request")
                 .endChoice()
         ;
@@ -398,15 +393,15 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder {
 
         from("direct:process.service.request.cache")
                 .choice()
-                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:VehicleMonitoringRequest", nameSpace)
+                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:VehicleMonitoringRequest", ns)
                 .to("direct:process.vm.service.request.cache")
-                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:SituationExchangeRequest", nameSpace)
+                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:SituationExchangeRequest", ns)
                 .to("direct:process.sx.service.request.cache")
-                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:EstimatedTimetableRequest", nameSpace)
+                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:EstimatedTimetableRequest", ns)
                 .to("direct:process.et.service.request.cache")
-                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:StopMonitoringRequest", nameSpace)
+                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:StopMonitoringRequest", ns)
                 .to("direct:process.sm.service.request.cache")
-                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:FacilityMonitoringRequest", nameSpace)
+                .when().xpath("/siri:Siri/siri:ServiceRequest/siri:FacilityMonitoringRequest", ns)
                 .to("direct:process.fm.service.request.cache")
                 .endChoice()
         ;

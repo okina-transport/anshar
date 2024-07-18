@@ -28,8 +28,8 @@ import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
-import org.entur.siri.validator.SiriValidator;
 import org.apache.commons.lang3.StringUtils;
+import org.entur.siri.validator.SiriValidator;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.slf4j.Logger;
@@ -40,16 +40,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri21.AbstractSubscriptionStructure;
-import uk.org.siri.siri21.CheckStatusRequestStructure;
-import uk.org.siri.siri21.EstimatedTimetableSubscriptionStructure;
-import uk.org.siri.siri21.EstimatedVehicleJourney;
-import uk.org.siri.siri21.PtSituationElement;
-import uk.org.siri.siri21.Siri;
-import uk.org.siri.siri21.SituationExchangeSubscriptionStructure;
-import uk.org.siri.siri21.SubscriptionRequest;
-import uk.org.siri.siri21.VehicleActivityStructure;
-import uk.org.siri.siri21.VehicleMonitoringSubscriptionStructure;
+import uk.org.siri.siri21.*;
 
 import javax.xml.datatype.Duration;
 import java.time.Instant;
@@ -62,7 +53,8 @@ import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 import static java.time.temporal.ChronoUnit.MILLIS;
-import static no.rutebanken.anshar.routes.kafka.KafkaConfig.CODESPACE_ID_KAFKA_HEADER_NAME;
+import static no.rutebanken.anshar.routes.outbound.SiriHelper.resolveSiriVersionStr;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASET_ID_HEADER_NAME;
 
 @SuppressWarnings("unchecked")
 @Service
@@ -106,6 +98,9 @@ public class ServerSubscriptionManager {
     @Value("${anshar.outbound.pubsub.sx.topic.enabled}")
     private boolean pushToSxTopicEnabled;
 
+    @Value("${anshar.outbound.pubsub.sx.topic.enabled}")
+    private boolean pushToSmTopicEnabled;
+
     @Value("${external.sx.consumer.enabled}")
     private boolean pushToExternalSxConsumer;
 
@@ -131,25 +126,25 @@ public class ServerSubscriptionManager {
     @Value("${send.activemq.kafka}")
     private boolean sendActivemqKafka;
 
-    @Produce(uri = "direct:send.sm.to.kafka")
+    @Produce(value = "direct:send.sm.to.kafka")
     protected ProducerTemplate sendSMToKafka;
 
-    @Produce(uri = "direct:send.sx.to.kafka")
+    @Produce(value = "direct:send.sx.to.kafka")
     protected ProducerTemplate sendSXToKafka;
 
-    @Produce(uri = "direct:send.sx.to.external.consumer")
+    @Produce(value = "direct:send.sx.to.external.consumer")
     protected ProducerTemplate sendSXToExternalConsumer;
 
-    @Produce(uri = "direct:send.vm.to.kafka")
+    @Produce(value = "direct:send.vm.to.kafka")
     protected ProducerTemplate sendVMToKafka;
 
-    @Produce(uri = "direct:send.et.to.kafka")
+    @Produce(value = "direct:send.et.to.kafka")
     protected ProducerTemplate sendETToKafka;
 
-    @Produce(uri = "direct:send.gm.to.kafka")
+    @Produce(value = "direct:send.gm.to.kafka")
     protected ProducerTemplate sendGMToKafka;
 
-    @Produce(uri = "direct:send.fm.to.kafka")
+    @Produce(value = "direct:send.fm.to.kafka")
     protected ProducerTemplate sendFMToKafka;
 
     @Autowired
@@ -217,7 +212,7 @@ public class ServerSubscriptionManager {
 
     public Siri handleSingleSubscriptionRequest(SubscriptionRequest subscriptionRequest, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName, boolean soapTransformation, boolean useOriginalId) {
 
-        OutboundSubscriptionSetup subscription = createSubscription(subscriptionRequest, datasetId, outboundIdMappingPolicy, clientTrackingName);
+        OutboundSubscriptionSetup subscription = createSubscription(subscriptionRequest, datasetId, outboundIdMappingPolicy, clientTrackingName, useOriginalId);
         subscription.setSOAPSubscription(soapTransformation);
         boolean hasError = false;
         String errorText = null;
@@ -255,8 +250,7 @@ public class ServerSubscriptionManager {
                     subscription.getSubscriptionId(),
                     true,
                     null,
-                    resolveSiriVersionStr(subscription.getSiriVersion()))
-                    ;
+                    resolveSiriVersionStr(subscription.getSiriVersion()));
 
             if (subscription.getSubscriptionType().equals(SiriDataType.SITUATION_EXCHANGE)) {
                 sendInitialDelivery(subscription);
@@ -323,6 +317,13 @@ public class ServerSubscriptionManager {
         );
     }
 
+    private long getUpdateInterval(SubscriptionRequest subscriptionRequest) {
+        if (SiriHelper.containsValues(subscriptionRequest.getVehicleMonitoringSubscriptionRequests()) && subscriptionRequest.getVehicleMonitoringSubscriptionRequests().get(0).getUpdateInterval() != null) {
+            return subscriptionRequest.getVehicleMonitoringSubscriptionRequests().get(0).getUpdateInterval().getTimeInMillis(new Date(0));
+        }
+        return 0;
+    }
+
     private static SiriValidator.Version resolveSiriVersion(SubscriptionRequest subscriptionRequest, OutboundIdMappingPolicy outboundIdMappingPolicy) {
         // Check
         String version = null;
@@ -351,13 +352,99 @@ public class ServerSubscriptionManager {
         if (subscriptionRequest.getSubscriptionContext() != null &&
                 subscriptionRequest.getSubscriptionContext().getHeartbeatInterval() != null) {
             Duration interval = subscriptionRequest.getSubscriptionContext().getHeartbeatInterval();
-            heartbeatInterval = interval.toMillis();
+            heartbeatInterval = interval.getTimeInMillis(new Date(0));
         }
         heartbeatInterval = Math.max(heartbeatInterval, minimumHeartbeatInterval);
         heartbeatInterval = Math.min(heartbeatInterval, maximumHeartbeatInterval);
 
         return heartbeatInterval;
     }
+
+    /**
+     * Handle subscription request that can contain one or multiple subcriptions
+     *
+     * @param incomingSiri
+     * @param datasetId
+     * @param outboundIdMappingPolicy
+     * @param clientTrackingName
+     * @param soapTransformation
+     * @return
+     */
+    public Siri handleMultipleSubscriptionsRequest(Siri incomingSiri, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName, boolean soapTransformation, boolean useOriginalId) {
+        SubscriptionRequest subscriptionRequest = incomingSiri.getSubscriptionRequest();
+
+        if (subscriptionRequest.getStopMonitoringSubscriptionRequests() != null && subscriptionRequest.getStopMonitoringSubscriptionRequests().size() > 1) {
+            return handleMultipleStopMonitoringRequest(subscriptionRequest, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation, useOriginalId);
+        } else if (subscriptionRequest.getVehicleMonitoringSubscriptionRequests() != null && subscriptionRequest.getVehicleMonitoringSubscriptionRequests().size() > 1) {
+            return handleMultipleVehicleMonitoringRequest(incomingSiri, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation, useOriginalId);
+        } else {
+            return handleSingleSubscriptionRequest(subscriptionRequest, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation, useOriginalId);
+        }
+    }
+
+    private Siri handleMultipleVehicleMonitoringRequest(Siri incomingSiri, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName, boolean soapTransformation, boolean useOriginalId) {
+
+
+        SubscriptionRequest subscriptionRequest = incomingSiri.getSubscriptionRequest();
+        List<Siri> resultList = new ArrayList<>();
+        RequestorRef requestorRef = subscriptionRequest.getRequestorRef();
+        String consumerAddress = subscriptionRequest.getConsumerAddress();
+        SubscriptionContextStructure subscriptionContext = subscriptionRequest.getSubscriptionContext();
+        MessageQualifierStructure messageIdentifier = subscriptionRequest.getMessageIdentifier();
+
+        for (VehicleMonitoringSubscriptionStructure vehicleMonitoringSubscriptionRequest : subscriptionRequest.getVehicleMonitoringSubscriptionRequests()) {
+            SubscriptionRequest singleRequest = new SubscriptionRequest();
+            singleRequest.getVehicleMonitoringSubscriptionRequests().add(vehicleMonitoringSubscriptionRequest);
+            singleRequest.setRequestorRef(requestorRef);
+            singleRequest.setConsumerAddress(consumerAddress);
+            singleRequest.setSubscriptionContext(subscriptionContext);
+            singleRequest.setMessageIdentifier(messageIdentifier);
+
+            Siri currentResult = handleSingleSubscriptionRequest(singleRequest, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation, useOriginalId);
+            resultList.add(currentResult);
+        }
+
+        return aggregateResults(resultList);
+    }
+
+
+    private Siri aggregateResults(List<Siri> resultList) {
+
+        Siri result = null;
+        for (Siri currentSiri : resultList) {
+            if (result == null) {
+                result = currentSiri;
+                continue;
+            }
+            result.getSubscriptionResponse().getResponseStatuses().add(currentSiri.getSubscriptionResponse().getResponseStatuses().get(0));
+        }
+        return result;
+    }
+
+
+    private Siri handleMultipleStopMonitoringRequest(SubscriptionRequest subscriptionRequest, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName, boolean soapTransformation, boolean useOriginalId) {
+
+        List<Siri> resultList = new ArrayList<>();
+        RequestorRef requestorRef = subscriptionRequest.getRequestorRef();
+        String consumerAddress = subscriptionRequest.getConsumerAddress();
+        SubscriptionContextStructure subscriptionContext = subscriptionRequest.getSubscriptionContext();
+        MessageQualifierStructure messageIdentifier = subscriptionRequest.getMessageIdentifier();
+
+        for (StopMonitoringSubscriptionStructure stopMonitoringSubscriptionRequest : subscriptionRequest.getStopMonitoringSubscriptionRequests()) {
+            SubscriptionRequest singleRequest = new SubscriptionRequest();
+            singleRequest.getStopMonitoringSubscriptionRequests().add(stopMonitoringSubscriptionRequest);
+            singleRequest.setRequestorRef(requestorRef);
+            singleRequest.setConsumerAddress(consumerAddress);
+            singleRequest.setSubscriptionContext(subscriptionContext);
+            singleRequest.setMessageIdentifier(messageIdentifier);
+
+            Siri currentResult = handleSingleSubscriptionRequest(singleRequest, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation, useOriginalId);
+            resultList.add(currentResult);
+        }
+
+        return aggregateResults(resultList);
+    }
+
 
     private SiriDataType getSubscriptionType(SubscriptionRequest subscriptionRequest) {
         if (SiriHelper.containsValues(subscriptionRequest.getSituationExchangeSubscriptionRequests())) {
@@ -396,7 +483,7 @@ public class ServerSubscriptionManager {
 
     private int getMilliSeconds(Duration changeBeforeUpdates) {
         if (changeBeforeUpdates != null) {
-            return changeBeforeUpdates.getSeconds()*1000;
+            return changeBeforeUpdates.getSeconds() * 1000;
         }
         return 0;
     }
@@ -770,8 +857,8 @@ public class ServerSubscriptionManager {
                                 )
                         )
 
-            )
-            .collect(Collectors.toList());
+                )
+                .collect(Collectors.toList());
 
         boolean logFullContents = true;
         for (OutboundSubscriptionSetup recipient : recipients) {
@@ -815,8 +902,8 @@ public class ServerSubscriptionManager {
                                 )
                         )
 
-            )
-            .collect(Collectors.toList());
+                )
+                .collect(Collectors.toList());
 
         if (!recipients.isEmpty()) {
             logger.info("Pushing {} ET updates to {} outbound subscriptions", addedOrUpdated.size(), recipients.size());
@@ -840,7 +927,7 @@ public class ServerSubscriptionManager {
 
         Siri delivery = siriObjectFactory.createSMServiceDelivery(addedOrUpdated);
 
-        if (pushToTopicEnabled) {
+        if (pushToSmTopicEnabled) {
             siriSmTopicProducer.asyncRequestBodyAndHeader(siriSmTopicProducer.getDefaultEndpoint(), delivery, CODESPACE_ID_KAFKA_HEADER_NAME, datasetId);
         }
 

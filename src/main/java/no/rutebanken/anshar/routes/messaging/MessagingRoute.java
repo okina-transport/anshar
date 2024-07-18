@@ -22,15 +22,13 @@ import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.Predicate;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.camel.Processor;
-import org.apache.camel.util.CaseInsensitiveMap;
 import org.entur.siri21.util.SiriXml;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.Siri;
 
 import java.io.InputStream;
-import java.util.Map;
 
 import static no.rutebanken.anshar.routes.HttpParameter.*;
 import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_SOAP;
@@ -235,7 +233,7 @@ public class MessagingRoute extends RestRouteBuilder {
                 .endChoice()
                 .otherwise()
                 // DataReadyNotification is processed immediately
-                .when().xpath("/siri:Siri/siri:DataReadyNotification", nameSpace)
+                .when().xpath("/siri:Siri/siri:DataReadyNotification", ns)
                 .setHeader("target_topic", simple("direct:" + CamelRouteNames.FETCHED_DELIVERY_QUEUE))
                 .endChoice()
                 .otherwise()

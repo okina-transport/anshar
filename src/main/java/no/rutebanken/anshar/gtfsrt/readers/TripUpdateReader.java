@@ -49,10 +49,10 @@ public class TripUpdateReader extends AbstractSwallower {
     @Autowired
     private TripUpdateMapper tripUpdateMapper;
 
-    @Produce(uri = "direct:send.et.to.realtime.server")
+    @Produce(value = "direct:send.et.to.realtime.server")
     protected ProducerTemplate gtfsrtEtProducer;
 
-    @Produce(uri = "direct:send.sm.to.realtime.server")
+    @Produce(value = "direct:send.sm.to.realtime.server")
     protected ProducerTemplate gtfsrtSmProducer;
 
     @Autowired

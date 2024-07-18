@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 public class GeneralMessagesCancellations extends SiriRepository<GeneralMessageCancellation> {
 
     private static final Logger logger = LoggerFactory.getLogger(GeneralMessagesCancellations.class);
-    
+
 
     @Autowired
     @Qualifier("getGeneralMessageCancellations")
@@ -177,7 +177,7 @@ public class GeneralMessagesCancellations extends SiriRepository<GeneralMessageC
 
     @Override
     void clearAllByDatasetId(String datasetId) {
-        Set<SiriObjectStorageKey> idsToRemove = generalMessagesCancellations.keySet(createCodespacePredicate(datasetId));
+        Set<SiriObjectStorageKey> idsToRemove = generalMessagesCancellations.keySet(createHzCodespacePredicate(datasetId));
         logger.warn("Removing all data ({} ids) for {}", idsToRemove.size(), datasetId);
 
         for (SiriObjectStorageKey id : idsToRemove) {

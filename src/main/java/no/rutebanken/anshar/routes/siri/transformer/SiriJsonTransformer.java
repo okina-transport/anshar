@@ -8,7 +8,7 @@ import no.rutebanken.anshar.util.DateUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
@@ -63,9 +63,9 @@ public class SiriJsonTransformer {
      * @param vehicleMonitoringJsonDTO the DTO that contains VehicleMonitoring data
      * @return the service delivery
      */
-    private static uk.org.siri.siri20.ServiceDelivery mapToServiceDelivery(VehicleMonitoringJsonDTO vehicleMonitoringJsonDTO) {
+    private static uk.org.siri.siri21.ServiceDelivery mapToServiceDelivery(VehicleMonitoringJsonDTO vehicleMonitoringJsonDTO) {
 
-        uk.org.siri.siri20.ServiceDelivery createdServiceDelivery = new uk.org.siri.siri20.ServiceDelivery();
+        uk.org.siri.siri21.ServiceDelivery createdServiceDelivery = new uk.org.siri.siri21.ServiceDelivery();
         createdServiceDelivery.setResponseTimestamp(DateUtils.convertStringToZonedDateTime(vehicleMonitoringJsonDTO.getServiceDelivery().getResponseTimestamp()));
 
         MessageRefStructure messageRef = new MessageRefStructure();
@@ -277,7 +277,7 @@ public class SiriJsonTransformer {
 
 
         if (StringUtils.isNotEmpty(call.getStopCode())) {
-            StopPointRef stopRef = new StopPointRef();
+            StopPointRefStructure stopRef = new StopPointRefStructure();
             stopRef.setValue(call.getStopCode());
             createdCall.setStopPointRef(stopRef);
         }
@@ -312,7 +312,7 @@ public class SiriJsonTransformer {
         }
 
         if (StringUtils.isNotEmpty(monitoredCall.getStopCode())) {
-            StopPointRef stopRef = new StopPointRef();
+            StopPointRefStructure stopRef = new StopPointRefStructure();
             stopRef.setValue(monitoredCall.getStopCode());
             createdMonitoredCall.setStopPointRef(stopRef);
         }

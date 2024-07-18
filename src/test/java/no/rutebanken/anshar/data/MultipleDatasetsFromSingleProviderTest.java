@@ -1,7 +1,7 @@
 package no.rutebanken.anshar.data;
 
-import no.rutebanken.anshar.config.IncomingSiriParameters;
 import jakarta.xml.bind.JAXBException;
+import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
@@ -12,22 +12,8 @@ import org.entur.siri21.util.SiriXml;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri21.DataFrameRefStructure;
-import uk.org.siri.siri21.EstimatedCall;
-import uk.org.siri.siri21.EstimatedVehicleJourney;
-import uk.org.siri.siri21.FramedVehicleJourneyRefStructure;
-import uk.org.siri.siri21.HalfOpenTimestampOutputRangeStructure;
-import uk.org.siri.siri21.LineRef;
-import uk.org.siri.siri21.LocationStructure;
-import uk.org.siri.siri21.PtSituationElement;
-import uk.org.siri.siri21.RequestorRef;
-import uk.org.siri.siri21.Siri;
-import uk.org.siri.siri21.SituationNumber;
-import uk.org.siri.siri21.StopPointRefStructure;
-import uk.org.siri.siri21.VehicleActivityStructure;
-import uk.org.siri.siri21.VehicleRef;
+import uk.org.siri.siri21.*;
 
-import javax.xml.bind.JAXBException;
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.math.BigInteger;

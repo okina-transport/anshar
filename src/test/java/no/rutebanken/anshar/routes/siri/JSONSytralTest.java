@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.MonitoredStopVisit;
+import uk.org.siri.siri21.MonitoredStopVisit;
 
 import java.io.File;
 import java.io.FileReader;

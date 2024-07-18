@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import javax.annotation.PostConstruct;
 import java.time.Instant;
@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Repository
-public class FacilityMonitoring extends SiriRepository<FacilityConditionStructure>  {
+public class FacilityMonitoring extends SiriRepository<FacilityConditionStructure> {
 
     private static final Logger logger = LoggerFactory.getLogger(FacilityMonitoring.class);
 
@@ -126,7 +126,7 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
         StringBuilder key = new StringBuilder();
         key.append(conditionStructure.getFacilityRef() != null ? conditionStructure.getFacilityRef().getValue() : "null");
         FacilityLocationStructure facilityLocation = conditionStructure.getFacility() != null ? conditionStructure.getFacility().getFacilityLocation() : null;
-        if (facilityLocation != null){
+        if (facilityLocation != null) {
             key.append(":")
                     .append(facilityLocation.getLineRef() != null ? facilityLocation.getLineRef().getValue() : "null")
                     .append(":")
@@ -151,10 +151,10 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
 
                     long expiration = getExpiration(fmCondition);
 
-                    if(expiration > 0){
+                    if (expiration > 0) {
                         facilityMonitoring.set(key, fmCondition, expiration, TimeUnit.MILLISECONDS);
                         addedData.add(fmCondition);
-                    } else{
+                    } else {
                         outDatedCounter.increment();
                     }
                 });
@@ -181,11 +181,11 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
     @Override
     long getExpiration(FacilityConditionStructure s) {
         ZonedDateTime validUntil = s.getValidityPeriod() != null ? s.getValidityPeriod().getEndTime() : null;
-        if (s.getFacility() != null && validUntil == null){
+        if (s.getFacility() != null && validUntil == null) {
             validUntil = s.getFacility().getValidityCondition() != null && s.getFacility().getValidityCondition().getPeriods() != null &&
                     s.getFacility().getValidityCondition().getPeriods().stream()
-                    .map(HalfOpenTimestampOutputRangeStructure::getEndTime)
-                    .max(ChronoZonedDateTime::compareTo).isPresent() ?
+                            .map(HalfOpenTimestampOutputRangeStructure::getEndTime)
+                            .max(ChronoZonedDateTime::compareTo).isPresent() ?
                     s.getFacility().getValidityCondition().getPeriods().stream()
                             .map(HalfOpenTimestampOutputRangeStructure::getEndTime)
                             .max(ChronoZonedDateTime::compareTo).get() : null;
@@ -196,7 +196,7 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
 
     @Override
     void clearAllByDatasetId(String datasetId) {
-        Set<SiriObjectStorageKey> idsToRemove = facilityMonitoring.keySet(createCodespacePredicate(datasetId));
+        Set<SiriObjectStorageKey> idsToRemove = facilityMonitoring.keySet(createHzCodespacePredicate(datasetId));
         logger.warn("Removing all data ({} ids) for {}", idsToRemove.size(), datasetId);
 
         for (SiriObjectStorageKey id : idsToRemove) {
@@ -209,7 +209,7 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientTrackingName, List<String> excludedDatasetIds, int maxSize,
                                       Set<String> requestedLineRef, Set<String> requestedFacilities, Set<String> requestedVehicleRef, Set<String> stopPointRef) {
 
-       requestorRefRepository.touchRequestorRef(requestorId, datasetId, clientTrackingName, SiriDataType.FACILITY_MONITORING);
+        requestorRefRepository.touchRequestorRef(requestorId, datasetId, clientTrackingName, SiriDataType.FACILITY_MONITORING);
 
         int trackingPeriodMinutes = configuration.getTrackingPeriodMinutes();
 
@@ -234,16 +234,16 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
 
         //Remove collected objects
         sizeLimitedIds.forEach(requestedIds::remove);
-        logger.info("Limiting size: {} ms", (System.currentTimeMillis()-t1));
+        logger.info("Limiting size: {} ms", (System.currentTimeMillis() - t1));
         t1 = System.currentTimeMillis();
 
         Collection<FacilityConditionStructure> values = facilityMonitoring.getAll(sizeLimitedIds).values();
-        logger.info("Fetching data: {} ms", (System.currentTimeMillis()-t1));
+        logger.info("Fetching data: {} ms", (System.currentTimeMillis() - t1));
         t1 = System.currentTimeMillis();
 
         Siri siri = siriObjectFactory.createFMServiceDelivery(values);
         siri.getServiceDelivery().setMoreData(isMoreData);
-        logger.info("Creating SIRI-delivery: {} ms", (System.currentTimeMillis()-t1));
+        logger.info("Creating SIRI-delivery: {} ms", (System.currentTimeMillis() - t1));
 
         if (isAdHocRequest) {
             logger.info("Returning {}, no requestorRef is set", sizeLimitedIds.size());
@@ -272,7 +272,7 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
     /**
      * Generates a set of keys that matches with user's request
      *
-     * @param datasetId         dataset id
+     * @param datasetId           dataset id
      * @param requestedFacilities
      * @return a set of keys matching with filters
      */
@@ -280,7 +280,7 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
     private Set<SiriObjectStorageKey> generateIdSet(String datasetId, Set<String> requestedFacilities, Set<String> requestedLineRef, Set<String> requestedVehicleRef,
                                                     Set<String> stopPointRef, List<String> excludedDatasetIds) {
         // Get all relevant ids
-        Predicate<SiriObjectStorageKey, FacilityConditionStructure> predicate = SiriObjectStorageKeyUtil.getFacilityMonitoringPredicate(datasetId,requestedFacilities,
+        Predicate<SiriObjectStorageKey, FacilityConditionStructure> predicate = SiriObjectStorageKeyUtil.getFacilityMonitoringPredicate(datasetId, requestedFacilities,
                 requestedLineRef, requestedVehicleRef, stopPointRef, excludedDatasetIds);
         return new HashSet<>(facilityMonitoring.keySet(predicate));
     }

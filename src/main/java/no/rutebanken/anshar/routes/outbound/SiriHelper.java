@@ -26,30 +26,12 @@ import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.util.IDUtils;
+import org.entur.siri.validator.SiriValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri21.AffectedLineStructure;
-import uk.org.siri.siri21.AffectsScopeStructure;
-import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri21.EstimatedTimetableRequestStructure;
-import uk.org.siri.siri21.EstimatedTimetableSubscriptionStructure;
-import uk.org.siri.siri21.EstimatedVehicleJourney;
-import uk.org.siri.siri21.EstimatedVersionFrameStructure;
-import uk.org.siri.siri21.LineDirectionStructure;
-import uk.org.siri.siri21.LineRef;
-import uk.org.siri.siri21.PtSituationElement;
-import uk.org.siri.siri21.Siri;
-import uk.org.siri.siri21.SituationExchangeDeliveryStructure;
-import uk.org.siri.siri21.SituationExchangeRequestStructure;
-import uk.org.siri.siri21.SituationExchangeSubscriptionStructure;
-import uk.org.siri.siri21.SubscriptionRequest;
-import uk.org.siri.siri21.VehicleActivityStructure;
-import uk.org.siri.siri21.VehicleMonitoringDeliveryStructure;
-import uk.org.siri.siri21.VehicleMonitoringRequestStructure;
-import uk.org.siri.siri21.VehicleMonitoringSubscriptionStructure;
-import uk.org.siri.siri21.VehicleRef;
+import uk.org.siri.siri21.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -57,6 +39,8 @@ import java.util.stream.Collectors;
 @SuppressWarnings("unchecked")
 @Component
 public class SiriHelper {
+
+    public static final String FALLBACK_SIRI_VERSION = "2.1";
 
     private static final Logger logger = LoggerFactory.getLogger(SiriHelper.class);
 
@@ -780,7 +764,6 @@ public class SiriHelper {
     public Siri getAllSM() {
         return siriObjectFactory.createSMServiceDelivery(monitoredStopVisits.getAll());
     }
-}
 
     public static String resolveSiriVersionStr(SiriValidator.Version version) {
         switch (version) {
@@ -798,3 +781,6 @@ public class SiriHelper {
                 return FALLBACK_SIRI_VERSION;
         }
     }
+}
+
+
