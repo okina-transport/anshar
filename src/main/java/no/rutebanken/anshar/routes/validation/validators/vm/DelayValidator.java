@@ -30,9 +30,8 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.MONITO
 
 /**
  * Verifies that the value for field Delay is a valid Duration
- *
  */
-@Validator(profileName = "norway", targetType = SiriDataType.VEHICLE_MONITORING)
+@Validator(profileName = "france", targetType = SiriDataType.VEHICLE_MONITORING)
 @Component
 public class DelayValidator extends CustomValidator {
 
@@ -52,7 +51,7 @@ public class DelayValidator extends CustomValidator {
         if (delay != null) {
             try {
                 Duration.parse(delay);
-            } catch (DateTimeParseException e){
+            } catch (DateTimeParseException e) {
                 return createEvent(node, FIELDNAME, "valid Duration", delay, ValidationEvent.ERROR);
             }
         }

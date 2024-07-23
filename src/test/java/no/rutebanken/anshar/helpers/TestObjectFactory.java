@@ -3,7 +3,7 @@ package no.rutebanken.anshar.helpers;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -86,7 +86,7 @@ public class TestObjectFactory {
         EstimatedVehicleJourney.EstimatedCalls estimatedCalls = new EstimatedVehicleJourney.EstimatedCalls();
         for (int i = startOrder; i < callCount; i++) {
 
-            StopPointRef stopPointRef = new StopPointRef();
+            StopPointRefStructure stopPointRef = new StopPointRefStructure();
             stopPointRef.setValue("NSR:TEST:" + i);
             EstimatedCall call = new EstimatedCall();
             call.setStopPointRef(stopPointRef);

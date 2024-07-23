@@ -31,9 +31,8 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.AFFECT
 
 /**
  * Verifies that the value for field AffectedRoute is built up correctly
- *
  */
-@Validator(profileName = "norway", targetType = SiriDataType.SITUATION_EXCHANGE)
+@Validator(profileName = "france", targetType = SiriDataType.SITUATION_EXCHANGE)
 @Component
 public class AffectedRouteValidator extends NsrGenericIdValidator {
 
@@ -57,7 +56,7 @@ public class AffectedRouteValidator extends NsrGenericIdValidator {
     public ValidationEvent isValid(Node node) {
         String routeRef = getChildNodeValue(node, FIELDNAME);
         if (routeRef != null) {
-            if (!super.isValidGenericId(ID_PATTERN, routeRef))  {
+            if (!super.isValidGenericId(ID_PATTERN, routeRef)) {
                 return createEvent(node, FIELDNAME, "Valid reference to route", routeRef, ValidationEvent.FATAL_ERROR);
             }
         }
@@ -66,7 +65,7 @@ public class AffectedRouteValidator extends NsrGenericIdValidator {
         if (stopPoints != null) {
             List<Node> affectedStopPoints = getChildNodesByName(stopPoints, "AffectedStopPoint");
             for (Node affectedStopPoint : affectedStopPoints) {
-                ValidationEvent validationEvent = stopPointValidator.isValid(getChildNodeByName(affectedStopPoint,"StopPointRef"));
+                ValidationEvent validationEvent = stopPointValidator.isValid(getChildNodeByName(affectedStopPoint, "StopPointRef"));
                 if (validationEvent != null) {
                     eventList.addEvent(validationEvent);
                 }

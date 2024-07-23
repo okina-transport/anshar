@@ -7,7 +7,7 @@ import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import java.io.Serializable;
 import java.util.List;

@@ -26,7 +26,7 @@ import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import javax.xml.bind.UnmarshalException;
 import java.io.InputStream;
@@ -320,7 +320,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
     @Test
     public void testMapEstimatedToRecordedCall() {
 
-        StopPointRef stopPoint = new StopPointRef();
+        StopPointRefStructure stopPoint = new StopPointRefStructure();
         stopPoint.setValue("NSR:Stop:1234");
 
         NaturalLanguageStringStructure name = new NaturalLanguageStringStructure();
@@ -639,7 +639,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         EstimatedVehicleJourney.RecordedCalls recordedCallsCalls = new EstimatedVehicleJourney.RecordedCalls();
         for (int i = startOrder; i < callCount; i++) {
 
-            StopPointRef stopPointRef = new StopPointRef();
+            StopPointRefStructure stopPointRef = new StopPointRefStructure();
             stopPointRef.setValue("NSR:TEST:" + i);
 
             RecordedCall call = new RecordedCall();

@@ -19,7 +19,7 @@ import no.rutebanken.anshar.routes.validation.validators.vm.MonitoredOccupancyVa
 import no.rutebanken.anshar.validation.CustomValidatorTest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import uk.org.siri.siri20.OccupancyEnumeration;
+import uk.org.siri.siri21.OccupancyEnumeration;
 
 import javax.xml.bind.ValidationEvent;
 

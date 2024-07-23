@@ -23,35 +23,13 @@ import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri20.DatedVehicleJourneyRef;
-import uk.org.siri.siri20.EstimatedCall;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.EstimatedVersionFrameStructure;
-import uk.org.siri.siri20.NaturalLanguageStringStructure;
-import uk.org.siri.siri20.RecordedCall;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.StopPointRef;
+import uk.org.siri.siri21.*;
 
 import java.math.BigInteger;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
-import static no.rutebanken.anshar.routes.siri.processor.routedata.NetexUpdaterService.getPublicCode;
-import static no.rutebanken.anshar.routes.siri.processor.routedata.NetexUpdaterService.getServiceDates;
-import static no.rutebanken.anshar.routes.siri.processor.routedata.NetexUpdaterService.getServiceJourney;
-import static no.rutebanken.anshar.routes.siri.processor.routedata.NetexUpdaterService.getStopTimes;
-import static no.rutebanken.anshar.routes.siri.processor.routedata.NetexUpdaterService.isDsjCancelled;
-import static no.rutebanken.anshar.routes.siri.processor.routedata.NetexUpdaterService.isKnownTrainNr;
-import static no.rutebanken.anshar.routes.siri.processor.routedata.NetexUpdaterService.isStopIdOrParentMatch;
+import static no.rutebanken.anshar.routes.siri.processor.routedata.NetexUpdaterService.*;
 import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.REMOVE_UNKNOWN_DEPARTURE;
 import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.RESTRUCTURE_DEPARTURE;
 import static no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer.SEPARATOR;
@@ -60,7 +38,6 @@ import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapte
 
 /**
  * Rewrites the SIRI ET-feed from BaneNOR to match the planned routes received from NSB
- *
  */
 public class BaneNorSiriEtRewriter extends ValueAdapter implements PostProcessor {
 
@@ -71,12 +48,12 @@ public class BaneNorSiriEtRewriter extends ValueAdapter implements PostProcessor
      * Reported platform for these stops will be overwritten by planned platform from NeTEx-data
      */
     private static final transient List<String> foreignStops = Arrays.asList(
-                                                                        "GTB",  // Gøteborg,
-                                                                        "TRL",  // Trollhættan
-                                                                        "ED",   // Ed
-                                                                        "CG",   // Charlottenberg
-                                                                        "STR",  // Storlien
-                                                                        "ØXN"); // Øxnered
+            "GTB",  // Gøteborg,
+            "TRL",  // Trollhættan
+            "ED",   // Ed
+            "CG",   // Charlottenberg
+            "STR",  // Storlien
+            "ØXN"); // Øxnered
     private String datasetId;
 
     private transient KryoSerializer kryoSerializer;
@@ -121,7 +98,7 @@ public class BaneNorSiriEtRewriter extends ValueAdapter implements PostProcessor
                             if (estimatedVehicleJourney.getVehicleRef() != null) {
                                 String etTrainNumber = estimatedVehicleJourney.getVehicleRef().getValue();
 
-                                if (isKnownTrainNr(etTrainNumber )) {
+                                if (isKnownTrainNr(etTrainNumber)) {
 
                                     boolean foundMatch = false;
                                     ServiceDate serviceDate = getServiceDate(estimatedVehicleJourney);
@@ -153,7 +130,7 @@ public class BaneNorSiriEtRewriter extends ValueAdapter implements PostProcessor
                                         getMetricsService().registerDataMapping(SiriDataType.ESTIMATED_TIMETABLE, datasetId, REMOVE_UNKNOWN_DEPARTURE, 1);
                                     }
 
-                                }  else if (etTrainNumber.length() == 5 && (etTrainNumber.startsWith("905") || etTrainNumber.startsWith("908"))) {
+                                } else if (etTrainNumber.length() == 5 && (etTrainNumber.startsWith("905") || etTrainNumber.startsWith("908"))) {
                                     //Extra journey - map EstimatedCall as the original train
                                     String extraTrainOriginalTrainNumber = etTrainNumber.substring(2);
 
@@ -212,16 +189,16 @@ public class BaneNorSiriEtRewriter extends ValueAdapter implements PostProcessor
                 }
             }
         }
-        logger.info("Restructured SIRI ET from {} to {} journeys in {} ms", previousSize, newSize, (System.currentTimeMillis()-startTime));
+        logger.info("Restructured SIRI ET from {} to {} journeys in {} ms", previousSize, newSize, (System.currentTimeMillis() - startTime));
     }
 
     private void sortByFirstAimedDeparture(List<EstimatedVehicleJourney> journeys) {
         journeys.sort(Comparator.comparing(e -> {
-                if (e.getRecordedCalls() != null && !e.getRecordedCalls().getRecordedCalls().isEmpty()) {
-                    return e.getRecordedCalls().getRecordedCalls().get(0).getAimedDepartureTime();
-                }
-                return e.getEstimatedCalls().getEstimatedCalls().get(0).getAimedDepartureTime();
-            })
+                    if (e.getRecordedCalls() != null && !e.getRecordedCalls().getRecordedCalls().isEmpty()) {
+                        return e.getRecordedCalls().getRecordedCalls().get(0).getAimedDepartureTime();
+                    }
+                    return e.getEstimatedCalls().getEstimatedCalls().get(0).getAimedDepartureTime();
+                })
         );
     }
 
@@ -233,7 +210,8 @@ public class BaneNorSiriEtRewriter extends ValueAdapter implements PostProcessor
         Map<String, List<RecordedCall>> remappedRecordedCalls = new HashMap<>();
         if (serviceDate != null) {
             Set<String> serviceJourneyIds = getServiceJourney(etTrainNumber);
-            serviceJourneyIds.removeIf(sjId -> isDsjCancelled(sjId, serviceDate));;
+            serviceJourneyIds.removeIf(sjId -> isDsjCancelled(sjId, serviceDate));
+            ;
 
             remappedRecordedCalls.putAll(remapRecordedCalls(serviceDate, serviceJourneyIds, estimatedVehicleJourney.getRecordedCalls()));
             remappedEstimatedCalls.putAll(remapEstimatedCalls(serviceDate, serviceJourneyIds, estimatedVehicleJourney.getEstimatedCalls()));
@@ -364,7 +342,7 @@ public class BaneNorSiriEtRewriter extends ValueAdapter implements PostProcessor
             if (estimatedCalls.size() == stopTimes.size()) {
                 for (int i = 0; i < estimatedCalls.size(); i++) {
                     EstimatedCall call = estimatedCalls.get(i);
-                    StopPointRef stopPointRef = call.getStopPointRef();
+                    StopPointRefStructure stopPointRef = call.getStopPointRef();
 
                     if (call.getArrivalPlatformName() == null &&
                             call.getDeparturePlatformName() == null &&
@@ -409,7 +387,7 @@ public class BaneNorSiriEtRewriter extends ValueAdapter implements PostProcessor
                                         estimatedCall.setArrivalPlatformName(platform);
                                     }
                                 }
-                                StopPointRef stopPointRef = new StopPointRef();
+                                StopPointRefStructure stopPointRef = new StopPointRefStructure();
                                 stopPointRef.setValue(createCombinedId(originalId, stopId));
                                 estimatedCall.setStopPointRef(stopPointRef);
                             }
@@ -447,7 +425,7 @@ public class BaneNorSiriEtRewriter extends ValueAdapter implements PostProcessor
             if (recordedCalls.size() == stopTimes.size()) {
                 for (int i = 0; i < recordedCalls.size(); i++) {
                     RecordedCall call = recordedCalls.get(i);
-                    StopPointRef stopPointRef = call.getStopPointRef();
+                    StopPointRefStructure stopPointRef = call.getStopPointRef();
 
                     if (call.getArrivalPlatformName() == null &&
                             call.getDeparturePlatformName() == null &&
@@ -494,7 +472,7 @@ public class BaneNorSiriEtRewriter extends ValueAdapter implements PostProcessor
                                         recordedCall.setArrivalPlatformName(platform);
                                     }
                                 }
-                                StopPointRef stopPointRef = new StopPointRef();
+                                StopPointRefStructure stopPointRef = new StopPointRefStructure();
                                 stopPointRef.setValue(createCombinedId(originalId, stopId));
                                 recordedCall.setStopPointRef(stopPointRef);
                             }
@@ -549,10 +527,10 @@ public class BaneNorSiriEtRewriter extends ValueAdapter implements PostProcessor
         return false;
     }
 
-    private String getMappedStopId(StopPointRef stopPointRef) {
+    private String getMappedStopId(StopPointRefStructure stopPointRef) {
         String stopIdRef = stopPointRef.getValue();
         if (stopIdRef.contains(SEPARATOR)) {
-            return stopIdRef.substring(stopIdRef.lastIndexOf(SEPARATOR)+1);
+            return stopIdRef.substring(stopIdRef.lastIndexOf(SEPARATOR) + 1);
         }
         return stopIdRef;
     }

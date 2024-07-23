@@ -20,15 +20,14 @@ import no.rutebanken.anshar.routes.validation.validators.LimitedSubsetValidator;
 import no.rutebanken.anshar.routes.validation.validators.Validator;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri20.RoutePointTypeEnumeration;
+import uk.org.siri.siri21.RoutePointTypeEnumeration;
 
 import static no.rutebanken.anshar.routes.validation.validators.Constants.AFFECTED_STOP_POINT;
 
 /**
  * Verifies that the value for field StopCondition is one of the allowed types
- *
  */
-@Validator(profileName = "norway", targetType = SiriDataType.SITUATION_EXCHANGE)
+@Validator(profileName = "france", targetType = SiriDataType.SITUATION_EXCHANGE)
 @Component
 public class StopConditionValidator extends LimitedSubsetValidator {
 

@@ -19,9 +19,9 @@ import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.EstimatedVersionFrameStructure;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
+import uk.org.siri.siri21.EstimatedVersionFrameStructure;
+import uk.org.siri.siri21.Siri;
 
 import java.util.HashMap;
 import java.util.List;
@@ -37,8 +37,7 @@ public class OperatorFilterPostProcessor extends ValueAdapter implements PostPro
     private final String datasetId;
 
     /**
-     *
-     * @param operatorsToIgnore List of OperatorRef-values to remove
+     * @param operatorsToIgnore       List of OperatorRef-values to remove
      * @param operatorOverrideMapping Defines Operator-override if original should not be used.
      */
     public OperatorFilterPostProcessor(String datasetId, List<String> operatorsToIgnore, Map<String, String> operatorOverrideMapping) {
@@ -67,15 +66,15 @@ public class OperatorFilterPostProcessor extends ValueAdapter implements PostPro
 
                                 if (operatorsToIgnore != null && !operatorsToIgnore.isEmpty()) {
                                     final int sizeBefore = estimatedVersionFrameStructure
-                                        .getEstimatedVehicleJourneies()
-                                        .size();
+                                            .getEstimatedVehicleJourneies()
+                                            .size();
 
                                     estimatedVersionFrameStructure.getEstimatedVehicleJourneies()
                                             .removeIf(et -> et.getOperatorRef() != null && operatorsToIgnore.contains(et.getOperatorRef().getValue()));
 
                                     int ignoredUpdates = sizeBefore - estimatedVersionFrameStructure
-                                                                        .getEstimatedVehicleJourneies()
-                                                                        .size();
+                                            .getEstimatedVehicleJourneies()
+                                            .size();
 
                                     logger.info("Removed {} updates from ignored operators {}", ignoredUpdates, operatorsToIgnore);
                                 }

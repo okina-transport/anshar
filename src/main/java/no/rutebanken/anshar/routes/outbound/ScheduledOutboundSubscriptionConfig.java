@@ -6,7 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.support.PeriodicTrigger;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.Siri;
 
 import java.util.HashMap;
 import java.util.Map;

@@ -30,9 +30,8 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.VEHICL
 
 /**
  * Verifies that the value for ValidUntilTime appears to be a real value
- *
  */
-@Validator(profileName = "norway", targetType = SiriDataType.VEHICLE_MONITORING)
+@Validator(profileName = "france", targetType = SiriDataType.VEHICLE_MONITORING)
 @Component
 public class SaneValidUntilTimeValidator extends CustomValidator {
 
@@ -40,7 +39,7 @@ public class SaneValidUntilTimeValidator extends CustomValidator {
     private static final String VALID_UNTIL_TIME_NAME = "ValidUntilTime";
     private static final String RECORDED_AT_TIME_NAME = "RecordedAtTime";
     private String path = VEHICLE_ACTIVITY;
-    private static final int MAX_VM_VALIDITY = 24*3600; // 24h
+    private static final int MAX_VM_VALIDITY = 24 * 3600; // 24h
 
 
     @Override
@@ -64,16 +63,16 @@ public class SaneValidUntilTimeValidator extends CustomValidator {
                 final long validityPeriod = validToEpochSec - recordedAtEpochSec;
 
                 if (validityPeriod > MAX_VM_VALIDITY) {
-                    return createCustomFieldEvent(node, "ValidUntilTime states too long validity (" + validUntilTime + ")" , ValidationEvent.WARNING);
+                    return createCustomFieldEvent(node, "ValidUntilTime states too long validity (" + validUntilTime + ")", ValidationEvent.WARNING);
                 }
                 final long tenMinutesAgo = ZonedDateTime.now().minusMinutes(10).toEpochSecond();
-                if (validToEpochSec < tenMinutesAgo){
-                    return createCustomFieldEvent(node, "ValidUntilTime IS EXPIRED (" + validUntilTime + ")" , ValidationEvent.WARNING);
+                if (validToEpochSec < tenMinutesAgo) {
+                    return createCustomFieldEvent(node, "ValidUntilTime IS EXPIRED (" + validUntilTime + ")", ValidationEvent.WARNING);
                 }
 
-            } catch (DateTimeParseException e){
+            } catch (DateTimeParseException e) {
                 return createEvent(node,
-                    VALID_UNTIL_TIME_NAME, "valid Date", validUntilTime, ValidationEvent.ERROR);
+                        VALID_UNTIL_TIME_NAME, "valid Date", validUntilTime, ValidationEvent.ERROR);
             }
         }
 

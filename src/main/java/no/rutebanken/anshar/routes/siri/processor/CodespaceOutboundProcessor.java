@@ -17,7 +17,7 @@ package no.rutebanken.anshar.routes.siri.processor;
 
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import java.util.List;
 

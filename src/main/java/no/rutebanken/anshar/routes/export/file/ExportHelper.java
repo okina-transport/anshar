@@ -23,7 +23,7 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.Siri;
 
 import java.util.List;
 
@@ -36,24 +36,27 @@ public class ExportHelper {
 
     public Siri exportET() {
         return transform(siriHelper.getAllET(),
-            MappingAdapterPresets.getOutboundAdapters(
-                SiriDataType.ESTIMATED_TIMETABLE,
-                OutboundIdMappingPolicy.DEFAULT)
+                MappingAdapterPresets.getOutboundAdapters(
+                        SiriDataType.ESTIMATED_TIMETABLE,
+                        OutboundIdMappingPolicy.DEFAULT)
         );
     }
+
     public Siri exportSX() {
         return transform(siriHelper.getAllSX(),
-            MappingAdapterPresets.getOutboundAdapters(
-                SiriDataType.SITUATION_EXCHANGE,
-                OutboundIdMappingPolicy.DEFAULT)
+                MappingAdapterPresets.getOutboundAdapters(
+                        SiriDataType.SITUATION_EXCHANGE,
+                        OutboundIdMappingPolicy.DEFAULT)
         );
     }
+
     public Siri exportVM() {
         return transform(siriHelper.getAllVM(),
                 MappingAdapterPresets.getOutboundAdapters(SiriDataType.VEHICLE_MONITORING,
                         OutboundIdMappingPolicy.DEFAULT)
         );
     }
+
     public Siri exportSM() {
         return transform(siriHelper.getAllSM(),
                 MappingAdapterPresets.getOutboundAdapters(SiriDataType.STOP_MONITORING,
@@ -64,10 +67,10 @@ public class ExportHelper {
 
     private Siri transform(Siri body, List<ValueAdapter> adapters) {
         return SiriValueTransformer.transform(
-            body,
-            adapters,
-            false,
-            false);
+                body,
+                adapters,
+                false,
+                false);
     }
 
 }

@@ -4,9 +4,11 @@ import com.sun.xml.bind.marshaller.NamespacePrefixMapper;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.w3c.dom.*;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import org.xml.sax.InputSource;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.Siri;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -30,12 +32,18 @@ public class CustomSiriXml {
 
     private static JAXBContext jaxbContext;
 
+    private static JAXBContext siri20JaxbContext;
+
     public CustomSiriXml() {
     }
 
     private static void init() throws JAXBException {
         if (jaxbContext == null) {
             jaxbContext = JAXBContext.newInstance(new Class[]{Siri.class, Content.class});
+        }
+
+        if (siri20JaxbContext == null) {
+            siri20JaxbContext = JAXBContext.newInstance(uk.org.siri.siri20.Siri.class, Content.class);
         }
 
     }
@@ -45,6 +53,13 @@ public class CustomSiriXml {
         XMLInputFactory xmlif = XMLInputFactory.newInstance();
         XMLStreamReader xmler = xmlif.createXMLStreamReader(new StringReader(xml));
         return (Siri) jaxbUnmarshaller.unmarshal(xmler);
+    }
+
+    public static uk.org.siri.siri20.Siri parseSiri20Xml(String xml) throws JAXBException, XMLStreamException {
+        Unmarshaller jaxbUnmarshaller = siri20JaxbContext.createUnmarshaller();
+        XMLInputFactory xmlif = XMLInputFactory.newInstance();
+        XMLStreamReader xmler = xmlif.createXMLStreamReader(new StringReader(xml));
+        return (uk.org.siri.siri20.Siri) jaxbUnmarshaller.unmarshal(xmler);
     }
 
     public static Siri parseXml(InputStream inputStream) throws JAXBException, XMLStreamException {
@@ -73,6 +88,17 @@ public class CustomSiriXml {
 
     public static void toXml(Siri siri, NamespacePrefixMapper customNamespacePrefixMapper, OutputStream out) throws JAXBException, IOException {
         Marshaller jaxbMarshaller = jaxbContext.createMarshaller();
+        if (customNamespacePrefixMapper != null) {
+            jaxbMarshaller.setProperty("com.sun.xml.bind.namespacePrefixMapper", customNamespacePrefixMapper);
+        }
+
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        jaxbMarshaller.marshal(siri, byteArrayOutputStream);
+        doLastModifications(out, byteArrayOutputStream);
+    }
+
+    public static void toXml(uk.org.siri.siri20.Siri siri, NamespacePrefixMapper customNamespacePrefixMapper, OutputStream out) throws JAXBException, IOException {
+        Marshaller jaxbMarshaller = siri20JaxbContext.createMarshaller();
         if (customNamespacePrefixMapper != null) {
             jaxbMarshaller.setProperty("com.sun.xml.bind.namespacePrefixMapper", customNamespacePrefixMapper);
         }

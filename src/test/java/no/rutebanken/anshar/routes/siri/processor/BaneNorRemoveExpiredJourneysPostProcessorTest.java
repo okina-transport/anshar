@@ -18,9 +18,9 @@ package no.rutebanken.anshar.routes.siri.processor;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import org.junit.jupiter.api.Test;
-import uk.org.siri.siri20.EstimatedCall;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.EstimatedCall;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.Siri;
 
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -30,7 +30,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class BaneNorRemoveExpiredJourneysPostProcessorTest extends SpringBootBaseTest {
-    SiriObjectFactory  objFactory = new SiriObjectFactory(Instant.now());
+    SiriObjectFactory objFactory = new SiriObjectFactory(Instant.now());
 
     BaneNorRemoveExpiredJourneysPostProcessor processor = new BaneNorRemoveExpiredJourneysPostProcessor("BNR");
 
@@ -66,7 +66,7 @@ public class BaneNorRemoveExpiredJourneysPostProcessorTest extends SpringBootBas
                 call.setAimedArrivalTime(time);
                 call.setExpectedArrivalTime(time);
             }
-            if (i < (callCount-1)) {
+            if (i < (callCount - 1)) {
                 call.setAimedDepartureTime(time);
                 call.setExpectedDepartureTime(time);
             }

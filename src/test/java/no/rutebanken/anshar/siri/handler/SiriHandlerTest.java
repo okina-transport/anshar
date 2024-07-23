@@ -21,6 +21,7 @@ import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.data.*;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
+import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.SiriApisRequestHandlerRoute;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
@@ -37,7 +38,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.xml.sax.SAXException;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.UnmarshalException;
@@ -385,6 +386,16 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     @Test
     public void stopPointsDiscoveryTest() throws JAXBException, IOException {
         discoveryCache.clearDiscoveryStops();
+        Map<String, Pair<String, String>> stopPlaceMap;
+        stopPlaceMap = new HashMap<>();
+        stopPlaceMap.put("DAT1:Quay:sp1", Pair.of("MOBIITI:Quay:a", "sp1Name"));
+        stopPlaceMap.put("DAT1:Quay:sp2", Pair.of("MOBIITI:Quay:b", "sp2Name"));
+
+
+        StopPlaceUpdaterService stopPlaceService = ApplicationContextHolder.getContext().getBean(StopPlaceUpdaterService.class);
+
+        stopPlaceService.addStopPlaceMappings(stopPlaceMap);
+
 
         SubscriptionSetup smSubscription1 = getSmSubscription("tst");
         smSubscription1.getStopMonitoringRefValues().add("sp1");
@@ -416,6 +427,8 @@ public class SiriHandlerTest extends SpringBootBaseTest {
             List<String> expectedPointRef = Arrays.asList("sp1", "sp2", "sp3", "sp4");
             for (AnnotatedStopPointStructure annotatedStopPointReve : result.getStopPointsDelivery().getAnnotatedStopPointReves()) {
                 assertTrue(expectedPointRef.contains(annotatedStopPointReve.getStopPointRef().getValue()));
+
+                assertEquals(annotatedStopPointReve.getStopPointRef().getValue() + "Name", annotatedStopPointReve.getStopNames().get(0).getValue());
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -482,6 +495,13 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         discoveryCache.addLine("DAT1", "line3");
         discoveryCache.addLine("DAT1", "line4");
 
+        LineUpdaterService lineUpdaterService = ApplicationContextHolder.getContext().getBean(LineUpdaterService.class);
+        lineUpdaterService.addLineName("line1", "line1Name");
+        lineUpdaterService.addLineName("line2", "line2Name");
+        lineUpdaterService.addLineName("line3", "line3Name");
+        lineUpdaterService.addLineName("line4", "line4Name");
+
+
         ClassLoader classLoader = getClass().getClassLoader();
         File file = new File("src/test/resources/discoveryTest/lines_discovery_test.xml");
 
@@ -499,6 +519,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
             for (AnnotatedLineRef annotatedLineReve : result.getLinesDelivery().getAnnotatedLineReves()) {
                 assertTrue(expectedLineRef.contains(annotatedLineReve.getLineRef().getValue()));
+                assertEquals(annotatedLineReve.getLineRef().getValue() + "Name", annotatedLineReve.getLineNames().get(0).getValue());
             }
 
         } catch (IOException e) {
@@ -679,7 +700,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         EstimatedVehicleJourney.EstimatedCalls estimatedCalls = new EstimatedVehicleJourney.EstimatedCalls();
         for (int i = startOrder; i < callCount; i++) {
 
-            StopPointRef stopPointRef = new StopPointRef();
+            StopPointRefStructure stopPointRef = new StopPointRefStructure();
             stopPointRef.setValue("NSR:TEST:" + i);
             EstimatedCall call = new EstimatedCall();
             call.setStopPointRef(stopPointRef);

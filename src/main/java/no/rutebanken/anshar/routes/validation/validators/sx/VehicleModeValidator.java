@@ -20,16 +20,15 @@ import no.rutebanken.anshar.routes.validation.validators.LimitedSubsetValidator;
 import no.rutebanken.anshar.routes.validation.validators.Validator;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri20.VehicleModesOfTransportEnumeration;
+import uk.org.siri.siri21.VehicleModesOfTransportEnumeration;
 
 import static no.rutebanken.anshar.routes.validation.validators.Constants.AFFECTED_NETWORK;
 
 
 /**
  * Verifies that the value for field VehicleMode is one of the allowed types
- *
  */
-@Validator(profileName = "norway", targetType = SiriDataType.SITUATION_EXCHANGE)
+@Validator(profileName = "france", targetType = SiriDataType.SITUATION_EXCHANGE)
 @Component
 public class VehicleModeValidator extends LimitedSubsetValidator {
 

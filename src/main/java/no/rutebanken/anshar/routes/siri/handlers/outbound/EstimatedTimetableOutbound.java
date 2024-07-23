@@ -12,10 +12,10 @@ import no.rutebanken.anshar.util.IDUtils;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.EstimatedTimetableRequestStructure;
-import uk.org.siri.siri20.LineDirectionStructure;
-import uk.org.siri.siri20.ServiceRequest;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.EstimatedTimetableRequestStructure;
+import uk.org.siri.siri21.LineDirectionStructure;
+import uk.org.siri.siri21.ServiceRequest;
+import uk.org.siri.siri21.Siri;
 
 import javax.xml.datatype.Duration;
 import java.util.*;

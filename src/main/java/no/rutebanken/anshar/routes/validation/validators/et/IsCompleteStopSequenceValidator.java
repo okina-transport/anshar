@@ -29,7 +29,7 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.ESTIMA
  * Verifies that IsCompleteStopSequence is set to <code>true</code>
  */
 @SuppressWarnings("unchecked")
-@Validator(profileName = "norway", targetType = SiriDataType.ESTIMATED_TIMETABLE)
+@Validator(profileName = "france", targetType = SiriDataType.ESTIMATED_TIMETABLE)
 @Component
 public class IsCompleteStopSequenceValidator extends CustomValidator {
 
@@ -51,7 +51,7 @@ public class IsCompleteStopSequenceValidator extends CustomValidator {
 
         String isComplete = getChildNodeValue(node, FIELDNAME);
         if (!Boolean.parseBoolean(isComplete)) {
-            return  createEvent(node, FIELDNAME, true, isComplete, ValidationEvent.WARNING);
+            return createEvent(node, FIELDNAME, true, isComplete, ValidationEvent.WARNING);
         }
 
         return null;

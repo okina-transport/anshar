@@ -29,9 +29,9 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.MONITO
 
 /**
  * Verifies that the Location-element with childnodes is valid
- *  - Latitude/Longitude must be present and within correct range
+ * - Latitude/Longitude must be present and within correct range
  */
-@Validator(profileName = "norway", targetType = SiriDataType.VEHICLE_MONITORING)
+@Validator(profileName = "france", targetType = SiriDataType.VEHICLE_MONITORING)
 @Component
 public class VehicleLocationValidator extends CustomValidator {
 
@@ -42,7 +42,7 @@ public class VehicleLocationValidator extends CustomValidator {
     private static final String LON_FIELDNAME = "Longitude";
 
     private static final String COORDINATES_FIELDNAME = "Coordinates";
-    private String path =  MONITORED_VEHICLE_JOURNEY + FIELD_DELIMITER + FIELDNAME;
+    private String path = MONITORED_VEHICLE_JOURNEY + FIELD_DELIMITER + FIELDNAME;
 
     private static final Set<String> expectedValues = Sets.newHashSet("WGS84", "EPSG:4326");
 
@@ -63,24 +63,24 @@ public class VehicleLocationValidator extends CustomValidator {
             Double lat = Double.parseDouble(latitude);
 
             if (lon > 180 || lon < -180) {
-                return  createEvent(node, LON_FIELDNAME, "Valid longitude", longitude, ValidationEvent.FATAL_ERROR);
+                return createEvent(node, LON_FIELDNAME, "Valid longitude", longitude, ValidationEvent.FATAL_ERROR);
             } else if (lat > 90 || lat < -90) {
-                return  createEvent(node, LAT_FIELDNAME, "Valid latitude", latitude, ValidationEvent.FATAL_ERROR);
+                return createEvent(node, LAT_FIELDNAME, "Valid latitude", latitude, ValidationEvent.FATAL_ERROR);
             } else if (lat == 0 || lon == 0) {
-                return  createEvent(node, FIELDNAME, "Valid location", "Latitude: " + latitude + ", Longitude: " + longitude, ValidationEvent.FATAL_ERROR);
+                return createEvent(node, FIELDNAME, "Valid location", "Latitude: " + latitude + ", Longitude: " + longitude, ValidationEvent.FATAL_ERROR);
             }
 
         } else if (coordinates != null) {
             //TODO: Validate GML
         } else {
-            return  createEvent(node, FIELDNAME, "Valid location", null, ValidationEvent.FATAL_ERROR);
+            return createEvent(node, FIELDNAME, "Valid location", null, ValidationEvent.FATAL_ERROR);
         }
 
         String srsNameAttribute = getNodeAttributeValue(node, srsNameAttributeNAme);
 
         if (srsNameAttribute != null && !srsNameAttribute.isEmpty()) {
             if (!expectedValues.contains(srsNameAttribute)) {
-                return  createEvent(node, srsNameAttributeNAme, "one of " + expectedValues, srsNameAttribute, ValidationEvent.ERROR);
+                return createEvent(node, srsNameAttributeNAme, "one of " + expectedValues, srsNameAttribute, ValidationEvent.ERROR);
             }
         }
 

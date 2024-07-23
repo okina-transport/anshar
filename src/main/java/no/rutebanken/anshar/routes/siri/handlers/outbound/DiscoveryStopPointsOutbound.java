@@ -8,13 +8,16 @@ import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.handlers.Utils;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.AnnotatedStopPointStructure;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.StopPointRef;
+import uk.org.siri.siri21.AnnotatedStopPointStructure;
+import uk.org.siri.siri21.NaturalLanguageStringStructure;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.StopPointRefStructure;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -67,36 +70,60 @@ public class DiscoveryStopPointsOutbound {
 
         Map<String, IdProcessingParameters> idProcessingMap = utils.buildIdProcessingMap(datasetList, ObjectType.STOP);
 
-        Set<String> monitoringRefList = new HashSet<>();
+        Set<Pair<String, String>> monitoringRefList = new HashSet<>();
+
 
         for (Map.Entry<String, Set<String>> stopsByDatasetEntry : stopsByDatasetId.entrySet()) {
+            Set<String> rawStops = new HashSet<>();
             //for each datasetId
             Set<String> stopList = stopsByDatasetEntry.getValue();
+            String currentDatasetId = stopsByDatasetEntry.getKey();
 
             if (stopList == null || stopList.isEmpty()) {
                 continue;
             }
-            monitoringRefList.addAll(extractAndTransformStopId(stopsByDatasetEntry.getKey(), stopList, idProcessingMap));
+            rawStops.addAll(extractAndTransformStopId(currentDatasetId, stopList, idProcessingMap));
+
+            for (String rawStop : rawStops) {
+                monitoringRefList.add(Pair.of(rawStop, stopPlaceUpdaterService.getStopName(rawStop, currentDatasetId)));
+            }
         }
+
 
         if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)) {
-            monitoringRefList = monitoringRefList.stream()
-                    .filter(stopPlaceUpdaterService::isKnownId)
-                    .map(stopPlaceUpdaterService::get)
-                    .collect(Collectors.toSet());
-
+            monitoringRefList = replaceByDefaultId(monitoringRefList);
         } else if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy) && datasetId != null) {
-            monitoringRefList = monitoringRefList.stream()
-                    .map(id -> externalIdsService.getAltId(datasetId, id, ObjectType.STOP).orElse(id))
-                    .collect(Collectors.toSet());
+            monitoringRefList = replaceByAltId(monitoringRefList, datasetId);
         }
-
 
         List<AnnotatedStopPointStructure> resultList = monitoringRefList.stream()
                 .map(this::convertKeyToPointStructure)
                 .collect(Collectors.toList());
 
         return siriObjectFactory.createStopPointsDiscoveryDelivery(resultList);
+    }
+
+    private Set<Pair<String, String>> replaceByAltId(Set<Pair<String, String>> monitoringRefList, String datasetId) {
+        Set<Pair<String, String>> result = new HashSet<>();
+        for (Pair<String, String> stopRefAndName : monitoringRefList) {
+            String stopRef = stopRefAndName.getLeft();
+            result.add(Pair.of(externalIdsService.getAltId(datasetId, stopRef, ObjectType.STOP).orElse(stopRef), stopRefAndName.getRight()));
+        }
+        return result;
+    }
+
+    private Set<Pair<String, String>> replaceByDefaultId(Set<Pair<String, String>> monitoringRefList) {
+
+        Set<Pair<String, String>> result = new HashSet<>();
+        for (Pair<String, String> stopRefAndName : monitoringRefList) {
+            String stopRef = stopRefAndName.getLeft();
+            if (stopPlaceUpdaterService.isKnownId(stopRef)) {
+                result.add(Pair.of(stopPlaceUpdaterService.get(stopRef), stopRefAndName.getRight()));
+            } else {
+                result.add(stopRefAndName);
+            }
+        }
+        return result;
     }
 
 
@@ -118,15 +145,24 @@ public class DiscoveryStopPointsOutbound {
     /**
      * Converts a stop reference to an annotatedStopPointStructure
      *
-     * @param stopRef the stop reference
+     * @param stopRefAndName left : stop ref
+     *                       right : stop name
      * @return the annotated stop point structure that will be included in siri response
      */
-    private AnnotatedStopPointStructure convertKeyToPointStructure(String stopRef) {
+    private AnnotatedStopPointStructure convertKeyToPointStructure(Pair<String, String> stopRefAndName) {
+
+
         AnnotatedStopPointStructure pointStruct = new AnnotatedStopPointStructure();
-        StopPointRef stopPointRef = new StopPointRef();
-        stopPointRef.setValue(stopRef);
+        StopPointRefStructure stopPointRef = new StopPointRefStructure();
+        stopPointRef.setValue(stopRefAndName.getLeft());
         pointStruct.setStopPointRef(stopPointRef);
         pointStruct.setMonitored(true);
+
+        if (StringUtils.isNotEmpty(stopRefAndName.getRight())) {
+            NaturalLanguageStringStructure pointName = new NaturalLanguageStringStructure();
+            pointName.setValue(stopRefAndName.getRight());
+            pointStruct.getStopNames().add(pointName);
+        }
         return pointStruct;
     }
 

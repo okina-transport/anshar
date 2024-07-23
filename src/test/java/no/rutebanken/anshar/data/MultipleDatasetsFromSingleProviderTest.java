@@ -7,11 +7,11 @@ import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import org.entur.siri21.util.SiriXml;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.rutebanken.siri20.util.SiriXml;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import javax.xml.bind.JAXBException;
 import java.io.ByteArrayInputStream;
@@ -256,7 +256,7 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
         EstimatedVehicleJourney.EstimatedCalls estimatedCalls = new EstimatedVehicleJourney.EstimatedCalls();
         for (int i = 0; i < 2; i++) {
 
-            StopPointRef stopPointRef = new StopPointRef();
+            StopPointRefStructure stopPointRef = new StopPointRefStructure();
             stopPointRef.setValue("NSR:TEST:" + i);
             EstimatedCall call = new EstimatedCall();
             call.setStopPointRef(stopPointRef);

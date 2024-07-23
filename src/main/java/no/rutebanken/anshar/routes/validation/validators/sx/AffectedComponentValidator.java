@@ -21,8 +21,8 @@ import no.rutebanken.anshar.routes.validation.validators.Validator;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Node;
-import uk.org.ifopt.siri20.AccessibilityFeatureEnumeration;
-import uk.org.ifopt.siri20.StopPlaceComponentTypeEnumeration;
+import uk.org.ifopt.siri21.AccessibilityFeatureEnumeration;
+import uk.org.ifopt.siri21.StopPlaceComponentTypeEnumeration;
 
 import javax.xml.bind.ValidationEvent;
 import java.util.Set;
@@ -31,11 +31,11 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.AFFECT
 
 /**
  * Verifies the field AffectedComponent and childnodes
- *  - ComponentType is present and is one of the allowed types
- *  - ComponentRef is present and built up correctly
- *  - AccessFeatureType is present and is one of the allowed types
+ * - ComponentType is present and is one of the allowed types
+ * - ComponentRef is present and built up correctly
+ * - AccessFeatureType is present and is one of the allowed types
  */
-@Validator(profileName = "norway", targetType = SiriDataType.SITUATION_EXCHANGE)
+@Validator(profileName = "france", targetType = SiriDataType.SITUATION_EXCHANGE)
 @Component
 public class AffectedComponentValidator extends CustomValidator {
 
@@ -69,22 +69,22 @@ public class AffectedComponentValidator extends CustomValidator {
 
         String componentType = getChildNodeValue(node, "ComponentType");
         if (componentType == null || !expectedComponentTypes.contains(componentType)) {
-            return  createEvent(node, "ComponentType", expectedComponentTypes, componentType, ValidationEvent.ERROR);
+            return createEvent(node, "ComponentType", expectedComponentTypes, componentType, ValidationEvent.ERROR);
         }
 
         if (StopPlaceComponentTypeEnumeration.QUAY.value().equals(componentType)) {
             String componentRef = getChildNodeValue(node, "ComponentRef");
             if (componentRef == null || !isValidNsrId("NSR:Quay:", componentRef)) {
-                return  createEvent(node, "ComponentRef", "NSR:Quay:ID when ComponentType is 'quay'", componentRef, ValidationEvent.FATAL_ERROR);
+                return createEvent(node, "ComponentRef", "NSR:Quay:ID when ComponentType is 'quay'", componentRef, ValidationEvent.FATAL_ERROR);
             }
             if (componentRef == null || !idExists(componentRef)) {
-                return  createEvent(node, "ComponentRef", "Valid quay-ID from NSR when ComponentType is 'quay'", componentRef, ValidationEvent.FATAL_ERROR);
+                return createEvent(node, "ComponentRef", "Valid quay-ID from NSR when ComponentType is 'quay'", componentRef, ValidationEvent.FATAL_ERROR);
             }
         }
 
         String accessFeatureType = getChildNodeValue(node, "AccessFeatureType");
         if (accessFeatureType != null && !expectedAccessFeatureType.contains(accessFeatureType)) {
-            return  createEvent(node, "AccessFeatureType", expectedAccessFeatureType, accessFeatureType, ValidationEvent.ERROR);
+            return createEvent(node, "AccessFeatureType", expectedAccessFeatureType, accessFeatureType, ValidationEvent.ERROR);
         }
 
         return null;

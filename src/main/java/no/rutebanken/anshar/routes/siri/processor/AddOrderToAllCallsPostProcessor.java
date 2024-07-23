@@ -17,19 +17,13 @@ package no.rutebanken.anshar.routes.siri.processor;
 
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
-import uk.org.siri.siri20.EstimatedCall;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.EstimatedVersionFrameStructure;
-import uk.org.siri.siri20.NaturalLanguageStringStructure;
-import uk.org.siri.siri20.RecordedCall;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.*;
 
 import java.math.BigInteger;
 import java.util.List;
 
 import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.ADD_ORDER_TO_CALLS;
-import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.OVERRIDE_EMPTY_DESTINATION_DISPLAY_FOR_EXTRA_JOURNEYS;
+
 
 public class AddOrderToAllCallsPostProcessor extends ValueAdapter implements PostProcessor {
 
@@ -87,10 +81,10 @@ public class AddOrderToAllCallsPostProcessor extends ValueAdapter implements Pos
                             }
                             if (counter > 0) {
                                 getMetricsService().registerDataMapping(
-                                    SiriDataType.ESTIMATED_TIMETABLE,
-                                    datasetId,
-                                    ADD_ORDER_TO_CALLS,
-                                    counter
+                                        SiriDataType.ESTIMATED_TIMETABLE,
+                                        datasetId,
+                                        ADD_ORDER_TO_CALLS,
+                                        counter
                                 );
                             }
                         }

@@ -17,34 +17,21 @@
 package no.rutebanken.anshar.routes.siri.processor;
 
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
-import uk.org.siri.siri20.DataFrameRefStructure;
-import uk.org.siri.siri20.EstimatedCall;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.EstimatedVersionFrameStructure;
-import uk.org.siri.siri20.FramedVehicleJourneyRefStructure;
-import uk.org.siri.siri20.LineRef;
-import uk.org.siri.siri20.RecordedCall;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.StopPointRef;
-import uk.org.siri.siri20.VehicleActivityStructure;
-import uk.org.siri.siri20.VehicleMonitoringDeliveryStructure;
+import uk.org.siri.siri21.*;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
-
-    Intended for mapping Swedish SIRI-data (Värmland)
-    Current mappings:
-    ET and VM:
-        - Replaces prefix "SE:017" (Värmland region?) with "SE:050" (National?) for all ids
-
-    VM:
-        - Adds required "ValidUntil"-timestamp
-        - Adds today's date as "DataFrameRef" to FramedVehicleJourneyRef (defines operating day for SJ)
-
+ * Intended for mapping Swedish SIRI-data (Värmland)
+ * Current mappings:
+ * ET and VM:
+ * - Replaces prefix "SE:017" (Värmland region?) with "SE:050" (National?) for all ids
+ * <p>
+ * VM:
+ * - Adds required "ValidUntil"-timestamp
+ * - Adds today's date as "DataFrameRef" to FramedVehicleJourneyRef (defines operating day for SJ)
  */
 public class VarmlandPostProcessor extends ValueAdapter implements PostProcessor {
 
@@ -121,7 +108,7 @@ public class VarmlandPostProcessor extends ValueAdapter implements PostProcessor
         }
     }
 
-    private StopPointRef replacePrefix(StopPointRef stopPointRef) {
+    private StopPointRefStructure replacePrefix(StopPointRefStructure stopPointRef) {
 
         if (stopPointRef != null) {
             stopPointRef.setValue(stopPointRef.getValue().replaceFirst(prefixPattern, replacement));

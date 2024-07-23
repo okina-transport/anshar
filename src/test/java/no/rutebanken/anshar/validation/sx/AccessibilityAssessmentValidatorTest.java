@@ -20,16 +20,12 @@ import no.rutebanken.anshar.validation.CustomValidatorTest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Node;
-import uk.org.acbs.siri20.AccessibilityEnumeration;
+import uk.org.acbs.siri21.AccessibilityEnumeration;
 
 import javax.xml.bind.ValidationEvent;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static uk.org.acbs.siri20.AccessibilityEnumeration.FALSE;
-import static uk.org.acbs.siri20.AccessibilityEnumeration.TRUE;
-import static uk.org.acbs.siri20.AccessibilityEnumeration.UNKNOWN;
+import static org.junit.jupiter.api.Assertions.*;
+import static uk.org.acbs.siri21.AccessibilityEnumeration.*;
 
 public class AccessibilityAssessmentValidatorTest extends CustomValidatorTest {
 
@@ -41,13 +37,13 @@ public class AccessibilityAssessmentValidatorTest extends CustomValidatorTest {
     }
 
     @Test
-    public void testNoMobilityImpairedAccess() throws Exception{
+    public void testNoMobilityImpairedAccess() throws Exception {
         ValidationEvent valid = validator.isValid(createAccessibilityNode(null, null, null, null, null));
         assertNotNull(valid);
     }
 
     @Test
-    public void testOnlyMobilityImpairedAccess() throws Exception{
+    public void testOnlyMobilityImpairedAccess() throws Exception {
         ValidationEvent valid = validator.isValid(createAccessibilityNode(false, null, null, null, null));
         assertNotNull(valid);
 
@@ -56,7 +52,7 @@ public class AccessibilityAssessmentValidatorTest extends CustomValidatorTest {
     }
 
     @Test
-    public void testWithNullLimitationsValues() throws Exception{
+    public void testWithNullLimitationsValues() throws Exception {
         ValidationEvent valid = validator.isValid(createAccessibilityNode(false, null, TRUE, TRUE, TRUE));
         assertNotNull(valid);
 
@@ -79,7 +75,7 @@ public class AccessibilityAssessmentValidatorTest extends CustomValidatorTest {
     }
 
     @Test
-    public void testWithUnknownLimitationsValues() throws Exception{
+    public void testWithUnknownLimitationsValues() throws Exception {
         ValidationEvent valid = validator.isValid(createAccessibilityNode(false, FALSE, UNKNOWN, UNKNOWN, UNKNOWN));
         assertNull(valid);
 
@@ -98,15 +94,15 @@ public class AccessibilityAssessmentValidatorTest extends CustomValidatorTest {
     /**
      * Creates example - all fields are required for valid XML
      * <AccessibilityAssessment>
-     *   <MobilityImpairedAccess>true</MobilityImpairedAccess>
-     *   <Limitations>
-     *     <AccessibilityLimitation>
-     *         <WheelchairAccess>true</WheelchairAccess>
-     *         <StepFreeAccess>true</StepFreeAccess>
-     *          <EscalatorFreeAccess>true</EscalatorFreeAccess>
-     *          <LiftFreeAccess>true</LiftFreeAccess>
-     *     </AccessibilityLimitation>
-     *   </Limitations>
+     * <MobilityImpairedAccess>true</MobilityImpairedAccess>
+     * <Limitations>
+     * <AccessibilityLimitation>
+     * <WheelchairAccess>true</WheelchairAccess>
+     * <StepFreeAccess>true</StepFreeAccess>
+     * <EscalatorFreeAccess>true</EscalatorFreeAccess>
+     * <LiftFreeAccess>true</LiftFreeAccess>
+     * </AccessibilityLimitation>
+     * </Limitations>
      * </AccessibilityAssessment>
      *
      * @param mobilityImpairedAccess

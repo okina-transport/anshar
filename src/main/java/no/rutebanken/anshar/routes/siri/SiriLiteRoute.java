@@ -37,8 +37,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.VehicleActivityStructure;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.VehicleActivityStructure;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -775,10 +775,14 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
     private String getVersion(Exchange e) {
         String version = e.getIn().getHeader(PARAM_VERSION, String.class);
-        if (!"2.0".equals(version)) {
+        if (!"2.0".equals(version) && !"2.1".equals(version)) {
             String errorMsg = "Unsupported version:" + version;
             e.getIn().setBody(errorMsg);
             throw new IllegalArgumentException(errorMsg);
+        }
+
+        if ("2.1".equals(version)) {
+            e.getIn().setHeader(SIRI_VERSION_HEADER_NAME,"2.1");
         }
         return version;
     }

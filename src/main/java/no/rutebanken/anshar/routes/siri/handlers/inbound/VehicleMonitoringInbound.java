@@ -10,18 +10,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.VehicleActivityStructure;
-import uk.org.siri.siri20.VehicleMonitoringDeliveryStructure;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.VehicleActivityStructure;
+import uk.org.siri.siri21.VehicleMonitoringDeliveryStructure;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getOriginalId;
+
 @Service
 public class VehicleMonitoringInbound {
 
@@ -79,6 +76,7 @@ public class VehicleMonitoringInbound {
         }
         return result;
     }
+
     public String getVehicleRefs(Siri incomingData) {
         List<VehicleMonitoringDeliveryStructure> vehicleMonitoringDeliveries = incomingData.getServiceDelivery().getVehicleMonitoringDeliveries();
         List<String> vehicleRefs = new ArrayList<>();

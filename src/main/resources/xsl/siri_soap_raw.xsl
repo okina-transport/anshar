@@ -239,6 +239,9 @@
 
             <xsl:when test="local-name()='GetSituationExchange'">
                 <xsl:element name="siril:Siri">
+                    <xsl:attribute name="version">
+                        <xsl:value-of select="Request/@version"/>
+                    </xsl:attribute>
                     <xsl:element name="siril:ServiceRequest">
                         <xsl:for-each select="ServiceRequestInfo/siril:RequestorRef">
                             <xsl:element name="siril:{local-name()}">
@@ -294,6 +297,11 @@
 
             <xsl:when test="local-name()='GetStopMonitoring'">
                 <xsl:element name="siril:Siri">
+                    <xsl:attribute name="version">
+                        <xsl:value-of select="Request/@version"/>
+                    </xsl:attribute>
+
+
                     <xsl:element name="siril:ServiceRequest">
                         <xsl:for-each select="ServiceRequestInfo/siril:RequestorRef">
                             <xsl:element name="siril:{local-name()}">
@@ -370,6 +378,9 @@
 
             <xsl:when test="local-name()='GetEstimatedTimetable'">
                 <xsl:element name="siril:Siri">
+                    <xsl:attribute name="version">
+                        <xsl:value-of select="Request/@version"/>
+                    </xsl:attribute>
                     <xsl:element name="siril:ServiceRequest">
                         <xsl:for-each select="ServiceRequestInfo/siril:RequestorRef">
                             <xsl:element name="siril:{local-name()}">
@@ -433,6 +444,9 @@
 
             <xsl:when test="local-name()='GetGeneralMessage'">
                 <xsl:element name="siril:Siri">
+                    <xsl:attribute name="version">
+                        <xsl:value-of select="Request/@version"/>
+                    </xsl:attribute>
                     <xsl:element name="siril:ServiceRequest">
                         <xsl:for-each select="ServiceRequestInfo/siril:RequestorRef">
                             <xsl:element name="siril:{local-name()}">
@@ -483,6 +497,9 @@
 
             <xsl:when test="local-name()='GetFacilityMonitoring'">
                 <xsl:element name="siril:Siri">
+                    <xsl:attribute name="version">
+                        <xsl:value-of select="Request/@version"/>
+                    </xsl:attribute>
                     <xsl:element name="siril:ServiceRequest">
                         <xsl:for-each select="ServiceRequestInfo/siril:RequestorRef">
                             <xsl:element name="siril:{local-name()}">
@@ -692,6 +709,9 @@
                                 <xsl:for-each select="siril:SituationExchangeRequest">
                                     <xsl:element name="SituationExchangeRequest"
                                                  namespace="http://www.siri.org.uk/siri">
+                                        <xsl:attribute name="version">
+                                            <xsl:value-of select="@version"/>
+                                        </xsl:attribute>
                                         <xsl:copy-of select="*" copy-namespaces="no"/>
                                     </xsl:element>
                                 </xsl:for-each>
@@ -720,6 +740,9 @@
 
                                 <xsl:for-each select="siril:StopMonitoringRequest">
                                     <xsl:element name="StopMonitoringRequest" namespace="http://www.siri.org.uk/siri">
+                                        <xsl:attribute name="version">
+                                            <xsl:value-of select="@version"/>
+                                        </xsl:attribute>
                                         <xsl:copy-of select="*" copy-namespaces="no"/>
                                     </xsl:element>
                                 </xsl:for-each>
@@ -748,6 +771,9 @@
                                 <xsl:for-each select="siril:VehicleMonitoringRequest">
                                     <xsl:element name="VehicleMonitoringRequest"
                                                  namespace="http://www.siri.org.uk/siri">
+                                        <xsl:attribute name="version">
+                                            <xsl:value-of select="@version"/>
+                                        </xsl:attribute>
                                         <xsl:copy-of select="*" copy-namespaces="no"/>
                                     </xsl:element>
                                 </xsl:for-each>
@@ -846,6 +872,9 @@
 
             <xsl:when test="local-name()='GetVehicleMonitoring'">
                 <xsl:element name="siril:Siri">
+                    <xsl:attribute name="version">
+                        <xsl:value-of select="Request/@version"/>
+                    </xsl:attribute>
                     <xsl:element name="siril:ServiceRequest">
                         <xsl:for-each select="ServiceRequestInfo/siril:RequestorRef">
                             <xsl:element name="siril:{local-name()}">
@@ -892,9 +921,6 @@
                                 <xsl:apply-templates select="* | node()"/>
                             </xsl:element>
                         </xsl:for-each>
-                        <xsl:element name="siril:SituationExchangeDelivery">
-                            <xsl:copy-of select="Answer/SituationExchangeDelivery/*" copy-namespaces="no"/>
-                        </xsl:element>
                     </xsl:element>
                 </xsl:element>
             </xsl:when>

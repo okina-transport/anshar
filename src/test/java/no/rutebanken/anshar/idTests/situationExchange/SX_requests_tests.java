@@ -17,8 +17,8 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.PtSituationElement;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.PtSituationElement;
+import uk.org.siri.siri21.Siri;
 
 import javax.xml.bind.JAXBException;
 import java.io.InputStream;

@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import javax.xml.bind.UnmarshalException;
 import java.io.InputStream;

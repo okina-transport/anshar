@@ -20,16 +20,15 @@ import no.rutebanken.anshar.routes.validation.validators.LimitedSubsetValidator;
 import no.rutebanken.anshar.routes.validation.validators.Validator;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri20.SituationSourceTypeEnumeration;
+import uk.org.siri.siri21.SituationSourceTypeEnumeration;
 
 import static no.rutebanken.anshar.routes.validation.validators.Constants.PT_SITUATION_ELEMENT;
 
 
 /**
  * Verifies that the value for field SourceType is of the allowed type
- *
  */
-@Validator(profileName = "norway", targetType = SiriDataType.SITUATION_EXCHANGE)
+@Validator(profileName = "france", targetType = SiriDataType.SITUATION_EXCHANGE)
 @Component
 public class SourceTypeValidator extends LimitedSubsetValidator {
 

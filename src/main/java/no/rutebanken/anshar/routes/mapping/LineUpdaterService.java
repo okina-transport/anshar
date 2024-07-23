@@ -12,7 +12,9 @@ import javax.annotation.PostConstruct;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.StringTokenizer;
 import java.util.concurrent.*;
 
@@ -31,6 +33,8 @@ public class LineUpdaterService {
     BlobStoreService blobStoreService;
 
     private transient final ConcurrentMap<String, Boolean> areLineFlexible = new ConcurrentHashMap<>();
+
+    private final Map<String, String> lineNameMap = new HashMap<>();
 
     private static final Object LOCK = new Object();
 
@@ -64,8 +68,11 @@ public class LineUpdaterService {
                 StringTokenizer tokenizer = new StringTokenizer(line, ",");
                 String lineId = tokenizer.nextToken();
                 String isFlexible = tokenizer.nextToken();
+                if (tokenizer.hasMoreTokens()) {
+                    String lineName = tokenizer.nextToken();
+                    lineNameMap.put(lineId, lineName);
+                }
                 areLineFlexible.put(lineId, Boolean.valueOf(isFlexible));
-
             });
 
             long t2 = System.currentTimeMillis();
@@ -89,5 +96,13 @@ public class LineUpdaterService {
 
     public void addFlexibleLines(Map<String, Boolean> flexibleLines) {
         areLineFlexible.putAll(flexibleLines);
+    }
+
+    public Optional<String> getLineName(String lineId) {
+        return Optional.ofNullable(lineNameMap.get(lineId));
+    }
+
+    public void addLineName(String lineId, String lineName) {
+        lineNameMap.put(lineId, lineName);
     }
 }

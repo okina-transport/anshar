@@ -27,10 +27,9 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.ESTIMA
 
 /**
  * Verifies that EstimatedCall contains required fields
- *
  */
 @SuppressWarnings("unchecked")
-@Validator(profileName = "norway", targetType = SiriDataType.ESTIMATED_TIMETABLE)
+@Validator(profileName = "france", targetType = SiriDataType.ESTIMATED_TIMETABLE)
 @Component
 public class EstimatedCallRequiredFieldsValidator extends CallRequiredFieldsValidator {
 
@@ -50,9 +49,9 @@ public class EstimatedCallRequiredFieldsValidator extends CallRequiredFieldsVali
     @Override
     public ValidationEvent isValid(Node node) {
 
-        List <String> missingFields = validateCommonFields(node);
+        List<String> missingFields = validateCommonFields(node);
 
-        if (getChildNodeByName(node, "ExpectedArrivalTime") == null &&getChildNodeByName(node, "ExpectedDepartureTime") == null) {
+        if (getChildNodeByName(node, "ExpectedArrivalTime") == null && getChildNodeByName(node, "ExpectedDepartureTime") == null) {
             missingFields.add("ExpectedArrivalTime/ExpectedDepartureTime");
         }
         if (!missingFields.isEmpty()) {

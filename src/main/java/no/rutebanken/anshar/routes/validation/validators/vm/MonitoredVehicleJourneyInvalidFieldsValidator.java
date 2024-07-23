@@ -28,7 +28,7 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.MONITO
 /**
  * Verifies that forbidden fields do not exist
  */
-@Validator(profileName = "norway", targetType = SiriDataType.VEHICLE_MONITORING)
+@Validator(profileName = "france", targetType = SiriDataType.VEHICLE_MONITORING)
 @Component
 public class MonitoredVehicleJourneyInvalidFieldsValidator extends NsrQuayValidator {
 

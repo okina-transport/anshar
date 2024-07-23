@@ -27,10 +27,9 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.RECORD
 
 /**
  * Verifies that RecordedCall contains required fields
- *
  */
 @SuppressWarnings("unchecked")
-@Validator(profileName = "norway", targetType = SiriDataType.ESTIMATED_TIMETABLE)
+@Validator(profileName = "france", targetType = SiriDataType.ESTIMATED_TIMETABLE)
 @Component
 public class RecordedCallRequiredFieldsValidator extends CallRequiredFieldsValidator {
 
@@ -50,7 +49,7 @@ public class RecordedCallRequiredFieldsValidator extends CallRequiredFieldsValid
     @Override
     public ValidationEvent isValid(Node node) {
 
-        List <String> missingFields = validateCommonFields(node);
+        List<String> missingFields = validateCommonFields(node);
 
         if (getChildNodeByName(node, "AimedArrivalTime") != null && getChildNodeByName(node, "ActualArrivalTime") == null) {
             // AimedArrival is set, but neither Actual- nor ExpectedArrivalTime

@@ -10,20 +10,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.FacilityConditionStructure;
-import uk.org.siri.siri20.FacilityMonitoringDeliveryStructure;
-import uk.org.siri.siri20.GeneralMessage;
-import uk.org.siri.siri20.GeneralMessageDeliveryStructure;
-import uk.org.siri.siri20.OrganisationRefStructure;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.FacilityConditionStructure;
+import uk.org.siri.siri21.FacilityMonitoringDeliveryStructure;
+import uk.org.siri.siri21.OrganisationRefStructure;
+import uk.org.siri.siri21.Siri;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getOriginalId;
+
 @Service
 public class FacilityMonitoringInbound {
 

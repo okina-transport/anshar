@@ -1,6 +1,6 @@
 package no.rutebanken.anshar.routes.siri.processor.routedata;
 
-import uk.org.siri.siri20.EstimatedVehicleJourney;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
 
 import java.time.ZonedDateTime;
 
@@ -17,12 +17,12 @@ public class TooFastException extends Throwable {
         long seconds = StopsUtil.getSeconds(fromTime, toTime);
         int kph = StopsUtil.calculateSpeedKph(distance, fromTime, toTime);
 
-        this.msg = "Too fast (" + kph + " kph) between " + fromStop + " and " + toStop +" (" + Math.round(distance) + " meters in " + seconds + "s) [" + resolveServiceJourneyId(serviceJourneyId) + "].";
+        this.msg = "Too fast (" + kph + " kph) between " + fromStop + " and " + toStop + " (" + Math.round(distance) + " meters in " + seconds + "s) [" + resolveServiceJourneyId(serviceJourneyId) + "].";
     }
 
 
     @Override
-        public String getMessage() {
-            return msg;
-        }
+    public String getMessage() {
+        return msg;
     }
+}

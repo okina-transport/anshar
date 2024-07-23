@@ -28,11 +28,10 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.PT_SIT
 
 /**
  * Verifies that the value for field Description is valid
- *  - has text
- *  - if more than one is defined, language-attribute is required
- *
+ * - has text
+ * - if more than one is defined, language-attribute is required
  */
-@Validator(profileName = "norway", targetType = SiriDataType.SITUATION_EXCHANGE)
+@Validator(profileName = "france", targetType = SiriDataType.SITUATION_EXCHANGE)
 @Component
 public class SummaryValidator extends StringStructureValidator {
 
@@ -63,7 +62,7 @@ public class SummaryValidator extends StringStructureValidator {
         for (Node textNode : childNodesByName) {
             String nodeValue = getNodeValue(textNode);
             if (nodeValue != null && nodeValue.length() > 160) {
-                return createEvent(node, FIELDNAME, "shorter than max-length", ""+nodeValue.length() + " chars", ValidationEvent.WARNING);
+                return createEvent(node, FIELDNAME, "shorter than max-length", "" + nodeValue.length() + " chars", ValidationEvent.WARNING);
             }
         }
         return null;

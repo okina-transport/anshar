@@ -34,7 +34,7 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.ESTIMA
  * Verifies that updated times are increasing
  */
 @SuppressWarnings("unchecked")
-@Validator(profileName = "norway", targetType = SiriDataType.ESTIMATED_TIMETABLE)
+@Validator(profileName = "france", targetType = SiriDataType.ESTIMATED_TIMETABLE)
 @Component
 public class IncreasingTimesValidator extends CustomValidator {
 
@@ -149,7 +149,7 @@ public class IncreasingTimesValidator extends CustomValidator {
         return MessageFormat.format("Stop [{0}], Line [{1}], VehicleRef [{2}]", stopPointRef, lineRef, vehicleRef);
     }
 
-    private long validateIncreasingTimes(long previousDeparture, Node call) throws NegativeDwelltimeException, NegativeRuntimeException{
+    private long validateIncreasingTimes(long previousDeparture, Node call) throws NegativeDwelltimeException, NegativeRuntimeException {
         long aimedArrivalTime = getEpochSeconds(getChildNodeValue(call, AIMED_ARRIVAL_NODE_NAME));
         long expectedArrivalTime = getEpochSeconds(getChildNodeValue(call, EXPECTED_ARRIVAL_NODE_NAME));
         long actualArrivalTime = getEpochSeconds(getChildNodeValue(call, ACTUAL_ARRIVAL_NODE_NAME));

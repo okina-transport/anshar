@@ -18,16 +18,16 @@ package no.rutebanken.anshar.routes.siri.processor;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.EstimatedVersionFrameStructure;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.EstimatedVersionFrameStructure;
+import uk.org.siri.siri21.Siri;
 
 import java.util.List;
 
 public class EnsureNonNullVehicleModePostProcessor extends ValueAdapter implements PostProcessor {
     private static final Logger logger = LoggerFactory.getLogger(
-        EnsureNonNullVehicleModePostProcessor.class);
+            EnsureNonNullVehicleModePostProcessor.class);
 
     @Override
     protected String apply(String text) {
@@ -43,11 +43,11 @@ public class EnsureNonNullVehicleModePostProcessor extends ValueAdapter implemen
                     List<EstimatedVersionFrameStructure> estimatedJourneyVersionFrames = etDelivery.getEstimatedJourneyVersionFrames();
                     for (EstimatedVersionFrameStructure estimatedJourneyVersionFrame : estimatedJourneyVersionFrames) {
                         List<EstimatedVehicleJourney> estimatedVehicleJourneies = estimatedJourneyVersionFrame
-                            .getEstimatedVehicleJourneies();
+                                .getEstimatedVehicleJourneies();
                         for (EstimatedVehicleJourney estimatedVehicleJourney : estimatedVehicleJourneies) {
                             if (estimatedVehicleJourney.getVehicleModes() != null) {
                                 if (!estimatedVehicleJourney.getVehicleModes().isEmpty() &&
-                                    estimatedVehicleJourney.getVehicleModes().get(0) == null) {
+                                        estimatedVehicleJourney.getVehicleModes().get(0) == null) {
                                     logger.warn("Clearing VehicleMode");
                                     estimatedVehicleJourney.getVehicleModes().clear();
                                 }

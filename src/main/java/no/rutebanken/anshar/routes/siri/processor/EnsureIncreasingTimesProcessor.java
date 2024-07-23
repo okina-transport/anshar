@@ -19,12 +19,7 @@ import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri20.EstimatedCall;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.EstimatedVersionFrameStructure;
-import uk.org.siri.siri20.RecordedCall;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.*;
 
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -34,7 +29,6 @@ import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapte
 
 /**
  * Rewrites the SIRI ET-arrival/departure-times so that they are always increasing
- *
  */
 public class EnsureIncreasingTimesProcessor extends ValueAdapter implements PostProcessor {
 
@@ -131,8 +125,8 @@ public class EnsureIncreasingTimesProcessor extends ValueAdapter implements Post
                             }
 
                             if ((runtimeCount + dwelltimeCount) > 0) {
-                                String lineRef = estimatedVehicleJourney.getLineRef() != null ? estimatedVehicleJourney.getLineRef().getValue():"";
-                                String vehicleRef = estimatedVehicleJourney.getVehicleRef() != null ? estimatedVehicleJourney.getVehicleRef().getValue():"";
+                                String lineRef = estimatedVehicleJourney.getLineRef() != null ? estimatedVehicleJourney.getLineRef().getValue() : "";
+                                String vehicleRef = estimatedVehicleJourney.getVehicleRef() != null ? estimatedVehicleJourney.getVehicleRef().getValue() : "";
 
                                 logger.warn("Fixed {} dwelltimes, {} runtimes for line {}, vehicle {}.", dwelltimeCount, runtimeCount, getOriginalId(lineRef), vehicleRef);
                             }

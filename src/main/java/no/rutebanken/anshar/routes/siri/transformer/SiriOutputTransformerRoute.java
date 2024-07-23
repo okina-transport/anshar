@@ -20,7 +20,7 @@ import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.Siri;
 
 import java.util.List;
 
@@ -45,15 +45,15 @@ public class SiriOutputTransformerRoute extends RouteBuilder {
                     }
 
                     p.getOut().setBody(SiriValueTransformer.transform(
-                        p.getIn().getBody(Siri.class),
-                        adapters,
-                        false,
-                        false));
+                            p.getIn().getBody(Siri.class),
+                            adapters,
+                            false,
+                            false));
                     p.getOut().setHeaders(p.getIn().getHeaders());
                 })
                 .log(LoggingLevel.DEBUG, "Transformed SIRI")
                 .routeId("siri.transformer.route");
-       //         .log("Transformed SIRI");
+        //         .log("Transformed SIRI");
     }
 
 }

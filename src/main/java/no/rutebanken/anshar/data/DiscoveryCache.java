@@ -66,6 +66,10 @@ public class DiscoveryCache {
         discoveryStops.clear();
     }
 
+    public void clearDiscoveryLines() {
+        discoveryLines.clear();
+    }
+
     public Map<String, Set<String>> getDiscoveryStops() {
         return discoveryStops;
     }

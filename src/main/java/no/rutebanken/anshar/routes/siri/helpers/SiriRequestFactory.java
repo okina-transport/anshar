@@ -16,75 +16,76 @@
 package no.rutebanken.anshar.routes.siri.helpers;
 
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.Siri;
 
 public class SiriRequestFactory {
 
-	private final SubscriptionSetup subscriptionSetup;
+    private final SubscriptionSetup subscriptionSetup;
 
-	public static String getCamelUrl(String url) {
-		return getCamelUrl(url, null);
-	}
-	public static String getCamelUrl(String url, String parameters) {
-		if (url != null) {
-			if (parameters != null && !parameters.isEmpty()) {
-				String separator = "?";
-				if (url.contains("?")) {
-					separator = "&";
-				}
-				if (parameters.startsWith("?")) {
-					parameters = parameters.substring(1);
-				}
-				url = url + separator + parameters;
-			}
-		}
-		return url;
-	}
+    public static String getCamelUrl(String url) {
+        return getCamelUrl(url, null);
+    }
 
-	public SiriRequestFactory(SubscriptionSetup subscriptionSetup) {
-		this.subscriptionSetup = subscriptionSetup;
-	}
+    public static String getCamelUrl(String url, String parameters) {
+        if (url != null) {
+            if (parameters != null && !parameters.isEmpty()) {
+                String separator = "?";
+                if (url.contains("?")) {
+                    separator = "&";
+                }
+                if (parameters.startsWith("?")) {
+                    parameters = parameters.substring(1);
+                }
+                url = url + separator + parameters;
+            }
+        }
+        return url;
+    }
 
-	/*
-	 * Called dynamically from camel-routes
-	 */
-	public Siri createSiriSubscriptionRequest() {
-		return SiriObjectFactory.createSubscriptionRequest(subscriptionSetup);
-	}
+    public SiriRequestFactory(SubscriptionSetup subscriptionSetup) {
+        this.subscriptionSetup = subscriptionSetup;
+    }
 
-	/*
-	 * Called dynamically from camel-routes
-	 */
-	public Siri createSiriTerminateSubscriptionRequest() {
-		return SiriObjectFactory.createTerminateSubscriptionRequest(subscriptionSetup);
+    /*
+     * Called dynamically from camel-routes
+     */
+    public Siri createSiriSubscriptionRequest() {
+        return SiriObjectFactory.createSubscriptionRequest(subscriptionSetup);
+    }
 
-	}
+    /*
+     * Called dynamically from camel-routes
+     */
+    public Siri createSiriTerminateSubscriptionRequest() {
+        return SiriObjectFactory.createTerminateSubscriptionRequest(subscriptionSetup);
 
-	/*
-	 * Called dynamically from camel-routes
-	 */
-	public Siri createSiriCheckStatusRequest() {
-		return SiriObjectFactory.createCheckStatusRequest(subscriptionSetup);
+    }
 
-	}
+    /*
+     * Called dynamically from camel-routes
+     */
+    public Siri createSiriCheckStatusRequest() {
+        return SiriObjectFactory.createCheckStatusRequest(subscriptionSetup);
 
-	private Boolean allData = Boolean.TRUE;
+    }
 
-	/*
-	 * Called dynamically from camel-routes
-	 *
-	 * Creates ServiceRequest or DataSupplyRequest based on subscription type
-	 */
-	public Siri createSiriDataRequest() {
-		Siri request;
-		if (subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE) {
-			request = SiriObjectFactory.createServiceRequest(subscriptionSetup);
-		} else {
-			request = SiriObjectFactory.createDataSupplyRequest(subscriptionSetup, allData);
-			allData = Boolean.FALSE;
-		}
+    private Boolean allData = Boolean.TRUE;
 
-		return request;
-	}
+    /*
+     * Called dynamically from camel-routes
+     *
+     * Creates ServiceRequest or DataSupplyRequest based on subscription type
+     */
+    public Siri createSiriDataRequest() {
+        Siri request;
+        if (subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE) {
+            request = SiriObjectFactory.createServiceRequest(subscriptionSetup);
+        } else {
+            request = SiriObjectFactory.createDataSupplyRequest(subscriptionSetup, allData);
+            allData = Boolean.FALSE;
+        }
+
+        return request;
+    }
 
 }

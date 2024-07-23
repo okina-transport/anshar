@@ -7,8 +7,8 @@ import org.junit.Assert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.FramedVehicleJourneyRefStructure;
-import uk.org.siri.siri20.VehicleActivityStructure;
+import uk.org.siri.siri21.FramedVehicleJourneyRefStructure;
+import uk.org.siri.siri21.VehicleActivityStructure;
 
 import java.time.ZonedDateTime;
 import java.util.UUID;

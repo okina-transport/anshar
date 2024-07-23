@@ -29,10 +29,9 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.ESTIMA
 
 /**
  * Verifies that EstimatedVehicleJourney contains required fields
- *
  */
 @SuppressWarnings("unchecked")
-@Validator(profileName = "norway", targetType = SiriDataType.ESTIMATED_TIMETABLE)
+@Validator(profileName = "france", targetType = SiriDataType.ESTIMATED_TIMETABLE)
 @Component
 public class EstimatedVehicleJourneyValidator extends CustomValidator {
 
@@ -70,7 +69,7 @@ public class EstimatedVehicleJourneyValidator extends CustomValidator {
 
             if (framedVehicleJourneyRefNode == null ||
                     getChildNodeValue(framedVehicleJourneyRefNode, "DatedVehicleJourneyRef") == null) {
-                if (getChildNodeValue(node,"DatedVehicleJourneyRef") == null) {
+                if (getChildNodeValue(node, "DatedVehicleJourneyRef") == null) {
                     fieldNames.add("FramedVehicleJourneyRef or DatedVehicleJourneyRef");
                 }
             }

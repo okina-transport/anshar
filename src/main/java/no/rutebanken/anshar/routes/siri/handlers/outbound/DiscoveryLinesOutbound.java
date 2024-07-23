@@ -5,14 +5,18 @@ import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.DiscoveryCache;
 import no.rutebanken.anshar.data.EstimatedTimetables;
 import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
+import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.handlers.Utils;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.AnnotatedLineRef;
-import uk.org.siri.siri20.LineRef;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.AnnotatedLineRef;
+import uk.org.siri.siri21.LineRef;
+import uk.org.siri.siri21.NaturalLanguageStringStructure;
+import uk.org.siri.siri21.Siri;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -35,6 +39,9 @@ public class DiscoveryLinesOutbound {
     @Autowired
     private DiscoveryCache discoveryCache;
 
+    @Autowired
+    private LineUpdaterService lineUpdaterService;
+
     /**
      * Creates a siri response with all lines existing in the cache, for vehicle Monitoring
      *
@@ -52,26 +59,30 @@ public class DiscoveryLinesOutbound {
 
         Map<String, IdProcessingParameters> idProcessingMap = utils.buildIdProcessingMapByObjectType(ObjectType.LINE);
 
-        Set<String> lineRefSetVM = new HashSet<>();
+
+        Set<Pair<String, String>> lineRefSetVM = new HashSet<>();
 
         for (Map.Entry<String, Set<String>> linesByDatasetEntry : linesByDataset.entrySet()) {
+            Set<String> rawLines = new HashSet<>();
             //for each datasetId
             Set<String> lineList = linesByDatasetEntry.getValue();
             if (lineList == null || lineList.isEmpty()) {
                 continue;
             }
 
-            lineRefSetVM.addAll(extractAndTransformLineId(linesByDatasetEntry.getKey(), lineList, idProcessingMap));
+            rawLines.addAll(extractAndTransformLineId(linesByDatasetEntry.getKey(), lineList, idProcessingMap));
+
+            for (String rawLine : rawLines) {
+                lineRefSetVM.add(Pair.of(rawLine, lineUpdaterService.getLineName(rawLine).orElse(null)));
+            }
         }
 
 
         if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy) && datasetId != null) {
-            lineRefSetVM = lineRefSetVM.stream()
-                    .map(id -> externalIdsService.getAltId(datasetId, id, ObjectType.LINE).orElse(id))
-                    .collect(Collectors.toSet());
+            lineRefSetVM = replaceByAltId(lineRefSetVM, datasetId);
         }
 
-        Set<String> lineRefSetET = estimatedTimetables.getAll(datasetId)
+        Set<String> rawLinesET = estimatedTimetables.getAll(datasetId)
                 .stream()
                 .filter(estimatedVehicleJourney -> estimatedVehicleJourney.getLineRef() != null)
                 .map(estimatedVehicleJourney -> {
@@ -81,13 +92,18 @@ public class DiscoveryLinesOutbound {
                 )
                 .collect(Collectors.toSet());
 
-        if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy) && datasetId != null) {
-            lineRefSetET = lineRefSetET.stream()
-                    .map(id -> externalIdsService.getAltId(datasetId, id, ObjectType.LINE).orElse(id))
-                    .collect(Collectors.toSet());
+
+        Set<Pair<String, String>> lineRefSetET = new HashSet<>();
+
+        for (String rawLine : rawLinesET) {
+            lineRefSetET.add(Pair.of(rawLine, lineUpdaterService.getLineName(rawLine).orElse(null)));
         }
 
-        Set<String> lineRefSet = new HashSet<>();
+        if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy) && datasetId != null) {
+            lineRefSetET = replaceByAltId(lineRefSetET, datasetId);
+        }
+
+        Set<Pair<String, String>> lineRefSet = new HashSet<>();
         lineRefSet.addAll(lineRefSetVM);
         lineRefSet.addAll(lineRefSetET);
 
@@ -96,6 +112,17 @@ public class DiscoveryLinesOutbound {
                 .collect(Collectors.toList());
 
         return siriObjectFactory.createLinesDiscoveryDelivery(resultList);
+
+    }
+
+    private Set<Pair<String, String>> replaceByAltId(Set<Pair<String, String>> lineRefAndNames, String datasetId) {
+        Set<Pair<String, String>> result = new HashSet<>();
+        for (Pair<String, String> lineRefAndName : lineRefAndNames) {
+            String lineRef = lineRefAndName.getLeft();
+            result.add(Pair.of(externalIdsService.getAltId(datasetId, lineRef, ObjectType.LINE).orElse(lineRef), lineRefAndName.getRight()));
+        }
+
+        return result;
 
     }
 
@@ -115,15 +142,21 @@ public class DiscoveryLinesOutbound {
     /**
      * Converts a line reference to an annotatedLineRef
      *
-     * @param lineRefStr the line reference
+     * @param lineRefAndName left : line ref
+     *                       right : line name
      * @return the annotated lineref that will be included in siri response
      */
-    private AnnotatedLineRef convertKeyToLineRef(String lineRefStr) {
+    private AnnotatedLineRef convertKeyToLineRef(Pair<String, String> lineRefAndName) {
         AnnotatedLineRef annotatedLineRef = new AnnotatedLineRef();
         LineRef lineRefSiri = new LineRef();
-        lineRefSiri.setValue(lineRefStr);
+        lineRefSiri.setValue(lineRefAndName.getLeft());
         annotatedLineRef.setMonitored(true);
         annotatedLineRef.setLineRef(lineRefSiri);
+        if (StringUtils.isNotEmpty(lineRefAndName.getRight())) {
+            NaturalLanguageStringStructure lineName = new NaturalLanguageStringStructure();
+            lineName.setValue(lineRefAndName.getRight());
+            annotatedLineRef.getLineNames().add(lineName);
+        }
         return annotatedLineRef;
     }
 }

@@ -23,14 +23,14 @@ import org.springframework.stereotype.Component;
 import static no.rutebanken.anshar.routes.validation.validators.Constants.ESTIMATED_CALL;
 
 /**
- * Verifies that the value for field StopPointRef is built up correctly
- *
+ * Verifies that the value for field StopPointRefStructure is built up correctly
  */
-@Validator(profileName = "norway", targetType = SiriDataType.ESTIMATED_TIMETABLE)
+@Validator(profileName = "france", targetType = SiriDataType.ESTIMATED_TIMETABLE)
 @Component
 public class EstimatedStopPointRefValidator extends NsrQuayValidator {
 
     private String path;
+
     public EstimatedStopPointRefValidator() {
         FIELDNAME = "StopPointRef";
         path = ESTIMATED_CALL + FIELD_DELIMITER + FIELDNAME;

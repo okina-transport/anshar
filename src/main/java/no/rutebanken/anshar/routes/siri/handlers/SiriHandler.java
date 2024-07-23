@@ -37,12 +37,12 @@ import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import no.rutebanken.anshar.util.GeneralMessageHelper;
 import no.rutebanken.anshar.util.IDUtils;
-import org.rutebanken.siri20.util.SiriXml;
+import org.entur.siri21.util.SiriXml;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.UnmarshalException;
@@ -153,10 +153,13 @@ public class SiriHandler {
                 inboundProcessSiriClientRequest(incomingSiriParameters.getSubscriptionId(), xml); // Response to a request we made on behalf of one of the subscriptions
             } else {
                 Siri incoming = SiriValueTransformer.parseXml(xml); // Someone asking us for siri update
+
+
                 Siri response = outboundProcessSiriServerRequest(incoming, incomingSiriParameters.getDatasetId(), incomingSiriParameters.getExcludedDatasetIdList(),
                         incomingSiriParameters.getOutboundIdMappingPolicy(), incomingSiriParameters.getMaxSize(), incomingSiriParameters.getClientTrackingName(),
                         incomingSiriParameters.isSoapTransformation(), incomingSiriParameters.isUseOriginalId());
                 utils.handleFlexibleLines(response);
+                incomingSiriParameters.setVersion(incoming.getVersion());
                 return response;
 
             }
@@ -254,7 +257,7 @@ public class SiriHandler {
         Siri results;
         if (incoming.getSubscriptionRequest() != null) {
             logger.info("Handling subscriptionrequest with ID-policy {}.", outboundIdMappingPolicy);
-            return serverSubscriptionManager.handleMultipleSubscriptionsRequest(incoming.getSubscriptionRequest(), datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation, useOriginalId);
+            return serverSubscriptionManager.handleMultipleSubscriptionsRequest(incoming, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation, useOriginalId);
 
         } else if (incoming.getTerminateSubscriptionRequest() != null) {
             logger.info("Handling terminateSubscriptionrequest...");

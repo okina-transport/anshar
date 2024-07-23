@@ -4,8 +4,9 @@ import no.rutebanken.anshar.data.collections.KryoSerializer;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
 import org.entur.protobuf.mapper.SiriMapper;
+import org.entur.siri21.util.SiriXml;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.Siri;
 import uk.org.siri.www.siri.SiriType;
 
 import static org.apache.camel.Exchange.CONTENT_LENGTH;
@@ -25,9 +26,10 @@ public class ProtobufConverterRoute extends RouteBuilder {
                     final String body = fixEncodingErrorsInXml(p.getIn().getBody(String.class), p.getIn().getHeader("subscriptionId", String.class));
                     p.getOut().setBody(body);
                     p.getOut().setHeaders(p.getIn().getHeaders());
+                    p.getOut().setHeader(CONTENT_LENGTH, body.getBytes().length);
                 })
                 .bean(kryoSerializer, "write")
-                .log(LoggingLevel.DEBUG,"Compressing - done")
+                .log(LoggingLevel.DEBUG, "Compressing - done")
         ;
 
         from("direct:decompress.jaxb")
@@ -36,9 +38,8 @@ public class ProtobufConverterRoute extends RouteBuilder {
                     final String body = p.getIn().getBody(String.class);
                     p.getOut().setBody(body);
                     p.getOut().setHeaders(p.getIn().getHeaders());
-                    p.getOut().setHeader(CONTENT_LENGTH, body.getBytes().length);
                 })
-                .log(LoggingLevel.DEBUG,"Decompressing - done")
+                .log(LoggingLevel.DEBUG, "Decompressing - done")
         ;
 
 
@@ -63,7 +64,10 @@ public class ProtobufConverterRoute extends RouteBuilder {
                 .bean(SiriMapper.class, "mapToJaxb")
                 .process(p -> {
                     final Siri body = p.getIn().getBody(Siri.class);
-                    p.getOut().setBody(body);
+                    //Map protobuf to SIRI 2.0, create XML, parse 2.0 XML to SIRI 2.1 object
+                    uk.org.siri.siri21.Siri siri = org.entur.siri21.util.SiriXml.parseXml(SiriXml.toXml(body));
+
+                    p.getOut().setBody(siri);
                     p.getOut().setHeaders(p.getIn().getHeaders());
                 })
         ;

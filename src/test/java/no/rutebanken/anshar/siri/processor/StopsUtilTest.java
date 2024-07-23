@@ -10,16 +10,10 @@ import java.math.BigDecimal;
 import java.time.ZonedDateTime;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static uk.org.siri.siri20.VehicleModesEnumeration.BUS;
-import static uk.org.siri.siri20.VehicleModesEnumeration.COACH;
-import static uk.org.siri.siri20.VehicleModesEnumeration.RAIL;
-import static uk.org.siri.siri20.VehicleModesEnumeration.TRAM;
+import static org.junit.jupiter.api.Assertions.*;
+import static uk.org.siri.siri21.VehicleModesEnumeration.*;
 
 public class StopsUtilTest {
-
 
 
     @Test
@@ -35,24 +29,24 @@ public class StopsUtilTest {
         BigDecimal toLat = new BigDecimal(58.921065);
 
         NetexUpdaterService.locations.put(fromRef,
-            new LocationStructure().withLatitude(fromLat).withLongitude(fromLon)
+                new LocationStructure().withLatitude(fromLat).withLongitude(fromLon)
         );
         NetexUpdaterService.locations.put(toRef,
-            new LocationStructure().withLatitude(toLat).withLongitude(toLon)
+                new LocationStructure().withLatitude(toLat).withLongitude(toLon)
         );
 
         final double distance = StopsUtil.getDistance(fromRef, toRef);
-        assertTrue(((int)distance) == 371); // Verifying approximate distance
+        assertTrue(((int) distance) == 371); // Verifying approximate distance
 
 
         final int speedKph = StopsUtil.calculateSpeedKph(
-            fromRef,
-            toRef,
-            ZonedDateTime.now(),
-            ZonedDateTime.now().plusSeconds(7)
+                fromRef,
+                toRef,
+                ZonedDateTime.now(),
+                ZonedDateTime.now().plusSeconds(7)
         );
 
-        assertEquals(190,  speedKph);
+        assertEquals(190, speedKph);
 
     }
 
@@ -60,15 +54,15 @@ public class StopsUtilTest {
     public void testSimpleSpeedCalculation() {
 
         final int tenMetersPerSecond = StopsUtil.calculateSpeedKph(100,
-            ZonedDateTime.now(),
-            ZonedDateTime.now().plusSeconds(10)
+                ZonedDateTime.now(),
+                ZonedDateTime.now().plusSeconds(10)
         );
 
         assertEquals(36, tenMetersPerSecond);
 
         final int hundredMetersPerSecond = StopsUtil.calculateSpeedKph(100,
-            ZonedDateTime.now(),
-            ZonedDateTime.now().plusSeconds(1)
+                ZonedDateTime.now(),
+                ZonedDateTime.now().plusSeconds(1)
         );
 
         assertEquals(360, hundredMetersPerSecond);

@@ -6,12 +6,15 @@ import no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute;
 import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
+import org.entur.siri.validator.SiriValidator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.Siri;
 
 import java.io.ByteArrayOutputStream;
 
+import static no.rutebanken.anshar.routes.HttpParameter.SIRI_VERSION_HEADER_NAME;
+import static no.rutebanken.anshar.routes.RestRouteBuilder.downgradeSiriVersion;
 import static no.rutebanken.anshar.routes.validation.validators.Constants.HEARTBEAT_HEADER;
 
 @Service
@@ -46,7 +49,11 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
                 .process(p -> {
                     Siri response = p.getIn().getBody(Siri.class);
                     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                    CustomSiriXml.toXml(response, null, byteArrayOutputStream);
+                    if (p.getIn().getHeader(SIRI_VERSION_HEADER_NAME).equals(SiriValidator.Version.VERSION_2_1)){
+                        CustomSiriXml.toXml(response, null, byteArrayOutputStream);
+                    }else{
+                        CustomSiriXml.toXml(downgradeSiriVersion(response), null, byteArrayOutputStream);
+                    }
                     p.getIn().setBody(byteArrayOutputStream.toString());
                 })
                 .choice()

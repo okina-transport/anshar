@@ -27,7 +27,7 @@ import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import java.time.ZonedDateTime;
 import java.util.Arrays;
@@ -210,6 +210,7 @@ public class SiriLiteTest extends BaseHttpTest {
     @Test
     public void testStopDiscoveryJSON() {
 
+        discoveryCache.clearDiscoveryStops();
         discoveryCache.addStop("DAT1", stopReference1);
         discoveryCache.addStop("DAT1", stopReference2);
 
@@ -227,6 +228,27 @@ public class SiriLiteTest extends BaseHttpTest {
                 .body("AnnotatedStopPointRef[1].StopPointRef.value", Matchers.oneOf(stopReference1, stopReference2));
     }
 
+    @Test
+    public void testStopDiscoveryJSONSiri2_1() {
+
+        discoveryCache.clearDiscoveryStops();
+        discoveryCache.addStop("DAT1", stopReference1);
+        discoveryCache.addStop("DAT1", stopReference2);
+
+        given()
+                .header("useOriginalId", "true")
+                .header("datasetId", "DAT1")
+                .when()
+                .get("/siri/2.1/stoppoints-discovery.json")
+                .then()
+                .statusCode(200)
+                .contentType(ContentType.JSON)
+                .rootPath("Siri.StopPointsDelivery")
+                .body("AnnotatedStopPointRef", Matchers.hasSize(2))
+                .body("AnnotatedStopPointRef[0].StopPointRef.value", Matchers.oneOf(stopReference1, stopReference2))
+                .body("AnnotatedStopPointRef[1].StopPointRef.value", Matchers.oneOf(stopReference1, stopReference2));
+    }
+
 
     ////////////////////////////////////////////////
     /////// LINES DISCOVERY
@@ -234,6 +256,11 @@ public class SiriLiteTest extends BaseHttpTest {
 
     @Test
     public void testLinesDiscoveryJSON() {
+
+        estimatedTimetables.clearAll();
+        discoveryCache.clearDiscoveryLines();
+        discoveryCache.addLine("DAT1", lineRef1);
+        discoveryCache.addLine("DAT1", lineRef2);
         given()
                 .when()
                 .get("/siri/2.0/lines-discovery.json")
@@ -245,6 +272,26 @@ public class SiriLiteTest extends BaseHttpTest {
                 .body("AnnotatedLineRef[0].LineRef.value", Matchers.oneOf(lineRef1, lineRef2))
                 .body("AnnotatedLineRef[1].LineRef.value", Matchers.oneOf(lineRef1, lineRef2));
     }
+
+    @Test
+    public void testLinesDiscoveryJSONSiri2_1() {
+
+        estimatedTimetables.clearAll();
+        discoveryCache.clearDiscoveryLines();
+        discoveryCache.addLine("DAT1", lineRef1);
+        discoveryCache.addLine("DAT1", lineRef2);
+        given()
+                .when()
+                .get("/siri/2.1/lines-discovery.json")
+                .then()
+                .statusCode(200)
+                .contentType(ContentType.JSON)
+                .rootPath("Siri.LinesDelivery")
+                .body("AnnotatedLineRef", Matchers.hasSize(2))
+                .body("AnnotatedLineRef[0].LineRef.value", Matchers.oneOf(lineRef1, lineRef2))
+                .body("AnnotatedLineRef[1].LineRef.value", Matchers.oneOf(lineRef1, lineRef2));
+    }
+
 
     ////////////////////////////////////////////////
     /////// VEHICLE MONITORING
@@ -258,7 +305,25 @@ public class SiriLiteTest extends BaseHttpTest {
                 .then()
                 .statusCode(200)
                 .contentType(ContentType.JSON)
+                .rootPath("Siri")
+                .body("version", equalTo("2.0"))
                 .rootPath("Siri.ServiceDelivery.VehicleMonitoringDelivery[0].")
+                .body("version", equalTo("2.0"))
+                .body("VehicleActivity", Matchers.nullValue());
+    }
+
+    @Test
+    public void testVMJSONSiri2_1() {
+        given()
+                .when()
+                .get("/siri/2.1/vehicle-monitoring.json")
+                .then()
+                .statusCode(200)
+                .contentType(ContentType.JSON)
+                .rootPath("Siri")
+                .body("version", equalTo("2.1"))
+                .rootPath("Siri.ServiceDelivery.VehicleMonitoringDelivery[0].")
+                .body("version", equalTo("2.1"))
                 .body("VehicleActivity", Matchers.nullValue());
     }
 
@@ -306,6 +371,24 @@ public class SiriLiteTest extends BaseHttpTest {
                 .body("PtSituationElement[0].SituationNumber.value", equalTo("1234"));
     }
 
+    @Test
+    public void testSXJSONFilterOnDatasetIdSiri2_1() {
+        given()
+                .when()
+                .get("/siri/2.1/situation-exchange.json?datasetId=test")
+                .then()
+                .statusCode(200)
+                .contentType(ContentType.JSON)
+                .rootPath("Siri")
+                .body("version", equalTo("2.1"))
+                .rootPath("Siri.ServiceDelivery.SituationExchangeDelivery[0].")
+                .body("version", equalTo("2.1"))
+                .rootPath("Siri.ServiceDelivery.SituationExchangeDelivery[0].Situations")
+                .body("PtSituationElement", Matchers.hasSize(1))
+                .body("PtSituationElement[0].ParticipantRef.value", equalTo("atb"))
+                .body("PtSituationElement[0].SituationNumber.value", equalTo("1234"));
+    }
+
     ////////////////////////////////////////////////
     /////// GENERAL MESSAGE
     ////////////////////////////////////////////////
@@ -318,6 +401,24 @@ public class SiriLiteTest extends BaseHttpTest {
                 .then()
                 .statusCode(200)
                 .contentType(ContentType.JSON)
+                .rootPath("Siri.ServiceDelivery.GeneralMessageDelivery[0]")
+                .body("GeneralMessage", Matchers.hasSize(1))
+                .body("GeneralMessage[0].Content.StopPointRef", Matchers.hasSize(1))
+                .body("GeneralMessage[0].Content.StopPointRef[0]", equalTo("stop1"));
+    }
+
+    @Test
+    public void testGMJSONFilterOnDatasetIdSiri2_1() {
+        given()
+                .when()
+                .get("/siri/2.1/general-message.json?datasetId=test")
+                .then()
+                .statusCode(200)
+                .contentType(ContentType.JSON)
+                .rootPath("Siri")
+                .body("version", equalTo("2.1"))
+                .rootPath("Siri.ServiceDelivery.GeneralMessageDelivery[0].")
+                .body("version", equalTo("2.1"))
                 .rootPath("Siri.ServiceDelivery.GeneralMessageDelivery[0]")
                 .body("GeneralMessage", Matchers.hasSize(1))
                 .body("GeneralMessage[0].Content.StopPointRef", Matchers.hasSize(1))
@@ -342,6 +443,24 @@ public class SiriLiteTest extends BaseHttpTest {
     }
 
 
+    @Test
+    public void testFMJSONFilterOnDatasetIdSiri2_1() {
+        given()
+                .when()
+                .get("/siri/2.1/facility-monitoring.json?datasetId=test")
+                .then()
+                .statusCode(200)
+                .contentType(ContentType.JSON)
+                .rootPath("Siri")
+                .body("version", equalTo("2.1"))
+                .rootPath("Siri.ServiceDelivery.FacilityMonitoringDelivery[0].")
+                .body("version", equalTo("2.1"))
+                .rootPath("Siri.ServiceDelivery.FacilityMonitoringDelivery[0]")
+                .body("FacilityCondition", Matchers.hasSize(1))
+                .body("FacilityCondition[0].FacilityRef.value", equalTo("facility"));
+    }
+
+
     ////////////////////////////////////////////////
     /////// ESTIMATED TIMETABLES
     ////////////////////////////////////////////////
@@ -354,6 +473,24 @@ public class SiriLiteTest extends BaseHttpTest {
                 .then()
                 .statusCode(200)
                 .contentType(ContentType.JSON)
+                .rootPath("Siri.ServiceDelivery.EstimatedTimetableDelivery[0].EstimatedJourneyVersionFrame[0].EstimatedVehicleJourney[0]")
+                .body("LineRef.value", equalTo(lineRef1))
+                .body("VehicleRef.value", equalTo(vehRef));
+    }
+
+
+    @Test
+    public void testETJSONFilterOnDatasetIdSiri2_1() {
+        given()
+                .when()
+                .get("/siri/2.1/estimated-timetables.json?datasetId=test")
+                .then()
+                .statusCode(200)
+                .contentType(ContentType.JSON)
+                .rootPath("Siri")
+                .body("version", equalTo("2.1"))
+                .rootPath("Siri.ServiceDelivery.EstimatedTimetableDelivery[0].")
+                .body("version", equalTo("2.1"))
                 .rootPath("Siri.ServiceDelivery.EstimatedTimetableDelivery[0].EstimatedJourneyVersionFrame[0].EstimatedVehicleJourney[0]")
                 .body("LineRef.value", equalTo(lineRef1))
                 .body("VehicleRef.value", equalTo(vehRef));
@@ -393,6 +530,28 @@ public class SiriLiteTest extends BaseHttpTest {
                 .then()
                 .statusCode(200)
                 .contentType(ContentType.JSON)
+                .rootPath("Siri")
+                .body("version", equalTo("2.0"))
+                .rootPath("Siri.ServiceDelivery.StopMonitoringDelivery[0].")
+                .body("version", equalTo("2.0"))
+                .rootPath("Siri.ServiceDelivery.StopMonitoringDelivery[0]")
+                .body("MonitoredStopVisit", Matchers.nullValue());
+
+    }
+
+
+    @Test
+    public void testSMJSONSiri2_1() {
+        given()
+                .when()
+                .get("/siri/2.1/stop-monitoring.json")
+                .then()
+                .statusCode(200)
+                .contentType(ContentType.JSON)
+                .rootPath("Siri")
+                .body("version", equalTo("2.1"))
+                .rootPath("Siri.ServiceDelivery.StopMonitoringDelivery[0].")
+                .body("version", equalTo("2.1"))
                 .rootPath("Siri.ServiceDelivery.StopMonitoringDelivery[0]")
                 .body("MonitoredStopVisit", Matchers.nullValue());
 

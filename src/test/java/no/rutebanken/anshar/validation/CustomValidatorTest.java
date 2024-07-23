@@ -19,15 +19,13 @@ import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.validation.SiriXmlValidator;
 import no.rutebanken.anshar.routes.validation.validators.CustomValidator;
-import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.Test;
-import org.rutebanken.siri20.util.SiriXml;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.Siri;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.ValidationEvent;
@@ -61,7 +59,7 @@ public class CustomValidatorTest extends SpringBootBaseTest {
         return "<" + fieldName + ">" + value + "</" + fieldName + ">";
     }
 
-    protected  String mergeXml(String... elements) {
+    protected String mergeXml(String... elements) {
         StringBuilder b = new StringBuilder("<PLACEHOLDER>");
         for (String element : elements) {
             b.append(element);
@@ -70,11 +68,11 @@ public class CustomValidatorTest extends SpringBootBaseTest {
         return b.toString();
     }
 
-    protected Node createXmlNode(String fieldName, String value){
-        return createXmlNode(createXml(fieldName,value));
+    protected Node createXmlNode(String fieldName, String value) {
+        return createXmlNode(createXml(fieldName, value));
     }
 
-    protected Node createXmlNode(String xml){
+    protected Node createXmlNode(String xml) {
         try {
             DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
             DocumentBuilder builder = builderFactory.newDocumentBuilder();

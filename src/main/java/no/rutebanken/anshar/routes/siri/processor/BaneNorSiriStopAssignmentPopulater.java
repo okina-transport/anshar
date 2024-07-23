@@ -22,15 +22,7 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri20.EstimatedCall;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.EstimatedVersionFrameStructure;
-import uk.org.siri.siri20.FramedVehicleJourneyRefStructure;
-import uk.org.siri.siri20.QuayRefStructure;
-import uk.org.siri.siri20.RecordedCall;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.StopAssignmentStructure;
+import uk.org.siri.siri21.*;
 
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
@@ -39,15 +31,12 @@ import java.util.Set;
 
 import static no.rutebanken.anshar.routes.siri.processor.BaneNorSiriEtRewriter.getFirstDepartureTime;
 import static no.rutebanken.anshar.routes.siri.processor.BaneNorSiriEtRewriter.getServiceDate;
-import static no.rutebanken.anshar.routes.siri.processor.routedata.NetexUpdaterService.getServiceDates;
-import static no.rutebanken.anshar.routes.siri.processor.routedata.NetexUpdaterService.getServiceJourney;
-import static no.rutebanken.anshar.routes.siri.processor.routedata.NetexUpdaterService.getStopTimes;
+import static no.rutebanken.anshar.routes.siri.processor.routedata.NetexUpdaterService.*;
 import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.POPULATE_STOP_ASSIGNMENTS;
 import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getMappedId;
 
 /**
  * Rewrites the SIRI ET-feed from BaneNOR to match the planned routes received from NSB
- *
  */
 public class BaneNorSiriStopAssignmentPopulater extends ValueAdapter implements PostProcessor {
 
@@ -88,7 +77,7 @@ public class BaneNorSiriStopAssignmentPopulater extends ValueAdapter implements 
                 }
             }
         }
-        logger.info("Done adding StopAssignment to {} of {} journeys in {} ms", populatedAssigmentsCounter, estimatedVehicleJourneyCounter, (System.currentTimeMillis()-startTime));
+        logger.info("Done adding StopAssignment to {} of {} journeys in {} ms", populatedAssigmentsCounter, estimatedVehicleJourneyCounter, (System.currentTimeMillis() - startTime));
     }
 
     private boolean populateStopAssignments(EstimatedVehicleJourney estimatedVehicleJourney) {
@@ -146,17 +135,17 @@ public class BaneNorSiriStopAssignmentPopulater extends ValueAdapter implements 
             int order = estimatedCall.getOrder().intValue();
             StopAssignmentStructure stopAssignment;
             if (order == 1) { //only one of departure- or arrivalStopAssignments should be populated according to the norwegian SIRI profile
-                if (estimatedCall.getDepartureStopAssignment() == null) {
-                    estimatedCall.setDepartureStopAssignment(new StopAssignmentStructure());
+                if (estimatedCall.getDepartureStopAssignments().isEmpty()) {
+                    estimatedCall.getDepartureStopAssignments().add(new StopAssignmentStructure());
                 }
-                stopAssignment = estimatedCall.getDepartureStopAssignment();
+                stopAssignment = estimatedCall.getDepartureStopAssignments().get(0);
             } else {
-                if (estimatedCall.getArrivalStopAssignment() == null) {
-                    estimatedCall.setArrivalStopAssignment(new StopAssignmentStructure());
+                if (estimatedCall.getArrivalStopAssignments().isEmpty()) {
+                    estimatedCall.getArrivalStopAssignments().add(new StopAssignmentStructure());
                 }
-                stopAssignment = estimatedCall.getArrivalStopAssignment();
+                stopAssignment = estimatedCall.getArrivalStopAssignments().get(0);
             }
-            if (stopAssignment.getAimedQuayRef() == null || StringUtils.isEmpty(stopAssignment.getAimedQuayRef().getValue()) ) {
+            if (stopAssignment.getAimedQuayRef() == null || StringUtils.isEmpty(stopAssignment.getAimedQuayRef().getValue())) {
                 int sequence = order - 1 - extraCalls; //Stops in GTFS starts with 0, while it starts with 1 in the EstimatedCall-structure
                 if (stopTimes.size() > sequence) {
                     StopTime stopTime = stopTimes.get(sequence);
@@ -173,7 +162,7 @@ public class BaneNorSiriStopAssignmentPopulater extends ValueAdapter implements 
                 }
 
             }
-            if (stopAssignment.getExpectedQuayRef() == null || StringUtils.isEmpty(stopAssignment.getExpectedQuayRef().getValue()) ) {
+            if (stopAssignment.getExpectedQuayRef() == null || StringUtils.isEmpty(stopAssignment.getExpectedQuayRef().getValue())) {
                 stopAssignment.setExpectedQuayRef(createQuayRef(expectedQuay));
             }
         }

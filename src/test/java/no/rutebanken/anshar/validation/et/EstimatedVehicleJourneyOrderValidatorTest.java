@@ -20,10 +20,10 @@ import no.rutebanken.anshar.validation.CustomValidatorTest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Node;
-import uk.org.siri.siri20.EstimatedCall;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.RecordedCall;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.EstimatedCall;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.RecordedCall;
+import uk.org.siri.siri21.Siri;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -56,7 +56,7 @@ public class EstimatedVehicleJourneyOrderValidatorTest extends CustomValidatorTe
 
         for (int i = 0; i < 10; i++) {
             EstimatedCall call = new EstimatedCall();
-            call.setOrder(BigInteger.valueOf(i+1));
+            call.setOrder(BigInteger.valueOf(i + 1));
             estimatedCalls.add(call);
         }
         assertNull(validator.isValid(convertToXmlNode(journey)), "Valid Order flagged as invalid");
@@ -73,15 +73,15 @@ public class EstimatedVehicleJourneyOrderValidatorTest extends CustomValidatorTe
         List<RecordedCall> recordedCalls = journey.getRecordedCalls().getRecordedCalls();
         for (int i = 0; i < 10; i++) {
             RecordedCall call = new RecordedCall();
-            call.setOrder(BigInteger.valueOf(i+1));
+            call.setOrder(BigInteger.valueOf(i + 1));
             recordedCalls.add(call);
         }
         callCounter = recordedCalls.size();
 
         List<EstimatedCall> estimatedCalls = journey.getEstimatedCalls().getEstimatedCalls();
-        for (int i = callCounter; i < callCounter+10; i++) {
+        for (int i = callCounter; i < callCounter + 10; i++) {
             EstimatedCall call = new EstimatedCall();
-            call.setOrder(BigInteger.valueOf(i+1));
+            call.setOrder(BigInteger.valueOf(i + 1));
             estimatedCalls.add(call);
         }
 
@@ -99,7 +99,7 @@ public class EstimatedVehicleJourneyOrderValidatorTest extends CustomValidatorTe
                 continue;
             }
             EstimatedCall call = new EstimatedCall();
-            call.setOrder(BigInteger.valueOf(i+1));
+            call.setOrder(BigInteger.valueOf(i + 1));
             estimatedCalls.add(call);
         }
 
@@ -120,15 +120,15 @@ public class EstimatedVehicleJourneyOrderValidatorTest extends CustomValidatorTe
                 continue;
             }
             RecordedCall call = new RecordedCall();
-            call.setOrder(BigInteger.valueOf(i+1));
+            call.setOrder(BigInteger.valueOf(i + 1));
             recordedCalls.add(call);
         }
         callCounter = recordedCalls.size();
 
         List<EstimatedCall> estimatedCalls = journey.getEstimatedCalls().getEstimatedCalls();
-        for (int i = callCounter; i < callCounter+10; i++) {
+        for (int i = callCounter; i < callCounter + 10; i++) {
             EstimatedCall call = new EstimatedCall();
-            call.setOrder(BigInteger.valueOf(i+1));
+            call.setOrder(BigInteger.valueOf(i + 1));
             estimatedCalls.add(call);
         }
 

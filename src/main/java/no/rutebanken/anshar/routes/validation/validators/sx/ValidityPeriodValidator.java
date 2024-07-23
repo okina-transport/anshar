@@ -31,11 +31,11 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.PT_SIT
 
 /**
  * Validates ValidityPeriod
- *  - if Progress == open
- *  - Verify that StartTime is present and a valid timestamp
- *  - If EndTime is present, verify valid timestamp AND that EndTime is after StartTime
+ * - if Progress == open
+ * - Verify that StartTime is present and a valid timestamp
+ * - If EndTime is present, verify valid timestamp AND that EndTime is after StartTime
  */
-@Validator(profileName = "norway", targetType = SiriDataType.SITUATION_EXCHANGE)
+@Validator(profileName = "france", targetType = SiriDataType.SITUATION_EXCHANGE)
 @Component
 public class ValidityPeriodValidator extends CustomValidator {
 
@@ -45,7 +45,7 @@ public class ValidityPeriodValidator extends CustomValidator {
 
     private static final String START_TIME_FIELD_NAME = "StartTime";
     private static final String END_TIME_FIELD_NAME = "EndTime";
-    private static final int MAX_SX_VALIDITY_SECONDS = 24*3600*365; // One year
+    private static final int MAX_SX_VALIDITY_SECONDS = 24 * 3600 * 365; // One year
 
 
     @Override
@@ -57,7 +57,7 @@ public class ValidityPeriodValidator extends CustomValidator {
     public ValidationEvent isValid(Node node) {
 
         if (node == null || node.getChildNodes().getLength() == 0) {
-            return  createEvent(node, FIELDNAME, "not null", null, ValidationEvent.WARNING);
+            return createEvent(node, FIELDNAME, "not null", null, ValidationEvent.WARNING);
         }
 
         boolean progressClosed = false;
@@ -90,7 +90,7 @@ public class ValidityPeriodValidator extends CustomValidator {
             final ZonedDateTime endTime = parseDate(endTimeValue);
             if (endTime == null) {
                 return createEvent(node, END_TIME_FIELD_NAME, "valid date", endTimeValue, ValidationEvent.FATAL_ERROR);
-            } else if (endTime.minus(5, ChronoUnit.HOURS).isBefore(startTime)){
+            } else if (endTime.minus(5, ChronoUnit.HOURS).isBefore(startTime)) {
                 return createEvent(node, END_TIME_FIELD_NAME, "EndTime should be at least 5 hours after StartTime when Progress is closed", endTimeValue, ValidationEvent.ERROR);
 
             }
@@ -107,7 +107,7 @@ public class ValidityPeriodValidator extends CustomValidator {
                     final long validityPeriod = endTimeSec - startTimeSec;
 
                     if (validityPeriod > MAX_SX_VALIDITY_SECONDS) {
-                        return createCustomFieldEvent(node, "EndTime states too long validity (" + startTime + " => " + endTime + ")" , ValidationEvent.WARNING);
+                        return createCustomFieldEvent(node, "EndTime states too long validity (" + startTime + " => " + endTime + ")", ValidationEvent.WARNING);
                     }
                 }
             }

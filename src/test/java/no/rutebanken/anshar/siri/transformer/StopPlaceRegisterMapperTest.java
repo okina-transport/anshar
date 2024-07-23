@@ -24,18 +24,11 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import uk.org.siri.siri20.JourneyPlaceRefStructure;
+import uk.org.siri.siri21.JourneyPlaceRefStructure;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class StopPlaceRegisterMapperTest extends SpringBootBaseTest {
 
@@ -75,7 +68,7 @@ public class StopPlaceRegisterMapperTest extends SpringBootBaseTest {
 
         List<String> prefixes = new ArrayList<>();
 
-        StopPlaceRegisterMapper mapper = new StopPlaceRegisterMapper(SiriDataType.VEHICLE_MONITORING, "TST",JourneyPlaceRefStructure.class, prefixes);
+        StopPlaceRegisterMapper mapper = new StopPlaceRegisterMapper(SiriDataType.VEHICLE_MONITORING, "TST", JourneyPlaceRefStructure.class, prefixes);
 
         assertEquals("NSR:Quay:11223344", mapper.apply("1234"));
     }
@@ -89,7 +82,7 @@ public class StopPlaceRegisterMapperTest extends SpringBootBaseTest {
         StopPlaceUpdaterService stopPlaceService = ApplicationContextHolder.getContext().getBean(StopPlaceUpdaterService.class);
         stopPlaceService.addStopPlaceMappings(stopPlaceMap);
 
-        StopPlaceRegisterMapper mapper = new StopPlaceRegisterMapper(SiriDataType.VEHICLE_MONITORING, "TST",JourneyPlaceRefStructure.class, prefixes);
+        StopPlaceRegisterMapper mapper = new StopPlaceRegisterMapper(SiriDataType.VEHICLE_MONITORING, "TST", JourneyPlaceRefStructure.class, prefixes);
 
         assertEquals("NSR:Quay:11223344", mapper.apply("1234"));
     }
@@ -104,7 +97,7 @@ public class StopPlaceRegisterMapperTest extends SpringBootBaseTest {
         StopPlaceUpdaterService stopPlaceService = ApplicationContextHolder.getContext().getBean(StopPlaceUpdaterService.class);
         stopPlaceService.addStopPlaceMappings(stopPlaceMap);
 
-        StopPlaceRegisterMapper mapper = new StopPlaceRegisterMapper(SiriDataType.VEHICLE_MONITORING, "TST",JourneyPlaceRefStructure.class, prefixes);
+        StopPlaceRegisterMapper mapper = new StopPlaceRegisterMapper(SiriDataType.VEHICLE_MONITORING, "TST", JourneyPlaceRefStructure.class, prefixes);
 
         assertEquals("NSR:Quay:44444444", mapper.apply("5555"));
     }
@@ -115,7 +108,7 @@ public class StopPlaceRegisterMapperTest extends SpringBootBaseTest {
 
         List<String> prefixes = new ArrayList<>();
 
-        StopPlaceRegisterMapper mapper = new StopPlaceRegisterMapper(SiriDataType.VEHICLE_MONITORING, "TST",JourneyPlaceRefStructure.class, prefixes);
+        StopPlaceRegisterMapper mapper = new StopPlaceRegisterMapper(SiriDataType.VEHICLE_MONITORING, "TST", JourneyPlaceRefStructure.class, prefixes);
 
         assertEquals("NSR:Quay:11223344", mapper.apply("NSR:Quay:11223344"));
     }
@@ -140,7 +133,7 @@ public class StopPlaceRegisterMapperTest extends SpringBootBaseTest {
         String mappedId = "NSR:Quay:44332211";
         String stopName = "Eglise";
 
-        StopPlaceRegisterMapper mapper = new StopPlaceRegisterMapper(SiriDataType.VEHICLE_MONITORING, datasetId,JourneyPlaceRefStructure.class, prefixes);
+        StopPlaceRegisterMapper mapper = new StopPlaceRegisterMapper(SiriDataType.VEHICLE_MONITORING, datasetId, JourneyPlaceRefStructure.class, prefixes);
 
         assertEquals(originalId, mapper.apply(originalId));
 

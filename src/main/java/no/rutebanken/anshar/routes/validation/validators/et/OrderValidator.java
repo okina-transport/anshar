@@ -30,7 +30,7 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.ESTIMA
  * Verifies that Order is present and increasing for Recorded- and Estimated calls
  */
 @SuppressWarnings("unchecked")
-@Validator(profileName = "norway", targetType = SiriDataType.ESTIMATED_TIMETABLE)
+@Validator(profileName = "france", targetType = SiriDataType.ESTIMATED_TIMETABLE)
 @Component
 public class OrderValidator extends CustomValidator {
 
@@ -64,10 +64,10 @@ public class OrderValidator extends CustomValidator {
                 for (Node recordedCall : recordedCallNodes) {
                     String order = getChildNodeValue(recordedCall, FIELDNAME);
                     if (order == null || order.isEmpty()) {
-                        return  createEvent(node, recordedCallNodeName + FIELD_DELIMITER + FIELDNAME, "it to be set", order, ValidationEvent.ERROR);
+                        return createEvent(node, recordedCallNodeName + FIELD_DELIMITER + FIELDNAME, "it to be set", order, ValidationEvent.ERROR);
                     }
-                    if (!order.equals(""+expectedOrderValue)) {
-                        return  createEvent(node, recordedCallNodeName + FIELD_DELIMITER + FIELDNAME, "increasing positiveInteger (expected " + expectedOrderValue + ")", order, ValidationEvent.FATAL_ERROR);
+                    if (!order.equals("" + expectedOrderValue)) {
+                        return createEvent(node, recordedCallNodeName + FIELD_DELIMITER + FIELDNAME, "increasing positiveInteger (expected " + expectedOrderValue + ")", order, ValidationEvent.FATAL_ERROR);
                     }
                     expectedOrderValue++;
                 }
@@ -81,10 +81,10 @@ public class OrderValidator extends CustomValidator {
                 for (Node estimatedCall : estimatedCallNodes) {
                     String order = getChildNodeValue(estimatedCall, FIELDNAME);
                     if (order == null || order.isEmpty()) {
-                        return  createEvent(node, estimatedCallNodeName + FIELD_DELIMITER + FIELDNAME, "it to be set", order, ValidationEvent.ERROR);
+                        return createEvent(node, estimatedCallNodeName + FIELD_DELIMITER + FIELDNAME, "it to be set", order, ValidationEvent.ERROR);
                     }
-                    if (!order.equals(""+expectedOrderValue)) {
-                        return  createEvent(node, estimatedCallNodeName + FIELD_DELIMITER + FIELDNAME, "increasing positiveInteger (expected " + expectedOrderValue + ")", order, ValidationEvent.FATAL_ERROR);
+                    if (!order.equals("" + expectedOrderValue)) {
+                        return createEvent(node, estimatedCallNodeName + FIELD_DELIMITER + FIELDNAME, "increasing positiveInteger (expected " + expectedOrderValue + ")", order, ValidationEvent.FATAL_ERROR);
                     }
                     expectedOrderValue++;
                 }

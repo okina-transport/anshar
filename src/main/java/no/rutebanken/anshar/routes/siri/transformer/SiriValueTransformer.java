@@ -21,23 +21,17 @@ import com.google.common.cache.LoadingCache;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.processor.PostProcessor;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
-import org.rutebanken.siri20.util.SiriXml;
+import org.entur.siri21.util.SiriXml;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.Siri;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.stream.XMLStreamException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class SiriValueTransformer {
 
@@ -66,7 +60,6 @@ public class SiriValueTransformer {
     private static final List<String> methodsToIgnore = Collections.singletonList("getMonitoringError");
 
     /**
-     *
      * @param xml
      * @param adapters
      * @return
@@ -85,12 +78,10 @@ public class SiriValueTransformer {
     }
 
     /**
-     *
-     *
-     * @param siri SIRI data to transform
-     * @param adapters Adapters to apply
+     * @param siri                    SIRI data to transform
+     * @param adapters                Adapters to apply
      * @param deepCopyBeforeTransform Defines if SIRI-object should be deep-copied before transformation. !! Note: If false - input-object will be altered !!
-     * @param detailedLogging Switches on/off detailed logging
+     * @param detailedLogging         Switches on/off detailed logging
      * @return Transformed SIRI-object
      */
     public static Siri transform(Siri siri, List<ValueAdapter> adapters, boolean deepCopyBeforeTransform, boolean detailedLogging) {
@@ -104,8 +95,7 @@ public class SiriValueTransformer {
         if (deepCopyBeforeTransform) {
             try {
                 transformed = SiriObjectFactory.deepCopy(siri);
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 logger.warn("Unable to transform SIRI-object", e);
                 return siri;
             }
@@ -122,8 +112,8 @@ public class SiriValueTransformer {
         }
 
         if (transformed != null && // Object exists
-            adapters != null &&    // Has mapping-rules
-            transformed.getServiceDelivery() != null // Has actual data to map
+                adapters != null &&    // Has mapping-rules
+                transformed.getServiceDelivery() != null // Has actual data to map
         ) {
 
             List<ValueAdapter> valueAdapters = new ArrayList<>();
@@ -184,7 +174,7 @@ public class SiriValueTransformer {
 
     /**
      * Recursively applies ValueAdapter to all fields of the specified type within SIRI-packages.
-     *
+     * <p>
      * Uses getValue()/setValue(...) apply adapters
      *
      * @param obj

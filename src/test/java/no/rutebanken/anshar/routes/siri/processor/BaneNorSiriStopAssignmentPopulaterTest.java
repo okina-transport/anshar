@@ -15,12 +15,7 @@ import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
-import uk.org.siri.siri20.EstimatedCall;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.EstimatedVersionFrameStructure;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.StopAssignmentStructure;
+import uk.org.siri.siri21.*;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -29,11 +24,7 @@ import javax.xml.bind.Unmarshaller;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -60,7 +51,7 @@ public class BaneNorSiriStopAssignmentPopulaterTest {
         long start = System.currentTimeMillis();
         StopPlaceRegisterMappingFetcher mappingFetcher = new StopPlaceRegisterMappingFetcher();
         Map<String, Pair<String, String>> stopPlaceMapping = mappingFetcher.fetchStopPlaceMapping(new File("src/test/resources/jbv_code_mapping.csv").toURI().toString());
-        logger.info("Got {} stopplace mappings in {} ms", stopPlaceMapping.size(), (System.currentTimeMillis()-start));
+        logger.info("Got {} stopplace mappings in {} ms", stopPlaceMapping.size(), (System.currentTimeMillis() - start));
         BaneNorIdPlatformUpdaterService platformUpdaterService = Mockito.mock(BaneNorIdPlatformUpdaterService.class);
         Mockito.when(platformUpdaterService.get(Mockito.anyString())).thenAnswer((Answer<String>) invocation -> stopPlaceMapping.get(invocation.getArguments()[0]).getLeft());
         ApplicationContextHolder applicationContextHolder = new ApplicationContextHolder();
@@ -106,7 +97,7 @@ public class BaneNorSiriStopAssignmentPopulaterTest {
                                 boolean noStopAssignment = false;
                                 for (EstimatedCall estimatedCall : estimatedVehicleJourney.getEstimatedCalls().getEstimatedCalls()) {
                                     int order = estimatedCall.getOrder().intValue();
-                                    StopAssignmentStructure stopAssignment = (order>1) ? estimatedCall.getArrivalStopAssignment() : estimatedCall.getDepartureStopAssignment();
+                                    StopAssignmentStructure stopAssignment = (order > 1) ? estimatedCall.getArrivalStopAssignments().get(0) : estimatedCall.getDepartureStopAssignments().get(0);
                                     if (stopAssignment == null) {
                                         noStopAssignment = true;
                                     } else {
@@ -144,7 +135,7 @@ public class BaneNorSiriStopAssignmentPopulaterTest {
         }
         logger.info("There are {} journeys mapped from route data, and {} that are not", foundJourneys, notFoundJourneys);
         assertEquals(1030, foundJourneys);
-        String filename = "/tmp/BaneNorSiri_"+System.currentTimeMillis()+".xml";
+        String filename = "/tmp/BaneNorSiri_" + System.currentTimeMillis() + ".xml";
         logger.info("Writes resulting XML to file: {}", filename);
         marshallToFile(siri, filename);
     }

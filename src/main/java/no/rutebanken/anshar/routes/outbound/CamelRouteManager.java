@@ -28,7 +28,7 @@ import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import java.net.SocketException;
 import java.util.*;
@@ -36,6 +36,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
+import static no.rutebanken.anshar.routes.HttpParameter.SIRI_VERSION_HEADER_NAME;
 import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_SOAP;
 import static no.rutebanken.anshar.routes.siri.transformer.SiriOutputTransformerRoute.OUTPUT_ADAPTERS_HEADER_NAME;
 import static no.rutebanken.anshar.routes.validation.validators.Constants.HEARTBEAT_HEADER;
@@ -228,6 +229,7 @@ public class CamelRouteManager {
             headers.put("SubscriptionId", subscription.getSubscriptionId());
             headers.put("showBody", showBody);
             headers.put("requestorRef", subscription.getRequestorRef());
+            headers.put(SIRI_VERSION_HEADER_NAME, subscription.getSiriVersion());
             headers.put(OUTPUT_ADAPTERS_HEADER_NAME, subscription.getValueAdapters());
             if (subscription.isSOAPSubscription()) {
                 headers.put(TRANSFORM_SOAP, TRANSFORM_SOAP);

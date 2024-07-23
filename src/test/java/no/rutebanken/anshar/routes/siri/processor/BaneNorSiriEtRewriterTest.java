@@ -8,24 +8,18 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.EstimatedVersionFrameStructure;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.EstimatedVersionFrameStructure;
+import uk.org.siri.siri21.Siri;
 
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoField;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static no.rutebanken.anshar.routes.siri.processor.BaneNorSiriStopAssignmentPopulaterTest.unmarshallSiriFile;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 
 public class BaneNorSiriEtRewriterTest extends SpringBootBaseTest {
@@ -76,7 +70,7 @@ public class BaneNorSiriEtRewriterTest extends SpringBootBaseTest {
             List<String> beforeStops = before.getValue();
             if (afterStops.size() != beforeStops.size()) {
                 logger.error("Trainnumber {} now has {} stops and not {} as before", before.getKey(), afterStops.size(), beforeStops.size());
-            } else if (!afterStops.containsAll(beforeStops)){
+            } else if (!afterStops.containsAll(beforeStops)) {
                 logger.error("The stops differ before and after:" +
                         "\n  Before: {}" +
                         "\n  After : {}", beforeStops, afterStops);
@@ -124,7 +118,7 @@ public class BaneNorSiriEtRewriterTest extends SpringBootBaseTest {
 
     @Test
     public void testIsMatchForTripPassingMidnight() {
-        StopTime stopTime = new StopTime("NSR:STOP:1234", 1, 3600 + 86400, 3660+86400);
+        StopTime stopTime = new StopTime("NSR:STOP:1234", 1, 3600 + 86400, 3660 + 86400);
         ZonedDateTime arrivalTime = ZonedDateTime.now()
                 .with(ChronoField.HOUR_OF_DAY, 0)
                 .with(ChronoField.MINUTE_OF_HOUR, 0)

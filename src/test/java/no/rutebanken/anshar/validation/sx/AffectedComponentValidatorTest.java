@@ -21,8 +21,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.w3c.dom.Node;
-import uk.org.ifopt.siri20.AccessibilityFeatureEnumeration;
-import uk.org.ifopt.siri20.StopPlaceComponentTypeEnumeration;
+import uk.org.ifopt.siri21.AccessibilityFeatureEnumeration;
+import uk.org.ifopt.siri21.StopPlaceComponentTypeEnumeration;
 
 import javax.xml.bind.ValidationEvent;
 
@@ -32,7 +32,7 @@ public class AffectedComponentValidatorTest extends CustomValidatorTest {
 
     @Autowired
     private AffectedComponentValidator validator;
-    
+
     @BeforeEach
     public void init() {
         validator.prepareTestData("NSR:Quay:1234");
@@ -104,11 +104,10 @@ public class AffectedComponentValidatorTest extends CustomValidatorTest {
     /**
      * Creates example - all fields are required for valid XML
      * <AffectedComponent>
-     *   <ComponentRef>...</ComponentRef>
-     *   <ComponentType>...</ComponentType>
-     *   <AccessFeatureType>...</AccessFeatureType>
+     * <ComponentRef>...</ComponentRef>
+     * <ComponentType>...</ComponentType>
+     * <AccessFeatureType>...</AccessFeatureType>
      * </AffectedComponent>
-     *
      */
     private Node createAffectedComponentNode(String componentRef, String componentType, String accessFeatureType) throws Exception {
         StringBuilder xml = new StringBuilder();

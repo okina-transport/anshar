@@ -12,13 +12,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Node;
-import uk.org.siri.siri20.EstimatedCall;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.EstimatedVersionFrameStructure;
-import uk.org.siri.siri20.RecordedCall;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.StopPointRef;
+import uk.org.siri.siri21.EstimatedCall;
+import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.EstimatedVersionFrameStructure;
+import uk.org.siri.siri21.RecordedCall;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.StopPointRefStructure;
 
 import javax.xml.bind.ValidationEvent;
 import java.time.ZonedDateTime;
@@ -27,7 +27,7 @@ import java.util.List;
 import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getMappedId;
 
 @SuppressWarnings("unchecked")
-@Validator(profileName = "norway", targetType = SiriDataType.ESTIMATED_TIMETABLE)
+@Validator(profileName = "france", targetType = SiriDataType.ESTIMATED_TIMETABLE)
 @Component
 public class SaneSpeedValidator extends SiriObjectValidator {
     private static final Logger logger = LoggerFactory.getLogger(SaneSpeedValidator.class);
@@ -74,76 +74,74 @@ public class SaneSpeedValidator extends SiriObjectValidator {
                     for (EstimatedVersionFrameStructure estimatedJourneyVersionFrame : estimatedJourneyVersionFrames) {
 
                         List<EstimatedVehicleJourney> estimatedVehicleJourneies = estimatedJourneyVersionFrame
-                            .getEstimatedVehicleJourneies();
+                                .getEstimatedVehicleJourneies();
 
                         for (EstimatedVehicleJourney estimatedVehicleJourney : estimatedVehicleJourneies) {
 //                            if (isTrue(estimatedVehicleJourney.isExtraJourney())) {
-                                final EstimatedVehicleJourney.RecordedCalls recordedCalls = estimatedVehicleJourney
+                            final EstimatedVehicleJourney.RecordedCalls recordedCalls = estimatedVehicleJourney
                                     .getRecordedCalls();
-                                if (recordedCalls != null && recordedCalls.getRecordedCalls() != null) {
-                                    final List<RecordedCall> calls = recordedCalls.getRecordedCalls();
-                                    for (
+                            if (recordedCalls != null && recordedCalls.getRecordedCalls() != null) {
+                                final List<RecordedCall> calls = recordedCalls.getRecordedCalls();
+                                for (
                                         int i = 0; i < calls.size() - 1; i++
-                                    ) {
-                                        final RecordedCall thisCall = calls.get(i);
-                                        final RecordedCall nextCall = calls.get(i + 1);
+                                ) {
+                                    final RecordedCall thisCall = calls.get(i);
+                                    final RecordedCall nextCall = calls.get(i + 1);
 
-                                        if (thisCall.getStopPointRef() != null &&
+                                    if (thisCall.getStopPointRef() != null &&
                                             nextCall.getStopPointRef() != null) {
-                                            final String fromStop = getMappedId(thisCall
+                                        final String fromStop = getMappedId(thisCall
                                                 .getStopPointRef()
                                                 .getValue());
-                                            final String toStop = getMappedId(nextCall
+                                        final String toStop = getMappedId(nextCall
                                                 .getStopPointRef()
                                                 .getValue());
 
-                                            try {
-                                                validate(estimatedVehicleJourney,
-                                                        fromStop,
+                                        try {
+                                            validate(estimatedVehicleJourney,
+                                                    fromStop,
                                                     toStop,
                                                     getTimes(thisCall, nextCall)
-                                                );
-                                            }
-                                            catch (TooFastException e) {
-                                                events.addEvent(createCustomFieldEvent(DUMMY_NODE,
+                                            );
+                                        } catch (TooFastException e) {
+                                            events.addEvent(createCustomFieldEvent(DUMMY_NODE,
                                                     e.getMessage(),
                                                     ValidationEvent.FATAL_ERROR
-                                                ));
-                                            }
+                                            ));
                                         }
                                     }
                                 }
-                                final EstimatedVehicleJourney.EstimatedCalls estimatedCalls = estimatedVehicleJourney
+                            }
+                            final EstimatedVehicleJourney.EstimatedCalls estimatedCalls = estimatedVehicleJourney
                                     .getEstimatedCalls();
-                                if (estimatedCalls != null && estimatedCalls.getEstimatedCalls() != null) {
-                                    final List<EstimatedCall> calls = estimatedCalls.getEstimatedCalls();
-                                    for (
+                            if (estimatedCalls != null && estimatedCalls.getEstimatedCalls() != null) {
+                                final List<EstimatedCall> calls = estimatedCalls.getEstimatedCalls();
+                                for (
                                         int i = 0; i < calls.size() - 1; i++
-                                    ) {
-                                        final EstimatedCall thisCall = calls.get(i);
-                                        final EstimatedCall nextCall = calls.get(i + 1);
+                                ) {
+                                    final EstimatedCall thisCall = calls.get(i);
+                                    final EstimatedCall nextCall = calls.get(i + 1);
 
-                                        final StopPointRef thisStop = thisCall.getStopPointRef();
-                                        final StopPointRef nextStop = nextCall.getStopPointRef();
-                                        if (thisStop != null && nextStop != null) {
+                                    final StopPointRefStructure thisStop = thisCall.getStopPointRef();
+                                    final StopPointRefStructure nextStop = nextCall.getStopPointRef();
+                                    if (thisStop != null && nextStop != null) {
 
-                                            try {
-                                                validate(
+                                        try {
+                                            validate(
                                                     estimatedVehicleJourney,
                                                     getMappedId(thisStop.getValue()),
                                                     getMappedId(nextStop.getValue()),
                                                     getTimes(thisCall, nextCall)
-                                                );
-                                            }
-                                            catch (TooFastException e) {
-                                                events.addEvent(createCustomFieldEvent(DUMMY_NODE,
+                                            );
+                                        } catch (TooFastException e) {
+                                            events.addEvent(createCustomFieldEvent(DUMMY_NODE,
                                                     e.getMessage(),
                                                     ValidationEvent.FATAL_ERROR
-                                                ));
-                                            }
+                                            ));
                                         }
                                     }
                                 }
+                            }
 //                            }
                         }
                     }
@@ -154,23 +152,23 @@ public class SaneSpeedValidator extends SiriObjectValidator {
     }
 
     private void validate(
-        EstimatedVehicleJourney estimatedVehicleJourney,
-        String fromStop, String toStop,
-        Pair<ZonedDateTime, ZonedDateTime> times
+            EstimatedVehicleJourney estimatedVehicleJourney,
+            String fromStop, String toStop,
+            Pair<ZonedDateTime, ZonedDateTime> times
     ) throws TooFastException {
 
         final ZonedDateTime fromTime = times.getLeft();
         final ZonedDateTime toTime = times.getRight();
 
         if (fromTime != null && toTime != null &&
-            toTime.isAfter(fromTime)) {
+                toTime.isAfter(fromTime)) {
             isSaneSpeed(estimatedVehicleJourney, fromStop, toStop, fromTime, toTime);
         }
     }
 
     private void isSaneSpeed(
-        EstimatedVehicleJourney estimatedVehicleJourney,
-        String fromStop, String toStop, ZonedDateTime fromTime, ZonedDateTime toTime
+            EstimatedVehicleJourney estimatedVehicleJourney,
+            String fromStop, String toStop, ZonedDateTime fromTime, ZonedDateTime toTime
     ) throws TooFastException {
         final double kph = StopsUtil.calculateSpeedKph(fromStop, toStop, fromTime, toTime);
 
@@ -184,7 +182,7 @@ public class SaneSpeedValidator extends SiriObjectValidator {
 
 
     private Pair<ZonedDateTime, ZonedDateTime> getTimes(
-        RecordedCall thisCall, RecordedCall nextCall
+            RecordedCall thisCall, RecordedCall nextCall
     ) {
         ZonedDateTime fromTime;
         ZonedDateTime toTime;
@@ -205,7 +203,7 @@ public class SaneSpeedValidator extends SiriObjectValidator {
     }
 
     private Pair<ZonedDateTime, ZonedDateTime> getTimes(
-        EstimatedCall thisCall, EstimatedCall nextCall
+            EstimatedCall thisCall, EstimatedCall nextCall
     ) {
         ZonedDateTime fromTime;
         ZonedDateTime toTime;

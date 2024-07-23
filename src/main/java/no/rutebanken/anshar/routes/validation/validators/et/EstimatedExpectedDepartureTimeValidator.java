@@ -27,9 +27,8 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.ESTIMA
 
 /**
  * Verifies that the value for field ExpectedDepartureTime is a valid timestamp, and that it is equal to or after ExpectedArrivalTime
- *
  */
-@Validator(profileName = "norway", targetType = SiriDataType.ESTIMATED_TIMETABLE)
+@Validator(profileName = "france", targetType = SiriDataType.ESTIMATED_TIMETABLE)
 @Component
 public class EstimatedExpectedDepartureTimeValidator extends TimeValidator {
 

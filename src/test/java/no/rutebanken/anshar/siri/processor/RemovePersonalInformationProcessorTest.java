@@ -3,20 +3,14 @@ package no.rutebanken.anshar.siri.processor;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.processor.RemovePersonalInformationProcessor;
 import org.junit.jupiter.api.Test;
-import uk.org.siri.siri20.NaturalLanguageStringStructure;
-import uk.org.siri.siri20.PtSituationElement;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.SituationSourceStructure;
-import uk.org.siri.siri20.SituationSourceTypeEnumeration;
+import uk.org.siri.siri21.*;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class RemovePersonalInformationProcessorTest {
 

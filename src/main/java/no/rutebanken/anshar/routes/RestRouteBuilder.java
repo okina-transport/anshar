@@ -16,6 +16,7 @@
 package no.rutebanken.anshar.routes;
 
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import no.rutebanken.anshar.data.util.CustomSiriXml;
 import org.apache.camel.Exchange;
 import org.apache.camel.InvalidPayloadException;
@@ -25,24 +26,30 @@ import org.apache.camel.support.builder.Namespaces;
 import org.apache.http.HttpHeaders;
 import org.eclipse.jetty.io.EofException;
 import org.entur.protobuf.mapper.SiriMapper;
-import org.rutebanken.siri20.util.SiriJson;
+import org.entur.siri21.util.SiriJson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.GeneralMessage;
+import uk.org.siri.siri21.GeneralMessageDeliveryStructure;
+import uk.org.siri.siri21.Siri;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.MediaType;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.UnmarshalException;
+import javax.xml.stream.XMLStreamException;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.util.HashMap;
 import java.util.Map;
+
+import static no.rutebanken.anshar.routes.HttpParameter.SIRI_VERSION_HEADER_NAME;
 
 public class RestRouteBuilder extends RouteBuilder {
 
@@ -87,8 +94,8 @@ public class RestRouteBuilder extends RouteBuilder {
                 .apiProperty("cors", "true")
                 .enableCORS(true)
                 .corsAllowCredentials(true)
-                .corsHeaderProperty("Access-Control-Allow-Origin","*")
-                .corsHeaderProperty("Access-Control-Allow-Headers","Origin, Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, Authorization")
+                .corsHeaderProperty("Access-Control-Allow-Origin", "*")
+                .corsHeaderProperty("Access-Control-Allow-Headers", "Origin, Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, Authorization")
         ;
 
         onException(ConnectException.class)
@@ -613,17 +620,29 @@ public class RestRouteBuilder extends RouteBuilder {
         return values;
     }
 
-    protected void streamOutput(Exchange p, Siri response, HttpServletResponse out) throws IOException, JAXBException {
+    protected void streamOutput(Exchange p, Siri response, HttpServletResponse out) throws IOException, JAXBException, XMLStreamException {
+
+        boolean siri21Version = false;
+        uk.org.siri.siri20.Siri siri20Response = null;
+        if ("2.1".equals(p.getIn().getHeader(SIRI_VERSION_HEADER_NAME))) {
+            siri21Version = true;
+        } else {
+            siri20Response = downgradeSiriVersion(response);
+        }
 
         if (MediaType.APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE)) |
                 MediaType.APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
             p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
             out.setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
-            SiriJson.toJson(response, out.getOutputStream());
+            if (siri21Version) {
+                SiriJson.toJson(response, out.getOutputStream());
+            } else {
+                org.rutebanken.siri20.util.SiriJson.toJson(siri20Response, out.getOutputStream());
+            }
         } else if ("application/x-protobuf".equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE)) |
                 "application/x-protobuf".equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
             try {
-                final byte[] bytes = SiriMapper.mapToPbf(response).toByteArray();
+                final byte[] bytes = SiriMapper.mapToPbf(siri20Response).toByteArray();
                 p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, "application/x-protobuf");
                 out.setHeader(HttpHeaders.CONTENT_TYPE, "application/x-protobuf");
                 p.getMessage().setHeader(HttpHeaders.CONTENT_LENGTH, "" + bytes.length);
@@ -636,10 +655,104 @@ public class RestRouteBuilder extends RouteBuilder {
         } else {
             p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_XML);
             out.setHeader(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_XML);
-            CustomSiriXml.toXml(response, null, out.getOutputStream());
 
+            if (siri21Version) {
+                CustomSiriXml.toXml(response, null, out.getOutputStream());
+            } else {
+                CustomSiriXml.toXml(
+                        siri20Response,
+                        null,
+                        out.getOutputStream()
+                );
+            }
         }
         p.getMessage().setBody(out.getOutputStream());
+    }
+
+    public static uk.org.siri.siri20.Siri downgradeSiriVersion(Siri response) throws JAXBException, XMLStreamException {
+        uk.org.siri.siri20.Siri siri20Response;
+
+        Map<String, Content> savedContent = saveGMContent(response);
+        String siri2_0Xml = CustomSiriXml.toXml(response);
+        siri20Response = CustomSiriXml.parseSiri20Xml(siri2_0Xml);
+        restoreContent(siri20Response, savedContent);
+        siri20Response.setVersion("2.0");
+        ServiceDelivery serviceDelivery = siri20Response.getServiceDelivery();
+        if (serviceDelivery != null) {
+            if (!serviceDelivery.getEstimatedTimetableDeliveries().isEmpty()) {
+                for (EstimatedTimetableDeliveryStructure delivery : serviceDelivery.getEstimatedTimetableDeliveries()) {
+                    delivery.setVersion("2.0");
+                }
+            }
+            if (!serviceDelivery.getVehicleMonitoringDeliveries().isEmpty()) {
+                for (VehicleMonitoringDeliveryStructure delivery : serviceDelivery.getVehicleMonitoringDeliveries()) {
+                    delivery.setVersion("2.0");
+                }
+            }
+            if (!serviceDelivery.getSituationExchangeDeliveries().isEmpty()) {
+                for (SituationExchangeDeliveryStructure delivery : serviceDelivery.getSituationExchangeDeliveries()) {
+                    delivery.setVersion("2.0");
+                }
+            }
+
+            if (!serviceDelivery.getStopMonitoringDeliveries().isEmpty()) {
+                for (StopMonitoringDeliveryStructure stopMonitoringDelivery : serviceDelivery.getStopMonitoringDeliveries()) {
+                    stopMonitoringDelivery.setVersion("2.0");
+                }
+            }
+
+            if (!serviceDelivery.getGeneralMessageDeliveries().isEmpty()) {
+                for (uk.org.siri.siri20.GeneralMessageDeliveryStructure generalMessageDelivery : serviceDelivery.getGeneralMessageDeliveries()) {
+                    generalMessageDelivery.setVersion("2.0");
+                }
+            }
+
+            if (!serviceDelivery.getFacilityMonitoringDeliveries().isEmpty()) {
+                for (FacilityMonitoringDeliveryStructure facilityMonitoringDelivery : serviceDelivery.getFacilityMonitoringDeliveries()) {
+                    facilityMonitoringDelivery.setVersion("2.0");
+                }
+            }
+
+        }
+        return siri20Response;
+    }
+
+    private static void restoreContent(uk.org.siri.siri20.Siri siri20Response, Map<String, Content> savedContent) {
+        if (siri20Response.getServiceDelivery() == null || siri20Response.getServiceDelivery().getGeneralMessageDeliveries() == null || siri20Response.getServiceDelivery().getGeneralMessageDeliveries().isEmpty()) {
+            return;
+        }
+
+        for (uk.org.siri.siri20.GeneralMessageDeliveryStructure generalMessageDelivery : siri20Response.getServiceDelivery().getGeneralMessageDeliveries()) {
+            for (uk.org.siri.siri20.GeneralMessage generalMessage : generalMessageDelivery.getGeneralMessages()) {
+                String itemIdentifier = generalMessage.getItemIdentifier();
+                if (savedContent.containsKey(itemIdentifier)) {
+                    generalMessage.setContent(savedContent.get(itemIdentifier));
+                }
+            }
+        }
+    }
+
+    private static Map<String, Content> saveGMContent(Siri response) {
+        Map<String, Content> contentMap = new HashMap<>();
+
+        if (response.getServiceDelivery() == null || response.getServiceDelivery().getGeneralMessageDeliveries() == null || response.getServiceDelivery().getGeneralMessageDeliveries().isEmpty()) {
+            return contentMap;
+        }
+
+
+        for (GeneralMessageDeliveryStructure generalMessageDelivery : response.getServiceDelivery().getGeneralMessageDeliveries()) {
+            for (GeneralMessage generalMessage : generalMessageDelivery.getGeneralMessages()) {
+                if (generalMessage.getContent() == null || !(generalMessage.getContent() instanceof Content)) {
+                    continue;
+                }
+
+                contentMap.put(generalMessage.getItemIdentifier(), (Content) generalMessage.getContent());
+                generalMessage.setContent(null);
+            }
+
+        }
+
+        return contentMap;
     }
 
 }

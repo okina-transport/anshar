@@ -29,7 +29,7 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.RECORD
  * Verifies that forbidden fields do not exist
  */
 @SuppressWarnings("unchecked")
-@Validator(profileName = "norway", targetType = SiriDataType.ESTIMATED_TIMETABLE)
+@Validator(profileName = "france", targetType = SiriDataType.ESTIMATED_TIMETABLE)
 @Component
 public class RecordedCallInvalidFieldsValidator extends CustomValidator {
 
@@ -48,6 +48,6 @@ public class RecordedCallInvalidFieldsValidator extends CustomValidator {
 
     @Override
     public ValidationEvent isValid(Node node) {
-        return verifyNonExistingFields(node, FIELDNAME,"VisitNumber");
+        return verifyNonExistingFields(node, FIELDNAME, "VisitNumber");
     }
 }

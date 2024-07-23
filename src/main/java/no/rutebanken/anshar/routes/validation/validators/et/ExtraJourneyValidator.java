@@ -21,7 +21,7 @@ import no.rutebanken.anshar.routes.validation.validators.Validator;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Node;
-import uk.org.siri.siri20.VehicleModesEnumeration;
+import uk.org.siri.siri21.VehicleModesEnumeration;
 
 import javax.xml.bind.ValidationEvent;
 import java.util.List;
@@ -31,13 +31,12 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.ESTIMA
 
 /**
  * Verifies required values when ExtraJourney set to <code>true</code>
- *  - VehicleMode must be set to a valid value
- *  - RouteRef must be set, and build up correctly
- *  - GroupOfLinesRef must be set, and build up correctly
- *  - EstimatedVehicleJourneyCode must be set, and build up correctly
- *
+ * - VehicleMode must be set to a valid value
+ * - RouteRef must be set, and build up correctly
+ * - GroupOfLinesRef must be set, and build up correctly
+ * - EstimatedVehicleJourneyCode must be set, and build up correctly
  */
-@Validator(profileName = "norway", targetType = SiriDataType.ESTIMATED_TIMETABLE)
+@Validator(profileName = "france", targetType = SiriDataType.ESTIMATED_TIMETABLE)
 @Component
 public class ExtraJourneyValidator extends CustomValidator {
 
@@ -74,7 +73,7 @@ public class ExtraJourneyValidator extends CustomValidator {
         String isExtraJourney = getNodeValue(node);
 
         if (isExtraJourney == null) {
-            return  createEvent(node, VEHICLE_MODE_NODE_NAME, "not null when present", FIELDNAME, ValidationEvent.ERROR);
+            return createEvent(node, VEHICLE_MODE_NODE_NAME, "not null when present", FIELDNAME, ValidationEvent.ERROR);
         }
 
         if (Boolean.TRUE.equals(Boolean.valueOf(isExtraJourney))) {
@@ -85,34 +84,34 @@ public class ExtraJourneyValidator extends CustomValidator {
             // VehicleMode - required
             final String vehicleMode = getSiblingNodeValue(node, VEHICLE_MODE_NODE_NAME);
             if (vehicleMode == null) {
-                return  createEvent(node, VEHICLE_MODE_NODE_NAME, expectedValuesMessageText, vehicleMode, ValidationEvent.ERROR);
+                return createEvent(node, VEHICLE_MODE_NODE_NAME, expectedValuesMessageText, vehicleMode, ValidationEvent.ERROR);
             } else if (!validVehicleModes.contains(vehicleMode)) {
-                return  createEvent(node, VEHICLE_MODE_NODE_NAME, validVehicleModes, vehicleMode, ValidationEvent.ERROR);
+                return createEvent(node, VEHICLE_MODE_NODE_NAME, validVehicleModes, vehicleMode, ValidationEvent.ERROR);
             }
 
 
             // RouteRef - required
             final String routeRef = getSiblingNodeValue(node, ROUTE_REF_NODE_NAME);
             if (routeRef == null) {
-                return  createEvent(node, ROUTE_REF_NODE_NAME, expectedValuesMessageText, routeRef, ValidationEvent.ERROR);
+                return createEvent(node, ROUTE_REF_NODE_NAME, expectedValuesMessageText, routeRef, ValidationEvent.ERROR);
             } else if (!routeRef.contains(":Route:")) {
-                return  createEvent(node, ROUTE_REF_NODE_NAME, "valid RouteRef - CODESPACE:Route:ID", routeRef, ValidationEvent.ERROR);
+                return createEvent(node, ROUTE_REF_NODE_NAME, "valid RouteRef - CODESPACE:Route:ID", routeRef, ValidationEvent.ERROR);
             }
 
             // GroupOfLinesRef - required
             final String groupOfLines = getSiblingNodeValue(node, GROUP_OF_LINES_REF_NODE_NAME);
             if (groupOfLines == null) {
-                return  createEvent(node, GROUP_OF_LINES_REF_NODE_NAME, expectedValuesMessageText, groupOfLines, ValidationEvent.ERROR);
+                return createEvent(node, GROUP_OF_LINES_REF_NODE_NAME, expectedValuesMessageText, groupOfLines, ValidationEvent.ERROR);
             } else if (!groupOfLines.contains(":Network:")) {
-                return  createEvent(node, GROUP_OF_LINES_REF_NODE_NAME, "valid GroupOfLinesRef - CODESPACE:Network:ID", groupOfLines, ValidationEvent.ERROR);
+                return createEvent(node, GROUP_OF_LINES_REF_NODE_NAME, "valid GroupOfLinesRef - CODESPACE:Network:ID", groupOfLines, ValidationEvent.ERROR);
             }
 
             // EstimatedVehicleJourneyCode - required
             final String estimatedVehicleJourneyCode = getSiblingNodeValue(node, ESTIMATED_VEHICLE_JOURNEY_CODE_NODE_NAME);
             if (estimatedVehicleJourneyCode == null) {
-                return  createEvent(node, ESTIMATED_VEHICLE_JOURNEY_CODE_NODE_NAME, expectedValuesMessageText, groupOfLines, ValidationEvent.ERROR);
+                return createEvent(node, ESTIMATED_VEHICLE_JOURNEY_CODE_NODE_NAME, expectedValuesMessageText, groupOfLines, ValidationEvent.ERROR);
             } else if (!estimatedVehicleJourneyCode.contains(":ServiceJourney:")) {
-                return  createEvent(node, estimatedVehicleJourneyCode, "valid EstimatedVehicleJourneyCode - CODESPACE:ServiceJourney:ID", estimatedVehicleJourneyCode, ValidationEvent.ERROR);
+                return createEvent(node, estimatedVehicleJourneyCode, "valid EstimatedVehicleJourneyCode - CODESPACE:ServiceJourney:ID", estimatedVehicleJourneyCode, ValidationEvent.ERROR);
             }
 
             // EstimatedCall - DestinationDisplay
@@ -122,15 +121,15 @@ public class ExtraJourneyValidator extends CustomValidator {
             if (estimatedCallsNodes != null) {
                 for (Node estimatedCallsNode : estimatedCallsNodes) {
                     final List<Node> estimatedCall = getChildNodesByName(
-                        estimatedCallsNode,
-                        ESTIMATED_CALL_NODE_NAME
+                            estimatedCallsNode,
+                            ESTIMATED_CALL_NODE_NAME
                     );
                     for (Node call : estimatedCall) {
                         final String destinationDisplay = getChildNodeValue(call,
-                            DESTINATION_DISPLAY_NODE_NAME
+                                DESTINATION_DISPLAY_NODE_NAME
                         );
                         if (destinationDisplay == null) {
-                            return  createEvent(node, ESTIMATED_CALL_NODE_NAME + "." + DESTINATION_DISPLAY_NODE_NAME, expectedValuesMessageText, null, ValidationEvent.ERROR);
+                            return createEvent(node, ESTIMATED_CALL_NODE_NAME + "." + DESTINATION_DISPLAY_NODE_NAME, expectedValuesMessageText, null, ValidationEvent.ERROR);
                         }
                     }
                 }

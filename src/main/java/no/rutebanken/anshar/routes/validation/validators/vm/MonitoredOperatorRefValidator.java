@@ -27,9 +27,8 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.MONITO
 
 /**
  * Verifies that the value for field OperatorRef is present and has expected pattern - CODESPACE:Operator:ID
- *
  */
-@Validator(profileName = "norway", targetType = SiriDataType.VEHICLE_MONITORING)
+@Validator(profileName = "france", targetType = SiriDataType.VEHICLE_MONITORING)
 @Component
 public class MonitoredOperatorRefValidator extends NsrGenericIdValidator {
 

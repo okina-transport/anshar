@@ -6,8 +6,8 @@ import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.FramedVehicleJourneyRefStructure;
-import uk.org.siri.siri20.MonitoredStopVisit;
+import uk.org.siri.siri21.FramedVehicleJourneyRefStructure;
+import uk.org.siri.siri21.MonitoredStopVisit;
 
 import java.time.ZonedDateTime;
 import java.util.UUID;

@@ -20,7 +20,7 @@ import no.rutebanken.anshar.routes.validation.validators.Validator;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Node;
-import uk.org.siri.siri20.WorkflowStatusEnumeration;
+import uk.org.siri.siri21.WorkflowStatusEnumeration;
 
 import javax.xml.bind.ValidationEvent;
 
@@ -30,7 +30,7 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.PT_SIT
  * Verifies that required fields are present
  */
 @SuppressWarnings("unchecked")
-@Validator(profileName = "norway", targetType = SiriDataType.SITUATION_EXCHANGE)
+@Validator(profileName = "france", targetType = SiriDataType.SITUATION_EXCHANGE)
 @Component
 public class PtSituationElementValidator extends CustomValidator {
 

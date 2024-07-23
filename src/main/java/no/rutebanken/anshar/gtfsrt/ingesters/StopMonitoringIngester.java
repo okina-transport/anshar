@@ -11,9 +11,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.MonitoredStopVisit;
-import uk.org.siri.siri20.MonitoredStopVisitCancellation;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.MonitoredStopVisit;
+import uk.org.siri.siri21.MonitoredStopVisitCancellation;
+import uk.org.siri.siri21.Siri;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.stream.XMLStreamException;

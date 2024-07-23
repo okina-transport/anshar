@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import javax.annotation.PostConstruct;
 import java.time.Instant;

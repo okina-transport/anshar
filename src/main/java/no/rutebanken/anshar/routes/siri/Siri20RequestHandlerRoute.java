@@ -35,7 +35,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.Siri;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.MediaType;
@@ -367,17 +367,23 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
 
                         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
-                        CustomSiriXml.toXml(response, null, byteArrayOutputStream);
+                        if (!"2.1".equals(incomingSiriParameters.getVersion())){
+                            uk.org.siri.siri20.Siri siri20response = downgradeSiriVersion(response);
+                            CustomSiriXml.toXml(siri20response, null, byteArrayOutputStream);
+                        }else{
+                            CustomSiriXml.toXml(response, null, byteArrayOutputStream);
+                        }
                         p.getOut().setBody(byteArrayOutputStream.toString());
                     }
                 })
                 .choice()
                 .when(e -> TRANSFORM_SOAP.equals(e.getIn().getHeader(TRANSFORM_SOAP)))
-                .to("xslt-saxon:xsl/siri_raw_soap.xsl") // Convert SIRI raw request to SOAP version
-                .to("xslt-saxon:xsl/siri_14_20.xsl") // Convert SIRI raw request to SOAP version
-                .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
-                .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.TEXT_XML)) // Necessary when talking to Microsoft web services
-                .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
+                    .to("xslt-saxon:xsl/siri_raw_soap.xsl")
+                    // Convert SIRI raw request to SOAP version
+                   // .to("xslt-saxon:xsl/siri_14_20.xsl") // Convert SIRI raw request to SOAP version
+                    .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
+                    .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.TEXT_XML)) // Necessary when talking to Microsoft web services
+                    .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
                 .endChoice()
                 .to("log:serResponse:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true&level=DEBUG")
                 .otherwise()

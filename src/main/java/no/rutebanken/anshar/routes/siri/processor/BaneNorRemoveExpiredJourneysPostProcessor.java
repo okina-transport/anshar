@@ -19,10 +19,10 @@ import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.EstimatedVersionFrameStructure;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.EstimatedVersionFrameStructure;
+import uk.org.siri.siri21.Siri;
 
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
@@ -33,7 +33,6 @@ import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.REMOVE_E
 
 /**
  * Remove expired VehicleJourneys to avoid conflict in vehicleRef per date.
- *
  */
 public class BaneNorRemoveExpiredJourneysPostProcessor extends ValueAdapter implements PostProcessor {
     private static final Logger logger = LoggerFactory.getLogger(BaneNorRemoveExpiredJourneysPostProcessor.class);

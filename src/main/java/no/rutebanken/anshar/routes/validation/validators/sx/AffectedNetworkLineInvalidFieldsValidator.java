@@ -27,9 +27,8 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.AFFECT
 
 /**
  * Verifies that the value for field OperatorRef is present and specifies a Codespace ID
- *
  */
-@Validator(profileName = "norway", targetType = SiriDataType.SITUATION_EXCHANGE)
+@Validator(profileName = "france", targetType = SiriDataType.SITUATION_EXCHANGE)
 @Component
 public class AffectedNetworkLineInvalidFieldsValidator extends CustomValidator {
 
@@ -50,7 +49,7 @@ public class AffectedNetworkLineInvalidFieldsValidator extends CustomValidator {
 
     @Override
     public ValidationEvent isValid(Node node) {
-        return verifyNonExistingFields(node, FIELDNAME,"AffectedOperator");
+        return verifyNonExistingFields(node, FIELDNAME, "AffectedOperator");
     }
 }
 

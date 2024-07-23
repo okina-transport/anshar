@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
  * Verifies that forbidden fields do not exist
  */
 @SuppressWarnings("unchecked")
-@Validator(profileName = "norway", targetType = SiriDataType.VEHICLE_MONITORING)
+@Validator(profileName = "france", targetType = SiriDataType.VEHICLE_MONITORING)
 @Component
 public class VmServiceDeliveryInvalidFieldsValidator extends ServiceDeliveryInvalidFieldsValidator {
 

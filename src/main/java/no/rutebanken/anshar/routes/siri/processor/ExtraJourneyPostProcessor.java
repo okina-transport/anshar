@@ -24,22 +24,14 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri20.EstimatedCall;
-import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.EstimatedVersionFrameStructure;
-import uk.org.siri.siri20.RecordedCall;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.VehicleModesEnumeration;
+import uk.org.siri.siri21.*;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 import static no.rutebanken.anshar.routes.siri.processor.routedata.NetexUpdaterService.serviceJourneyIdExists;
-import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.EXTRA_JOURNEY_ID_EXISTS;
-import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.EXTRA_JOURNEY_INVALID_MODE;
-import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.EXTRA_JOURNEY_TOO_FAST;
+import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.*;
 import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getMappedId;
 import static no.rutebanken.anshar.routes.validation.validators.et.SaneSpeedValidator.SANE_SPEED_LIMIT;
 import static org.apache.commons.lang3.BooleanUtils.isTrue;
@@ -85,34 +77,33 @@ public class ExtraJourneyPostProcessor extends ValueAdapter implements PostProce
                                     }
 
 
-
                                     final List<VehicleModesEnumeration> vehicleModes = estimatedVehicleJourney
-                                        .getVehicleModes();
+                                            .getVehicleModes();
 
                                     final EstimatedVehicleJourney.RecordedCalls recordedCalls = estimatedVehicleJourney
-                                        .getRecordedCalls();
+                                            .getRecordedCalls();
                                     if (recordedCalls != null && recordedCalls.getRecordedCalls() != null) {
                                         final List<RecordedCall> calls = recordedCalls.getRecordedCalls();
                                         for (
-                                            int i = 0; i < calls.size() - 1; i++
+                                                int i = 0; i < calls.size() - 1; i++
                                         ) {
                                             final RecordedCall thisCall = calls.get(i);
                                             final RecordedCall nextCall = calls.get(i + 1);
 
                                             if (thisCall.getStopPointRef() != null &&
-                                                nextCall.getStopPointRef() != null) {
+                                                    nextCall.getStopPointRef() != null) {
 
                                                 final String fromStop = getMappedId(thisCall
-                                                    .getStopPointRef()
-                                                    .getValue());
+                                                        .getStopPointRef()
+                                                        .getValue());
                                                 final String toStop = getMappedId(nextCall
-                                                    .getStopPointRef()
-                                                    .getValue());
+                                                        .getStopPointRef()
+                                                        .getValue());
 
                                                 Pair<ZonedDateTime, ZonedDateTime> times = getTimes(thisCall,
-                                                    nextCall
+                                                        nextCall
                                                 );
-                                                validateContents( estimatedVehicleJourney,
+                                                validateContents(estimatedVehicleJourney,
                                                         vehicleModes,
                                                         fromStop,
                                                         toStop,
@@ -122,33 +113,33 @@ public class ExtraJourneyPostProcessor extends ValueAdapter implements PostProce
                                         }
                                     }
                                     final EstimatedVehicleJourney.EstimatedCalls estimatedCalls = estimatedVehicleJourney
-                                        .getEstimatedCalls();
+                                            .getEstimatedCalls();
                                     if (estimatedCalls != null && estimatedCalls.getEstimatedCalls() != null) {
                                         final List<EstimatedCall> calls = estimatedCalls.getEstimatedCalls();
                                         for (
-                                            int i = 0; i < calls.size() - 1; i++
+                                                int i = 0; i < calls.size() - 1; i++
                                         ) {
                                             final EstimatedCall thisCall = calls.get(i);
                                             final EstimatedCall nextCall = calls.get(i + 1);
 
                                             if (thisCall.getStopPointRef() != null &&
-                                                nextCall.getStopPointRef() != null) {
+                                                    nextCall.getStopPointRef() != null) {
 
                                                 final String fromStop = getMappedId(thisCall
-                                                    .getStopPointRef()
-                                                    .getValue());
+                                                        .getStopPointRef()
+                                                        .getValue());
                                                 final String toStop = getMappedId(nextCall
-                                                    .getStopPointRef()
-                                                    .getValue());
+                                                        .getStopPointRef()
+                                                        .getValue());
 
                                                 Pair<ZonedDateTime, ZonedDateTime> times = getTimes(thisCall,
-                                                    nextCall
+                                                        nextCall
                                                 );
 
                                                 validateContents(estimatedVehicleJourney, vehicleModes,
-                                                    fromStop,
-                                                    toStop,
-                                                    times
+                                                        fromStop,
+                                                        toStop,
+                                                        times
                                                 );
                                             }
                                         }
@@ -184,16 +175,16 @@ public class ExtraJourneyPostProcessor extends ValueAdapter implements PostProce
             Pair<ZonedDateTime, ZonedDateTime> times
     ) throws TooFastException, InvalidVehicleModeForStopException {
         if (!StopsUtil.doesVehicleModeMatchStopMode(vehicleModes, fromStop)) {
-            logger.warn( "Vehicle mode {} does not match Stop-mode for stop {}",
-                vehicleModes,
-                fromStop
+            logger.warn("Vehicle mode {} does not match Stop-mode for stop {}",
+                    vehicleModes,
+                    fromStop
             );
             throw new InvalidVehicleModeForStopException(estimatedVehicleJourney, vehicleModes, fromStop);
         }
         if (!StopsUtil.doesVehicleModeMatchStopMode(vehicleModes, toStop)) {
             logger.warn("Vehicle mode {} does not match Stop-mode for stop {}",
-                vehicleModes,
-                toStop
+                    vehicleModes,
+                    toStop
             );
             throw new InvalidVehicleModeForStopException(estimatedVehicleJourney, vehicleModes, toStop);
         }
@@ -202,30 +193,29 @@ public class ExtraJourneyPostProcessor extends ValueAdapter implements PostProce
         final ZonedDateTime toTime = times.getRight();
 
         if (fromTime != null && toTime != null &&
-            toTime.isAfter(fromTime)) {
+                toTime.isAfter(fromTime)) {
             final int kph = StopsUtil.calculateSpeedKph(fromStop, toStop,
-                fromTime,
-                toTime
+                    fromTime,
+                    toTime
             );
 
             if (kph > SANE_SPEED_LIMIT) {
                 logger.warn(
-                    "Calculated speed between {} and {}: {} kph", fromStop, toStop,
-                    kph
+                        "Calculated speed between {} and {}: {} kph", fromStop, toStop,
+                        kph
                 );
                 throw new TooFastException(estimatedVehicleJourney, fromStop, toStop, fromTime, toTime);
-            }
-            else {
+            } else {
                 logger.debug(
-                    "Calculated speed between {} and {}: {} kph", fromStop, toStop,
-                    kph
+                        "Calculated speed between {} and {}: {} kph", fromStop, toStop,
+                        kph
                 );
             }
         }
     }
 
     private Pair<ZonedDateTime, ZonedDateTime> getTimes(
-        RecordedCall thisCall, RecordedCall nextCall
+            RecordedCall thisCall, RecordedCall nextCall
     ) {
         ZonedDateTime fromTime;
         ZonedDateTime toTime;
@@ -246,7 +236,7 @@ public class ExtraJourneyPostProcessor extends ValueAdapter implements PostProce
     }
 
     private Pair<ZonedDateTime, ZonedDateTime> getTimes(
-        EstimatedCall thisCall, EstimatedCall nextCall
+            EstimatedCall thisCall, EstimatedCall nextCall
     ) {
         ZonedDateTime fromTime;
         ZonedDateTime toTime;

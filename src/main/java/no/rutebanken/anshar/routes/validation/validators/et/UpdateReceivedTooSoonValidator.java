@@ -31,16 +31,15 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.ESTIMA
 
 /**
  * Verifies that the value for field AimedArrivalTime is a valid timestamp, and that it is before or equal to AimedDepartureTime
- *
  */
-@Validator(profileName = "norway", targetType = SiriDataType.ESTIMATED_TIMETABLE)
+@Validator(profileName = "france", targetType = SiriDataType.ESTIMATED_TIMETABLE)
 @Component
 public class UpdateReceivedTooSoonValidator extends TimeValidator {
 
 
     private static final String FIELDNAME = "EstimatedCall";
     private static final int DAYS = 7;
-    private static final long MAX_TIME_UNTIL_FIRST_DEPARTURE = 24*3600*DAYS;
+    private static final long MAX_TIME_UNTIL_FIRST_DEPARTURE = 24 * 3600 * DAYS;
     private String path = ESTIMATED_CALLS;
     private String arrivalFieldName = "AimedArrivalTime";
     private String departureFieldName = "AimedDepartureTime";
@@ -70,7 +69,7 @@ public class UpdateReceivedTooSoonValidator extends TimeValidator {
             final long timeUntilDeparture = departureTime - now;
 
             if (timeUntilDeparture > MAX_TIME_UNTIL_FIRST_DEPARTURE) {
-                return createCustomFieldEvent(node, "Realtime data received more than " + DAYS + " days ahead - aimed start [" + aimed + "]" , ValidationEvent.WARNING);
+                return createCustomFieldEvent(node, "Realtime data received more than " + DAYS + " days ahead - aimed start [" + aimed + "]", ValidationEvent.WARNING);
             }
         }
         return null;

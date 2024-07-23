@@ -26,11 +26,12 @@ import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.util.IDUtils;
+import org.entur.siri.validator.SiriValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -38,7 +39,7 @@ import java.util.stream.Collectors;
 @SuppressWarnings("unchecked")
 @Component
 public class SiriHelper {
-
+    public static final String FALLBACK_SIRI_VERSION = "2.1";
     private static final Logger logger = LoggerFactory.getLogger(SiriHelper.class);
 
 
@@ -745,6 +746,24 @@ public class SiriHelper {
             return linerefValues.contains(mappedId) || linerefValues.contains(originalId);
         } else return linerefValues.contains(completeValue);
     }
+
+    public static String resolveSiriVersionStr(SiriValidator.Version version) {
+        switch (version) {
+            case VERSION_1_0:
+                return "1.0";
+            case VERSION_1_3:
+                return "1.3";
+            case VERSION_1_4:
+                return "1.4";
+            case VERSION_2_0:
+                return "2.0";
+            case VERSION_2_1:
+                return "2.1";
+            default:
+                return FALLBACK_SIRI_VERSION;
+        }
+    }
+
 
     public Siri getAllVM() {
         return siriObjectFactory.createVMServiceDelivery(vehicleActivities.getAll());

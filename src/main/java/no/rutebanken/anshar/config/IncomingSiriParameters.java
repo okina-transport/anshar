@@ -25,6 +25,7 @@ public class IncomingSiriParameters {
     private String clientTrackingName;
     private boolean soapTransformation;
     private boolean useOriginalId;
+    private String version;
 
 
     public static IncomingSiriParameters buildFromSubscription(String subscriptionId, InputStream incomingSiriStream) {
@@ -106,5 +107,11 @@ public class IncomingSiriParameters {
         this.useOriginalId = useOriginalId;
     }
 
+    public String getVersion() {
+        return version;
+    }
 
+    public void setVersion(String version) {
+        this.version = version;
+    }
 }

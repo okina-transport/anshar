@@ -9,10 +9,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.LineRef;
-import uk.org.siri.siri20.ServiceRequest;
-import uk.org.siri.siri20.VehicleMonitoringRequestStructure;
-import uk.org.siri.siri20.VehicleRef;
+import uk.org.siri.siri21.LineRef;
+import uk.org.siri.siri21.ServiceRequest;
+import uk.org.siri.siri21.VehicleMonitoringRequestStructure;
+import uk.org.siri.siri21.VehicleRef;
 
 import java.util.HashMap;
 import java.util.HashSet;

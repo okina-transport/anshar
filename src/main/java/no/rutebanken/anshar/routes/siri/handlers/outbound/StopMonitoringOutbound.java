@@ -18,19 +18,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.MonitoredStopVisit;
-import uk.org.siri.siri20.MonitoringRefStructure;
-import uk.org.siri.siri20.ServiceRequest;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.StopMonitoringRequestStructure;
+import uk.org.siri.siri21.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
+
 @Service
 public class StopMonitoringOutbound {
 
@@ -59,14 +50,12 @@ public class StopMonitoringOutbound {
      */
     public Set<String> convertToImportedIds(Set<String> originalMonitoringRefs, String datasetId) {
         Set<String> importedIds = new HashSet<>();
-        for(String originalMonitoringRef : originalMonitoringRefs){
-            if(StringUtils.isNotEmpty(datasetId) && StringUtils.isNotEmpty(originalMonitoringRef) && stopPlaceUpdaterService.canBeReverted(originalMonitoringRef, datasetId)){
+        for (String originalMonitoringRef : originalMonitoringRefs) {
+            if (StringUtils.isNotEmpty(datasetId) && StringUtils.isNotEmpty(originalMonitoringRef) && stopPlaceUpdaterService.canBeReverted(originalMonitoringRef, datasetId)) {
                 importedIds.addAll(stopPlaceUpdaterService.getReverse(originalMonitoringRef, datasetId));
-            }
-            else if (StringUtils.isEmpty(datasetId) && stopPlaceUpdaterService.canBeRevertedWithoutDatasetId(originalMonitoringRef)){
+            } else if (StringUtils.isEmpty(datasetId) && stopPlaceUpdaterService.canBeRevertedWithoutDatasetId(originalMonitoringRef)) {
                 importedIds.addAll(stopPlaceUpdaterService.getReverseWithoutDatasetId(originalMonitoringRef));
-            }
-            else {
+            } else {
                 return new HashSet<>();
             }
         }
@@ -76,7 +65,7 @@ public class StopMonitoringOutbound {
 
     public Set<String> convertFromAltIdsToImportedIdsStop(Set<String> originalMonitoringRefs, String datasetId) {
         Set<String> importedIds = new HashSet<>();
-        for(String originalMonitoringRef : originalMonitoringRefs) {
+        for (String originalMonitoringRef : originalMonitoringRefs) {
             if (StringUtils.isNotEmpty(datasetId) && StringUtils.isNotEmpty(originalMonitoringRef) && !externalIdsService.getReverseAltIdStop(datasetId, originalMonitoringRef).isEmpty()) {
                 importedIds.addAll(externalIdsService.getReverseAltIdStop(datasetId, originalMonitoringRef));
             }
@@ -103,46 +92,42 @@ public class StopMonitoringOutbound {
             importedIds = convertToImportedIds(originalMonitoringRefs, datasetId);
         } else if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy)) {
             importedIds = convertFromAltIdsToImportedIdsStop(originalMonitoringRefs, datasetId);
-        } else if (OutboundIdMappingPolicy.ORIGINAL_ID.equals(outboundIdMappingPolicy) && StringUtils.isEmpty(datasetId)){
+        } else if (OutboundIdMappingPolicy.ORIGINAL_ID.equals(outboundIdMappingPolicy) && StringUtils.isEmpty(datasetId)) {
             importedIds = new HashSet<>();
-        }
-        else{
+        } else {
             importedIds = originalMonitoringRefs;
         }
 
         return importedIds;
     }
 
-    public Siri getStopMonitoringServiceDelivery(ServiceRequest serviceRequest, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId, String requestorRef, String clientTrackingName, int maxSize){
+    public Siri getStopMonitoringServiceDelivery(ServiceRequest serviceRequest, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId, String requestorRef, String clientTrackingName, int maxSize) {
         Set<String> originalMonitoringRefs = getMonitoringRefs(serviceRequest);
         Set<String> importedIds = getImportedIds(outboundIdMappingPolicy, originalMonitoringRefs, datasetId);
 
         List<Siri> siriList = new ArrayList<>();
         Siri serviceResponse;
-        if(StringUtils.isEmpty(datasetId) && outboundIdMappingPolicy.equals(OutboundIdMappingPolicy.DEFAULT) && !importedIds.isEmpty()){
+        if (StringUtils.isEmpty(datasetId) && outboundIdMappingPolicy.equals(OutboundIdMappingPolicy.DEFAULT) && !importedIds.isEmpty()) {
             Set<String> datasetIds = monitoredStopVisits.getAllDatasetIds();
-            for(String datasetIdFromList : datasetIds){
+            for (String datasetIdFromList : datasetIds) {
                 serviceResponse = getServiceResponseStopVisits(outboundIdMappingPolicy, requestorRef, clientTrackingName, maxSize, datasetIdFromList, importedIds);
-                if(!serviceResponse.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty()){
+                if (!serviceResponse.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty()) {
                     siriList.add(serviceResponse);
                 }
             }
-            if(!siriList.isEmpty()){
+            if (!siriList.isEmpty()) {
                 List<MonitoredStopVisit> stopVisits = new ArrayList<>();
-                for(Siri siri : siriList){
+                for (Siri siri : siriList) {
                     stopVisits.addAll(siri.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits());
                 }
                 serviceResponse = siriObjectFactory.createSMServiceDelivery(stopVisits);
-            }
-            else {
+            } else {
                 serviceResponse = siriObjectFactory.createSMServiceDelivery(new ArrayList<>());
             }
 
-        }
-        else if(StringUtils.isNotEmpty(datasetId) && outboundIdMappingPolicy.equals(OutboundIdMappingPolicy.DEFAULT) && importedIds.isEmpty() && !originalMonitoringRefs.isEmpty()){
+        } else if (StringUtils.isNotEmpty(datasetId) && outboundIdMappingPolicy.equals(OutboundIdMappingPolicy.DEFAULT) && importedIds.isEmpty() && !originalMonitoringRefs.isEmpty()) {
             serviceResponse = siriObjectFactory.createSMServiceDelivery(new ArrayList<>());
-        }
-        else {
+        } else {
             serviceResponse = getServiceResponseStopVisits(outboundIdMappingPolicy, requestorRef, clientTrackingName, maxSize, datasetId, importedIds);
         }
 

@@ -11,15 +11,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.GeneralMessage;
-import uk.org.siri.siri20.GeneralMessageCancellation;
-import uk.org.siri.siri20.GeneralMessageDeliveryStructure;
-import uk.org.siri.siri20.PtSituationElement;
-import uk.org.siri.siri20.Siri;
-import uk.org.siri.siri20.SituationExchangeDeliveryStructure;
+import uk.org.siri.siri21.GeneralMessage;
+import uk.org.siri.siri21.GeneralMessageCancellation;
+import uk.org.siri.siri21.GeneralMessageDeliveryStructure;
+import uk.org.siri.siri21.Siri;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 @Service
@@ -53,7 +50,6 @@ public class GeneralMessageInbound {
             addedOrUpdated.addAll(generalMessages.addAll(subscriptionSetup.getDatasetId(), generalDelivery.getGeneralMessages()));
             cancellationsAddedOrUpdated.addAll(generalMessageCancellations.addAll(subscriptionSetup.getDatasetId(), generalDelivery.getGeneralMessageCancellations()));
         }
-
 
 
         serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());

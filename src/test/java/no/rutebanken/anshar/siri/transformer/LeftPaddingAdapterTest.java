@@ -18,7 +18,7 @@ package no.rutebanken.anshar.siri.transformer;
 import no.rutebanken.anshar.routes.siri.transformer.impl.LeftPaddingAdapter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import uk.org.siri.siri20.LineRef;
+import uk.org.siri.siri21.LineRef;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -36,20 +36,24 @@ public class LeftPaddingAdapterTest {
     public void testLeftPadEmptyString() throws Exception {
         assertEquals("", adapter.apply(""));
     }
+
     @Test
     public void testLeftPadShortString() throws Exception {
         assertEquals("0012", adapter.apply("12"));
     }
+
     @Test
     public void testLeftPadFullLengthString() throws Exception {
         assertEquals("1234", adapter.apply("1234"));
 
     }
+
     @Test
     public void testLeftPadLongString() throws Exception {
         assertEquals("1234567890", adapter.apply("1234567890"));
 
     }
+
     @Test
     public void testLeftPadNullString() throws Exception {
         assertNull(adapter.apply(null));

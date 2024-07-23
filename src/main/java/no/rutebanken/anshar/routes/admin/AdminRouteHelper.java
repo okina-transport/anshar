@@ -32,9 +32,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri20.DefaultedTextStructure;
-import uk.org.siri.siri20.HalfOpenTimestampOutputRangeStructure;
-import uk.org.siri.siri20.PtSituationElement;
+import uk.org.siri.siri21.DefaultedTextStructure;
+import uk.org.siri.siri21.HalfOpenTimestampOutputRangeStructure;
+import uk.org.siri.siri21.PtSituationElement;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;

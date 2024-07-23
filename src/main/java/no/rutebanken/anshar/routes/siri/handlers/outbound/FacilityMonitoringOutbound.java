@@ -4,7 +4,7 @@ import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.handlers.Utils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -29,6 +29,7 @@ public class FacilityMonitoringOutbound {
 
         return filterMap.get(FacilityRef.class) != null ? filterMap.get(FacilityRef.class) : new HashSet<>();
     }
+
     public Set<String> getLineRefOriginalList(ServiceRequest serviceRequest, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
         Map<Class, Set<String>> filterMap = new HashMap<>();
         for (FacilityMonitoringRequestStructure req : serviceRequest.getFacilityMonitoringRequests()) {
@@ -54,15 +55,15 @@ public class FacilityMonitoringOutbound {
     public Set<String> getStopPointRefList(ServiceRequest serviceRequest) {
         Map<Class, Set<String>> filterMap = new HashMap<>();
         for (FacilityMonitoringRequestStructure req : serviceRequest.getFacilityMonitoringRequests()) {
-            StopPointRef stopPointRef = req.getStopPointRef();
+            StopPointRefStructure stopPointRef = req.getStopPointRef();
             if (stopPointRef != null) {
-                Set<String> stopPointRefList = filterMap.get(StopPointRef.class) != null ? filterMap.get(StopPointRef.class) : new HashSet<>();
+                Set<String> stopPointRefList = filterMap.get(StopPointRefStructure.class) != null ? filterMap.get(StopPointRefStructure.class) : new HashSet<>();
                 stopPointRefList.add(stopPointRef.getValue());
-                filterMap.put(StopPointRef.class, stopPointRefList);
+                filterMap.put(StopPointRefStructure.class, stopPointRefList);
             }
         }
 
-        return filterMap.get(StopPointRef.class) != null ? filterMap.get(StopPointRef.class) : new HashSet<>();
+        return filterMap.get(StopPointRefStructure.class) != null ? filterMap.get(StopPointRefStructure.class) : new HashSet<>();
 
     }
 
@@ -78,6 +79,6 @@ public class FacilityMonitoringOutbound {
 
         }
 
-        return  filterMap.get(VehicleRef.class) != null ? filterMap.get(VehicleRef.class) : new HashSet<>();
+        return filterMap.get(VehicleRef.class) != null ? filterMap.get(VehicleRef.class) : new HashSet<>();
     }
 }

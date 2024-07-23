@@ -34,7 +34,7 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.ESTIMA
  * Verifies that updated times are increasing
  */
 @SuppressWarnings("unchecked")
-@Validator(profileName = "norway", targetType = SiriDataType.ESTIMATED_TIMETABLE)
+@Validator(profileName = "france", targetType = SiriDataType.ESTIMATED_TIMETABLE)
 @Component
 public class SaneDelayValidator extends CustomValidator {
 
@@ -53,7 +53,7 @@ public class SaneDelayValidator extends CustomValidator {
     private String actualDepartureNodeName = "ActualDepartureTime";
     private String stopPointRefNodeName = "StopPointRef";
 
-    private static final int SANE_DELAY_LIMIT_SECONDS = 24*60*60;
+    private static final int SANE_DELAY_LIMIT_SECONDS = 24 * 60 * 60;
 
     @Override
     public String getCategoryName() {
@@ -129,7 +129,7 @@ public class SaneDelayValidator extends CustomValidator {
         long updatedArrival = -1;
 
         if ((expectedArrivalTime == 0 && actualArrivalTime == 0) ||
-                (expectedDepartureTime == 0 && actualDepartureTime == 0)){
+                (expectedDepartureTime == 0 && actualDepartureTime == 0)) {
             return;
         }
 
@@ -169,7 +169,6 @@ public class SaneDelayValidator extends CustomValidator {
         }
 
 
-
         if (Math.abs(arrivalDelay) >= SANE_DELAY_LIMIT_SECONDS) {
             throw new TooLongDelayException(arrivalDelay);
         }
@@ -192,14 +191,14 @@ public class SaneDelayValidator extends CustomValidator {
             return "Delay of " + formatSeconds(delay) + " is too long";
         }
 
-        private String formatSeconds(long timeInSeconds){
+        private String formatSeconds(long timeInSeconds) {
 
             int secondsLeft = Math.abs((int) timeInSeconds % 3600 % 60);
             int minutes = Math.abs((int) (timeInSeconds % 3600 / 60));
             int hours = Math.abs((int) (timeInSeconds / 3600));
 
-            String hoursString = ((hours       < 10) ? "0" : "") + hours;
-            String minString = ((minutes     < 10) ? "0" : "") + minutes;
+            String hoursString = ((hours < 10) ? "0" : "") + hours;
+            String minString = ((minutes < 10) ? "0" : "") + minutes;
             String secString = ((secondsLeft < 10) ? "0" : "") + secondsLeft;
 
             return hoursString + " h, " + minString + " min, " + secString + ", sec";

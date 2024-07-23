@@ -29,7 +29,7 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.ESTIMA
  * Verifies that forbidden fields do not exist
  */
 @SuppressWarnings("unchecked")
-@Validator(profileName = "norway", targetType = SiriDataType.ESTIMATED_TIMETABLE)
+@Validator(profileName = "france", targetType = SiriDataType.ESTIMATED_TIMETABLE)
 @Component
 public class EstimatedCallInvalidFieldsValidator extends CustomValidator {
 
@@ -48,6 +48,6 @@ public class EstimatedCallInvalidFieldsValidator extends CustomValidator {
 
     @Override
     public ValidationEvent isValid(Node node) {
-        return verifyNonExistingFields(node, FIELDNAME,"EarliestExpectedDepartureTime", "VisitNumber");
+        return verifyNonExistingFields(node, FIELDNAME, "EarliestExpectedDepartureTime", "VisitNumber");
     }
 }
