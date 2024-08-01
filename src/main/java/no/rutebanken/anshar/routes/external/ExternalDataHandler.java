@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.routes.external;
 
+import no.rutebanken.anshar.data.DiscoveryCache;
 import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.EstimatedTimetableInbound;
@@ -54,6 +55,10 @@ public class ExternalDataHandler {
 
     @Autowired
     private PrometheusMetricsService metrics;
+
+    @Autowired
+    private DiscoveryCache discoveryCache;
+
 
     public void processIncomingSiriSM(Exchange e) {
         InputStream xml = e.getIn().getBody(InputStream.class);
@@ -279,6 +284,7 @@ public class ExternalDataHandler {
             setup.setUrlMap(urlMap);
 
             subscriptionManager.addSubscription(subscriptionId, setup);
+            discoveryCache.addLine(datasetId, subscriptionId);
 
         }
     }
@@ -357,8 +363,9 @@ public class ExternalDataHandler {
             Map<RequestType, String> urlMap = new HashMap<>();
             urlMap.put(RequestType.GET_STOP_MONITORING, url);
             setup.setUrlMap(urlMap);
-
+            discoveryCache.addStop(datasetId, subscriptionId);
             subscriptionManager.addSubscription(smSubscriptionId, setup);
+
 
         }
     }

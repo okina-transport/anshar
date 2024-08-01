@@ -17,6 +17,9 @@ public class DiscoveryCache {
 
     private static final Logger logger = LoggerFactory.getLogger(DiscoveryCache.class);
 
+    private static final String STOP_LOCK = "stopLock";
+    private static final String LINE_LOCK = "lineLock";
+
     @Autowired
     @Qualifier("getDiscoveryStops")
     private IMap<String, Set<String>> discoveryStops;
@@ -27,43 +30,59 @@ public class DiscoveryCache {
 
 
     public void addStop(String datasetId, String stop) {
-        Set<String> stopsByDataset = discoveryStops.get(datasetId);
-        if (stopsByDataset == null) {
-            stopsByDataset = new HashSet<>();
+        synchronized (STOP_LOCK) {
+            Set<String> stopsByDataset = discoveryStops.get(datasetId);
+            if (stopsByDataset == null) {
+                stopsByDataset = new HashSet<>();
+            }
+            stopsByDataset.add(stop);
+            discoveryStops.set(datasetId, stopsByDataset);
         }
-        stopsByDataset.add(stop);
-        discoveryStops.set(datasetId, stopsByDataset);
     }
 
     public void addStops(String datasetId, List<String> stops) {
-        Set<String> stopsByDataset = discoveryStops.get(datasetId);
-        if (stopsByDataset == null) {
-            stopsByDataset = new HashSet<>();
+        synchronized (STOP_LOCK) {
+            Set<String> stopsByDataset = discoveryStops.get(datasetId);
+            if (stopsByDataset == null) {
+                stopsByDataset = new HashSet<>();
+            }
+            stopsByDataset.addAll(stops);
+            discoveryStops.set(datasetId, stopsByDataset);
         }
-        stopsByDataset.addAll(stops);
-        discoveryStops.set(datasetId, stopsByDataset);
     }
 
     public void addLine(String datasetId, String line) {
-        Set<String> linesByDataset = discoveryLines.get(datasetId);
-        if (linesByDataset == null) {
-            linesByDataset = new HashSet<>();
+        synchronized (LINE_LOCK) {
+            Set<String> linesByDataset = discoveryLines.get(datasetId);
+            if (linesByDataset == null) {
+                linesByDataset = new HashSet<>();
+            }
+            linesByDataset.add(line);
+            discoveryLines.set(datasetId, linesByDataset);
         }
-        linesByDataset.add(line);
-        discoveryLines.set(datasetId, linesByDataset);
     }
 
     public void addLines(String datasetId, List<String> lines) {
-        Set<String> linesByDataset = discoveryLines.get(datasetId);
-        if (linesByDataset == null) {
-            linesByDataset = new HashSet<>();
+        synchronized (LINE_LOCK) {
+            Set<String> linesByDataset = discoveryLines.get(datasetId);
+            if (linesByDataset == null) {
+                linesByDataset = new HashSet<>();
+            }
+            linesByDataset.addAll(lines);
+            discoveryLines.set(datasetId, linesByDataset);
         }
-        linesByDataset.addAll(lines);
-        discoveryLines.set(datasetId, linesByDataset);
     }
 
     public void clearDiscoveryStops() {
-        discoveryStops.clear();
+        synchronized (STOP_LOCK) {
+            discoveryStops.clear();
+        }
+    }
+
+    public void clearDiscoveryLines() {
+        synchronized (LINE_LOCK) {
+            discoveryLines.clear();
+        }
     }
 
     public Map<String, Set<String>> getDiscoveryStops() {
@@ -75,10 +94,14 @@ public class DiscoveryCache {
     }
 
     public Set<String> getDiscoveryStopsForDataset(String datasetId) {
-        return discoveryStops.get(datasetId);
+        synchronized (STOP_LOCK) {
+            return discoveryStops.get(datasetId);
+        }
     }
 
     public Set<String> getDiscoveryLinesForDataset(String datasetId) {
-        return discoveryLines.get(datasetId);
+        synchronized (STOP_LOCK) {
+            return discoveryLines.get(datasetId);
+        }
     }
 }
