@@ -2,6 +2,7 @@ package no.rutebanken.anshar.routes.siri;
 
 import no.rutebanken.anshar.api.SiriApi;
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.data.DiscoveryCache;
 import no.rutebanken.anshar.routes.BaseRouteBuilder;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -43,6 +44,9 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
 
     @Value("${cron.siri:0+0+0+1+1+?+2099}")
     private String cronSchedule;
+
+    @Autowired
+    private DiscoveryCache discoveryCache;
 
 
     @Autowired
@@ -169,6 +173,7 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
                     subId = subscriptionSetup.getSubscriptionId();
                 }
                 subscriptionManager.addSiriAPISubscription(provider + monitoringId, subId);
+                discoveryCache.addStop(provider, monitoringId);
 
 
             } else {
