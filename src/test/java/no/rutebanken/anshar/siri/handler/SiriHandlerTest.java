@@ -474,6 +474,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     @Test
     public void linesDiscoveryTest() throws JAXBException, IOException {
         estimatedTimetables.clearAll();
+        discoveryCache.clearDiscoveryLines();
 //        SubscriptionSetup vmSubscription1 = getVmSubscription("tst");
 //        vmSubscription1.getLineRefValues().add("line1");
 //        subscriptionManager.addSubscription(vmSubscription1.getSubscriptionId(), vmSubscription1);
@@ -531,6 +532,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     @Test
     public void linesDiscoveryTestWithDifferentDatasetId() throws JAXBException, IOException {
         estimatedTimetables.clearAll();
+        discoveryCache.clearDiscoveryLines();
         SubscriptionSetup vmSubscription1 = getVmSubscription("tst1");
         vmSubscription1.getLineRefValues().add("line1");
         subscriptionManager.addSubscription(vmSubscription1.getSubscriptionId(), vmSubscription1);
