@@ -81,7 +81,7 @@ public class OutboundSubscriptionTest extends SpringBootBaseTest {
                 "\t\t<SubscriptionContext>\n" +
                 "\t\t\t<HeartbeatInterval>PT60M</HeartbeatInterval>\n" +
                 "\t\t</SubscriptionContext>\n" +
-                "\t\t<EstimatedTimetableSubscriptionRequest>\n" +
+                "\t\t<EstimatedTimetableSubscriptionRequest version=\"2.0\">\n" +
                 "\t\t\t<SubscriptionIdentifier>" + subscriptionId + "</SubscriptionIdentifier>\n" +
                 "\t\t\t<InitialTerminationTime>2119-12-06T14:38:42.500977Z</InitialTerminationTime>\n" +
                 "\t\t\t<EstimatedTimetableRequest>\n" +

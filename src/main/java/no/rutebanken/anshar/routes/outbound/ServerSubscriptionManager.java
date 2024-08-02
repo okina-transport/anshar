@@ -409,6 +409,16 @@ public class ServerSubscriptionManager {
                 }
             }
 
+            if (subRequest.getEstimatedTimetableSubscriptionRequests() != null && subRequest.getEstimatedTimetableSubscriptionRequests().size() > 0) {
+                for (EstimatedTimetableSubscriptionStructure estimatedTimetableSubscriptionRequest : subRequest.getEstimatedTimetableSubscriptionRequests()) {
+                    if (estimatedTimetableSubscriptionRequest.getEstimatedTimetableRequest() != null && estimatedTimetableSubscriptionRequest.getEstimatedTimetableRequest().getVersion() != null) {
+                        version = estimatedTimetableSubscriptionRequest.getEstimatedTimetableRequest().getVersion();
+                    }
+                }
+
+
+            }
+
             if (subRequest.getVehicleMonitoringSubscriptionRequests() != null && subRequest.getVehicleMonitoringSubscriptionRequests().size() > 0) {
                 for (VehicleMonitoringSubscriptionStructure vehicleMonitoringSubscriptionRequest : subRequest.getVehicleMonitoringSubscriptionRequests()) {
                     if (vehicleMonitoringSubscriptionRequest.getVehicleMonitoringRequest() != null && vehicleMonitoringSubscriptionRequest.getVehicleMonitoringRequest().getVersion() != null) {

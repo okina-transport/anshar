@@ -473,7 +473,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
     @Test
     public void linesDiscoveryTest() throws JAXBException, IOException {
-//        estimatedTimetables.clearAll();
+        estimatedTimetables.clearAll();
 //        SubscriptionSetup vmSubscription1 = getVmSubscription("tst");
 //        vmSubscription1.getLineRefValues().add("line1");
 //        subscriptionManager.addSubscription(vmSubscription1.getSubscriptionId(), vmSubscription1);
