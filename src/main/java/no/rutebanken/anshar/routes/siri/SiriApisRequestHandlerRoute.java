@@ -30,6 +30,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
@@ -134,55 +135,28 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
 
 
     public void createSubscriptionsFromFile(String dataFormat, File file, String url, String provider) throws IOException, SAXException, ParserConfigurationException, XMLStreamException {
-        log.info("Subscriptions creating for provider : " + provider + " in data format : " + dataFormat);
+        log.info("Subscriptions creating for provider : {} in data format : {}", provider, dataFormat);
         List<String> monitoringIds = getMonitoringIds(dataFormat, file);
 
-        List<SubscriptionSetup> subscriptionSetupList = new ArrayList<>();
-        List<String> ids = new ArrayList<>();
         String globalSubscriptionId = "SIRI-API_" + dataFormat + "_" + provider;
+        SubscriptionSetup globalSub = subscriptionManager.getSubscriptionBySubscriptionId(globalSubscriptionId);
+
+        if (globalSub == null && !monitoringIds.isEmpty()) {
+            SubscriptionSetup subscriptionSetup = createSubscriptionSetup(dataFormat, monitoringIds, url, provider);
+            subscriptionSetup.setSubscriptionId(globalSubscriptionId);
+            subscriptionSetup.setVendor(globalSubscriptionId);
+            subscriptionSetup.setName(globalSubscriptionId);
+            subscriptionManager.addSubscription(globalSubscriptionId, subscriptionSetup);
+            globalSub = subscriptionManager.getSubscriptionBySubscriptionId(globalSubscriptionId);
+        }
 
         for (String monitoringId : monitoringIds) {
-
-            String subId = null;
-            if (!subscriptionManager.isSiriAPISubscriptionExisting(provider + monitoringId)) {
-
-                // 1 subscription by type (SM/ET/SX/VM) and by datasetId
-                SubscriptionSetup globalSub = subscriptionManager.getSubscriptionBySubscriptionId(globalSubscriptionId);
-
-
-                if (globalSub != null) {
-                    if (!globalSub.getStopMonitoringRefValues().contains(monitoringId)) {
-                        globalSub.getStopMonitoringRefValues().add(monitoringId);
-                    }
-                    subId = globalSub.getSubscriptionId();
-                } else {
-                    SubscriptionSetup subscriptionSetup = createSubscriptionSetup(dataFormat, monitoringId, url, provider);
-                    subscriptionSetup.setSubscriptionId(globalSubscriptionId);
-                    subscriptionSetup.setVendor(globalSubscriptionId);
-                    subscriptionSetup.setName(globalSubscriptionId);
-                    if ("siri-sm".equals(dataFormat) && !subscriptionSetup.getStopMonitoringRefValues().contains(monitoringId)) {
-                        subscriptionSetup.getStopMonitoringRefValues().add(monitoringId);
-                    }
-
-                    if ("siri-vm".equals(dataFormat) && !subscriptionSetup.getLineRefValues().contains(monitoringId)) {
-                        subscriptionSetup.getLineRefValues().add(monitoringId);
-                    }
-
-                    subscriptionManager.addSubscription(globalSubscriptionId, subscriptionSetup);
-                    subscriptionSetupList.add(subscriptionSetup);
-                    subId = subscriptionSetup.getSubscriptionId();
-                }
-                subscriptionManager.addSiriAPISubscription(provider + monitoringId, subId);
+            if (!globalSub.getStopMonitoringRefValues().contains(monitoringId)) {
+                globalSub.getStopMonitoringRefValues().add(monitoringId);
                 discoveryCache.addStop(provider, monitoringId);
-
-
-            } else {
-                subId = subscriptionManager.getSubscriptionForMonitoringRef(globalSubscriptionId);
             }
+            subscriptionManager.addSiriAPISubscription(provider + monitoringId, globalSubscriptionId);
 
-            if (subId != null && !ids.contains(subId)) {
-                ids.add(subId);
-            }
         }
 
         ByteArrayInputStream byteArrayInputStream = extractXMLFromZip(file);
@@ -210,8 +184,8 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
                 break;
         }
 
-        handler.processSiriClientRequestFromApis(ids, byteArrayInputStream, siriDataType, provider);
-        log.info("Subscriptions created for provider : " + provider + " in data format : " + dataFormat);
+        handler.processSiriClientRequestFromApis(Collections.singletonList(globalSubscriptionId), byteArrayInputStream, siriDataType, provider);
+        log.info("Subscriptions created for provider : {} in data format : {}", provider, dataFormat);
     }
 
     private ByteArrayInputStream extractXMLFromZip(File file) throws IOException {
@@ -225,7 +199,7 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
         return builder.parse(byteArrayInputStream);
     }
 
-    private SubscriptionSetup createSubscriptionSetup(String subscriptionType, String monitoringId, String url, String provider) {
+    private SubscriptionSetup createSubscriptionSetup(String subscriptionType, List<String> monitoringIds, String url, String provider) {
         SubscriptionSetup subscriptionSetup = new SubscriptionSetup();
         subscriptionSetup.setSubscriptionId(UUID.randomUUID().toString());
         subscriptionSetup.setDatasetId(provider);
@@ -233,19 +207,19 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
         switch (subscriptionType) {
             case "siri-sm":
                 subscriptionSetup.setSubscriptionType(SiriDataType.STOP_MONITORING);
-                subscriptionSetup.getStopMonitoringRefValues().add(monitoringId);
+                subscriptionSetup.getStopMonitoringRefValues().addAll(monitoringIds);
                 subscriptionSetup.getUrlMap().put(RequestType.GET_STOP_MONITORING, url);
                 subscriptionSetup.setRequestorRef("AURA_OKINA_SM");
-                subscriptionSetup.setVendor("AURA-MULTITUD-CITYWAY-SIRI-SM-" + monitoringId);
-                subscriptionSetup.setName("AURA-MULTITUD-CITYWAY-SIRI-SM-" + monitoringId);
+                subscriptionSetup.setVendor("AURA-MULTITUD-CITYWAY-SIRI-SM");
+                subscriptionSetup.setName("AURA-MULTITUD-CITYWAY-SIRI-SM");
                 break;
             case "siri-et":
                 subscriptionSetup.setSubscriptionType(SiriDataType.ESTIMATED_TIMETABLE);
-                subscriptionSetup.getStopMonitoringRefValues().add(monitoringId);
+                subscriptionSetup.getStopMonitoringRefValues().addAll(monitoringIds);
                 subscriptionSetup.getUrlMap().put(RequestType.GET_ESTIMATED_TIMETABLE, url);
                 subscriptionSetup.setRequestorRef("AURA_OKINA_ET");
-                subscriptionSetup.setVendor("AURA-MULTITUD-CITYWAY-SIRI-ET-" + monitoringId);
-                subscriptionSetup.setName("AURA-MULTITUD-CITYWAY-SIRI-ET-" + monitoringId);
+                subscriptionSetup.setVendor("AURA-MULTITUD-CITYWAY-SIRI-ET");
+                subscriptionSetup.setName("AURA-MULTITUD-CITYWAY-SIRI-ET");
                 break;
             case "siri-sx":
                 subscriptionSetup.setSubscriptionType(SiriDataType.SITUATION_EXCHANGE);
@@ -256,6 +230,7 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
                 break;
             case "siri-vm":
                 subscriptionSetup.setSubscriptionType(SiriDataType.VEHICLE_MONITORING);
+                subscriptionSetup.getLineRefValues().addAll(monitoringIds);
                 subscriptionSetup.getUrlMap().put(RequestType.GET_VEHICLE_MONITORING, url);
                 subscriptionSetup.setRequestorRef("AURA_OKINA_VM");
                 subscriptionSetup.setVendor("AURA-MULTITUD-CITYWAY-SIRI-VM");

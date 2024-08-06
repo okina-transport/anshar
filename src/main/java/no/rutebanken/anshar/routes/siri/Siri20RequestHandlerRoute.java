@@ -74,6 +74,22 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
 
         super.configure();
 
+        System.setProperty("org.apache.camel.xmlconverter.documentBuilderFactory.feature" + ":"
+                + "http://xml.org/sax/features/external-general-entities", "false");
+
+
+        System.setProperty("org.apache.camel.xmlconverter.documentBuilderFactory.feature" + ":"
+                + "http://apache.org/xml/features/nonvalidating/load-external-dtd", "false");
+
+        System.setProperty("org.apache.camel.xmlconverter.documentBuilderFactory.feature" + ":"
+                + "http://apache.org/xml/features/disallow-doctype-decl", "false");
+
+
+        System.setProperty("org.apache.camel.xmlconverter.documentBuilderFactory.feature" + ":"
+                + "http://xml.org/sax/features/external-parameter-entities", "false");
+
+
+
         rest("anshar").tag("siri")
                 .consumes(MediaType.TEXT_XML).produces(MediaType.TEXT_XML)
 
