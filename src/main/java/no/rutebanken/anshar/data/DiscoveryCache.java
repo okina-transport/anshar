@@ -94,10 +94,14 @@ public class DiscoveryCache {
     }
 
     public Set<String> getDiscoveryStopsForDataset(String datasetId) {
-        return discoveryStops.get(datasetId);
+        synchronized (STOP_LOCK) {
+            return discoveryStops.get(datasetId);
+        }
     }
 
     public Set<String> getDiscoveryLinesForDataset(String datasetId) {
-        return discoveryLines.get(datasetId);
+        synchronized (STOP_LOCK) {
+            return discoveryLines.get(datasetId);
+        }
     }
 }
