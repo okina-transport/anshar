@@ -495,7 +495,6 @@ public class AlertMapper {
             if (StringUtils.isEmpty(translationText))
                 continue;
 
-            translationText = translationText.replaceAll(" ", "\\s+");
 
             DefaultedTextStructure defaultedTextStructure = new DefaultedTextStructure();
             defaultedTextStructure.setValue(translationText);
