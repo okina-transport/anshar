@@ -3,7 +3,9 @@ package no.rutebanken.anshar.data;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import no.rutebanken.anshar.data.util.GeneralMessageMapper;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
+import org.apache.xerces.impl.xs.opti.ElementImpl;
 import org.junit.jupiter.api.Test;
+import org.w3c.dom.Element;
 import uk.org.siri.siri21.*;
 
 import java.time.ZonedDateTime;
@@ -35,6 +37,13 @@ public class GeneralMessageMapperTest {
         assertEquals("networkRef", content.getGroupOfLinesRefs().get(0));
         assertEquals("lineRef", content.getLineRefs().get(0));
         assertEquals("sp1", content.getStopPointRefs().get(0));
+        assertEquals("infotrafic à En raison de Incident voyageur, la ligne 3 est coupée entre les stations X et Y",
+                content.getMessage().getMsgText());
+        assertEquals("textOnly",
+                content.getMessage().getMsgType());
+
+        assertEquals(1, convertedMessage.getExtensions().getAnies().size());
+        assertEquals("okay", convertedMessage.getExtensions().getAnies().get(0).getTagName());
     }
 
 
@@ -84,6 +93,16 @@ public class GeneralMessageMapperTest {
         //ValidityPeriod has already expired
         period.setEndTime(endTime);
         element.getValidityPeriods().add(period);
+
+        var description = new DefaultedTextStructure();
+        description.setValue("<p><strong>infotrafic à&nbsp;</strong></p><p>&nbsp;</p><p>En raison de Incident voyageur, la ligne 3 est coupée entre les stations X et Y</p><p>&nbsp;</p><p>&nbsp;</p>");
+        element.getDescriptions().add(description);
+
+        Extensions extensions = new Extensions();
+        Element e = new ElementImpl("are", "you", "okay", "any", 0, 0, 0);
+        extensions.getAnies().add(e);
+        element.setExtensions(extensions);
+
         return element;
     }
 }

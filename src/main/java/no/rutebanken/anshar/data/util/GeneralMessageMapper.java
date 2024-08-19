@@ -3,11 +3,14 @@ package no.rutebanken.anshar.data.util;
 
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Message;
+import org.jsoup.Jsoup;
+import org.springframework.util.CollectionUtils;
 import uk.org.siri.siri21.*;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Class that maps a Situation to a GeneralMessage
@@ -32,6 +35,7 @@ public class GeneralMessageMapper {
         mapValidUntil(generalMessage, situation);
         mapContent(generalMessage, situation);
 
+        generalMessage.setExtensions(situation.getExtensions());
 
         return generalMessage;
 
@@ -73,11 +77,11 @@ public class GeneralMessageMapper {
 
             }
 
-            if (networkList.size() > 0) {
+            if (!CollectionUtils.isEmpty(networkList)) {
                 content.setGroupOfLinesRefs(networkList);
             }
 
-            if (lineList.size() > 0) {
+            if (!CollectionUtils.isEmpty(lineList)) {
                 content.setLineRefs(lineList);
             }
 
@@ -92,7 +96,7 @@ public class GeneralMessageMapper {
                 stopPointList.add(affectedStopPoint.getStopPointRef().getValue());
             }
 
-            if (stopPointList.size() > 0) {
+            if (!CollectionUtils.isEmpty(stopPointList)) {
                 content.setStopPointRefs(stopPointList);
             }
 
@@ -100,13 +104,10 @@ public class GeneralMessageMapper {
     }
 
     private static String getMsgText(PtSituationElement situation) {
-
-        StringBuilder sb = new StringBuilder();
-
-        for (DefaultedTextStructure summary : situation.getSummaries()) {
-            sb.append(summary.getValue());
-        }
-        return sb.toString();
+        // Get descriptions without HTML tags / line breaks
+        return situation.getDescriptions().stream()
+                .map(d -> Jsoup.parse(d.getValue()).text())
+                .collect(Collectors.joining(", "));
     }
 
     private static void mapValidUntil(GeneralMessage generalMessage, PtSituationElement situation) {
@@ -119,8 +120,7 @@ public class GeneralMessageMapper {
         }
 
         if (currentMax == null) {
-            currentMax = ZonedDateTime.now();
-            currentMax.plusYears(100);
+            currentMax = ZonedDateTime.now().plusYears(100);
         }
 
         generalMessage.setValidUntilTime(currentMax);
