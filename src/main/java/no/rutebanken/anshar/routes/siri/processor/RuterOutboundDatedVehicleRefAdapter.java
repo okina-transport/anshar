@@ -19,6 +19,7 @@ package no.rutebanken.anshar.routes.siri.processor;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
+import org.springframework.util.CollectionUtils;
 import uk.org.siri.siri21.*;
 
 import java.util.List;
@@ -48,6 +49,9 @@ public class RuterOutboundDatedVehicleRefAdapter extends ValueAdapter implements
                         for (EstimatedVersionFrameStructure estimatedVersionFrameStructure : estimatedJourneyVersionFrames) {
                             if (estimatedVersionFrameStructure != null) {
                                 for (EstimatedVehicleJourney estimatedVehicleJourney : estimatedVersionFrameStructure.getEstimatedVehicleJourneies()) {
+                                    if (estimatedVehicleJourney.getDatedVehicleJourneyRef() != null) {
+                                        estimatedVehicleJourney.getDatedVehicleJourneyRef().setValue(apply(estimatedVehicleJourney.getDatedVehicleJourneyRef().getValue()));
+                                    }
                                     if (estimatedVehicleJourney.getFramedVehicleJourneyRef() != null) {
                                         String datedVehicleJourneyRef = estimatedVehicleJourney.getFramedVehicleJourneyRef().getDatedVehicleJourneyRef();
                                         if (datedVehicleJourneyRef != null) {
@@ -112,7 +116,7 @@ public class RuterOutboundDatedVehicleRefAdapter extends ValueAdapter implements
     private void applyTransformationsInSituationExchanges(List<SituationExchangeDeliveryStructure> situationExchangeDeliveries) {
         for (SituationExchangeDeliveryStructure situationExchangeDelivery : situationExchangeDeliveries) {
             SituationExchangeDeliveryStructure.Situations situations = situationExchangeDelivery.getSituations();
-            if (situations != null && situations.getPtSituationElements() != null && situations.getPtSituationElements().size() > 0) {
+            if (situations != null && !CollectionUtils.isEmpty(situations.getPtSituationElements())) {
                 applyTransformationsInPtSituationElements(situations.getPtSituationElements());
             }
         }
@@ -128,7 +132,7 @@ public class RuterOutboundDatedVehicleRefAdapter extends ValueAdapter implements
 
     private void appyTransformationsInAffectedVehicleJourneies(List<AffectedVehicleJourneyStructure> affectedVehicleJourneies) {
         for (AffectedVehicleJourneyStructure affectedVJStruct : affectedVehicleJourneies) {
-            if (affectedVJStruct.getDatedVehicleJourneyReves() != null && affectedVJStruct.getDatedVehicleJourneyReves().size() > 0) {
+            if (!CollectionUtils.isEmpty(affectedVJStruct.getDatedVehicleJourneyReves())) {
                 applyTransformationsInVehicleJourneyReves(affectedVJStruct.getDatedVehicleJourneyReves());
             }
 
