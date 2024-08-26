@@ -164,6 +164,10 @@ public class IshtarCall extends BaseRouteBuilder {
 
                             newSubscription.setInternalId((int) current_subscription.get("id"));
 
+                            createAndSetStopMonitoringRefValues(current_subscription, newSubscription);
+
+                            createAndSetLineRefValues(current_subscription, newSubscription);
+
                             List<Map<String, Object>> urlMapsList = (List<Map<String, Object>>) ((LinkedHashMap<?, ?>) obj).get("urlMaps");
                             Map<RequestType, String> urlMap = new HashMap<>();
                             for (Map<String, Object> urlMapData : urlMapsList) {
@@ -186,6 +190,52 @@ public class IshtarCall extends BaseRouteBuilder {
                 })
                 .bean(SubscriptionInitializer.class, "createSubscriptions")
                 .end();
+    }
+
+    /**
+     * Extracts the "name" field from each entry in the "subscriptionLines" list
+     * within the provided {@code current_subscription} map and sets these names
+     * as the line reference values in the provided {@code newSubscription}.
+     *
+     * @param current_subscription the map containing subscription details, expected to have a "subscriptionLines" key
+     *                             which maps to a list of LinkedHashMaps representing subscription stops.
+     * @param newSubscription the {@link SubscriptionSetup} object to be updated with the extracted line reference values.
+     */
+    private void createAndSetLineRefValues(LinkedHashMap<?, ?> current_subscription, SubscriptionSetup newSubscription) {
+        List<LinkedHashMap<String, String>> subscriptionLines = (List<LinkedHashMap<String, String>>) current_subscription.get("subscriptionLines");
+        if (subscriptionLines != null && !subscriptionLines.isEmpty()) {
+            List<String> LineRefValue = new ArrayList<>();
+            for (LinkedHashMap<String, String> line : subscriptionLines) {
+                String name = line.get("name");
+                if (name != null) {
+                    LineRefValue.add(name);
+                }
+            }
+            newSubscription.setLineRefValues(LineRefValue);
+        }
+    }
+
+    /**
+     * Extracts the "name" field from each entry in the "subscriptionStops" list
+     * within the provided {@code current_subscription} map and sets these names
+     * as the stop monitoring reference values in the provided {@code newSubscription}.
+     *
+     * @param current_subscription the map containing subscription details, expected to have a "subscriptionStops" key
+     *                             which maps to a list of LinkedHashMaps representing subscription stops.
+     * @param newSubscription the {@link SubscriptionSetup} object to be updated with the extracted stop monitoring reference values.
+     */
+    private void createAndSetStopMonitoringRefValues(LinkedHashMap<?, ?> current_subscription, SubscriptionSetup newSubscription) {
+        List<LinkedHashMap<String, String>> subscriptionStops = (List<LinkedHashMap<String, String>>) current_subscription.get("subscriptionStops");
+        if (subscriptionStops != null && !subscriptionStops.isEmpty()) {
+            List<String> stopMonitoringRefValue = new ArrayList<>();
+            for (LinkedHashMap<String, String> stop : subscriptionStops) {
+                String name = stop.get("name");
+                if (name != null) {
+                    stopMonitoringRefValue.add(name);
+                }
+            }
+            newSubscription.setStopMonitoringRefValue(stopMonitoringRefValue);
+        }
     }
 
     public void callDataFromIshtar() {
