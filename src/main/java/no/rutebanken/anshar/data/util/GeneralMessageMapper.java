@@ -3,6 +3,7 @@ package no.rutebanken.anshar.data.util;
 
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Message;
+import org.apache.commons.lang.StringUtils;
 import org.jsoup.Jsoup;
 import org.springframework.util.CollectionUtils;
 import uk.org.siri.siri21.*;
@@ -105,9 +106,7 @@ public class GeneralMessageMapper {
 
     private static String getMsgText(PtSituationElement situation) {
         // Get descriptions without HTML tags / line breaks
-        return situation.getDescriptions().stream()
-                .map(d -> Jsoup.parse(d.getValue()).text())
-                .collect(Collectors.joining(", "));
+        return situation.getDescriptions().stream().filter(d -> StringUtils.isNotBlank(d.getValue())).map(d -> Jsoup.parse(d.getValue()).text()).collect(Collectors.joining(", "));
     }
 
     private static void mapValidUntil(GeneralMessage generalMessage, PtSituationElement situation) {

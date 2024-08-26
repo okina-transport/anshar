@@ -3,7 +3,7 @@
     "id": 1,
     "message": "test perturbation",
     "organization": "test_local_netex",
-    "comment": null,
+    "comment": "comment",
     "diffusion": "DIFFUSED",
     "startDateTime": 1693223526619,
     "endDateTime": 4696716000000,
