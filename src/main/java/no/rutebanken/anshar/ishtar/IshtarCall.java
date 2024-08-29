@@ -204,14 +204,14 @@ public class IshtarCall extends BaseRouteBuilder {
     private void createAndSetLineRefValues(LinkedHashMap<?, ?> current_subscription, SubscriptionSetup newSubscription) {
         List<LinkedHashMap<String, String>> subscriptionLines = (List<LinkedHashMap<String, String>>) current_subscription.get("subscriptionLines");
         if (subscriptionLines != null && !subscriptionLines.isEmpty()) {
-            List<String> LineRefValue = new ArrayList<>();
+            List<String> lineRefValue = new ArrayList<>();
             for (LinkedHashMap<String, String> line : subscriptionLines) {
                 String name = line.get("name");
                 if (name != null) {
-                    LineRefValue.add(name);
+                    lineRefValue.add(name);
                 }
             }
-            newSubscription.setLineRefValues(LineRefValue);
+            newSubscription.setLineRefValues(lineRefValue);
         }
     }
 
