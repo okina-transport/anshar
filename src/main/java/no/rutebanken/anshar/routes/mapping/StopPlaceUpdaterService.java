@@ -22,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
 
 import javax.annotation.PostConstruct;
 import java.util.*;
@@ -82,7 +83,13 @@ public class StopPlaceUpdaterService {
             }
         }
 
-        Optional<String> reverseStopPlaceMapping = reverseStopPlaceMappings.get(id).stream()
+        List<String> stopPlaces = reverseStopPlaceMappings.get(id);
+
+        if (CollectionUtils.isEmpty(stopPlaces)) {
+            return List.of();
+        }
+
+        Optional<String> reverseStopPlaceMapping = stopPlaces.stream()
                 .filter(provId -> datasetId == null || provId.startsWith(datasetId))
                 .findFirst();
 
