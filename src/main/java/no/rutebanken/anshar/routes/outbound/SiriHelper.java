@@ -224,7 +224,7 @@ public class SiriHelper {
 
         HashSet<String> requestedIds = new HashSet<>(originalRequestedIds);
 
-        Map<ObjectType, Optional<IdProcessingParameters>> idProcessingParams = subscriptionConfig.buildIdProcessingParams(null, requestedIds, ObjectType.STOP);
+        Map<ObjectType, Optional<IdProcessingParameters>> idProcessingParams = subscriptionConfig.buildIdProcessingParams(datasetId, requestedIds, ObjectType.STOP);
 
         Set<String> revertedMonitoringRefs = IDUtils.revertMonitoringRefs(requestedIds, idProcessingParams.get(ObjectType.STOP));
 
@@ -247,7 +247,7 @@ public class SiriHelper {
 
         HashSet<String> requestedIds = new HashSet<>(originalRequestedIds);
 
-        return subscriptionConfig.buildIdProcessingParams(null, requestedIds, ObjectType.STOP);
+        return subscriptionConfig.buildIdProcessingParams(datasetId, requestedIds, ObjectType.STOP);
     }
 
     public Map<ObjectType, Optional<IdProcessingParameters>> getIdProcessingParamsFromSubscription(VehicleMonitoringSubscriptionStructure vehMonitoringSubscription, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
