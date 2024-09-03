@@ -5,6 +5,7 @@ import com.google.transit.realtime.GtfsRealtime;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.GTFSRTType;
+import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.gtfsrt.readers.AlertReader;
 import no.rutebanken.anshar.gtfsrt.readers.TripUpdateReader;
 import no.rutebanken.anshar.gtfsrt.readers.VehiclePositionReader;
@@ -42,9 +43,32 @@ public class GtfsRTDataRetriever {
     @Autowired
     private AnsharConfiguration configuration;
 
+    @Autowired
+    private ExtendedHazelcastService hazelcastService;
+
+    private final String lockMap = "ansharRouteLockMap";
+    private final String gtfsRtLock = "isGtfsRtRunning";
+
+    private long iterationNb = 0;
+
 
     public void getGTFSRTData() {
-        logger.info("Démarrage récupération des flux GTFS-RT");
+        if (!isGtfsRtRunning()) {
+            startGtfsRtRecovering();
+        } else {
+            logger.info(" GTFS-RT en cours. Pas de nouveau lancement");
+        }
+    }
+
+    private boolean isGtfsRtRunning() {
+        Object isGtfsRtRunning = hazelcastService.getHazelcastInstance().getMap(lockMap).get(gtfsRtLock);
+        return isGtfsRtRunning != null && (boolean) isGtfsRtRunning;
+    }
+
+    private void startGtfsRtRecovering() {
+
+        hazelcastService.getHazelcastInstance().getMap(lockMap).put(gtfsRtLock, true);
+        logger.info("Démarrage récupération des flux GTFS-RT n°:" + iterationNb);
 
         for (GtfsRTApi gtfsRTApi : subscriptionConfig.getGtfsRTApis()) {
             try {
@@ -54,9 +78,9 @@ public class GtfsRTDataRetriever {
                 logger.error("Error detail", e);
             }
         }
-
-        logger.info("Intégration des flux GTFS-RT terminée");
-
+        hazelcastService.getHazelcastInstance().getMap(lockMap).put(gtfsRtLock, false);
+        logger.info("Intégration des flux GTFS-RT terminée n°:" + iterationNb);
+        iterationNb++;
     }
 
     private void recoverDataForApi(GtfsRTApi gtfsRTApi) {
