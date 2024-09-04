@@ -18,6 +18,7 @@ package no.rutebanken.anshar.routes.outbound;
 import com.hazelcast.map.IMap;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
+import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
@@ -972,6 +973,8 @@ public class ServerSubscriptionManager {
             sendSMToKafka.asyncRequestBodyAndHeaders(sendSMToKafka.getDefaultEndpoint(), delivery, headers);
         }
 
+
+        TimingTracer timingTracer = new TimingTracer("pushOutboundSM");
         subscriptions.values().stream().filter(subscriptionRequest ->
                 (subscriptionRequest.getSubscriptionType().equals(SiriDataType.STOP_MONITORING) &&
                         (subscriptionRequest.getDatasetId() == null || (subscriptionRequest.getDatasetId().equals(datasetId))))
@@ -981,6 +984,12 @@ public class ServerSubscriptionManager {
                 camelRouteManager.pushSiriData(delivery, subscription, true)
         );
         MDC.remove("camel.breadcrumbId");
+
+        timingTracer.mark("sendCompleted");
+
+        if (timingTracer.getTotalTime() > 5000) {
+            logger.warn("SM output send took more than 5s for all subscriptions ");
+        }
     }
 
     public void pushFailedForSubscription(String subscriptionId) {
