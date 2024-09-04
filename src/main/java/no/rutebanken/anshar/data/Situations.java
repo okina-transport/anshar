@@ -36,7 +36,6 @@ import org.springframework.stereotype.Repository;
 import uk.org.ifopt.siri21.StopPlaceRef;
 import uk.org.siri.siri21.*;
 
-import javax.annotation.PostConstruct;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
@@ -82,10 +81,6 @@ public class Situations extends SiriRepository<PtSituationElement> {
         super(SiriDataType.SITUATION_EXCHANGE);
     }
 
-    @PostConstruct
-    private void initializeUpdateCommitter() {
-        super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
-    }
 
     /**
      * @return All situationElements
@@ -202,8 +197,6 @@ public class Situations extends SiriRepository<PtSituationElement> {
                 requestedIds.removeIf(id -> !situationElements.containsKey(id));
             }
 
-            //Update change-tracker
-            updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, requestedIds, trackingPeriodMinutes, TimeUnit.MINUTES);
 
             logger.info("Returning {}, {} left for requestorRef {}", sizeLimitedIds.size(), requestedIds.size(), requestorId);
         }
@@ -262,7 +255,6 @@ public class Situations extends SiriRepository<PtSituationElement> {
                 //Remove returned ids
                 existingSet.removeAll(idSet);
 
-                updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, existingSet, configuration.getTrackingPeriodMinutes(), TimeUnit.MINUTES);
 
                 logger.info("Returning {} changes to requestorRef {}", changes.size(), requestorId);
                 return changes;
@@ -270,7 +262,6 @@ public class Situations extends SiriRepository<PtSituationElement> {
                 logger.info("Returning all to requestorRef {}", requestorId);
             }
 
-            updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, new HashSet<>(), configuration.getTrackingPeriodMinutes(), TimeUnit.MINUTES);
 
         }
 
@@ -385,7 +376,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
         markDataReceived(SiriDataType.SITUATION_EXCHANGE, datasetId, sxList.size(), changes.size(), alreadyExpiredCounter.getValue(), ignoredCounter.getValue());
         timingTracer.mark("markDataReceived");
 
-        markIdsAsUpdated(changes.keySet());
+        //markIdsAsUpdated(changes.keySet());
         timingTracer.mark("markIdsAsUpdated");
 
         if (timingTracer.getTotalTime() > 1000) {

@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.data;
 
+import com.hazelcast.collection.ISet;
 import com.hazelcast.map.IMap;
 import com.hazelcast.query.Predicate;
 import com.hazelcast.replicatedmap.ReplicatedMap;
@@ -22,6 +23,7 @@ import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.data.util.CustomStringUtils;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
+import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.util.StopMonitoringUtils;
@@ -35,7 +37,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
 import uk.org.siri.siri21.*;
 
-import javax.annotation.PostConstruct;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -46,14 +47,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Repository
-// TODO MHI
 public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
     private static final Logger logger = LoggerFactory.getLogger(MonitoredStopVisits.class);
 
-    @Autowired
-    @Qualifier("getMonitoredStopVisits")
-    private IMap<SiriObjectStorageKey, MonitoredStopVisit> monitoredStopVisits;
 
     @Autowired
     @Qualifier("getSmChecksumMap")
@@ -87,61 +84,79 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     @Autowired
     ExtendedHazelcastService hazelcastService;
 
+    private Set<String> localSMDatasetList = new HashSet<>();
+
     protected MonitoredStopVisits() {
         super(SiriDataType.STOP_MONITORING);
     }
 
-    @PostConstruct
-    private void initializeUpdateCommitter() {
-        super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
-    }
 
     @Override
     public Collection<MonitoredStopVisit> getAll() {
-        return monitoredStopVisits.values();
+
+        ISet<String> datasetList = hazelcastService.getSharedSMDatasetList();
+        List<MonitoredStopVisit> results = new ArrayList<>();
+
+        for (String datasetId : datasetList) {
+            results.addAll(hazelcastService.getMonitoredStopVisitsForDataset(datasetId).values());
+        }
+        return results;
     }
 
     public Set<SiriObjectStorageKey> getAllKeySets() {
-        return monitoredStopVisits.keySet();
+        ISet<String> datasetList = hazelcastService.getSharedSMDatasetList();
+        Set<SiriObjectStorageKey> results = new HashSet<>();
+
+        for (String datasetId : datasetList) {
+            results.addAll(hazelcastService.getMonitoredStopVisitsForDataset(datasetId).keySet());
+        }
+        return results;
     }
 
     @Override
     Map<SiriObjectStorageKey, MonitoredStopVisit> getAllAsMap() {
-        return monitoredStopVisits;
+        ISet<String> datasetList = hazelcastService.getSharedSMDatasetList();
+        Map<SiriObjectStorageKey, MonitoredStopVisit> results = new HashMap<>();
+
+        for (String datasetId : datasetList) {
+            results.putAll(hazelcastService.getMonitoredStopVisitsForDataset(datasetId));
+        }
+        return results;
     }
 
     @Override
     public int getSize() {
-        return monitoredStopVisits.keySet().size();
+        return getAllKeySets().size();
     }
 
     public Map<String, Integer> getDatasetSize() {
         Map<String, Integer> sizeMap = new HashMap<>();
         long t1 = System.currentTimeMillis();
-        monitoredStopVisits.keySet().forEach(key -> {
-            String datasetId = key.getCodespaceId();
 
-            Integer count = sizeMap.getOrDefault(datasetId, 0);
-            sizeMap.put(datasetId, count + 1);
-        });
+        ISet<String> datasetList = hazelcastService.getSharedSMDatasetList();
+
+
+        for (String datasetId : datasetList) {
+            sizeMap.put(datasetId, hazelcastService.getMonitoredStopVisitsForDataset(datasetId).size());
+        }
         logger.debug("Calculating data-distribution (SM) took {} ms: {}", (System.currentTimeMillis() - t1), sizeMap);
         return sizeMap;
     }
 
     public Integer getDatasetSize(String datasetId) {
-        return Math.toIntExact(monitoredStopVisits.keySet().stream()
-                .filter(key -> datasetId.equals(key.getCodespaceId()))
-                .count());
+        return hazelcastService.getMonitoredStopVisitsForDataset(datasetId).size();
     }
 
     @Override
     void clearAllByDatasetId(String datasetId) {
-        Set<SiriObjectStorageKey> idsToRemove = monitoredStopVisits.keySet(createCodespacePredicate(datasetId));
+        //Set<SiriObjectStorageKey> idsToRemove = monitoredStopVisits.keySet(createCodespacePredicate(datasetId));
 
-        logger.warn("Removing all data ({} ids) for {}", idsToRemove.size(), datasetId);
+        Set<SiriObjectStorageKey> keysToRemove = hazelcastService.getMonitoredStopVisitsForDataset(datasetId).keySet();
+        logger.warn("Removing all data ({} ids) for {}", hazelcastService.getMonitoredStopVisitsForDataset(datasetId).size(), datasetId);
+        hazelcastService.getMonitoredStopVisitsForDataset(datasetId).clear();
 
-        for (SiriObjectStorageKey id : idsToRemove) {
-            monitoredStopVisits.delete(id);
+
+        for (SiriObjectStorageKey id : keysToRemove) {
             checksumCache.remove(id);
             idStartTimeMap.remove(id);
             idForPatternChanges.remove(id);
@@ -151,8 +166,14 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     }
 
     public void clearAll() {
+
+        ISet<String> datasetList = hazelcastService.getSharedSMDatasetList();
+
+
+        for (String datasetId : datasetList) {
+            hazelcastService.getMonitoredStopVisitsForDataset(datasetId).clear();
+        }
         logger.error("Deleting all data - should only be used in test!!!");
-        monitoredStopVisits.clear();
         checksumCache.clear();
         idStartTimeMap.clear();
         idForPatternChanges.clear();
@@ -167,11 +188,16 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientTrackingName, List<String> excludedDatasetIds, int maxSize, long previewInterval, Set<String> searchedStopIds) {
 
+        TimingTracer createDelTracer = new TimingTracer("createDelTracer");
+
+
         if (StringUtils.isNotEmpty(datasetId)) {
             requestorRefRepository.touchRequestorRef(requestorId, datasetId, clientTrackingName, SiriDataType.STOP_MONITORING);
         } else {
             requestorRefRepository.touchRequestorRef(requestorId, null, clientTrackingName, SiriDataType.STOP_MONITORING);
         }
+
+        createDelTracer.mark("requestorRefTouched");
 
 
         int trackingPeriodMinutes = configuration.getTrackingPeriodMinutes();
@@ -184,6 +210,8 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
             isAdHocRequest = true;
         }
 
+        createDelTracer.mark("confRecover");
+
         // Filter by (datasetId and/or searchedStopIds) OR (excludedDatasetIds and/or searchedStopIds)
         Set<SiriObjectStorageKey> requestedIds = new HashSet<>();
         if (StringUtils.isNotEmpty(datasetId)) {
@@ -191,6 +219,8 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         } else {
             requestedIds.addAll(generateIdSet(null, searchedStopIds, excludedDatasetIds));
         }
+
+        createDelTracer.mark("requestedIdGeneration");
 
 
         final ZonedDateTime previewExpiry = ZonedDateTime.now().plusSeconds(previewInterval / 1000);
@@ -209,6 +239,8 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
             logger.info("Found {} ids starting within {} ms in {} ms", startTimes.size(), previewInterval, (System.currentTimeMillis() - t1));
         }
 
+        createDelTracer.mark("preview filter");
+
         final AtomicInteger previewIntervalInclusionCounter = new AtomicInteger();
         final AtomicInteger previewIntervalExclusionCounter = new AtomicInteger();
         java.util.function.Predicate<SiriObjectStorageKey> previewIntervalFilter = id -> {
@@ -224,17 +256,21 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         };
 
         long t1 = System.currentTimeMillis();
-        // TODO MHI
         Set<SiriObjectStorageKey> sizeLimitedIds = requestedIds
                 .stream()
                 .filter(id -> previewInterval < 0 || previewIntervalFilter.test(id))
                 .limit(maxSize)
                 .collect(Collectors.toSet());
 
+
+        createDelTracer.mark("sizeLimit");
+
         long t2 = System.currentTimeMillis();
 
         //Remove collected objects
         sizeLimitedIds.forEach(requestedIds::remove);
+
+        createDelTracer.mark("requestedRemove");
 
         long t3 = System.currentTimeMillis();
 
@@ -244,11 +280,15 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         Boolean isMoreData = (previewIntervalExclusionCounter.get() + sizeLimitedIds.size()) < requestedIds.size();
 
-        Collection<MonitoredStopVisit> values = monitoredStopVisits.getAll(sizeLimitedIds).values();
+        createDelTracer.mark("isMoreData");
+        Collection<MonitoredStopVisit> values = getMonitoredStopVisitsFromHazelcast(datasetId, sizeLimitedIds);
+
+        createDelTracer.mark("getAll");
         logger.debug("Fetching data: {} ms", (System.currentTimeMillis() - t1));
         t1 = System.currentTimeMillis();
 
         Siri siri = siriObjectFactory.createSMServiceDelivery(values);
+        createDelTracer.mark("createSMDel");
         logger.debug("Creating SIRI-delivery: {} sm", (System.currentTimeMillis() - t1));
 
         siri.getServiceDelivery().setMoreData(isMoreData);
@@ -259,17 +299,33 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
             msgRef.setValue(requestorId);
             siri.getServiceDelivery().setRequestMessageRef(msgRef);
 
-            if (requestedIds.size() > monitoredStopVisits.size()) {
-                //Remove outdated ids
-                requestedIds.removeIf(id -> !monitoredStopVisits.containsKey(id));
-            }
+            createDelTracer.mark("adHoc");
 
-            //Update change-tracker
-            // updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, requestedIds, trackingPeriodMinutes, TimeUnit.MINUTES);
 
         }
 
+        if (createDelTracer.getTotalTime() > 3000) {
+            logger.info(createDelTracer.toString());
+        }
+
         return siri;
+    }
+
+    private Collection<MonitoredStopVisit> getMonitoredStopVisitsFromHazelcast(String datasetId, Set<SiriObjectStorageKey> sizeLimitedIds) {
+
+        if (StringUtils.isNotEmpty(datasetId)) {
+            return hazelcastService.getMonitoredStopVisitsForDataset(datasetId).getAll(sizeLimitedIds).values();
+        } else {
+            ISet<String> datasetList = hazelcastService.getSharedSMDatasetList();
+            List<MonitoredStopVisit> results = new ArrayList<>();
+            for (String dataset : datasetList) {
+                Map<SiriObjectStorageKey, MonitoredStopVisit> datasetResults = hazelcastService.getMonitoredStopVisitsForDataset(dataset).getAll(sizeLimitedIds);
+                if (datasetResults != null && datasetResults.size() > 0) {
+                    results.addAll(datasetResults.values());
+                }
+            }
+            return results;
+        }
     }
 
     /**
@@ -283,7 +339,20 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     private Set<SiriObjectStorageKey> generateIdSet(String datasetId, Set<String> searchedStopRefs, List<String> excludedDatasetIds) {
         // Get all relevant ids
         Predicate<SiriObjectStorageKey, MonitoredStopVisit> predicate = SiriObjectStorageKeyUtil.getStopPredicate(searchedStopRefs, datasetId, excludedDatasetIds);
-        return new HashSet<>(monitoredStopVisits.keySet(predicate));
+        if (StringUtils.isNotEmpty(datasetId)) {
+            return new HashSet<>(hazelcastService.getMonitoredStopVisitsForDataset(datasetId).keySet(predicate));
+        } else {
+            ISet<String> datasetList = hazelcastService.getSharedSMDatasetList();
+            Set<SiriObjectStorageKey> results = new HashSet<>();
+            for (String dataset : datasetList) {
+                Set<SiriObjectStorageKey> datasetResults = hazelcastService.getMonitoredStopVisitsForDataset(dataset).keySet(predicate);
+                if (datasetResults != null && datasetResults.size() > 0) {
+                    results.addAll(datasetResults);
+                }
+            }
+            return results;
+
+        }
     }
 
 
@@ -296,13 +365,22 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
             if (idSet != null) {
                 Set<SiriObjectStorageKey> datasetFilteredIdSet = new HashSet<>();
 
+                Collection<MonitoredStopVisit> changes = new HashSet<>();
                 if (datasetId != null) {
                     idSet.stream().filter(key -> key.getCodespaceId().equals(datasetId)).forEach(datasetFilteredIdSet::add);
+                    changes = hazelcastService.getMonitoredStopVisitsForDataset(datasetId).getAll(datasetFilteredIdSet).values();
                 } else {
                     datasetFilteredIdSet.addAll(idSet);
+                    ISet<String> datasetList = hazelcastService.getSharedSMDatasetList();
+                    for (String datasetToRequest : datasetList) {
+                        Map<SiriObjectStorageKey, MonitoredStopVisit> datasetResults = hazelcastService.getMonitoredStopVisitsForDataset(datasetToRequest).getAll(datasetFilteredIdSet);
+
+                        if (datasetResults != null && datasetResults.size() > 0) {
+                            changes.addAll(datasetResults.values());
+                        }
+                    }
                 }
 
-                Collection<MonitoredStopVisit> changes = monitoredStopVisits.getAll(datasetFilteredIdSet).values();
 
                 Set<SiriObjectStorageKey> existingSet = changesMap.get(requestorId);
                 if (existingSet == null) {
@@ -312,19 +390,11 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
                 //Remove returned ids
                 existingSet.removeAll(idSet);
 
-                if (idSet.size() > monitoredStopVisits.size()) {
-                    //Remove outdated ids
-                    existingSet.removeIf(id -> !monitoredStopVisits.containsKey(id));
-                }
-
-                updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, existingSet, configuration.getTrackingPeriodMinutes(), TimeUnit.MINUTES);
-
                 logger.debug("Returning {} changes to requestorRef {}", changes.size(), requestorId);
                 return changes;
             } else {
 
                 logger.debug("Returning all to requestorRef {}", requestorId);
-                updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, new HashSet<>(), configuration.getTrackingPeriodMinutes(), TimeUnit.MINUTES);
 
             }
         }
@@ -341,7 +411,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
             return getAll();
         }
 
-        return getValuesByDatasetId(monitoredStopVisits, datasetId);
+        return getValuesByDatasetId(hazelcastService.getMonitoredStopVisitsForDataset(datasetId), datasetId);
     }
 
 
@@ -374,7 +444,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         return -1;
     }
 
-    // TODO MHI : copié / collé, à revoir
+
     @Override
     public Collection<MonitoredStopVisit> addAll(String datasetId, List<MonitoredStopVisit> smList) {
         Set<SiriObjectStorageKey> changes = new HashSet<>();
@@ -384,6 +454,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         Counter notMeaningfulCounter = new CounterImpl(0);
         Counter outdatedCounter = new CounterImpl(0);
         Counter notUpdatedCounter = new CounterImpl(0);
+        IMap<SiriObjectStorageKey, MonitoredStopVisit> currentHazelcastCache = hazelcastService.getMonitoredStopVisitsForDataset(datasetId);
 
         smList.stream()
                 .filter(monitoredStopVisit -> monitoredStopVisit.getMonitoringRef() != null)
@@ -395,6 +466,10 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
                     String keyCriteria = monitoredStopVisit.getItemIdentifier() != null ? monitoredStopVisit.getItemIdentifier() : monitoredStopVisit.getRecordedAtTime().format(DateTimeFormatter.ISO_DATE);
                     SiriObjectStorageKey key = createKey(datasetId, keyCriteria, monitoredStopVisit.getMonitoringRef().getValue(), vehicleJourneyName, lineName);
+                    if (!localSMDatasetList.contains(datasetId)) {
+                        hazelcastService.getSharedSMDatasetList().add(datasetId);
+                        localSMDatasetList.add(datasetId);
+                    }
 
                     String currentChecksum = null;
                     ZonedDateTime validUntilTime = monitoredStopVisit.getValidUntilTime();
@@ -413,10 +488,11 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
                     boolean updated;
                     MonitoredStopVisit existing = null;
-                    if (existingChecksum != null && monitoredStopVisits.containsKey(key)) {
+                    //if (existingChecksum != null && monitoredStopVisits.containsKey(key)) {
+                    if (existingChecksum != null && currentHazelcastCache.containsKey(key)) {
                         //Exists - compare values
 
-                        existing = monitoredStopVisits.get(key);
+                        existing = currentHazelcastCache.get(key);
 
                         // if new visit's monitored status != old visit's status => update must be made
                         // else, a look on checksum is made
@@ -453,11 +529,9 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
                             replaceSpecialCharacters(monitoredStopVisit);
                             changes.add(key);
                             addedData.add(monitoredStopVisit);
-                            monitoredStopVisits.set(key, monitoredStopVisit, expiration, TimeUnit.MILLISECONDS);
+                            currentHazelcastCache.set(key, monitoredStopVisit, expiration, TimeUnit.MILLISECONDS);
                             checksumCache.put(key, currentChecksum, expiration, TimeUnit.MILLISECONDS);
 
-                            // TODO MHI : push somewhere ?
-//                            siriSmMqttHandler.pushToMqttAsync(datasetId, monitoredStopVisit);
 
                         } else {
                             outdatedCounter.increment();
@@ -474,7 +548,6 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         markDataReceived(SiriDataType.STOP_MONITORING, datasetId, smList.size(), changes.size(), outdatedCounter.getValue(), (invalidLocationCounter.getValue() + notMeaningfulCounter.getValue() + notUpdatedCounter.getValue()));
 
-        markIdsAsUpdated(changes);
 
         return addedData;
     }
@@ -529,7 +602,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         addAll(datasetId, monitoredStopVisits);
 
         String monitoringRef = monitoredStopVisit.getMonitoringRef() == null ? null : monitoredStopVisit.getMonitoringRef().getValue();
-        return this.monitoredStopVisits.get(createKey(datasetId, monitoredStopVisit.getItemIdentifier(), monitoringRef, vehicleJourney, line));
+        return hazelcastService.getMonitoredStopVisitsForDataset(datasetId).get(createKey(datasetId, monitoredStopVisit.getItemIdentifier(), monitoringRef, vehicleJourney, line));
     }
 
 
@@ -558,7 +631,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         for (String datasetId : datasetIds) {
 
             Predicate<SiriObjectStorageKey, MonitoredStopVisit> predicate = SiriObjectStorageKeyUtil.getStopPredicate(null, datasetId, null);
-            Set<SiriObjectStorageKey> idSet = monitoredStopVisits.keySet(predicate);
+            Set<SiriObjectStorageKey> idSet = hazelcastService.getMonitoredStopVisitsForDataset(datasetId).keySet(predicate);
             results.put(datasetId, idSet.size());
         }
         return results;
@@ -570,7 +643,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         for (String datasetId : datasetIds) {
             Predicate<SiriObjectStorageKey, MonitoredStopVisit> predicate = SiriObjectStorageKeyUtil.getStopPredicate(null, datasetId, null);
-            Set<SiriObjectStorageKey> idSet = monitoredStopVisits.keySet(predicate);
+            Set<SiriObjectStorageKey> idSet = hazelcastService.getMonitoredStopVisitsForDataset(datasetId).keySet(predicate);
             Set<String> stopSet = new HashSet();
             for (SiriObjectStorageKey siriObjectStorageKey : idSet) {
 
@@ -584,7 +657,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     }
 
     public Set<String> getAllDatasetIds() {
-        return monitoredStopVisits.keySet().stream().map(SiriObjectStorageKey::getCodespaceId).collect(Collectors.toSet());
+        return hazelcastService.getSharedSMDatasetList();
     }
 
     public void cancelStopVsits(String datasetId, List<MonitoredStopVisitCancellation> incomingMonitoredStopVisitsCancellations) {
@@ -593,7 +666,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
             String vehicleJourneyName = StopMonitoringUtils.getVehicleJourneyName(incomingMonitoredStopVisitsCancellation).orElse(null);
             String keyCriteria = incomingMonitoredStopVisitsCancellation.getItemRef() != null ? incomingMonitoredStopVisitsCancellation.getItemRef().getValue() : incomingMonitoredStopVisitsCancellation.getRecordedAtTime().format(DateTimeFormatter.ISO_DATE);
             SiriObjectStorageKey key = createKey(datasetId, keyCriteria, incomingMonitoredStopVisitsCancellation.getMonitoringRef().getValue(), vehicleJourneyName, lineName);
-            monitoredStopVisits.delete(key);
+            hazelcastService.getMonitoredStopVisitsForDataset(datasetId).delete(key);
             logger.debug("SM - key deleted:" + key);
         }
     }

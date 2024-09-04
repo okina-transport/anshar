@@ -37,7 +37,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 import uk.org.siri.siri21.*;
 
-import javax.annotation.PostConstruct;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
@@ -93,10 +92,6 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
 
     }
 
-    @PostConstruct
-    private void initializeUpdateCommitter() {
-        super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
-    }
 
     /**
      * @return All vehicle activities
@@ -204,14 +199,12 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
                 //Remove returned ids
                 existingSet.removeAll(idSet);
 
-                updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, existingSet, configuration.getTrackingPeriodMinutes(), TimeUnit.MINUTES);
 
                 logger.info("Returning {} changes to requestorRef {}", changes.size(), requestorId);
                 return changes;
             } else {
 
                 logger.info("Returning all to requestorRef {}", requestorId);
-                updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, new HashSet<>(), configuration.getTrackingPeriodMinutes(), TimeUnit.MINUTES);
 
             }
         }
@@ -271,9 +264,6 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
 
             //Remove outdated ids
             requestedIds.removeIf(id -> !monitoredVehicles.containsKey(id));
-
-            //Update change-tracker
-            //updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, requestedIds, trackingPeriodMinutes, TimeUnit.MINUTES);
 
 
             MessageRefStructure msgRef = new MessageRefStructure();
@@ -421,7 +411,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
         markDataReceived(SiriDataType.VEHICLE_MONITORING, datasetId, vmList.size(), changes.size(), outdatedCounter.getValue(), (invalidLocationCounter.getValue() + notMeaningfulCounter.getValue() + notUpdatedCounter.getValue()));
 
         timingTracer.mark("markDataReceived");
-        markIdsAsUpdated(changes.keySet());
+        // markIdsAsUpdated(changes.keySet());
         timingTracer.mark("markIdsAsUpdated");
 
         if (timingTracer.getTotalTime() > 1000) {

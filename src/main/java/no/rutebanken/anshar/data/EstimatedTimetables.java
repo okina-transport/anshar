@@ -32,7 +32,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
 import uk.org.siri.siri21.*;
 
-import javax.annotation.PostConstruct;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
@@ -84,10 +83,6 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
         super(SiriDataType.ESTIMATED_TIMETABLE);
     }
 
-    @PostConstruct
-    private void initializeUpdateCommitter() {
-        super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
-    }
 
     /**
      * @return All ET-elements
@@ -291,8 +286,6 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
                 requestedIds.removeIf(id -> !timetableDeliveries.containsKey(id));
             }
 
-            //Update change-tracker
-            updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, requestedIds, trackingPeriodMinutes, TimeUnit.MINUTES);
 
             logger.info("Returning {}, {} left for requestorRef {}", sizeLimitedIds.size(), requestedIds.size(), requestorId);
         }
@@ -401,14 +394,11 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
                 //Remove returned ids
                 existingSet.removeAll(idSet);
 
-                updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, existingSet, configuration.getTrackingPeriodMinutes(), TimeUnit.MINUTES);
 
                 logger.info("Returning {} changes to requestorRef {}", changes.size(), requestorId);
                 return changes;
             } else {
-
                 logger.info("Returning all to requestorRef {}", requestorId);
-                updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, new HashSet<>(), configuration.getTrackingPeriodMinutes(), TimeUnit.MINUTES);
             }
         }
 
