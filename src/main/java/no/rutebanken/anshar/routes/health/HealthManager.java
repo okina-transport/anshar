@@ -18,6 +18,7 @@ package no.rutebanken.anshar.routes.health;
 import com.hazelcast.core.HazelcastInstanceNotActiveException;
 import com.hazelcast.map.IMap;
 import no.rutebanken.anshar.data.collections.HealthCheckKey;
+import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -81,7 +82,11 @@ public class HealthManager {
 
 
     public boolean isReceivingData() {
+        TimingTracer healthTimer = new TimingTracer("isReceivingData");
         Instant lastReceivedData = healthCheckMap.get(HealthCheckKey.HEALTH_CHECK_INCOMING_DATA);
+        healthTimer.mark("end recup last receive data");
+        logger.info("lastReceivedData recovering time : " + healthTimer.getTotalTime());
+
         if (lastReceivedData != null) {
             long lastReceivedMillis = lastReceivedData.toEpochMilli();
 

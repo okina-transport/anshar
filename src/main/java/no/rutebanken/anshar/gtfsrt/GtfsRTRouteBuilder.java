@@ -7,6 +7,7 @@ import no.rutebanken.anshar.subscription.SubscriptionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -14,7 +15,9 @@ public class GtfsRTRouteBuilder extends BaseRouteBuilder {
 
     private static final Logger logger = LoggerFactory.getLogger(GtfsRTRouteBuilder.class);
 
-    private static final int INTERVAL_IN_MILLIS = 60000;
+
+    @Value("${anshar.gtfs.interval.millis:120000}")
+    private int gtfsIntervalInMillis;
 
     @Autowired
     private SubscriptionConfig subscriptionConfig;
@@ -35,7 +38,7 @@ public class GtfsRTRouteBuilder extends BaseRouteBuilder {
         }
 
 
-        singletonFrom("quartz://anshar/import_GTFSRT_DATA?trigger.repeatInterval=" + INTERVAL_IN_MILLIS, "import_GTFSRT_DATA")
+        singletonFrom("quartz://anshar/import_GTFSRT_DATA?trigger.repeatInterval=" + gtfsIntervalInMillis, "import_GTFSRT_DATA")
                 .bean(GtfsRTDataRetriever.class, "getGTFSRTData")
                 .end();
 

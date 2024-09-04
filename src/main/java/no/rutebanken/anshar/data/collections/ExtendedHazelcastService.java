@@ -145,6 +145,15 @@ public class ExtendedHazelcastService extends HazelCastService {
         return hazelcast.getMap("anshar.sm");
     }
 
+    public IMap<SiriObjectStorageKey, MonitoredStopVisit> getMonitoredStopVisitsForDataset(String dataset) {
+        return hazelcast.getMap("anshar.sm." + dataset);
+    }
+
+    public ISet<String> getSharedSMDatasetList() {
+        return hazelcast.getSet("anshar.sm.dataset.list");
+    }
+
+
     @Bean
     public IMap<String, Set<String>> getDiscoveryStops() {
         return hazelcast.getMap("anshar.discovery.stops");
