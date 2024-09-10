@@ -61,11 +61,11 @@ public class IshtarCall extends BaseRouteBuilder {
         from("direct:getAllDataFromIshtar")
                 .routeId("getAllDataFromIshtar")
                 .onException(Exception.class)
-                    .handled(true)
-                    .log(LoggingLevel.ERROR, "--> ISHTAR : error during data synchronization : ${exception.message}")
-                    .setHeader(Exchange.HTTP_RESPONSE_CODE, constant(500))
-                    .setBody(simple("Error during data synchronization : ${exception.message}"))
-                    .end()
+                .handled(true)
+                .log(LoggingLevel.ERROR, "--> ISHTAR : error during data synchronization : ${exception.message}")
+                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant(500))
+                .setBody(simple("Error during data synchronization : ${exception.message}"))
+                .end()
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))
                 .setHeader("Accept", constant("application/json, text/plain, */*"))
                 .toD(ishtarUrl + "/gtfs-rt-apis/all")
@@ -199,7 +199,7 @@ public class IshtarCall extends BaseRouteBuilder {
      *
      * @param current_subscription the map containing subscription details, expected to have a "subscriptionLines" key
      *                             which maps to a list of LinkedHashMaps representing subscription stops.
-     * @param newSubscription the {@link SubscriptionSetup} object to be updated with the extracted line reference values.
+     * @param newSubscription      the {@link SubscriptionSetup} object to be updated with the extracted line reference values.
      */
     private void createAndSetLineRefValues(LinkedHashMap<?, ?> current_subscription, SubscriptionSetup newSubscription) {
         List<LinkedHashMap<String, String>> subscriptionLines = (List<LinkedHashMap<String, String>>) current_subscription.get("subscriptionLines");
@@ -222,16 +222,16 @@ public class IshtarCall extends BaseRouteBuilder {
      *
      * @param current_subscription the map containing subscription details, expected to have a "subscriptionStops" key
      *                             which maps to a list of LinkedHashMaps representing subscription stops.
-     * @param newSubscription the {@link SubscriptionSetup} object to be updated with the extracted stop monitoring reference values.
+     * @param newSubscription      the {@link SubscriptionSetup} object to be updated with the extracted stop monitoring reference values.
      */
     private void createAndSetStopMonitoringRefValues(LinkedHashMap<?, ?> current_subscription, SubscriptionSetup newSubscription) {
         List<LinkedHashMap<String, String>> subscriptionStops = (List<LinkedHashMap<String, String>>) current_subscription.get("subscriptionStops");
         if (subscriptionStops != null && !subscriptionStops.isEmpty()) {
             List<String> stopMonitoringRefValue = new ArrayList<>();
             for (LinkedHashMap<String, String> stop : subscriptionStops) {
-                String name = stop.get("name");
-                if (name != null) {
-                    stopMonitoringRefValue.add(name);
+                String stopRef = stop.get("stopRef");
+                if (stopRef != null) {
+                    stopMonitoringRefValue.add(stopRef);
                 }
             }
             newSubscription.setStopMonitoringRefValue(stopMonitoringRefValue);
