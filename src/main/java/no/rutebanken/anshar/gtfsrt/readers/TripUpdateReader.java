@@ -234,6 +234,11 @@ public class TripUpdateReader extends AbstractSwallower {
                 continue;
 
             discoveryCache.addStop(datasetId, subscriptionId);
+
+            if (customPrefix.equals(GTFSRT_ET_PREFIX)) {
+                discoveryCache.addLine(datasetId, subscriptionId);
+            }
+
             createNewSubscription(subscriptionId, customPrefix, dataType, requestType, datasetId);
             subscriptionManager.addGTFSRTSubscription(customPrefix + datasetId + "_" + subscriptionId);
         }
