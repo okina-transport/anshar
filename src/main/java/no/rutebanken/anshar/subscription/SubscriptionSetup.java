@@ -572,7 +572,7 @@ public class SubscriptionSetup implements Serializable {
         this.requestorRef = requestorRef;
     }
 
-    private String getName() {
+    public String getName() {
         return name;
     }
 

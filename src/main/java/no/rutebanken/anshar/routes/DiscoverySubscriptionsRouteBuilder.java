@@ -49,24 +49,20 @@ public class DiscoverySubscriptionsRouteBuilder extends BaseRouteBuilder {
         }
 
 
-        if (subscriptionConfig.getDiscoverySubscriptions().size() > 0) {
+        //1er lancement au démarrage de l'appli
+        singletonFrom("quartz://anshar/create_discovery_subscriptions_first_launch?trigger.repeatInterval=1&trigger.repeatCount=0",
+                "create_discovery_subscriptions_first_launch")
+                .log("Subscriptions by discovery launched")
+                .bean(DiscoverySubscriptionCreator.class, "createDiscoverySubscriptions")
+                .end();
 
-            //1er lancement au démarrage de l'appli
-            singletonFrom("quartz://anshar/create_discovery_subscriptions_first_launch?trigger.repeatInterval=1&trigger.repeatCount=0",
-                    "create_discovery_subscriptions_first_launch")
-                    .log("Subscriptions by discovery launched")
-                    .bean(DiscoverySubscriptionCreator.class, "createDiscoverySubscriptions")
-                    .end();
+        //Lancement suivants toutes les 24 heures
+        singletonFrom("quartz://anshar/create_discovery_subscriptions?trigger.repeatInterval=" + INTERVAL_IN_MILLIS,
+                "create_discovery_subscriptions")
+                .log("Subscriptions by discovery launched")
+                .bean(DiscoverySubscriptionCreator.class, "createDiscoverySubscriptions")
+                .end();
 
-            //Lancement suivants toutes les 24 heures
-            singletonFrom("quartz://anshar/create_discovery_subscriptions?trigger.repeatInterval=" + INTERVAL_IN_MILLIS,
-                    "create_discovery_subscriptions")
-                    .log("Subscriptions by discovery launched")
-                    .bean(DiscoverySubscriptionCreator.class, "createDiscoverySubscriptions")
-                    .end();
-        } else {
-            logger.info("Pas d'url stop discovery définie");
-        }
 
         from("direct:send.discovery.request")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat(customNamespacePrefixMapper))

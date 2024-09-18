@@ -42,6 +42,7 @@ public class DiscoverySubscriptionCreator {
 
     private static final String ENDPOINT_URL_HEADER = "endpointUrl";
     private static final String SOAP_ACTION_HEADER = "SOAPAction";
+    private static final int NB_OF_REFS_BY_SUBSCRIPTION = 30;
 
 
     public void createDiscoverySubscriptions() throws IOException {
@@ -86,18 +87,47 @@ public class DiscoverySubscriptionCreator {
     }
 
     private List<SubscriptionSetup> createSubscriptionsSetups(List<String> referenceList, DiscoverySubscription discoveryParams) {
-        return referenceList.stream()
-                .map(reference -> createSubscriptionSetup(reference, discoveryParams))
-                .collect(Collectors.toList());
+
+        int currentNbOfMonitoredRef = 0;
+        int subscriptionNb = 0;
+
+        SubscriptionSetup currentSubscription = null;
+        List<SubscriptionSetup> results = new ArrayList<>();
+
+
+        for (String currentRef : referenceList) {
+
+            if (currentNbOfMonitoredRef == 0) {
+                currentSubscription = createSubscriptionSetup(currentRef, discoveryParams, subscriptionNb);
+                subscriptionNb++;
+                currentNbOfMonitoredRef++;
+                continue;
+            }
+
+            if (SiriDataType.STOP_MONITORING.equals(discoveryParams.getDiscoveryType())) {
+                currentSubscription.getStopMonitoringRefValues().add(currentRef);
+            } else {
+                currentSubscription.getLineRefValues().add(currentRef);
+            }
+            currentNbOfMonitoredRef++;
+
+            if (currentNbOfMonitoredRef == NB_OF_REFS_BY_SUBSCRIPTION) {
+                results.add(currentSubscription);
+                currentNbOfMonitoredRef = 0;
+            }
+
+        }
+        results.add(currentSubscription);
+        return results;
     }
 
-    private SubscriptionSetup createSubscriptionSetup(String value, DiscoverySubscription discoveryParams) {
-
+    private SubscriptionSetup createSubscriptionSetup(String value, DiscoverySubscription discoveryParams, int currentSubcrtiptionNb) {
+        String type = SiriDataType.STOP_MONITORING.equals(discoveryParams.getDiscoveryType()) ? "SM" : "VM";
         SubscriptionSetup newSubscription = new SubscriptionSetup();
         newSubscription.setDatasetId(discoveryParams.getDatasetId());
         newSubscription.setSubscriptionType(discoveryParams.getDiscoveryType());
-        newSubscription.setName(value + " subscription");
-        newSubscription.setVendor(buildVendor(discoveryParams, value));
+        newSubscription.setName(type + "-" + discoveryParams.getSubscriptionIdBase() + "-" + currentSubcrtiptionNb);
+        newSubscription.setVendor(type + "-" + discoveryParams.getVendorBaseName() + "-" + currentSubcrtiptionNb);
         newSubscription.setServiceType(SubscriptionSetup.ServiceType.SOAP);
         newSubscription.setSubscriptionMode(discoveryParams.getSubscriptionMode());
         newSubscription.setHeartbeatIntervalSeconds(discoveryParams.getHeartbeatIntervalSeconds());
@@ -130,7 +160,7 @@ public class DiscoverySubscriptionCreator {
         newSubscription.setCustomHeaders(discoveryParams.getCustomHeaders());
         newSubscription.setVersion("2.0");
         newSubscription.setContentType("text/xml;charset=UTF-8");
-        newSubscription.setSubscriptionId(buildSubscriptionId(discoveryParams, value));
+        newSubscription.setSubscriptionId(type + "-" + discoveryParams.getSubscriptionIdBase() + "-" + currentSubcrtiptionNb);
         newSubscription.setRequestorRef(discoveryParams.getRequestorRef());
         newSubscription.setDurationOfSubscriptionHours(discoveryParams.getDurationOfSubscriptionHours());
         newSubscription.setMappingAdapterId(mappingAdapter);

@@ -167,15 +167,61 @@ public class SubscriptionConfig {
     public void mergeSubscriptions(List<SubscriptionSetup> incomingSubscriptions) {
         for (SubscriptionSetup incomingSubscription : incomingSubscriptions) {
 
-            Optional<SubscriptionSetup> existingSubscription = getExistingSubscription(incomingSubscription);
-            if (existingSubscription.isPresent()) {
-                existingSubscription.get().setActive(incomingSubscription.isActive());
+            Optional<SubscriptionSetup> existingSubscriptionOpt = getExistingSubscription(incomingSubscription);
+            if (existingSubscriptionOpt.isPresent()) {
+                SubscriptionSetup existingSubscription = existingSubscriptionOpt.get();
+                existingSubscription.setActive(incomingSubscription.isActive());
+                existingSubscription.setSubscriptionType(incomingSubscription.getSubscriptionType());
+                existingSubscription.setIdMappingPrefixes(incomingSubscription.getIdMappingPrefixes());
+                existingSubscription.setStopMonitoringRefValue(incomingSubscription.getStopMonitoringRefValues());
+                existingSubscription.setName(incomingSubscription.getName());
+                existingSubscription.setVendor(incomingSubscription.getVendor());
+                existingSubscription.setRequestorRef(incomingSubscription.getRequestorRef());
+                existingSubscription.setAddress(incomingSubscription.getAddressFieldName());
+                existingSubscription.setDurationOfSubscriptionHours(incomingSubscription.getDurationOfSubscription().toHoursPart());
+                existingSubscription.setDurationOfSubscriptionMinutes(incomingSubscription.getDurationOfSubscription().toMinutesPart());
+                existingSubscription.setSubscriptionMode(incomingSubscription.getSubscriptionMode());
+                existingSubscription.setUrlMap(incomingSubscription.getUrlMap());
+                existingSubscription.setServiceType(incomingSubscription.getServiceType());
+                existingSubscription.setContentType(incomingSubscription.getContentType());
+                existingSubscription.setHeartbeatIntervalSeconds(incomingSubscription.getHeartbeatInterval().toSecondsPart());
+                existingSubscription.setVersion(incomingSubscription.getVersion());
+                existingSubscription.setValidation(incomingSubscription.isValidation());
+                existingSubscription.setOperatorNamespace(incomingSubscription.getOperatorNamespace());
+                existingSubscription.setRestartTime(incomingSubscription.getRestartTime());
+                existingSubscription.setRevertIds(incomingSubscription.getRevertIds());
+                existingSubscription.setChangeBeforeUpdatesSeconds(incomingSubscription.getChangeBeforeUpdates().toSecondsPart());
+                existingSubscription.setCustomHeaders(incomingSubscription.getCustomHeaders());
+                existingSubscription.setLineRefValues(incomingSubscription.getLineRefValues());
+                existingSubscription.setMappingAdapterId(incomingSubscription.getMappingAdapterId());
+                existingSubscription.setVehicleMonitoringRefValue(incomingSubscription.getVehicleMonitoringRefValue());
             } else {
                 subscriptions.add(incomingSubscription);
             }
         }
+    }
 
+    public void mergeDiscoverySubscriptions(List<DiscoverySubscription> incomingSubscriptions) {
+        for (DiscoverySubscription incomingSubscription : incomingSubscriptions) {
 
+            Optional<DiscoverySubscription> existingSubscriptionOpt = getExistingDiscoverySubscription(incomingSubscription);
+            if (existingSubscriptionOpt.isEmpty()) {
+                discoverySubscriptions.add(incomingSubscription);
+            } else {
+                DiscoverySubscription existingSubscription = existingSubscriptionOpt.get();
+                existingSubscription.setUrl(incomingSubscription.getUrl());
+                existingSubscription.setSubscriptionMode(incomingSubscription.getSubscriptionMode());
+                existingSubscription.setVendorBaseName(incomingSubscription.getVendorBaseName());
+                existingSubscription.setDurationOfSubscriptionHours(incomingSubscription.getDurationOfSubscriptionHours());
+                existingSubscription.setSubscriptionIdBase(incomingSubscription.getSubscriptionIdBase());
+                existingSubscription.setRequestorRef(incomingSubscription.getRequestorRef());
+                existingSubscription.setHeartbeatIntervalSeconds(incomingSubscription.getHeartbeatIntervalSeconds());
+                existingSubscription.setPreviewIntervalSeconds(incomingSubscription.getPreviewIntervalSeconds());
+                existingSubscription.setChangeBeforeUpdatesSeconds(incomingSubscription.getChangeBeforeUpdatesSeconds());
+                existingSubscription.setCustomHeaders(incomingSubscription.getCustomHeaders());
+                existingSubscription.setUpdateIntervalSeconds(incomingSubscription.getUpdateIntervalSeconds());
+            }
+        }
     }
 
     private Optional<SubscriptionSetup> getExistingSubscription(SubscriptionSetup incomingSubscription) {
@@ -186,6 +232,16 @@ public class SubscriptionConfig {
         }
         return Optional.empty();
     }
+
+    private Optional<DiscoverySubscription> getExistingDiscoverySubscription(DiscoverySubscription incomingSubscription) {
+        for (DiscoverySubscription subscription : discoverySubscriptions) {
+            if (incomingSubscription.getDiscoveryType().equals(subscription.getDiscoveryType()) && incomingSubscription.getDatasetId().equals(subscription.getDatasetId())) {
+                return Optional.of(subscription);
+            }
+        }
+        return Optional.empty();
+    }
+
 
     private Optional<GtfsRTApi> getExistingGtfsAPI(GtfsRTApi incomingAPI) {
 
