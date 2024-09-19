@@ -1,6 +1,7 @@
 package no.rutebanken.anshar.routes.siri.handlers.inbound;
 
 import no.rutebanken.anshar.data.MonitoredStopVisits;
+import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.siri.handlers.Utils;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -72,9 +73,16 @@ public class StopMonitoringInbound {
     }
 
     public Collection<MonitoredStopVisit> ingestStopVisits(String datasetId, List<MonitoredStopVisit> incomingMonitoredStopVisits) {
+        TimingTracer ingestTimer = new TimingTracer("ingestStopVisits");
+
         Collection<MonitoredStopVisit> result = monitoredStopVisits.addAll(datasetId, incomingMonitoredStopVisits);
+        ingestTimer.mark("addAll completed");
         if (result.size() > 0) {
             serverSubscriptionManager.pushUpdatesAsync(SiriDataType.STOP_MONITORING, incomingMonitoredStopVisits, datasetId);
+        }
+        ingestTimer.mark("pushUpdated completed");
+        if (ingestTimer.getTotalTime() > 10000) {
+            logger.info(ingestTimer.toString());
         }
         return result;
     }
