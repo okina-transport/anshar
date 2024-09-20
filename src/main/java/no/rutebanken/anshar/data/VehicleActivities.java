@@ -51,9 +51,9 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
     @Autowired
     private IMap<SiriObjectStorageKey, VehicleActivityStructure> monitoredVehicles;
 
-//    @Autowired
-//    @Qualifier("getVehicleChangesMap")
-//    private IMap<String, Set<SiriObjectStorageKey>> changesMap;
+    @Autowired
+    @Qualifier("getVehicleChangesMap")
+    private IMap<String, Set<SiriObjectStorageKey>> changesMap;
 
     @Autowired
     @Qualifier("getVmChecksumMap")
