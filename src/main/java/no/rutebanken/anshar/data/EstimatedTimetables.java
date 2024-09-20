@@ -32,7 +32,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
 import uk.org.siri.siri20.*;
 
-import javax.annotation.PostConstruct;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
@@ -84,10 +83,10 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
         super(SiriDataType.ESTIMATED_TIMETABLE);
     }
 
-    @PostConstruct
-    private void initializeUpdateCommitter() {
-        super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
-    }
+//    @PostConstruct
+//    private void initializeUpdateCommitter() {
+//        super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
+//    }
 
     /**
      * @return All ET-elements

@@ -37,7 +37,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 import uk.org.siri.siri20.*;
 
-import javax.annotation.PostConstruct;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
@@ -52,9 +51,9 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
     @Autowired
     private IMap<SiriObjectStorageKey, VehicleActivityStructure> monitoredVehicles;
 
-    @Autowired
-    @Qualifier("getVehicleChangesMap")
-    private IMap<String, Set<SiriObjectStorageKey>> changesMap;
+//    @Autowired
+//    @Qualifier("getVehicleChangesMap")
+//    private IMap<String, Set<SiriObjectStorageKey>> changesMap;
 
     @Autowired
     @Qualifier("getVmChecksumMap")
@@ -93,10 +92,10 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
 
     }
 
-    @PostConstruct
-    private void initializeUpdateCommitter() {
-        super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
-    }
+//    @PostConstruct
+//    private void initializeUpdateCommitter() {
+//        super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
+//    }
 
     /**
      * @return All vehicle activities

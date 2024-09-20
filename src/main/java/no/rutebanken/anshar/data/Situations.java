@@ -36,7 +36,6 @@ import org.springframework.stereotype.Repository;
 import uk.org.ifopt.siri20.StopPlaceRef;
 import uk.org.siri.siri20.*;
 
-import javax.annotation.PostConstruct;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
@@ -82,10 +81,10 @@ public class Situations extends SiriRepository<PtSituationElement> {
         super(SiriDataType.SITUATION_EXCHANGE);
     }
 
-    @PostConstruct
-    private void initializeUpdateCommitter() {
-        super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
-    }
+//    @PostConstruct
+//    private void initializeUpdateCommitter() {
+//        super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
+//    }
 
     /**
      * @return All situationElements
@@ -214,7 +213,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
     /**
      * Generates a set of keys that matches with user's request
      *
-     * @param datasetId   dataset id
+     * @param datasetId dataset id
      * @return a set of keys matching with filters
      */
     private Set<SiriObjectStorageKey> generateIdSet(String datasetId) {

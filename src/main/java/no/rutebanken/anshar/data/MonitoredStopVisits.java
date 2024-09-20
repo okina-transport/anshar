@@ -35,7 +35,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
 import uk.org.siri.siri20.*;
 
-import javax.annotation.PostConstruct;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -90,11 +89,11 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     protected MonitoredStopVisits() {
         super(SiriDataType.STOP_MONITORING);
     }
-
-    @PostConstruct
-    private void initializeUpdateCommitter() {
-        super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
-    }
+//
+//    @PostConstruct
+//    private void initializeUpdateCommitter() {
+//        super.initBufferCommitter(hazelcastService, lastUpdateRequested, changesMap, configuration.getChangeBufferCommitFrequency());
+//    }
 
     @Override
     public Collection<MonitoredStopVisit> getAll() {
