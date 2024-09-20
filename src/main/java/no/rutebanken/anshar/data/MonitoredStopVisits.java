@@ -22,6 +22,7 @@ import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.data.util.CustomStringUtils;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
+import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.util.StopMonitoringUtils;
@@ -166,11 +167,16 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientTrackingName, List<String> excludedDatasetIds, int maxSize, long previewInterval, Set<String> searchedStopIds) {
 
+        TimingTracer createDelTracer = new TimingTracer("createDelTracer");
+
+
         if (StringUtils.isNotEmpty(datasetId)) {
             requestorRefRepository.touchRequestorRef(requestorId, datasetId, clientTrackingName, SiriDataType.STOP_MONITORING);
         } else {
             requestorRefRepository.touchRequestorRef(requestorId, null, clientTrackingName, SiriDataType.STOP_MONITORING);
         }
+
+        createDelTracer.mark("requestorRefTouched");
 
 
         int trackingPeriodMinutes = configuration.getTrackingPeriodMinutes();
@@ -191,6 +197,8 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
             requestedIds.addAll(generateIdSet(null, searchedStopIds, excludedDatasetIds));
         }
 
+        createDelTracer.mark("requestedIdGeneration");
+
 
         final ZonedDateTime previewExpiry = ZonedDateTime.now().plusSeconds(previewInterval / 1000);
 
@@ -207,6 +215,8 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
             logger.info("Found {} ids starting within {} ms in {} ms", startTimes.size(), previewInterval, (System.currentTimeMillis() - t1));
         }
+
+        createDelTracer.mark("preview filter");
 
         final AtomicInteger previewIntervalInclusionCounter = new AtomicInteger();
         final AtomicInteger previewIntervalExclusionCounter = new AtomicInteger();
@@ -230,10 +240,15 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
                 .limit(maxSize)
                 .collect(Collectors.toSet());
 
+
+        createDelTracer.mark("sizeLimit");
+
         long t2 = System.currentTimeMillis();
 
         //Remove collected objects
         sizeLimitedIds.forEach(requestedIds::remove);
+
+        createDelTracer.mark("requestedRemove");
 
         long t3 = System.currentTimeMillis();
 
@@ -243,11 +258,15 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         Boolean isMoreData = (previewIntervalExclusionCounter.get() + sizeLimitedIds.size()) < requestedIds.size();
 
+        createDelTracer.mark("isMoreData");
+
         Collection<MonitoredStopVisit> values = monitoredStopVisits.getAll(sizeLimitedIds).values();
+        createDelTracer.mark("getAll");
         logger.debug("Fetching data: {} ms", (System.currentTimeMillis() - t1));
         t1 = System.currentTimeMillis();
 
         Siri siri = siriObjectFactory.createSMServiceDelivery(values);
+        createDelTracer.mark("createSMDel");
         logger.debug("Creating SIRI-delivery: {} sm", (System.currentTimeMillis() - t1));
 
         siri.getServiceDelivery().setMoreData(isMoreData);
@@ -262,10 +281,15 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
                 //Remove outdated ids
                 requestedIds.removeIf(id -> !monitoredStopVisits.containsKey(id));
             }
+            createDelTracer.mark("adHoc");
 
             //Update change-tracker
             // updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, requestedIds, trackingPeriodMinutes, TimeUnit.MINUTES);
 
+        }
+
+        if (createDelTracer.getTotalTime() > 3000) {
+            logger.info(createDelTracer.toString());
         }
 
         return siri;
