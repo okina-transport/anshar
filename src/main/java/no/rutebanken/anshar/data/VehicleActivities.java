@@ -420,7 +420,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
         markDataReceived(SiriDataType.VEHICLE_MONITORING, datasetId, vmList.size(), changes.size(), outdatedCounter.getValue(), (invalidLocationCounter.getValue() + notMeaningfulCounter.getValue() + notUpdatedCounter.getValue()));
 
         timingTracer.mark("markDataReceived");
-        markIdsAsUpdated(changes.keySet());
+        // markIdsAsUpdated(changes.keySet());
         timingTracer.mark("markIdsAsUpdated");
 
         if (timingTracer.getTotalTime() > 1000) {

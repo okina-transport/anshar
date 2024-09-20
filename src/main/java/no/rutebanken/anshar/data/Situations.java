@@ -384,7 +384,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
         markDataReceived(SiriDataType.SITUATION_EXCHANGE, datasetId, sxList.size(), changes.size(), alreadyExpiredCounter.getValue(), ignoredCounter.getValue());
         timingTracer.mark("markDataReceived");
 
-        markIdsAsUpdated(changes.keySet());
+        //markIdsAsUpdated(changes.keySet());
         timingTracer.mark("markIdsAsUpdated");
 
         if (timingTracer.getTotalTime() > 1000) {

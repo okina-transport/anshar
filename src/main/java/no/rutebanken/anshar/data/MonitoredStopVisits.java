@@ -473,7 +473,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         markDataReceived(SiriDataType.STOP_MONITORING, datasetId, smList.size(), changes.size(), outdatedCounter.getValue(), (invalidLocationCounter.getValue() + notMeaningfulCounter.getValue() + notUpdatedCounter.getValue()));
 
-        markIdsAsUpdated(changes);
+        //markIdsAsUpdated(changes);
 
         return addedData;
     }
