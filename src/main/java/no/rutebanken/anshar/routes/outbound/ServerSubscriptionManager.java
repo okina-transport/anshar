@@ -234,14 +234,17 @@ public class ServerSubscriptionManager {
         MessageQualifierStructure messageIdentifier = subscriptionRequest.getMessageIdentifier();
 
         for (VehicleMonitoringSubscriptionStructure vehicleMonitoringSubscriptionRequest : subscriptionRequest.getVehicleMonitoringSubscriptionRequests()) {
+            Siri singleSiriRequest = new Siri();
             SubscriptionRequest singleRequest = new SubscriptionRequest();
             singleRequest.getVehicleMonitoringSubscriptionRequests().add(vehicleMonitoringSubscriptionRequest);
             singleRequest.setRequestorRef(requestorRef);
             singleRequest.setConsumerAddress(consumerAddress);
             singleRequest.setSubscriptionContext(subscriptionContext);
             singleRequest.setMessageIdentifier(messageIdentifier);
+            singleSiriRequest.setSubscriptionRequest(singleRequest);
+            singleSiriRequest.setVersion(incomingSiri.getVersion());
 
-            Siri currentResult = handleSingleSubscriptionRequest(incomingSiri, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation, useOriginalId);
+            Siri currentResult = handleSingleSubscriptionRequest(singleSiriRequest, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation, useOriginalId);
             resultList.add(currentResult);
         }
 
@@ -258,14 +261,17 @@ public class ServerSubscriptionManager {
         MessageQualifierStructure messageIdentifier = subscriptionRequest.getMessageIdentifier();
 
         for (StopMonitoringSubscriptionStructure stopMonitoringSubscriptionRequest : subscriptionRequest.getStopMonitoringSubscriptionRequests()) {
+            Siri singleSiriRequest = new Siri();
             SubscriptionRequest singleRequest = new SubscriptionRequest();
             singleRequest.getStopMonitoringSubscriptionRequests().add(stopMonitoringSubscriptionRequest);
             singleRequest.setRequestorRef(requestorRef);
             singleRequest.setConsumerAddress(consumerAddress);
             singleRequest.setSubscriptionContext(subscriptionContext);
             singleRequest.setMessageIdentifier(messageIdentifier);
+            singleSiriRequest.setSubscriptionRequest(singleRequest);
+            singleSiriRequest.setVersion(incomingSiri.getVersion());
 
-            Siri currentResult = handleSingleSubscriptionRequest(incomingSiri, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation, useOriginalId);
+            Siri currentResult = handleSingleSubscriptionRequest(singleSiriRequest, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation, useOriginalId);
             resultList.add(currentResult);
         }
 
