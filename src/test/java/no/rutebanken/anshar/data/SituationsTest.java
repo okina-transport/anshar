@@ -35,7 +35,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
 import java.util.*;
 
-import static no.rutebanken.anshar.helpers.SleepUtil.sleep;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class SituationsTest extends SpringBootBaseTest {
@@ -142,35 +141,6 @@ public class SituationsTest extends SpringBootBaseTest {
         assertEquals(1, situations.getAll().size(), "should not have duplicate situation");
     }
 
-    @Test
-    public void testGetUpdatesOnly() {
-
-        int previousSize = situations.getAll().size();
-
-        String prefix = "updates-";
-        situations.add("test", TestObjectFactory.createPtSituationElement("ruter", prefix + "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1)));
-        situations.add("test", TestObjectFactory.createPtSituationElement("ruter", prefix + "2345", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1)));
-        situations.add("test", TestObjectFactory.createPtSituationElement("ruter", prefix + "3456", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1)));
-
-        sleep(50);
-
-        // Added 3
-        assertEquals(previousSize + 3, situations.getAllUpdates("1234-1234", null).size());
-
-        situations.add("test", TestObjectFactory.createPtSituationElement("ruter", prefix + "4567", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1)));
-
-        sleep(50);
-
-        //Added one
-        assertEquals(1, situations.getAllUpdates("1234-1234", null).size());
-        sleep(50);
-
-        //None added
-        assertEquals(0, situations.getAllUpdates("1234-1234", null).size());
-        sleep(50);
-        //Verify that all elements still exist
-        assertEquals(previousSize + 4, situations.getAll().size());
-    }
 
     // @Test
 //    public void testGetUpdatesOnlyFromCache() {

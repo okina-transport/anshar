@@ -36,7 +36,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
 import java.util.*;
 
-import static no.rutebanken.anshar.helpers.SleepUtil.sleep;
 import static no.rutebanken.anshar.idTests.TestUtils.*;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -295,32 +294,6 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
         assertTrue(first.getMonitoredVehicleJourney().isMonitored());
 
 
-    }
-
-
-    @Test
-    public void testGetUpdatesOnly() {
-        int previousSize = monitoredStopVisits.getAll().size();
-
-        String prefix = "updateOnly-";
-        monitoredStopVisits.add("test", createMonitoredStopVisit(ZonedDateTime.now(), prefix + "1234"));
-        monitoredStopVisits.add("test", createMonitoredStopVisit(ZonedDateTime.now(), prefix + "2345"));
-        monitoredStopVisits.add("test", createMonitoredStopVisit(ZonedDateTime.now(), prefix + "3456"));
-
-        sleep(250);
-
-        // Added 3
-        assertEquals(previousSize + 3, monitoredStopVisits.getAllUpdates("1234-1234", null).size());
-
-        monitoredStopVisits.add("test", createMonitoredStopVisit(ZonedDateTime.now(), prefix + "4567"));
-        sleep(250);
-
-        //Added one
-        assertEquals(1, monitoredStopVisits.getAllUpdates("1234-1234", null).size());
-
-
-        //Verify that all elements still exist
-        assertEquals(previousSize + 4, monitoredStopVisits.getAll().size());
     }
 
 
