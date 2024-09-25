@@ -100,7 +100,7 @@ public class ExternalDataHandler {
             timingTracer.mark("cancel ingest completed");
 
             if (timingTracer.getTotalTime() > 3000) {
-                logger.info(timingTracer.toString());
+                logger.debug(timingTracer.toString());
             }
 
         } catch (JAXBException | XMLStreamException jaxbException) {
