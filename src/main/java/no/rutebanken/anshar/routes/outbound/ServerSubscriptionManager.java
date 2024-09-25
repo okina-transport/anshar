@@ -994,7 +994,7 @@ public class ServerSubscriptionManager {
         timingTracer.mark("sendCompleted");
 
         if (timingTracer.getTotalTime() > 5000) {
-            logger.warn("SM output send took more than 5s for all subscriptions ");
+            logger.debug("SM output send took more than 5s for all subscriptions ");
         }
     }
 
