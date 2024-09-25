@@ -38,7 +38,7 @@ public class StopMonitoringInbound {
     private SubscriptionManager subscriptionManager;
 
     public boolean ingestStopVisitFromApi(SiriDataType dataFormat, String dataSetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList) {
-        logger.debug("Got SM-delivery: Subscription [{}] {}", subscriptionSetupList);
+        // logger.debug("Got SM-delivery: Subscription [{}] {}", subscriptionSetupList);
         List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = incoming.getServiceDelivery().getStopMonitoringDeliveries();
         List<MonitoredStopVisit> addedOrUpdated = new ArrayList<>();
         if (stopMonitoringDeliveries != null) {
@@ -72,6 +72,7 @@ public class StopMonitoringInbound {
     }
 
     public Collection<MonitoredStopVisit> ingestStopVisits(String datasetId, List<MonitoredStopVisit> incomingMonitoredStopVisits) {
+
         Collection<MonitoredStopVisit> result = monitoredStopVisits.addAll(datasetId, incomingMonitoredStopVisits);
         if (result.size() > 0) {
             serverSubscriptionManager.pushUpdatesAsync(SiriDataType.STOP_MONITORING, incomingMonitoredStopVisits, datasetId);
@@ -86,7 +87,7 @@ public class StopMonitoringInbound {
 
     public boolean ingestStopVisit(SubscriptionSetup subscriptionSetup, Siri incoming) {
         List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = incoming.getServiceDelivery().getStopMonitoringDeliveries();
-        logger.debug("Got SM-delivery: Subscription [{}] ", subscriptionSetup);
+        //logger.debug("Got SM-delivery: Subscription [{}] ", subscriptionSetup);
 
         List<MonitoredStopVisit> addedOrUpdated = new ArrayList<>();
         if (stopMonitoringDeliveries != null) {
@@ -109,7 +110,7 @@ public class StopMonitoringInbound {
 
         subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdated.size());
 
-        logger.debug("Active SM-elements: {}, current delivery: {}, {}", monitoredStopVisits.getSize(), addedOrUpdated.size(), subscriptionSetup);
+        // logger.debug("Active SM-elements: {}, current delivery: {}, {}", monitoredStopVisits.getSize(), addedOrUpdated.size(), subscriptionSetup);
 
         return !addedOrUpdated.isEmpty();
     }

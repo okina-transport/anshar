@@ -71,7 +71,7 @@ abstract class SiriRepository<T> {
 
     private static final Logger logger = LoggerFactory.getLogger(SiriRepository.class);
 
-    private PrometheusMetricsService metrics;
+    protected PrometheusMetricsService metrics;
 
     final Set<SiriObjectStorageKey> dirtyChanges = Collections.synchronizedSet(new HashSet<>());
 
@@ -319,6 +319,34 @@ abstract class SiriRepository<T> {
             metrics = ApplicationContextHolder.getContext().getBean(PrometheusMetricsService.class);
         }
         metrics.registerIncomingData(dataType, datasetId, totalSize, updatedSize, expiredSize, ignoredSize);
+    }
+
+    void registerEmptyRecordedAtTime(SiriDataType siriDataType) {
+        if (metrics == null) {
+            metrics = ApplicationContextHolder.getContext().getBean(PrometheusMetricsService.class);
+        }
+        metrics.registerEmptyRecordedAtTime(siriDataType);
+    }
+
+    void recordDeltaTimes(SiriDataType dataType, String datasetId, Set<Long> deltaTimes) {
+        if (metrics == null) {
+            metrics = ApplicationContextHolder.getContext().getBean(PrometheusMetricsService.class);
+        }
+        metrics.recordDeltaTimes(dataType, datasetId, deltaTimes);
+    }
+
+    void registerNewRecordedAfterOld(SiriDataType siriDataType) {
+        if (metrics == null) {
+            metrics = ApplicationContextHolder.getContext().getBean(PrometheusMetricsService.class);
+        }
+        metrics.registerNewRecordedAfterOld(siriDataType);
+    }
+
+    void registerNegativeExpiration(SiriDataType siriDataType, String datasetId) {
+        if (metrics == null) {
+            metrics = ApplicationContextHolder.getContext().getBean(PrometheusMetricsService.class);
+        }
+        metrics.registerNegativeExpiration(siriDataType, datasetId);
     }
 
     void updateChangeTrackers(IMap<String, Instant> lastUpdateRequested, IMap<String, Set<SiriObjectStorageKey>> changesMap,

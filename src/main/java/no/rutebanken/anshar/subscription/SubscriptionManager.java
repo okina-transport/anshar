@@ -191,7 +191,7 @@ public class SubscriptionManager {
             if (monitoredRef != null) {
                 logger.debug("Touched monitoredObjects:{}", monitoredRef);
             } else {
-                logger.info("Touched subscription {}, success:{}", setup, success);
+                logger.debug("Touched subscription {}, success:{}", setup, success);
             }
         }
 

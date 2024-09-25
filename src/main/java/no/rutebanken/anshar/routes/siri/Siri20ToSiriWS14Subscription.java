@@ -78,7 +78,7 @@ public class Siri20ToSiriWS14Subscription extends SiriSubscriptionRouteBuilder {
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
                 .process(addCustomHeaders())
                 .process(p -> {
-                    logger.info("Subscription request content:" + p.getIn().getBody());
+                    logger.debug("Subscription request content:" + p.getIn().getBody());
                 })
                 .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .doTry()
@@ -149,7 +149,7 @@ public class Siri20ToSiriWS14Subscription extends SiriSubscriptionRouteBuilder {
                 .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .process(p -> {
                     InputStream body = p.getIn().getBody(InputStream.class);
-                    logger.info("Response body [{}]", body);
+                    logger.debug("Response body [{}]", body);
                     if (body != null && body.available() > 0) {
                         handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), body));
                     }

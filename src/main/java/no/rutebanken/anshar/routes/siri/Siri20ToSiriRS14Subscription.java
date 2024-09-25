@@ -115,7 +115,7 @@ public class Siri20ToSiriRS14Subscription extends SiriSubscriptionRouteBuilder {
                 .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .process(p -> {
                     InputStream body = p.getIn().getBody(InputStream.class);
-                    logger.info("Response body [{}]", body);
+                    logger.debug("Response body [{}]", body);
                     if (body != null && body.available() > 0) {
                         IncomingSiriParameters incomingSiriParameters = new IncomingSiriParameters();
                         incomingSiriParameters.setIncomingSiriStream(body);

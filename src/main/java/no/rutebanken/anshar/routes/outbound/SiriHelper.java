@@ -26,6 +26,7 @@ import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.util.IDUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.entur.siri.validator.SiriValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -728,6 +729,43 @@ public class SiriHelper {
             }
         }
         return results;
+    }
+
+    public static Set<String> extractMonitoringRefs(List visits) {
+        Set<String> monitoringRefs = new HashSet<>();
+        if (visits == null || visits.isEmpty()) {
+            return new HashSet<>();
+        }
+
+        List<MonitoredStopVisit> stopMonitoringVisit = new ArrayList<>();
+        List<MonitoredStopVisitCancellation> stopMonitoringVisitCancellations = new ArrayList<>();
+
+        for (Object visit : visits) {
+            if (visit instanceof MonitoredStopVisit) {
+                stopMonitoringVisit.add((MonitoredStopVisit) visit);
+            } else if (visit instanceof MonitoredStopVisitCancellation) {
+                stopMonitoringVisitCancellations.add((MonitoredStopVisitCancellation) visit);
+            }
+        }
+
+        if (!stopMonitoringVisit.isEmpty()) {
+            for (MonitoredStopVisit monitoredStopVisit : stopMonitoringVisit) {
+                if (monitoredStopVisit.getMonitoringRef() == null || StringUtils.isEmpty(monitoredStopVisit.getMonitoringRef().getValue())) {
+                    continue;
+                }
+                monitoringRefs.add(monitoredStopVisit.getMonitoringRef().getValue());
+            }
+        }
+
+        if (!stopMonitoringVisitCancellations.isEmpty()) {
+            for (MonitoredStopVisitCancellation monitoredStopVisit : stopMonitoringVisitCancellations) {
+                if (monitoredStopVisit.getMonitoringRef() == null || StringUtils.isEmpty(monitoredStopVisit.getMonitoringRef().getValue())) {
+                    continue;
+                }
+                monitoringRefs.add(monitoredStopVisit.getMonitoringRef().getValue());
+            }
+        }
+        return monitoringRefs;
     }
 
     private static boolean isLineRefMatch(Set<String> linerefValues, String completeValue) {

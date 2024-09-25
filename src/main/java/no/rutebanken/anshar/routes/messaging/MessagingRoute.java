@@ -2,6 +2,7 @@ package no.rutebanken.anshar.routes.messaging;
 
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
+import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.gtfsrt.ingesters.EstimatedTimetableIngester;
 import no.rutebanken.anshar.gtfsrt.ingesters.SituationExchangeIngester;
 import no.rutebanken.anshar.gtfsrt.ingesters.StopMonitoringIngester;
@@ -154,7 +155,8 @@ public class MessagingRoute extends RestRouteBuilder {
         ;
 
         from(externalSiriSMQueue)
-                .threads(20)
+                .threads(100)
+                .maxPoolSize(100)
                 .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
@@ -414,7 +416,7 @@ public class MessagingRoute extends RestRouteBuilder {
 
         from("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
                 .process(p -> {
-
+                    TimingTracer processorTT = new TimingTracer("processorTT");
                     String subscriptionId = p.getIn().getHeader("subscriptionId", String.class);
                     String datasetId = null;
 
@@ -435,7 +437,13 @@ public class MessagingRoute extends RestRouteBuilder {
                     incomingSiriParameters.setMaxSize(-1);
                     incomingSiriParameters.setClientTrackingName(clientTrackingName);
 
+                    processorTT.mark("preparation");
+
                     handler.handleIncomingSiri(incomingSiriParameters);
+                    processorTT.mark("ingest completed");
+                    if (processorTT.getTotalTime() > 1000){
+                        log.info(processorTT.toString());
+                    }
 
                 })
                 .routeId("incoming.processor.default")

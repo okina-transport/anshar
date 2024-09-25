@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.metrics;
 
+import com.google.common.collect.Sets;
 import com.hazelcast.replicatedmap.ReplicatedMap;
 import io.micrometer.core.instrument.ImmutableTag;
 import io.micrometer.core.instrument.Meter;
@@ -24,6 +25,8 @@ import io.micrometer.prometheus.PrometheusMeterRegistry;
 import no.rutebanken.anshar.data.EstimatedTimetables;
 import no.rutebanken.anshar.data.Situations;
 import no.rutebanken.anshar.data.VehicleActivities;
+import no.rutebanken.anshar.routes.outbound.CamelRouteManager;
+import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import no.rutebanken.anshar.routes.siri.transformer.MappingNames;
 import no.rutebanken.anshar.routes.validation.ValidationType;
@@ -38,10 +41,8 @@ import org.springframework.stereotype.Component;
 import uk.org.siri.siri21.*;
 
 import javax.annotation.PreDestroy;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class PrometheusMetricsService extends PrometheusMeterRegistry {
@@ -67,6 +68,12 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
     @Autowired
     protected SubscriptionManager manager;
 
+    @Autowired
+    private CamelRouteManager camelRouteManager;
+
+    @Autowired
+    private ServerSubscriptionManager serverSubscriptionManager;
+
     private static final String METRICS_PREFIX = "app.anshar.";
     private static final String DATA_COUNTER_NAME = METRICS_PREFIX + "data.counter";
     private static final String DATA_TOTAL_COUNTER_NAME = METRICS_PREFIX + "data.total";
@@ -84,13 +91,111 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
     private static final String DATA_VALIDATION_COUNTER = METRICS_PREFIX + "data.validation";
     private static final String DATA_VALIDATION_RESULT_COUNTER = METRICS_PREFIX + "data.validation.result";
 
+    private static final String EMPTY_RECORDED_AT_TIME = METRICS_PREFIX + "data.empty.recoreded.at.time";
+    private static final String NEW_RECORDED_AFTER_OLD = METRICS_PREFIX + "data.new.recorded.before.old.recorded";
+
+    private static final String NEGATIVE_EXPIRATATION = METRICS_PREFIX + "data.negative.expiration";
+
+
+    private static final String SUBS_PUSH_WAITING_THREADS = METRICS_PREFIX + "subscription.push.waiting.threads";
+    private static final String PUSH_UPDATES_WAITING_THREADS = METRICS_PREFIX + "push.updates.waiting.threads";
+
+
+    private static final String OUTBOUND_PUSH_TIME = METRICS_PREFIX + "data.outbound.push.time";
+
+    private static final String DELTA_RECORDED_AT_TIME = METRICS_PREFIX + "data.delta.recorded.at.time";
+
+
     public PrometheusMetricsService() {
         super(PrometheusConfig.DEFAULT);
     }
 
+    final Map<String, Integer> nbOfOutboundPushByRequestor = new HashMap<>();
+    final Map<String, Long> totalPushTimeByRequestor = new HashMap<>();
+    final Map<String, Set<Long>> smDeltaTimesTmp = new ConcurrentHashMap<>();
+    final Map<String, Double> smDeltaTimesResults = new HashMap<>();
+    final Map<String, Double> outboundPushTimeResults = new HashMap<>();
+
+
+    final Map<String, Set<Long>> smDeltaTimesTmpBeforePush = new ConcurrentHashMap<>();
+    final Map<String, Double> smDeltaTimesResultsBeforePush = new HashMap<>();
+
     @PreDestroy
     public void shutdown() {
         this.close();
+    }
+
+
+    /**
+     * Record delta times between recordedAtTime field and real time
+     *
+     * @param dataType   Siri type
+     * @param datasetId  id of the dataset
+     * @param deltaTimes set of delta times
+     */
+    public void recordDeltaTimes(SiriDataType dataType, String datasetId, Set<Long> deltaTimes) {
+        if (SiriDataType.STOP_MONITORING.equals(dataType)) {
+
+            if (smDeltaTimesTmp.containsKey(datasetId)) {
+                smDeltaTimesTmp.get(datasetId).addAll(deltaTimes);
+            } else {
+                Set<Long> mySet = Sets.newConcurrentHashSet();
+                mySet.addAll(deltaTimes);
+                smDeltaTimesTmp.put(datasetId, mySet);
+            }
+        }
+    }
+
+    public void recordDeltaTimesBeforePush(SiriDataType dataType, String datasetId, Set<Long> deltaTimes) {
+        if (SiriDataType.STOP_MONITORING.equals(dataType)) {
+
+            if (smDeltaTimesTmpBeforePush.containsKey(datasetId)) {
+                smDeltaTimesTmpBeforePush.get(datasetId).addAll(deltaTimes);
+            } else {
+                Set<Long> mySet = Sets.newConcurrentHashSet();
+                mySet.addAll(deltaTimes);
+                smDeltaTimesTmpBeforePush.put(datasetId, mySet);
+            }
+        }
+    }
+
+    public void recordPushTime(String requestorRef, long pushTime) {
+
+        if (nbOfOutboundPushByRequestor.containsKey(requestorRef)) {
+            Integer currentNbofPush = nbOfOutboundPushByRequestor.get(requestorRef);
+            nbOfOutboundPushByRequestor.put(requestorRef, currentNbofPush + 1);
+        } else {
+            nbOfOutboundPushByRequestor.put(requestorRef, 1);
+        }
+        if (totalPushTimeByRequestor.containsKey(requestorRef)) {
+            Long totalPushTime = totalPushTimeByRequestor.get(requestorRef);
+            totalPushTimeByRequestor.put(requestorRef, totalPushTime + pushTime);
+        } else {
+            totalPushTimeByRequestor.put(requestorRef, pushTime);
+        }
+    }
+
+    public void registerNegativeExpiration(SiriDataType dataType, String datasetId) {
+
+        if (StringUtils.isEmpty(datasetId)) {
+            datasetId = "emptyDatasetId";
+        }
+        List<Tag> counterTags = new ArrayList<>();
+        counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType.name()));
+        counterTags.add(new ImmutableTag(AGENCY_TAG_NAME, datasetId));
+        counter(NEGATIVE_EXPIRATATION, counterTags).increment(1);
+    }
+
+    public void registerNewRecordedAfterOld(SiriDataType dataType) {
+        List<Tag> counterTags = new ArrayList<>();
+        counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType.name()));
+        counter(NEW_RECORDED_AFTER_OLD, counterTags).increment(1);
+    }
+
+    public void registerEmptyRecordedAtTime(SiriDataType dataType) {
+        List<Tag> counterTags = new ArrayList<>();
+        counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType.name()));
+        counter(EMPTY_RECORDED_AT_TIME, counterTags).increment(1);
     }
 
     public void registerIncomingData(SiriDataType dataType, String agencyId, long total, long updated, long expired, long ignored) {
@@ -247,7 +352,56 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
         return super.scrape();
     }
 
+
+    private void updateDeltaTimes() {
+        for (Map.Entry<String, Set<Long>> smDeltaTimeEntry : smDeltaTimesTmp.entrySet()) {
+            String requestorRef = smDeltaTimeEntry.getKey();
+            List<Tag> counterTags = new ArrayList<>();
+            counterTags.add(new ImmutableTag(REQUESTOR_REF_TAG_NAME, requestorRef));
+
+
+            Set<Long> deltaTimes = new HashSet<>(smDeltaTimeEntry.getValue());
+            double sum = 0;
+            for (Long deltaTime : deltaTimes) {
+                sum = sum + deltaTime;
+            }
+
+
+            smDeltaTimesResults.put(requestorRef, sum / deltaTimes.size());
+            gauge(DELTA_RECORDED_AT_TIME, counterTags, requestorRef, value -> smDeltaTimesResults.get(requestorRef));
+
+        }
+        smDeltaTimesTmp.clear();
+    }
+
     public void update() {
+
+        gauge(SUBS_PUSH_WAITING_THREADS, "pushWaitingThreads", value -> camelRouteManager.getPushSubscriptionWaitingQueueSize());
+        gauge(PUSH_UPDATES_WAITING_THREADS, "pushUpdatesWaitingThreads", value -> serverSubscriptionManager.getPushUpdatesWaitingQueueSize());
+
+        if (!smDeltaTimesTmp.isEmpty()) {
+            updateDeltaTimes();
+        }
+
+        if (!smDeltaTimesTmpBeforePush.isEmpty()) {
+            updateDeltaTimesBeforePush();
+        }
+
+        if (!nbOfOutboundPushByRequestor.isEmpty()) {
+
+            for (Map.Entry<String, Integer> nbOfOutboundPushEntry : nbOfOutboundPushByRequestor.entrySet()) {
+                String requestorRef = nbOfOutboundPushEntry.getKey();
+                List<Tag> counterTags = new ArrayList<>();
+                counterTags.add(new ImmutableTag(REQUESTOR_REF_TAG_NAME, requestorRef));
+
+                Long totalTime = totalPushTimeByRequestor.get(requestorRef);
+                Integer nbOfPush = nbOfOutboundPushEntry.getValue();
+                outboundPushTimeResults.put(requestorRef, (double) totalTime / nbOfPush);
+                gauge(OUTBOUND_PUSH_TIME, counterTags, requestorRef, value -> outboundPushTimeResults.get(requestorRef));
+            }
+            totalPushTimeByRequestor.clear();
+            nbOfOutboundPushByRequestor.clear();
+        }
 
         for (Meter meter : getMeters()) {
             if (DATA_COUNTER_NAME.equals(meter.getId().getName())) {
@@ -308,6 +462,30 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
             gauge(gauge_data_failing, getTagsWithTimeLimit(counterTags, "30min"), subscription.getSubscriptionId(), value ->
                     isSubscriptionFailing(manager, subscription, 30 * 60));
         }
+    }
+
+    private void updateDeltaTimesBeforePush() {
+
+        for (Map.Entry<String, Set<Long>> smDeltaTimeEntry : smDeltaTimesTmpBeforePush.entrySet()) {
+            String requestorRef = smDeltaTimeEntry.getKey();
+            List<Tag> counterTags = new ArrayList<>();
+            counterTags.add(new ImmutableTag(REQUESTOR_REF_TAG_NAME, requestorRef));
+
+
+            Set<Long> deltaTimes = new HashSet<>(smDeltaTimeEntry.getValue());
+            double sum = 0;
+            for (Long deltaTime : deltaTimes) {
+                sum = sum + deltaTime;
+            }
+
+
+            smDeltaTimesResultsBeforePush.put(requestorRef, sum / deltaTimes.size());
+            gauge(DELTA_RECORDED_AT_TIME + "_BEFORE_PUSH", counterTags, requestorRef, value -> smDeltaTimesResultsBeforePush.get(requestorRef));
+
+        }
+        smDeltaTimesTmp.clear();
+
+
     }
 
     private List<Tag> getTagsWithTimeLimit(List<Tag> counterTags, String timeLimit) {

@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.routes.siri;
 
+import com.ctc.wstx.exc.WstxParsingException;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.data.util.CustomSiriXml;
@@ -25,6 +26,7 @@ import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.CamelContextAware;
 import org.apache.camel.Exchange;
+import org.apache.camel.ExchangePattern;
 import org.apache.camel.Message;
 import org.apache.camel.http.common.HttpMethods;
 import org.apache.camel.model.rest.RestParamType;
@@ -152,7 +154,8 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .description("Endpoint used for SIRI SubscriptionRequest limited to single dataprovider.")
                 .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.path).description("The id of the Codespace to limit data to").dataType("string").endParam()
 
-                .post("/{version}/{type}/{vendor}/{" + PARAM_SUBSCRIPTION_ID + "}").to("direct:process.incoming.request")
+                .post("/{version}/{type}/{vendor}/{" + PARAM_SUBSCRIPTION_ID + "}")
+                .to("direct:process.incoming.request")
                 .apiDocs(false)
 
                 .post("/{version}/{type}/{vendor}/{" + PARAM_SUBSCRIPTION_ID + "}/{service}").to("direct:process.incoming.request")
@@ -182,22 +185,29 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .to("log:incoming:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true&level=DEBUG")
                 .choice()
                 .when(e -> subscriptionExistsAndIsActive(e))
-                //Valid subscription
-                .to("seda:async.process.request?waitForTaskToComplete=Never")
-                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("200"))
-                .setBody(constant(null))
+                    //Valid subscription
+                    //.to("seda:async.process.request?waitForTaskToComplete=Never")
+                     .wireTap("direct:async.process.request")
+                    .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("200"))
+                    .setBody(constant(null))
                 .endChoice()
                 .otherwise()
-                // Invalid subscription
-                .log("Ignoring incoming delivery for invalid subscription")
-                .removeHeaders("*")
-                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("403")) //403 Forbidden
-                .setBody(constant("Subscription is not valid"))
+                    // Invalid subscription
+                    .log("Ignoring incoming delivery for invalid subscription")
+                    .removeHeaders("*")
+                    .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("403")) //403 Forbidden
+                    .setBody(constant("Subscription is not valid"))
                 .endChoice()
                 .routeId("process.incoming")
         ;
 
-        from("seda:async.process.request?concurrentConsumers=20")
+        from("direct:async.process.request")
+                .setExchangePattern(ExchangePattern.InOnly)
+                .onException(WstxParsingException.class)
+                    .handled(true)
+                    .log("Erreur de parsing XML : ${exception.message}")
+                    .to("activemq:queue:wstx.parsing.exceptions?timeToLive=600000")
+                .end()
                 .convertBodyTo(String.class)
                 .process(p -> {
                     p.getMessage().setBody(p.getIn().getBody());
@@ -211,7 +221,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
         from("direct:process.soap.subscription.request")
                 .process(e -> e.getIn().setHeader(TRANSFORM_SOAP, TRANSFORM_SOAP))
                 .to("direct:transform.siri")
-                .process(e -> log.info(" transformé:" + e.getIn().getBody(String.class)))
+                .process(e -> log.debug(" transformé:" + e.getIn().getBody(String.class)))
                 .to("direct:process.subscription.request");
 
 
@@ -458,11 +468,14 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
     }
 
     private boolean subscriptionExistsAndIsActive(Exchange e) {
+
         String subscriptionId = e.getIn().getHeader(PARAM_SUBSCRIPTION_ID, String.class);
         if (subscriptionId == null || subscriptionId.isEmpty()) {
             return false;
         }
+
         SubscriptionSetup subscriptionSetup = subscriptionManager.get(subscriptionId);
+
 
         if (subscriptionSetup == null) {
             return false;
@@ -471,13 +484,17 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
         boolean existsAndIsActive = (subscriptionManager.isSubscriptionRegistered(subscriptionId) &&
                 subscriptionSetup.isActive());
 
+
+
         if (existsAndIsActive) {
             e.getOut().setHeaders(e.getIn().getHeaders());
             e.getOut().setBody(e.getIn().getBody());
 
+
             if (!"2.0".equals(subscriptionSetup.getVersion())) {
                 e.getOut().setHeader(TRANSFORM_VERSION, TRANSFORM_VERSION);
             }
+
 
             if (subscriptionSetup.getServiceType() == SubscriptionSetup.ServiceType.SOAP) {
                 e.getOut().setHeader(TRANSFORM_SOAP, TRANSFORM_SOAP);

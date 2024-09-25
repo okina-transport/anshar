@@ -17,6 +17,7 @@ package no.rutebanken.anshar.routes.outbound;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import no.rutebanken.anshar.data.VehicleActivities;
+import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.handlers.outbound.SituationExchangeOutbound;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -35,6 +36,7 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
 
 import static no.rutebanken.anshar.routes.HttpParameter.SIRI_VERSION_HEADER_NAME;
 import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_SOAP;
@@ -69,6 +71,12 @@ public class CamelRouteManager {
     @Autowired
     private SituationExchangeOutbound situationExchangeOutbound;
 
+    @Autowired
+    private PrometheusMetricsService prometheusMetricsService;
+
+    private ThreadPoolExecutor executors;
+
+
     /**
      * Splits SIRI-data if applicable, and pushes data to external subscription
      *
@@ -76,6 +84,7 @@ public class CamelRouteManager {
      * @param subscriptionRequest
      */
     void pushSiriData(Siri payload, OutboundSubscriptionSetup subscriptionRequest, boolean logBody) {
+
         String consumerAddress = subscriptionRequest.getAddress();
         if (consumerAddress == null) {
             logger.info("ConsumerAddress is null - ignoring data.");
@@ -83,8 +92,11 @@ public class CamelRouteManager {
         }
         final String breadcrumbId = MDC.get("camel.breadcrumbId");
         ExecutorService executorService = getOrCreateExecutorService(subscriptionRequest);
+
         executorService.submit(() -> {
             try {
+
+                long startTime = System.currentTimeMillis();
                 MDC.put("camel.breadcrumbId", breadcrumbId);
                 if (!subscriptionManager.subscriptions.containsKey(subscriptionRequest.getSubscriptionId())) {
                     // Short circuit if subscription has been terminated while waiting
@@ -109,6 +121,7 @@ public class CamelRouteManager {
                     removeVehicleMonitoringIfChangeBeforeUpdates(splitSiri, subscriptionRequest);
                 }
 
+
                 // On remplace les données partielles reçues par l'intégralité de la donnée si incrementalUpdate de l'abonnement est à false
                 if (!subscriptionRequest.getIncrementalUpdates()) {
 
@@ -117,6 +130,7 @@ public class CamelRouteManager {
                     } else if (SiriDataType.SITUATION_EXCHANGE.equals(subscriptionRequest.getSubscriptionType())) {
                         splitSiri = replaceByCompleteSXData(subscriptionRequest);
                     }
+
 
                 }
 
@@ -128,6 +142,10 @@ public class CamelRouteManager {
                         postDataToSubscription(siri, subscriptionRequest, logBody);
                     }
                 }
+
+                // logger.info(pushSiriTT.toString());
+                prometheusMetricsService.recordPushTime(subscriptionRequest.getRequestorRef(), System.currentTimeMillis() - startTime);
+
             } catch (Exception e) {
                 logger.info("Failed to push data for subscription {}: {}", subscriptionRequest, e);
 
@@ -184,14 +202,12 @@ public class CamelRouteManager {
 
     private ExecutorService getOrCreateExecutorService(OutboundSubscriptionSetup subscriptionRequest) {
 
-        final String subscriptionId = subscriptionRequest.getSubscriptionId();
-        if (!threadFactoryMap.containsKey(subscriptionId)) {
-            ThreadFactory factory = new ThreadFactoryBuilder().setNameFormat("outbound" + subscriptionId).build();
-
-            threadFactoryMap.put(subscriptionId, Executors.newSingleThreadExecutor(factory));
+        if (executors == null) {
+            ThreadFactory factory = new ThreadFactoryBuilder().setNameFormat("outbound").build();
+            executors = (ThreadPoolExecutor) Executors.newFixedThreadPool(maximumThreadsPerOutboundSubscription, factory);
         }
 
-        return threadFactoryMap.get(subscriptionId);
+        return executors;
     }
 
 
@@ -218,12 +234,15 @@ public class CamelRouteManager {
         }
     }
 
-    public void postDataToSubscription(Siri payload, OutboundSubscriptionSetup subscription, boolean showBody) {
+    public int getPushSubscriptionWaitingQueueSize() {
+        return executors == null ? 0 : executors.getQueue().size();
+    }
 
+    public void postDataToSubscription(Siri payload, OutboundSubscriptionSetup subscription, boolean showBody) {
+        Map<String, Object> headers = new HashMap<>();
         if (serviceDeliveryContainsData(payload)) {
             String remoteEndPoint = subscription.getAddress();
 
-            Map<String, Object> headers = new HashMap<>();
             headers.put("breadcrumbId", MDC.get("camel.breadcrumbId"));
             headers.put("endpoint", remoteEndPoint);
             headers.put("SubscriptionId", subscription.getSubscriptionId());
@@ -239,7 +258,7 @@ public class CamelRouteManager {
                 headers.put(HEARTBEAT_HEADER, HEARTBEAT_HEADER);
             }
 
-            siriSubscriptionProcessor.sendBodyAndHeaders(payload, headers);
+            siriSubscriptionProcessor.asyncRequestBodyAndHeaders(siriSubscriptionProcessor.getDefaultEndpoint(), payload, headers);
         }
     }
 

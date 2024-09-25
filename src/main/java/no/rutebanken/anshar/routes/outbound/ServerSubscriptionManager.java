@@ -51,6 +51,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.stream.Collectors;
 
 import static java.time.temporal.ChronoUnit.MILLIS;
@@ -145,6 +146,16 @@ public class ServerSubscriptionManager {
 
     @Autowired
     private StopPlaceUpdaterService stopPlaceUpdaterService;
+
+    Map<String, List<OutboundSubscriptionSetup>> outboundSubscriptionsByMonitoringRef = new HashMap<>();
+
+    @Value("${anshar.push.updated.thread.pool:10}")
+    private int pushUpdatedThreadPool;
+
+    private int pushIteration = 0;
+
+
+    ThreadPoolExecutor outboundSenderExecutorService;
 
 
     public Collection getSubscriptions() {
@@ -531,6 +542,36 @@ public class ServerSubscriptionManager {
 
     public void addSubscription(OutboundSubscriptionSetup subscription) {
         subscriptions.put(subscription.getSubscriptionId(), subscription);
+
+        if (SiriDataType.STOP_MONITORING.equals(subscription.getSubscriptionType()) && subscription.getFilterMap().containsKey(MonitoringRefStructure.class)) {
+            Set<String> filters = subscription.getFilterMap().get(MonitoringRefStructure.class);
+            if (!filters.isEmpty()) {
+                for (String monitoringRef : filters) {
+
+                    if (StringUtils.isEmpty(monitoringRef)) {
+                        continue;
+                    }
+                    addSubcriptionToReverseList(subscription, monitoringRef);
+                }
+            }
+        }
+    }
+
+    private void addSubcriptionToReverseList(OutboundSubscriptionSetup subscription, String monitoringRef) {
+        if (outboundSubscriptionsByMonitoringRef.containsKey(monitoringRef)) {
+
+            for (OutboundSubscriptionSetup currentOutboundSub : outboundSubscriptionsByMonitoringRef.get(monitoringRef)) {
+                if (currentOutboundSub.getSubscriptionId().equals(currentOutboundSub.getSubscriptionId())) {
+                    //subscription is already existing in reverseList. no need to add it
+                    return;
+                }
+            }
+            outboundSubscriptionsByMonitoringRef.get(monitoringRef).add(subscription);
+        } else {
+            List<OutboundSubscriptionSetup> outboundSubscriptions = new ArrayList<>();
+            outboundSubscriptions.add(subscription);
+            outboundSubscriptionsByMonitoringRef.put(monitoringRef, outboundSubscriptions);
+        }
     }
 
     private OutboundSubscriptionSetup removeSubscription(String subscriptionId) {
@@ -645,10 +686,24 @@ public class ServerSubscriptionManager {
         return siriObjectFactory.createCheckStatusResponse(checkStatusRequest);
     }
 
+    public int getPushUpdatesWaitingQueueSize() {
+        return outboundSenderExecutorService == null ? 0 : outboundSenderExecutorService.getQueue().size();
+    }
+
 
     public void pushUpdatesAsync(SiriDataType datatype, List updates, String datasetId) {
-
         final String breadcrumbId = MDC.get("camel.breadcrumbId");
+
+        if (outboundSenderExecutorService == null) {
+            outboundSenderExecutorService = (ThreadPoolExecutor) Executors.newFixedThreadPool(pushUpdatedThreadPool);
+        }
+
+        pushIteration++;
+        if (pushIteration == 100) {
+            //    logger.info("push updated thread pool queue size:" + outboundSenderExecutorService.getQueue().size() + ", pool size:" + pushUpdatedThreadPool);
+            pushIteration = 0;
+        }
+
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         switch (datatype) {
@@ -662,7 +717,7 @@ public class ServerSubscriptionManager {
                 executorService.submit(() -> pushUpdatedVehicleActivities(updates, datasetId, breadcrumbId));
                 break;
             case STOP_MONITORING:
-                executorService.submit(() -> pushUpdatedStopMonitoring(updates, datasetId, breadcrumbId));
+                outboundSenderExecutorService.execute(() -> pushUpdatedStopMonitoring(updates, datasetId, breadcrumbId));
                 break;
             case GENERAL_MESSAGE:
                 executorService.submit(() -> pushUpdatedGeneralMessages(updates, datasetId, breadcrumbId));
@@ -958,7 +1013,7 @@ public class ServerSubscriptionManager {
         MDC.remove("camel.breadcrumbId");
     }
 
-    // TODO MHI
+
     private <T extends AbstractItemStructure> void pushUpdatedStopMonitoring(List<T> addedOrUpdated, String datasetId, String breadcrumbId
     ) {
         MDC.put("camel.breadcrumbId", breadcrumbId);
@@ -968,6 +1023,7 @@ public class ServerSubscriptionManager {
         }
 
         Siri delivery = siriObjectFactory.createSMServiceDelivery(addedOrUpdated);
+
 
         if (pushToTopicEnabled) {
             siriSmTopicProducer.asyncRequestBodyAndHeader(siriSmTopicProducer.getDefaultEndpoint(), delivery, CODESPACE_ID_KAFKA_HEADER_NAME, datasetId);
@@ -979,23 +1035,47 @@ public class ServerSubscriptionManager {
             sendSMToKafka.asyncRequestBodyAndHeaders(sendSMToKafka.getDefaultEndpoint(), delivery, headers);
         }
 
+        Set<String> monitoredRefs = SiriHelper.extractMonitoringRefs(addedOrUpdated);
+        List<OutboundSubscriptionSetup> impactedOutboundSubscriptions = getSubscriptionsRelatedToMonitoringRefs(datasetId, monitoredRefs);
 
-        TimingTracer timingTracer = new TimingTracer("pushOutboundSM");
-        subscriptions.values().stream().filter(subscriptionRequest ->
-                (subscriptionRequest.getSubscriptionType().equals(SiriDataType.STOP_MONITORING) &&
-                        (subscriptionRequest.getDatasetId() == null || (subscriptionRequest.getDatasetId().equals(datasetId))))
-
-        ).forEach(subscription ->
-
-                camelRouteManager.pushSiriData(delivery, subscription, true)
-        );
+        impactedOutboundSubscriptions.forEach(subscription -> camelRouteManager.pushSiriData(delivery, subscription, true));
         MDC.remove("camel.breadcrumbId");
+    }
 
-        timingTracer.mark("sendCompleted");
+    private List<OutboundSubscriptionSetup> getSubscriptionsRelatedToMonitoringRefs(String datasetId, Set<String> monitoredRefs) {
 
-        if (timingTracer.getTotalTime() > 5000) {
-            logger.debug("SM output send took more than 5s for all subscriptions ");
+        List<OutboundSubscriptionSetup> results = new ArrayList<>();
+        for (String monitoredRef : monitoredRefs) {
+            if (outboundSubscriptionsByMonitoringRef.containsKey(monitoredRef)) {
+                results.addAll(outboundSubscriptionsByMonitoringRef.get(monitoredRef));
+            }
         }
+        return results;
+    }
+
+    private boolean isSubscriptionImpactedByRefs(OutboundSubscriptionSetup subscription, Set<String> incomingRefs) {
+        TimingTracer subsimpactedTT = new TimingTracer("subsimpactedTT");
+
+        if (!subscription.getFilterMap().containsKey(MonitoringRefStructure.class)) {
+            return false;
+        }
+        subsimpactedTT.mark("filterMap");
+
+        Set<String> filters = subscription.getFilterMap().get(MonitoringRefStructure.class);
+
+        subsimpactedTT.mark("filters");
+        for (String subscriptionMonitoringRef : filters) {
+            if (incomingRefs.contains(subscriptionMonitoringRef)) {
+                // this subscription is looking for a stop that is present in incomingRefs
+
+                subsimpactedTT.mark("finBoucle true");
+
+                return true;
+            }
+        }
+        subsimpactedTT.mark("finBoucle");
+        // logger.info(subsimpactedTT.toString());
+        return false;
     }
 
     public void pushFailedForSubscription(String subscriptionId) {

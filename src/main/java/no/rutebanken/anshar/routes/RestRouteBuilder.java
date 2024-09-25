@@ -151,6 +151,12 @@ public class RestRouteBuilder extends RouteBuilder {
                 .routeId("reject.request.blocked.header")
         ;
 
+        from("direct:send.to.expired.data.queue")
+                .to("activemq:queue:sm.expired.data?timeToLive=600000")
+                .routeId("send.to.expired.data.queue")
+        ;
+
+
     }
 
     /*
