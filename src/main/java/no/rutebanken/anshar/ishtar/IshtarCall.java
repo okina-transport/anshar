@@ -249,7 +249,7 @@ public class IshtarCall extends BaseRouteBuilder {
         if (SubscriptionSetup.SubscriptionMode.SUBSCRIBE.equals(newSubscription.getSubscriptionMode())) {
 
             if (newSubscription.getUrlMap() == null || newSubscription.getUrlMap().isEmpty() || !newSubscription.getUrlMap().containsKey(RequestType.SUBSCRIBE)) {
-                log.warn("Subscription not compliant. Missing subcribe URL : " + newSubscription.getSubscriptionId());
+                log.warn("Subscription not compliant. Missing subscribe URL : " + newSubscription.getSubscriptionId());
                 return false;
             }
 
