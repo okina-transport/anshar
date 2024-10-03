@@ -193,7 +193,7 @@ public class IshtarCall extends BaseRouteBuilder {
                             createAndSetLineRefValues(current_subscription, newSubscription);
                             Map<RequestType, String> urlMap = getUrlMaps(current_subscription);
                             newSubscription.setUrlMap(urlMap);
-                            if (isNotCompliant(newSubscription)) {
+                            if (!isCompliant(newSubscription)) {
                                 continue;
                             }
                             List<String> idMappingPrefixesList = (List<String>) current_subscription.get("idMappingPrefixes");
@@ -245,7 +245,7 @@ public class IshtarCall extends BaseRouteBuilder {
      * @return true : subscription is correct
      * false : subscription is not correct
      */
-    private boolean isNotCompliant(SubscriptionSetup newSubscription) {
+    private boolean isCompliant(SubscriptionSetup newSubscription) {
         if (SubscriptionSetup.SubscriptionMode.SUBSCRIBE.equals(newSubscription.getSubscriptionMode())) {
 
             if (newSubscription.getUrlMap() == null || newSubscription.getUrlMap().isEmpty() || !newSubscription.getUrlMap().containsKey(RequestType.SUBSCRIBE)) {
