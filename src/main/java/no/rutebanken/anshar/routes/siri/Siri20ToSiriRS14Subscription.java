@@ -70,7 +70,7 @@ public class Siri20ToSiriRS14Subscription extends SiriSubscriptionRouteBuilder {
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
                 .process(addCustomHeaders())
                 .process(p -> {
-                    logger.info("Subscription request content:" + p.getIn().getBody());
+                    logger.debug("Subscription request content:" + p.getIn().getBody());
                 })
                 .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .doTry()

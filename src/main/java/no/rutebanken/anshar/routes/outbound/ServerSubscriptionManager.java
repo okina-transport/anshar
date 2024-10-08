@@ -698,13 +698,6 @@ public class ServerSubscriptionManager {
             outboundSenderExecutorService = (ThreadPoolExecutor) Executors.newFixedThreadPool(pushUpdatedThreadPool);
         }
 
-        pushIteration++;
-        if (pushIteration == 100) {
-            //    logger.info("push updated thread pool queue size:" + outboundSenderExecutorService.getQueue().size() + ", pool size:" + pushUpdatedThreadPool);
-            pushIteration = 0;
-        }
-
-
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         switch (datatype) {
             case ESTIMATED_TIMETABLE:
@@ -1096,6 +1089,12 @@ public class ServerSubscriptionManager {
                 failTrackerMap.set(subscriptionId, firstFail);
             }
         }
+    }
+
+    public void clearAllOutboundSubscriptions() {
+        logger.warn("||||    CLEARING ALL OUTBOUND SUBCRIPTIONS |||");
+        subscriptions.clear();
+        outboundSubscriptionsByMonitoringRef.clear();
     }
 
     public void clearFailTracker(String subscriptionId) {

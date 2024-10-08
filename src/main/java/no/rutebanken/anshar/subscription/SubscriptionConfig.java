@@ -280,14 +280,12 @@ public class SubscriptionConfig {
 
             for (IdProcessingParameters idProcessingParameter : getIdProcessingParameters()) {
 
-                if (StringUtils.isEmpty(idProcessingParameter.getOutputPrefixToAdd()) && StringUtils.isEmpty(idProcessingParameter.getOutputSuffixToAdd())) {
+                if (objectType == null || !objectType.equals(idProcessingParameter.getObjectType()) ||
+                        (StringUtils.isEmpty(idProcessingParameter.getOutputPrefixToAdd()) && StringUtils.isEmpty(idProcessingParameter.getOutputSuffixToAdd()))) {
                     continue;
                 }
 
-                if (objectType != null && objectType.equals(idProcessingParameter.getObjectType()) &&
-                        (StringUtils.isEmpty(idProcessingParameter.getOutputPrefixToAdd()) || searchedId.startsWith(idProcessingParameter.getOutputPrefixToAdd()))
-                        &&
-                        (StringUtils.isEmpty(idProcessingParameter.getOutputSuffixToAdd()) || searchedId.endsWith(idProcessingParameter.getOutputSuffixToAdd()))) {
+                if (isCompliantWithOutputPrefixAndSuffix(idProcessingParameter, searchedId) || isCompliantWithOutputPrefixAndSuffix(idProcessingParameter, searchedId.replace(":StopPlace:", ":Quay:"))) {
                     guessedDatasets.add(idProcessingParameter.getDatasetId());
                 }
             }
@@ -295,6 +293,22 @@ public class SubscriptionConfig {
 
         return guessedDatasets.size() == 1 ? guessedDatasets.stream().findFirst() : Optional.empty();
 
+    }
+
+
+    /**
+     * Checks if a text is compliant with ouput prefix and suffix.
+     * compliant : starts with output prefix and ends with output suffix (and handle cases where parameters can be null)
+     *
+     * @param idProcessingParameter idParameters that contains output prefix and suffix
+     * @param textToCheck           text to compare to output prefix and suffix
+     * @return true : text is compliant with output prefix and suffix
+     * false : text is not compliant with output prefix and suffix
+     */
+    private boolean isCompliantWithOutputPrefixAndSuffix(IdProcessingParameters idProcessingParameter, String textToCheck) {
+        return (StringUtils.isEmpty(idProcessingParameter.getOutputPrefixToAdd()) || textToCheck.startsWith(idProcessingParameter.getOutputPrefixToAdd()))
+                &&
+                (StringUtils.isEmpty(idProcessingParameter.getOutputSuffixToAdd()) || textToCheck.endsWith(idProcessingParameter.getOutputSuffixToAdd()));
     }
 
     public Map<ObjectType, Optional<IdProcessingParameters>> buildIdProcessingParamsFromDataset(String datasetId) {

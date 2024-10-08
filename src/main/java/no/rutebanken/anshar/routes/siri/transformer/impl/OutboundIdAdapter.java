@@ -71,15 +71,29 @@ public class OutboundIdAdapter extends ValueAdapter {
             throw npe;
         }
 
-        if(shouldConvertToNetexId){
-            if(OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)){
+        if (shouldConvertToNetexId) {
+            if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)) {
                 return convertToNetexId(text);
             }
-            if(OutboundIdMappingPolicy.ORIGINAL_ID.equals(outboundIdMappingPolicy)){
-                return text;
+            if (OutboundIdMappingPolicy.ORIGINAL_ID.equals(outboundIdMappingPolicy)) {
+                return handleStopPlaceReplacement(text);
             }
-            if(OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy)){
+            if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy)) {
                 return convertToAltId(idProcessingParameters.getDatasetId(), text, idProcessingParameters.getObjectType());
+            }
+        }
+        return text;
+    }
+
+    private String handleStopPlaceReplacement(String text) {
+
+        if (idProcessingParameters != null && ObjectType.STOP.equals(idProcessingParameters.getObjectType())) {
+            if (stopPlaceService == null) {
+                stopPlaceService = ApplicationContextHolder.getContext().getBean(StopPlaceUpdaterService.class);
+            }
+
+            if (stopPlaceService.isKnownId(text.replace(":Quay:", ":StopPlace:"))) {
+                return text.replace(":Quay:", ":StopPlace:");
             }
         }
         return text;
@@ -87,21 +101,20 @@ public class OutboundIdAdapter extends ValueAdapter {
 
     private String convertToNetexId(String text) {
 
-        if (stopPlaceService == null){
+        if (stopPlaceService == null) {
             stopPlaceService = ApplicationContextHolder.getContext().getBean(StopPlaceUpdaterService.class);
         }
+
+
         if (!StringUtils.isEmpty(text)) {
-            if (stopPlaceService.isKnownId(text)) {
-                return stopPlaceService.get(text);
-            } else if (stopPlaceService.isKnownId(text.replace(":Quay:", ":StopPlace:"))) {
-                return stopPlaceService.get(text.replace(":Quay:", ":StopPlace:"));
-            }
+            String stopRef = handleStopPlaceReplacement(text);
+            return stopPlaceService.isKnownId(stopRef) ? stopPlaceService.get(stopRef) : stopRef;
         }
         return text;
     }
 
     private String convertToAltId(String datasetId, String text, ObjectType objectType) {
-        if (externalIdsService == null){
+        if (externalIdsService == null) {
             externalIdsService = ApplicationContextHolder.getContext().getBean(ExternalIdsService.class);
         }
 

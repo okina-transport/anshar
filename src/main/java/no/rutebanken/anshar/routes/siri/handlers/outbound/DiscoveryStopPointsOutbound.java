@@ -134,12 +134,22 @@ public class DiscoveryStopPointsOutbound {
             return stopIds;
         }
 
+        Set<String> results = new HashSet<>();
+
         IdProcessingParameters idProcessing = idProcessingMap.get(datasetId);
 
-        return stopIds.stream()
+        Set<String> transformedIds = stopIds.stream()
                 .map(idProcessing::applyTransformationToString)
                 .collect(Collectors.toSet());
 
+        for (String transformedId : transformedIds) {
+            if (stopPlaceUpdaterService.isKnownId(transformedId)) {
+                results.add(transformedId);
+            } else if (stopPlaceUpdaterService.isKnownId(transformedId.replace(":Quay:", ":StopPlace:"))) {
+                results.add(transformedId.replace(":Quay:", ":StopPlace:"));
+            }
+        }
+        return results;
     }
 
     /**

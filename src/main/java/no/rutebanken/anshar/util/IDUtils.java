@@ -2,6 +2,7 @@ package no.rutebanken.anshar.util;
 
 import io.micrometer.core.instrument.util.StringUtils;
 import no.rutebanken.anshar.config.IdProcessingParameters;
+import no.rutebanken.anshar.config.ObjectType;
 
 import java.util.HashSet;
 import java.util.Optional;
@@ -30,8 +31,13 @@ public class IDUtils {
 
         for (String originalMonitoringRef : originalMonitoringRefs) {
 
-            if (StringUtils.isNotEmpty(idParams.getOutputPrefixToAdd()) && originalMonitoringRef.startsWith(idParams.getOutputPrefixToAdd())) {
-                originalMonitoringRef = originalMonitoringRef.substring(idParams.getOutputPrefixToAdd().length());
+            String outputPrefixToAdd = idParams.getOutputPrefixToAdd();
+            if (ObjectType.STOP.equals(idParams.getObjectType()) && idParams.getOutputPrefixToAdd().contains(":Quay:") && originalMonitoringRef.contains(":StopPlace:")) {
+                outputPrefixToAdd = outputPrefixToAdd.replace(":Quay:", ":StopPlace:");
+            }
+
+            if (StringUtils.isNotEmpty(outputPrefixToAdd) && originalMonitoringRef.startsWith(outputPrefixToAdd)) {
+                originalMonitoringRef = originalMonitoringRef.substring(outputPrefixToAdd.length());
             }
 
             if (StringUtils.isNotEmpty(idParams.getOutputSuffixToAdd()) && originalMonitoringRef.endsWith(idParams.getOutputSuffixToAdd())) {
