@@ -16,6 +16,9 @@ public class SendToActiveMQRouteBuilder extends RouteBuilder {
     @Value("${external.sx.consumer.queue}")
     private String externalSxQueue;
 
+    @Value("${siri.sm.kafka.queue}")
+    private String siriSMKafkaQueue;
+
 
     @Override
     public void configure() {
@@ -49,7 +52,7 @@ public class SendToActiveMQRouteBuilder extends RouteBuilder {
         from("direct:send.sm.to.kafka")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
                 .setExchangePattern(ExchangePattern.InOnly)
-                .to(ACTIVEMQ_PREFIX + SIRI_SM_KAFKA_QUEUE)
+                .to(siriSMKafkaQueue)
         ;
 
 
