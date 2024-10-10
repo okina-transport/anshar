@@ -233,7 +233,10 @@ public class TripUpdateReader extends AbstractSwallower {
                 //A subscription is already existing for this vehicle journey. No need to create one
                 continue;
 
-            discoveryCache.addStop(datasetId, subscriptionId);
+            if (dataType.equals(SiriDataType.STOP_MONITORING)) {
+                discoveryCache.addStop(datasetId, subscriptionId);
+            }
+
 
             if (customPrefix.equals(GTFSRT_ET_PREFIX)) {
                 discoveryCache.addLine(datasetId, subscriptionId);
