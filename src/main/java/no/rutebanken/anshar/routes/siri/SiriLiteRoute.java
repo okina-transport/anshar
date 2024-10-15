@@ -52,11 +52,10 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.SIRI_L
 public class SiriLiteRoute extends RestRouteBuilder {
     private static final Logger logger = LoggerFactory.getLogger(SiriLiteRoute.class);
 
-    private
-    Set<String> siriLiteAutorizedServices = new HashSet<>(Set.of("stoppoints-discovery", "lines-discovery", "stop-monitoring", "general-message", "vehicle-monitoring", "situation-exchange", "estimated-timetables", "facility-monitoring"));
+    private static final Set<String> SIRI_LITE_AUTHORIZED_SERVICES = new HashSet<>(Set.of("stoppoints-discovery",
+            "lines-discovery", "stop-monitoring", "general-message", "vehicle-monitoring", "situation-exchange", "estimated-timetables", "facility-monitoring"));
 
-    private
-    Set<String> siriLiteAutorizedFormats = new HashSet<>(Set.of("json", "xml"));
+    private static final Set<String> SIRI_LITE_AUTHORIZED_FORMATS = new HashSet<>(Set.of("json", "xml"));
 
     @Autowired
     private AnsharConfiguration configuration;
@@ -166,7 +165,6 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
         from("direct:handle.siri.lite.idf.request")
                 .process(e -> {
-                    String version = getVersion(e);
                     handleServiceAndFormat(e);
                 })
                 .choice()
@@ -203,9 +201,9 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
                     OutboundIdMappingPolicy mappingPolicy;
 
-                    if (altId != null && Boolean.parseBoolean(altId)){
+                    if (Boolean.parseBoolean(altId)){
                         mappingPolicy = OutboundIdMappingPolicy.ALT_ID;
-                    }else if (originalId != null && Boolean.parseBoolean(originalId)){
+                    }else if (Boolean.parseBoolean(originalId)){
                         mappingPolicy = OutboundIdMappingPolicy.ORIGINAL_ID;
                     }else{
                         mappingPolicy = OutboundIdMappingPolicy.DEFAULT;
@@ -226,9 +224,9 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
                     OutboundIdMappingPolicy mappingPolicy;
 
-                    if (altId != null && Boolean.parseBoolean(altId)){
+                    if (Boolean.parseBoolean(altId)){
                         mappingPolicy = OutboundIdMappingPolicy.ALT_ID;
-                    }else if (originalId != null && Boolean.parseBoolean(originalId)){
+                    }else if (Boolean.parseBoolean(originalId)){
                         mappingPolicy = OutboundIdMappingPolicy.ORIGINAL_ID;
                     }else{
                         mappingPolicy = OutboundIdMappingPolicy.DEFAULT;
@@ -259,7 +257,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
                     int maxSize = datasetId != null ? Integer.MAX_VALUE : configuration.getDefaultMaxSize();
 
                     if (maxSizeStr != null) {
-                        maxSize = maxSizeStr.intValue();
+                        maxSize = maxSizeStr;
                     }
 
                     Siri response = situations.createServiceDelivery(requestorId, datasetId, etClientName, maxSize);
@@ -370,7 +368,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
                     long previewIntervalMillis = -1;
                     if (previewIntervalMinutesStr != null) {
                         int minutes = Integer.parseInt(previewIntervalMinutesStr);
-                        previewIntervalMillis = minutes * 60 * 1000;
+                        previewIntervalMillis = (long)minutes * 60 * 1000;
                     }
 
                     Siri response;
@@ -431,7 +429,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
                     long previewIntervalMillis = -1;
                     if (previewIntervalMinutesStr != null) {
                         int minutes = Integer.parseInt(previewIntervalMinutesStr);
-                        previewIntervalMillis = minutes * 60 * 1000;
+                        previewIntervalMillis = (long)minutes * 60 * 1000;
                     }
 
 
@@ -514,7 +512,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
                     int maxSize = datasetId != null ? Integer.MAX_VALUE : configuration.getDefaultMaxSize();
 
                     if (maxSizeStr != null) {
-                        maxSize = maxSizeStr.intValue();
+                        maxSize = maxSizeStr;
                     }
 
                     Siri response = generalMessages.createServiceDelivery(requestorId, datasetId, etClientName, maxSize, null);
@@ -557,7 +555,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
                     int maxSize = datasetId != null ? Integer.MAX_VALUE : configuration.getDefaultMaxSize();
 
                     if (maxSizeStr != null) {
-                        maxSize = maxSizeStr.intValue();
+                        maxSize = maxSizeStr;
                     }
                     Siri response = facilityMonitoring.createServiceDelivery(requestorId, datasetId, etClientName, null, maxSize, null, null, null, null);
 
@@ -754,7 +752,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
         String[] serviceAndFormatTab = serviceAndFormat.split("\\.");
         String service = serviceAndFormatTab[0];
 
-        if (!siriLiteAutorizedServices.contains(service)) {
+        if (!SIRI_LITE_AUTHORIZED_SERVICES.contains(service)) {
             String errorMsg = "Unsupported service:" + service + ". (should be stoppoints-discovery, lines-discovery, stop-monitoring, general-message, vehicle-monitoring, estimated-timetables, situation-exchange)";
             e.getIn().setBody(errorMsg);
             throw new IllegalArgumentException(errorMsg);
@@ -763,7 +761,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
         e.getIn().setHeader(SIRI_LITE_SERVICE_NAME, service);
 
         String format = serviceAndFormatTab[1];
-        if (!siriLiteAutorizedFormats.contains(format)) {
+        if (!SIRI_LITE_AUTHORIZED_FORMATS.contains(format)) {
             String errorMsg = "Unsupported format:" + format + ". (should be json or xml)";
             e.getIn().setBody(errorMsg);
             throw new IllegalArgumentException(errorMsg);
@@ -774,43 +772,8 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
     }
 
-    private String getVersion(Exchange e) {
-        String version = e.getIn().getHeader(PARAM_VERSION, String.class);
-        if (!"2.0".equals(version) && !"2.1".equals(version)) {
-            String errorMsg = "Unsupported version:" + version;
-            e.getIn().setBody(errorMsg);
-            throw new IllegalArgumentException(errorMsg);
-        }
-
-        if ("2.1".equals(version)) {
-            e.getIn().setHeader(SIRI_VERSION_HEADER_NAME,"2.1");
-        }
-        return version;
-    }
-
-    /**
-     * If http-parameter requestorId is not provided in request, it will be generated based on
-     * client IP and requested resource for uniqueness
-     *
-     * @param request
-     * @return
-     */
     private String resolveRequestorId(HttpServletRequest request) {
-        String requestorId = request.getParameter("requestorId");
-
-//        if (requestorId == null) {
-//            // Generating requestorId based on hash from client IP
-//            String clientIpAddress = request.getHeader("X-Real-IP");
-//            if (clientIpAddress == null) {
-//                clientIpAddress = request.getRemoteAddr();
-//            }
-//            if (clientIpAddress != null) {
-//                String uri = request.getRequestURI();
-//                requestorId = DigestUtils.sha256Hex(clientIpAddress + uri);
-//                logger.info("IP: '{}' and uri '{}' mapped to requestorId: '{}'", clientIpAddress, uri, requestorId);
-//            }
-//        }
-        return requestorId;
+        return request.getParameter("requestorId");
     }
 
 }
