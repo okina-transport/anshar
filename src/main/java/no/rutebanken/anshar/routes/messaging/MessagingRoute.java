@@ -155,8 +155,8 @@ public class MessagingRoute extends RestRouteBuilder {
         ;
 
         from(externalSiriSMQueue)
-                .threads(100)
-                .maxPoolSize(100)
+                .threads(200)
+                .maxPoolSize(200)
                 .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
