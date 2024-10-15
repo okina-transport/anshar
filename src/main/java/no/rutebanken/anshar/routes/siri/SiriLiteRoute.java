@@ -29,6 +29,7 @@ import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import org.apache.camel.Exchange;
 import org.apache.camel.model.rest.RestParamType;
@@ -37,16 +38,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri21.Siri;
-import uk.org.siri.siri21.VehicleActivityStructure;
+import uk.org.siri.siri21.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.MediaType;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static no.rutebanken.anshar.routes.HttpParameter.*;
 import static no.rutebanken.anshar.routes.validation.validators.Constants.SIRI_LITE_SERVICE_NAME;
@@ -93,6 +90,9 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
     @Autowired
     private DiscoveryLinesOutbound discoveryLinesOutbound;
+
+    @Autowired
+    private SubscriptionConfig subscriptionConfig;
 
 
     // @formatter:off
@@ -445,7 +445,8 @@ public class SiriLiteRoute extends RestRouteBuilder {
                     response = monitoredStopVisits.createServiceDelivery(requestorId, datasetId, etClientName, excludedIdList, maxSize, previewIntervalMillis, searchedStopIds);
                     List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.STOP_MONITORING,
-                            SiriHandler.getIdMappingPolicy(originalId, altId)
+                            SiriHandler.getIdMappingPolicy(originalId, altId),
+                            subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId)
                     );
                     if ("test".equals(originalId)) {
                         outboundAdapters = null;
