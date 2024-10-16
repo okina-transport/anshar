@@ -258,7 +258,7 @@ public class CamelRouteManager {
                 headers.put(HEARTBEAT_HEADER, HEARTBEAT_HEADER);
             }
 
-            siriSubscriptionProcessor.asyncRequestBodyAndHeaders(siriSubscriptionProcessor.getDefaultEndpoint(), payload, headers);
+            siriSubscriptionProcessor.sendBodyAndHeaders(payload, headers);
         }
     }
 
