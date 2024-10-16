@@ -238,6 +238,10 @@ public class CamelRouteManager {
         return executors == null ? 0 : executors.getQueue().size();
     }
 
+    public int getPushSubscriptionActiveCount() {
+        return executors == null ? 0 : executors.getActiveCount();
+    }
+
     public void postDataToSubscription(Siri payload, OutboundSubscriptionSetup subscription, boolean showBody) {
         Map<String, Object> headers = new HashMap<>();
         if (serviceDeliveryContainsData(payload)) {

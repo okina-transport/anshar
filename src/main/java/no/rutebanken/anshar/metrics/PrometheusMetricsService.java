@@ -98,6 +98,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
 
 
     private static final String SUBS_PUSH_WAITING_THREADS = METRICS_PREFIX + "subscription.push.waiting.threads";
+    private static final String SUBS_PUSH_ACTIVE_THREADS = METRICS_PREFIX + "subscription.push.active.threads";
     private static final String PUSH_UPDATES_WAITING_THREADS = METRICS_PREFIX + "push.updates.waiting.threads";
 
 
@@ -377,6 +378,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
     public void update() {
 
         gauge(SUBS_PUSH_WAITING_THREADS, "pushWaitingThreads", value -> camelRouteManager.getPushSubscriptionWaitingQueueSize());
+        gauge(SUBS_PUSH_ACTIVE_THREADS, "pushActiveThreads", value -> camelRouteManager.getPushSubscriptionActiveCount());
         gauge(PUSH_UPDATES_WAITING_THREADS, "pushUpdatesWaitingThreads", value -> serverSubscriptionManager.getPushUpdatesWaitingQueueSize());
 
         if (!smDeltaTimesTmp.isEmpty()) {
