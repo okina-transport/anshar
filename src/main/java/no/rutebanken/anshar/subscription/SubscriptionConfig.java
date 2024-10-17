@@ -40,20 +40,13 @@ import java.util.stream.Collectors;
 public class SubscriptionConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(SubscriptionConfig.class);
-
-    private List<SubscriptionSetup> subscriptions = new CopyOnWriteArrayList();
-
-    private List<GtfsRTApi> gtfsRTApis = new CopyOnWriteArrayList<>();
-
-    private List<SiriApi> siriApis = new CopyOnWriteArrayList<>();
-
-    private List<DiscoverySubscription> discoverySubscriptions = new ArrayList<>();
-
-    private List<IdProcessingParameters> idProcessingParameters = new CopyOnWriteArrayList<>();
-
+    private final List<IdProcessingParameters> idProcessingParameters = new CopyOnWriteArrayList<>();
     @Value("${anshar.subscriptions.datatypes.filter:}")
     List<SiriDataType> dataTypes;
-
+    private List<SubscriptionSetup> subscriptions = new CopyOnWriteArrayList();
+    private List<GtfsRTApi> gtfsRTApis = new CopyOnWriteArrayList<>();
+    private List<SiriApi> siriApis = new CopyOnWriteArrayList<>();
+    private List<DiscoverySubscription> discoverySubscriptions = new ArrayList<>();
 
     public List<SubscriptionSetup> getSubscriptions() {
         if (dataTypes != null && !dataTypes.isEmpty()) {
@@ -80,20 +73,20 @@ public class SubscriptionConfig {
         return siriApis;
     }
 
-    public List<DiscoverySubscription> getDiscoverySubscriptions() {
-        return discoverySubscriptions;
-    }
-
-    public List<IdProcessingParameters> getIdProcessingParameters() {
-        return idProcessingParameters;
-    }
-
     public void setSiriApis(List<SiriApi> siriApis) {
         this.siriApis = siriApis;
     }
 
+    public List<DiscoverySubscription> getDiscoverySubscriptions() {
+        return discoverySubscriptions;
+    }
+
     public void setDiscoverySubscriptions(List<DiscoverySubscription> discoverySubscriptions) {
         this.discoverySubscriptions = discoverySubscriptions;
+    }
+
+    public List<IdProcessingParameters> getIdProcessingParameters() {
+        return idProcessingParameters;
     }
 
     public void mergeIdProcessingParams(List<IdProcessingParameters> incomingParams) {
@@ -170,6 +163,8 @@ public class SubscriptionConfig {
             Optional<SubscriptionSetup> existingSubscriptionOpt = getExistingSubscription(incomingSubscription);
             if (existingSubscriptionOpt.isPresent()) {
                 SubscriptionSetup existingSubscription = existingSubscriptionOpt.get();
+                existingSubscription.setDatasetId(existingSubscription.getDatasetId());
+                existingSubscription.setInternalId(existingSubscription.getInternalId());
                 existingSubscription.setActive(incomingSubscription.isActive());
                 existingSubscription.setSubscriptionType(incomingSubscription.getSubscriptionType());
                 existingSubscription.setIdMappingPrefixes(incomingSubscription.getIdMappingPrefixes());
@@ -177,24 +172,24 @@ public class SubscriptionConfig {
                 existingSubscription.setName(incomingSubscription.getName());
                 existingSubscription.setVendor(incomingSubscription.getVendor());
                 existingSubscription.setRequestorRef(incomingSubscription.getRequestorRef());
-                existingSubscription.setAddress(incomingSubscription.getAddressFieldName());
-                existingSubscription.setDurationOfSubscriptionHours(incomingSubscription.getDurationOfSubscription().toHoursPart());
-                existingSubscription.setDurationOfSubscriptionMinutes(incomingSubscription.getDurationOfSubscription().toMinutesPart());
+                existingSubscription.setDurationOfSubscriptionHours(incomingSubscription.getDurationOfSubscription().toHours());
                 existingSubscription.setSubscriptionMode(incomingSubscription.getSubscriptionMode());
                 existingSubscription.setUrlMap(incomingSubscription.getUrlMap());
                 existingSubscription.setServiceType(incomingSubscription.getServiceType());
                 existingSubscription.setContentType(incomingSubscription.getContentType());
-                existingSubscription.setHeartbeatIntervalSeconds(incomingSubscription.getHeartbeatInterval().toSecondsPart());
+                existingSubscription.setHeartbeatIntervalSeconds(incomingSubscription.getHeartbeatInterval().toSeconds());
                 existingSubscription.setVersion(incomingSubscription.getVersion());
                 existingSubscription.setValidation(incomingSubscription.isValidation());
                 existingSubscription.setOperatorNamespace(incomingSubscription.getOperatorNamespace());
                 existingSubscription.setRestartTime(incomingSubscription.getRestartTime());
                 existingSubscription.setRevertIds(incomingSubscription.getRevertIds());
-                existingSubscription.setChangeBeforeUpdatesSeconds(incomingSubscription.getChangeBeforeUpdates().toSecondsPart());
+                existingSubscription.setChangeBeforeUpdatesSeconds(incomingSubscription.getChangeBeforeUpdates().toSeconds());
                 existingSubscription.setCustomHeaders(incomingSubscription.getCustomHeaders());
                 existingSubscription.setLineRefValues(incomingSubscription.getLineRefValues());
                 existingSubscription.setMappingAdapterId(incomingSubscription.getMappingAdapterId());
                 existingSubscription.setVehicleMonitoringRefValue(incomingSubscription.getVehicleMonitoringRefValue());
+                existingSubscription.setUpdateIntervalSeconds(incomingSubscription.getUpdateInterval().toSeconds());
+                existingSubscription.setPreviewIntervalSeconds(incomingSubscription.getPreviewInterval().toSeconds());
             } else {
                 subscriptions.add(incomingSubscription);
             }
@@ -209,17 +204,19 @@ public class SubscriptionConfig {
                 discoverySubscriptions.add(incomingSubscription);
             } else {
                 DiscoverySubscription existingSubscription = existingSubscriptionOpt.get();
+                existingSubscription.setDatasetId(incomingSubscription.getDatasetId());
                 existingSubscription.setUrl(incomingSubscription.getUrl());
-                existingSubscription.setSubscriptionMode(incomingSubscription.getSubscriptionMode());
-                existingSubscription.setVendorBaseName(incomingSubscription.getVendorBaseName());
-                existingSubscription.setDurationOfSubscriptionHours(incomingSubscription.getDurationOfSubscriptionHours());
-                existingSubscription.setSubscriptionIdBase(incomingSubscription.getSubscriptionIdBase());
+                existingSubscription.setDiscoveryType(incomingSubscription.getDiscoveryType());
                 existingSubscription.setRequestorRef(incomingSubscription.getRequestorRef());
                 existingSubscription.setHeartbeatIntervalSeconds(incomingSubscription.getHeartbeatIntervalSeconds());
-                existingSubscription.setPreviewIntervalSeconds(incomingSubscription.getPreviewIntervalSeconds());
                 existingSubscription.setChangeBeforeUpdatesSeconds(incomingSubscription.getChangeBeforeUpdatesSeconds());
-                existingSubscription.setCustomHeaders(incomingSubscription.getCustomHeaders());
                 existingSubscription.setUpdateIntervalSeconds(incomingSubscription.getUpdateIntervalSeconds());
+                existingSubscription.setPreviewIntervalSeconds(incomingSubscription.getPreviewIntervalSeconds());
+                existingSubscription.setCustomHeaders(incomingSubscription.getCustomHeaders());
+                existingSubscription.setSubscriptionMode(incomingSubscription.getSubscriptionMode());
+                existingSubscription.setDurationOfSubscriptionHours(incomingSubscription.getDurationOfSubscriptionHours());
+                existingSubscription.setVendorBaseName(incomingSubscription.getVendorBaseName());
+                existingSubscription.setSubscriptionIdBase(incomingSubscription.getSubscriptionIdBase());
             }
         }
     }

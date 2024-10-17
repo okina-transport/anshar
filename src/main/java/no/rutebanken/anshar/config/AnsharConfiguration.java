@@ -16,6 +16,8 @@
 package no.rutebanken.anshar.config;
 
 import com.hazelcast.map.IMap;
+import lombok.Getter;
+import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,112 +31,79 @@ import java.util.List;
 import java.util.TimeZone;
 
 @Configuration
+@Getter
+@Setter
 public class AnsharConfiguration {
 
     private static final String CURRENT_INSTANCE_LEADER_KEY = "currentInstanceLeader";
 
     private static final Logger logger = LoggerFactory.getLogger(AnsharConfiguration.class);
-
-    @Value("${rutebanken.kubernetes.url:}")
-    private String kubernetesUrl;
-
-    @Value("${rutebanken.kubernetes.enabled:true}")
-    private boolean kubernetesEnabled;
-
-    @Value("${rutebanken.kubernetes.namespace:default}")
-    private String namespace;
-
-    @Value("${rutebanken.hazelcast.management.url:}")
-    private String hazelcastManagementUrl;
-
-    @Value("${anshar.incoming.port}")
-    private String inboundPort;
-
-    @Value("${anshar.incoming.concurrentConsumers}")
-    private long concurrentConsumers;
-
-    @Value("${anshar.incoming.logdirectory}")
-    private String incomingLogDirectory = "/tmp";
-
-    @Value("${anshar.inbound.pattern}")
-    private String incomingPathPattern;
-
-    @Value("${anshar.inbound.url}")
-    private String inboundUrl = "http://localhost:8080";
-
-    @Value("${anshar.healthcheck.interval.seconds}")
-    private int healthCheckInterval = 30;
-
-    @Value("${anshar.environment}")
-    private String environment;
-
-    @Value("${anshar.default.max.elements.per.delivery:1500}")
-    private int defaultMaxSize;
-
-    @Value("${anshar.outbound.polling.tracking.period.minutes:30}")
-    private int trackingPeriodMinutes;
-
-    @Value("${anshar.outbound.adhoc.tracking.period.minutes:3}")
-    private int adHocTrackingPeriodMinutes;
-
-    @Value("${anshar.siri.default.producerRef:OKI}")
-    private String producerRef;
-
-    @Value("${anshar.siri.sx.graceperiod.minutes:0}")
-    private long sxGraceperiodMinutes;
-
-    @Value("${anshar.siri.et.graceperiod.minutes:0}")
-    private long etGraceperiodMinutes;
-
-    @Value("${anshar.siri.vm.graceperiod.minutes:0}")
-    private long vmGraceperiodMinutes;
-
-    @Value("${anshar.siri.sm.graceperiod.minutes:0}")
-    private long smGraceperiodMinutes;
-
-    @Value("${anshar.siri.fm.graceperiod.minutes:0}")
-    private long fmGraceperiodMinutes;
-
-    @Value("${anshar.validation.profile.enabled}")
-    private boolean profileValidation;
-
-    @Value("${anshar.validation.enabled:false}")
-    private boolean fullValidationEnabled;
-
-    @Value("${anshar.validation.profile.name}")
-    private String validationProfileName;
-
-    @Value("${anshar.tracking.header.required.post:false}")
-    private boolean trackingHeaderRequiredforPost;
-
-    @Value("${anshar.tracking.header.required.get:false}")
-    private boolean trackingHeaderRequiredForGet;
-
-    @Value("${anshar.tracking.header.name:Client-Name}")
-    private String trackingHeaderName;
-
-    @Value("${anshar.validation.total.max.size.mb:4}")
-    private int maxTotalXmlSizeOfValidation;
-
-    @Value("${anshar.validation.total.max.count:10}")
-    private int maxNumberOfValidations;
-
-    @Value("${anshar.validation.data.persist.hours:6}")
-    private int numberOfHoursToKeepValidation;
-
-
-    @Value("${anshar.tracking.data.buffer.commit.frequency.seconds:2}")
-    private int changeBufferCommitFrequency;
-
-    @Value("${anshar.message.queue.camel.route.prefix}")
-    private String messageQueueCamelRoutePrefix;
-
-    @Value("${anshar.admin.blocked.clients:}")
-    private List<String> blockedEtClientNames;
-
     @Value("${anshar.disable.subscription.healthcheck:false}")
     boolean isHealthcheckDisabled;
-
+    @Value("${rutebanken.kubernetes.url:}")
+    private String kubernetesUrl;
+    @Value("${rutebanken.kubernetes.enabled:true}")
+    private boolean kubernetesEnabled;
+    @Value("${rutebanken.kubernetes.namespace:default}")
+    private String namespace;
+    @Value("${rutebanken.hazelcast.management.url:}")
+    private String hazelcastManagementUrl;
+    @Value("${anshar.incoming.port}")
+    private String inboundPort;
+    @Value("${anshar.incoming.concurrentConsumers}")
+    private long concurrentConsumers;
+    @Value("${anshar.incoming.logdirectory}")
+    private String incomingLogDirectory = "/tmp";
+    @Value("${anshar.inbound.pattern}")
+    private String incomingPathPattern;
+    @Value("${anshar.inbound.url}")
+    private String inboundUrl = "http://localhost:8080";
+    @Value("${anshar.healthcheck.interval.seconds}")
+    private int healthCheckInterval = 30;
+    @Value("${anshar.environment}")
+    private String environment;
+    @Value("${anshar.default.max.elements.per.delivery:1500}")
+    private int defaultMaxSize;
+    @Value("${anshar.outbound.polling.tracking.period.minutes:30}")
+    private int trackingPeriodMinutes;
+    @Value("${anshar.outbound.adhoc.tracking.period.minutes:3}")
+    private int adHocTrackingPeriodMinutes;
+    @Value("${anshar.siri.default.producerRef:OKI}")
+    private String producerRef;
+    @Value("${anshar.siri.sx.graceperiod.minutes:0}")
+    private long sxGraceperiodMinutes;
+    @Value("${anshar.siri.et.graceperiod.minutes:0}")
+    private long etGraceperiodMinutes;
+    @Value("${anshar.siri.vm.graceperiod.minutes:0}")
+    private long vmGraceperiodMinutes;
+    @Value("${anshar.siri.sm.graceperiod.minutes:0}")
+    private long smGraceperiodMinutes;
+    @Value("${anshar.siri.fm.graceperiod.minutes:0}")
+    private long fmGraceperiodMinutes;
+    @Value("${anshar.validation.profile.enabled}")
+    private boolean profileValidation;
+    @Value("${anshar.validation.enabled:false}")
+    private boolean fullValidationEnabled;
+    @Value("${anshar.validation.profile.name}")
+    private String validationProfileName;
+    @Value("${anshar.tracking.header.required.post:false}")
+    private boolean trackingHeaderRequiredforPost;
+    @Value("${anshar.tracking.header.required.get:false}")
+    private boolean trackingHeaderRequiredForGet;
+    @Value("${anshar.tracking.header.name:Client-Name}")
+    private String trackingHeaderName;
+    @Value("${anshar.validation.total.max.size.mb:4}")
+    private int maxTotalXmlSizeOfValidation;
+    @Value("${anshar.validation.total.max.count:10}")
+    private int maxNumberOfValidations;
+    @Value("${anshar.validation.data.persist.hours:6}")
+    private int numberOfHoursToKeepValidation;
+    @Value("${anshar.tracking.data.buffer.commit.frequency.seconds:2}")
+    private int changeBufferCommitFrequency;
+    @Value("${anshar.message.queue.camel.route.prefix}")
+    private String messageQueueCamelRoutePrefix;
+    @Value("${anshar.admin.blocked.clients:}")
+    private List<String> blockedEtClientNames;
     @Value("${anshar.application.mode:}")
     private List<AppMode> appModes;
 
@@ -146,134 +115,6 @@ public class AnsharConfiguration {
     private String defaultTimeZone;
 
     private Boolean isCurrentInstanceLeader;
-
-    public String getHazelcastManagementUrl() {
-        return hazelcastManagementUrl;
-    }
-
-    public String getKubernetesUrl() {
-        return kubernetesUrl;
-    }
-
-    public boolean isKubernetesEnabled() {
-        return kubernetesEnabled;
-    }
-
-    public String getNamespace() {
-        return namespace;
-    }
-
-    public String getInboundPort() {
-        return inboundPort;
-    }
-
-    public String getIncomingPathPattern() {
-        return incomingPathPattern;
-    }
-
-    public long getConcurrentConsumers() {
-        return concurrentConsumers;
-    }
-
-    public String getEnvironment() {
-        return environment;
-    }
-
-    public String getInboundUrl() {
-        return inboundUrl;
-    }
-
-    public String getIncomingLogDirectory() {
-        return incomingLogDirectory;
-    }
-
-    public int getDefaultMaxSize() {
-        return defaultMaxSize;
-    }
-
-    public int getTrackingPeriodMinutes() {
-        return trackingPeriodMinutes;
-    }
-
-    public int getAdHocTrackingPeriodMinutes() {
-        return adHocTrackingPeriodMinutes;
-    }
-
-    public String getProducerRef() {
-        return producerRef;
-    }
-
-    public long getSxGraceperiodMinutes() {
-        return sxGraceperiodMinutes;
-    }
-
-    public long getFMGraceperiodMinutes() {
-        return fmGraceperiodMinutes;
-    }
-
-    public long getEtGraceperiodMinutes() {
-        return etGraceperiodMinutes;
-    }
-
-    public long getVmGraceperiodMinutes() {
-        return vmGraceperiodMinutes;
-    }
-
-    public long getSmGraceperiodMinutes() {
-        return smGraceperiodMinutes;
-    }
-
-    public boolean isProfileValidation() {
-        return profileValidation;
-    }
-
-    public boolean isFullValidationEnabled() {
-        return fullValidationEnabled;
-    }
-
-    public String getValidationProfileName() {
-        return validationProfileName;
-    }
-
-    public boolean isTrackingHeaderRequiredforPost() {
-        return trackingHeaderRequiredforPost;
-    }
-
-    public boolean isTrackingHeaderRequiredForGet() {
-        return trackingHeaderRequiredForGet;
-    }
-
-    public String getTrackingHeaderName() {
-        return trackingHeaderName;
-    }
-
-    public int getMaxTotalXmlSizeOfValidation() {
-        return maxTotalXmlSizeOfValidation;
-    }
-
-    public int getMaxNumberOfValidations() {
-        return maxNumberOfValidations;
-    }
-
-    public int getNumberOfHoursToKeepValidation() {
-        return numberOfHoursToKeepValidation;
-    }
-
-    public int getChangeBufferCommitFrequency() {
-        return changeBufferCommitFrequency;
-    }
-
-    public String getMessageQueueCamelRoutePrefix() {
-        return messageQueueCamelRoutePrefix;
-    }
-
-    public List<String> getBlockedEtClientNames() {
-        return blockedEtClientNames;
-    }
-
-    public List<AppMode> getAppModes() {
-        return appModes;
-    }
 
     public boolean processET() {
         return (appModes.isEmpty() || appModes.contains(AppMode.DATA_ET));
@@ -317,10 +158,6 @@ public class AnsharConfiguration {
             initCurrentInstanceLeader();
         }
         return isCurrentInstanceLeader;
-    }
-
-    public void setSxGraceperiodMinutes(long sxGraceperiodMinutes) {
-        this.sxGraceperiodMinutes = sxGraceperiodMinutes;
     }
 
     private void initCurrentInstanceLeader() {

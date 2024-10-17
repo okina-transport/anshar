@@ -28,27 +28,21 @@ import java.util.stream.Collectors;
 public class FacilityMonitoring extends SiriRepository<FacilityConditionStructure> {
 
     private static final Logger logger = LoggerFactory.getLogger(FacilityMonitoring.class);
-
+    @Autowired
+    ExtendedHazelcastService hazelcastService;
     @Autowired
     @Qualifier("getFacilityMonitoring")
     private IMap<SiriObjectStorageKey, FacilityConditionStructure> facilityMonitoring;
-
     @Autowired
     @Qualifier("getFacilityMonitoringChangesMap")
     private IMap<String, Set<SiriObjectStorageKey>> changesMap;
-
     @Autowired
     @Qualifier("getLastFmUpdateRequest")
     private IMap<String, Instant> lastUpdateRequested;
-
     @Autowired
     private AnsharConfiguration configuration;
-
     @Autowired
     private SiriObjectFactory siriObjectFactory;
-
-    @Autowired
-    ExtendedHazelcastService hazelcastService;
 
 
     protected FacilityMonitoring() {
@@ -168,7 +162,7 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
 
     @Override
     public FacilityConditionStructure add(String datasetId, FacilityConditionStructure facilityCondition) {
-        Collection<FacilityConditionStructure> added = addAll(datasetId, Arrays.asList(facilityCondition));
+        Collection<FacilityConditionStructure> added = addAll(datasetId, Collections.singletonList(facilityCondition));
         return !added.isEmpty() ? added.iterator().next() : null;
     }
 
@@ -185,7 +179,7 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
                             .max(ChronoZonedDateTime::compareTo).get() : null;
         }
         return validUntil == null ? ZonedDateTime.now().until(ZonedDateTime.now().plusYears(10), ChronoUnit.MILLIS) :
-                ZonedDateTime.now().until(validUntil.plus(configuration.getFMGraceperiodMinutes(), ChronoUnit.MINUTES), ChronoUnit.MILLIS);
+                ZonedDateTime.now().until(validUntil.plusMinutes(configuration.getFmGraceperiodMinutes()), ChronoUnit.MILLIS);
     }
 
     @Override

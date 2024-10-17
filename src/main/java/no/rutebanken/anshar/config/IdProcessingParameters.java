@@ -1,11 +1,12 @@
 package no.rutebanken.anshar.config;
 
+import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.Serializable;
-import java.util.Objects;
 
 
+@Data
 public class IdProcessingParameters implements Serializable {
 
     private String datasetId;
@@ -14,57 +15,6 @@ public class IdProcessingParameters implements Serializable {
     private String inputSuffixToRemove;
     private String outputPrefixToAdd;
     private String outputSuffixToAdd;
-
-
-    public String getDatasetId() {
-        return datasetId;
-    }
-
-    public String getInputPrefixToRemove() {
-        return inputPrefixToRemove;
-    }
-
-    public String getInputSuffixToRemove() {
-        return inputSuffixToRemove;
-    }
-
-    public String getOutputPrefixToAdd() {
-        return outputPrefixToAdd;
-    }
-
-    public String getOutputSuffixToAdd() {
-        return outputSuffixToAdd;
-    }
-
-    public void setDatasetId(String datasetId) {
-        this.datasetId = datasetId;
-    }
-
-    public void setInputPrefixToRemove(String inputPrefixToRemove) {
-        this.inputPrefixToRemove = inputPrefixToRemove;
-    }
-
-    public void setInputSuffixToRemove(String inputSuffixToRemove) {
-        this.inputSuffixToRemove = inputSuffixToRemove;
-    }
-
-    public void setOutputPrefixToAdd(String outputPrefixToAdd) {
-        this.outputPrefixToAdd = outputPrefixToAdd;
-    }
-
-    public void setOutputSuffixToAdd(String outputSuffixToAdd) {
-        this.outputSuffixToAdd = outputSuffixToAdd;
-    }
-
-
-    public ObjectType getObjectType() {
-        return objectType;
-    }
-
-    public void setObjectType(ObjectType objectType) {
-        this.objectType = objectType;
-    }
-
 
     /**
      * Apply transformations defined in this class (prefix/suffix removal and after prefix/suffix add) to the input String
@@ -117,16 +67,4 @@ public class IdProcessingParameters implements Serializable {
         return text;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        IdProcessingParameters that = (IdProcessingParameters) o;
-        return Objects.equals(datasetId, that.datasetId) && objectType == that.objectType && Objects.equals(inputPrefixToRemove, that.inputPrefixToRemove) && Objects.equals(inputSuffixToRemove, that.inputSuffixToRemove) && Objects.equals(outputPrefixToAdd, that.outputPrefixToAdd) && Objects.equals(outputSuffixToAdd, that.outputSuffixToAdd);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(datasetId, objectType, inputPrefixToRemove, inputSuffixToRemove, outputPrefixToAdd, outputSuffixToAdd);
-    }
 }

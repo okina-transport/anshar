@@ -15,88 +15,130 @@
 
 package no.rutebanken.anshar.subscription;
 
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.helpers.DataNotReceivedAction;
 import no.rutebanken.anshar.subscription.helpers.FilterMapPresets;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import no.rutebanken.anshar.subscription.helpers.SubscriptionPreset;
 import org.json.simple.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.text.MessageFormat;
 import java.time.Duration;
 import java.util.*;
 
+@Slf4j
 public class SubscriptionSetup implements Serializable {
 
-    private static final Logger logger = LoggerFactory.getLogger(SubscriptionSetup.class);
+    @Setter
+    @Getter
     private long internalId;
+    @Getter
     private List<ValueAdapter> mappingAdapters = new ArrayList<>();
+    @Setter
+    @Getter
     private SiriDataType subscriptionType;
     private String address;
+    @Getter
     private Duration heartbeatInterval;
+    @Getter
     private Duration updateInterval;
+    @Getter
     private Duration previewInterval;
+    @Getter
     private Duration changeBeforeUpdates;
+    @Setter
+    @Getter
     private String operatorNamespace;
     private Map<RequestType, String> urlMap;
+    @Setter
+    @Getter
     private String subscriptionId;
+    @Setter
+    @Getter
     private String version;
+    @Setter
+    @Getter
     private String vendor;
+    @Setter
+    @Getter
     private String name;
+    @Setter
+    @Getter
     private String datasetId;
+    @Setter
+    @Getter
     private ServiceType serviceType;
+    @Getter
     private Duration durationOfSubscription;
+    @Setter
+    @Getter
     private String requestorRef;
+    @Setter
+    @Getter
     private boolean active;
+    @Setter
+    @Getter
     private boolean dataSupplyRequestForInitialDelivery;
+    @Setter
+    @Getter
     private SubscriptionMode subscriptionMode;
+    @Setter
+    @Getter
     private Map<Class, Set<Object>> filterMap;
+    @Setter
+    @Getter
     private Map<String, Object> customHeaders;
+    @Setter
+    @Getter
     private List<String> idMappingPrefixes;
+    @Setter
+    @Getter
     private String mappingAdapterId;
     private SubscriptionPreset[] filterMapPresets;
+    @Setter
     private String addressFieldName;
+    @Setter
     private String soapenvNamespace;
+    @Setter
+    @Getter
     private Boolean incrementalUpdates;
+    @Setter
+    @Getter
     private String contentType;
+    @Setter
+    @Getter
     private String vehicleMonitoringRefValue;
+    @Setter
     private List<String> lineRefValues;
     private List<String> stopMonitoringRefValues;
+    @Getter
     private boolean validation;
+    @Setter
+    @Getter
     private String restartTime;
+    @Setter
+    @Getter
     private Boolean revertIds;
-
+    @Setter
+    @Getter
     private Map<OAuthConfigElement, String> oauth2Config;
-
+    @Getter
+    @Setter
     private DataNotReceivedAction dataNotReceivedAction;
+    @Setter
+    @Getter
     private String validationFilter;
-
+    @Setter
     private boolean forwardPositionData;
-
+    @Getter
+    @Setter
     private boolean useProvidedCodespaceId = false;
-
+    @Setter
     private boolean enrichSiriData = false;
-
-    public boolean isUseProvidedCodespaceId() {
-        return useProvidedCodespaceId;
-    }
-
-    public void setUseProvidedCodespaceId(
-            boolean useProvidedCodespaceId
-    ) {
-        this.useProvidedCodespaceId = useProvidedCodespaceId;
-    }
-
-    public DataNotReceivedAction getDataNotReceivedAction() {
-        return dataNotReceivedAction;
-    }
-
-    public void setDataNotReceivedAction(DataNotReceivedAction dataNotReceivedAction) {
-        this.dataNotReceivedAction = dataNotReceivedAction;
-    }
 
     public SubscriptionSetup() {
     }
@@ -112,7 +154,7 @@ public class SubscriptionSetup implements Serializable {
      * @param serviceType            SOAP/REST
      * @param filterMap
      * @param subscriptionId         Sets the subscriptionId to use
-     * @param requestorRef
+     * @param requestorRef           Requestor ref
      * @param durationOfSubscription Initial duration of subscription
      * @param active                 Activates/deactivates subscription
      */
@@ -171,17 +213,19 @@ public class SubscriptionSetup implements Serializable {
         return prefix + subscriptionId;
     }
 
-    public Duration getHeartbeatInterval() {
-        return heartbeatInterval;
-    }
-
-    public String getOperatorNamespace() {
-        return operatorNamespace;
+    private void setHeartbeatInterval(Duration heartbeatInterval) {
+        this.heartbeatInterval = heartbeatInterval;
     }
 
     public Map<RequestType, String> getUrlMap() {
         ensureHttpPrefixes(urlMap);
         return urlMap;
+    }
+
+    public void setUrlMap(Map<RequestType, String> urlMap) {
+        ensureHttpPrefixes(urlMap);
+
+        this.urlMap = urlMap;
     }
 
     private void ensureHttpPrefixes(Map<RequestType, String> urlMap) {
@@ -191,7 +235,7 @@ public class SubscriptionSetup implements Serializable {
                 if (!url.startsWith("http") && !url.startsWith("https")) {
                     if (!url.isEmpty()) {
                         entry.setValue("http://" + url);
-                        //   logger.warn("Prefixing url with 'http://': ", entry.getValue());
+                        //   log.warn("Prefixing url with 'http://': ", entry.getValue());
                     }
                 } else if (url.startsWith("https4")) {
                     entry.setValue(url.replaceFirst("https4://", "https://"));
@@ -200,97 +244,36 @@ public class SubscriptionSetup implements Serializable {
         }
     }
 
-    public String getSubscriptionId() {
-        return subscriptionId;
-    }
-
-    public String getVersion() {
-        return version;
-    }
-
-    public String getVendor() {
-        return vendor;
-    }
-
-    public String getDatasetId() {
-        return datasetId;
-    }
-
-    public ServiceType getServiceType() {
-        return serviceType;
-    }
-
-    public List<ValueAdapter> getMappingAdapters() {
-        return mappingAdapters;
-    }
-
-    public Duration getDurationOfSubscription() {
-        return durationOfSubscription;
-    }
-
-    public String getRequestorRef() {
-        return requestorRef;
-    }
-
-    public SiriDataType getSubscriptionType() {
-        return subscriptionType;
-    }
-
-    public boolean isActive() {
-        return active;
-    }
-
-    public void setActive(boolean active) {
-        this.active = active;
-    }
-
-    public boolean isDataSupplyRequestForInitialDelivery() {
-        return dataSupplyRequestForInitialDelivery;
-    }
-
-    public void setDataSupplyRequestForInitialDelivery(boolean dataSupplyRequestForInitialDelivery) {
-        this.dataSupplyRequestForInitialDelivery = dataSupplyRequestForInitialDelivery;
-    }
-
-    public Boolean getRevertIds() {
-        return revertIds;
-    }
-
-    public void setRevertIds(Boolean revertIds) {
-        this.revertIds = revertIds;
-    }
-
     public String toString() {
         return MessageFormat.format("[vendor={0}, subscriptionId={1}, internalId={2}]", vendor, subscriptionId, internalId);
     }
 
     public JSONObject toJSON() {
-        JSONObject obj = new JSONObject();
-        obj.put("internalId", getInternalId());
-        obj.put("activated", isActive());
-        obj.put("vendor", getVendor());
-        obj.put("name", getName());
-        obj.put("description", createDescription());
-        obj.put("datasetId", getDatasetId());
-        obj.put("subscriptionId", getSubscriptionId());
-        obj.put("serviceType", getServiceType().toString());
-        obj.put("subscriptionType", getSubscriptionType().toString());
-        obj.put("subscriptionMode", getSubscriptionMode().toString());
-        obj.put("heartbeatInterval", getHeartbeatInterval() != null ? getHeartbeatInterval().toString() : "");
-        obj.put("previewInterval", getPreviewInterval() != null ? getPreviewInterval().toString() : "");
-        obj.put("updateInterval", getUpdateInterval() != null ? getUpdateInterval().toString() : "");
-        obj.put("changeBeforeUpdates", getChangeBeforeUpdates() != null ? getChangeBeforeUpdates().toString() : "");
-        obj.put("incrementalUpdates", getIncrementalUpdates() != null ? getIncrementalUpdates().toString() : "");
-        obj.put("durationOfSubscription", getDurationOfSubscription().toString());
-        obj.put("requestorRef", getRequestorRef());
-        obj.put("inboundUrl", buildUrl(true));
-        obj.put("validation", isValidation());
-        obj.put("validationFilter", getValidationFilter());
-        obj.put("contentType", getContentType());
-        obj.put("restartTime", getRestartTime());
-        obj.put("forwardPositionData", forwardPositionData());
-
-        return obj;
+        Map<String, Object> map = new HashMap<>();
+        map.put("internalId", getInternalId());
+        map.put("activated", isActive());
+        map.put("vendor", getVendor());
+        map.put("name", getName());
+        map.put("description", createDescription());
+        map.put("datasetId", getDatasetId());
+        map.put("subscriptionId", getSubscriptionId());
+        map.put("serviceType", getServiceType().toString());
+        map.put("subscriptionType", getSubscriptionType().toString());
+        map.put("subscriptionMode", getSubscriptionMode().toString());
+        map.put("heartbeatInterval", getHeartbeatInterval() != null ? getHeartbeatInterval().toString() : "");
+        map.put("previewInterval", getPreviewInterval() != null ? getPreviewInterval().toString() : "");
+        map.put("updateInterval", getUpdateInterval() != null ? getUpdateInterval().toString() : "");
+        map.put("changeBeforeUpdates", getChangeBeforeUpdates() != null ? getChangeBeforeUpdates().toString() : "");
+        map.put("incrementalUpdates", getIncrementalUpdates() != null ? getIncrementalUpdates().toString() : "");
+        map.put("durationOfSubscription", getDurationOfSubscription().toString());
+        map.put("requestorRef", getRequestorRef());
+        map.put("inboundUrl", buildUrl(true));
+        map.put("validation", isValidation());
+        map.put("validationFilter", getValidationFilter());
+        map.put("contentType", getContentType());
+        map.put("restartTime", getRestartTime());
+        map.put("forwardPositionData", forwardPositionData());
+        return new JSONObject(map);
     }
 
     private String createDescription() {
@@ -314,36 +297,12 @@ public class SubscriptionSetup implements Serializable {
         return description;
     }
 
-    public long getInternalId() {
-        return internalId;
-    }
-
-    public void setInternalId(long internalId) {
-        this.internalId = internalId;
-    }
-
-    public void setSubscriptionMode(SubscriptionMode subscriptionMode) {
-        this.subscriptionMode = subscriptionMode;
-    }
-
-    public SubscriptionMode getSubscriptionMode() {
-        return subscriptionMode;
-    }
-
     public void setFilterPresets(SubscriptionPreset[] presets) {
         this.filterMapPresets = presets;
         filterMap = new HashMap<>();
         for (SubscriptionPreset preset : presets) {
             addFilterMap(new FilterMapPresets().get(preset));
         }
-    }
-
-    public void setFilterMap(Map<Class, Set<Object>> filterMap) {
-        this.filterMap = filterMap;
-    }
-
-    public Map<Class, Set<Object>> getFilterMap() {
-        return filterMap;
     }
 
     private void addFilterMap(Map<Class, Set<Object>> filters) {
@@ -353,8 +312,8 @@ public class SubscriptionSetup implements Serializable {
         this.filterMap.putAll(filters);
     }
 
-    public Duration getPreviewInterval() {
-        return previewInterval;
+    private void setPreviewInterval(Duration previewIntervalSeconds) {
+        this.previewInterval = previewIntervalSeconds;
     }
 
     public String getAddressFieldName() {
@@ -364,10 +323,6 @@ public class SubscriptionSetup implements Serializable {
         return addressFieldName;
     }
 
-    public void setAddressFieldName(String addressFieldName) {
-        this.addressFieldName = addressFieldName;
-    }
-
     public String getSoapenvNamespace() {
         if (soapenvNamespace != null && soapenvNamespace.isEmpty()) {
             return null;
@@ -375,44 +330,11 @@ public class SubscriptionSetup implements Serializable {
         return soapenvNamespace;
     }
 
-    public void setSoapenvNamespace(String soapenvNamespace) {
-        this.soapenvNamespace = soapenvNamespace;
-    }
-
-    public Boolean getIncrementalUpdates() {
-        return incrementalUpdates;
-    }
-
-    public void setIncrementalUpdates(Boolean incrementalUpdates) {
-        this.incrementalUpdates = incrementalUpdates;
-    }
-
-    public String getContentType() {
-        return contentType;
-    }
-
-    public void setContentType(String contentType) {
-        this.contentType = contentType;
-    }
-
-    public String getVehicleMonitoringRefValue() {
-        return vehicleMonitoringRefValue;
-    }
-
-
     public List<String> getLineRefValues() {
         if (lineRefValues == null) {
             lineRefValues = new ArrayList<>();
         }
         return lineRefValues;
-    }
-
-    public void setLineRefValues(List<String> lineRefValues) {
-        this.lineRefValues = lineRefValues;
-    }
-
-    public void setVehicleMonitoringRefValue(String vehicleMonitoringRefValue) {
-        this.vehicleMonitoringRefValue = vehicleMonitoringRefValue;
     }
 
     public List<String> getStopMonitoringRefValues() {
@@ -427,12 +349,8 @@ public class SubscriptionSetup implements Serializable {
         this.stopMonitoringRefValues = stopMonitoringRefValues;
     }
 
-    public Duration getChangeBeforeUpdates() {
-        return changeBeforeUpdates;
-    }
-
-    public boolean isValidation() {
-        return validation;
+    private void setChangeBeforeUpdates(Duration changeBeforeUpdates) {
+        this.changeBeforeUpdates = changeBeforeUpdates;
     }
 
     public void setValidation(boolean validation) {
@@ -443,44 +361,8 @@ public class SubscriptionSetup implements Serializable {
         }
     }
 
-    public void setValidationFilter(String validationFilter) {
-        this.validationFilter = validationFilter;
-    }
-
-    public String getValidationFilter() {
-        return validationFilter;
-    }
-
     public boolean enrichSiriData() {
         return enrichSiriData;
-    }
-
-    public void setEnrichSiriData(boolean enrichSiriData) {
-        this.enrichSiriData = enrichSiriData;
-    }
-
-    public enum ServiceType {SOAP, REST}
-
-    public enum SubscriptionMode {SUBSCRIBE, REQUEST_RESPONSE, POLLING_FETCHED_DELIVERY, FETCHED_DELIVERY, LITE, LITE_XML, WEBSOCKET, BIG_DATA_EXPORT, VM_POSITION_FORWARDING}
-
-    public void setIdMappingPrefixes(List<String> idMappingPrefixes) {
-        this.idMappingPrefixes = idMappingPrefixes;
-    }
-
-    public List<String> getIdMappingPrefixes() {
-        return idMappingPrefixes;
-    }
-
-    public String getMappingAdapterId() {
-        return mappingAdapterId;
-    }
-
-    public void setMappingAdapterId(String mappingAdapterId) {
-        this.mappingAdapterId = mappingAdapterId;
-    }
-
-    public void setSubscriptionType(SiriDataType subscriptionType) {
-        this.subscriptionType = subscriptionType;
     }
 
     public void setAddress(String address) {
@@ -490,77 +372,31 @@ public class SubscriptionSetup implements Serializable {
         this.address = address;
     }
 
-    public void setHeartbeatIntervalSeconds(int seconds) {
+    public void setHeartbeatIntervalSeconds(long seconds) {
         if (seconds > 0) {
             setHeartbeatInterval(Duration.ofSeconds(seconds));
         }
-    }
-
-    private void setHeartbeatInterval(Duration heartbeatInterval) {
-        this.heartbeatInterval = heartbeatInterval;
-    }
-
-    public Duration getUpdateInterval() {
-        return updateInterval;
     }
 
     private void setUpdateInterval(Duration updateInterval) {
         this.updateInterval = updateInterval;
     }
 
-    public void setUpdateIntervalSeconds(int seconds) {
+    public void setUpdateIntervalSeconds(long seconds) {
         setUpdateInterval(Duration.ofSeconds(seconds));
     }
 
-    public void setPreviewIntervalSeconds(int seconds) {
+    public void setPreviewIntervalSeconds(long seconds) {
         setPreviewInterval(Duration.ofSeconds(seconds));
     }
 
-    private void setPreviewInterval(Duration previewIntervalSeconds) {
-        this.previewInterval = previewIntervalSeconds;
-    }
-
-    public void setChangeBeforeUpdatesSeconds(int seconds) {
+    public void setChangeBeforeUpdatesSeconds(long seconds) {
         if (seconds > 0) {
             setChangeBeforeUpdates(Duration.ofSeconds(seconds));
         }
     }
 
-    private void setChangeBeforeUpdates(Duration changeBeforeUpdates) {
-        this.changeBeforeUpdates = changeBeforeUpdates;
-    }
-
-    public void setOperatorNamespace(String operatorNamespace) {
-        this.operatorNamespace = operatorNamespace;
-    }
-
-    public void setUrlMap(Map<RequestType, String> urlMap) {
-        ensureHttpPrefixes(urlMap);
-
-        this.urlMap = urlMap;
-    }
-
-    public void setSubscriptionId(String subscriptionId) {
-        this.subscriptionId = subscriptionId;
-    }
-
-    public void setVersion(String version) {
-        this.version = version;
-    }
-
-    public void setVendor(String vendor) {
-        this.vendor = vendor;
-    }
-
-    public void setDatasetId(String datasetId) {
-        this.datasetId = datasetId;
-    }
-
-    public void setServiceType(ServiceType serviceType) {
-        this.serviceType = serviceType;
-    }
-
-    public void setDurationOfSubscriptionHours(int hours) {
+    public void setDurationOfSubscriptionHours(long hours) {
         this.durationOfSubscription = Duration.ofHours(hours);
     }
 
@@ -568,55 +404,15 @@ public class SubscriptionSetup implements Serializable {
         this.durationOfSubscription = Duration.ofMinutes(minutes);
     }
 
-    public void setRequestorRef(String requestorRef) {
-        this.requestorRef = requestorRef;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getRestartTime() {
-        return restartTime;
-    }
-
-    public void setRestartTime(String restartTime) {
-        this.restartTime = restartTime;
-    }
-
-    public Map<String, Object> getCustomHeaders() {
-        return customHeaders;
-    }
-
-    public void setCustomHeaders(Map<String, Object> customHeaders) {
-        this.customHeaders = customHeaders;
-    }
-
     public boolean forwardPositionData() {
         return forwardPositionData;
-    }
-
-    public void setForwardPositionData(boolean forwardPositionData) {
-        this.forwardPositionData = forwardPositionData;
-    }
-
-    public void setOauth2Config(Map<OAuthConfigElement, String> oauth2Config) {
-        this.oauth2Config = oauth2Config;
-    }
-
-    public Map<OAuthConfigElement, String> getOauth2Config() {
-        return oauth2Config;
     }
 
     /**
      * Variant of equals that only compares fields crucial to detect updated subscription-config
      * NOTE: e.g. subscriptionId is NOT compared
      *
-     * @param o
+     * @param o other object
      * @return true if crucial config-elements are equal
      */
     @Override
@@ -631,61 +427,65 @@ public class SubscriptionSetup implements Serializable {
         SubscriptionSetup that = (SubscriptionSetup) o;
 
         if (getInternalId() != that.getInternalId()) {
-            logger.info("getInternalId() does not match [{}] vs [{}]", getInternalId(), that.getInternalId());
+            log.info("getInternalId() does not match [{}] vs [{}]", getInternalId(), that.getInternalId());
             return false;
         }
         if (getSubscriptionType() != that.getSubscriptionType()) {
-            logger.info("getSubscriptionType() does not match [{}] vs [{}]", getSubscriptionType(), that.getSubscriptionType());
+            log.info("getSubscriptionType() does not match [{}] vs [{}]", getSubscriptionType(), that.getSubscriptionType());
             return false;
         }
         if (!address.equals(that.address)) {
-            logger.info("address does not match [{}] vs [{}]", address, that.address);
+            log.info("address does not match [{}] vs [{}]", address, that.address);
             return false;
         }
         if (getOperatorNamespace() != null ? !getOperatorNamespace().equals(that.getOperatorNamespace()) : that.getOperatorNamespace() != null) {
-            logger.info("getOperatorNamespace() does not match [{}] vs [{}]", getOperatorNamespace(), that.getOperatorNamespace());
+            log.info("getOperatorNamespace() does not match [{}] vs [{}]", getOperatorNamespace(), that.getOperatorNamespace());
             return false;
         }
 //        if (!getUrlMap().equals(that.getUrlMap())) {
-//            logger.info("getUrlMap() does not match [{}] vs [{}]", getUrlMap(), that.getUrlMap());
+//            log.info("getUrlMap() does not match [{}] vs [{}]", getUrlMap(), that.getUrlMap());
 //            return false;
 //        }
         if (!getVersion().equals(that.getVersion())) {
-            logger.info("getVersion() does not match [{}] vs [{}]", getVersion(), that.getVersion());
+            log.info("getVersion() does not match [{}] vs [{}]", getVersion(), that.getVersion());
             return false;
         }
         if (!getVendor().equals(that.getVendor())) {
-            logger.info("getVendor() does not match [{}] vs [{}]", getVendor(), that.getVendor());
+            log.info("getVendor() does not match [{}] vs [{}]", getVendor(), that.getVendor());
             return false;
         }
         if (!getDatasetId().equals(that.getDatasetId())) {
-            logger.info("getDatasetId() does not match [{}] vs [{}]", getDatasetId(), that.getDatasetId());
+            log.info("getDatasetId() does not match [{}] vs [{}]", getDatasetId(), that.getDatasetId());
             return false;
         }
         if (getServiceType() != that.getServiceType()) {
-            logger.info("getServiceType() does not match [{}] vs [{}]", getServiceType(), that.getServiceType());
+            log.info("getServiceType() does not match [{}] vs [{}]", getServiceType(), that.getServiceType());
             return false;
         }
         if (getDurationOfSubscription() != null ? !getDurationOfSubscription().equals(that.getDurationOfSubscription()) : that.getDurationOfSubscription() != null) {
-            logger.info("getDurationOfSubscription() does not match [{}] vs [{}]", getDurationOfSubscription(), that.getDurationOfSubscription());
+            log.info("getDurationOfSubscription() does not match [{}] vs [{}]", getDurationOfSubscription(), that.getDurationOfSubscription());
             return false;
         }
         if (getSubscriptionMode() != that.getSubscriptionMode()) {
-            logger.info("getSubscriptionMode() does not match [{}] vs [{}]", getSubscriptionMode(), that.getSubscriptionMode());
+            log.info("getSubscriptionMode() does not match [{}] vs [{}]", getSubscriptionMode(), that.getSubscriptionMode());
             return false;
         }
         if (getIdMappingPrefixes() != null ? !getIdMappingPrefixes().equals(that.getIdMappingPrefixes()) : that.getIdMappingPrefixes() != null) {
-            logger.info("getIdMappingPrefixes() does not match [{}] vs [{}]", getIdMappingPrefixes(), that.getIdMappingPrefixes());
+            log.info("getIdMappingPrefixes() does not match [{}] vs [{}]", getIdMappingPrefixes(), that.getIdMappingPrefixes());
             return false;
         }
         if (getMappingAdapterId() != null ? !getMappingAdapterId().equals(that.getMappingAdapterId()) : that.getMappingAdapterId() != null) {
-            logger.info("getMappingAdapterId() does not match [{}] vs [{}]", getMappingAdapterId(), that.getMappingAdapterId());
+            log.info("getMappingAdapterId() does not match [{}] vs [{}]", getMappingAdapterId(), that.getMappingAdapterId());
             return false;
         }
         if (!Arrays.equals(filterMapPresets, that.filterMapPresets)) {
-            logger.info("filterMapPresets does not match [{}] vs [{}]", filterMapPresets, that.filterMapPresets);
+            log.info("filterMapPresets does not match [{}] vs [{}]", filterMapPresets, that.filterMapPresets);
             return false;
         }
         return true;
     }
+
+    public enum ServiceType {SOAP, REST}
+
+    public enum SubscriptionMode {SUBSCRIBE, REQUEST_RESPONSE, POLLING_FETCHED_DELIVERY, FETCHED_DELIVERY, LITE, LITE_XML, WEBSOCKET, BIG_DATA_EXPORT, VM_POSITION_FORWARDING}
 }
