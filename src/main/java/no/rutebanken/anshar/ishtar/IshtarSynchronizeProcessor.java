@@ -50,7 +50,10 @@ public class IshtarSynchronizeProcessor implements Processor {
     private final SubscriptionDtoToDiscoverySubscriptionConverter toDiscoverySubscriptionConverter;
     private final SubscriptionDtoToSubscriptionSetupConverter toSubscriptionSetupConverter;
 
-    public IshtarSynchronizeProcessor(SubscriptionConfig subscriptionConfig, DiscoverySubscriptionCreator discoverySubscriptionCreator, @Value("${ishtar.server.url}") URL ishtarUrl) {
+    public IshtarSynchronizeProcessor(SubscriptionConfig subscriptionConfig,
+                                      DiscoverySubscriptionCreator discoverySubscriptionCreator,
+                                      @Value("${ishtar.server.url}") URL ishtarUrl,
+                                      SubscriptionDtoToSubscriptionSetupConverter toSubscriptionSetupConverter) {
         this.subscriptionConfig = subscriptionConfig;
         this.discoverySubscriptionCreator = discoverySubscriptionCreator;
         this.webClient = WebClient.builder().baseUrl(ishtarUrl.toString()).defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE).build();
@@ -58,7 +61,7 @@ public class IshtarSynchronizeProcessor implements Processor {
         this.siriApiDtoConverter = new SiriApiDtoConverter();
         this.idProcessingParameterDtoConverter = new IdProcessingParameterDtoConverter();
         this.toDiscoverySubscriptionConverter = new SubscriptionDtoToDiscoverySubscriptionConverter();
-        this.toSubscriptionSetupConverter = new SubscriptionDtoToSubscriptionSetupConverter();
+        this.toSubscriptionSetupConverter = toSubscriptionSetupConverter;
     }
 
     @Override

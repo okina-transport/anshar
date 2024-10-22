@@ -11,12 +11,14 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.stereotype.Component;
 
 import java.util.stream.Collectors;
 
 /**
  * Convert ISHTAR SubscriptionDto into ANSHAR SubscriptionSetup.
  */
+@Component
 @Slf4j
 public class SubscriptionDtoToSubscriptionSetupConverter implements Converter<SubscriptionDto, SubscriptionSetup> {
 
