@@ -27,13 +27,13 @@ import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.Exchange;
 import org.apache.commons.lang3.StringUtils;
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
 
-import javax.ws.rs.core.MediaType;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.List;
@@ -45,6 +45,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static javax.ws.rs.core.MediaType.*;
 import static no.rutebanken.anshar.routes.admin.AdminRouteHelper.mergeJsonStats;
 import static no.rutebanken.anshar.routes.policy.SingletonRoutePolicyFactory.DEFAULT_LOCK_VALUE;
 
@@ -55,6 +56,9 @@ public class AdministrationRoute extends RestRouteBuilder {
 
     private static final String STATS_ROUTE = "direct:stats";
     private static final String INTERNAL_STATS_ROUTE = "direct:internal.stats";
+    private static final String OUTBOUND_STATS_ROUTE = "direct:outbound.stats";
+    private static final String OUTBOUND_DATA_ROUTE = "direct:outbound.data";
+    private static final String OUTBOUND_UNSUBSCRIBE_BY_SIRI_DATA_TYPE_ROUTE = "direct:outbound.siri.unsubscribe";
     private static final String OPERATION_ROUTE = "direct:operation";
     private static final String CLUSTERSTATS_ROUTE = "direct:clusterstats";
     private static final String UNMAPPED_ROUTE = "direct:unmapped";
@@ -101,7 +105,7 @@ public class AdministrationRoute extends RestRouteBuilder {
 
         rest("/")
                 .apiDocs(false)
-                .get("").produces(MediaType.TEXT_HTML).to(STATS_ROUTE)
+                .get("").produces(TEXT_HTML).to(STATS_ROUTE)
                 .put("").to(OPERATION_ROUTE)
                 .get("/locks").to("direct:locks")
                 .get("/prepare-shutdown").to("direct:prepare-shutdown")
@@ -110,14 +114,17 @@ public class AdministrationRoute extends RestRouteBuilder {
 
         rest("/anshar")
                 .apiDocs(false)
-                .get("/stats").produces(MediaType.TEXT_HTML).to(STATS_ROUTE)
-                .get("/internalstats").produces(MediaType.APPLICATION_JSON).to(INTERNAL_STATS_ROUTE)
-                .get("/clusterstats").produces(MediaType.APPLICATION_JSON).to(CLUSTERSTATS_ROUTE)
+                .get("/stats").produces(TEXT_HTML).to(STATS_ROUTE)
+                .get("/internalstats").produces(APPLICATION_JSON).to(INTERNAL_STATS_ROUTE)
+                .get("/outbound/stats").produces(APPLICATION_JSON).to(OUTBOUND_STATS_ROUTE)
+                .get("/outbound").produces(APPLICATION_JSON).to(OUTBOUND_DATA_ROUTE)
+                .delete("/outbound/{siriDataType}").produces(APPLICATION_JSON).to(OUTBOUND_UNSUBSCRIBE_BY_SIRI_DATA_TYPE_ROUTE)
+                .get("/clusterstats").produces(APPLICATION_JSON).to(CLUSTERSTATS_ROUTE)
                 .put("/stats").to(OPERATION_ROUTE)
-                .get("/unmapped").produces(MediaType.TEXT_HTML).to(UNMAPPED_ROUTE)
-                .get("/unmapped/{datasetId}").produces(MediaType.TEXT_HTML).to(UNMAPPED_ROUTE)
-                .get("/situations/{datasetId}").produces(MediaType.TEXT_HTML).to(SITUATIONS_ROUTE)
-                .get("/synthesis").produces(MediaType.TEXT_HTML).to(SYNTHESIS_ROUTE)
+                .get("/unmapped").produces(TEXT_HTML).to(UNMAPPED_ROUTE)
+                .get("/unmapped/{datasetId}").produces(TEXT_HTML).to(UNMAPPED_ROUTE)
+                .get("/situations/{datasetId}").produces(TEXT_HTML).to(SITUATIONS_ROUTE)
+                .get("/synthesis").produces(TEXT_HTML).to(SYNTHESIS_ROUTE)
                 .get("/synchronize/data").to("direct:startDataFetch")
         ;
 
@@ -186,10 +193,10 @@ public class AdministrationRoute extends RestRouteBuilder {
 
         from(SYNTHESIS_ROUTE)
                 //.process(basicAuthProcessor)
-                .setHeader(HttpHeaders.CONTENT_TYPE, simple(MediaType.APPLICATION_JSON))
+                .setHeader(HttpHeaders.CONTENT_TYPE, simple(APPLICATION_JSON))
                 .to(INTERNAL_SYNTHESIS_ROUTE)
                 .to("direct:removeHeaders")
-                .setHeader(HttpHeaders.CONTENT_TYPE, simple(MediaType.TEXT_HTML))
+                .setHeader(HttpHeaders.CONTENT_TYPE, simple(TEXT_HTML))
                 .to("freemarker:templates/synthesis.ftl")
                 .routeId("admin.synthesis")
         ;
@@ -198,7 +205,7 @@ public class AdministrationRoute extends RestRouteBuilder {
         if (configuration.processAdmin() && !configuration.processData()) {
             from(STATS_ROUTE)
                     //        .process(basicAuthProcessor)
-                    .setHeader(HttpHeaders.CONTENT_TYPE, simple(MediaType.APPLICATION_JSON))
+                    .setHeader(HttpHeaders.CONTENT_TYPE, simple(APPLICATION_JSON))
                     .to(INTERNAL_STATS_ROUTE)
                     .removeHeader(HttpHeaders.CONTENT_TYPE)
                     .setProperty("proxy-stats", body())
@@ -218,7 +225,7 @@ public class AdministrationRoute extends RestRouteBuilder {
                         p.getMessage().setBody(body);
                     })
                     .to("direct:removeHeaders")
-                    .setHeader(HttpHeaders.CONTENT_TYPE, simple(MediaType.TEXT_HTML))
+                    .setHeader(HttpHeaders.CONTENT_TYPE, simple(TEXT_HTML))
                     .to("freemarker:templates/stats.ftl")
                     .routeId("admin.stats")
             ;
@@ -226,10 +233,10 @@ public class AdministrationRoute extends RestRouteBuilder {
             //either proxy or data-handler
             from(STATS_ROUTE)
                     //.process(basicAuthProcessor)
-                    .setHeader(HttpHeaders.CONTENT_TYPE, simple(MediaType.APPLICATION_JSON))
+                    .setHeader(HttpHeaders.CONTENT_TYPE, simple(APPLICATION_JSON))
                     .to(INTERNAL_STATS_ROUTE)
                     .to("direct:removeHeaders")
-                    .setHeader(HttpHeaders.CONTENT_TYPE, simple(MediaType.TEXT_HTML))
+                    .setHeader(HttpHeaders.CONTENT_TYPE, simple(TEXT_HTML))
                     .to("freemarker:templates/stats.ftl")
                     .routeId("admin.stats")
             ;
@@ -243,7 +250,7 @@ public class AdministrationRoute extends RestRouteBuilder {
                     JSONObject stats = subscriptionManager.buildStats();
                     stats.put("outbound", serverSubscriptionManager.getSubscriptionsAsJson());
 
-                    if (MediaType.APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE, String.class))) {
+                    if (APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE, String.class))) {
                         p.getMessage().setBody(stats);
                     } else {
                         p.getMessage().setBody(stats.toJSONString());
@@ -251,10 +258,60 @@ public class AdministrationRoute extends RestRouteBuilder {
                 })
         ;
 
+        from(OUTBOUND_STATS_ROUTE)
+                .process(p -> {
+                    JSONArray outboundStats =  serverSubscriptionManager.getSubscriptionsCountAsJson();
+
+                    if (APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE, String.class))) {
+                        p.getMessage().setBody(outboundStats);
+                    } else {
+                        p.getMessage().setBody(outboundStats.toJSONString());
+                    }
+                })
+        ;
+
+        from(OUTBOUND_DATA_ROUTE)
+                .process(p -> {
+                    try {
+                        String siriDataTypeInput = p.getIn().getHeader("type", String.class);
+                        Integer page = p.getIn().getHeader("page", Integer.class);
+                        Integer pageSize = p.getIn().getHeader("pageSize", Integer.class);
+                        SiriDataType type = SiriDataType.valueOf(siriDataTypeInput);
+                        if (page == null || page <= 0) {
+                            page = 0;
+                        }
+                        if (pageSize == null || pageSize < 0) {
+                            pageSize = 50;
+                        }
+                        JSONObject outboundDataWithPagination =  serverSubscriptionManager.getSubscriptionsWithPagination(type, page, pageSize);
+
+                        if (APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE, String.class))) {
+                            p.getMessage().setBody(outboundDataWithPagination);
+                        } else {
+                            p.getMessage().setBody(outboundDataWithPagination.toJSONString());
+                        }
+                    } catch (IllegalArgumentException e) {
+                        p.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 400);
+                    }
+                })
+        ;
+
+        from(OUTBOUND_UNSUBSCRIBE_BY_SIRI_DATA_TYPE_ROUTE)
+                .process(p -> {
+                    String siriDataTypeInput = p.getIn().getHeader("siriDataType", String.class);
+                    try {
+                        SiriDataType siriDataType = SiriDataType.valueOf(siriDataTypeInput);
+                        serverSubscriptionManager.terminateAllSubscriptionsByType(siriDataType, false);
+                    } catch (IllegalArgumentException e) {
+                        p.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 400);
+                    }
+                })
+        ;
+
         from(INTERNAL_SYNTHESIS_ROUTE)
                 .process(p -> {
                     JSONObject stats = helper.buildSynthesisData();
-                    if (MediaType.APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE, String.class))) {
+                    if (APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE, String.class))) {
                         p.getMessage().setBody(stats);
                     } else {
                         p.getMessage().setBody(stats.toJSONString());
