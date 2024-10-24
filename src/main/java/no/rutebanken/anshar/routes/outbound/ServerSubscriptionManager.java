@@ -175,21 +175,65 @@ public class ServerSubscriptionManager {
 
             OutboundSubscriptionSetup subscription = subscriptions.get(key);
 
-            JSONObject obj = new JSONObject();
-            obj.put("subscriptionRef", "" + key);
-            obj.put("subscriptionType", "" + subscription.getSubscriptionType());
-            obj.put("address", "" + subscription.getAddress());
-            obj.put("heartbeatInterval", "" + (subscription.getHeartbeatInterval() / 1000) + " s");
-            obj.put("datasetId", subscription.getDatasetId() != null ? subscription.getDatasetId() : "");
-            obj.put("requestReceived", formatter.format(subscription.getRequestTimestamp()));
-            obj.put("initialTerminationTime", formatter.format(subscription.getInitialTerminationTime()));
-            obj.put("clientTrackingName", subscription.getClientTrackingName() != null ? subscription.getClientTrackingName() : "");
-            obj.put("filteredRefs", getFilteredRefs(subscription));
+            JSONObject obj = mapSubscriptionToJsonObject(key, subscription, formatter);
 
             stats.add(obj);
         }
 
         return stats;
+    }
+
+    private JSONObject mapSubscriptionToJsonObject(String key, OutboundSubscriptionSetup subscription, DateTimeFormatter formatter) {
+        JSONObject obj = new JSONObject();
+        obj.put("subscriptionRef", key);
+        obj.put("subscriptionType", subscription.getSubscriptionType().name());
+        obj.put("address", subscription.getAddress());
+        obj.put("heartbeatInterval", (subscription.getHeartbeatInterval() / 1000) + " s");
+        obj.put("datasetId", subscription.getDatasetId() != null ? subscription.getDatasetId() : "");
+        obj.put("requestReceived", formatter.format(subscription.getRequestTimestamp()));
+        obj.put("initialTerminationTime", formatter.format(subscription.getInitialTerminationTime()));
+        obj.put("clientTrackingName", subscription.getClientTrackingName() != null ? subscription.getClientTrackingName() : "");
+        obj.put("filteredRefs", getFilteredRefs(subscription));
+        return obj;
+    }
+
+    public JSONArray getSubscriptionsCountAsJson() {
+        JSONArray count = new JSONArray();
+        Map<SiriDataType, Integer> countSubscriptionByType = new EnumMap<>(SiriDataType.class);
+        for (Map.Entry<String,OutboundSubscriptionSetup> entry : subscriptions.entrySet()) {
+            OutboundSubscriptionSetup subscription = entry.getValue();
+            countSubscriptionByType.merge(subscription.getSubscriptionType(), 1, Integer::sum);
+        }
+        for (Map.Entry<SiriDataType, Integer> counter : countSubscriptionByType.entrySet()) {
+            JSONObject obj = new JSONObject();
+            obj.put("siriDataType", counter.getKey().name());
+            obj.put("count", counter.getValue());
+            count.add(obj);
+        }
+
+        return count;
+    }
+
+    public JSONObject getSubscriptionsWithPagination(SiriDataType type, Integer page, Integer pageSize) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
+        JSONArray jsonFormattedSubscriptions = new JSONArray();
+        JSONArray result = new JSONArray();
+        for (Map.Entry<String,OutboundSubscriptionSetup> entry : subscriptions.entrySet()) {
+            OutboundSubscriptionSetup subscription = entry.getValue();
+            if (type == subscription.getSubscriptionType()) {
+                JSONObject subscriptionJson = mapSubscriptionToJsonObject(entry.getKey(), subscription, formatter);
+                jsonFormattedSubscriptions.add(subscriptionJson);
+            }
+        }
+        int startIndex = page * pageSize;
+        int endIndex = startIndex + pageSize;
+        for (int i = startIndex; i < endIndex && i < jsonFormattedSubscriptions.size(); i++) {
+            result.add(jsonFormattedSubscriptions.get(i));
+        }
+        JSONObject obj = new JSONObject();
+        obj.put("data", result);
+        obj.put("count", jsonFormattedSubscriptions.size());
+        return obj;
     }
 
     private String getFilteredRefs(OutboundSubscriptionSetup outboundSubscription) {
@@ -759,6 +803,15 @@ public class ServerSubscriptionManager {
             }
         }
         return terminatedSubscriptions;
+    }
+
+    public void terminateAllSubscriptionsByType(SiriDataType siriDataType, boolean postResponse) {
+        logger.info("Terminating all subscriptions for siri type {}", siriDataType);
+        for (OutboundSubscriptionSetup subscription : subscriptions.values()) {
+            if (siriDataType.equals(subscription.getSubscriptionType())) {
+                terminateSubscription(subscription.getSubscriptionId(), postResponse);
+            }
+        }
     }
 
 
