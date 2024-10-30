@@ -561,7 +561,7 @@ public class ServerSubscriptionManager {
         if (outboundSubscriptionsByMonitoringRef.containsKey(monitoringRef)) {
 
             for (OutboundSubscriptionSetup currentOutboundSub : outboundSubscriptionsByMonitoringRef.get(monitoringRef)) {
-                if (currentOutboundSub.getSubscriptionId().equals(currentOutboundSub.getSubscriptionId())) {
+                if (StringUtils.isNotEmpty(subscription.getSubscriptionId()) && subscription.getSubscriptionId().equals(currentOutboundSub.getSubscriptionId())) {
                     //subscription is already existing in reverseList. no need to add it
                     return;
                 }
