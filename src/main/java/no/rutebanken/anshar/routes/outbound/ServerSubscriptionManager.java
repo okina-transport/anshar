@@ -154,6 +154,9 @@ public class ServerSubscriptionManager {
 
     private int pushIteration = 0;
 
+    @Value("${anshar.outbound.subscription.grace.period:30000}")
+    private long outboundSubscriptionGracePeriod = 30000;
+
 
     ThreadPoolExecutor outboundSenderExecutorService;
 
@@ -1076,7 +1079,7 @@ public class ServerSubscriptionManager {
         if (outboundSubscriptionSetup != null) {
 
             //Grace-period is set to minimum 5 minutes
-            long gracePeriod = Math.max(3 * outboundSubscriptionSetup.getHeartbeatInterval(), 5 * 60 * 1000L);
+            long gracePeriod = outboundSubscriptionGracePeriod;
 
             Instant firstFail = failTrackerMap.getOrDefault(subscriptionId, Instant.now());
 
