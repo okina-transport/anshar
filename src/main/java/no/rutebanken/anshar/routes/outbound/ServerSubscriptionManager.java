@@ -701,22 +701,22 @@ public class ServerSubscriptionManager {
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         switch (datatype) {
             case ESTIMATED_TIMETABLE:
-                executorService.submit(() -> pushUpdatedEstimatedTimetables(updates, datasetId, breadcrumbId));
+                outboundSenderExecutorService.execute(() -> pushUpdatedEstimatedTimetables(updates, datasetId, breadcrumbId));
                 break;
             case SITUATION_EXCHANGE:
-                executorService.submit(() -> pushUpdatedSituations(updates, datasetId, breadcrumbId));
+                outboundSenderExecutorService.execute(() -> pushUpdatedSituations(updates, datasetId, breadcrumbId));
                 break;
             case VEHICLE_MONITORING:
-                executorService.submit(() -> pushUpdatedVehicleActivities(updates, datasetId, breadcrumbId));
+                outboundSenderExecutorService.execute(() -> pushUpdatedVehicleActivities(updates, datasetId, breadcrumbId));
                 break;
             case STOP_MONITORING:
                 outboundSenderExecutorService.execute(() -> pushUpdatedStopMonitoring(updates, datasetId, breadcrumbId));
                 break;
             case GENERAL_MESSAGE:
-                executorService.submit(() -> pushUpdatedGeneralMessages(updates, datasetId, breadcrumbId));
+                outboundSenderExecutorService.execute(() -> pushUpdatedGeneralMessages(updates, datasetId, breadcrumbId));
                 break;
             case FACILITY_MONITORING:
-                executorService.submit(() -> pushUpdatedFacilityMonitoring(updates, datasetId, breadcrumbId));
+                outboundSenderExecutorService.execute(() -> pushUpdatedFacilityMonitoring(updates, datasetId, breadcrumbId));
                 break;
             default:
                 // Ignore
