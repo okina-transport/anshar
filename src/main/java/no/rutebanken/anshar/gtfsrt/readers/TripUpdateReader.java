@@ -76,7 +76,10 @@ public class TripUpdateReader extends AbstractSwallower {
             List<EstimatedVehicleJourney> estimatedVehicleJourneys = buildEstimatedVehicleJourneyList(completeGTFSRTMessage);
             List<String> etSubscriptionList = getSubscriptionsFromEstimatedTimeTables(estimatedVehicleJourneys);
             checkAndCreateSubscriptions(etSubscriptionList, GTFSRT_ET_PREFIX, SiriDataType.ESTIMATED_TIMETABLE, RequestType.GET_ESTIMATED_TIMETABLE, datasetId);
+            List<String> lineList = getLines(estimatedVehicleJourneys);
+            discoveryCache.addLines(datasetId, lineList);
             buildSiriAndSend(estimatedVehicleJourneys, datasetId);
+
 
         }
 
@@ -90,6 +93,13 @@ public class TripUpdateReader extends AbstractSwallower {
             buildSiriSMAndSend(stopVisits, stopCancellations, datasetId);
         }
 
+    }
+
+    private List<String> getLines(List<EstimatedVehicleJourney> estimatedVehicleJourneys) {
+        return estimatedVehicleJourneys.stream()
+                .filter(estimatedVehicleJourney -> estimatedVehicleJourney.getLineRef() != null && estimatedVehicleJourney.getLineRef().getValue() != null)
+                .map(estimatedVehicleJourney -> estimatedVehicleJourney.getLineRef().getValue())
+                .collect(Collectors.toList());
     }
 
     private void buildSiriSMAndSend(List<MonitoredStopVisit> stopVisits, List<MonitoredStopVisitCancellation> stopCancellation, String datasetId) {
@@ -235,11 +245,6 @@ public class TripUpdateReader extends AbstractSwallower {
 
             if (dataType.equals(SiriDataType.STOP_MONITORING)) {
                 discoveryCache.addStop(datasetId, subscriptionId);
-            }
-
-
-            if (customPrefix.equals(GTFSRT_ET_PREFIX)) {
-                discoveryCache.addLine(datasetId, subscriptionId);
             }
 
             createNewSubscription(subscriptionId, customPrefix, dataType, requestType, datasetId);
