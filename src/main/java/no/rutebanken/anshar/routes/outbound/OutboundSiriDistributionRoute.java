@@ -33,7 +33,7 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
         int timeout = 15000;
 
         onException(Exception.class)
-                .maximumRedeliveries(2)
+                .maximumRedeliveries(0)
                 .redeliveryDelay(3000) //milliseconds
                 .logRetryAttempted(true)
                 .log("Retry triggered")
