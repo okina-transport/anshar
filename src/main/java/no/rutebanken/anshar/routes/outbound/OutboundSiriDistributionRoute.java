@@ -3,6 +3,7 @@ package no.rutebanken.anshar.routes.outbound;
 import no.rutebanken.anshar.data.util.CustomSiriXml;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute;
+import no.rutebanken.anshar.routes.siri.handlers.Utils;
 import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
@@ -26,6 +27,9 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
     @Autowired
     private PrometheusMetricsService metrics;
 
+    @Autowired
+    private Utils utils;
+
     // @formatter:off
     @Override
     public void configure() {
@@ -48,6 +52,7 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
                 .to("direct:siri.transform.data")
                 .process(p -> {
                     Siri response = p.getIn().getBody(Siri.class);
+                    utils.handleFlexibleLines(response);
                     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
                     if (p.getIn().getHeader(SIRI_VERSION_HEADER_NAME).equals(SiriValidator.Version.VERSION_2_1)){
                         CustomSiriXml.toXml(response, null, byteArrayOutputStream);

@@ -391,6 +391,9 @@ public class ServerSubscriptionManager {
         } else if (subscriptionRequest.getVehicleMonitoringSubscriptionRequests() != null && subscriptionRequest.getVehicleMonitoringSubscriptionRequests().size() > 0) {
             Map<ObjectType, Optional<IdProcessingParameters>> idProcessingParams = siriHelper.getIdProcessingParamsFromSubscription(subscriptionRequest.getVehicleMonitoringSubscriptionRequests().get(0), outboundIdMappingPolicy, datasetId);
             mappers = MappingAdapterPresets.getOutboundAdapters(SiriDataType.VEHICLE_MONITORING, outboundIdMappingPolicy, idProcessingParams);
+        } else if (subscriptionRequest.getEstimatedTimetableSubscriptionRequests() != null && subscriptionRequest.getEstimatedTimetableSubscriptionRequests().size() > 0) {
+            Map<ObjectType, Optional<IdProcessingParameters>> idProcessingParams = siriHelper.getIdProcessingParamsFromSubscription(subscriptionRequest.getEstimatedTimetableSubscriptionRequests().get(0), outboundIdMappingPolicy, datasetId);
+            mappers = MappingAdapterPresets.getOutboundAdapters(SiriDataType.ESTIMATED_TIMETABLE, outboundIdMappingPolicy, idProcessingParams);
         } else {
             mappers = MappingAdapterPresets.getOutboundAdapters(outboundIdMappingPolicy);
         }
