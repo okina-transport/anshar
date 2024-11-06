@@ -9,6 +9,7 @@ import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
 import org.entur.siri.validator.SiriValidator;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.Siri;
 
@@ -29,6 +30,13 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
 
     @Autowired
     private Utils utils;
+
+    @Value("${outbound.distribution.route.maxTotalConnections}")
+    private long maxTotalConnections;
+
+    @Value("${outbound.distribution.route.connectionsbyroute}")
+    private long connectionsByRoute;
+
 
     // @formatter:off
     @Override
@@ -77,7 +85,7 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
 //                .to("log:push:" + getClass().getSimpleName() + "?showAll=false&showExchangeId=true&showHeaders=true&showException=true&multiline=true&showBody=false")
 //                .end()
                 .removeHeader("showBody")
-                .toD("${header.endpoint}")
+                .toD("${header.endpoint}?maxTotalConnections=" + maxTotalConnections + "&connectionsPerRoute=" + connectionsByRoute)
                 .bean(subscriptionManager, "clearFailTracker(${header.SubscriptionId})")
                 .choice()
                 .when(header(HEARTBEAT_HEADER).isEqualTo(simple(HEARTBEAT_HEADER)))
