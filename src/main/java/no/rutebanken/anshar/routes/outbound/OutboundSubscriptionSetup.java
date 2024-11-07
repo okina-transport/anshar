@@ -22,9 +22,7 @@ import org.entur.siri.validator.SiriValidator;
 import java.io.Serializable;
 import java.text.MessageFormat;
 import java.time.ZonedDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class OutboundSubscriptionSetup implements Serializable {
 
@@ -45,6 +43,8 @@ public class OutboundSubscriptionSetup implements Serializable {
     private boolean incrementalUpdates;
     private long updateInterval;
     private boolean useOriginalId;
+    private Map<String, List<ValueAdapter>> valueAdaptersByDataset = new HashMap<>();
+    private Map<String, Map<Class, Set<String>>> filterMapByDataset = new HashMap<>();
 
     private boolean isSOAPSubscription;
 
@@ -152,6 +152,27 @@ public class OutboundSubscriptionSetup implements Serializable {
 
     public boolean isUseOriginalId() {
         return useOriginalId;
+    }
+
+
+    public void setValueAdaptersByDataset(Map<String, List<ValueAdapter>> valueAdaptersByDataset) {
+        this.valueAdaptersByDataset = valueAdaptersByDataset;
+    }
+
+    public List<ValueAdapter> getValueAdaptersForDatasetd(String datasetId) {
+        return valueAdaptersByDataset.containsKey(datasetId) ? valueAdaptersByDataset.get(datasetId) : new ArrayList<>();
+    }
+
+    public void setFilterMapByDataset(Map<String, Map<Class, Set<String>>> filterMapByDataset) {
+        this.filterMapByDataset = filterMapByDataset;
+    }
+
+    public Map<String, Map<Class, Set<String>>> getFilterMapByDataset() {
+        return filterMapByDataset;
+    }
+
+    public Map<String, List<ValueAdapter>> getValueAdaptersByDataset() {
+        return valueAdaptersByDataset;
     }
 
     public String toString() {

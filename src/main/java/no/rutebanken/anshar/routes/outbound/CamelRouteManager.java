@@ -20,9 +20,11 @@ import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.handlers.outbound.SituationExchangeOutbound;
+import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -83,7 +85,7 @@ public class CamelRouteManager {
      * @param payload
      * @param subscriptionRequest
      */
-    void pushSiriData(Siri payload, OutboundSubscriptionSetup subscriptionRequest, boolean logBody) {
+    void pushSiriData(String datasetId, Siri payload, OutboundSubscriptionSetup subscriptionRequest, boolean logBody) {
 
         String consumerAddress = subscriptionRequest.getAddress();
         if (consumerAddress == null) {
@@ -102,8 +104,14 @@ public class CamelRouteManager {
                     // Short circuit if subscription has been terminated while waiting
                     return;
                 }
+                Map<Class, Set<String>> filterMap;
+                if (StringUtils.isNotEmpty(datasetId) && subscriptionRequest.getFilterMapByDataset().containsKey(datasetId)) {
+                    filterMap = subscriptionRequest.getFilterMapByDataset().get(datasetId);
+                } else {
+                    filterMap = subscriptionRequest.getFilterMap();
+                }
 
-                Siri filteredPayload = SiriHelper.filterSiriPayload(payload, subscriptionRequest.getFilterMap());
+                Siri filteredPayload = SiriHelper.filterSiriPayload(payload, filterMap);
 
                 int deliverySize = this.maximumSizePerDelivery;
                 if (subscriptionRequest.getDatasetId() != null) {
@@ -139,7 +147,7 @@ public class CamelRouteManager {
                     if (subscriptionRequest.getUpdateInterval() > 0) {
                         scheduledOutboundSubscriptionConfig.createScheduledOutboundSubscription(siri, subscriptionRequest);
                     } else {
-                        postDataToSubscription(siri, subscriptionRequest, logBody);
+                        postDataToSubscription(datasetId, siri, subscriptionRequest, logBody);
                     }
                 }
 
@@ -242,7 +250,7 @@ public class CamelRouteManager {
         return executors == null ? 0 : executors.getActiveCount();
     }
 
-    public void postDataToSubscription(Siri payload, OutboundSubscriptionSetup subscription, boolean showBody) {
+    public void postDataToSubscription(String datasetId, Siri payload, OutboundSubscriptionSetup subscription, boolean showBody) {
         Map<String, Object> headers = new HashMap<>();
         if (serviceDeliveryContainsData(payload)) {
             String remoteEndPoint = subscription.getAddress();
@@ -253,7 +261,13 @@ public class CamelRouteManager {
             headers.put("showBody", showBody);
             headers.put("requestorRef", subscription.getRequestorRef());
             headers.put(SIRI_VERSION_HEADER_NAME, subscription.getSiriVersion());
-            headers.put(OUTPUT_ADAPTERS_HEADER_NAME, subscription.getValueAdapters());
+            List<ValueAdapter> adapters;
+            if (StringUtils.isNotEmpty(datasetId) && subscription.getValueAdaptersByDataset().containsKey(datasetId)) {
+                adapters = subscription.getValueAdaptersByDataset().get(datasetId);
+            } else {
+                adapters = subscription.getValueAdapters();
+            }
+            headers.put(OUTPUT_ADAPTERS_HEADER_NAME, adapters);
             if (subscription.isSOAPSubscription()) {
                 headers.put(TRANSFORM_SOAP, TRANSFORM_SOAP);
             }

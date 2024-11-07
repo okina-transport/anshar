@@ -184,7 +184,7 @@ public class ServerSubscriptionManager {
             obj.put("requestReceived", formatter.format(subscription.getRequestTimestamp()));
             obj.put("initialTerminationTime", formatter.format(subscription.getInitialTerminationTime()));
             obj.put("clientTrackingName", subscription.getClientTrackingName() != null ? subscription.getClientTrackingName() : "");
-            obj.put("filteredRefs", getFilteredRefs(subscription.getFilterMap()));
+            obj.put("filteredRefs", getFilteredRefs(subscription));
 
             stats.add(obj);
         }
@@ -192,27 +192,40 @@ public class ServerSubscriptionManager {
         return stats;
     }
 
-    private String getFilteredRefs(Map<Class, Set<String>> filterMap) {
+    private String getFilteredRefs(OutboundSubscriptionSetup outboundSubscription) {
         StringBuilder filteredRefs = new StringBuilder();
+        Map<Class, Set<String>> filterMap = outboundSubscription.getFilterMap();
         boolean hasStopsFiltered = false;
 
-        if (filterMap != null) {
+        if (filterMap != null && filterMap.containsKey(MonitoringRefStructure.class)) {
+            String stopRefs = String.join(",", filterMap.get(MonitoringRefStructure.class));
+            filteredRefs.append("stops:" + stopRefs);
+            hasStopsFiltered = true;
+        }
 
-            if (filterMap.containsKey(MonitoringRefStructure.class)) {
-                String stopRefs = String.join(",", filterMap.get(MonitoringRefStructure.class));
-                filteredRefs.append("stops:" + stopRefs);
-                hasStopsFiltered = true;
+        if (outboundSubscription.getFilterMapByDataset() != null && outboundSubscription.getFilterMapByDataset().size() > 0) {
+            if (hasStopsFiltered) {
+                filteredRefs.append("/");
             }
-
-            if (filterMap.containsKey(LineRef.class)) {
-
-                if (hasStopsFiltered) {
+            filteredRefs.append("linesByDataset:");
+            boolean isFirstEntry = true;
+            for (Map.Entry<String, Map<Class, Set<String>>> filterMapEntry : outboundSubscription.getFilterMapByDataset().entrySet()) {
+                if (!isFirstEntry) {
                     filteredRefs.append("/");
                 }
-
-                String lineRefs = String.join(",", filterMap.get(LineRef.class));
-                filteredRefs.append("lines:" + lineRefs);
+                filteredRefs.append(filterMapEntry.getKey() + ":" + String.join(",", filterMapEntry.getValue().get(LineRef.class)));
+                isFirstEntry = false;
             }
+        }
+
+        if (filterMap != null && filterMap.containsKey(LineRef.class)) {
+
+            if (hasStopsFiltered) {
+                filteredRefs.append("/");
+            }
+
+            String lineRefs = String.join(",", filterMap.get(LineRef.class));
+            filteredRefs.append("lines:" + lineRefs);
         }
         return filteredRefs.toString();
     }
@@ -368,7 +381,7 @@ public class ServerSubscriptionManager {
 
                 if (delivery != null) {
                     logger.info("Sending initial delivery to {}", subscription.getAddress());
-                    camelRouteManager.pushSiriData(delivery, subscription, false);
+                    camelRouteManager.pushSiriData(null, delivery, subscription, false);
                 } else {
                     logger.info("No initial delivery found for {}", subscription);
                 }
@@ -398,7 +411,7 @@ public class ServerSubscriptionManager {
             mappers = MappingAdapterPresets.getOutboundAdapters(outboundIdMappingPolicy);
         }
 
-        return new OutboundSubscriptionSetup(
+        OutboundSubscriptionSetup newOutboundSubscription = new OutboundSubscriptionSetup(
                 ZonedDateTime.now(),
                 getSubscriptionType(subscriptionRequest),
                 subscriptionRequest.getConsumerAddress() != null ? subscriptionRequest.getConsumerAddress() : subscriptionRequest.getAddress(),
@@ -416,6 +429,67 @@ public class ServerSubscriptionManager {
                 useOrignalId,
                 SiriUtils.getVersionEnum(version)
         );
+
+        if (subscriptionRequest.getEstimatedTimetableSubscriptionRequests() != null && subscriptionRequest.getEstimatedTimetableSubscriptionRequests().size() > 0) {
+            Map<String, List<ValueAdapter>> valueAdaptersByDataset = getValueAdaptersByDataset(subscriptionRequest.getEstimatedTimetableSubscriptionRequests(), outboundIdMappingPolicy);
+            newOutboundSubscription.setValueAdaptersByDataset(valueAdaptersByDataset);
+            Map<String, Map<Class, Set<String>>> filterMapByDataset = getFiltersByDataset(subscriptionRequest.getEstimatedTimetableSubscriptionRequests(), outboundIdMappingPolicy);
+            newOutboundSubscription.setFilterMapByDataset(filterMapByDataset);
+            newOutboundSubscription.getFilterMap().clear();
+        }
+
+        return newOutboundSubscription;
+    }
+
+    private Map<String, Map<Class, Set<String>>> getFiltersByDataset(List<EstimatedTimetableSubscriptionStructure> estimatedTimetableSubscriptionRequests, OutboundIdMappingPolicy outboundIdMappingPolicy) {
+        Map<String, Map<Class, Set<String>>> filterMapByDataset = new HashMap<>();
+        for (EstimatedTimetableSubscriptionStructure estimatedTimetableSubscriptionRequest : estimatedTimetableSubscriptionRequests) {
+
+            for (LineDirectionStructure lineDirection : estimatedTimetableSubscriptionRequest.getEstimatedTimetableRequest().getLines().getLineDirections()) {
+                String rawLineRef = lineDirection.getLineRef().getValue();
+                HashSet<String> searchedIds = new HashSet<>(Collections.singleton(rawLineRef));
+                String datasetId = incomingSubscriptionConfig.findDatasetFromSearch(searchedIds, ObjectType.LINE).orElse("ALL");
+
+                Set<String> linerefValues = siriHelper.revertLineIds(searchedIds);
+                Map<Class, Set<String>> currentFilterMapByDataset;
+                if (filterMapByDataset.containsKey(datasetId)) {
+                    currentFilterMapByDataset = filterMapByDataset.get(datasetId);
+                } else {
+                    currentFilterMapByDataset = new HashMap<>();
+                    filterMapByDataset.put(datasetId, currentFilterMapByDataset);
+                }
+
+                if (currentFilterMapByDataset.containsKey(LineRef.class)) {
+                    currentFilterMapByDataset.get(LineRef.class).addAll(linerefValues);
+                } else {
+                    currentFilterMapByDataset.put(LineRef.class, linerefValues);
+                }
+            }
+        }
+
+        return filterMapByDataset;
+    }
+
+    private Map<String, List<ValueAdapter>> getValueAdaptersByDataset(List<EstimatedTimetableSubscriptionStructure> estimatedTimetableSubscriptionRequests, OutboundIdMappingPolicy outboundIdMappingPolicy) {
+
+        Map<String, List<ValueAdapter>> valueAdaptersByDataset = new HashMap<>();
+
+        for (EstimatedTimetableSubscriptionStructure estimatedTimetableSubscriptionRequest : estimatedTimetableSubscriptionRequests) {
+
+            for (LineDirectionStructure lineDirection : estimatedTimetableSubscriptionRequest.getEstimatedTimetableRequest().getLines().getLineDirections()) {
+                String rawLineRef = lineDirection.getLineRef().getValue();
+                HashSet<String> searchedIds = new HashSet<>(Collections.singleton(rawLineRef));
+                String datasetId = incomingSubscriptionConfig.findDatasetFromSearch(searchedIds, ObjectType.LINE).orElse(null);
+                if (StringUtils.isEmpty(datasetId) || valueAdaptersByDataset.containsKey(datasetId)) {
+                    continue;
+                }
+
+                Map<ObjectType, Optional<IdProcessingParameters>> idProcessingParams = incomingSubscriptionConfig.buildIdProcessingParams(null, searchedIds, ObjectType.LINE);
+                List<ValueAdapter> mappers = MappingAdapterPresets.getOutboundAdapters(SiriDataType.ESTIMATED_TIMETABLE, outboundIdMappingPolicy, idProcessingParams);
+                valueAdaptersByDataset.put(datasetId, mappers);
+            }
+        }
+        return valueAdaptersByDataset;
     }
 
     private String getVersion(Siri incomingSiri) {
@@ -666,7 +740,7 @@ public class ServerSubscriptionManager {
                 Siri terminateSubscriptionResponse = siriObjectFactory.createTerminateSubscriptionResponse(subscriptionRef);
                 logger.info("Sending TerminateSubscriptionResponse to {}", subscriptionRequest.getAddress());
 
-                camelRouteManager.pushSiriData(terminateSubscriptionResponse, subscriptionRequest, true);
+                camelRouteManager.pushSiriData(null, terminateSubscriptionResponse, subscriptionRequest, true);
             } else {
                 logger.info("Subscription terminated, but no response was sent");
             }
@@ -767,7 +841,7 @@ public class ServerSubscriptionManager {
 
         boolean logFullContents = true;
         for (OutboundSubscriptionSetup recipient : recipients) {
-            camelRouteManager.pushSiriData(delivery, recipient, logFullContents);
+            camelRouteManager.pushSiriData(datasetId, delivery, recipient, logFullContents);
             logFullContents = false;
         }
 
@@ -821,7 +895,7 @@ public class ServerSubscriptionManager {
         for (OutboundSubscriptionSetup recipient : recipients) {
             OutboundIdMappingPolicy policy = recipient.isUseOriginalId() ? OutboundIdMappingPolicy.ORIGINAL_ID : OutboundIdMappingPolicy.DEFAULT;
             Siri modifiedIdDelivery = convertIds(delivery, datasetId, policy);
-            camelRouteManager.pushSiriData(modifiedIdDelivery, recipient, logFullContents);
+            camelRouteManager.pushSiriData(datasetId, modifiedIdDelivery, recipient, logFullContents);
             logFullContents = false;
         }
 
@@ -915,7 +989,7 @@ public class ServerSubscriptionManager {
 
         boolean logFullContents = true;
         for (OutboundSubscriptionSetup recipient : recipients) {
-            camelRouteManager.pushSiriData(delivery, recipient, logFullContents);
+            camelRouteManager.pushSiriData(datasetId, delivery, recipient, logFullContents);
             logFullContents = false;
         }
 
@@ -958,7 +1032,7 @@ public class ServerSubscriptionManager {
 
         boolean logFullContents = true;
         for (OutboundSubscriptionSetup recipient : recipients) {
-            camelRouteManager.pushSiriData(delivery, recipient, logFullContents);
+            camelRouteManager.pushSiriData(datasetId, delivery, recipient, logFullContents);
             logFullContents = false;
         }
 
@@ -988,11 +1062,11 @@ public class ServerSubscriptionManager {
         final List<OutboundSubscriptionSetup> recipients = subscriptions
                 .values()
                 .stream()
-                .filter(subscriptionRequest -> (
-                                subscriptionRequest.getSubscriptionType().equals(SiriDataType.ESTIMATED_TIMETABLE)
+                .filter(subscription -> (
+                                subscription.getSubscriptionType().equals(SiriDataType.ESTIMATED_TIMETABLE)
                                         && (
-                                        subscriptionRequest.getDatasetId() == null || (
-                                                subscriptionRequest
+                                        subscription.getDatasetId() == null || (
+                                                subscription
                                                         .getDatasetId()
                                                         .equals(datasetId)
                                         )
@@ -1006,7 +1080,10 @@ public class ServerSubscriptionManager {
 
         boolean logFullContents = true;
         for (OutboundSubscriptionSetup recipient : recipients) {
-            camelRouteManager.pushSiriData(delivery, recipient, logFullContents);
+            if (!recipient.getSubscriptionType().equals(SiriDataType.ESTIMATED_TIMETABLE) || !recipient.getFilterMapByDataset().containsKey(datasetId)) {
+                continue;
+            }
+            camelRouteManager.pushSiriData(datasetId, delivery, recipient, logFullContents);
             logFullContents = false;
         }
         MDC.remove("camel.breadcrumbId");
@@ -1037,7 +1114,7 @@ public class ServerSubscriptionManager {
         Set<String> monitoredRefs = SiriHelper.extractMonitoringRefs(addedOrUpdated);
         List<OutboundSubscriptionSetup> impactedOutboundSubscriptions = getSubscriptionsRelatedToMonitoringRefs(datasetId, monitoredRefs);
 
-        impactedOutboundSubscriptions.forEach(subscription -> camelRouteManager.pushSiriData(delivery, subscription, true));
+        impactedOutboundSubscriptions.forEach(subscription -> camelRouteManager.pushSiriData(datasetId, delivery, subscription, true));
         MDC.remove("camel.breadcrumbId");
     }
 

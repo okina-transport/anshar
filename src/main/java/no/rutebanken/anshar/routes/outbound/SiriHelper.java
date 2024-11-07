@@ -171,7 +171,7 @@ public class SiriHelper {
         return filterMap;
     }
 
-    private Set<String> revertLineIds(Set<String> rawLineValues) {
+    public Set<String> revertLineIds(Set<String> rawLineValues) {
         if (rawLineValues == null || rawLineValues.isEmpty()) {
             return null;
         }
