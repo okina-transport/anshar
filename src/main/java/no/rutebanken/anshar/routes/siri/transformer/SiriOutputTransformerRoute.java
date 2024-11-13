@@ -47,7 +47,7 @@ public class SiriOutputTransformerRoute extends RouteBuilder {
                     p.getOut().setBody(SiriValueTransformer.transform(
                             p.getIn().getBody(Siri.class),
                             adapters,
-                            false,
+                            true,
                             false));
                     p.getOut().setHeaders(p.getIn().getHeaders());
                 })
