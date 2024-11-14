@@ -823,6 +823,10 @@ public class ServerSubscriptionManager {
         return outboundSenderExecutorService == null ? 0 : outboundSenderExecutorService.getQueue().size();
     }
 
+    public int getPushUpdatesActiveCount() {
+        return outboundSenderExecutorService == null ? 0 : outboundSenderExecutorService.getActiveCount();
+    }
+
 
     public void pushUpdatesAsync(SiriDataType datatype, List updates, String datasetId) {
         final String breadcrumbId = MDC.get("camel.breadcrumbId");

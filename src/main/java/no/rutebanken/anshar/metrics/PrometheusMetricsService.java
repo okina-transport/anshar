@@ -100,6 +100,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
     private static final String SUBS_PUSH_WAITING_THREADS = METRICS_PREFIX + "subscription.push.waiting.threads";
     private static final String SUBS_PUSH_ACTIVE_THREADS = METRICS_PREFIX + "subscription.push.active.threads";
     private static final String PUSH_UPDATES_WAITING_THREADS = METRICS_PREFIX + "push.updates.waiting.threads";
+    private static final String PUSH_UPDATES_ACTIVE_THREADS = METRICS_PREFIX + "push.updates..active.threads";
 
 
     private static final String OUTBOUND_PUSH_TIME = METRICS_PREFIX + "data.outbound.push.time";
@@ -391,6 +392,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
         gauge(SUBS_PUSH_WAITING_THREADS, "pushWaitingThreads", value -> camelRouteManager.getPushSubscriptionWaitingQueueSize());
         gauge(SUBS_PUSH_ACTIVE_THREADS, "pushActiveThreads", value -> camelRouteManager.getPushSubscriptionActiveCount());
         gauge(PUSH_UPDATES_WAITING_THREADS, "pushUpdatesWaitingThreads", value -> serverSubscriptionManager.getPushUpdatesWaitingQueueSize());
+        gauge(PUSH_UPDATES_ACTIVE_THREADS, "pushUpdatesActiveThreads", value -> serverSubscriptionManager.getPushUpdatesActiveCount());
         gauge(OUTBOUND_SUBSCRIPTIONS_COUNT, "outboundSubscriptionsCount", value -> serverSubscriptionManager.getOutboundSubscriptionCount());
 
         if (!smDeltaTimesTmp.isEmpty()) {
