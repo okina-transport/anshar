@@ -200,7 +200,7 @@ public class ServerSubscriptionManager {
     public JSONArray getSubscriptionsCountAsJson() {
         JSONArray count = new JSONArray();
         Map<SiriDataType, Integer> countSubscriptionByType = new EnumMap<>(SiriDataType.class);
-        for (Map.Entry<String,OutboundSubscriptionSetup> entry : subscriptions.entrySet()) {
+        for (Map.Entry<String, OutboundSubscriptionSetup> entry : subscriptions.entrySet()) {
             OutboundSubscriptionSetup subscription = entry.getValue();
             countSubscriptionByType.merge(subscription.getSubscriptionType(), 1, Integer::sum);
         }
@@ -218,7 +218,7 @@ public class ServerSubscriptionManager {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
         JSONArray jsonFormattedSubscriptions = new JSONArray();
         JSONArray result = new JSONArray();
-        for (Map.Entry<String,OutboundSubscriptionSetup> entry : subscriptions.entrySet()) {
+        for (Map.Entry<String, OutboundSubscriptionSetup> entry : subscriptions.entrySet()) {
             OutboundSubscriptionSetup subscription = entry.getValue();
             if (type == subscription.getSubscriptionType()) {
                 JSONObject subscriptionJson = mapSubscriptionToJsonObject(entry.getKey(), subscription, formatter);
@@ -1238,5 +1238,9 @@ public class ServerSubscriptionManager {
             logger.info("Subscription {} is now responding - clearing failtracker", subscriptionId);
             failTrackerMap.delete(subscriptionId);
         }
+    }
+
+    public int getOutboundSubscriptionCount() {
+        return subscriptions.size();
     }
 }

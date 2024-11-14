@@ -106,6 +106,9 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
 
     private static final String DELTA_RECORDED_AT_TIME = METRICS_PREFIX + "data.delta.recorded.at.time";
 
+    private static final String OUTBOUND_PUSH_ERRORS = METRICS_PREFIX + "outbound.push.errors";
+    private static final String OUTBOUND_SUBSCRIPTIONS_COUNT = METRICS_PREFIX + "outbound.subscriptions.count";
+
 
     public PrometheusMetricsService() {
         super(PrometheusConfig.DEFAULT);
@@ -185,6 +188,14 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
         counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType.name()));
         counterTags.add(new ImmutableTag(AGENCY_TAG_NAME, datasetId));
         counter(NEGATIVE_EXPIRATATION, counterTags).increment(1);
+    }
+
+    public void registerOutboundPushError(SiriDataType dataType, String requestorRef, String errorType) {
+        if (StringUtils.isEmpty(requestorRef)) {
+            requestorRef = "emptyRequestorRef";
+        }
+
+
     }
 
     public void registerNewRecordedAfterOld(SiriDataType dataType) {
@@ -380,6 +391,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
         gauge(SUBS_PUSH_WAITING_THREADS, "pushWaitingThreads", value -> camelRouteManager.getPushSubscriptionWaitingQueueSize());
         gauge(SUBS_PUSH_ACTIVE_THREADS, "pushActiveThreads", value -> camelRouteManager.getPushSubscriptionActiveCount());
         gauge(PUSH_UPDATES_WAITING_THREADS, "pushUpdatesWaitingThreads", value -> serverSubscriptionManager.getPushUpdatesWaitingQueueSize());
+        gauge(OUTBOUND_SUBSCRIPTIONS_COUNT, "outboundSubscriptionsCount", value -> serverSubscriptionManager.getOutboundSubscriptionCount());
 
         if (!smDeltaTimesTmp.isEmpty()) {
             updateDeltaTimes();
