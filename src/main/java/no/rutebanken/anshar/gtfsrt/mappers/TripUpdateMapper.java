@@ -1,6 +1,7 @@
 package no.rutebanken.anshar.gtfsrt.mappers;
 
 import com.google.transit.realtime.GtfsRealtime;
+import no.rutebanken.anshar.data.util.CustomStringUtils;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.mapping.StopTimesService;
 import org.apache.commons.lang3.StringUtils;
@@ -227,7 +228,7 @@ public class TripUpdateMapper {
 
 
         DatedVehicleJourneyRef datedVehicleJourneyRef = new DatedVehicleJourneyRef();
-        datedVehicleJourneyRef.setValue(tripDescriptor.getTripId());
+        datedVehicleJourneyRef.setValue(CustomStringUtils.removeSpecialCharacters(tripDescriptor.getTripId()));
         journey.setDatedVehicleJourneyRef(datedVehicleJourneyRef);
 
         FramedVehicleJourneyRefStructure vehicleJourneyRef = createVehicleJourneyRef(tripUpdate);

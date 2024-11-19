@@ -19,6 +19,7 @@ import com.hazelcast.map.IMap;
 import com.hazelcast.query.Predicates;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
+import no.rutebanken.anshar.data.util.CustomStringUtils;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
@@ -507,10 +508,6 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
 
         Map<SiriObjectStorageKey, EstimatedVehicleJourney> changes = new HashMap();
 
-        Map<SiriObjectStorageKey, String> checksumCacheTmp = new HashMap<>();
-        Map<SiriObjectStorageKey, ZonedDateTime> idStartTimeMapTmp = new HashMap<>();
-        Map<SiriObjectStorageKey, Long> expirationMap = new HashMap<>();
-
         Counter outdatedCounter = new CounterImpl(0);
         Counter notUpdatedCounter = new CounterImpl(0);
         etList.forEach(et -> {
@@ -584,7 +581,6 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
                     boolean hasPatternChanges = hasPatternChanges(et);
                     timingTracer.mark("hasPatternChanges");
                     if (hasPatternChanges) {
-
                         // Keep track of all valid ET with pattern-changes
                         idForPatternChanges.put(key, key.getKey(), expiration, TimeUnit.MILLISECONDS);
                         timingTracer.mark("idForPatternChanges.put");
@@ -631,6 +627,7 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
     }
 
     private static SiriObjectStorageKey createKey(String datasetId, EstimatedVehicleJourney element) {
+        element.getFramedVehicleJourneyRef().setDatedVehicleJourneyRef(CustomStringUtils.removeSpecialCharacters(element.getFramedVehicleJourneyRef().getDatedVehicleJourneyRef()));
 
         StringBuilder key = new StringBuilder();
         if (element.getFramedVehicleJourneyRef() != null) {
