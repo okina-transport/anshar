@@ -30,6 +30,7 @@ import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import no.rutebanken.anshar.util.SiriUtils;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -89,6 +90,9 @@ public class ServerSubscriptionManager {
 
     @Value("${anshar.outbound.error.consumeraddress}")
     private String errorConsumerAddressMissing = "Error";
+
+    @Value("${anshar.outbound.error.monitoringref}")
+    private String errorMonitoringRefMissing = "Error";
 
     @Value("${anshar.outbound.error.initialtermination}")
     private String initialTerminationTimePassed = "Error";
@@ -373,7 +377,11 @@ public class ServerSubscriptionManager {
      * @return
      */
     public Siri handleSingleSubscriptionRequest(Siri incomingSiri, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName, boolean soapTransformation, boolean useOriginalId) {
-
+        boolean missingMonitoringRef = checkMissingMonitoringRef(incomingSiri.getSubscriptionRequest());
+        if (missingMonitoringRef) {
+            String subscriptionId = findSubscriptionIdentifier(incomingSiri.getSubscriptionRequest());
+            return siriObjectFactory.createSubscriptionResponse(StringUtils.defaultIfBlank(subscriptionId, "Undefined subscription id"), false, errorMonitoringRefMissing, incomingSiri.getVersion());
+        }
         OutboundSubscriptionSetup subscription = createSubscription(incomingSiri, datasetId, outboundIdMappingPolicy, clientTrackingName, useOriginalId);
         subscription.setSOAPSubscription(soapTransformation);
 
@@ -411,6 +419,17 @@ public class ServerSubscriptionManager {
             }
             return subscriptionResponse;
         }
+    }
+
+    private static boolean checkMissingMonitoringRef(SubscriptionRequest subscriptionRequest) {
+        boolean missingMonitoringRef = false;
+        if (subscriptionRequest != null && CollectionUtils.isNotEmpty(subscriptionRequest.getStopMonitoringSubscriptionRequests())) {
+            missingMonitoringRef = subscriptionRequest.getStopMonitoringSubscriptionRequests()
+                    .stream()
+                    .anyMatch(subscriptionItem -> subscriptionItem.getStopMonitoringRequest() == null
+                            || subscriptionItem.getStopMonitoringRequest().getMonitoringRef() == null);
+        }
+        return missingMonitoringRef;
     }
 
     private void sendInitialDelivery(OutboundSubscriptionSetup subscription) {
