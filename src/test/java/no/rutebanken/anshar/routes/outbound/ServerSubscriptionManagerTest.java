@@ -1,6 +1,8 @@
 package no.rutebanken.anshar.routes.outbound;
 
 import com.hazelcast.map.IMap;
+import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
+import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.entur.siri.validator.SiriValidator;
 import org.json.simple.JSONArray;
@@ -11,7 +13,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.org.siri.siri21.Siri;
 
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -34,6 +39,9 @@ class ServerSubscriptionManagerTest {
 
     @Mock
     private IMap<String, OutboundSubscriptionSetup> subscriptions;
+
+    @Mock
+    private SiriObjectFactory siriObjectFactory;
 
     @Test
     void getSubscriptionsCountAsJsonTest() {
@@ -222,4 +230,22 @@ class ServerSubscriptionManagerTest {
 
         assertThat(result.get("data").toString()).hasToString( "[]");
     }
+
+    @Test
+    void handleSingleSubscriptionRequest_SM_missingMonitoringRef_shouldReturnErrorMessage_test() {
+        Siri incomingSiri;
+        try (InputStream inputStream = new FileInputStream("src/test/resources/siri-sm-missing-monitoring-ref.xml")) {
+            incomingSiri = SiriValueTransformer.parseXml(inputStream);
+        } catch (Exception e) {
+           throw new AssertionError("Illegal state");
+        }
+
+        boolean useOriginalId = false;
+        boolean soapTransformation = false;
+
+        serverSubscriptionManager.handleSingleSubscriptionRequest(incomingSiri, DATA_SET_ID, null, CLIENT_NAME, soapTransformation, useOriginalId);
+
+        Mockito.verify(siriObjectFactory).createSubscriptionResponse("OKINA", false, "Error", "2.0");
+    }
+
 }

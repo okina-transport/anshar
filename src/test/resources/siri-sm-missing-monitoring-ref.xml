@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Siri
+        xmlns="http://www.siri.org.uk/siri"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.siri.org.uk/siri http://www.siri.org.uk/schema/2.0/xsd/siri.xsd" version="2.0">
+    <SubscriptionRequest>
+        <RequestTimestamp>2024-09-12T14:30:00-00:00</RequestTimestamp>
+        <RequestorRef>OKINA-SM</RequestorRef>
+        <ConsumerAddress>https:/dummyurl.com/</ConsumerAddress>
+        <SubscriptionContext>
+            <HeartbeatInterval>PT5M</HeartbeatInterval>
+        </SubscriptionContext>
+        <StopMonitoringSubscriptionRequest>
+            <SubscriberRef>OKINA-SM</SubscriberRef>
+            <SubscriptionIdentifier>OKINA</SubscriptionIdentifier>
+            <InitialTerminationTime>2025-09-12T14:30:00-00:00</InitialTerminationTime>
+            <StopMonitoringRequest version="2.0">
+                <RequestTimestamp>2024-09-12T14:30:00-00:00</RequestTimestamp>
+                <!-- 	<MonitoringRef>MOBIITI:Quay:95607</MonitoringRef>-->
+            </StopMonitoringRequest>
+        </StopMonitoringSubscriptionRequest>
+    </SubscriptionRequest>
+</Siri>
