@@ -37,6 +37,12 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
     @Value("${outbound.distribution.route.connectionsbyroute}")
     private long connectionsByRoute;
 
+    @Value("${outbound.distribution.threads}")
+    private int threads;
+
+    @Value("${outbound.distribution.max.pool.size}")
+    private int maxPoolSize;
+
 
     // @formatter:off
     @Override
@@ -52,6 +58,8 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
         ;
 
         from("direct:send.to.external.subscription")
+                .threads(threads)
+                .maxPoolSize(maxPoolSize)
                 .routeId("send.to.external.subscription")
                 .log(LoggingLevel.DEBUG, "POST data to ${header.SubscriptionId}")
                 .setHeader("CamelHttpMethod", constant("POST"))
