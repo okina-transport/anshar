@@ -4,6 +4,8 @@ import no.rutebanken.anshar.data.util.CustomSiriXml;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute;
 import no.rutebanken.anshar.routes.siri.handlers.Utils;
+import no.rutebanken.anshar.subscription.SiriDataType;
+import no.rutebanken.anshar.util.StopMonitoringUtils;
 import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
@@ -11,9 +13,12 @@ import org.entur.siri.validator.SiriValidator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import uk.org.siri.siri21.MonitoredStopVisit;
 import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.StopMonitoringDeliveryStructure;
 
 import java.io.ByteArrayOutputStream;
+import java.util.Optional;
 
 import static no.rutebanken.anshar.routes.HttpParameter.SIRI_VERSION_HEADER_NAME;
 import static no.rutebanken.anshar.routes.RestRouteBuilder.downgradeSiriVersion;
@@ -76,6 +81,20 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
                         CustomSiriXml.toXml(downgradeSiriVersion(response), null, byteArrayOutputStream);
                     }
                     p.getIn().setBody(byteArrayOutputStream.toString());
+
+                    if (response.getServiceDelivery() != null && response.getServiceDelivery().getStopMonitoringDeliveries() != null && response.getServiceDelivery().getStopMonitoringDeliveries().size() > 0){
+                        StopMonitoringDeliveryStructure firstDel = response.getServiceDelivery().getStopMonitoringDeliveries().get(0);
+                        if (firstDel.getMonitoredStopVisits() != null && firstDel.getMonitoredStopVisits().size() > 0){
+                            MonitoredStopVisit firstStopVisit = firstDel.getMonitoredStopVisits().get(0);
+                            Optional<Long> entryTimeOpt = StopMonitoringUtils.getEntryTime(firstStopVisit);
+                            if (entryTimeOpt.isPresent()){
+                                String dataset= (String) p.getIn().getHeader("datasetId");
+                                long duration = System.currentTimeMillis() -  entryTimeOpt.get();
+                                metrics.recordTotalInboundToOutboundTimes(SiriDataType.STOP_MONITORING,dataset,duration);
+                                firstStopVisit.getStopVisitNotes().clear();
+                            }
+                        }
+                    }
                 })
                 .choice()
                 .when(header(Siri20RequestHandlerRoute.TRANSFORM_SOAP).isEqualTo(simple(Siri20RequestHandlerRoute.TRANSFORM_SOAP)))

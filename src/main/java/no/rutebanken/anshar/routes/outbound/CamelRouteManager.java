@@ -259,6 +259,7 @@ public class CamelRouteManager {
             headers.put("endpoint", remoteEndPoint);
             headers.put("SubscriptionId", subscription.getSubscriptionId());
             headers.put("showBody", showBody);
+            headers.put("datasetId", datasetId);
             headers.put("requestorRef", subscription.getRequestorRef());
             headers.put(SIRI_VERSION_HEADER_NAME, subscription.getSiriVersion());
             List<ValueAdapter> adapters;

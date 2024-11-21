@@ -4,12 +4,13 @@ import com.google.transit.realtime.GtfsRealtime;
 import no.rutebanken.anshar.data.util.CustomStringUtils;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.mapping.StopTimesService;
+import no.rutebanken.anshar.util.StopMonitoringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import java.math.BigInteger;
 import java.time.*;
@@ -71,7 +72,7 @@ public class TripUpdateMapper {
             monitoredVehicleStruct.setFramedVehicleJourneyRef(vehicleJourneyRef);
             monitoredVehicleStruct.setMonitored(true);
             MonitoredCallStructure monitoredCallStructure = new MonitoredCallStructure();
-            StopPointRef stopPointRef = new StopPointRef();
+            StopPointRefStructure stopPointRef = new StopPointRefStructure();
             stopPointRef.setValue(stopId);
             monitoredCallStructure.setStopPointRef(stopPointRef);
             monitoredCallStructure.setOrder(BigInteger.valueOf(stopTimeUpdate.getStopSequence()));
@@ -80,6 +81,7 @@ public class TripUpdateMapper {
             monitoredVehicleStruct.setMonitoredCall(monitoredCallStructure);
             stopVisit.setMonitoredVehicleJourney(monitoredVehicleStruct);
             feedItemIdentifier(stopVisit, stopId);
+            StopMonitoringUtils.initEntryTime(stopVisit);
             stopVisitList.add(stopVisit);
         }
 
@@ -267,9 +269,9 @@ public class TripUpdateMapper {
     private static EstimatedCall mapEstimatedCallFromTripUpdate(GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate) {
 
         EstimatedCall estimatedCall = new EstimatedCall();
-        StopPointRef spRef = new StopPointRef();
-        spRef.setValue(stopTimeUpdate.getStopId());
-        estimatedCall.setStopPointRef(spRef);
+        StopPointRefStructure stopPointRefStructure = new StopPointRefStructure();
+        stopPointRefStructure.setValue(stopTimeUpdate.getStopId());
+        estimatedCall.setStopPointRef(stopPointRefStructure);
         estimatedCall.setOrder(BigInteger.valueOf(stopTimeUpdate.getStopSequence()));
 
         if (stopTimeUpdate.hasDeparture() && stopTimeUpdate.getDeparture().getTime() != 0) {

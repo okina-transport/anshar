@@ -7,8 +7,8 @@ import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.MonitoredStopVisitCancellation;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.MonitoredStopVisitCancellation;
 
 import java.util.List;
 

@@ -110,6 +110,8 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
     private static final String OUTBOUND_PUSH_ERRORS = METRICS_PREFIX + "outbound.push.errors";
     private static final String OUTBOUND_SUBSCRIPTIONS_COUNT = METRICS_PREFIX + "outbound.subscriptions.count";
 
+    private static final String TOTAL_INBOUND_TO_OUTBOUND_TIME = METRICS_PREFIX + "total.inbound.to.outbound.time";
+
 
     public PrometheusMetricsService() {
         super(PrometheusConfig.DEFAULT);
@@ -125,11 +127,28 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
     final Map<String, Set<Long>> smDeltaTimesTmpBeforePush = new ConcurrentHashMap<>();
     final Map<String, Double> smDeltaTimesResultsBeforePush = new HashMap<>();
 
+    final Map<String, Set<Long>> smTotalInboundToOutboundTmp = new ConcurrentHashMap<>();
+    final Map<String, Double> smTotalInboundToOutboundResults = new HashMap<>();
+
+
     @PreDestroy
     public void shutdown() {
         this.close();
     }
 
+
+    public void recordTotalInboundToOutboundTimes(SiriDataType dataType, String datasetId, Long totalTime) {
+
+        if (SiriDataType.STOP_MONITORING.equals(dataType)) {
+            if (smTotalInboundToOutboundTmp.containsKey(datasetId)) {
+                smTotalInboundToOutboundTmp.get(datasetId).add(totalTime);
+            } else {
+                Set<Long> mySet = Sets.newConcurrentHashSet();
+                mySet.add(totalTime);
+                smTotalInboundToOutboundTmp.put(datasetId, mySet);
+            }
+        }
+    }
 
     /**
      * Record delta times between recordedAtTime field and real time
@@ -361,6 +380,8 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
 
     @Override
     public String scrape() {
+        smDeltaTimesResults.clear();
+        smTotalInboundToOutboundResults.clear();
         update();
         return super.scrape();
     }
@@ -397,6 +418,10 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
 
         if (!smDeltaTimesTmp.isEmpty()) {
             updateDeltaTimes();
+        }
+
+        if (!smTotalInboundToOutboundTmp.isEmpty()) {
+            updateSmTotalInboundToOutboundTimes();
         }
 
         if (!smDeltaTimesTmpBeforePush.isEmpty()) {
@@ -478,6 +503,27 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
             gauge(gauge_data_failing, getTagsWithTimeLimit(counterTags, "30min"), subscription.getSubscriptionId(), value ->
                     isSubscriptionFailing(manager, subscription, 30 * 60));
         }
+    }
+
+    private void updateSmTotalInboundToOutboundTimes() {
+        for (Map.Entry<String, Set<Long>> smTotalTimeEntry : smTotalInboundToOutboundTmp.entrySet()) {
+            String requestorRef = smTotalTimeEntry.getKey();
+            List<Tag> counterTags = new ArrayList<>();
+            counterTags.add(new ImmutableTag(REQUESTOR_REF_TAG_NAME, requestorRef));
+
+
+            Set<Long> totalTimes = new HashSet<>(smTotalTimeEntry.getValue());
+            double sum = 0;
+            for (Long deltaTime : totalTimes) {
+                sum = sum + deltaTime;
+            }
+
+
+            smTotalInboundToOutboundResults.put(requestorRef, sum / totalTimes.size());
+            gauge(TOTAL_INBOUND_TO_OUTBOUND_TIME, counterTags, requestorRef, value -> smTotalInboundToOutboundResults.get(requestorRef));
+
+        }
+        smTotalInboundToOutboundTmp.clear();
     }
 
     private void updateDeltaTimesBeforePush() {

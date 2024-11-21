@@ -6,7 +6,7 @@ import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import no.rutebanken.anshar.util.IDUtils;
 import org.apache.camel.ProducerTemplate;
-import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri21.Siri;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -55,6 +55,13 @@ public abstract class AbstractSwallower {
     }
 
     protected void sendToRealTimeServer(ProducerTemplate producerTemplate, Siri siriToSend, String datasetId) {
+        Map<String, Object> headers = new HashMap<>();
+        headers.put(DATASET_ID_HEADER_NAME, datasetId);
+        headers.put(URL_HEADER_NAME, url);
+        producerTemplate.asyncRequestBodyAndHeaders(producerTemplate.getDefaultEndpoint(), siriToSend, headers);
+    }
+
+    protected void sendToRealTimeServer(ProducerTemplate producerTemplate, uk.org.siri.siri20.Siri siriToSend, String datasetId) {
         Map<String, Object> headers = new HashMap<>();
         headers.put(DATASET_ID_HEADER_NAME, datasetId);
         headers.put(URL_HEADER_NAME, url);
