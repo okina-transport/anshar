@@ -111,7 +111,7 @@ public class ExternalDataHandler {
             String url = e.getIn().getHeader(URL_HEADER_NAME, String.class);
 
             if (StringUtils.isEmpty(datasetId)) {
-                logger.error("No datasetId were specified in external SM data");
+                logger.error("No datasetId were specified in external ET data");
                 return;
             }
 
