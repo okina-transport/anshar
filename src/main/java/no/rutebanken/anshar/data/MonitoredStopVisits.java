@@ -23,11 +23,13 @@ import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.data.util.CustomStringUtils;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
+import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.util.StopMonitoringUtils;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.quartz.utils.counter.Counter;
 import org.quartz.utils.counter.CounterImpl;
@@ -51,6 +53,7 @@ import java.util.stream.Collectors;
 public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
     private static final Logger logger = LoggerFactory.getLogger(MonitoredStopVisits.class);
+    public static final String EMPTY_DESTINATION = "EmptyDestination";
 
 
     @Autowired
@@ -85,12 +88,15 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     @Autowired
     ExtendedHazelcastService hazelcastService;
 
+    @Autowired
+    StopPlaceUpdaterService stopPlaceUpdaterService;
+
     @Produce(uri = "direct:send.to.expired.data.queue")
     protected ProducerTemplate expiredDataProcessor;
 
     int negativeExpirationCount = 0;
 
-    private Set<String> localSMDatasetList = new HashSet<>();
+    private final Set<String> localSMDatasetList = new HashSet<>();
 
     protected MonitoredStopVisits() {
         super(SiriDataType.STOP_MONITORING);
@@ -419,7 +425,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         }
 
         if (expiryTimestamp != null) {
-            return ZonedDateTime.now().until(expiryTimestamp.plus(configuration.getSmGraceperiodMinutes(), ChronoUnit.MINUTES), ChronoUnit.MILLIS);
+            return ZonedDateTime.now().until(expiryTimestamp.plusMinutes(configuration.getSmGraceperiodMinutes()), ChronoUnit.MILLIS);
         }
 
         return -1;
@@ -496,16 +502,23 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
                     }
                     if (monitoredStopVisit.getMonitoredVehicleJourney().getDestinationRef() == null) {
                         DestinationRef destinationRef = new DestinationRef();
-                        destinationRef.setValue("EmptyDestination");
+                        destinationRef.setValue(EMPTY_DESTINATION);
                         monitoredStopVisit.getMonitoredVehicleJourney().setDestinationRef(destinationRef);
                     }
 
 
-                    if (monitoredStopVisit.getMonitoredVehicleJourney().getDestinationNames().isEmpty()) {
-                        NaturalLanguageStringStructure emptyDestinationName = new NaturalLanguageStringStructure();
-                        emptyDestinationName.setLang("EN");
-                        emptyDestinationName.setValue("EmptyDestination");
-                        monitoredStopVisit.getMonitoredVehicleJourney().getDestinationNames().add(emptyDestinationName);
+                    if (CollectionUtils.isEmpty(monitoredStopVisit.getMonitoredVehicleJourney().getDestinationNames())) {
+                        NaturalLanguageStringStructure destinationName = new NaturalLanguageStringStructure();
+                        if (!EMPTY_DESTINATION.equals(monitoredStopVisit.getMonitoredVehicleJourney().getDestinationRef().getValue())) {
+                            destinationName.setLang("FR");
+                            String stopId = extractId(monitoredStopVisit.getMonitoredVehicleJourney().getDestinationRef().getValue());
+                            destinationName.setValue(stopPlaceUpdaterService.getStopName(stopId, datasetId));
+                        }
+                        if (StringUtils.isEmpty(destinationName.getValue())) {
+                            destinationName.setLang("EN");
+                            destinationName.setValue(EMPTY_DESTINATION);
+                        }
+                        monitoredStopVisit.getMonitoredVehicleJourney().getDestinationNames().add(destinationName);
                     }
 
 
@@ -647,9 +660,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
             Set<String> stopSet = new HashSet();
             for (SiriObjectStorageKey siriObjectStorageKey : idSet) {
 
-                if (!stopSet.contains(siriObjectStorageKey.getStopRef())) {
-                    stopSet.add(siriObjectStorageKey.getStopRef());
-                }
+                stopSet.add(siriObjectStorageKey.getStopRef());
             }
             results.put(datasetId, stopSet.size());
         }
@@ -670,4 +681,21 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
             //logger.debug("SM - key deleted:" + key);
         }
     }
+
+    /**
+     * Extract stopCode from a raw Id with ":" separators
+     *
+     * @param rawId the raw id with : separators (e.g: SIRI_NVP_037:StopPoint:BP:MADU01:LOC)
+     * @return the stop code
+     */
+    private String extractId(String rawId) {
+        if (rawId.contains(":")) {
+            String idWithoutLoc = rawId.replace(":LOC", "");
+            String[] idTab = idWithoutLoc.split(":");
+            return idTab[idTab.length - 1];
+        } else {
+            return rawId;
+        }
+    }
+
 }
