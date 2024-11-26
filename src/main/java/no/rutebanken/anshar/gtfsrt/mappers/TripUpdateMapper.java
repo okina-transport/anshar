@@ -122,7 +122,6 @@ public class TripUpdateMapper {
         ZonedDateTime aimedDeparture = stopTimesService.getDepartureTime(datasetId, tripId, stopTimeUpdate.getStopSequence()).isPresent() ?
                 ZonedDateTime.of(localDate, LocalTime.parse(stopTimesService.getDepartureTime(datasetId, tripId, stopTimeUpdate.getStopSequence()).get()), ZoneId.systemDefault()) :
                 ZonedDateTime.ofInstant(Instant.ofEpochMilli(aimedDepartureSeconds * 1000), ZoneId.systemDefault());
-        ;
 
         monitoredCallStructure.setAimedDepartureTime(aimedDeparture);
     }
@@ -179,8 +178,8 @@ public class TripUpdateMapper {
      * @return The lineRef containing the routeId
      */
     private LineRef createLineRef(GtfsRealtime.TripUpdate tripUpdate, String datasetId, String tripId) {
-        String routeId = tripUpdate.getTrip() != null && StringUtils.isNotEmpty(tripUpdate.getTrip().getRouteId()) ? tripUpdate.getTrip().getRouteId() : stopTimesService.getRouteId(datasetId, tripId).isPresent() ?
-                stopTimesService.getRouteId(datasetId, tripId).get() : "";
+        String routeId = tripUpdate.getTrip() != null && StringUtils.isNotEmpty(tripUpdate.getTrip().getRouteId()) ?
+                tripUpdate.getTrip().getRouteId() : stopTimesService.getRouteId(datasetId, tripId).orElse("");
         LineRef lineRef = new LineRef();
 
         lineRef.setValue(routeId);
@@ -190,7 +189,7 @@ public class TripUpdateMapper {
     private DestinationRef createDestinationRef(String datasetId, String tripId) {
 
         DestinationRef destinationRef = new DestinationRef();
-        destinationRef.setValue(stopTimesService.getDestinationId(datasetId, tripId).isPresent() ? stopTimesService.getDestinationId(datasetId, tripId).get() : "");
+        destinationRef.setValue(stopTimesService.getDestinationId(datasetId, tripId).orElse(""));
         return destinationRef;
     }
 

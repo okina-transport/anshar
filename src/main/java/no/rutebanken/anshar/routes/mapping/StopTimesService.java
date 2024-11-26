@@ -53,13 +53,13 @@ public class StopTimesService {
     SubscriptionConfig subscriptionConfig;
 
     //datasetId -> tripId -> sequence
-    private Map<String, Map<String, Map<Integer, Pair<String, String>>>> stopTimesCache = new HashMap();
+    private final Map<String, Map<String, Map<Integer, Pair<String, String>>>> stopTimesCache = new HashMap();
 
     //datasetId -> 0tripId -> routeId
-    private Map<String, Map<String, String>> tripsCache = new HashMap();
+    private final Map<String, Map<String, String>> tripsCache = new HashMap();
 
-    private FilenameFilter stopTimesFilter = (f, name) -> name.startsWith("stop_times_") && name.endsWith(".txt");
-    private FilenameFilter tripsFilter = (f, name) -> name.startsWith("trips_") && name.endsWith(".txt");
+    private final FilenameFilter stopTimesFilter = (f, name) -> name.startsWith("stop_times_") && name.endsWith(".txt");
+    private final FilenameFilter tripsFilter = (f, name) -> name.startsWith("trips_") && name.endsWith(".txt");
 
 
     @PostConstruct
@@ -235,6 +235,10 @@ public class StopTimesService {
      */
     public Optional<String> getStopId(String datasetId, String tripId, Integer stopSequence) {
 
+        if (stopTimesCache.isEmpty()) {
+            refreshCache();
+        }
+
         if (!stopTimesCache.containsKey(datasetId)) {
             return Optional.empty();
         }
@@ -262,6 +266,10 @@ public class StopTimesService {
      * @return
      */
     public Optional<String> getDestinationId(String datasetId, String tripId) {
+
+        if (stopTimesCache.isEmpty()) {
+            refreshCache();
+        }
 
         if (!stopTimesCache.containsKey(datasetId)) {
             return Optional.empty();
@@ -293,6 +301,10 @@ public class StopTimesService {
      */
     public Optional<String> getRouteId(String datasetId, String tripId) {
 
+        if (tripsCache.isEmpty()) {
+            refreshCache();
+        }
+
         if (!tripsCache.containsKey(datasetId)) {
             return Optional.empty();
         }
@@ -313,6 +325,10 @@ public class StopTimesService {
      * @return
      */
     public Optional<String> getDepartureTime(String datasetId, String tripId, Integer stopSequence) {
+
+        if (stopTimesCache.isEmpty()) {
+            refreshCache();
+        }
 
         if (!stopTimesCache.containsKey(datasetId)) {
             return Optional.empty();
