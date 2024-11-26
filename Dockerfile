@@ -8,7 +8,7 @@ EXPOSE 8776
 EXPOSE 5000
 
 # Définition de l'encodage de l'environnement à UTF-8
-ENV LANG C.UTF-8
+ENV LANG=C.UTF-8
 
 # Commande pour lancer l'application Spring Boot
 ENTRYPOINT exec java -jar /app.jar
