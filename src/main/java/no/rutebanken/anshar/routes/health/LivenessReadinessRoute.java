@@ -16,14 +16,10 @@
 package no.rutebanken.anshar.routes.health;
 
 import com.hazelcast.collection.ISet;
-import io.prometheus.jmx.JmxCollector;
-import io.prometheus.metrics.model.snapshots.MetricSnapshots;
-import no.rutebanken.anshar.metrics.JmxMetricsConverter;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import org.apache.camel.Exchange;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,11 +29,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import java.io.File;
 import java.text.MessageFormat;
 import java.time.LocalTime;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @Configuration
@@ -74,13 +68,6 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
 
     @Value("${anshar.healthcheck.hubot.end.time}")
     private String endMonitorTimeStr;
-
-    @Value("${anshar.jmx.metrics.configuration.filepath}")
-    private String pathToJmxMetricsConfiguration;
-
-    @Value("${anshar.jmx.metrics.scraping.enabled}")
-    private boolean jmxMetricsScrapingEnabled;
-
     private LocalTime endMonitorTime;
 
     @Autowired
@@ -96,24 +83,12 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
     @Autowired
     private PrometheusMetricsService prometheusRegistry;
 
-    private JmxCollector jmxCollector;
-
     public static boolean triggerRestart;
 
     @PostConstruct
     private void init() {
         startMonitorTime = LocalTime.parse(startMonitorTimeStr);
         endMonitorTime = LocalTime.parse(endMonitorTimeStr);
-        if (StringUtils.isNotBlank(pathToJmxMetricsConfiguration)) {
-            try {
-                jmxCollector = new JmxCollector(new File(pathToJmxMetricsConfiguration));
-                jmxCollector.register();
-            } catch (Exception e) {
-                logger.error("Error creating jmx collector", e);
-            }
-        }
-
-
     }
 
     @Override
@@ -140,14 +115,7 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
         from("direct:scrape")
                 .process(p -> {
                     if (prometheusRegistry != null) {
-                        String metrics = prometheusRegistry.scrape();
-                        if (isJmxMetricsScrapingActive()) {
-                            MetricSnapshots jmxMetrics = this.jmxCollector.collect();
-                            String parsedJmxMetrics = jmxMetrics.stream().map(JmxMetricsConverter::convertMetricSnapshotToPrometheusString).collect(Collectors.joining(""));
-                            metrics = metrics + parsedJmxMetrics;
-                        }
-
-                        p.getOut().setBody(metrics);
+                        p.getOut().setBody(prometheusRegistry.scrape());
                     }
                 })
                 .setHeader(Exchange.CONTENT_TYPE, constant("text/plain"))
@@ -265,9 +233,5 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
 
     private Set<String> getAllUnhealthySubscriptions() {
         return subscriptionManager.getAllUnhealthySubscriptions(allowedInactivityMinutes * 60);
-    }
-
-    private boolean isJmxMetricsScrapingActive() {
-        return jmxCollector != null && jmxMetricsScrapingEnabled;
     }
 }

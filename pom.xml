@@ -39,9 +39,8 @@
         <spring-boot-plugin.version>2.6.6</spring-boot-plugin.version>
         <spring-boot.version>2.6.6</spring-boot.version>
 
-        <camel-version>3.21.0</camel-version>
+        <camel-version>3.18.0</camel-version>
 
-        <micrometer.version>1.12.13</micrometer.version>
         <metrics.version>3.2.3</metrics.version>
         <okina.helpers.version>1.0.26</okina.helpers.version>
         <geotools.version>29.0</geotools.version>
@@ -318,24 +317,12 @@
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-core</artifactId>
-            <version>${micrometer.version}</version>
+            <version>1.9.0</version>
         </dependency>
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
-            <version>${micrometer.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>io.prometheus.jmx</groupId>
-            <artifactId>collector</artifactId>
-            <version>1.0.1</version>
-        </dependency>
-
-
-        <dependency>
-            <groupId>org.apache.camel</groupId>
-            <artifactId>camel-management</artifactId>
+            <version>1.9.0</version>
         </dependency>
 
         <dependency>
@@ -411,6 +398,10 @@
             <groupId>org.apache.camel</groupId>
             <artifactId>camel-bean-validator</artifactId>
             <version>${camel-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.camel</groupId>
+            <artifactId>camel-metrics</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.camel.springboot</groupId>
