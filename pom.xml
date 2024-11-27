@@ -39,7 +39,7 @@
         <spring-boot-plugin.version>2.6.6</spring-boot-plugin.version>
         <spring-boot.version>2.6.6</spring-boot.version>
 
-        <camel-version>3.18.0</camel-version>
+        <camel-version>3.21.5</camel-version>
 
         <metrics.version>3.2.3</metrics.version>
         <okina.helpers.version>1.0.26</okina.helpers.version>
