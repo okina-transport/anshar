@@ -4,6 +4,7 @@ import io.micrometer.core.instrument.util.StringUtils;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.MonitoredStopVisits;
+import no.rutebanken.anshar.data.util.CustomStringUtils;
 import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.*;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class StopMonitoringOutbound {
@@ -145,6 +147,11 @@ public class StopMonitoringOutbound {
     private Siri getServiceResponseStopVisits(OutboundIdMappingPolicy outboundIdMappingPolicy, String requestorRef, String clientTrackingName, int maxSize, String datasetId, Set<String> importedIds) {
         Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParams(datasetId, importedIds, ObjectType.STOP);
         Set<String> revertedMonitoringRefs = IDUtils.revertMonitoringRefs(importedIds, idMap.get(ObjectType.STOP));
+        revertedMonitoringRefs = revertedMonitoringRefs.stream()
+                .map(CustomStringUtils::revertChouetteIdTransformation)
+                .collect(Collectors.toSet());
+
+
         List<ValueAdapter> valueAdapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.STOP_MONITORING, outboundIdMappingPolicy, idMap);
         Siri serviceResponse = monitoredStopVisits.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, revertedMonitoringRefs);
         return SiriValueTransformer.transform(serviceResponse, valueAdapters, false, false);

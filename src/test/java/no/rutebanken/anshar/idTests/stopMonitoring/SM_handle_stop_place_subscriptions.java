@@ -82,8 +82,25 @@ public class SM_handle_stop_place_subscriptions extends SpringBootBaseTest {
     private static String QUAY1_REF = DATASET + ":Quay:HBLI1";
     private static String QUAY2_REF = DATASET + ":Quay:HBLI2";
 
+    private static String QUAY3_REF = DATASET + ":Quay:OTHERPROVIDER##3A##Quay##3A##toto";
+
     private static String STOP_PLACE_REF = DATASET + ":StopPlace:HBLI";
 
+
+    @Test
+    public void test_3A_replacement_in_stop_ids() throws UnmarshalException {
+        initCacheWith2quaysAnd1Stop();
+        IncomingSiriParameters incomingSiriParameters = createIncomingSiriParametersForSubscription("MOBIITI:Quay:3", OutboundIdMappingPolicy.DEFAULT);
+
+
+        Siri response = handler.handleIncomingSiri(incomingSiriParameters);
+        Assertions.assertEquals(1, serverSubscriptionManager.getSubscriptions().size());
+        OutboundSubscriptionSetup firstSub = (OutboundSubscriptionSetup) serverSubscriptionManager.getSubscriptions().stream().findFirst().get();
+        Assertions.assertFalse(firstSub.getFilterMap().isEmpty());
+        Set<String> stopRefFilter = firstSub.getFilterMap().get(MonitoringRefStructure.class);
+        Assertions.assertEquals(1, stopRefFilter.size());
+        Assertions.assertTrue(stopRefFilter.contains("OTHERPROVIDER:Quay:toto"));
+    }
 
     @Test
     public void test_quay_subscription_filter_map_is_correct_MOBIITI_id() throws UnmarshalException {
@@ -98,7 +115,6 @@ public class SM_handle_stop_place_subscriptions extends SpringBootBaseTest {
         Set<String> stopRefFilter = firstSub.getFilterMap().get(MonitoringRefStructure.class);
         Assertions.assertEquals(1, stopRefFilter.size());
         Assertions.assertTrue(stopRefFilter.contains("HBLI1"));
-
     }
 
     private IncomingSiriParameters createIncomingSiriParametersForSubscription(String stopRef, OutboundIdMappingPolicy outboundPolicy) {
@@ -280,6 +296,7 @@ public class SM_handle_stop_place_subscriptions extends SpringBootBaseTest {
         stopPlaceMap = new HashMap<>();
         stopPlaceMap.put(QUAY1_REF, Pair.of("MOBIITI:Quay:1", "quay 1 name"));
         stopPlaceMap.put(QUAY2_REF, Pair.of("MOBIITI:Quay:2", "quay 2 name"));
+        stopPlaceMap.put(QUAY3_REF, Pair.of("MOBIITI:Quay:3", "quay 3 name"));
         stopPlaceMap.put(STOP_PLACE_REF, Pair.of("MOBIITI:StopPlace:3", "SP name"));
 
         StopPlaceUpdaterService stopPlaceService = ApplicationContextHolder.getContext().getBean(StopPlaceUpdaterService.class);
@@ -298,6 +315,7 @@ public class SM_handle_stop_place_subscriptions extends SpringBootBaseTest {
         Set<String> stopRefs = new HashSet<>();
         stopRefs.add(QUAY1_REF);
         stopRefs.add(QUAY2_REF);
+        stopRefs.add(QUAY3_REF);
         stopRefs.add(STOP_PLACE_REF);
         stopPlaceService.addStopQuays(stopRefs);
 

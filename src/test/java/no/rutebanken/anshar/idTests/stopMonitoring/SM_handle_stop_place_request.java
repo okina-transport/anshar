@@ -56,6 +56,7 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
 
     private static String QUAY1_REF = DATASET + ":Quay:HBLI1";
     private static String QUAY2_REF = DATASET + ":Quay:HBLI2";
+    private static String QUAY3_REF = DATASET + ":Quay:OTHERPROVIDER##3A##Quay##3A##toto";
 
     private static String STOP_PLACE_REF = DATASET + ":StopPlace:HBLI";
 
@@ -66,9 +67,9 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
      */
     @Test
     public void test_request_on_quay1_v1() {
-        initCacheWith2quaysAnd1Stop();
+        initCacheWithquaysAnd1Stop();
 
-        Assertions.assertEquals(3, monitoredStopVisits.getAll().size());
+        Assertions.assertEquals(4, monitoredStopVisits.getAll().size());
 
         ServiceRequest serviceRequest1 = createStopMonitoringRequestForRef("MOBIITI:Quay:1");
 
@@ -88,7 +89,7 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
      */
     @Test
     public void test_request_on_quay1_v2() {
-        initCacheWith2quaysAnd1Stop();
+        initCacheWithquaysAnd1Stop();
 
         ServiceRequest serviceRequest1 = createStopMonitoringRequestForRef("MOBIITI:Quay:1");
 
@@ -99,6 +100,19 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
         Assertions.assertEquals("MOBIITI:Quay:1", extractedMonitoredStopVisit.get(0).getMonitoringRef().getValue());
     }
 
+    @Test
+    public void test_request_on_quay1_v3_handle_of_colons() {
+        initCacheWithquaysAnd1Stop();
+
+        ServiceRequest serviceRequest1 = createStopMonitoringRequestForRef("MOBIITI:Quay:3");
+
+        // Request  : DATASET : null, "MOBIITI:Quay:3", OutboundIdMappingPolicy.DEFAULT
+        Siri res = stopMonitoringOutbound.getStopMonitoringServiceDelivery(serviceRequest1, OutboundIdMappingPolicy.DEFAULT, null, "req", "clientTrackingName", 1500000);
+        List<MonitoredStopVisit> extractedMonitoredStopVisit = extractMonitoredStopVisits(res);
+        Assertions.assertEquals(1, extractedMonitoredStopVisit.size());
+        Assertions.assertEquals("MOBIITI:Quay:3", extractedMonitoredStopVisit.get(0).getMonitoringRef().getValue());
+    }
+
 
     /**
      * Request on stop place with MOBIITI id, and dataset specified.
@@ -106,7 +120,7 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
      */
     @Test
     public void test_request_on_StopPlace_v1() {
-        initCacheWith2quaysAnd1Stop();
+        initCacheWithquaysAnd1Stop();
 
         ServiceRequest serviceRequest1 = createStopMonitoringRequestForRef("MOBIITI:StopPlace:3");
 
@@ -124,7 +138,7 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
      */
     @Test
     public void test_request_on_StopPlace_v2() {
-        initCacheWith2quaysAnd1Stop();
+        initCacheWithquaysAnd1Stop();
 
         ServiceRequest serviceRequest1 = new ServiceRequest();
         RequestorRef reqRef = new RequestorRef();
@@ -152,7 +166,7 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
      */
     @Test
     public void test_request_on_StopPlace_v3() {
-        initCacheWith2quaysAnd1Stop();
+        initCacheWithquaysAnd1Stop();
 
         ServiceRequest serviceRequest1 = new ServiceRequest();
         RequestorRef reqRef = new RequestorRef();
@@ -259,7 +273,7 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
         return serviceRequest1;
     }
 
-    private void initCacheWith2quaysAnd1Stop() {
+    private void initCacheWithquaysAnd1Stop() {
         initStopPlaceMapper();
         initIdProcessingParameters();
 
@@ -267,11 +281,15 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
         MonitoredStopVisit elementq2 = TestUtils.createMonitoredStopVisit(ZonedDateTime.now().plusMinutes(1), "HBLI2");
         MonitoredStopVisit elementSp = TestUtils.createMonitoredStopVisit(ZonedDateTime.now().plusMinutes(1), "HBLI");
 
+        MonitoredStopVisit elementq3 = TestUtils.createMonitoredStopVisit(ZonedDateTime.now().plusMinutes(1), "OTHERPROVIDER:Quay:toto");
+
+
         monitoredStopVisits.add(DATASET, elementq1);
         monitoredStopVisits.add(DATASET, elementq2);
+        monitoredStopVisits.add(DATASET, elementq3);
         monitoredStopVisits.add(DATASET, elementSp);
 
-        Assertions.assertEquals(3, monitoredStopVisits.getAll().size());
+        Assertions.assertEquals(4, monitoredStopVisits.getAll().size());
     }
 
     private List<MonitoredStopVisit> extractMonitoredStopVisits(Siri res) {
@@ -302,6 +320,7 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
         stopPlaceMap = new HashMap<>();
         stopPlaceMap.put(QUAY1_REF, Pair.of("MOBIITI:Quay:1", "quay 1 name"));
         stopPlaceMap.put(QUAY2_REF, Pair.of("MOBIITI:Quay:2", "quay 2 name"));
+        stopPlaceMap.put(QUAY3_REF, Pair.of("MOBIITI:Quay:3", "quay 3 name"));
         stopPlaceMap.put(STOP_PLACE_REF, Pair.of("MOBIITI:StopPlace:3", "SP name"));
 
         StopPlaceUpdaterService stopPlaceService = ApplicationContextHolder.getContext().getBean(StopPlaceUpdaterService.class);
@@ -320,6 +339,7 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
         Set<String> stopRefs = new HashSet<>();
         stopRefs.add(QUAY1_REF);
         stopRefs.add(QUAY2_REF);
+        stopRefs.add(QUAY3_REF);
         stopRefs.add(STOP_PLACE_REF);
         stopPlaceService.addStopQuays(stopRefs);
 

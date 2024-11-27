@@ -1,9 +1,13 @@
 package no.rutebanken.anshar.data.util;
 
+import org.apache.commons.lang3.StringUtils;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class CustomStringUtils {
+
+    public static final String COLON_REPLACEMENT_CODE = "##3A##";
 
     public static String removeSpecialCharacters(String input, String objectType) {
         if (input == null || input.isEmpty()) {
@@ -34,5 +38,30 @@ public class CustomStringUtils {
         return input.replace(":", "-").replace("|", "_");
     }
 
+    /**
+     * Apply the same transformation as chouette on stop ids (replace ":" by "##3A##")
+     *
+     * @param input string to process
+     * @return the transformed string
+     */
+    public static String applyChouetteIdTransformation(String input) {
+        if (StringUtils.isEmpty(input)) {
+            return input;
+        }
+        return input.replace(":", COLON_REPLACEMENT_CODE);
+    }
+
+    /**
+     * Revert chouette transformation on stop ids (replace "##3A##" by ":")
+     *
+     * @param input string to process
+     * @return the transformed string
+     */
+    public static String revertChouetteIdTransformation(String input) {
+        if (StringUtils.isEmpty(input)) {
+            return input;
+        }
+        return input.replace(COLON_REPLACEMENT_CODE, ":");
+    }
 
 }

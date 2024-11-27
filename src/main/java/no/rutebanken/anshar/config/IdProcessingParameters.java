@@ -1,6 +1,7 @@
 package no.rutebanken.anshar.config;
 
 import lombok.Data;
+import no.rutebanken.anshar.data.util.CustomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.Serializable;
@@ -34,6 +35,9 @@ public class IdProcessingParameters implements Serializable {
         if (inputSuffixToRemove != null && text.endsWith(inputSuffixToRemove)) {
             text = text.substring(0, text.length() - inputSuffixToRemove.length());
         }
+
+        text = CustomStringUtils.applyChouetteIdTransformation(text);
+
 
         if (outputPrefixToAdd != null && !text.startsWith(outputPrefixToAdd)) {
             text = outputPrefixToAdd + text;

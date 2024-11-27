@@ -18,6 +18,7 @@ package no.rutebanken.anshar.routes.outbound;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.*;
+import no.rutebanken.anshar.data.util.CustomStringUtils;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.handlers.outbound.SituationExchangeOutbound;
@@ -239,6 +240,10 @@ public class SiriHelper {
         Set<String> revertedMonitoringRefs = IDUtils.revertMonitoringRefs(requestedIds, idProcessingParams.get(ObjectType.STOP));
 
         if (!revertedMonitoringRefs.isEmpty()) {
+            revertedMonitoringRefs = revertedMonitoringRefs.stream()
+                    .map(CustomStringUtils::revertChouetteIdTransformation)
+                    .collect(Collectors.toSet());
+
             stopPointRefValues.add(revertedMonitoringRefs.iterator().next());
             filterMap.put(MonitoringRefStructure.class, stopPointRefValues);
         }
