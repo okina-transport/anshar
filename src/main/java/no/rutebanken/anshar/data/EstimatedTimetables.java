@@ -627,7 +627,9 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
     }
 
     private static SiriObjectStorageKey createKey(String datasetId, EstimatedVehicleJourney element) {
-        element.getFramedVehicleJourneyRef().setDatedVehicleJourneyRef(CustomStringUtils.removeSpecialCharacters(element.getFramedVehicleJourneyRef().getDatedVehicleJourneyRef()));
+        if(element.getFramedVehicleJourneyRef() != null) {
+            element.getFramedVehicleJourneyRef().setDatedVehicleJourneyRef(CustomStringUtils.removeSpecialCharacters(element.getFramedVehicleJourneyRef().getDatedVehicleJourneyRef()));
+        }
 
         StringBuilder key = new StringBuilder();
         if (element.getFramedVehicleJourneyRef() != null) {
