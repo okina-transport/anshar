@@ -59,6 +59,43 @@ public class SituationsTest extends SpringBootBaseTest {
         situations.clearAll();
     }
 
+    @Test
+    public void testClosedSituation() throws InterruptedException {
+
+        ZonedDateTime startTime = ZonedDateTime.now().minusDays(1);
+        ZonedDateTime endTime = ZonedDateTime.now().plusHours(4);
+        PtSituationElement initialSituation = TestObjectFactory.createPtSituationElement("atb", "1234", startTime, endTime);
+        situations.add("test", initialSituation);
+
+        assertEquals(1, situations.getAll().size());
+
+        PtSituationElement closedSituation = TestObjectFactory.createPtSituationElement("atb", "1234", startTime, endTime);
+        closedSituation.setProgress(WorkflowStatusEnumeration.CLOSED);
+        situations.add("test", closedSituation);
+
+
+        ArrayList<PtSituationElement> storedSituations = new ArrayList<>(situations.getAll());
+        assertEquals(1, storedSituations.size());
+        // progress has been updated to "closed" and situation is still stored in cache until the grace period has passed
+        assertEquals(WorkflowStatusEnumeration.CLOSED, storedSituations.get(0).getProgress());
+
+        // wait 30s and send a new closed situation : expiration time MUST NOT be updated
+        // the expiration time is defined when the first CLOSED state is recorded. Then, all other closed messages must be ignored
+        Thread.sleep(30 * 1000);
+
+        // Sending the second situation to check that the expiration time is NOT recalculated
+        PtSituationElement closedSituation2 = TestObjectFactory.createPtSituationElement("atb", "1234", startTime, endTime);
+        closedSituation2.setProgress(WorkflowStatusEnumeration.CLOSED);
+        situations.add("test", closedSituation2);
+
+        // Waiting another 35s to go after sx grace period (1mn )
+        // Situation must have been deleted because the first closed status has been received for more than 1mn
+        Thread.sleep(35 * 1000);
+        assertEquals(0, situations.getAll().size());
+
+
+    }
+
 
     @Test
     public void testAddSituation() {

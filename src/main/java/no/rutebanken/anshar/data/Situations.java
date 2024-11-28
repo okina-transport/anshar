@@ -331,7 +331,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
             boolean updated;
             if (existingChecksum != null && situationElements.containsKey(key)) { // Checksum not compared if actual situation does not exist
                 //Exists - compare values
-                updated = !Objects.equals(currentChecksum, existingChecksum);
+                updated = shouldBeUpdated(situation, key, currentChecksum, existingChecksum);
             } else {
                 //Does not exist
                 updated = true;
@@ -342,6 +342,12 @@ public class Situations extends SiriRepository<PtSituationElement> {
             if (keepByProgressStatus(situation) && updated) {
                 timingTracer.mark("keepByProgressStatus");
                 timingTracer.mark("getExpiration");
+
+                if (WorkflowStatusEnumeration.CLOSED.equals(situation.getProgress())) {
+                    // Closed situations must be displayed until sx grace period and then disappear
+                    expiration = configuration.getSxGraceperiodMinutes() * 60 * 1000;
+                }
+
                 if (expiration > 0) { //expiration < 0 => already expired
                     changes.put(key, situation);
                     checksumTmp.put(key, currentChecksum);
@@ -384,6 +390,27 @@ public class Situations extends SiriRepository<PtSituationElement> {
         }
 
         return changes.values();
+    }
+
+    /**
+     * Checks if the situation must be updated in cache or ignored
+     * - Rule for closed situations : only first occurence must be stored in cache. All other occurence of this situation must be ignored (to avoid an endlessly update of the expiration)
+     * - Otherwise : checksum are compared. Any difference will lead to an update
+     *
+     * @param situation        incoming situation
+     * @param key              key of the situation
+     * @param currentChecksum  checksum of the incoming situation
+     * @param existingChecksum checksum of the existing situtation in cache
+     * @return true : situation must be updated in cache
+     * false : situation
+     */
+    private boolean shouldBeUpdated(PtSituationElement situation, SiriObjectStorageKey key, String currentChecksum, String existingChecksum) {
+        if (WorkflowStatusEnumeration.CLOSED.equals(situation.getProgress())) {
+            // if the situation in cache has already a "closed" status, it must not be updated
+            return !situationElements.containsKey(key) || !WorkflowStatusEnumeration.CLOSED.equals(situationElements.get(key).getProgress());
+        } else {
+            return !Objects.equals(currentChecksum, existingChecksum);
+        }
     }
 
     private boolean defineAffectedPoints(PtSituationElement situation, String datasetId) {
