@@ -49,7 +49,9 @@ public class TestUtils {
 
     }
 
-    public static void printReceivedRequests(ClientAndServer mockServer) {
+    public static int printReceivedRequests(ClientAndServer mockServer) {
+        int nbOfReceivedRequest = 0;
+
         HttpRequest[] recordedRequests = mockServer.retrieveRecordedRequests(
                 request()
                         .withMethod("POST")
@@ -57,9 +59,10 @@ public class TestUtils {
         );
 
         for (HttpRequest recordedRequest : recordedRequests) {
+            nbOfReceivedRequest++;
             logger.info("Requête reçue: " + recordedRequest);
         }
-
+        return nbOfReceivedRequest;
     }
 
 

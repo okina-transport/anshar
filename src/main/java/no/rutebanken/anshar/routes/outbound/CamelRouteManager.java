@@ -127,6 +127,7 @@ public class CamelRouteManager {
                 // On ne notifie pas les abonnés si (temps estimé (TR) - temps attendu (TH)) < changeBeforeUpdates de l'abonnement
                 if (subscriptionRequest.getChangeBeforeUpdates() > 0) {
                     removeVehicleMonitoringIfChangeBeforeUpdates(splitSiri, subscriptionRequest);
+                    removeStopMonitoringIfChangeBeforeUpdates(splitSiri, subscriptionRequest);
                 }
 
 
@@ -143,6 +144,10 @@ public class CamelRouteManager {
                 }
 
                 for (Siri siri : splitSiri) {
+                    if (subscriptionRequest.getSubscriptionType().equals(SiriDataType.STOP_MONITORING) && !hasStopMonitoringData(siri)) {
+                        continue;
+                    }
+
                     // On crée des déclencheurs pour ne notifier les abonnés que tous les x moments définis par l'updateInterval
                     if (subscriptionRequest.getUpdateInterval() > 0) {
                         scheduledOutboundSubscriptionConfig.createScheduledOutboundSubscription(siri, subscriptionRequest);
@@ -175,6 +180,67 @@ public class CamelRouteManager {
         });
     }
 
+
+    /**
+     * Check if a siri object contains stopMonitoringVisits
+     *
+     * @param siri siri to check
+     * @return true : the siri object contains stopMonitoringVisits
+     * false : the siri object does not contain stopMonitoringVisits
+     */
+    private boolean hasStopMonitoringData(Siri siri) {
+        if (siri == null || siri.getServiceDelivery() == null || siri.getServiceDelivery().getStopMonitoringDeliveries() == null || siri.getServiceDelivery().getStopMonitoringDeliveries().size() == 0) {
+            return false;
+        }
+
+        return siri.getServiceDelivery().getStopMonitoringDeliveries().stream()
+                .anyMatch(delivery -> delivery.getMonitoredStopVisits() != null && delivery.getMonitoredStopVisits().size() > 0);
+    }
+
+    private void removeStopMonitoringIfChangeBeforeUpdates(List<Siri> splitSiri, OutboundSubscriptionSetup outboundSubscription) {
+
+        for (Siri siri : splitSiri) {
+            if (siri.getServiceDelivery().getStopMonitoringDeliveries() == null) {
+                continue;
+            }
+
+            List<StopMonitoringDeliveryStructure> smDeliveries = siri.getServiceDelivery().getStopMonitoringDeliveries();
+            for (StopMonitoringDeliveryStructure smDelivery : smDeliveries) {
+                List<MonitoredStopVisit> filteredStopVisits = new ArrayList<>();
+
+                for (MonitoredStopVisit monitoredStopVisit : smDelivery.getMonitoredStopVisits()) {
+                    if (isDelayGreaterThanChangeBeforeUpdateParam(monitoredStopVisit.getMonitoredVehicleJourney(), outboundSubscription)) {
+                        filteredStopVisits.add(monitoredStopVisit);
+                    }
+                }
+                smDelivery.getMonitoredStopVisits().clear();
+                smDelivery.getMonitoredStopVisits().addAll(filteredStopVisits);
+            }
+        }
+    }
+
+
+    /**
+     * Check if a vehicleJourney has a delay greater or equal to the threashold defined in changeBeforeUpdate param
+     *
+     * @param vehicleJourney       the vehicleJourney to check
+     * @param outboundSubscription the outbound subscription that contain changeBeforeUpdate param
+     * @return true : the delay is greater than changeBeforeUpdate param
+     * false : the delay is lower than changeBeforeUpdate param
+     */
+    private boolean isDelayGreaterThanChangeBeforeUpdateParam(MonitoredVehicleJourneyStructure vehicleJourney, OutboundSubscriptionSetup outboundSubscription) {
+        if (vehicleJourney == null || vehicleJourney.getMonitoredCall() == null ||
+                vehicleJourney.getMonitoredCall().getExpectedDepartureTime() == null || vehicleJourney.getMonitoredCall().getAimedDepartureTime() == null) {
+            return false;
+        }
+
+        long expectedDepartureTime = vehicleJourney.getMonitoredCall().getExpectedDepartureTime().toInstant().toEpochMilli() / 1000;
+        long aimedDepartureTime = vehicleJourney.getMonitoredCall().getAimedDepartureTime().toInstant().toEpochMilli() / 1000;
+
+        return (expectedDepartureTime - aimedDepartureTime) >= outboundSubscription.getChangeBeforeUpdates();
+
+    }
+
     private List<Siri> replaceByCompleteSXData(OutboundSubscriptionSetup subscriptionRequest) {
         OutboundIdMappingPolicy mappingPolicy;
         List<Siri> results = new ArrayList<>();
@@ -199,6 +265,7 @@ public class CamelRouteManager {
 
     private void removeVehicleMonitoringIfChangeBeforeUpdates(List<Siri> splitSiri, OutboundSubscriptionSetup subscriptionRequest) {
         splitSiri.stream()
+                .filter(siri -> siri.getServiceDelivery().getVehicleMonitoringDeliveries() != null)
                 .flatMap(siri -> siri.getServiceDelivery().getVehicleMonitoringDeliveries().stream())
                 .forEach(monitoringDeliveryStructure -> monitoringDeliveryStructure.getVehicleActivities()
                         .removeIf(vehicleActivityStructure ->
