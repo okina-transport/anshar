@@ -144,6 +144,7 @@ public class CustomSiriXml {
         Document doc = null;
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setNamespaceAware(true);
             DocumentBuilder builder = factory.newDocumentBuilder();
             StringReader strReader = new StringReader(strXml);
             InputSource is = new InputSource(strReader);
