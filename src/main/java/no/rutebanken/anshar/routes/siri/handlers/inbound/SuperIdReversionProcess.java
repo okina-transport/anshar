@@ -103,9 +103,13 @@ public class SuperIdReversionProcess {
                 lineRef = lineRef.substring(0, lineRef.length() - suffix.length());
             }
 
-            String prefix = superIdentifier + ":Line:";
-            if (lineRef.startsWith(prefix)) {
-                lineRef = lineRef.substring(prefix.length());
+            String superIdPrefix = superIdentifier + ":Line:";
+            String currentOrgPrefix = datasetId + ":Line:";
+
+            if (lineRef.startsWith(superIdPrefix)) {
+                lineRef = lineRef.substring(superIdPrefix.length());
+            } else if (lineRef.startsWith(currentOrgPrefix)) {
+                lineRef = lineRef.substring(currentOrgPrefix.length());
             }
             affectedLine.getLineRef().setValue(lineRef);
         }

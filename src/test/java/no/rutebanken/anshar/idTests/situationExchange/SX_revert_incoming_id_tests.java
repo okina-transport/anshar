@@ -121,6 +121,75 @@ public class SX_revert_incoming_id_tests extends SpringBootBaseTest {
         situations.setSituationElements(originalSaved);
     }
 
+
+    @Test
+    public void SX_test_revert_current_dataset__id() throws JAXBException {
+        initStopPlaceMapper();
+
+        String sitNumber1 = "SIT-LIN1";
+        resetIdProcessings();
+        IMap<SiriObjectStorageKey, PtSituationElement> originalSaved = situations.getSituationElements();
+        HazelcastTestMap<PtSituationElement> testMap = new HazelcastTestMap<PtSituationElement>();
+        situations.setSituationElements(testMap);
+
+        PtSituationElement situation1 = TestUtils.createSituationForLine(sitNumber1, "DAT1:Line:L1:LOC");
+        TestUtils.addAffectedStop(situation1, "MOBIITI:Quay:a");
+        TestUtils.addAffectedStopInRoute(situation1, "MOBIITI:Quay:a");
+        TestUtils.addAffectedNetwork(situation1, "MOBIITI:Network:network1");
+
+
+        List<PtSituationElement> situationsToAdd = new ArrayList();
+        situationsToAdd.add(situation1);
+
+
+        //  situations.add("DAT1", situation1);
+        SubscriptionSetup subscriptionSetup = new SubscriptionSetup();
+        subscriptionSetup.setSubscriptionId("TST:revert-SX");
+        subscriptionSetup.setDatasetId("DAT1");
+        subscriptionSetup.setSubscriptionType(SiriDataType.SITUATION_EXCHANGE);
+        subscriptionSetup.setRevertIds(true);
+
+        subscriptionManager.addSubscription(subscriptionSetup.getSubscriptionId(), subscriptionSetup);
+
+
+        Siri siri = factory.createSXServiceDelivery(situationsToAdd);
+        String incomingXml = SiriXml.toXml(siri);
+
+        handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), new ByteArrayInputStream(incomingXml.getBytes())));
+
+
+        assertFalse(situations.getSituationElements().isEmpty());
+
+
+        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
+                "    <ServiceRequest>\n" +
+                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
+                "        <SituationExchangeRequest version=\"2.0\">\n" +
+                "        </SituationExchangeRequest>\n" +
+                "    </ServiceRequest>\n" +
+                "</Siri>";
+
+        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
+
+        IncomingSiriParameters params = new IncomingSiriParameters();
+        params.setIncomingSiriStream(xml);
+        params.setDatasetId("DAT1");
+        params.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("true", "false"));
+        params.setMaxSize(-1);
+
+        Siri response = handler.handleIncomingSiri(params);
+
+        PtSituationElement result1 = TestUtils.getSituationFromSiri(response, sitNumber1);
+        assertEquals(NEW_LINE1_REF, TestUtils.getLineRef(result1));
+        assertEquals(NEW_STOP1_REF, TestUtils.getStopRef(result1));
+        assertEquals(NEW_STOP1_REF, TestUtils.getStopRefInRoute(result1));
+        assertEquals(NEW_NETWORK_REF, TestUtils.getNetworkRef(result1));
+
+
+        situations.setSituationElements(originalSaved);
+    }
+
     @Test
     public void SX_test_revert_id() throws JAXBException {
         initStopPlaceMapper();
