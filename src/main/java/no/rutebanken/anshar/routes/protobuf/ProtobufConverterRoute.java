@@ -21,6 +21,7 @@ public class ProtobufConverterRoute extends RouteBuilder {
 
 
         from("direct:compress.jaxb")
+                .routeId("compress.jaxb")
                 .setBody(body().convertToString())
                 .process(p -> {
                     final String body = fixEncodingErrorsInXml(p.getIn().getBody(String.class), p.getIn().getHeader("subscriptionId", String.class));
@@ -33,6 +34,7 @@ public class ProtobufConverterRoute extends RouteBuilder {
         ;
 
         from("direct:decompress.jaxb")
+                .routeId("decompress.jaxb")
                 .bean(kryoSerializer, "read")
                 .process(p -> {
                     final String body = p.getIn().getBody(String.class);
@@ -44,6 +46,7 @@ public class ProtobufConverterRoute extends RouteBuilder {
 
 
         from("direct:map.jaxb.to.protobuf")
+                .routeId("map.jaxb.to.protobuf")
                 .process(p -> {
                     p.getOut().setBody(p.getIn().getBody(String.class));
                     p.getOut().setHeaders(p.getIn().getHeaders());
@@ -57,6 +60,7 @@ public class ProtobufConverterRoute extends RouteBuilder {
         ;
 
         from("direct:map.protobuf.to.jaxb")
+                .routeId("map.protobuf.to.jaxb")
                 .process(p -> {
                     p.getOut().setBody(p.getIn().getBody(byte[].class));
                     p.getOut().setHeaders(p.getIn().getHeaders());

@@ -117,6 +117,7 @@ public class SM_handle_stop_place_subscriptions extends SpringBootBaseTest {
         Assertions.assertTrue(stopRefFilter.contains("HBLI1"));
     }
 
+
     private IncomingSiriParameters createIncomingSiriParametersForSubscription(String stopRef, OutboundIdMappingPolicy outboundPolicy) {
 
         String stringXml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +

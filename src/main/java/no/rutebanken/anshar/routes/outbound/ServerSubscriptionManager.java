@@ -474,6 +474,7 @@ public class ServerSubscriptionManager {
             mappers = MappingAdapterPresets.getOutboundAdapters(outboundIdMappingPolicy);
         }
 
+
         OutboundSubscriptionSetup newOutboundSubscription = new OutboundSubscriptionSetup(
                 ZonedDateTime.now(),
                 getSubscriptionType(subscriptionRequest),
@@ -723,7 +724,18 @@ public class ServerSubscriptionManager {
         logger.info("Removing subscription {}", subscriptionId);
         failTrackerMap.delete(subscriptionId);
         heartbeatTimestampMap.remove(subscriptionId);
+        removeSubscriptionFromReverseMap(subscriptionId);
         return subscriptions.remove(subscriptionId);
+    }
+
+    private void removeSubscriptionFromReverseMap(String subscriptionId) {
+
+        for (Map.Entry<String, List<OutboundSubscriptionSetup>> stringListEntry : outboundSubscriptionsByMonitoringRef.entrySet()) {
+            List<OutboundSubscriptionSetup> filteredSubscriptionList = stringListEntry.getValue().stream()
+                    .filter(outboundSubscriptionSetup -> !outboundSubscriptionSetup.getSubscriptionId().equals(subscriptionId))
+                    .collect(Collectors.toList());
+            stringListEntry.setValue(filteredSubscriptionList);
+        }
     }
 
     private String findSubscriptionIdentifier(SubscriptionRequest subscriptionRequest) {

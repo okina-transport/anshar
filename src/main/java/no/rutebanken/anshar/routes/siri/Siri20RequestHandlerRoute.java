@@ -170,6 +170,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
 
 
         from("direct:handle.soap.request")
+                .routeId("handle.soap.request")
                 .process(e -> e.getIn().setHeader(TRANSFORM_SOAP, TRANSFORM_SOAP))
                 .to("direct:transform.siri")
                 .to("direct:process.service.request");

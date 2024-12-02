@@ -99,7 +99,9 @@ public class MessagingRoute extends RestRouteBuilder {
 
 
         from(messageQueueCamelRoutePrefix + GTFSRT_ET_QUEUE)
-                .threads(2)
+                .routeId("gtfsrt.et.queue")
+                .threads(100)
+                .maxPoolSize(100)
                 .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
@@ -113,7 +115,9 @@ public class MessagingRoute extends RestRouteBuilder {
         ;
 
         from(internalGtfsrtSMQueue)
-                .threads(20)
+                .routeId("gtfsrt.sm.queue")
+                .threads(100)
+                .maxPoolSize(100)
                 .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
@@ -127,6 +131,7 @@ public class MessagingRoute extends RestRouteBuilder {
         ;
 
         from(messageQueueCamelRoutePrefix + GTFSRT_SX_QUEUE)
+                .routeId("gtfsrt.sx.queue")
                 .threads(2)
                 .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
@@ -141,7 +146,9 @@ public class MessagingRoute extends RestRouteBuilder {
         ;
 
         from(messageQueueCamelRoutePrefix + GTFSRT_VM_QUEUE )
-                .threads(20)
+                .routeId("gtfsrt.vm.queue")
+                .threads(100)
+                .maxPoolSize(100)
                 .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
@@ -155,6 +162,7 @@ public class MessagingRoute extends RestRouteBuilder {
         ;
 
         from(externalSiriSMQueue)
+                .routeId("external.siri.sm.queue")
                 .threads(200)
                 .maxPoolSize(200)
                 .process(e -> {
@@ -169,6 +177,7 @@ public class MessagingRoute extends RestRouteBuilder {
         ;
 
         from(externalSiriETQueue)
+                .routeId("external.siri.et.queue")
                 .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
@@ -181,6 +190,7 @@ public class MessagingRoute extends RestRouteBuilder {
         ;
 
         from(externalSiriSXQueue)
+                .routeId("external.siri.sx.queue")
                 .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
@@ -193,6 +203,7 @@ public class MessagingRoute extends RestRouteBuilder {
         ;
 
         from(externalSiriVMQueue)
+                .routeId("external.siri.vm.queue")
                 .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
@@ -206,12 +217,14 @@ public class MessagingRoute extends RestRouteBuilder {
 
 
         from("direct:process.message.synchronous")
+                .routeId("process.message.synchronous")
                 .convertBodyTo(String.class)
                 .to("direct:transform.siri")
                 .to("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
         ;
 
         from("direct:enqueue.message")
+                .routeId("enqueue.message")
                 .convertBodyTo(String.class)
                 .to("direct:transform.siri")
                 .choice()
@@ -416,8 +429,9 @@ public class MessagingRoute extends RestRouteBuilder {
 
         from("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
                 .process(p -> {
-                    TimingTracer processorTT = new TimingTracer("processorTT");
+
                     String subscriptionId = p.getIn().getHeader("subscriptionId", String.class);
+                    TimingTracer processorTT = new TimingTracer("processorTT-" + subscriptionId);
                     String datasetId = null;
 
                     InputStream xml = p.getIn().getBody(InputStream.class);

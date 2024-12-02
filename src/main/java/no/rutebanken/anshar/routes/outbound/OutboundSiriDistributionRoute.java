@@ -5,8 +5,10 @@ import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute;
 import no.rutebanken.anshar.routes.siri.handlers.Utils;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.util.StopMonitoringUtils;
 import org.apache.camel.Exchange;
+import org.apache.camel.ExchangePattern;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
 import org.entur.siri.validator.SiriValidator;
@@ -62,15 +64,66 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
                 .log("Retry triggered")
         ;
 
-        from("direct:send.to.external.subscription")
+        from("direct:send.to.external.subscription.part1")
                 .threads(threads)
                 .maxPoolSize(maxPoolSize)
-                .routeId("send.to.external.subscription")
-                .log(LoggingLevel.DEBUG, "POST data to ${header.SubscriptionId}")
+                .routeId("send.to.external.subscription.part1")
                 .setHeader("CamelHttpMethod", constant("POST"))
                 .setHeader(Exchange.CONTENT_TYPE, constant("text/xml; charset=utf-8"))
-                .bean(metrics, "countOutgoingData(${body},${header.requestorRef} , SUBSCRIBE)")
+                .to("direct:send.to.external.subscription.part1.1")
+                .to("direct:send.to.external.subscription.part1.2")
+                .end();
+
+
+        from("direct:send.to.external.subscription.part1.1")
+                .threads(threads)
+                .maxPoolSize(maxPoolSize)
+                .setExchangePattern(ExchangePattern.InOnly)
+                .routeId("send.to.external.subscription.part1.1")
+                .process(e->{
+                    metrics.countOutgoingData(e.getIn().getBody(Siri.class),(String) e.getIn().getHeader("requestorRef"),SubscriptionSetup.SubscriptionMode.SUBSCRIBE);
+                })
+                .end();
+
+        from("direct:send.to.external.subscription.part1.2")
+                .threads(threads)
+                .maxPoolSize(maxPoolSize)
+                .routeId("send.to.external.subscription.part1.2")
                 .to("direct:siri.transform.data")
+                .end();
+
+
+
+        from("direct:send.to.external.subscription.part3")
+                .threads(threads)
+                .maxPoolSize(maxPoolSize)
+                .routeId("send.to.external.subscription.part3")
+                .choice()
+                .when(header(Siri20RequestHandlerRoute.TRANSFORM_SOAP).isEqualTo(simple(Siri20RequestHandlerRoute.TRANSFORM_SOAP)))
+                .log(LoggingLevel.DEBUG, "Transforming SOAP")
+                .to("xslt-saxon:xsl/siri_subscription_raw_soap.xsl") // Convert SIRI raw request to SOAP version
+                .endChoice()
+                .end()
+                .setHeader("httpClient.socketTimeout", constant(timeout))
+                .setHeader("httpClient.connectTimeout", constant(timeout))
+                .removeHeader("showBody")
+                .removeHeaders("Siri_version*")
+                .removeHeaders("Transform_soap*")
+                .removeHeaders("Httpclient.*")
+                .toD("${header.endpoint}?maxTotalConnections=" + maxTotalConnections + "&connectionsPerRoute=" + connectionsByRoute)
+                .bean(subscriptionManager, "clearFailTracker(${header.SubscriptionId})")
+                .choice()
+                .when(header(HEARTBEAT_HEADER).isEqualTo(simple(HEARTBEAT_HEADER)))
+                .log(LoggingLevel.DEBUG, "HB-POST complete ${header.SubscriptionId} - Resp: [${header.CamelHttpResponseCode} ${header.CamelHttpResponseText}]")
+                .otherwise()
+                .log(LoggingLevel.DEBUG, "DAT-POST complete ${header.SubscriptionId} - Resp: [${header.CamelHttpResponseCode} ${header.CamelHttpResponseText}]")
+                .endChoice()
+                .end();
+
+        from("direct:send.to.external.subscription.part2")
+                .threads(threads)
+                .maxPoolSize(maxPoolSize)
+                .routeId("send.to.external.subscription.part2")
                 .process(p -> {
                     Siri response = p.getIn().getBody(Siri.class);
                     utils.handleFlexibleLines(response);
@@ -87,40 +140,25 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
                         if (firstDel.getMonitoredStopVisits() != null && firstDel.getMonitoredStopVisits().size() > 0){
                             MonitoredStopVisit firstStopVisit = firstDel.getMonitoredStopVisits().get(0);
                             Optional<Long> entryTimeOpt = StopMonitoringUtils.getEntryTime(firstStopVisit);
+                            String dataset= (String) p.getIn().getHeader("datasetId");
                             if (entryTimeOpt.isPresent()){
-                                String dataset= (String) p.getIn().getHeader("datasetId");
                                 long duration = System.currentTimeMillis() -  entryTimeOpt.get();
                                 metrics.recordTotalInboundToOutboundTimes(SiriDataType.STOP_MONITORING,dataset,duration);
-                                firstStopVisit.getStopVisitNotes().clear();
                             }
                         }
                     }
                 })
-                .choice()
-                .when(header(Siri20RequestHandlerRoute.TRANSFORM_SOAP).isEqualTo(simple(Siri20RequestHandlerRoute.TRANSFORM_SOAP)))
-                .log(LoggingLevel.DEBUG, "Transforming SOAP")
-                .to("xslt-saxon:xsl/siri_subscription_raw_soap.xsl") // Convert SIRI raw request to SOAP version
-                .endChoice()
-                .end()
-                .setHeader("httpClient.socketTimeout", constant(timeout))
-                .setHeader("httpClient.connectTimeout", constant(timeout))
-                //               .choice()
-//                .when(header("showBody").isEqualTo(true))
-//                .to("log:push:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
-//                .endChoice()
-//                .otherwise()
-//                .to("log:push:" + getClass().getSimpleName() + "?showAll=false&showExchangeId=true&showHeaders=true&showException=true&multiline=true&showBody=false")
-//                .end()
-                .removeHeader("showBody")
-                .toD("${header.endpoint}?maxTotalConnections=" + maxTotalConnections + "&connectionsPerRoute=" + connectionsByRoute)
-                .bean(subscriptionManager, "clearFailTracker(${header.SubscriptionId})")
-                .choice()
-                .when(header(HEARTBEAT_HEADER).isEqualTo(simple(HEARTBEAT_HEADER)))
-                    .log(LoggingLevel.DEBUG, "HB-POST complete ${header.SubscriptionId} - Resp: [${header.CamelHttpResponseCode} ${header.CamelHttpResponseText}]")
-                .otherwise()
-                    .log(LoggingLevel.DEBUG, "DAT-POST complete ${header.SubscriptionId} - Resp: [${header.CamelHttpResponseCode} ${header.CamelHttpResponseText}]")
-                .endChoice()
                 .end();
 
+
+
+        from("direct:send.to.external.subscription")
+                .threads(threads)
+                .maxPoolSize(maxPoolSize)
+                .routeId("send.to.external.subscription")
+                .to("direct:send.to.external.subscription.part1")
+                .to("direct:send.to.external.subscription.part2")
+                .to("direct:send.to.external.subscription.part3")
+                .end();
     }
 }

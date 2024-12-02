@@ -164,6 +164,20 @@ public class TestObjectFactory {
         return fcs;
     }
 
+    public static Siri createRandomSMDelivery(int nbOfStopVisits) {
+        Siri siri = new Siri();
+        ServiceDelivery serviceDelivery = new ServiceDelivery();
+        StopMonitoringDeliveryStructure stopDelStruct = new StopMonitoringDeliveryStructure();
+
+        for (int i = 0; i < nbOfStopVisits; i++) {
+            MonitoredStopVisit stopVisit = createMonitoredStopVisit(ZonedDateTime.now(), UUID.randomUUID().toString(), UUID.randomUUID().toString());
+            stopDelStruct.getMonitoredStopVisits().add(stopVisit);
+        }
+        serviceDelivery.getStopMonitoringDeliveries().add(stopDelStruct);
+        siri.setServiceDelivery(serviceDelivery);
+        return siri;
+    }
+
     public static SubscriptionSetup getSubscriptionSetup(SiriDataType subscriptionType) {
         SubscriptionSetup sub = new SubscriptionSetup();
         sub.setSubscriptionType(subscriptionType);

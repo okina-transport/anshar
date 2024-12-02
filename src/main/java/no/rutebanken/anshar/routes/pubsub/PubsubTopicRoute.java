@@ -47,7 +47,7 @@ public class PubsubTopicRoute extends RouteBuilder {
                     .to("direct:siri.transform.data")
                     .to("xslt-saxon:xsl/splitAndFilterNotMonitored.xsl")
                     .split().tokenizeXML("Siri").streaming()
-               //     .wireTap("direct:kafka.et.xml")
+                    //     .wireTap("direct:kafka.et.xml")
                     .to("direct:map.jaxb.to.protobuf")
                     .wireTap("direct:log.pubsub.et.traffic")
                     .to(etTopic)
@@ -76,7 +76,7 @@ public class PubsubTopicRoute extends RouteBuilder {
                     .to("direct:siri.transform.data")
                     .to("xslt-saxon:xsl/split.xsl")
                     .split().tokenizeXML("Siri").streaming()
-                  //  .wireTap("direct:kafka.sx.xml")
+                    //  .wireTap("direct:kafka.sx.xml")
                     .to("direct:map.jaxb.to.protobuf")
                     .wireTap("direct:log.pubsub.sx.traffic")
                     .to(sxTopic)
@@ -87,6 +87,7 @@ public class PubsubTopicRoute extends RouteBuilder {
              * message to protobuf, and posts to Cloud Pubsub
              */
             from("direct:send.to.pubsub.topic.stop_monitoring")
+                    .routeId("send.to.pubsub.topic.stop_monitoring")
                     .setExchangePattern(ExchangePattern.InOnly)
                     .to("direct:siri.transform.data")
                     .to("xslt-saxon:xsl/split.xsl")
@@ -109,7 +110,7 @@ public class PubsubTopicRoute extends RouteBuilder {
                     })
                     .choice()
                     .when(header("counter").isNotNull())
-                    .log(LoggingLevel.DEBUG,"Pubsub: Published ${header.counter} et updates")
+                    .log(LoggingLevel.DEBUG, "Pubsub: Published ${header.counter} et updates")
                     .endChoice()
                     .end();
 
@@ -126,7 +127,7 @@ public class PubsubTopicRoute extends RouteBuilder {
                     })
                     .choice()
                     .when(header("counter").isNotNull())
-                    .log(LoggingLevel.DEBUG,"Pubsub: Published ${header.counter} vm updates")
+                    .log(LoggingLevel.DEBUG, "Pubsub: Published ${header.counter} vm updates")
                     .endChoice()
                     .end();
 
@@ -143,7 +144,7 @@ public class PubsubTopicRoute extends RouteBuilder {
                     })
                     .choice()
                     .when(header("counter").isNotNull())
-                    .log(LoggingLevel.DEBUG,"Pubsub: Published ${header.counter} sx updates")
+                    .log(LoggingLevel.DEBUG, "Pubsub: Published ${header.counter} sx updates")
                     .endChoice()
                     .end();
 
@@ -160,7 +161,7 @@ public class PubsubTopicRoute extends RouteBuilder {
                     })
                     .choice()
                     .when(header("counter").isNotNull())
-                    .log(LoggingLevel.DEBUG,"Pubsub: Published ${header.counter} sm updates")
+                    .log(LoggingLevel.DEBUG, "Pubsub: Published ${header.counter} sm updates")
                     .endChoice()
                     .end();
         }
