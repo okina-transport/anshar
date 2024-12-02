@@ -1,8 +1,8 @@
 package no.rutebanken.anshar.routes.mapping;
 
-import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.util.CSVUtils;
+import no.rutebanken.anshar.util.FileUtils;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
@@ -23,7 +23,6 @@ import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 
 /**
@@ -84,10 +83,7 @@ public class StopTimesService {
      */
     private void updateStopTimesCache() {
 
-        List<String> datasetList = subscriptionConfig.getGtfsRTApis().stream()
-                .map(GtfsRTApi::getDatasetId)
-                .distinct()
-                .collect(Collectors.toList());
+        List<String> datasetList = FileUtils.listDirectories(stopTimesRootDir);
 
         for (String dataset : datasetList) {
             updateStopTimesCacheForDatasetId(dataset);
