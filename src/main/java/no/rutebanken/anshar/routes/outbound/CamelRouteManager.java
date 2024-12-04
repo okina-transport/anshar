@@ -397,8 +397,8 @@ public class CamelRouteManager {
         if (vehicleActivityStructure.getMonitoredVehicleJourney().getMonitoredCall() != null
                 && vehicleActivityStructure.getMonitoredVehicleJourney().getMonitoredCall().getExpectedDepartureTime() != null
                 && vehicleActivityStructure.getMonitoredVehicleJourney().getMonitoredCall().getAimedDepartureTime() != null) {
-            long expectedDepartureTime = vehicleActivityStructure.getMonitoredVehicleJourney().getMonitoredCall().getExpectedDepartureTime().toInstant().toEpochMilli();
-            long aimedDepartureTime = vehicleActivityStructure.getMonitoredVehicleJourney().getMonitoredCall().getAimedDepartureTime().toInstant().toEpochMilli();
+            long expectedDepartureTime = vehicleActivityStructure.getMonitoredVehicleJourney().getMonitoredCall().getExpectedDepartureTime().toInstant().toEpochMilli() / 1000;
+            long aimedDepartureTime = vehicleActivityStructure.getMonitoredVehicleJourney().getMonitoredCall().getAimedDepartureTime().toInstant().toEpochMilli() / 1000;
 
             return (expectedDepartureTime - aimedDepartureTime) > outboundSubscriptionSetup.getChangeBeforeUpdates();
         }

@@ -662,9 +662,11 @@ public class ServerSubscriptionManager {
 
     private int getChangeBeforeUpdates(SubscriptionRequest subscriptionRequest) {
         if (SiriHelper.containsValues(subscriptionRequest.getVehicleMonitoringSubscriptionRequests())) {
-            return getMilliSeconds(subscriptionRequest.getVehicleMonitoringSubscriptionRequests().get(0).getChangeBeforeUpdates());
+            return getSeconds(subscriptionRequest.getVehicleMonitoringSubscriptionRequests().get(0).getChangeBeforeUpdates());
         } else if (SiriHelper.containsValues(subscriptionRequest.getEstimatedTimetableSubscriptionRequests())) {
-            return getMilliSeconds(subscriptionRequest.getEstimatedTimetableSubscriptionRequests().get(0).getChangeBeforeUpdates());
+            return getSeconds(subscriptionRequest.getEstimatedTimetableSubscriptionRequests().get(0).getChangeBeforeUpdates());
+        } else if (SiriHelper.containsValues(subscriptionRequest.getStopMonitoringSubscriptionRequests())) {
+            return getSeconds(subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0).getChangeBeforeUpdates());
         }
         return 0;
     }
@@ -676,9 +678,9 @@ public class ServerSubscriptionManager {
         return 0;
     }
 
-    private int getMilliSeconds(Duration changeBeforeUpdates) {
+    private int getSeconds(Duration changeBeforeUpdates) {
         if (changeBeforeUpdates != null) {
-            return changeBeforeUpdates.getSeconds() * 1000;
+            return changeBeforeUpdates.getSeconds();
         }
         return 0;
     }
