@@ -17,7 +17,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 
 import static no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager.CODESPACE_ID_KAFKA_HEADER_NAME;
 
-public class countOutgoingDataPerformanceTest extends SpringBootBaseTest {
+public class CountOutgoingDataPerformanceTest extends SpringBootBaseTest {
 
 
     public static final int NB_OF_SIRI_TO_SEND = 100000;
