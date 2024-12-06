@@ -3,6 +3,7 @@ package no.rutebanken.anshar.util;
 
 import uk.org.siri.siri21.*;
 
+import java.time.ZonedDateTime;
 import java.util.Optional;
 
 public class StopMonitoringUtils {
@@ -87,6 +88,22 @@ public class StopMonitoringUtils {
                 }
             }
         }
+    }
+
+    public static Optional<String> getAimedTimeAtStop(MonitoredStopVisit stopVisit) {
+        Optional<String> result = Optional.empty();
+        if (stopVisit.getMonitoredVehicleJourney() == null || stopVisit.getMonitoredVehicleJourney().getMonitoredCall() == null) {
+            return Optional.empty();
+        }
+
+        ZonedDateTime aimedDepartureTime = stopVisit.getMonitoredVehicleJourney().getMonitoredCall().getAimedDepartureTime();
+        ZonedDateTime aimedArrivalTime = stopVisit.getMonitoredVehicleJourney().getMonitoredCall().getAimedArrivalTime();
+        if (aimedDepartureTime != null) {
+            result = Optional.of(String.valueOf(aimedDepartureTime.toInstant()));
+        } else if (aimedArrivalTime != null) {
+            result = Optional.of(String.valueOf(aimedArrivalTime.toInstant()));
+        }
+        return result;
     }
 
 
