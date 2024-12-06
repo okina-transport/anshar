@@ -6,6 +6,9 @@ import no.rutebanken.anshar.routes.siri.handlers.Utils;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import no.rutebanken.anshar.util.StopMonitoringUtils;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +21,7 @@ import uk.org.siri.siri21.StopMonitoringDeliveryStructure;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -48,6 +52,7 @@ public class StopMonitoringInbound {
                                 logger.info(utils.getErrorContents(sm.getErrorCondition()));
                             } else {
                                 if (sm.getMonitoredStopVisits() != null) {
+                                    updateStopMonitoringItemIdentifier(sm.getMonitoredStopVisits());
                                     addedOrUpdated.addAll(
                                             monitoredStopVisits.addAll(dataSetId, sm.getMonitoredStopVisits()));
                                 }
@@ -113,5 +118,35 @@ public class StopMonitoringInbound {
         // logger.debug("Active SM-elements: {}, current delivery: {}, {}", monitoredStopVisits.getSize(), addedOrUpdated.size(), subscriptionSetup);
 
         return !addedOrUpdated.isEmpty();
+    }
+
+    protected void updateStopMonitoringItemIdentifier(List<MonitoredStopVisit> monitoredStopVisits) {
+        if (CollectionUtils.isNotEmpty(monitoredStopVisits)) {
+            for (MonitoredStopVisit monitoredStopVisit : monitoredStopVisits) {
+                if (monitoredStopVisit != null) {
+                    String newItemIdentifier = computeStopMonitoringItemIdentifier(monitoredStopVisit);
+                    monitoredStopVisit.setItemIdentifier(newItemIdentifier);
+                }
+            }
+        }
+    }
+
+    private String computeStopMonitoringItemIdentifier(MonitoredStopVisit monitoredStopVisit) {
+        String existingItemIdentifier = monitoredStopVisit.getItemIdentifier();
+        String newItemIdentifier = "";
+        try {
+            String stopName = StopMonitoringUtils.getMonitoringRef(monitoredStopVisit).orElse(null);
+            String lineName = StopMonitoringUtils.getLineName(monitoredStopVisit).orElse(null);
+            String vehicleJourneyName = StopMonitoringUtils.getVehicleJourneyName(monitoredStopVisit).orElse(null);
+            String aimedTime = StopMonitoringUtils.getAimedTimeAtStop(monitoredStopVisit).orElse(null);
+            Objects.requireNonNull(stopName);
+            Objects.requireNonNull(lineName);
+            Objects.requireNonNull(vehicleJourneyName);
+            Objects.requireNonNull(aimedTime);
+            newItemIdentifier = stopName+lineName+vehicleJourneyName+aimedTime;
+        } catch (Exception e) {
+            logger.error("Unable to compute new itemIdentifier from {}", monitoredStopVisit.getItemIdentifier());
+        }
+        return StringUtils.defaultIfEmpty(newItemIdentifier, existingItemIdentifier);
     }
 }
