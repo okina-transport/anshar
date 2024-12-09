@@ -16,6 +16,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 import static no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager.CODESPACE_ID_KAFKA_HEADER_NAME;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class CountOutgoingDataPerformanceTest extends SpringBootBaseTest {
 
@@ -73,6 +74,7 @@ public class CountOutgoingDataPerformanceTest extends SpringBootBaseTest {
         double avg = secondsSumValue / secondsCountValue * 1000;
         System.out.println("avg : " + avg);
         System.out.println("outboundTotal : " + outboundTotal);
+        assertTrue(avg < 10, "Average time should be less than 10ms");
 
     }
 
