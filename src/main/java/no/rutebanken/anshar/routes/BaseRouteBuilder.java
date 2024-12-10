@@ -21,10 +21,6 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
-import org.apache.camel.component.micrometer.eventnotifier.MicrometerExchangeEventNotifier;
-import org.apache.camel.component.micrometer.eventnotifier.MicrometerRouteEventNotifier;
-import org.apache.camel.component.micrometer.messagehistory.MicrometerMessageHistoryFactory;
-import org.apache.camel.component.micrometer.routepolicy.MicrometerRoutePolicyFactory;
 import org.apache.camel.model.RouteDefinition;
 import org.apache.camel.spi.RoutePolicy;
 import org.apache.camel.spring.SpringRouteBuilder;
@@ -52,14 +48,15 @@ public abstract class BaseRouteBuilder extends SpringRouteBuilder {
 
     @Override
     public void configure() throws Exception {
-        getContext().addRoutePolicyFactory(new MicrometerRoutePolicyFactory());
-        getContext().setMessageHistoryFactory(new MicrometerMessageHistoryFactory());
-        getCamelContext().getManagementStrategy().addEventNotifier(new MicrometerExchangeEventNotifier());
-        getCamelContext().getManagementStrategy().addEventNotifier(new MicrometerRouteEventNotifier());
+//        getContext().addRoutePolicyFactory(new MicrometerRoutePolicyFactory());
+//        getContext().setMessageHistoryFactory(new MicrometerMessageHistoryFactory());
+//        getCamelContext().getManagementStrategy().addEventNotifier(new MicrometerExchangeEventNotifier());
+//        getCamelContext().getManagementStrategy().addEventNotifier(new MicrometerRouteEventNotifier());
         errorHandler(transactionErrorHandler()
                 .logExhausted(true)
                 .logRetryStackTrace(true));
     }
+
     /**
      * Create a new singleton route definition from URI. Only one such route should be active throughout the cluster at any time.
      */
@@ -99,7 +96,7 @@ public abstract class BaseRouteBuilder extends SpringRouteBuilder {
     }
 
     protected boolean isLeader(String routeId) {
-        List<RoutePolicy> routePolicyList =getContext().getRoute(routeId).getRoutePolicyList();
+        List<RoutePolicy> routePolicyList = getContext().getRoute(routeId).getRoutePolicyList();
         if (routePolicyList != null) {
             for (RoutePolicy routePolicy : routePolicyList) {
                 if (routePolicy instanceof InterruptibleHazelcastRoutePolicy) {

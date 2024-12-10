@@ -6,7 +6,6 @@ import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import org.apache.camel.Endpoint;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri21.Siri;
@@ -30,7 +29,6 @@ public class CountOutgoingDataPerformanceTest extends SpringBootBaseTest {
     private PrometheusMetricsService prometheusMetricsService;
 
     @Test
-    @Disabled
     public void testCountOutgoingDataPerformance() throws InterruptedException {
         Siri siriToSend = TestObjectFactory.createRandomSMDelivery(4);
         Endpoint defaultEndPoint = countOutgoingData.getDefaultEndpoint();
