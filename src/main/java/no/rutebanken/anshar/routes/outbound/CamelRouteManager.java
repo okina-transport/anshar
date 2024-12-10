@@ -15,7 +15,6 @@
 
 package no.rutebanken.anshar.routes.outbound;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
@@ -37,7 +36,6 @@ import java.net.SocketException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 
 import static no.rutebanken.anshar.routes.HttpParameter.SIRI_VERSION_HEADER_NAME;
@@ -278,8 +276,7 @@ public class CamelRouteManager {
     private ExecutorService getOrCreateExecutorService(OutboundSubscriptionSetup subscriptionRequest) {
 
         if (executors == null) {
-            ThreadFactory factory = new ThreadFactoryBuilder().setNameFormat("outbound").build();
-            executors = (ThreadPoolExecutor) Executors.newFixedThreadPool(maximumThreadsPerOutboundSubscription, factory);
+            executors = (ThreadPoolExecutor) Executors.newCachedThreadPool();
         }
 
         return executors;
