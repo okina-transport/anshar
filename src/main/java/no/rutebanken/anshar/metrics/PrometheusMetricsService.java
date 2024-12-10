@@ -17,7 +17,6 @@ package no.rutebanken.anshar.metrics;
 
 import com.google.common.collect.Sets;
 import com.hazelcast.replicatedmap.ReplicatedMap;
-import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.ImmutableTag;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Tag;
@@ -44,8 +43,6 @@ import uk.org.siri.siri21.*;
 import javax.annotation.PreDestroy;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.regex.Pattern;
 
 @Component
 public class PrometheusMetricsService extends PrometheusMeterRegistry {
@@ -132,11 +129,6 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
 
     final Map<String, Set<Long>> smTotalInboundToOutboundTmp = new ConcurrentHashMap<>();
     final Map<String, Double> smTotalInboundToOutboundResults = new HashMap<>();
-
-    final Map<String, Counter> counterMap = new HashMap<>();
-    final Map<String, AtomicLong> tmpCounterMap = new HashMap<>();
-
-    private static final String COUNTER_SEPARATOR = "--[-]--";
 
 
     @PreDestroy
@@ -320,9 +312,13 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
                 }
             } else if (siri.getServiceDelivery().getStopMonitoringDeliveries() != null &&
                     !siri.getServiceDelivery().getStopMonitoringDeliveries().isEmpty()) {
-                dataType = SiriDataType.STOP_MONITORING;
-                count = 1;
+                StopMonitoringDeliveryStructure deliveryStructure = siri.getServiceDelivery().getStopMonitoringDeliveries().get(0);
+                if (deliveryStructure != null) {
+                    dataType = SiriDataType.STOP_MONITORING;
+                    count = deliveryStructure.getMonitoredStopVisits().size();
+                }
             }
+            logger.debug("countOutgoingData - count:" + count + ", reqRef:" + requestorRef + ", dataType:" + dataType + ", mode:" + mode);
             countOutgoingData(requestorRef, dataType, mode, count);
         }
 
@@ -354,26 +350,19 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
 
     private void countOutgoingData(String requestorRef, SiriDataType dataType, SubscriptionSetup.SubscriptionMode mode, long objectCount) {
         if (dataType != null && objectCount > 0) {
+            List<Tag> counterTags = new ArrayList<>();
+            counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType.name()));
+            counterTags.add(new ImmutableTag("mode", mode.name()));
 
             if (StringUtils.isEmpty(requestorRef)) {
                 requestorRef = "emptyRequestorRef";
             }
-            AtomicLong tmpCounter = getCounter(DATA_OUTBOUND_COUNTER_NAME, requestorRef, dataType, mode);
-            tmpCounter.set(tmpCounter.get() + objectCount);
+            counterTags.add(new ImmutableTag(REQUESTOR_REF_TAG_NAME, requestorRef));
+
+
+            counter(DATA_OUTBOUND_COUNTER_NAME, counterTags).increment(objectCount);
         }
     }
-
-    private AtomicLong getCounter(String counterName, String requestorRef, SiriDataType dataType, SubscriptionSetup.SubscriptionMode mode) {
-        String counterKey = String.join(COUNTER_SEPARATOR,
-                counterName,
-                requestorRef,
-                dataType.name(),
-                mode.name());
-
-        
-        return tmpCounterMap.computeIfAbsent(counterKey, key -> new AtomicLong());
-    }
-
 
     final Map<String, Integer> gaugeValues = new HashMap<>();
 
@@ -429,10 +418,6 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
 
         if (!smDeltaTimesTmp.isEmpty()) {
             updateDeltaTimes();
-        }
-
-        if (!tmpCounterMap.isEmpty()) {
-            updateCounterMap();
         }
 
         if (!smTotalInboundToOutboundTmp.isEmpty()) {
@@ -517,25 +502,6 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
 
             gauge(gauge_data_failing, getTagsWithTimeLimit(counterTags, "30min"), subscription.getSubscriptionId(), value ->
                     isSubscriptionFailing(manager, subscription, 30 * 60));
-        }
-    }
-
-    private void updateCounterMap() {
-        for (Map.Entry<String, AtomicLong> tmpCounterMapEntry : tmpCounterMap.entrySet()) {
-            String counterKey = tmpCounterMapEntry.getKey();
-            if (counterMap.containsKey(counterKey)) {
-                counterMap.get(counterKey).increment(tmpCounterMapEntry.getValue().get());
-            } else {
-                String[] counterFields = counterKey.split(Pattern.quote(COUNTER_SEPARATOR));
-                List<Tag> counterTags = new ArrayList<>();
-                counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, counterFields[2]));
-                counterTags.add(new ImmutableTag("mode", counterFields[3]));
-                counterTags.add(new ImmutableTag(REQUESTOR_REF_TAG_NAME, counterFields[1]));
-                Counter counter = counter(counterFields[0], counterTags);
-                counter.increment(tmpCounterMapEntry.getValue().get());
-                counterMap.put(counterKey, counter);
-            }
-            tmpCounterMapEntry.getValue().set(0);
         }
     }
 
