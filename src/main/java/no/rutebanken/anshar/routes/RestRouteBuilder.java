@@ -121,6 +121,7 @@ public class RestRouteBuilder extends RouteBuilder {
                     logger.error("EOF error body:" + e.getIn().getBody(String.class));
                 });
 
+
         onException(IllegalArgumentException.class)
                 .handled(true)
                 .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("400"))

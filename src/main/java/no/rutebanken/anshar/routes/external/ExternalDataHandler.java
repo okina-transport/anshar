@@ -11,7 +11,6 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
-import no.rutebanken.anshar.util.StopMonitoringUtils;
 import org.apache.camel.Exchange;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -66,8 +65,6 @@ public class ExternalDataHandler {
 
 
             Siri siri = SiriValueTransformer.parseXml(xml);
-
-            StopMonitoringUtils.initEntryTime(siri);
 
 
             String datasetId = e.getIn().getHeader(DATASET_ID_HEADER_NAME, String.class);

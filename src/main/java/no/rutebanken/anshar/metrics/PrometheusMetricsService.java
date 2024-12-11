@@ -33,6 +33,10 @@ import no.rutebanken.anshar.routes.validation.ValidationType;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import org.apache.camel.CamelContext;
+import org.apache.camel.CamelContextAware;
+import org.apache.camel.Endpoint;
+import org.apache.camel.component.seda.SedaEndpoint;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,7 +49,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
-public class PrometheusMetricsService extends PrometheusMeterRegistry {
+public class PrometheusMetricsService extends PrometheusMeterRegistry implements CamelContextAware {
 
     private static final Logger logger = LoggerFactory.getLogger(PrometheusMetricsService.class);
 
@@ -73,6 +77,8 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
 
     @Autowired
     private ServerSubscriptionManager serverSubscriptionManager;
+
+    private CamelContext camelContext;
 
     private static final String METRICS_PREFIX = "app.anshar.";
     private static final String DATA_COUNTER_NAME = METRICS_PREFIX + "data.counter";
@@ -110,7 +116,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
     private static final String OUTBOUND_PUSH_ERRORS = METRICS_PREFIX + "outbound.push.errors";
     private static final String OUTBOUND_SUBSCRIPTIONS_COUNT = METRICS_PREFIX + "outbound.subscriptions.count";
 
-    private static final String TOTAL_INBOUND_TO_OUTBOUND_TIME = METRICS_PREFIX + "total.inbound.to.outbound.time";
+    private static final String ASYNC_PROCESS_SEDA_CURRENT_QUEUE_SIZE = METRICS_PREFIX + "async.process.seda.current.queue.size";
 
 
     public PrometheusMetricsService() {
@@ -127,28 +133,12 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
     final Map<String, Set<Long>> smDeltaTimesTmpBeforePush = new ConcurrentHashMap<>();
     final Map<String, Double> smDeltaTimesResultsBeforePush = new HashMap<>();
 
-    final Map<String, Set<Long>> smTotalInboundToOutboundTmp = new ConcurrentHashMap<>();
-    final Map<String, Double> smTotalInboundToOutboundResults = new HashMap<>();
-
 
     @PreDestroy
     public void shutdown() {
         this.close();
     }
 
-
-    public void recordTotalInboundToOutboundTimes(SiriDataType dataType, String datasetId, Long totalTime) {
-
-        if (SiriDataType.STOP_MONITORING.equals(dataType)) {
-            if (smTotalInboundToOutboundTmp.containsKey(datasetId)) {
-                smTotalInboundToOutboundTmp.get(datasetId).add(totalTime);
-            } else {
-                Set<Long> mySet = Sets.newConcurrentHashSet();
-                mySet.add(totalTime);
-                smTotalInboundToOutboundTmp.put(datasetId, mySet);
-            }
-        }
-    }
 
     /**
      * Record delta times between recordedAtTime field and real time
@@ -260,6 +250,17 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
         counterTags.add(new ImmutableTag(MAPPING_ID_TAG, mappingName.name()));
 
         counter(DATA_MAPPING_COUNTER_NAME, counterTags).increment(mappedCount);
+    }
+
+    @Override
+    public CamelContext getCamelContext() {
+        return camelContext;
+    }
+
+    @Override
+    public void setCamelContext(CamelContext camelContext) {
+        this.camelContext = camelContext;
+        logger.info("ShutdownStrategy: {}", camelContext.getShutdownStrategy());
     }
 
     public enum KafkaStatus {SENT, ACKED, FAILED}
@@ -381,7 +382,6 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
     @Override
     public String scrape() {
         smDeltaTimesResults.clear();
-        smTotalInboundToOutboundResults.clear();
         update();
         return super.scrape();
     }
@@ -416,12 +416,11 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
         gauge(PUSH_UPDATES_ACTIVE_THREADS, "pushUpdatesActiveThreads", value -> serverSubscriptionManager.getPushUpdatesActiveCount());
         gauge(OUTBOUND_SUBSCRIPTIONS_COUNT, "outboundSubscriptionsCount", value -> serverSubscriptionManager.getOutboundSubscriptionCount());
 
+        gauge(ASYNC_PROCESS_SEDA_CURRENT_QUEUE_SIZE, "asyncProcessSedaQueueSize", value -> getAsyncProcessSedacurrentQueueSize());
+
+
         if (!smDeltaTimesTmp.isEmpty()) {
             updateDeltaTimes();
-        }
-
-        if (!smTotalInboundToOutboundTmp.isEmpty()) {
-            updateSmTotalInboundToOutboundTimes();
         }
 
         if (!smDeltaTimesTmpBeforePush.isEmpty()) {
@@ -505,26 +504,6 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
         }
     }
 
-    private void updateSmTotalInboundToOutboundTimes() {
-        for (Map.Entry<String, Set<Long>> smTotalTimeEntry : smTotalInboundToOutboundTmp.entrySet()) {
-            String requestorRef = smTotalTimeEntry.getKey();
-            List<Tag> counterTags = new ArrayList<>();
-            counterTags.add(new ImmutableTag(REQUESTOR_REF_TAG_NAME, requestorRef));
-
-
-            Set<Long> totalTimes = new HashSet<>(smTotalTimeEntry.getValue());
-            double sum = 0;
-            for (Long deltaTime : totalTimes) {
-                sum = sum + deltaTime;
-            }
-
-
-            smTotalInboundToOutboundResults.put(requestorRef, sum / totalTimes.size());
-            gauge(TOTAL_INBOUND_TO_OUTBOUND_TIME, counterTags, requestorRef, value -> smTotalInboundToOutboundResults.get(requestorRef));
-
-        }
-        smTotalInboundToOutboundTmp.clear();
-    }
 
     private void updateDeltaTimesBeforePush() {
 
@@ -549,6 +528,12 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
 
 
     }
+
+    private int getAsyncProcessSedacurrentQueueSize() {
+        Endpoint sedaEndpoint = camelContext.getEndpoint("seda:async.process.request");
+        return sedaEndpoint == null ? 0 : ((SedaEndpoint) sedaEndpoint).getCurrentQueueSize();
+    }
+
 
     private List<Tag> getTagsWithTimeLimit(List<Tag> counterTags, String timeLimit) {
         List<Tag> counterTagsClone = new ArrayList<>(counterTags);

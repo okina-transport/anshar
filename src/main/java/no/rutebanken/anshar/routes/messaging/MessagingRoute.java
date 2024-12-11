@@ -97,6 +97,12 @@ public class MessagingRoute extends RestRouteBuilder {
             queueConsumerParameters = "";
         }
 
+        onException(IllegalStateException.class)
+                .process(e->{
+                    log.error("error msg ===>" +  e.getIn().getBody(String.class));
+                })
+        ;
+
 
         from(messageQueueCamelRoutePrefix + GTFSRT_ET_QUEUE)
                 .routeId("gtfsrt.et.queue")
@@ -223,6 +229,7 @@ public class MessagingRoute extends RestRouteBuilder {
                 .to("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
         ;
 
+
         from("direct:enqueue.message")
                 .routeId("enqueue.message")
                 .convertBodyTo(String.class)
@@ -258,11 +265,10 @@ public class MessagingRoute extends RestRouteBuilder {
                 .end()
                 .removeHeaders("*", "subscriptionId", "breadcrumbId", "target_topic")
                 .to("direct:compress.jaxb")
-                .log(LoggingLevel.DEBUG, "Sending data to topic ${header.target_topic}")
-                .toD("${header.target_topic}")
-                .log(LoggingLevel.DEBUG, "Data sent")
+                .toD("${header.target_topic}?deliveryMode=1")
                 .end()
         ;
+
 
 
 
@@ -302,6 +308,7 @@ public class MessagingRoute extends RestRouteBuilder {
 
 
         from("direct:transform.siri")
+                .routeId("transform.siri")
                 .choice()
                 .when(header(TRANSFORM_SOAP).isEqualTo(simple(TRANSFORM_SOAP)))
                 .log(LoggingLevel.DEBUG, "Transforming SOAP")
@@ -389,6 +396,8 @@ public class MessagingRoute extends RestRouteBuilder {
 
         if (configuration.processSM()) {
             from(pubsubQueueSM + queueConsumerParameters)
+                    .threads(400)
+                    .maxPoolSize(400)
                     .choice().when(readFromPubsub)
                     .to("direct:decompress.jaxb")
                     .log(LoggingLevel.DEBUG,"Processing data from " + pubsubQueueSM + ", size ${header.Content-Length}")

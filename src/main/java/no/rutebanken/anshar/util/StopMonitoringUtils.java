@@ -1,7 +1,8 @@
 package no.rutebanken.anshar.util;
 
 
-import uk.org.siri.siri21.*;
+import uk.org.siri.siri21.MonitoredStopVisit;
+import uk.org.siri.siri21.MonitoredStopVisitCancellation;
 
 import java.time.ZonedDateTime;
 import java.util.Optional;
@@ -52,43 +53,6 @@ public class StopMonitoringUtils {
         return Optional.ofNullable(stopVisit.getMonitoringRef().getValue());
     }
 
-    public static void initEntryTime(MonitoredStopVisit monitoredStopVisit) {
-        long entryTimeStamp = System.currentTimeMillis();
-        addNote(monitoredStopVisit, ENTRY_TIME_TAG_NAME, String.valueOf(entryTimeStamp));
-    }
-
-    public static void addNote(MonitoredStopVisit monitoredStopVisit, String tagName, String value) {
-        NaturalLanguageStringStructure entryTime = new NaturalLanguageStringStructure();
-        entryTime.setValue(tagName + ":" + value);
-        monitoredStopVisit.getStopVisitNotes().add(entryTime);
-    }
-
-
-    public static Optional<Long> getEntryTime(MonitoredStopVisit monitoredStopVisit) {
-
-        if (monitoredStopVisit.getStopVisitNotes() == null || monitoredStopVisit.getStopVisitNotes().isEmpty()) {
-            return Optional.empty();
-        }
-
-        for (NaturalLanguageStringStructure stopVisitNote : monitoredStopVisit.getStopVisitNotes()) {
-            if (stopVisitNote.getValue().contains(ENTRY_TIME_TAG_NAME + ":")) {
-                return Optional.of(Long.parseLong(stopVisitNote.getValue().replace(ENTRY_TIME_TAG_NAME + ":", "")));
-            }
-        }
-        return Optional.empty();
-    }
-
-    public static void initEntryTime(Siri siri) {
-        if (siri.getServiceDelivery() != null && siri.getServiceDelivery().getStopMonitoringDeliveries() != null) {
-            for (StopMonitoringDeliveryStructure stopMonitoringDelivery : siri.getServiceDelivery().getStopMonitoringDeliveries()) {
-                if (stopMonitoringDelivery.getMonitoredStopVisits() != null) {
-                    for (MonitoredStopVisit monitoredStopVisit : stopMonitoringDelivery.getMonitoredStopVisits()) {
-                        initEntryTime(monitoredStopVisit);
-                    }
-                }
-            }
-        }
-    }
 
     public static Optional<String> getAimedTimeAtStop(MonitoredStopVisit stopVisit) {
         Optional<String> result = Optional.empty();

@@ -169,6 +169,17 @@ public class ServerSubscriptionManager {
         return Collections.unmodifiableCollection(subscriptions.values());
     }
 
+    public List<OutboundSubscriptionSetup> getAllSubscriptions(SiriDataType type) {
+
+        if (type == null) {
+            throw new IllegalArgumentException("Type must be specified to search in subscriptions");
+        }
+
+        return subscriptions.values().stream()
+                .filter(subscription -> type.equals(subscription.getSubscriptionType()))
+                .collect(Collectors.toList());
+    }
+
     public JSONArray getSubscriptionsAsJson() {
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());

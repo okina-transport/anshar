@@ -37,7 +37,6 @@ import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import no.rutebanken.anshar.util.GeneralMessageHelper;
 import no.rutebanken.anshar.util.IDUtils;
-import no.rutebanken.anshar.util.StopMonitoringUtils;
 import org.entur.siri21.util.SiriXml;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -454,7 +453,7 @@ public class SiriHandler {
             }
             long t1 = System.currentTimeMillis();
             Siri incoming = SiriXml.parseXml(xml);
-            StopMonitoringUtils.initEntryTime(incoming);
+
 
             long t2 = System.currentTimeMillis();
             logger.debug("Parsing XML took {} ms, {} bytes", (t2 - t1), receivedBytes);

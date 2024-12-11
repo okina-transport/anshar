@@ -4,7 +4,6 @@ import com.google.transit.realtime.GtfsRealtime;
 import no.rutebanken.anshar.data.util.CustomStringUtils;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.mapping.StopTimesService;
-import no.rutebanken.anshar.util.StopMonitoringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,7 +80,6 @@ public class TripUpdateMapper {
             monitoredVehicleStruct.setMonitoredCall(monitoredCallStructure);
             stopVisit.setMonitoredVehicleJourney(monitoredVehicleStruct);
             feedItemIdentifier(stopVisit, stopId);
-            StopMonitoringUtils.initEntryTime(stopVisit);
             stopVisitList.add(stopVisit);
         }
 
