@@ -34,8 +34,6 @@ public class CustomSiriXml {
 
     private static JAXBContext siri20JaxbContext;
 
-    private static TransformerFactory tf = TransformerFactory.newInstance();
-
     public CustomSiriXml() {
     }
 
@@ -160,6 +158,7 @@ public class CustomSiriXml {
     private static String documentToString(Document doc) {
         String output = null;
         try {
+            TransformerFactory tf = TransformerFactory.newInstance();
             Transformer transformer = tf.newTransformer();
             StringWriter writer = new StringWriter();
             transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
