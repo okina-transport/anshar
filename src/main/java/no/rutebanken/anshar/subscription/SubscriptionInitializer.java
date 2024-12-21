@@ -28,7 +28,6 @@ import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.apache.camel.CamelContext;
 import org.apache.camel.CamelContextAware;
 import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.component.jetty.JettyHttpComponent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -82,10 +81,6 @@ public class SubscriptionInitializer implements CamelContextAware {
     void createSubscriptions() {
         camelContext.setUseMDCLogging(true);
         camelContext.setUseBreadcrumb(true);
-
-        JettyHttpComponent jettyComponent = (JettyHttpComponent) camelContext.getComponent("jetty");
-        jettyComponent.setMaxThreads(3000);
-
 
         if (!configuration.getAppModes().isEmpty()) {
             logger.info("App started with mode(s): {}", configuration.getAppModes());
