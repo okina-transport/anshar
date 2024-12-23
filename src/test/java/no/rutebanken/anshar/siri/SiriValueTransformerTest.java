@@ -164,7 +164,7 @@ public class SiriValueTransformerTest extends SpringBootBaseTest {
 
         assertEquals("NEWPREFFIX:1234:NEWSUFF", getOriginFromSiriObj(transformedSiri));
         assertEquals("NEWPREFFIX:1234:NEWSUFF", getDestinationfFromSiriObj(transformedSiri));
-        assertEquals("NEWLINEPREFFIX:123:4:NEWLINESUFF", getLineRefFromSiriObj(transformedSiri));
+        assertEquals("NEWLINEPREFFIX:123##3A##4:NEWLINESUFF", getLineRefFromSiriObj(transformedSiri));
 
 
     }
