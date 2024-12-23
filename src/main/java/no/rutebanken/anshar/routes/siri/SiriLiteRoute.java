@@ -28,8 +28,8 @@ import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
-import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
+import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import org.apache.camel.Exchange;
 import org.apache.camel.model.rest.RestParamType;
@@ -38,12 +38,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri21.*;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.VehicleActivityStructure;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.MediaType;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import static no.rutebanken.anshar.routes.HttpParameter.*;
 import static no.rutebanken.anshar.routes.validation.validators.Constants.SIRI_LITE_SERVICE_NAME;
@@ -113,8 +117,6 @@ public class SiriLiteRoute extends RestRouteBuilder {
         ;
 
         rest("/anshar/rest")
-
-
                 .get("/sx").to("direct:anshar.rest.sx")
                 .apiDocs(false)
                 .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.query).description("The id of the dataset to get").dataType("string").endParam()
@@ -165,6 +167,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
         from("direct:handle.siri.lite.idf.request")
                 .process(e -> {
+                    String version = getVersion(e);
                     handleServiceAndFormat(e);
                 })
                 .choice()
@@ -770,6 +773,20 @@ public class SiriLiteRoute extends RestRouteBuilder {
         String mediaType = "json".equals(format) ? MediaType.APPLICATION_JSON : MediaType.TEXT_XML;
         e.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, mediaType);
 
+    }
+
+    private String getVersion(Exchange e) {
+        String version = e.getIn().getHeader(PARAM_VERSION, String.class);
+        if (!"2.0".equals(version) && !"2.1".equals(version)) {
+            String errorMsg = "Unsupported version:" + version;
+            e.getIn().setBody(errorMsg);
+            throw new IllegalArgumentException(errorMsg);
+        }
+
+        if ("2.1".equals(version)) {
+            e.getIn().setHeader(SIRI_VERSION_HEADER_NAME,"2.1");
+        }
+        return version;
     }
 
     private String resolveRequestorId(HttpServletRequest request) {
