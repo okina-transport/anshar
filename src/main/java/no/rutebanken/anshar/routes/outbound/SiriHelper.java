@@ -282,12 +282,14 @@ public class SiriHelper {
     public Map<ObjectType, Optional<IdProcessingParameters>> getIdProcessingParamsFromSubscription(EstimatedTimetableSubscriptionStructure estimatedTimetableSubscription, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
 
         Set<String> requestedIds = new HashSet<>();
-        for (LineDirectionStructure lineDirection : estimatedTimetableSubscription.getEstimatedTimetableRequest().getLines().getLineDirections()) {
-            requestedIds.add(lineDirection.getLineRef().getValue());
+        if (estimatedTimetableSubscription.getEstimatedTimetableRequest().getLines() != null) {
+            for (LineDirectionStructure lineDirection : estimatedTimetableSubscription.getEstimatedTimetableRequest().getLines().getLineDirections()) {
+                requestedIds.add(lineDirection.getLineRef().getValue());
+            }
+            requestedIds = requestedIds.stream()
+                    .map(value -> value.replace(":FlexibleLine:", ":Line:"))
+                    .collect(Collectors.toSet());
         }
-        requestedIds = requestedIds.stream()
-                .map(value -> value.replace(":FlexibleLine:", ":Line:"))
-                .collect(Collectors.toSet());
 
         return subscriptionConfig.buildIdProcessingParams(null, requestedIds, ObjectType.LINE);
     }

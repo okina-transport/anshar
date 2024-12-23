@@ -520,6 +520,10 @@ public class ServerSubscriptionManager {
         Map<String, Map<Class, Set<String>>> filterMapByDataset = new HashMap<>();
         for (EstimatedTimetableSubscriptionStructure estimatedTimetableSubscriptionRequest : estimatedTimetableSubscriptionRequests) {
 
+            if (estimatedTimetableSubscriptionRequest.getEstimatedTimetableRequest().getLines() == null) {
+                continue;
+            }
+
             for (LineDirectionStructure lineDirection : estimatedTimetableSubscriptionRequest.getEstimatedTimetableRequest().getLines().getLineDirections()) {
                 String rawLineRef = lineDirection.getLineRef().getValue();
                 HashSet<String> searchedIds = new HashSet<>(Collections.singleton(rawLineRef));
@@ -550,6 +554,11 @@ public class ServerSubscriptionManager {
         Map<String, List<ValueAdapter>> valueAdaptersByDataset = new HashMap<>();
 
         for (EstimatedTimetableSubscriptionStructure estimatedTimetableSubscriptionRequest : estimatedTimetableSubscriptionRequests) {
+
+
+            if (estimatedTimetableSubscriptionRequest.getEstimatedTimetableRequest().getLines() == null) {
+                continue;
+            }
 
             for (LineDirectionStructure lineDirection : estimatedTimetableSubscriptionRequest.getEstimatedTimetableRequest().getLines().getLineDirections()) {
                 String rawLineRef = lineDirection.getLineRef().getValue();
