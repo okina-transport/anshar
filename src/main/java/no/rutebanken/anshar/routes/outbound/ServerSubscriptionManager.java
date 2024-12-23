@@ -995,7 +995,7 @@ public class ServerSubscriptionManager {
         boolean logFullContents = true;
         for (OutboundSubscriptionSetup recipient : recipients) {
             OutboundIdMappingPolicy policy = recipient.isUseOriginalId() ? OutboundIdMappingPolicy.ORIGINAL_ID : OutboundIdMappingPolicy.DEFAULT;
-            Siri modifiedIdDelivery = convertIds(delivery, datasetId, policy);
+            Siri modifiedIdDelivery = convertIds(delivery, datasetId, policy, true);
             camelRouteManager.pushSiriData(datasetId, modifiedIdDelivery, recipient, logFullContents);
             logFullContents = false;
         }
@@ -1046,10 +1046,14 @@ public class ServerSubscriptionManager {
      * @return Siri data with ids converted
      */
     private Siri convertIds(Siri delivery, String datasetId, OutboundIdMappingPolicy policy) {
+        return convertIds(delivery, datasetId, policy, false);
+    }
+
+    private Siri convertIds(Siri delivery, String datasetId, OutboundIdMappingPolicy policy, boolean deepCopy) {
         return SiriValueTransformer.transform(
                 delivery,
                 MappingAdapterPresets.getOutboundAdapters(SiriDataType.SITUATION_EXCHANGE, policy, incomingSubscriptionConfig.buildIdProcessingParamsFromDataset(datasetId)),
-                false,
+                deepCopy,
                 false
         );
     }
