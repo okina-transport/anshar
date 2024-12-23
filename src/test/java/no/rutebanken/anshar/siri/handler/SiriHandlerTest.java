@@ -17,7 +17,9 @@ package no.rutebanken.anshar.siri.handler;
 
 import com.hazelcast.map.IMap;
 import no.rutebanken.anshar.api.GtfsRTApi;
+import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
+import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.*;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
@@ -610,11 +612,12 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     }
 
     public void initStopPlaceMapper() {
+        resetIdProcessings();
         Map<String, Pair<String, String>> stopPlaceMap;
 
         stopPlaceMap = new HashMap<>();
-        stopPlaceMap.put("TEST1:StopPoint:SP:121:LOC", Pair.of("MOBIITI:Quay:a", "test1"));
-        stopPlaceMap.put("TEST2:StopPoint:SP:122:LOC", Pair.of("MOBIITI:Quay:a", "test2"));
+        stopPlaceMap.put("TEST1:Quay:121", Pair.of("MOBIITI:Quay:a", "test1"));
+        stopPlaceMap.put("TEST2:Quay:122", Pair.of("MOBIITI:Quay:a", "test2"));
         stopPlaceMap.put("TEST3:StopPoint:SP:123:LOC", Pair.of("MOBIITI:Quay:b", "test3"));
         stopPlaceMap.put("TEST4:StopPoint:SP:124:LOC", Pair.of("MOBIITI:Quay:b", "test4"));
 
@@ -628,13 +631,34 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         Map<String, List<String>> stopPlaceReverseMap = new HashMap<>();
         List<String> originalIds = new ArrayList<>();
-        originalIds.add("TEST1:StopPoint:SP:121:LOC");
-        originalIds.add("TEST2:StopPoint:SP:122:LOC");
+        originalIds.add("TEST1:Quay:121");
+        originalIds.add("TEST2:Quay:122");
         stopPlaceReverseMap.put("MOBIITI:Quay:a", originalIds);
-        originalIds.add("TEST1:StopPoint:SP:123:LOC");
-        originalIds.add("TEST2:StopPoint:SP:124:LOC");
-        stopPlaceReverseMap.put("MOBIITI:Quay:b", originalIds);
+
+        List<String> originalIds2 = new ArrayList<>();
+        originalIds2.add("TEST1:StopPoint:SP:123:LOC");
+        originalIds2.add("TEST2:StopPoint:SP:124:LOC");
+        stopPlaceReverseMap.put("MOBIITI:Quay:b", originalIds2);
         stopPlaceService.addStopPlaceReverseMappings(stopPlaceReverseMap);
+    }
+
+
+    private void resetIdProcessings() {
+        subscriptionConfig.getIdProcessingParameters().clear();
+
+
+        IdProcessingParameters dat1Stop = new IdProcessingParameters();
+        dat1Stop.setObjectType(ObjectType.STOP);
+        dat1Stop.setDatasetId("TEST1");
+        dat1Stop.setOutputPrefixToAdd("TEST1:Quay:");
+        subscriptionConfig.getIdProcessingParameters().add(dat1Stop);
+
+        IdProcessingParameters dat2Stop = new IdProcessingParameters();
+        dat2Stop.setObjectType(ObjectType.STOP);
+        dat2Stop.setDatasetId("TEST2");
+        dat2Stop.setOutputPrefixToAdd("TEST2:Quay:");
+        subscriptionConfig.getIdProcessingParameters().add(dat2Stop);
+
     }
 
 
@@ -753,7 +777,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 "    <ServiceRequest>\n" +
                 "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
                 "        <StopMonitoringRequest version=\"2.0\">\n" +
-                "            <MonitoringRef>TEST1:StopPoint:SP:121:LOC</MonitoringRef>\n" +
+                "            <MonitoringRef>121</MonitoringRef>\n" +
                 "        </StopMonitoringRequest>\n" +
                 "    </ServiceRequest>\n" +
                 "</Siri>";
@@ -776,7 +800,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
         assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
         assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
-        assertEquals("TEST1:StopPoint:SP:121:LOC", response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
+        assertEquals("TEST1:Quay:121", response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
     }
 
     /**
@@ -1096,7 +1120,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 "        <EstimatedTimetableRequest version=\"2.0\">\n" +
                 "           <Lines>\n" +
                 "               <LineDirection>\n" +
-                "                   <LineRef>TEST1:Line:1:LOC</LineRef>\n" +
+                "                   <LineRef>1</LineRef>\n" +
                 "               </LineDirection>\n" +
                 "           </Lines>\n" +
                 "        </EstimatedTimetableRequest>\n" +
@@ -1115,9 +1139,9 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertEquals(1, response.getServiceDelivery().getEstimatedTimetableDeliveries().size());
-        assertEquals("TEST1:Line:1:LOC", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getLineRef().getValue());
+        assertEquals("1", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getLineRef().getValue());
         assertEquals("TEST1:VehicleJourney:1:LOC", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getDatedVehicleJourneyRef().getValue());
-        assertEquals("TEST1:StopPoint:SP:121:LOC", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getEstimatedCalls().getEstimatedCalls().get(0).getStopPointRef().getValue());
+        assertEquals("TEST1:Quay:121", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getEstimatedCalls().getEstimatedCalls().get(0).getStopPointRef().getValue());
     }
 
     /**
@@ -1154,7 +1178,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 "        <EstimatedTimetableRequest version=\"2.0\">\n" +
                 "           <Lines>\n" +
                 "               <LineDirection>\n" +
-                "                   <LineRef>TEST1:Line:1:LOC</LineRef>\n" +
+                "                   <LineRef>1</LineRef>\n" +
                 "               </LineDirection>\n" +
                 "           </Lines>\n" +
                 "        </EstimatedTimetableRequest>\n" +
@@ -1173,7 +1197,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertEquals(1, response.getServiceDelivery().getEstimatedTimetableDeliveries().size());
-        assertEquals("TEST1:Line:1:LOC", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getLineRef().getValue());
+        assertEquals("1", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getLineRef().getValue());
         assertEquals("TEST1:VehicleJourney:1:LOC", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getDatedVehicleJourneyRef().getValue());
         assertEquals("MOBIITI:Quay:a", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getEstimatedCalls().getEstimatedCalls().get(0).getStopPointRef().getValue());
     }
@@ -1382,7 +1406,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         assertNotNull(response);
         assertNotNull(response.getServiceDelivery());
         assertEquals(1, response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size());
-        assertEquals("TEST1:Line:1:LOC", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getLineRef().getValue());
+        assertEquals("1", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getLineRef().getValue());
         assertEquals("TEST1:VehicleJourney:1:LOC", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getDatedVehicleJourneyRef().getValue());
         assertEquals("MOBIITI:Quay:a", response.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().get(0).getEstimatedCalls().getEstimatedCalls().get(0).getStopPointRef().getValue());
     }
