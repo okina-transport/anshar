@@ -36,7 +36,7 @@ import static org.hamcrest.Matchers.*;
 public class ETRequestResponseTest extends BaseHttpTest {
 
     private static final String lineRef = "TEST:Line:1";
-    private static final String datedVehicleRef = "TEST:ServiceJourney:1";
+    private static final String datedVehicleRef = "SJ1";
     private static final int callCount = 5;
 
     @Autowired
