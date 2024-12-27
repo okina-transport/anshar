@@ -96,7 +96,10 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
 //                .end()
                 .removeHeader("showBody")
                 .toD("${header.endpoint}?maxTotalConnections=" + maxTotalConnections + "&connectionsPerRoute=" + connectionsByRoute)
-                .bean(subscriptionManager, "clearFailTracker(${header.SubscriptionId})")
+                .process(e->{
+                    String subsId = (String) e.getIn().getHeader("SubscriptionId");
+                    subscriptionManager.clearFailTracker(subsId);
+                })
                 .end();
 
     }
