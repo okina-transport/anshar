@@ -5,6 +5,7 @@ import no.rutebanken.anshar.data.util.CustomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 
 @Data
@@ -71,4 +72,16 @@ public class IdProcessingParameters implements Serializable {
         return text;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        IdProcessingParameters that = (IdProcessingParameters) o;
+        return Objects.equals(datasetId, that.datasetId) && objectType == that.objectType;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(datasetId, objectType);
+    }
 }

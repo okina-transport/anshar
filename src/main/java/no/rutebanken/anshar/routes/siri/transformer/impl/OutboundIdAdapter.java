@@ -29,6 +29,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
+
+
 public class OutboundIdAdapter extends ValueAdapter {
 
     private static final Logger logger = LoggerFactory.getLogger(OutboundIdAdapter.class);
@@ -39,9 +42,10 @@ public class OutboundIdAdapter extends ValueAdapter {
 
     private boolean shouldConvertToNetexId = false;
 
-    private StopPlaceUpdaterService stopPlaceService;
 
-    private ExternalIdsService externalIdsService;
+    private transient StopPlaceUpdaterService stopPlaceService;
+
+    private transient ExternalIdsService externalIdsService;
 
     public OutboundIdAdapter(Class clazz, OutboundIdMappingPolicy outboundIdMappingPolicy) {
         super(clazz);
@@ -155,5 +159,10 @@ public class OutboundIdAdapter extends ValueAdapter {
         if (!super.getClassToApply().equals(that.getClassToApply())) return false;
         return outboundIdMappingPolicy == that.outboundIdMappingPolicy;
 
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.getClassToApply(), outboundIdMappingPolicy, shouldConvertToNetexId, idProcessingParameters);
     }
 }

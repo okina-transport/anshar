@@ -92,6 +92,7 @@ public class SiriValueTransformer {
             logger.debug("SIRI Transform: starting");
         }
         Siri transformed;
+        int cacheSize = cachedGettersForAdapter.size();
         if (deepCopyBeforeTransform) {
             try {
                 transformed = SiriObjectFactory.deepCopy(siri);
@@ -167,6 +168,10 @@ public class SiriValueTransformer {
             if (detailedLogging) {
                 logger.debug("SIRI Transform: postProcessors processed");
             }
+        }
+
+        if (cachedGettersForAdapter.size() > cacheSize) {
+            logger.info("Getter-cache size increased from {} to {}. Could indicate a memory leak.", cacheSize, cachedGettersForAdapter.size());
         }
 
         return transformed;
