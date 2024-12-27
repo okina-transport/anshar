@@ -16,6 +16,9 @@
 package no.rutebanken.anshar.routes.health;
 
 import com.hazelcast.collection.ISet;
+import io.prometheus.jmx.JmxCollector;
+import io.prometheus.metrics.model.snapshots.MetricSnapshots;
+import no.rutebanken.anshar.metrics.JmxMetricsConverter;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
@@ -32,6 +35,7 @@ import javax.annotation.PostConstruct;
 import java.text.MessageFormat;
 import java.time.LocalTime;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @Configuration
@@ -70,11 +74,11 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
     private String endMonitorTimeStr;
     private LocalTime endMonitorTime;
 
-//    @Value("${anshar.jmx.metrics.configuration.filepath}")
-//    private String pathToJmxMetricsConfiguration;
-//
-//    @Value("${anshar.jmx.metrics.scraping.enabled}")
-//    private boolean jmxMetricsScrapingEnabled;
+    @Value("${anshar.jmx.metrics.configuration.filepath}")
+    private String pathToJmxMetricsConfiguration;
+
+    @Value("${anshar.jmx.metrics.scraping.enabled}")
+    private boolean jmxMetricsScrapingEnabled;
 
     @Autowired
     @Qualifier("getUnhealthySubscriptionsSet")
@@ -91,7 +95,7 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
 
     public static boolean triggerRestart;
 
-    //private JmxCollector jmxCollector;
+    private JmxCollector jmxCollector;
 
     @PostConstruct
     private void init() {
@@ -134,15 +138,15 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
                         p.getOut().setBody(prometheusRegistry.scrape());
                     }
                 })
-//                .process(p -> {
-//                    String metrics = prometheusRegistry.scrape();
-//                    if (isJmxMetricsScrapingActive()) {
-//                        MetricSnapshots jmxMetrics = this.jmxCollector.collect();
-//                        String parsedJmxMetrics = jmxMetrics.stream().map(JmxMetricsConverter::convertMetricSnapshotToPrometheusString).collect(Collectors.joining(""));
-//                        metrics = metrics + parsedJmxMetrics;
-//                    }
-//                    p.getOut().setBody(metrics);
-//                })
+                .process(p -> {
+                    String metrics = prometheusRegistry.scrape();
+                    if (isJmxMetricsScrapingActive()) {
+                        MetricSnapshots jmxMetrics = this.jmxCollector.collect();
+                        String parsedJmxMetrics = jmxMetrics.stream().map(JmxMetricsConverter::convertMetricSnapshotToPrometheusString).collect(Collectors.joining(""));
+                        metrics = metrics + parsedJmxMetrics;
+                    }
+                    p.getOut().setBody(metrics);
+                })
                 .setHeader(Exchange.CONTENT_TYPE, constant("text/plain"))
                 .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("200"))
                 .routeId("health.scrape")
@@ -260,7 +264,7 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
         return subscriptionManager.getAllUnhealthySubscriptions(allowedInactivityMinutes * 60);
     }
 
-//    private boolean isJmxMetricsScrapingActive() {
-//        return jmxCollector != null && jmxMetricsScrapingEnabled;
-//    }
+    private boolean isJmxMetricsScrapingActive() {
+        return jmxCollector != null && jmxMetricsScrapingEnabled;
+    }
 }

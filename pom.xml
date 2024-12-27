@@ -39,7 +39,7 @@
         <spring-boot-plugin.version>2.6.6</spring-boot-plugin.version>
         <spring-boot.version>2.6.6</spring-boot.version>
 
-        <camel-version>3.18.0</camel-version>
+        <camel-version>3.21.5</camel-version>
 
         <metrics.version>3.2.3</metrics.version>
         <okina.helpers.version>1.0.26</okina.helpers.version>
@@ -326,6 +326,12 @@
         </dependency>
 
         <dependency>
+            <groupId>io.prometheus.jmx</groupId>
+            <artifactId>collector</artifactId>
+            <version>1.0.1</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
         </dependency>
@@ -399,14 +405,14 @@
             <artifactId>camel-bean-validator</artifactId>
             <version>${camel-version}</version>
         </dependency>
-        <!--        <dependency>-->
-        <!--            <groupId>org.apache.camel</groupId>-->
-        <!--            <artifactId>camel-metrics</artifactId>-->
-        <!--        </dependency>-->
-        <!--        <dependency>-->
-        <!--            <groupId>org.apache.camel.springboot</groupId>-->
-        <!--            <artifactId>camel-micrometer-starter</artifactId>-->
-        <!--        </dependency>-->
+        <dependency>
+            <groupId>org.apache.camel</groupId>
+            <artifactId>camel-metrics</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.camel.springboot</groupId>
+            <artifactId>camel-micrometer-starter</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>javax.el</groupId>
