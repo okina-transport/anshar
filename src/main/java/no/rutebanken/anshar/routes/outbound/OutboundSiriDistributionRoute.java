@@ -58,8 +58,6 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
         ;
 
         from("direct:send.to.external.subscription")
-                .threads(threads)
-                .maxPoolSize(maxPoolSize)
                 .routeId("send.to.external.subscription")
                 .log(LoggingLevel.DEBUG, "POST data to ${header.SubscriptionId}")
                 .setHeader("CamelHttpMethod", constant("POST"))
