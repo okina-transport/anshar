@@ -53,6 +53,7 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static java.time.temporal.ChronoUnit.MILLIS;
@@ -1283,7 +1284,9 @@ public class ServerSubscriptionManager {
                 removeSubscription(subscriptionId);
             } else {
                 logger.info("Outbound subscription {} has not responded for {}s, will be cancelled after {}s.", subscriptionId, terminationTime / 1000, gracePeriod / 1000);
-                failTrackerMap.set(subscriptionId, firstFail);
+                // Adding a TTL to fail tracker to handle empty period with no data after an error
+                // (only subcriptions that repeatedly fail for 30 minutes will be removed)
+                failTrackerMap.set(subscriptionId, firstFail, 10, TimeUnit.MINUTES);
             }
         }
     }
