@@ -25,6 +25,7 @@ import no.rutebanken.anshar.routes.siri.transformer.impl.LeftPaddingAdapter;
 import no.rutebanken.anshar.routes.siri.transformer.impl.RuterSubstringAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import uk.org.siri.siri21.*;
 
@@ -36,6 +37,12 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class SiriValueTransformerTest extends SpringBootBaseTest {
+
+
+    @BeforeEach
+    public void clearCachedGetters() {
+        SiriValueTransformer.clearCachedGettersForAdapter();
+    }
 
     @Test
     public void testForNullPointer() throws JAXBException {

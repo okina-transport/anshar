@@ -287,4 +287,10 @@ public class SiriValueTransformer {
             return result;
         }
     }
+
+
+    public static void clearCachedGettersForAdapter() {
+        logger.warn("Clearing cached getters for adapter. Test usage only!!!!!!!");
+        cachedGettersForAdapter.clear();
+    }
 }

@@ -20,6 +20,7 @@ import io.restassured.http.ContentType;
 import no.rutebanken.anshar.data.*;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import no.rutebanken.anshar.helpers.TestObjectFactory;
+import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
@@ -79,6 +80,7 @@ public class SiriLiteTest extends BaseHttpTest {
         super.init();
         clear();
         feedCaches();
+        SiriValueTransformer.clearCachedGettersForAdapter();
     }
 
 
@@ -164,6 +166,7 @@ public class SiriLiteTest extends BaseHttpTest {
     ////////////////////////////////////////////////
     @Test
     public void testNoPointInServiceFormat() {
+
         given()
                 .when()
                 .get("/siri/2.0/stop-monitoringjson")
@@ -174,6 +177,7 @@ public class SiriLiteTest extends BaseHttpTest {
 
     @Test
     public void testUnsupportedService() {
+
         given()
                 .when()
                 .get("/siri/2.0/uyagzduyhazgd.json")
