@@ -24,6 +24,8 @@ import no.rutebanken.anshar.routes.siri.processor.RuterOutboundDatedVehicleRefAd
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import uk.org.ifopt.siri21.StopPlaceRef;
 import uk.org.siri.siri21.*;
 
@@ -32,6 +34,7 @@ import java.util.*;
 
 public class MappingAdapterPresets {
 
+    private static final Logger log = LoggerFactory.getLogger(MappingAdapterPresets.class);
     private static Map<MappingAdapterCacheKey, List<ValueAdapter>> adapterCache = new HashMap<>();
 
     public static List<ValueAdapter> getOutboundAdapters(SiriDataType dataType, OutboundIdMappingPolicy outboundIdMappingPolicy) {
@@ -41,7 +44,7 @@ public class MappingAdapterPresets {
     public static List<ValueAdapter> getOutboundAdapters(SiriDataType dataType, OutboundIdMappingPolicy outboundIdMappingPolicy, Map<ObjectType, Optional<IdProcessingParameters>> idProcessingMap) {
 
 
-        MappingAdapterCacheKey key = new MappingAdapterCacheKey(dataType, outboundIdMappingPolicy, null);
+        MappingAdapterCacheKey key = new MappingAdapterCacheKey(dataType, outboundIdMappingPolicy, idProcessingMap);
         if (!adapterCache.containsKey(key)) {
             OutboundIdAdapter stopIdAdapter = new OutboundIdAdapter(StopPointRefStructure.class, outboundIdMappingPolicy, true);
             OutboundIdAdapter stopPlaceIdAdapter = new OutboundIdAdapter(StopPlaceRef.class, outboundIdMappingPolicy, true);
@@ -149,5 +152,9 @@ public class MappingAdapterPresets {
         return adapters;
     }
 
+    public static void clearCache() {
+        log.info("Clearing cache. should only be used in tests !!!!");
+        adapterCache.clear();
+    }
 
 }
