@@ -24,6 +24,7 @@ import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -81,6 +82,7 @@ public class SiriLiteTest extends BaseHttpTest {
         clear();
         feedCaches();
         SiriValueTransformer.clearCachedGettersForAdapter();
+        MappingAdapterPresets.clearCache();
     }
 
 
@@ -577,6 +579,7 @@ public class SiriLiteTest extends BaseHttpTest {
 
     @Test
     public void testSMJSONFilterOnDatasetId() {
+
         given()
                 .when()
                 .get("/siri/2.0/stop-monitoring.json?datasetId=test2")
