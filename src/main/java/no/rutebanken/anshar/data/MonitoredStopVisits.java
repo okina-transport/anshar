@@ -442,7 +442,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         Counter outdatedCounter = new CounterImpl(0);
         Counter notUpdatedCounter = new CounterImpl(0);
         IMap<SiriObjectStorageKey, MonitoredStopVisit> currentHazelcastCache = hazelcastService.getMonitoredStopVisitsForDataset(datasetId);
-        Set<Long> deltaTimes = new HashSet<>();
+        // Set<Long> deltaTimes = new HashSet<>();
 
         smList.stream()
                 .filter(monitoredStopVisit -> monitoredStopVisit.getMonitoringRef() != null)
@@ -450,10 +450,10 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
                 .forEach(monitoredStopVisit -> {
 
 
-                    ZonedDateTime recordedAtTime = monitoredStopVisit.getRecordedAtTime();
-                    if (recordedAtTime != null) {
-                        deltaTimes.add(System.currentTimeMillis() - recordedAtTime.toInstant().toEpochMilli());
-                    }
+//                    ZonedDateTime recordedAtTime = monitoredStopVisit.getRecordedAtTime();
+//                    if (recordedAtTime != null) {
+//                        deltaTimes.add(System.currentTimeMillis() - recordedAtTime.toInstant().toEpochMilli());
+//                    }
 
                     String lineName = StopMonitoringUtils.getLineName(monitoredStopVisit).orElse(null);
                     String vehicleJourneyName = StopMonitoringUtils.getVehicleJourneyName(monitoredStopVisit).orElse(null);
@@ -551,7 +551,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
                     }
                 });
 
-        recordDeltaTimes(SiriDataType.STOP_MONITORING, datasetId, deltaTimes);
+        //  recordDeltaTimes(SiriDataType.STOP_MONITORING, datasetId, deltaTimes);
 
         //  logger.debug("Updated {} (of {}) :: Ignored elements - Missing location:{}, Missing values: {}, Expired: {}, Not updated: {}", changes.size(), smList.size(), invalidLocationCounter.getValue(), notMeaningfulCounter.getValue(), outdatedCounter.getValue(), notUpdatedCounter.getValue());
 

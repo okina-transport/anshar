@@ -331,6 +331,7 @@ abstract class SiriRepository<T> {
     void recordDeltaTimes(SiriDataType dataType, String datasetId, Set<Long> deltaTimes) {
         if (metrics == null) {
             metrics = ApplicationContextHolder.getContext().getBean(PrometheusMetricsService.class);
+            logger.info("Addind metrics bean to siriRepository");
         }
         metrics.recordDeltaTimes(dataType, datasetId, deltaTimes);
     }

@@ -1,6 +1,7 @@
 package no.rutebanken.anshar.routes.siri.handlers.inbound;
 
 import no.rutebanken.anshar.data.MonitoredStopVisits;
+import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.siri.handlers.Utils;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -18,10 +19,7 @@ import uk.org.siri.siri21.MonitoredStopVisitCancellation;
 import uk.org.siri.siri21.Siri;
 import uk.org.siri.siri21.StopMonitoringDeliveryStructure;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,6 +38,9 @@ public class StopMonitoringInbound {
 
     @Autowired
     private SubscriptionManager subscriptionManager;
+
+    @Autowired
+    private PrometheusMetricsService metrics;
 
     public boolean ingestStopVisitFromApi(SiriDataType dataFormat, String dataSetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList) {
         // logger.debug("Got SM-delivery: Subscription [{}] {}", subscriptionSetupList);
@@ -77,7 +78,7 @@ public class StopMonitoringInbound {
     }
 
     public Collection<MonitoredStopVisit> ingestStopVisits(String datasetId, List<MonitoredStopVisit> incomingMonitoredStopVisits) {
-
+        recordDeltaTimes(datasetId, incomingMonitoredStopVisits);
         Collection<MonitoredStopVisit> result = monitoredStopVisits.addAll(datasetId, incomingMonitoredStopVisits);
         if (result.size() > 0) {
             serverSubscriptionManager.pushUpdatesAsync(SiriDataType.STOP_MONITORING, incomingMonitoredStopVisits, datasetId);
@@ -120,6 +121,19 @@ public class StopMonitoringInbound {
         return !addedOrUpdated.isEmpty();
     }
 
+    private void recordDeltaTimes(String datasetId, List<MonitoredStopVisit> smList) {
+        Set<Long> deltaTimes = new HashSet<>();
+
+        for (MonitoredStopVisit monitoredStopVisit : smList) {
+
+            if (monitoredStopVisit.getRecordedAtTime() == null) {
+                continue;
+            }
+            deltaTimes.add(System.currentTimeMillis() - monitoredStopVisit.getRecordedAtTime().toInstant().toEpochMilli());
+        }
+        metrics.recordDeltaTimes(SiriDataType.STOP_MONITORING, datasetId, deltaTimes);
+    }
+
     protected void updateStopMonitoringItemIdentifier(List<MonitoredStopVisit> monitoredStopVisits) {
         if (CollectionUtils.isNotEmpty(monitoredStopVisits)) {
             for (MonitoredStopVisit monitoredStopVisit : monitoredStopVisits) {
@@ -143,7 +157,7 @@ public class StopMonitoringInbound {
             Objects.requireNonNull(lineName);
             Objects.requireNonNull(vehicleJourneyName);
             Objects.requireNonNull(aimedTime);
-            newItemIdentifier = stopName+lineName+vehicleJourneyName+aimedTime;
+            newItemIdentifier = stopName + lineName + vehicleJourneyName + aimedTime;
         } catch (Exception e) {
             logger.error("Unable to compute new itemIdentifier from {}", monitoredStopVisit.getItemIdentifier());
         }

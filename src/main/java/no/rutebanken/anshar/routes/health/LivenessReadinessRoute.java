@@ -134,11 +134,6 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
         // Application is ready to accept traffic
         from("direct:scrape")
                 .process(p -> {
-                    if (prometheusRegistry != null) {
-                        p.getOut().setBody(prometheusRegistry.scrape());
-                    }
-                })
-                .process(p -> {
                     String metrics = prometheusRegistry.scrape();
                     if (isJmxMetricsScrapingActive()) {
                         MetricSnapshots jmxMetrics = this.jmxCollector.collect();

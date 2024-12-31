@@ -390,6 +390,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
     private void updateDeltaTimes() {
         for (Map.Entry<String, Set<Long>> smDeltaTimeEntry : smDeltaTimesTmp.entrySet()) {
             String requestorRef = smDeltaTimeEntry.getKey();
+
             List<Tag> counterTags = new ArrayList<>();
             counterTags.add(new ImmutableTag(REQUESTOR_REF_TAG_NAME, requestorRef));
 
@@ -402,7 +403,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
 
 
             smDeltaTimesResults.put(requestorRef, sum / deltaTimes.size());
-            gauge(DELTA_RECORDED_AT_TIME, counterTags, requestorRef, value -> smDeltaTimesResults.get(requestorRef));
+            gauge(DELTA_RECORDED_AT_TIME, counterTags, requestorRef, value -> smDeltaTimesResults.containsKey(requestorRef) ? smDeltaTimesResults.get(requestorRef) : 0);
 
         }
         smDeltaTimesTmp.clear();
