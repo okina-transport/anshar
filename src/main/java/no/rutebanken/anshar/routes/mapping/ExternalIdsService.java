@@ -7,6 +7,7 @@ import no.rutebanken.anshar.routes.BaseRouteBuilder;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.util.CSVUtils;
+import no.rutebanken.anshar.util.FileUtils;
 import org.apache.commons.csv.CSVRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,13 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 
@@ -67,8 +62,8 @@ public class ExternalIdsService extends BaseRouteBuilder {
     private final Map<String, Map<String, String>> stopsCache = new HashMap();
     private final Map<String, Map<String, List<String>>> linesCache = new HashMap();
 
-    private final String pathStops =  "stops";
-    private final String pathLines =  "lines";
+    private final String pathStops = "stops";
+    private final String pathLines = "lines";
 
     protected ExternalIdsService(AnsharConfiguration config, SubscriptionManager subscriptionManager) {
         super(config, subscriptionManager);
@@ -79,6 +74,12 @@ public class ExternalIdsService extends BaseRouteBuilder {
         singletonFrom("quartz://anshar/DownloadFilesMapping?cron=" + cronDownloadFilesMapping + "&trigger.timeZone=Europe/Paris", "monitor.download.files.mapping")
                 .log("Starting downloading and importing files mapping")
                 .process(p -> downloadFilesAndRefreshCache());
+
+
+        singletonFrom("quartz://anshar/DownloadFilesMappingFirstStart?trigger.repeatCount=0&trigger.startDelay=0&trigger.timeZone=Europe/Paris", "monitor.download.files.mapping.first.start")
+                .log("Starting downloading and importing files mapping")
+                .process(p -> downloadFilesAndRefreshCache());
+
     }
 
     /**
@@ -127,7 +128,7 @@ public class ExternalIdsService extends BaseRouteBuilder {
      * Refresh the cache containing data for all datasetIds
      */
     private void updateMappingExternalIdsCache() {
-        Set<String> datasetList = subscriptionManager.getAllDatasetIds();
+        Set<String> datasetList = getDatasetList();
         for (String dataset : datasetList) {
             updateMappingExternalIdsCache(dataset);
         }
@@ -157,7 +158,6 @@ public class ExternalIdsService extends BaseRouteBuilder {
         logger.info("Starting updating mapping external ids lines cache for dataset : " + datasetId);
 
 
-
         for (String fileName : Objects.requireNonNull(mappingLinesDirectory.list())) {
             String datasetIdInFileName = fileName.replace("_lines_mapping.csv", "");
             if (datasetId.equalsIgnoreCase(datasetIdInFileName)) {
@@ -169,6 +169,14 @@ public class ExternalIdsService extends BaseRouteBuilder {
         logger.info("Finishing updating mapping external ids lines cache for dataset : " + datasetId);
 
         logger.info("Feeding cache completed for datasetId: " + datasetId);
+    }
+
+
+    private Set<String> getDatasetList() {
+        Set<String> csvFiles = FileUtils.listCSVFiles(mappingExternalIdsRootDir);
+        return csvFiles.stream()
+                .map(filename -> filename.replace("_lines_mapping.csv", "").replace("_stops_mapping.csv", ""))
+                .collect(Collectors.toSet());
     }
 
 
@@ -209,7 +217,7 @@ public class ExternalIdsService extends BaseRouteBuilder {
     }
 
     private String removePrefixAndSuffix(String text, Optional<IdProcessingParameters> idParametersOpt) {
-        if (idParametersOpt.isEmpty() || text == null){
+        if (idParametersOpt.isEmpty() || text == null) {
             return text;
         }
 
@@ -220,19 +228,19 @@ public class ExternalIdsService extends BaseRouteBuilder {
         String outputSuffixToAdd = parameters.getOutputSuffixToAdd();
 
 
-        if (inputPrefixToRemove != null && text.startsWith(inputPrefixToRemove)){
+        if (inputPrefixToRemove != null && text.startsWith(inputPrefixToRemove)) {
             text = text.substring(inputPrefixToRemove.length());
         }
 
-        if (inputSuffixToRemove != null && text.endsWith(inputSuffixToRemove)){
-            text = text.substring(0,text.length() - inputSuffixToRemove.length());
+        if (inputSuffixToRemove != null && text.endsWith(inputSuffixToRemove)) {
+            text = text.substring(0, text.length() - inputSuffixToRemove.length());
         }
 
-        if (outputPrefixToAdd != null && !text.startsWith(outputPrefixToAdd)){
+        if (outputPrefixToAdd != null && !text.startsWith(outputPrefixToAdd)) {
             text = outputPrefixToAdd + text;
         }
 
-        if (outputSuffixToAdd != null && !text.endsWith(outputSuffixToAdd)){
+        if (outputSuffixToAdd != null && !text.endsWith(outputSuffixToAdd)) {
             text = text + outputSuffixToAdd;
         }
 
@@ -263,8 +271,12 @@ public class ExternalIdsService extends BaseRouteBuilder {
             }
 
             for (CSVRecord record : records) {
-                String lineId = record.get("line_id");
-                String lineAltId = record.get("line_alt_id");
+
+
+                String lineId = record.isSet("line_id") ? record.get("line_id") : record.get("route_id");
+
+
+                String lineAltId = record.isSet("line_alt_id") ? record.get("line_alt_id") : record.get("route_alt_id Titan");
                 lineId = removePrefixAndSuffix(lineId, idParametersOpt);
                 List<String> lineIdList;
                 if (currentLineAltLineCache.containsKey(lineAltId)) {
@@ -315,9 +327,9 @@ public class ExternalIdsService extends BaseRouteBuilder {
         }
 
         Map<String, List<String>> datasetMap = cache.get(datasetId);
-        for(String originalLineId : datasetMap.keySet()){
+        for (String originalLineId : datasetMap.keySet()) {
             List<String> altLineIds = datasetMap.get(originalLineId);
-            if(altLineIds.contains(id)){
+            if (altLineIds.contains(id)) {
                 return Optional.of(originalLineId);
             }
         }
