@@ -486,6 +486,9 @@ public class ServerSubscriptionManager {
             mappers = MappingAdapterPresets.getOutboundAdapters(outboundIdMappingPolicy);
         }
 
+        Map<String, List<ValueAdapter>> valueAdaptersByDataset = getValueAdaptersByDataset(subscriptionRequest, outboundIdMappingPolicy, datasetId);
+        Map<String, Map<Class, Set<String>>> filterMapByDataset = getFiltersByDataset(subscriptionRequest, outboundIdMappingPolicy, datasetId);
+
 
         OutboundSubscriptionSetup newOutboundSubscription = new OutboundSubscriptionSetup(
                 ZonedDateTime.now(),
@@ -503,21 +506,23 @@ public class ServerSubscriptionManager {
                 datasetId,
                 clientTrackingName,
                 useOrignalId,
-                SiriUtils.getVersionEnum(version)
+                SiriUtils.getVersionEnum(version),
+                valueAdaptersByDataset,
+                filterMapByDataset
         );
-
-        if (subscriptionRequest.getEstimatedTimetableSubscriptionRequests() != null && subscriptionRequest.getEstimatedTimetableSubscriptionRequests().size() > 0) {
-            Map<String, List<ValueAdapter>> valueAdaptersByDataset = getValueAdaptersByDataset(subscriptionRequest.getEstimatedTimetableSubscriptionRequests(), outboundIdMappingPolicy);
-            newOutboundSubscription.setValueAdaptersByDataset(valueAdaptersByDataset);
-            Map<String, Map<Class, Set<String>>> filterMapByDataset = getFiltersByDataset(subscriptionRequest.getEstimatedTimetableSubscriptionRequests(), outboundIdMappingPolicy);
-            newOutboundSubscription.setFilterMapByDataset(filterMapByDataset);
-            newOutboundSubscription.getFilterMap().clear();
-        }
 
         return newOutboundSubscription;
     }
 
-    private Map<String, Map<Class, Set<String>>> getFiltersByDataset(List<EstimatedTimetableSubscriptionStructure> estimatedTimetableSubscriptionRequests, OutboundIdMappingPolicy outboundIdMappingPolicy) {
+    private Map<String, Map<Class, Set<String>>> getFiltersByDataset(SubscriptionRequest subscriptionRequest, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
+
+        if (subscriptionRequest.getEstimatedTimetableSubscriptionRequests() == null || subscriptionRequest.getEstimatedTimetableSubscriptionRequests().size() == 0) {
+            // Currently only ET handles values/filterMap by dataset. will be modified progressively to handle all kind of Siri
+            return null;
+        }
+
+        List<EstimatedTimetableSubscriptionStructure> estimatedTimetableSubscriptionRequests = subscriptionRequest.getEstimatedTimetableSubscriptionRequests();
+
         Map<String, Map<Class, Set<String>>> filterMapByDataset = new HashMap<>();
         for (EstimatedTimetableSubscriptionStructure estimatedTimetableSubscriptionRequest : estimatedTimetableSubscriptionRequests) {
 
@@ -528,9 +533,11 @@ public class ServerSubscriptionManager {
             for (LineDirectionStructure lineDirection : estimatedTimetableSubscriptionRequest.getEstimatedTimetableRequest().getLines().getLineDirections()) {
                 String rawLineRef = lineDirection.getLineRef().getValue();
                 HashSet<String> searchedIds = new HashSet<>(Collections.singleton(rawLineRef));
-                String datasetId = incomingSubscriptionConfig.findDatasetFromSearch(searchedIds, ObjectType.LINE).orElse("ALL");
+                if (datasetId == null) {
+                    datasetId = incomingSubscriptionConfig.findDatasetFromSearch(searchedIds, ObjectType.LINE).orElse("ALL");
+                }
 
-                Set<String> linerefValues = siriHelper.revertLineIds(searchedIds);
+                Set<String> linerefValues = siriHelper.revertLineIds(outboundIdMappingPolicy, searchedIds, datasetId);
                 Map<Class, Set<String>> currentFilterMapByDataset;
                 if (filterMapByDataset.containsKey(datasetId)) {
                     currentFilterMapByDataset = filterMapByDataset.get(datasetId);
@@ -550,8 +557,15 @@ public class ServerSubscriptionManager {
         return filterMapByDataset;
     }
 
-    private Map<String, List<ValueAdapter>> getValueAdaptersByDataset(List<EstimatedTimetableSubscriptionStructure> estimatedTimetableSubscriptionRequests, OutboundIdMappingPolicy outboundIdMappingPolicy) {
+    private Map<String, List<ValueAdapter>> getValueAdaptersByDataset(SubscriptionRequest subscriptionRequest, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
 
+
+        if (subscriptionRequest.getEstimatedTimetableSubscriptionRequests() == null || subscriptionRequest.getEstimatedTimetableSubscriptionRequests().size() == 0) {
+            // Currently only ET handles values/filterMap by dataset. will be modified progressively to handle all kind of Siri
+            return null;
+        }
+
+        List<EstimatedTimetableSubscriptionStructure> estimatedTimetableSubscriptionRequests = subscriptionRequest.getEstimatedTimetableSubscriptionRequests();
         Map<String, List<ValueAdapter>> valueAdaptersByDataset = new HashMap<>();
 
         for (EstimatedTimetableSubscriptionStructure estimatedTimetableSubscriptionRequest : estimatedTimetableSubscriptionRequests) {
@@ -564,12 +578,16 @@ public class ServerSubscriptionManager {
             for (LineDirectionStructure lineDirection : estimatedTimetableSubscriptionRequest.getEstimatedTimetableRequest().getLines().getLineDirections()) {
                 String rawLineRef = lineDirection.getLineRef().getValue();
                 HashSet<String> searchedIds = new HashSet<>(Collections.singleton(rawLineRef));
-                String datasetId = incomingSubscriptionConfig.findDatasetFromSearch(searchedIds, ObjectType.LINE).orElse(null);
+
+                if (datasetId == null) {
+                    datasetId = incomingSubscriptionConfig.findDatasetFromSearch(searchedIds, ObjectType.LINE).orElse(null);
+                }
+
                 if (StringUtils.isEmpty(datasetId) || valueAdaptersByDataset.containsKey(datasetId)) {
                     continue;
                 }
 
-                Map<ObjectType, Optional<IdProcessingParameters>> idProcessingParams = incomingSubscriptionConfig.buildIdProcessingParams(null, searchedIds, ObjectType.LINE);
+                Map<ObjectType, Optional<IdProcessingParameters>> idProcessingParams = incomingSubscriptionConfig.buildIdProcessingParams(datasetId, searchedIds, ObjectType.LINE);
                 List<ValueAdapter> mappers = MappingAdapterPresets.getOutboundAdapters(SiriDataType.ESTIMATED_TIMETABLE, outboundIdMappingPolicy, idProcessingParams);
                 valueAdaptersByDataset.put(datasetId, mappers);
             }

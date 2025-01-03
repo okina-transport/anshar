@@ -19,6 +19,7 @@ import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.*;
 import no.rutebanken.anshar.data.util.CustomStringUtils;
+import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.handlers.outbound.SituationExchangeOutbound;
@@ -74,6 +75,9 @@ public class SiriHelper {
 
     private final SiriObjectFactory siriObjectFactory;
 
+    @Autowired
+    ExternalIdsService externalIdsService;
+
 
     public SiriHelper(@Autowired SiriObjectFactory siriObjectFactory) {
         this.siriObjectFactory = siriObjectFactory;
@@ -84,9 +88,7 @@ public class SiriHelper {
         if (containsValues(subscriptionRequest.getSituationExchangeSubscriptionRequests())) {
             return getFilter(subscriptionRequest.getSituationExchangeSubscriptionRequests().get(0));
         } else if (containsValues(subscriptionRequest.getVehicleMonitoringSubscriptionRequests())) {
-            return getFilter(subscriptionRequest.getVehicleMonitoringSubscriptionRequests().get(0));
-        } else if (containsValues(subscriptionRequest.getEstimatedTimetableSubscriptionRequests())) {
-            return getFilter(subscriptionRequest.getEstimatedTimetableSubscriptionRequests().get(0));
+            return getFilter(subscriptionRequest.getVehicleMonitoringSubscriptionRequests().get(0), outboundIdMappingPolicy, datasetId);
         } else if (containsValues(subscriptionRequest.getStopMonitoringSubscriptionRequests())) {
             return getFilter(subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0), outboundIdMappingPolicy, datasetId);
         } else if (containsValues(subscriptionRequest.getGeneralMessageSubscriptionRequests())) {
@@ -156,7 +158,7 @@ public class SiriHelper {
     }
 
 
-    private Map<Class, Set<String>> getFilter(VehicleMonitoringSubscriptionStructure subscriptionStructure) {
+    private Map<Class, Set<String>> getFilter(VehicleMonitoringSubscriptionStructure subscriptionStructure, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
         VehicleMonitoringRequestStructure vehicleMonitoringRequest = subscriptionStructure.getVehicleMonitoringRequest();
 
         Map<Class, Set<String>> filterMap = new HashMap<>();
@@ -166,55 +168,46 @@ public class SiriHelper {
             String rawLineValue = lineRef.getValue();
             Set<String> searchedValues = new HashSet<>();
             searchedValues.add(rawLineValue);
-            Set<String> linerefValues = revertLineIds(searchedValues);
+            Set<String> linerefValues = revertLineIds(outboundIdMappingPolicy, searchedValues, datasetId);
             filterMap.put(LineRef.class, linerefValues);
         }
         return filterMap;
     }
 
-    public Set<String> revertLineIds(Set<String> rawLineValues) {
+    public Set<String> revertLineIds(OutboundIdMappingPolicy outboundIdMappingPolicy, Set<String> rawLineValues, String datasetId) {
+        Set<String> processedLineValues = new HashSet<>();
         if (rawLineValues == null || rawLineValues.isEmpty()) {
-            return null;
+            return processedLineValues;
         }
-        rawLineValues = rawLineValues.stream()
-                .map(rawValue -> rawValue.replaceAll(":FlexibleLine:", ":Line:"))
-                .collect(Collectors.toSet());
 
+        if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy)) {
+            Optional<IdProcessingParameters> idProcessingOpt = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.LINE);
+            for (String rawLineValue : rawLineValues) {
+                List<String> originalIdLines = externalIdsService.getReverseAltIdLines(datasetId, rawLineValue);
 
-        Optional<String> datasetOpt = subscriptionConfig.findDatasetFromSearch(rawLineValues, ObjectType.LINE);
-        if (datasetOpt.isPresent()) {
-            Optional<IdProcessingParameters> idProcLineOpt = subscriptionConfig.getIdParametersForDataset(datasetOpt.get(), ObjectType.LINE);
-            Set<String> revertedLineIds = IDUtils.revertMonitoringRefs(rawLineValues, idProcLineOpt);
-            return revertedLineIds;
-        } else {
-            return rawLineValues;
-        }
-    }
+                if (idProcessingOpt.isPresent()) {
+                    IdProcessingParameters idProcessing = idProcessingOpt.get();
+                    originalIdLines = originalIdLines.stream()
+                            .map(idProcessing::revertTransformationToString)
+                            .collect(Collectors.toList());
 
-    private Map<Class, Set<String>> getFilter(EstimatedTimetableSubscriptionStructure subscriptionStructure) {
-        EstimatedTimetableRequestStructure request = subscriptionStructure.getEstimatedTimetableRequest();
-
-        Map<Class, Set<String>> filterMap = new HashMap<>();
-        Set<String> linerefValues = new HashSet<>();
-
-        EstimatedTimetableRequestStructure.Lines lines = request.getLines();
-        if (lines != null) {
-            List<LineDirectionStructure> lineDirections = lines.getLineDirections();
-            if (lineDirections != null) {
-                for (LineDirectionStructure lineDirection : lineDirections) {
-                    if (lineDirection.getLineRef() != null) {
-                        linerefValues.add(lineDirection.getLineRef().getValue());
-                    }
                 }
+                processedLineValues.addAll(originalIdLines);
+            }
+        } else {
+            rawLineValues = rawLineValues.stream()
+                    .map(rawValue -> rawValue.replaceAll(":FlexibleLine:", ":Line:"))
+                    .collect(Collectors.toSet());
+
+            Optional<String> datasetOpt = subscriptionConfig.findDatasetFromSearch(rawLineValues, ObjectType.LINE);
+            if (datasetOpt.isPresent()) {
+                Optional<IdProcessingParameters> idProcLineOpt = subscriptionConfig.getIdParametersForDataset(datasetOpt.get(), ObjectType.LINE);
+                processedLineValues = IDUtils.revertMonitoringRefs(rawLineValues, idProcLineOpt);
             }
         }
-
-        if (!linerefValues.isEmpty()) {
-            linerefValues = revertLineIds(linerefValues);
-            filterMap.put(LineRef.class, linerefValues);
-        }
-        return filterMap;
+        return processedLineValues;
     }
+
 
     /**
      * Returns optional filters for stopMonitoringSubscription
@@ -231,6 +224,8 @@ public class SiriHelper {
         List<String> originalRequestedIds = Collections.singletonList(requestedId);
         if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)) {
             originalRequestedIds = stopPlaceUpdaterService.canBeReverted(requestedId, datasetId) ? stopPlaceUpdaterService.getReverse(requestedId, datasetId) : Arrays.asList(requestedId);
+        } else if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy)) {
+            originalRequestedIds = externalIdsService.getReverseAltIdStop(datasetId, requestedId);
         }
 
         HashSet<String> requestedIds = new HashSet<>(originalRequestedIds);
@@ -276,7 +271,7 @@ public class SiriHelper {
                 .map(value -> value.replace(":FlexibleLine:", ":Line:"))
                 .collect(Collectors.toSet());
 
-        return subscriptionConfig.buildIdProcessingParams(null, requestedIds, ObjectType.LINE);
+        return subscriptionConfig.buildIdProcessingParams(datasetId, requestedIds, ObjectType.LINE);
     }
 
     public Map<ObjectType, Optional<IdProcessingParameters>> getIdProcessingParamsFromSubscription(EstimatedTimetableSubscriptionStructure estimatedTimetableSubscription, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
@@ -291,7 +286,7 @@ public class SiriHelper {
                     .collect(Collectors.toSet());
         }
 
-        return subscriptionConfig.buildIdProcessingParams(null, requestedIds, ObjectType.LINE);
+        return subscriptionConfig.buildIdProcessingParams(datasetId, requestedIds, ObjectType.LINE);
     }
 
 

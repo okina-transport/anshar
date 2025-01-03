@@ -52,6 +52,15 @@ public class OutboundSubscriptionSetup implements Serializable {
                                      boolean incrementalUpdates, long changeBeforeUpdates, long updateInterval,
                                      Map<Class, Set<String>> filterMap, List<ValueAdapter> valueAdapters,
                                      String subscriptionId, String requestorRef, ZonedDateTime initialTerminationTime, String datasetId, String clientTrackingName, boolean useOriginalId, SiriValidator.Version siriVersion) {
+        this(requestTimestamp, subscriptionType, address, heartbeatInterval, incrementalUpdates, changeBeforeUpdates, updateInterval, filterMap, valueAdapters,
+                subscriptionId, requestorRef, initialTerminationTime, datasetId, clientTrackingName, useOriginalId, siriVersion, null, null);
+    }
+
+    public OutboundSubscriptionSetup(ZonedDateTime requestTimestamp, SiriDataType subscriptionType, String address, long heartbeatInterval,
+                                     boolean incrementalUpdates, long changeBeforeUpdates, long updateInterval,
+                                     Map<Class, Set<String>> filterMap, List<ValueAdapter> valueAdapters,
+                                     String subscriptionId, String requestorRef, ZonedDateTime initialTerminationTime, String datasetId, String clientTrackingName,
+                                     boolean useOriginalId, SiriValidator.Version siriVersion, Map<String, List<ValueAdapter>> valueAdaptersByDataset, Map<String, Map<Class, Set<String>>> filterMapByDataset) {
         this.requestTimestamp = requestTimestamp;
         this.subscriptionType = subscriptionType;
         this.address = address;
@@ -68,6 +77,15 @@ public class OutboundSubscriptionSetup implements Serializable {
         this.clientTrackingName = clientTrackingName;
         this.useOriginalId = useOriginalId;
         this.siriVersion = siriVersion;
+
+        if (valueAdaptersByDataset != null) {
+            this.valueAdaptersByDataset = valueAdaptersByDataset;
+        }
+
+        if (filterMapByDataset != null) {
+            this.filterMap.clear();
+            this.filterMapByDataset = filterMapByDataset;
+        }
     }
 
     OutboundSubscriptionSetup(SiriDataType subscriptionType, String address, int timeToLive, List<ValueAdapter> outboundAdapters, String subscriptionId) {

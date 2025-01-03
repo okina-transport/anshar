@@ -72,6 +72,32 @@ public class IdProcessingParameters implements Serializable {
         return text;
     }
 
+    /**
+     * Revert basic transformation made on text.
+     * <p>
+     * input : PROV1:Quay:abcd:LOC
+     * output : CUSTOMPREF::ZENPOINT::abcd::loc
+     *
+     * @param text
+     * @return the revertedText
+     */
+    public String revertTransformationToString(String text) {
+        if (StringUtils.isEmpty(text)) {
+            return text;
+        }
+
+        text = removeOutputPrefixAndSuffix(text);
+        if (inputPrefixToRemove != null && !text.startsWith(inputPrefixToRemove)) {
+            text = inputPrefixToRemove + text;
+        }
+
+        if (inputSuffixToRemove != null && !text.endsWith(inputSuffixToRemove)) {
+            text = text + inputSuffixToRemove;
+        }
+        return text;
+
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
