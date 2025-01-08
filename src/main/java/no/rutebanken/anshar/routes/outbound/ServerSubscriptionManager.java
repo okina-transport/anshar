@@ -146,6 +146,9 @@ public class ServerSubscriptionManager {
     @Produce(uri = "direct:send.fm.to.kafka")
     protected ProducerTemplate sendFMToKafka;
 
+    @Value("${outbound.change.before.update.cache.hours:5}")
+    private int outboundChangeBeforeUpdateCacheTTL;
+
     @Autowired
     private SubscriptionConfig incomingSubscriptionConfig;
 
@@ -508,7 +511,8 @@ public class ServerSubscriptionManager {
                 useOrignalId,
                 SiriUtils.getVersionEnum(version),
                 valueAdaptersByDataset,
-                filterMapByDataset
+                filterMapByDataset,
+                outboundChangeBeforeUpdateCacheTTL
         );
 
         return newOutboundSubscription;

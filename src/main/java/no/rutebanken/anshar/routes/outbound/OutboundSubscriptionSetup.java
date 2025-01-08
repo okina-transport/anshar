@@ -15,6 +15,8 @@
 
 package no.rutebanken.anshar.routes.outbound;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.entur.siri.validator.SiriValidator;
@@ -23,6 +25,7 @@ import java.io.Serializable;
 import java.text.MessageFormat;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 public class OutboundSubscriptionSetup implements Serializable {
 
@@ -45,6 +48,8 @@ public class OutboundSubscriptionSetup implements Serializable {
     private boolean useOriginalId;
     private Map<String, List<ValueAdapter>> valueAdaptersByDataset = new HashMap<>();
     private Map<String, Map<Class, Set<String>>> filterMapByDataset = new HashMap<>();
+    private Cache<String, String> alreadySentNotifications;
+
 
     private boolean isSOAPSubscription;
 
@@ -53,14 +58,14 @@ public class OutboundSubscriptionSetup implements Serializable {
                                      Map<Class, Set<String>> filterMap, List<ValueAdapter> valueAdapters,
                                      String subscriptionId, String requestorRef, ZonedDateTime initialTerminationTime, String datasetId, String clientTrackingName, boolean useOriginalId, SiriValidator.Version siriVersion) {
         this(requestTimestamp, subscriptionType, address, heartbeatInterval, incrementalUpdates, changeBeforeUpdates, updateInterval, filterMap, valueAdapters,
-                subscriptionId, requestorRef, initialTerminationTime, datasetId, clientTrackingName, useOriginalId, siriVersion, null, null);
+                subscriptionId, requestorRef, initialTerminationTime, datasetId, clientTrackingName, useOriginalId, siriVersion, null, null, 5);
     }
 
     public OutboundSubscriptionSetup(ZonedDateTime requestTimestamp, SiriDataType subscriptionType, String address, long heartbeatInterval,
                                      boolean incrementalUpdates, long changeBeforeUpdates, long updateInterval,
                                      Map<Class, Set<String>> filterMap, List<ValueAdapter> valueAdapters,
                                      String subscriptionId, String requestorRef, ZonedDateTime initialTerminationTime, String datasetId, String clientTrackingName,
-                                     boolean useOriginalId, SiriValidator.Version siriVersion, Map<String, List<ValueAdapter>> valueAdaptersByDataset, Map<String, Map<Class, Set<String>>> filterMapByDataset) {
+                                     boolean useOriginalId, SiriValidator.Version siriVersion, Map<String, List<ValueAdapter>> valueAdaptersByDataset, Map<String, Map<Class, Set<String>>> filterMapByDataset, int cacheTTL) {
         this.requestTimestamp = requestTimestamp;
         this.subscriptionType = subscriptionType;
         this.address = address;
@@ -86,6 +91,10 @@ public class OutboundSubscriptionSetup implements Serializable {
             this.filterMap.clear();
             this.filterMapByDataset = filterMapByDataset;
         }
+
+        alreadySentNotifications = CacheBuilder.newBuilder()
+                .expireAfterWrite(cacheTTL, TimeUnit.HOURS)  // by default, already sent notifications are deleted after 5 hours to avoid huge data in memory
+                .build();
     }
 
     OutboundSubscriptionSetup(SiriDataType subscriptionType, String address, int timeToLive, List<ValueAdapter> outboundAdapters, String subscriptionId) {
@@ -203,5 +212,13 @@ public class OutboundSubscriptionSetup implements Serializable {
 
     public void setSiriVersion(SiriValidator.Version siriVersion) {
         this.siriVersion = siriVersion;
+    }
+
+    public boolean hasNotificationBeenAlreadySent(String notificationId) {
+        return alreadySentNotifications.getIfPresent(notificationId) != null;
+    }
+
+    public void recordNotification(String notificationId) {
+        alreadySentNotifications.put(notificationId, "1");
     }
 }

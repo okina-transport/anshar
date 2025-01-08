@@ -209,7 +209,7 @@ public class CamelRouteManager {
                 List<MonitoredStopVisit> filteredStopVisits = new ArrayList<>();
 
                 for (MonitoredStopVisit monitoredStopVisit : smDelivery.getMonitoredStopVisits()) {
-                    if (isDelayGreaterThanChangeBeforeUpdateParam(monitoredStopVisit.getMonitoredVehicleJourney(), outboundSubscription)) {
+                    if (shouldBeKept(monitoredStopVisit, outboundSubscription)) {
                         filteredStopVisits.add(monitoredStopVisit);
                     }
                 }
@@ -221,19 +221,49 @@ public class CamelRouteManager {
 
 
     /**
-     * Check if a vehicleJourney has a delay greater or equal to the threashold defined in changeBeforeUpdate param
+     * Determines if the stopVisit should be kept or not.
+     * Rules :
+     * - arrivalStatus or departureStatus in (cancelled, arrived, departed) => kept
+     * - first notification for this passage => kept
+     * - expectedTime - aimedTime  < changeBeforeUpdate => kept
+     * - otherwise : removed
      *
-     * @param vehicleJourney       the vehicleJourney to check
+     * @param stopVisit            the vehicleJourney to check
      * @param outboundSubscription the outbound subscription that contain changeBeforeUpdate param
      * @return true : the delay is greater than changeBeforeUpdate param
      * false : the delay is lower than changeBeforeUpdate param
      */
-    private boolean isDelayGreaterThanChangeBeforeUpdateParam(MonitoredVehicleJourneyStructure vehicleJourney, OutboundSubscriptionSetup outboundSubscription) {
-        if (vehicleJourney == null || vehicleJourney.getMonitoredCall() == null ||
-                vehicleJourney.getMonitoredCall().getExpectedDepartureTime() == null || vehicleJourney.getMonitoredCall().getAimedDepartureTime() == null) {
+    private boolean shouldBeKept(MonitoredStopVisit stopVisit, OutboundSubscriptionSetup outboundSubscription) {
+        MonitoredVehicleJourneyStructure vehicleJourney = stopVisit.getMonitoredVehicleJourney();
+
+
+        if (vehicleJourney == null || vehicleJourney.getMonitoredCall() == null) {
             return false;
         }
 
+
+        if (CallStatusEnumeration.CANCELLED.equals(vehicleJourney.getMonitoredCall().getArrivalStatus()) ||
+                CallStatusEnumeration.ARRIVED.equals(vehicleJourney.getMonitoredCall().getArrivalStatus()) ||
+                CallStatusEnumeration.DEPARTED.equals(vehicleJourney.getMonitoredCall().getArrivalStatus()) ||
+                CallStatusEnumeration.CANCELLED.equals(vehicleJourney.getMonitoredCall().getDepartureStatus()) ||
+                CallStatusEnumeration.ARRIVED.equals(vehicleJourney.getMonitoredCall().getDepartureStatus()) ||
+                CallStatusEnumeration.DEPARTED.equals(vehicleJourney.getMonitoredCall().getDepartureStatus())) {
+            return true;
+        }
+
+        if (vehicleJourney.getMonitoredCall().getExpectedDepartureTime() == null || vehicleJourney.getMonitoredCall().getAimedDepartureTime() == null) {
+            return false;
+        }
+
+
+        String notificationId = stopVisit.getMonitoringRef().getValue() + stopVisit.getItemIdentifier();
+        if (!outboundSubscription.hasNotificationBeenAlreadySent(notificationId)) {
+            // this notification has never been sent to this customer. Initial delivery for this customer. Recording this notification and keeping the message that must be sent
+            outboundSubscription.recordNotification(notificationId);
+            return true;
+        }
+
+        // this notification has already been sent to this customer. applying the check on departureTime to check if the notification must be kept or removed
         long expectedDepartureTime = vehicleJourney.getMonitoredCall().getExpectedDepartureTime().toInstant().toEpochMilli() / 1000;
         long aimedDepartureTime = vehicleJourney.getMonitoredCall().getAimedDepartureTime().toInstant().toEpochMilli() / 1000;
 
