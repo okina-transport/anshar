@@ -194,7 +194,10 @@ public class CamelRouteManager {
         }
 
         return siri.getServiceDelivery().getStopMonitoringDeliveries().stream()
-                .anyMatch(delivery -> delivery.getMonitoredStopVisits() != null && delivery.getMonitoredStopVisits().size() > 0);
+                .anyMatch(delivery ->
+                        (delivery.getMonitoredStopVisits() != null && delivery.getMonitoredStopVisits().size() > 0) ||
+                                (delivery.getMonitoredStopVisitCancellations() != null && delivery.getMonitoredStopVisitCancellations().size() > 0)
+                );
     }
 
     private void removeStopMonitoringIfChangeBeforeUpdates(List<Siri> splitSiri, OutboundSubscriptionSetup outboundSubscription) {
@@ -408,8 +411,11 @@ public class CamelRouteManager {
             }
             if (SiriHelper.containsValues(serviceDelivery.getStopMonitoringDeliveries())) {
                 StopMonitoringDeliveryStructure deliveryStructure = serviceDelivery.getStopMonitoringDeliveries().get(0);
-                return (SiriHelper.containsValues(deliveryStructure.getMonitoredStopVisits()) &&
-                        deliveryStructure.getMonitoredStopVisits().get(0).getMonitoredVehicleJourney() != null);
+
+                return (SiriHelper.containsValues(deliveryStructure.getMonitoredStopVisitCancellations()) &&
+                        deliveryStructure.getMonitoredStopVisitCancellations().get(0) != null) ||
+                        (SiriHelper.containsValues(deliveryStructure.getMonitoredStopVisits()) &&
+                                deliveryStructure.getMonitoredStopVisits().get(0).getMonitoredVehicleJourney() != null);
             }
             if (SiriHelper.containsValues(serviceDelivery.getGeneralMessageDeliveries())) {
                 GeneralMessageDeliveryStructure deliveryStructure = serviceDelivery.getGeneralMessageDeliveries().get(0);

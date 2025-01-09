@@ -107,6 +107,8 @@
                                 </xsl:element>
                                 <xsl:copy-of select="./siri:MonitoredStopVisit" copy-namespaces="no">
                                 </xsl:copy-of>
+                                <xsl:copy-of select="./siri:MonitoredStopVisitCancellation" copy-namespaces="no">
+                                </xsl:copy-of>
                             </xsl:element>
                         </xsl:if>
                     </xsl:element>

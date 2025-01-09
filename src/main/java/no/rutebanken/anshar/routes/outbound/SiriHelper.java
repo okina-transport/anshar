@@ -384,16 +384,31 @@ public class SiriHelper {
             }
 
         } else if (containsValues(payload.getServiceDelivery().getStopMonitoringDeliveries())) {
-
+            // stop visits
             List<MonitoredStopVisit> monitoredStopVisits = payload.getServiceDelivery()
                     .getStopMonitoringDeliveries().get(0)
                     .getMonitoredStopVisits();
 
-            List<List> etList = splitList(monitoredStopVisits, maximumSizePerDelivery);
+            if (!monitoredStopVisits.isEmpty()) {
+                List<List> etList = splitList(monitoredStopVisits, maximumSizePerDelivery);
 
-            for (List<MonitoredStopVisit> list : etList) {
-                siriList.add(siriObjectFactory.createSMServiceDelivery(list));
+                for (List<MonitoredStopVisit> list : etList) {
+                    siriList.add(siriObjectFactory.createSMServiceDelivery(list));
+                }
             }
+
+            // cancellations
+            List<MonitoredStopVisitCancellation> cancellations = payload.getServiceDelivery()
+                    .getStopMonitoringDeliveries().get(0)
+                    .getMonitoredStopVisitCancellations();
+
+            if (!cancellations.isEmpty()) {
+                List<List> cancellationList = splitList(cancellations, maximumSizePerDelivery);
+                for (List<MonitoredStopVisit> list : cancellationList) {
+                    siriList.add(siriObjectFactory.createSMServiceDelivery(list));
+                }
+            }
+
         } else if (containsValues(payload.getServiceDelivery().getGeneralMessageDeliveries())) {
 
             List<GeneralMessage> generalMsgList = payload.getServiceDelivery()
@@ -740,6 +755,8 @@ public class SiriHelper {
         //SM-deliveries
         List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = siri.getServiceDelivery().getStopMonitoringDeliveries();
         for (StopMonitoringDeliveryStructure delivery : stopMonitoringDeliveries) {
+
+            // Stop visits
             List<MonitoredStopVisit> monitoredStopVisits = delivery.getMonitoredStopVisits();
             List<MonitoredStopVisit> filteredStopVisits = new ArrayList<>();
             for (MonitoredStopVisit monitoredStopVisit : monitoredStopVisits) {
@@ -747,12 +764,29 @@ public class SiriHelper {
                     filteredStopVisits.add(monitoredStopVisit);
                 }
             }
-            if (!monitoredStopVisits.isEmpty()) {
+
+            // Cancellations
+            List<MonitoredStopVisitCancellation> filteredCancellations = new ArrayList<>();
+            List<MonitoredStopVisitCancellation> cancellations = delivery.getMonitoredStopVisitCancellations();
+            for (MonitoredStopVisitCancellation cancellation : cancellations) {
+                if (monitoringRef.contains(cancellation.getMonitoringRef().getValue())) {
+                    filteredCancellations.add(cancellation);
+                }
+            }
+
+            if (!filteredStopVisits.isEmpty() || !filteredCancellations.isEmpty()) {
                 StopMonitoringDeliveryStructure monitoringDelStruct = new StopMonitoringDeliveryStructure();
                 monitoringDelStruct.setResponseTimestamp(delivery.getResponseTimestamp());
                 monitoringDelStruct.setVersion(delivery.getVersion());
 
-                monitoringDelStruct.getMonitoredStopVisits().addAll(filteredStopVisits);
+                if (!filteredStopVisits.isEmpty()) {
+                    monitoringDelStruct.getMonitoredStopVisits().addAll(filteredStopVisits);
+                }
+
+                if (!filteredCancellations.isEmpty()) {
+                    monitoringDelStruct.getMonitoredStopVisitCancellations().addAll(filteredCancellations);
+                }
+
                 results.add(monitoringDelStruct);
             }
         }

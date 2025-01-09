@@ -12,10 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockserver.integration.ClientAndServer;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri21.MonitoredCallStructure;
-import uk.org.siri.siri21.MonitoredStopVisit;
-import uk.org.siri.siri21.MonitoredVehicleJourneyStructure;
-import uk.org.siri.siri21.MonitoringRefStructure;
+import uk.org.siri.siri21.*;
 
 import javax.xml.bind.JAXBException;
 import java.time.ZonedDateTime;
@@ -92,6 +89,40 @@ public class SMsubscriptionTest extends SpringBootBaseTest {
     }
 
     @Test
+    public void SM_checking_that_cancellations_are_sent_to_customer() throws JAXBException, InterruptedException {
+
+        mockServer.when(
+                request()
+                        .withMethod("POST")
+                        .withPath("/incomingSiri")
+        ).respond(
+                response()
+                        .withStatusCode(200)
+                        .withBody("{\"message\":\"success\"}")
+        );
+
+
+        OutboundSubscriptionSetup outboundSubscription = createOutboundSMSubscription(false, STOP_REF, CHANGE_BEFORE_UPDATE);
+        serverSubscriptionManager.addSubscription(outboundSubscription);
+        List<MonitoredStopVisitCancellation> cancellationToIngest = new ArrayList<>();
+
+        // Creating a MonitoringVisit with a high delay (60 s) between aimedDeparture and expectedDeparture
+        MonitoredStopVisitCancellation cancellation = createStopVisitCancellation(STOP_REF);
+        cancellationToIngest.add(cancellation);
+        stopMonitoringInbound.cancelStopVisits("DAT1", cancellationToIngest);
+
+
+        //Attente nécessaire car le post est traité par un thread
+        Thread.sleep(5000);
+
+        // Récupérer et tracer les requêtes reçues
+        int nbOfReceivedRequests = TestUtils.printReceivedRequests(mockServer);
+
+        // we are expecting 1 because the high delay (60s) is higher than changeBeforeUpdate (30s)
+        assertEquals(1, nbOfReceivedRequests);
+    }
+
+    @Test
     public void SM_check_that_no_delay_SM_is_transmitted_with_changeBeforeUpdate_equal_to_0() throws JAXBException, InterruptedException {
 
         mockServer.when(
@@ -143,6 +174,16 @@ public class SMsubscriptionTest extends SpringBootBaseTest {
         monitoredVehicleJourney.setMonitoredCall(monitoredCallStructure);
         stopVisit.setMonitoredVehicleJourney(monitoredVehicleJourney);
         return stopVisit;
+    }
+
+    private MonitoredStopVisitCancellation createStopVisitCancellation(String stopId) {
+
+        MonitoredStopVisitCancellation cancellation = new MonitoredStopVisitCancellation();
+        MonitoringRefStructure monitoringRefStructure = new MonitoringRefStructure();
+        monitoringRefStructure.setValue(stopId);
+        cancellation.setMonitoringRef(monitoringRefStructure);
+        cancellation.setRecordedAtTime(ZonedDateTime.now());
+        return cancellation;
     }
 
 
