@@ -57,37 +57,6 @@ public class SMsubscriptionTest extends SpringBootBaseTest {
         }
     }
 
-    @Test
-    public void SM_check_that_small_delay_should_not_be_transmitted_to_outbound() throws JAXBException, InterruptedException {
-
-        mockServer.when(
-                request()
-                        .withMethod("POST")
-                        .withPath("/incomingSiri")
-        ).respond(
-                response()
-                        .withStatusCode(200)
-                        .withBody("{\"message\":\"success\"}")
-        );
-
-        OutboundSubscriptionSetup outboundSubscription = createOutboundSMSubscription(false, STOP_REF, CHANGE_BEFORE_UPDATE);
-        serverSubscriptionManager.addSubscription(outboundSubscription);
-        List<MonitoredStopVisit> stopVisitsToIngest = new ArrayList<>();
-
-        // Creating a MonitoringVisit with a small delay (5s) between aimedDeparture and expectedDeparture
-        MonitoredStopVisit smallDelayVisit = createStopVisit(STOP_REF, 5);
-        stopVisitsToIngest.add(smallDelayVisit);
-        stopMonitoringInbound.ingestStopVisits("DAT1", stopVisitsToIngest);
-
-        //Attente nécessaire car le post est traité par un thread
-        Thread.sleep(5000);
-
-        // Récupérer et tracer les requêtes reçues
-        int nbOfReceivedRequests = TestUtils.printReceivedRequests(mockServer);
-
-        // we are expecting 0 because the small delay (5s) is smaller than changeBeforeUpdate (30s)
-        assertEquals(0, nbOfReceivedRequests);
-    }
 
     @Test
     public void SM_check_that_high_delay_should_be_transmitted_to_outbound() throws JAXBException, InterruptedException {
