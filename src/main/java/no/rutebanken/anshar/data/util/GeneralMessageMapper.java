@@ -5,12 +5,12 @@ import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Message;
 import org.apache.commons.lang.StringUtils;
 import org.jsoup.Jsoup;
-import org.springframework.util.CollectionUtils;
 import uk.org.siri.siri21.*;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -25,7 +25,6 @@ public class GeneralMessageMapper {
      * @return the created GeneralMessage
      */
     public static GeneralMessage mapToGeneralMessage(PtSituationElement situation) {
-
         GeneralMessage generalMessage = new GeneralMessage();
 
         generalMessage.setFormatRef("France");
@@ -57,51 +56,50 @@ public class GeneralMessageMapper {
         generalMessage.setContent(content);
     }
 
-    private static void mapAffects(Content content, PtSituationElement situation) {
-
+    public static void mapAffects(Content content, PtSituationElement situation) {
+        Set<String> groupOfLineRefs = new HashSet<>();
+        Set<String> lineRefs = new HashSet<>();
+        Set<String> stopPointRefs = new HashSet<>();
         if (situation.getAffects().getNetworks() != null) {
-
-
-            List<String> lineList = new ArrayList<>();
-            List<String> networkList = new ArrayList<>();
-
-            for (AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork : situation.getAffects().getNetworks().getAffectedNetworks()) {
-
+            for (var affectedNetwork : situation.getAffects().getNetworks().getAffectedNetworks()) {
                 if (affectedNetwork.getNetworkRef() != null) {
-                    networkList.add(affectedNetwork.getNetworkRef().getValue());
-
+                    groupOfLineRefs.add(affectedNetwork.getNetworkRef().getValue());
+                }
+                for (var affectedRoute : affectedNetwork.getSelectedRoutes()) {
+                    mapAffectedRoute(affectedRoute, stopPointRefs);
+                }
+                for (var affectedLine : affectedNetwork.getAffectedLines()) {
+                    if (affectedLine.getLineRef() != null) {
+                        lineRefs.add(affectedLine.getLineRef().getValue());
+                    }
+                    if (affectedLine.getRoutes() != null) {
+                        for (var affectedRoute : affectedLine.getRoutes().getAffectedRoutes()) {
+                            mapAffectedRoute(affectedRoute, stopPointRefs);
+                        }
+                    }
                 }
 
-                for (AffectedLineStructure affectedLine : affectedNetwork.getAffectedLines()) {
-                    lineList.add(affectedLine.getLineRef().getValue());
-                }
-
             }
-
-            if (!CollectionUtils.isEmpty(networkList)) {
-                content.setGroupOfLinesRefs(networkList);
-            }
-
-            if (!CollectionUtils.isEmpty(lineList)) {
-                content.setLineRefs(lineList);
-            }
-
         }
-
-
         if (situation.getAffects().getStopPoints() != null) {
-
-            List<String> stopPointList = new ArrayList<>();
-
-            for (AffectedStopPointStructure affectedStopPoint : situation.getAffects().getStopPoints().getAffectedStopPoints()) {
-                stopPointList.add(affectedStopPoint.getStopPointRef().getValue());
+            for (var affectedStopPoint : situation.getAffects().getStopPoints().getAffectedStopPoints()) {
+                stopPointRefs.add(affectedStopPoint.getStopPointRef().getValue());
             }
-
-            if (!CollectionUtils.isEmpty(stopPointList)) {
-                content.setStopPointRefs(stopPointList);
-            }
-
         }
+        content.setGroupOfLinesRefs(new ArrayList<>(groupOfLineRefs));
+        content.setLineRefs(new ArrayList<>(lineRefs));
+        content.setStopPointRefs(new ArrayList<>(stopPointRefs));
+    }
+
+    private static void mapAffectedRoute(AffectedRouteStructure affectedRoute, Set<String> stopPointRefs) {
+        if (affectedRoute.getStopPoints() == null) {
+            return;
+        }
+        stopPointRefs.addAll(affectedRoute.getStopPoints().getAffectedStopPointsAndLinkProjectionToNextStopPoints()
+                .stream()
+                .filter(e -> e instanceof AffectedStopPointStructure && ((AffectedStopPointStructure) e).getStopPointRef() != null)
+                .map(e -> ((AffectedStopPointStructure) e).getStopPointRef().getValue())
+                .collect(Collectors.toList()));
     }
 
     private static String getMsgText(PtSituationElement situation) {

@@ -1,0 +1,120 @@
+<Siri xmlns="http://www.siri.org.uk/siri"
+      version="2.1">
+    <ServiceDelivery>
+        <ResponseTimestamp>2024-11-27T14:33:33.000Z</ResponseTimestamp>
+        <ProducerRef>Hove</ProducerRef>
+        <MoreData>false</MoreData>
+        <SituationExchangeDelivery>
+            <ResponseTimestamp>2024-11-27T14:33:33.000Z</ResponseTimestamp>
+            <DefaultLanguage>fr</DefaultLanguage>
+            <Situations>
+                <PtSituationElement>
+                    <SituationNumber>bf80862a-92e0-11ef-8a59-0a58a9feac02</SituationNumber>
+                    <Progress>open</Progress>
+                    <CreationTime>2024-10-25T14:52:25Z</CreationTime>
+                    <VersionedAtTime>2024-10-25T14:52:25Z</VersionedAtTime>
+                    <Version>1</Version>
+                    <Source>
+                        <SourceType>other</SourceType>
+                        <SourceName>SEMITAN</SourceName>
+                    </Source>
+                    <ParticipantRef>Traffic Report API (Chaos)</ParticipantRef>
+                    <Planned>true</Planned>
+                    <PublicationWindow>
+                        <StartTime>2024-10-25T14:50:00Z</StartTime>
+                        <EndTime>2024-11-29T18:50:00Z</EndTime>
+                    </PublicationWindow>
+                    <Severity>verySevere</Severity>
+                    <EquipmentReason>constructionWork</EquipmentReason>
+                    <Summary/>
+                    <Description>Travaux prévus</Description>
+                    <Description>Ligne C2 et 28 impactées</Description>
+                    <ValidityPeriod>
+                        <StartTime>2024-10-28T03:50:00Z</StartTime>
+                        <EndTime>2024-11-29T18:50:00Z</EndTime>
+                    </ValidityPeriod>
+                    <Affects>
+                        <Networks>
+                            <AffectedNetwork>
+                                <AffectedLine>
+                                    <LineRef>NAOLIBORG:Line:C2:LOC</LineRef>
+                                </AffectedLine>
+                                <AffectedLine>
+                                    <LineRef>NAOLIBORG:Line:28:LOC</LineRef>
+                                    <Routes>
+                                        <AffectedRoute>
+                                            <RouteRef>NAOLIBORG:Route:28_B416A77EB439FA0176483127F3E47C15:LOC</RouteRef>
+                                            <StopPoints>
+                                                <AffectedStopPoint>
+                                                    <StopPointRef>FR_NAOLIB:Quay:297</StopPointRef>
+                                                </AffectedStopPoint>
+                                                <AffectedStopPoint>
+                                                    <StopPointRef>FR_NAOLIB:Quay:351</StopPointRef>
+                                                </AffectedStopPoint>
+                                            </StopPoints>
+                                        </AffectedRoute>
+                                        <AffectedRoute>
+                                            <RouteRef>NAOLIBORG:Route:28_4D2B9A3F62681CF8EDB5793609147D52:LOC</RouteRef>
+                                        </AffectedRoute>
+                                    </Routes>
+                                </AffectedLine>
+                            </AffectedNetwork>
+                        </Networks>
+                        <StopPoints>
+                            <AffectedStopPoint>
+                                <StopPointRef>FR_NAOLIB:Quay:111</StopPointRef>
+                            </AffectedStopPoint>
+                            <AffectedStopPoint>
+                                <StopPointRef>FR_NAOLIB:Quay:112</StopPointRef>
+                            </AffectedStopPoint>
+                        </StopPoints>
+                    </Affects>
+                    <Extensions>
+                        <Alerts>
+                            <SendNotifications>true</SendNotifications>
+                            <NotificationsDate>2024-10-25T14:52:25Z</NotificationsDate>
+                            <AlertMessages>
+                                <AlertMessage>
+                                    <ChannelName>SIC à quai</ChannelName>
+                                    <ChannelType>notification</ChannelType>
+                                    <MessageUsage>start</MessageUsage>
+                                    <SendNotification>true</SendNotification>
+                                    <NotificationDate>2024-10-25T14:52:25Z</NotificationDate>
+                                    <MessageText>Travaux C2 déviée entre
+                                        Talensac et Place du Cirque
+                                    </MessageText>
+                                </AlertMessage>
+                                <AlertMessage>
+                                    <ChannelName>SIC à quai</ChannelName>
+                                    <ChannelType>beacon</ChannelType>
+                                    <MessageUsage>start</MessageUsage>
+                                    <SendNotification>true</SendNotification>
+                                    <NotificationDate>2024-10-25T14:52:25Z</NotificationDate>
+                                    <MessageText>Travaux C2 déviée entre
+                                        Talensac et Place du Cirque
+                                    </MessageText>
+                                </AlertMessage>
+                                <AlertMessage>
+                                    <ChannelName>BIV Decaux</ChannelName>
+                                    <ChannelType>notification</ChannelType>
+                                    <MessageUsage>start</MessageUsage>
+                                    <SendNotification>true</SendNotification>
+                                    <NotificationDate>2024-10-25T14:52:25Z</NotificationDate>
+                                    <MessageText>Travaux C2 déviée entre Talensac et Place du Cirque</MessageText>
+                                </AlertMessage>
+                                <AlertMessage>
+                                    <ChannelName>SIC embarqué</ChannelName>
+                                    <ChannelType>beacon</ChannelType>
+                                    <MessageUsage>start</MessageUsage>
+                                    <SendNotification>true</SendNotification>
+                                    <NotificationDate>2024-10-25T14:52:25Z</NotificationDate>
+                                    <MessageText>Travaux C2 déviée entre Talensac et Place du Cirque</MessageText>
+                                </AlertMessage>
+                            </AlertMessages>
+                        </Alerts>
+                    </Extensions>
+                </PtSituationElement>
+            </Situations>
+        </SituationExchangeDelivery>
+    </ServiceDelivery>
+</Siri>
