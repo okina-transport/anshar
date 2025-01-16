@@ -195,6 +195,7 @@ public class ExternalIdsService extends BaseRouteBuilder {
             Iterable<CSVRecord> records = CSVUtils.getRecords(fileToRead);
 
             Map<String, String> currentStopAltStopCache;
+            boolean firstRecord = true;
 
             if (stopsCache.containsKey(datasetId)) {
                 currentStopAltStopCache = stopsCache.get(datasetId);
@@ -208,6 +209,11 @@ public class ExternalIdsService extends BaseRouteBuilder {
                 String stopAltId = record.get("stop_alt_id");
                 stopId = applyTransformation(stopId, idParametersOpt);
                 currentStopAltStopCache.put(stopId, stopAltId);
+
+                if (firstRecord) {
+                    logger.info("stop cache sample - alt : " + stopAltId + ", stopId:" + stopId);
+                    firstRecord = false;
+                }
             }
             logger.info("Feeding cache with stops_mapping file: " + fileToRead.getAbsolutePath() + " completed");
 
@@ -233,7 +239,7 @@ public class ExternalIdsService extends BaseRouteBuilder {
      * @param datasetId  the datasetId
      */
     public void feedCacheLineWithFile(File fileToRead, String datasetId) {
-
+        boolean firstRecord = true;
 
         Optional<IdProcessingParameters> idParametersOpt = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.LINE);
 
@@ -264,6 +270,12 @@ public class ExternalIdsService extends BaseRouteBuilder {
                     lineIdList = new ArrayList<>();
                 }
                 lineIdList.add(lineId);
+                if (firstRecord) {
+                    for (String line : lineIdList) {
+                        logger.info("line cache sample - alt : " + lineAltId + ", lineId:" + line);
+                    }
+                    firstRecord = false;
+                }
                 currentLineAltLineCache.put(lineAltId, lineIdList);
             }
             logger.info("Feeding cache with lines_mapping file: " + fileToRead.getAbsolutePath() + " completed");
