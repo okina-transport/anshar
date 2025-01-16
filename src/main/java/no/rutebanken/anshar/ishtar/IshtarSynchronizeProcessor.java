@@ -10,6 +10,7 @@ import no.rutebanken.anshar.ishtar.model.GtfsRTApiDto;
 import no.rutebanken.anshar.ishtar.model.IdProcessingParameterDto;
 import no.rutebanken.anshar.ishtar.model.SiriApiDto;
 import no.rutebanken.anshar.ishtar.model.SubscriptionDto;
+import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
 import no.rutebanken.anshar.subscription.DiscoverySubscriptionCreator;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
@@ -17,6 +18,7 @@ import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.BooleanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -49,6 +51,9 @@ public class IshtarSynchronizeProcessor implements Processor {
     private final IdProcessingParameterDtoConverter idProcessingParameterDtoConverter;
     private final SubscriptionDtoToDiscoverySubscriptionConverter toDiscoverySubscriptionConverter;
     private final SubscriptionDtoToSubscriptionSetupConverter toSubscriptionSetupConverter;
+
+    @Autowired
+    ExternalIdsService externalIdsService;
 
     public IshtarSynchronizeProcessor(SubscriptionConfig subscriptionConfig,
                                       DiscoverySubscriptionCreator discoverySubscriptionCreator,
@@ -95,7 +100,7 @@ public class IshtarSynchronizeProcessor implements Processor {
             subscriptionConfig.mergeIdProcessingParams(ipp);
             log.info("After merge {} ID ProcessingParameter(s) in cache",
                     subscriptionConfig.getIdProcessingParameters().size());
-
+            externalIdsService.downloadFilesAndRefreshCache();
             log.info("--> ISHTAR : get Subscription(s)");
             List<SubscriptionDto> subs =
                     ListUtils.emptyIfNull(webClient.get().uri(GET_ALL_SUBSCRIPTIONS_URI).retrieve().bodyToFlux(SubscriptionDto.class).collectList().block());

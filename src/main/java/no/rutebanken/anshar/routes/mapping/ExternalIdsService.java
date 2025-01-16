@@ -85,7 +85,7 @@ public class ExternalIdsService extends BaseRouteBuilder {
     /**
      * Download and refresh the cache containing data from mapping stops and lines files
      */
-    private void downloadFilesAndRefreshCache() {
+    public void downloadFilesAndRefreshCache() {
         Flux<String> stopsMappingUrls = Flux.fromArray(urlsStopsMappingFile.split(","));
         Flux<String> linesMappingUrls = Flux.fromArray(urlsLinesMappingFile.split(","));
 
@@ -95,6 +95,9 @@ public class ExternalIdsService extends BaseRouteBuilder {
                 .then();
 
         downloadFilesMono.block();
+
+        stopsCache.clear();
+        linesCache.clear();
 
         updateMappingExternalIdsCache();
     }
