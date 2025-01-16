@@ -22,6 +22,7 @@ import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
@@ -65,6 +66,9 @@ public class SiriLiteTest extends BaseHttpTest {
     @Autowired
     private DiscoveryCache discoveryCache;
 
+    @Autowired
+    private SubscriptionConfig subscriptionConfig;
+
 
     private String lineRef1 = "TEST:Line:1";
     private String lineRef2 = "TEST:Line:2";
@@ -94,6 +98,7 @@ public class SiriLiteTest extends BaseHttpTest {
         situations.clearAll();
         generalMessages.clearAll();
         facilityMonitoring.clearAll();
+        subscriptionConfig.getIdProcessingParameters().clear();
 
     }
 

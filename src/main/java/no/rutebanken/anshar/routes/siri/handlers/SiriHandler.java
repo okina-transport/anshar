@@ -20,6 +20,7 @@ import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.*;
+import no.rutebanken.anshar.data.util.CustomStringUtils;
 import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.health.HealthManager;
@@ -302,6 +303,10 @@ public class SiriHandler {
 
                 Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParams(datasetId, lineRefOriginalList, ObjectType.LINE);
                 Set<String> revertedLineRefs = IDUtils.revertMonitoringRefs(lineRefOriginalList, idMap.get(ObjectType.LINE));
+
+                revertedLineRefs = revertedLineRefs.stream()
+                        .map(CustomStringUtils::revertChouetteIdTransformation)
+                        .collect(Collectors.toSet());
 
                 valueAdapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.VEHICLE_MONITORING, outboundIdMappingPolicy, idMap);
                 Siri siri = vehicleActivities.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize, revertedLineRefs, vehicleRefList);

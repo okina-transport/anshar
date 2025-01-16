@@ -18,7 +18,6 @@ package no.rutebanken.anshar.routes.siri.transformer.impl;
 
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
-import no.rutebanken.anshar.data.util.CustomStringUtils;
 import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
@@ -123,7 +122,6 @@ public class OutboundIdAdapter extends ValueAdapter {
             externalIdsService = ApplicationContextHolder.getContext().getBean(ExternalIdsService.class);
         }
 
-        text = CustomStringUtils.revertChouetteIdTransformation(text);
         return StringUtils.isEmpty(text) || externalIdsService.getAltId(datasetId, text, objectType).isEmpty() ? text : externalIdsService.getAltId(datasetId, text, objectType).get();
     }
 

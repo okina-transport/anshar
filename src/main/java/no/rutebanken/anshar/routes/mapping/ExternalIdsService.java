@@ -206,7 +206,7 @@ public class ExternalIdsService extends BaseRouteBuilder {
             for (CSVRecord record : records) {
                 String stopId = record.get("stop_id");
                 String stopAltId = record.get("stop_alt_id");
-                stopId = removePrefixAndSuffix(stopId, idParametersOpt);
+                stopId = applyTransformation(stopId, idParametersOpt);
                 currentStopAltStopCache.put(stopId, stopAltId);
             }
             logger.info("Feeding cache with stops_mapping file: " + fileToRead.getAbsolutePath() + " completed");
@@ -216,35 +216,14 @@ public class ExternalIdsService extends BaseRouteBuilder {
         }
     }
 
-    private String removePrefixAndSuffix(String text, Optional<IdProcessingParameters> idParametersOpt) {
+    private String applyTransformation(String text, Optional<IdProcessingParameters> idParametersOpt) {
         if (idParametersOpt.isEmpty() || text == null) {
             return text;
         }
 
         IdProcessingParameters parameters = idParametersOpt.get();
-        String inputPrefixToRemove = parameters.getInputPrefixToRemove();
-        String inputSuffixToRemove = parameters.getInputSuffixToRemove();
-        String outputPrefixToAdd = parameters.getOutputPrefixToAdd();
-        String outputSuffixToAdd = parameters.getOutputSuffixToAdd();
+        return parameters.applyTransformationToString(text);
 
-
-        if (inputPrefixToRemove != null && text.startsWith(inputPrefixToRemove)) {
-            text = text.substring(inputPrefixToRemove.length());
-        }
-
-        if (inputSuffixToRemove != null && text.endsWith(inputSuffixToRemove)) {
-            text = text.substring(0, text.length() - inputSuffixToRemove.length());
-        }
-
-        if (outputPrefixToAdd != null && !text.startsWith(outputPrefixToAdd)) {
-            text = outputPrefixToAdd + text;
-        }
-
-        if (outputSuffixToAdd != null && !text.endsWith(outputSuffixToAdd)) {
-            text = text + outputSuffixToAdd;
-        }
-
-        return text;
     }
 
     /**
@@ -277,7 +256,7 @@ public class ExternalIdsService extends BaseRouteBuilder {
 
 
                 String lineAltId = record.isSet("line_alt_id") ? record.get("line_alt_id") : record.get("route_alt_id Titan");
-                lineId = removePrefixAndSuffix(lineId, idParametersOpt);
+                lineId = applyTransformation(lineId, idParametersOpt);
                 List<String> lineIdList;
                 if (currentLineAltLineCache.containsKey(lineAltId)) {
                     lineIdList = currentLineAltLineCache.get(lineAltId);
