@@ -160,7 +160,7 @@ public class ServerSubscriptionManager {
     @Value("${anshar.push.updated.thread.pool:10}")
     private int pushUpdatedThreadPool;
 
-    private int pushIteration = 0;
+    private final int pushIteration = 0;
 
     @Value("${anshar.outbound.subscription.grace.period:30000}")
     private long outboundSubscriptionGracePeriod = 30000;
@@ -1242,11 +1242,11 @@ public class ServerSubscriptionManager {
             siriSmTopicProducer.asyncRequestBodyAndHeader(siriSmTopicProducer.getDefaultEndpoint(), delivery, CODESPACE_ID_KAFKA_HEADER_NAME, datasetId);
         }
 
-        if (sendActivemqKafka) {
-            Map<String, Object> headers = new HashMap<>();
-            headers.put(DATASET_ID_HEADER_NAME, datasetId);
-            sendSMToKafka.asyncRequestBodyAndHeaders(sendSMToKafka.getDefaultEndpoint(), delivery, headers);
-        }
+//        if (sendActivemqKafka) {
+//            Map<String, Object> headers = new HashMap<>();
+//            headers.put(DATASET_ID_HEADER_NAME, datasetId);
+//            sendSMToKafka.asyncRequestBodyAndHeaders(sendSMToKafka.getDefaultEndpoint(), delivery, headers);
+//        }
 
         Set<String> monitoredRefs = SiriHelper.extractMonitoringRefs(addedOrUpdated);
         List<OutboundSubscriptionSetup> impactedOutboundSubscriptions = getSubscriptionsRelatedToMonitoringRefs(datasetId, monitoredRefs);
