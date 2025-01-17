@@ -345,7 +345,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
                 timingTracer.mark("keepByProgressStatus");
                 timingTracer.mark("getExpiration");
 
-                if (WorkflowStatusEnumeration.CLOSED.equals(situation.getProgress())) {
+                if (WorkflowStatusEnumeration.CLOSED.equals(situation.getProgress()) && situationElements.containsKey(key)) {
                     // Closed situations must be displayed until sx grace period and then disappear
                     expiration = configuration.getSxGraceperiodMinutes() * 60 * 1000;
                 }
