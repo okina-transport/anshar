@@ -318,6 +318,8 @@ public class Situations extends SiriRepository<PtSituationElement> {
                 checksumCache.remove(key);
             }
 
+            defineAffectedPoints(situation, datasetId);
+
             String currentChecksum = null;
             try {
                 currentChecksum = getChecksum(situation);
@@ -337,7 +339,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
                 updated = true;
             }
             timingTracer.mark("compareChecksum");
-            updated = defineAffectedPoints(situation, datasetId) || updated;
+
 
             if (keepByProgressStatus(situation) && updated) {
                 timingTracer.mark("keepByProgressStatus");
@@ -413,11 +415,11 @@ public class Situations extends SiriRepository<PtSituationElement> {
         }
     }
 
-    private boolean defineAffectedPoints(PtSituationElement situation, String datasetId) {
+    private void defineAffectedPoints(PtSituationElement situation, String datasetId) {
 
         if (situation.getAffects() == null || situation.getAffects().getStopPoints() == null
                 || situation.getAffects().getStopPoints().getAffectedStopPoints() == null) {
-            return false;
+            return;
         }
         List<AffectedStopPointStructure> refId = situation.getAffects().getStopPoints().getAffectedStopPoints();
         List<AffectedStopPointStructure> refIdStopPlace = refId.stream()
@@ -439,9 +441,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
             AffectsScopeStructure.StopPlaces newStopPlaces = new AffectsScopeStructure.StopPlaces();
             newStopPlaces.getAffectedStopPlaces().addAll(affectedStopPlaceStructures);
             situation.getAffects().setStopPlaces(newStopPlaces);
-            return true;
         }
-        return false;
     }
 
 
