@@ -66,7 +66,6 @@ public class Constants {
 
     public final static String SIRI_ET_KAFKA_QUEUE = "siri.estimated.timetable.kafka?timeToLive=600000";
     public final static String SIRI_SM_KAFKA_QUEUE = "siri.stop.monitoring.kafka?timeToLive=600000";
-    public final static String SIRI_SX_KAFKA_QUEUE = "siri.situation.exchange.kafka?timeToLive=600000";
     public final static String SIRI_VM_KAFKA_QUEUE = "siri.vehicle.monitoring.kafka?timeToLive=600000";
     public final static String SIRI_GM_KAFKA_QUEUE = "siri.general.message.kafka?timeToLive=600000";
     public final static String SIRI_FM_KAFKA_QUEUE = "siri.facility.monitoring.kafka?timeToLive=600000";
