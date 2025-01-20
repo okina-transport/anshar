@@ -37,6 +37,7 @@ import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+
 public class SituationsTest extends SpringBootBaseTest {
 
     @Autowired
@@ -61,6 +62,7 @@ public class SituationsTest extends SpringBootBaseTest {
 
     @Test
     public void testClosedSituation() throws InterruptedException {
+        configuration.setSxGraceperiodMinutes(1);
 
         ZonedDateTime startTime = ZonedDateTime.now().minusDays(1);
         ZonedDateTime endTime = ZonedDateTime.now().plusHours(4);
