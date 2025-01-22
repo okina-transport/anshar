@@ -36,5 +36,6 @@ public class SubscriptionDto {
     private List<UrlMapDto> urlMaps;
     private List<CustomHeaderDto> customHeaders;
     private List<IdMappingPrefixDto> idMappingPrefixes;
+    private Boolean validated;
 
 }

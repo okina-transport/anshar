@@ -10,5 +10,6 @@ public class GtfsRTApi {
     private String url;
     private GTFSRTType type;
     private Boolean active;
-    
+    private Boolean validated;
+
 }

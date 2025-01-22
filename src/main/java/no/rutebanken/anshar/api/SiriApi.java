@@ -9,5 +9,6 @@ public class SiriApi {
     private String type;
     private String url;
     private Boolean active;
+    private Boolean validated;
 
 }
