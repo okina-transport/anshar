@@ -20,7 +20,7 @@ public class SendSiriOutRouteBuilder extends RouteBuilder {
     @Value("${siri.sm.kafka.queue}")
     private String siriSMKafkaQueue;
 
-    @Value("${anshar.send.sx.to.kafka.uri:kafka:topic:{{kafka.topic.sx}}?brokers{{kafka.brokers}}&clientId={{kafka.client-id.anshar}}}")
+    @Value("${anshar.send.sx.to.kafka.uri:kafka:{{kafka.topic.sx}}?brokers{{kafka.brokers}}&clientId={{kafka.client-id.anshar}}}")
     private String sxToKafkaUri;
 
     @Value("${anshar.env}")
