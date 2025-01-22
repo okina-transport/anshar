@@ -3,14 +3,8 @@ package no.rutebanken.anshar.gtfsrt.readers;
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.component.kafka.KafkaConstants;
-import org.apache.kafka.common.header.internals.RecordHeader;
-import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
-import java.nio.charset.StandardCharsets;
-import java.util.List;
 
 import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
 
@@ -67,9 +61,7 @@ public class SendSiriOutRouteBuilder extends RouteBuilder {
 
         from("direct:send.sx.to.kafka")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
-                .setHeader(KafkaConstants.HEADERS,
-                        constant(new RecordHeaders(List.of(new RecordHeader(ENV_HEADER_NAME,
-                                env.getBytes(StandardCharsets.UTF_8))))))
+                .setHeader(ENV_HEADER_NAME, constant(env))
                 .setExchangePattern(ExchangePattern.InOnly)
                 .to(sxToKafkaUri)
         ;
