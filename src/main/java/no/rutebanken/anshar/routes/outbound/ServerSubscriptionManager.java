@@ -104,16 +104,16 @@ public class ServerSubscriptionManager {
     @Value("${external.sx.consumer.enabled}")
     private boolean pushToExternalSxConsumer;
 
-    @Produce(uri = "direct:send.to.pubsub.topic.estimated_timetable")
+    @Produce("direct:send.to.pubsub.topic.estimated_timetable")
     protected ProducerTemplate siriEtTopicProducer;
 
-    @Produce(uri = "direct:send.to.pubsub.topic.vehicle_monitoring")
+    @Produce("direct:send.to.pubsub.topic.vehicle_monitoring")
     protected ProducerTemplate siriVmTopicProducer;
 
-    @Produce(uri = "direct:send.to.pubsub.topic.situation_exchange")
+    @Produce("direct:send.to.pubsub.topic.situation_exchange")
     protected ProducerTemplate siriSxTopicProducer;
 
-    @Produce(uri = "direct:send.to.pubsub.topic.stop_monitoring")
+    @Produce("direct:send.to.pubsub.topic.stop_monitoring")
     protected ProducerTemplate siriSmTopicProducer;
 
     @Autowired
@@ -122,28 +122,28 @@ public class ServerSubscriptionManager {
     @Autowired
     private SiriHelper siriHelper;
 
-    @Value("${send.activemq.kafka}")
+    @Value("${send.kafka}")
     private boolean sendActivemqKafka;
 
-    @Produce(uri = "direct:send.sm.to.kafka")
+    @Produce("direct:send.sm.to.kafka")
     protected ProducerTemplate sendSMToKafka;
 
-    @Produce(uri = "direct:send.sx.to.kafka")
+    @Produce("direct:send.sx.to.kafka")
     protected ProducerTemplate sendSXToKafka;
 
-    @Produce(uri = "direct:send.sx.to.external.consumer")
+    @Produce("direct:send.sx.to.external.consumer")
     protected ProducerTemplate sendSXToExternalConsumer;
 
-    @Produce(uri = "direct:send.vm.to.kafka")
+    @Produce("direct:send.vm.to.kafka")
     protected ProducerTemplate sendVMToKafka;
 
-    @Produce(uri = "direct:send.et.to.kafka")
+    @Produce("direct:send.et.to.kafka")
     protected ProducerTemplate sendETToKafka;
 
-    @Produce(uri = "direct:send.gm.to.kafka")
+    @Produce("direct:send.gm.to.kafka")
     protected ProducerTemplate sendGMToKafka;
 
-    @Produce(uri = "direct:send.fm.to.kafka")
+    @Produce("direct:send.fm.to.kafka")
     protected ProducerTemplate sendFMToKafka;
 
     @Value("${outbound.change.before.update.cache.hours:5}")

@@ -9,9 +9,10 @@ import org.springframework.stereotype.Service;
 import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
 
 @Service
-public class SendToActiveMQRouteBuilder extends RouteBuilder {
+public class SendSiriOutRouteBuilder extends RouteBuilder {
 
     private static final String ACTIVEMQ_PREFIX = "activemq:queue:";
+    private static final String ENV_HEADER_NAME = "env";
 
     @Value("${external.sx.consumer.queue}")
     private String externalSxQueue;
@@ -19,6 +20,11 @@ public class SendToActiveMQRouteBuilder extends RouteBuilder {
     @Value("${siri.sm.kafka.queue}")
     private String siriSMKafkaQueue;
 
+    @Value("${anshar.send.sx.to.kafka.uri:kafka:topic:{{kafka.topic.sx}}?brokers{{kafka.brokers}}&clientId={{kafka.client-id.anshar}}}")
+    private String sxToKafkaUri;
+
+    @Value("${anshar.env}")
+    private String env;
 
     @Override
     public void configure() {
@@ -28,7 +34,6 @@ public class SendToActiveMQRouteBuilder extends RouteBuilder {
                 .setExchangePattern(ExchangePattern.InOnly)
                 .to(ACTIVEMQ_PREFIX + GTFSRT_SM_QUEUE)
         ;
-
 
         from("direct:send.sx.to.realtime.server")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
@@ -48,18 +53,17 @@ public class SendToActiveMQRouteBuilder extends RouteBuilder {
                 .to(ACTIVEMQ_PREFIX + GTFSRT_ET_QUEUE)
         ;
 
-
         from("direct:send.sm.to.kafka")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
                 .setExchangePattern(ExchangePattern.InOnly)
                 .to(siriSMKafkaQueue)
         ;
 
-
         from("direct:send.sx.to.kafka")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .setHeader(ENV_HEADER_NAME, constant(env))
                 .setExchangePattern(ExchangePattern.InOnly)
-                .to(ACTIVEMQ_PREFIX + SIRI_SX_KAFKA_QUEUE)
+                .to(sxToKafkaUri)
         ;
 
         from("direct:send.sx.to.external.consumer")
@@ -67,7 +71,6 @@ public class SendToActiveMQRouteBuilder extends RouteBuilder {
                 .setExchangePattern(ExchangePattern.InOnly)
                 .to(externalSxQueue)
         ;
-
 
         from("direct:send.vm.to.kafka")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
