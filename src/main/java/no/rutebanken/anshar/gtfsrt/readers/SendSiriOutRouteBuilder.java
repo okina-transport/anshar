@@ -2,9 +2,12 @@ package no.rutebanken.anshar.gtfsrt.readers;
 
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
 import org.apache.camel.ExchangePattern;
+import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
+import java.nio.charset.StandardCharsets;
 
 import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
 
@@ -60,8 +63,9 @@ public class SendSiriOutRouteBuilder extends RouteBuilder {
         ;
 
         from("direct:send.sx.to.kafka")
+                .log(LoggingLevel.INFO, "Send SX to KAFKA")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
-                .setHeader(ENV_HEADER_NAME, constant(env))
+                .setHeader(ENV_HEADER_NAME, constant(env.getBytes(StandardCharsets.UTF_8)))
                 .setExchangePattern(ExchangePattern.InOnly)
                 .to(sxToKafkaUri)
         ;
