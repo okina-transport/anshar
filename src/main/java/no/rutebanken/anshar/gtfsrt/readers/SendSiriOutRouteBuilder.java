@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
 
 @Service
-public class SendToActiveMQRouteBuilder extends RouteBuilder {
+public class SendSiriOutRouteBuilder extends RouteBuilder {
 
     private static final String ACTIVEMQ_PREFIX = "activemq:queue:";
     private static final String ENV_HEADER_NAME = "env";
@@ -35,7 +35,6 @@ public class SendToActiveMQRouteBuilder extends RouteBuilder {
                 .to(ACTIVEMQ_PREFIX + GTFSRT_SM_QUEUE)
         ;
 
-
         from("direct:send.sx.to.realtime.server")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
                 .setExchangePattern(ExchangePattern.InOnly)
@@ -54,13 +53,11 @@ public class SendToActiveMQRouteBuilder extends RouteBuilder {
                 .to(ACTIVEMQ_PREFIX + GTFSRT_ET_QUEUE)
         ;
 
-
         from("direct:send.sm.to.kafka")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
                 .setExchangePattern(ExchangePattern.InOnly)
                 .to(siriSMKafkaQueue)
         ;
-
 
         from("direct:send.sx.to.kafka")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
@@ -74,7 +71,6 @@ public class SendToActiveMQRouteBuilder extends RouteBuilder {
                 .setExchangePattern(ExchangePattern.InOnly)
                 .to(externalSxQueue)
         ;
-
 
         from("direct:send.vm.to.kafka")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
