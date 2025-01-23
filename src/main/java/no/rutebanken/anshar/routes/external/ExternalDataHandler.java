@@ -328,9 +328,21 @@ public class ExternalDataHandler {
 
 
     private void checkAndCreateSMSubscription(Siri siri, String datasetId, String url) {
+        String subscriptionId = null;
+        if (siri.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits() != null
+                && !siri.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty()) {
+            subscriptionId = siri.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue();
+        }
 
-        String subscriptionId = siri.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue();
+        if (siri.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisitCancellations() != null
+                && !siri.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisitCancellations().isEmpty()) {
+            subscriptionId = siri.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisitCancellations().get(0).getMonitoringRef().getValue();
+        }
 
+        if (subscriptionId == null) {
+            logger.warn("No stop id found in delivery");
+            subscriptionId = "defaultAuth";
+        }
 
         if (!subscriptionManager.isStopMonitoringSubscriptionExisting(subscriptionId, datasetId)) {
 
