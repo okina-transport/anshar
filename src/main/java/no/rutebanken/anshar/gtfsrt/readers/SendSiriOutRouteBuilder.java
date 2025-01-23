@@ -63,7 +63,7 @@ public class SendSiriOutRouteBuilder extends RouteBuilder {
         ;
 
         from("direct:send.sx.to.kafka")
-                .log(LoggingLevel.INFO, "Send SX to KAFKA")
+                .log(LoggingLevel.INFO, "Send SX to " + sxToKafkaUri + " for env " + env)
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
                 .setHeader(ENV_HEADER_NAME, constant(env.getBytes(StandardCharsets.UTF_8)))
                 .setExchangePattern(ExchangePattern.InOnly)
