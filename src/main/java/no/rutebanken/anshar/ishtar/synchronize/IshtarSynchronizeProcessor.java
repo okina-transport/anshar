@@ -19,7 +19,6 @@ import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.BooleanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -52,21 +51,20 @@ public class IshtarSynchronizeProcessor implements Processor {
     private final IdProcessingParameterDtoConverter idProcessingParameterDtoConverter;
     private final SubscriptionDtoToDiscoverySubscriptionConverter toDiscoverySubscriptionConverter;
     private final SubscriptionDtoToSubscriptionSetupConverter toSubscriptionSetupConverter;
-
-    @Autowired
-    ExternalIdsService externalIdsService;
-
-
-    @Autowired
-    private TokenService tokenService;
+    private final ExternalIdsService externalIdsService;
+    private final TokenService tokenService;
 
     public IshtarSynchronizeProcessor(SubscriptionConfig subscriptionConfig,
                                       DiscoverySubscriptionCreator discoverySubscriptionCreator,
                                       @Value("${ishtar.server.url}") URL ishtarUrl,
-                                      SubscriptionDtoToSubscriptionSetupConverter toSubscriptionSetupConverter) {
+                                      SubscriptionDtoToSubscriptionSetupConverter toSubscriptionSetupConverter, ExternalIdsService externalIdsService, TokenService tokenService) {
         this.subscriptionConfig = subscriptionConfig;
         this.discoverySubscriptionCreator = discoverySubscriptionCreator;
-        this.webClient = WebClient.builder().baseUrl(ishtarUrl.toString()).defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE).build();
+        this.webClient = WebClient.builder()
+                .baseUrl(ishtarUrl.toString()).defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+                .build();
+        this.externalIdsService = externalIdsService;
+        this.tokenService = tokenService;
         this.gtfsRTApiDtoConverter = new GtfsRTApiDtoConverter();
         this.siriApiDtoConverter = new SiriApiDtoConverter();
         this.idProcessingParameterDtoConverter = new IdProcessingParameterDtoConverter();
@@ -104,7 +102,7 @@ public class IshtarSynchronizeProcessor implements Processor {
 
             if (validationMap.containsKey(false) && !validationMap.get(false).isEmpty()) {
                 for (SubscriptionSetup unValidatedApi : validationMap.get(false)) {
-                    log.info("Unvalidated Subscription : " + unValidatedApi.getDatasetId() + " - " + unValidatedApi.getSubscriptionId());
+                    log.info("Unvalidated Subscription : {} - {} ", unValidatedApi.getDatasetId(), unValidatedApi.getSubscriptionId());
                 }
             }
 
@@ -132,7 +130,7 @@ public class IshtarSynchronizeProcessor implements Processor {
 
             if (discoveryMap.containsKey(false) && !discoveryMap.get(false).isEmpty()) {
                 for (DiscoverySubscription unValidatedApi : discoveryMap.get(false)) {
-                    log.info("Unvalidated discovery subscription : " + unValidatedApi.getDatasetId() + " - " + unValidatedApi.getUrl());
+                    log.info("Unvalidated discovery subscription :  {} - {}", unValidatedApi.getDatasetId(),unValidatedApi.getUrl());
                 }
             }
 
@@ -188,7 +186,7 @@ public class IshtarSynchronizeProcessor implements Processor {
 
             if (validationMap.containsKey(false) && !validationMap.get(false).isEmpty()) {
                 for (SiriApi unValidatedApi : validationMap.get(false)) {
-                    log.info("Unvalidated Siri API : " + unValidatedApi.getDatasetId() + " - " + unValidatedApi.getUrl());
+                    log.info("Unvalidated Siri API :  {} - {}", unValidatedApi.getDatasetId(),unValidatedApi.getUrl());
                 }
             }
 
@@ -220,7 +218,7 @@ public class IshtarSynchronizeProcessor implements Processor {
 
             if (validationMap.containsKey(false) && !validationMap.get(false).isEmpty()) {
                 for (GtfsRTApi unValidatedApi : validationMap.get(false)) {
-                    log.info("Unvalidated API : " + unValidatedApi.getDatasetId() + " - " + unValidatedApi.getUrl());
+                    log.info("Unvalidated API :  {} - {}", unValidatedApi.getDatasetId(), unValidatedApi.getUrl());
                 }
             }
 

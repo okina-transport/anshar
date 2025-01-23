@@ -4,6 +4,7 @@ import com.google.transit.realtime.GtfsRealtime;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.gtfsrt.mappers.AlertMapper;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.SituationExchangeInbound;
+import no.rutebanken.anshar.gtfsrt.model.GtfsRtInboundSx;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
@@ -48,7 +49,14 @@ public class AlertReader extends AbstractSwallower {
         requestType = RequestType.GET_SITUATION_EXCHANGE;
     }
 
-
+    public void consumeAlerts(GtfsRtInboundSx gtfsRtInboundSx) {
+        this.url = gtfsRtInboundSx.getUrl();
+        String datasetId = gtfsRtInboundSx.getDataSet();
+        List<PtSituationElement> situations = gtfsRtInboundSx.getSituations();
+        List<String> subscriptionList = getSubscriptions(situations);
+        checkAndCreateSubscriptions(subscriptionList, datasetId);
+        buildSiriAndSend(situations, datasetId);
+    }
     /**
      * Processes and ingests GTFS-Realtime alert data, converting it into a structured format
      * and handling updates, subscriptions, and message dispatching.
@@ -70,25 +78,7 @@ public class AlertReader extends AbstractSwallower {
 
     }
 
-    private void buildSiriAndSend(List<PtSituationElement> situations, String datasetId) {
-
-        if (situations.isEmpty()) {
-            logger.info("no situations to ingest on dataset : {}", datasetId);
-            return;
-        }
-
-        Siri siri = new Siri();
-        ServiceDelivery serviceDel = new ServiceDelivery();
-        SituationExchangeDeliveryStructure delStruct = new SituationExchangeDeliveryStructure();
-        SituationExchangeDeliveryStructure.Situations sitStruct = new SituationExchangeDeliveryStructure.Situations();
-        sitStruct.getPtSituationElements().addAll(situations);
-        delStruct.setSituations(sitStruct);
-        serviceDel.getSituationExchangeDeliveries().add(delStruct);
-        siri.setServiceDelivery(serviceDel);
-        sendToRealTimeServer(gtfsrtSxProducer, siri, datasetId);
-    }
-
-    private void updateParticipantRef(String datasetId, List<PtSituationElement> situations) {
+    public void updateParticipantRef(String datasetId, List<PtSituationElement> situations) {
         for (PtSituationElement situation : situations) {
             if (situation.getParticipantRef() == null) {
                 RequestorRef requestorRef = new RequestorRef();
@@ -127,6 +117,24 @@ public class AlertReader extends AbstractSwallower {
         }
         return situtations;
 
+    }
+
+    private void buildSiriAndSend(List<PtSituationElement> situations, String datasetId) {
+
+        if (situations.isEmpty()) {
+            logger.info("no situations to ingest on dataset : {}", datasetId);
+            return;
+        }
+
+        Siri siri = new Siri();
+        ServiceDelivery serviceDel = new ServiceDelivery();
+        SituationExchangeDeliveryStructure delStruct = new SituationExchangeDeliveryStructure();
+        SituationExchangeDeliveryStructure.Situations sitStruct = new SituationExchangeDeliveryStructure.Situations();
+        sitStruct.getPtSituationElements().addAll(situations);
+        delStruct.setSituations(sitStruct);
+        serviceDel.getSituationExchangeDeliveries().add(delStruct);
+        siri.setServiceDelivery(serviceDel);
+        sendToRealTimeServer(gtfsrtSxProducer, siri, datasetId);
     }
 
     private boolean isEmptyAlert(GtfsRealtime.Alert alert) {

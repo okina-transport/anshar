@@ -1,46 +1,159 @@
 package no.rutebanken.anshar.gtfsrt;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.config.AppMode;
+import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
+import no.rutebanken.anshar.gtfsrt.model.GtfsRtInboundEt;
+import no.rutebanken.anshar.gtfsrt.model.GtfsRtInboundSm;
+import no.rutebanken.anshar.gtfsrt.model.GtfsRtInboundSx;
+import no.rutebanken.anshar.gtfsrt.model.GtfsRtInboundVm;
+import no.rutebanken.anshar.gtfsrt.readers.AlertReader;
+import no.rutebanken.anshar.gtfsrt.readers.TripUpdateReader;
+import no.rutebanken.anshar.gtfsrt.readers.VehiclePositionReader;
 import no.rutebanken.anshar.routes.BaseRouteBuilder;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
+import org.apache.camel.ProducerTemplate;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import static no.rutebanken.anshar.gtfsrt.GtfsRtConstants.*;
 
 @Component
 public class GtfsRTRouteBuilder extends BaseRouteBuilder {
 
     private static final Logger logger = LoggerFactory.getLogger(GtfsRTRouteBuilder.class);
 
-
     @Value("${anshar.gtfs.interval.millis:60000}") //120000
     private int gtfsIntervalInMillis;
 
-    @Autowired
-    private SubscriptionConfig subscriptionConfig;
+    private final AnsharConfiguration configuration;
 
-    @Autowired
-    private AnsharConfiguration configuration;
+    private final TripUpdateReader tripUpdateReader;
 
-    protected GtfsRTRouteBuilder(AnsharConfiguration config, SubscriptionManager subscriptionManager) {
+    private final VehiclePositionReader vehiclePositionReader;
+
+    private final AlertReader alertReader;
+
+    private final SubscriptionConfig subscriptionConfig;
+
+    private final ExtendedHazelcastService hazelcastService;
+
+    private final GtfsRtHelper gtfsRtHelper;
+
+    private final ProducerTemplate producerTemplate;
+
+    private final ObjectMapper objectMapper;
+
+    protected GtfsRTRouteBuilder(AnsharConfiguration config, SubscriptionManager subscriptionManager, TripUpdateReader tripUpdateReader, VehiclePositionReader vehiclePositionReader, AlertReader alertReader, SubscriptionConfig subscriptionConfig, ExtendedHazelcastService hazelcastService, GtfsRtHelper gtfsRtHelper, ProducerTemplate producerTemplate) {
         super(config, subscriptionManager);
+        this.configuration = config;
+        this.tripUpdateReader = tripUpdateReader;
+        this.vehiclePositionReader = vehiclePositionReader;
+        this.alertReader = alertReader;
+        this.subscriptionConfig = subscriptionConfig;
+        this.hazelcastService = hazelcastService;
+        this.gtfsRtHelper = gtfsRtHelper;
+        this.producerTemplate = producerTemplate;
+        objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
     }
 
     @Override
     public void configure() throws Exception {
-
-        if ((!configuration.processSX() && !configuration.processVM() && !configuration.processSM() && !configuration.processET()) || !configuration.isCurrentInstanceLeader()) {
-            logger.info("Application non paramétrée en SM/SX/ET/VM ou instance non leader. Pas de récupération GTFS-RT");
-            return;
+        if (configuration.getAppModes().isEmpty()) {
+            singletonFrom("quartz://anshar/import_GTFSRT_DATA?trigger.repeatInterval=" + gtfsIntervalInMillis, "import_GTFSRT_DATA")
+                    .bean(GtfsRTDataRetriever.class, "getGTFSRTData")
+                    .end();
+        } else if (configuration.isCurrentInstanceLeader() && configuration.getAppModes().contains(AppMode.PROXY)) {
+            singletonFrom("quartz://anshar/import_GTFSRT_DATA?trigger.repeatInterval=" + gtfsIntervalInMillis, "import_GTFSRT_DATA")
+                    .process(new GtfsRtProxyProcessor(producerTemplate, subscriptionConfig, hazelcastService, tripUpdateReader, vehiclePositionReader, alertReader, gtfsRtHelper))
+                    .end();
         }
 
+        configureProxyEtIngester();
 
-        singletonFrom("quartz://anshar/import_GTFSRT_DATA?trigger.repeatInterval=" + gtfsIntervalInMillis, "import_GTFSRT_DATA")
-                .bean(GtfsRTDataRetriever.class, "getGTFSRTData")
+        configureProxySmIngester();
+
+        configureProxyVmIngester();
+
+        configureProxySxIngester();
+    }
+
+    private void configureProxyEtIngester() {
+        if (configuration.processET()) {
+            from(GTFS_RT_ET_PROXY_QUEUE)
+                .routeId(GTFS_RT_ET_PROXY_QUEUE)
+                .process(exchange -> {
+                    logger.debug("Processing ET proxy queue");
+                    String rawMessage = exchange.getIn().getBody(String.class);
+                    if (StringUtils.isNotBlank(rawMessage)) {
+                        GtfsRtInboundEt etData = objectMapper.readValue(rawMessage, GtfsRtInboundEt.class);
+                        tripUpdateReader.consumeEstimatedTimeTables(etData);
+                    } else {
+                        logger.error("Empty ET message received");
+                    }
+                })
                 .end();
+        }
+    }
 
+    private void configureProxySmIngester() {
+        if (configuration.processSM()) {
+            from(GTFS_RT_SM_PROXY_QUEUE)
+                .routeId(GTFS_RT_SM_PROXY_QUEUE)
+                .process(exchange -> {
+                    logger.debug("Processing SM proxy queue");
+                    String rawMessage = exchange.getIn().getBody(String.class);
+                    if (StringUtils.isNotBlank(rawMessage)) {
+                        GtfsRtInboundSm smData = objectMapper.readValue(rawMessage, GtfsRtInboundSm.class);
+                        tripUpdateReader.consumeStopVisits(smData);
+                    } else {
+                        logger.error("Empty SM message received");
+                    }
+                })
+                .end();
+        }
+    }
+
+    private void configureProxyVmIngester() {
+        if (configuration.processVM()) {
+            from(GTFS_RT_VM_PROXY_QUEUE)
+                .routeId(GTFS_RT_VM_PROXY_QUEUE)
+                .process(exchange -> {
+                    logger.debug("Processing VM proxy queue");
+                    String rawMessage = exchange.getIn().getBody(String.class);
+                    if (StringUtils.isNotBlank(rawMessage)) {
+                        GtfsRtInboundVm vmData = objectMapper.readValue(rawMessage, GtfsRtInboundVm.class);
+                        vehiclePositionReader.consumeVehicleMonitoring(vmData);
+                    } else {
+                        logger.error("Empty VM message received");
+                    }
+                })
+                .end();
+        }
+    }
+
+    private void configureProxySxIngester() {
+        if (configuration.processSX()) {
+            from(GTFS_RT_SX_PROXY_QUEUE)
+                .routeId(GTFS_RT_SX_PROXY_QUEUE)
+                .process(exchange -> {
+                    logger.debug("Processing SX proxy queue");
+                    String rawMessage = exchange.getIn().getBody(String.class);
+                    if (StringUtils.isNotBlank(rawMessage)) {
+                        GtfsRtInboundSx sxData = objectMapper.readValue(rawMessage, GtfsRtInboundSx.class);
+                        alertReader.consumeAlerts(sxData);
+                    } else {
+                        logger.error("Empty SX message received");
+                    }
+                })
+                .end();
+        }
     }
 }

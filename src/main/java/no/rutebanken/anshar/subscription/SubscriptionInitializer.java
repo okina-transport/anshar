@@ -107,7 +107,7 @@ public class SubscriptionInitializer implements CamelContextAware {
             logger.info("App started with mode(s): {}", configuration.getAppModes());
         }
 
-        if (!configuration.isCurrentInstanceLeader()) {
+        if (!configuration.processAdmin() && !configuration.isCurrentInstanceLeader()) {
             logger.info("===> Current instance not leader. Not launching subscriptions");
             return;
         }

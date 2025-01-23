@@ -17,7 +17,6 @@ import no.rutebanken.anshar.subscription.helpers.RequestType;
 import no.rutebanken.anshar.util.ZipFileUtils;
 import org.apache.commons.io.FileUtils;
 import org.joda.time.DateTime;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Document;
@@ -40,37 +39,45 @@ import static no.rutebanken.anshar.subscription.SubscriptionSetup.ServiceType.SO
 @Component
 public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
 
-    @Autowired
-    private SiriHandler handler;
+    public static final String SIRI_SM = "siri-sm";
+    public static final String SIRI_SX = "siri-sx";
+    public static final String SIRI_ET = "siri-et";
+    public static final String SIRI_VM = "siri-vm";
+    public static final String SIRI_GM = "siri-gm";
+    public static final String SIRI_FM = "siri-fm";
 
     @Value("${cron.siri:0+0+0+1+1+?+2099}")
     private String cronSchedule;
 
-    @Autowired
-    private DiscoveryCache discoveryCache;
+    private final SiriHandler handler;
 
+    private final DiscoveryCache discoveryCache;
 
-    @Autowired
-    private SubscriptionConfig subscriptionConfig;
+    private final SubscriptionConfig subscriptionConfig;
 
-    @Autowired
-    private PrometheusMetricsService metrics;
+    private final AnsharConfiguration configuration;
 
-    @Autowired
-    private AnsharConfiguration configuration;
+    private final PrometheusMetricsService metrics;
 
-    @Autowired
-    private IncomingDataHealthService incomingDataHealthService;
+    private final IncomingDataHealthService incomingDataHealthService;
 
-    public SiriApisRequestHandlerRoute(AnsharConfiguration config, SubscriptionManager subscriptionManager) {
-        super(config, subscriptionManager);
+    public SiriApisRequestHandlerRoute(SubscriptionManager subscriptionManager, SiriHandler handler, DiscoveryCache discoveryCache, SubscriptionConfig subscriptionConfig, AnsharConfiguration configuration, PrometheusMetricsService metrics, IncomingDataHealthService incomingDataHealthService) {
+        super(configuration, subscriptionManager);
+        this.handler = handler;
+        this.discoveryCache = discoveryCache;
+        this.subscriptionConfig = subscriptionConfig;
+        this.configuration = configuration;
+        this.metrics = metrics;
+        this.incomingDataHealthService = incomingDataHealthService;
     }
+
+
 
     @Override
     public void configure() throws Exception {
 
-        if (!configuration.isCurrentInstanceLeader()) {
-            log.info("Instance non leader. Pas de récupération SIRI par API");
+        if (configuration.processAdmin()) {
+            log.info("Instance proxy. Pas de récupération SIRI par API");
             return;
         }
 
@@ -97,7 +104,6 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
                 String url = siriApi.getUrl();
                 log.info("URL : " + url);
                 FileUtils.copyURLToFile(new URL(url), file);
-
                 if (file.length() > 0) {
                     createSubscriptionsFromFile(siriApi.getType(), file, url, siriApi.getDatasetId());
                 } else {
@@ -113,7 +119,6 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
                 incomingDataHealthService.recordStatus(String.valueOf(siriApi.getId()), siriApi.getDatasetId(), siriApi.getUrl(), IncomingFlowType.SIRI, FlowStatus.ERROR);
 
             }
-
         }
 
         long endTime = DateTime.now().toInstant().getMillis();
@@ -132,19 +137,19 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
      */
     private boolean shouldSiriApiBeRecovered(String subscriptionType) {
 
-        if ("siri-sm".equals(subscriptionType) && configuration.processSM()) {
+        if (SIRI_SM.equals(subscriptionType) && configuration.processSM()) {
             return true;
         }
 
-        if ("siri-sx".equals(subscriptionType) && configuration.processSX()) {
+        if (SIRI_SX.equals(subscriptionType) && configuration.processSX()) {
             return true;
         }
 
-        if ("siri-et".equals(subscriptionType) && configuration.processET()) {
+        if (SIRI_ET.equals(subscriptionType) && configuration.processET()) {
             return true;
         }
 
-        return "siri-vm".equals(subscriptionType) && configuration.processVM();
+        return SIRI_VM.equals(subscriptionType) && configuration.processVM();
     }
 
 
@@ -165,7 +170,9 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
         }
 
         for (String monitoringId : monitoringIds) {
+            log.debug("SIRI by API - checking monitoring id : {}", monitoringId);
             if (!globalSub.getStopMonitoringRefValues().contains(monitoringId)) {
+                log.debug("SIRI by API - adding to discovery cache for provider {} - id : {}", provider, monitoringId);
                 globalSub.getStopMonitoringRefValues().add(monitoringId);
                 discoveryCache.addStop(provider, monitoringId);
             }
@@ -178,23 +185,25 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
 
         SiriDataType siriDataType = null;
         switch (dataFormat) {
-            case "siri-sm":
+            case SIRI_SM:
                 siriDataType = SiriDataType.STOP_MONITORING;
                 break;
-            case "siri-et":
+            case SIRI_ET:
                 siriDataType = SiriDataType.ESTIMATED_TIMETABLE;
                 break;
-            case "siri-sx":
+            case SIRI_SX:
                 siriDataType = SiriDataType.SITUATION_EXCHANGE;
                 break;
-            case "siri-vm":
+            case SIRI_VM:
                 siriDataType = SiriDataType.VEHICLE_MONITORING;
                 break;
-            case "siri-gm":
+            case SIRI_GM:
                 siriDataType = SiriDataType.GENERAL_MESSAGE;
                 break;
-            case "siri-fm":
+            case SIRI_FM:
                 siriDataType = SiriDataType.FACILITY_MONITORING;
+                break;
+            default:
                 break;
         }
 
@@ -219,7 +228,7 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
         subscriptionSetup.setDatasetId(provider);
         subscriptionSetup.setUrlMap(new HashMap<>());
         switch (subscriptionType) {
-            case "siri-sm":
+            case SIRI_SM:
                 subscriptionSetup.setSubscriptionType(SiriDataType.STOP_MONITORING);
                 subscriptionSetup.getStopMonitoringRefValues().addAll(monitoringIds);
                 subscriptionSetup.getUrlMap().put(RequestType.GET_STOP_MONITORING, url);
@@ -227,7 +236,7 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
                 subscriptionSetup.setVendor("AURA-MULTITUD-CITYWAY-SIRI-SM");
                 subscriptionSetup.setName("AURA-MULTITUD-CITYWAY-SIRI-SM");
                 break;
-            case "siri-et":
+            case SIRI_ET:
                 subscriptionSetup.setSubscriptionType(SiriDataType.ESTIMATED_TIMETABLE);
                 subscriptionSetup.getStopMonitoringRefValues().addAll(monitoringIds);
                 subscriptionSetup.getUrlMap().put(RequestType.GET_ESTIMATED_TIMETABLE, url);
@@ -235,14 +244,14 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
                 subscriptionSetup.setVendor("AURA-MULTITUD-CITYWAY-SIRI-ET");
                 subscriptionSetup.setName("AURA-MULTITUD-CITYWAY-SIRI-ET");
                 break;
-            case "siri-sx":
+            case SIRI_SX:
                 subscriptionSetup.setSubscriptionType(SiriDataType.SITUATION_EXCHANGE);
                 subscriptionSetup.getUrlMap().put(RequestType.GET_SITUATION_EXCHANGE, url);
                 subscriptionSetup.setRequestorRef("AURA_OKINA_SX");
                 subscriptionSetup.setVendor("AURA-MULTITUD-CITYWAY-SIRI-SX");
                 subscriptionSetup.setName("AURA-MULTITUD-CITYWAY-SIRI-SX");
                 break;
-            case "siri-vm":
+            case SIRI_VM:
                 subscriptionSetup.setSubscriptionType(SiriDataType.VEHICLE_MONITORING);
                 subscriptionSetup.getLineRefValues().addAll(monitoringIds);
                 subscriptionSetup.getUrlMap().put(RequestType.GET_VEHICLE_MONITORING, url);
@@ -250,19 +259,21 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
                 subscriptionSetup.setVendor("AURA-MULTITUD-CITYWAY-SIRI-VM");
                 subscriptionSetup.setName("AURA-MULTITUD-CITYWAY-SIRI-VM");
                 break;
-            case "siri-fm":
+            case SIRI_FM:
                 subscriptionSetup.setSubscriptionType(SiriDataType.FACILITY_MONITORING);
                 subscriptionSetup.getUrlMap().put(RequestType.GET_FACILITY_MONITORING, url);
                 subscriptionSetup.setRequestorRef("AURA_OKINA_FM");
                 subscriptionSetup.setVendor("AURA-MULTITUD-CITYWAY-SIRI-FM");
                 subscriptionSetup.setName("AURA-MULTITUD-CITYWAY-SIRI-FM");
                 break;
-            case "siri-gm":
+            case SIRI_GM:
                 subscriptionSetup.setSubscriptionType(SiriDataType.GENERAL_MESSAGE);
                 subscriptionSetup.getUrlMap().put(RequestType.GET_GENERAL_MESSAGE, url);
                 subscriptionSetup.setRequestorRef("AURA_OKINA_GM");
                 subscriptionSetup.setVendor("AURA-MULTITUD-CITYWAY-SIRI-GM");
                 subscriptionSetup.setName("AURA-MULTITUD-CITYWAY-SIRI-GM");
+                break;
+            default:
                 break;
         }
         subscriptionSetup.setSubscriptionMode(SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE);
@@ -279,23 +290,25 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
         Document document = parseXML(file);
         String tagName = null;
         switch (dataFormat) {
-            case "siri-sm":
+            case SIRI_SM:
                 tagName = "MonitoringRef";
                 break;
-            case "siri-et":
+            case SIRI_ET:
                 tagName = "StopPointRef";
                 break;
-            case "siri-sx":
+            case SIRI_SX:
                 tagName = "SituationNumber";
                 break;
-            case "siri-vm":
+            case SIRI_VM:
                 tagName = "VehicleMonitoringRef";
                 break;
-            case "siri-fm":
+            case SIRI_FM:
                 tagName = "FacilityRef";
                 break;
-            case "siri-gm":
+            case SIRI_GM:
                 tagName = "InfoMessageIdentifier";
+                break;
+            default:
                 break;
         }
         NodeList idLists = document.getElementsByTagName(tagName);

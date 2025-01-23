@@ -26,6 +26,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.quartz.SchedulerFactoryBeanCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.util.CollectionUtils;
 
 import javax.annotation.PostConstruct;
 import java.time.Instant;
@@ -176,9 +177,13 @@ public class AnsharConfiguration {
 
     private void initCurrentInstanceLeader() {
         if (!lockMap.containsKey(CURRENT_INSTANCE_LEADER_KEY)) {
-            lockMap.set(CURRENT_INSTANCE_LEADER_KEY, Instant.now());
-            isCurrentInstanceLeader = true;
-            logger.info("=====> Current instance is leader. Will launch all GTFS-RT or SIRI Requests   <=================");
+            if (CollectionUtils.isEmpty(appModes) || appModes.contains(AppMode.PROXY)) {
+                lockMap.set(CURRENT_INSTANCE_LEADER_KEY, Instant.now());
+                isCurrentInstanceLeader = true;
+                logger.info("=====> Current instance is leader. Will launch all GTFS-RT or SIRI Requests   <=================");
+            } else {
+                isCurrentInstanceLeader = false;
+            }
         } else {
             isCurrentInstanceLeader = false;
             logger.info("=====> Current instance is not leader. Will not launch any GTFS-RT or SIRI Requests   <=================");

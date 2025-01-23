@@ -403,6 +403,11 @@ public class ExtendedHazelcastService extends HazelCastService {
     }
 
     @Bean
+    public IMap<String, List<OutboundSubscriptionSetup>> getOutboundSubscriptionsByMonitoringRef() {
+        return hazelcast.getMap("anshar.mapping.outbound.subscriptionsByMonitoring");
+    }
+
+    @Bean
     public IMap<String, Integer> getRetryCountMap() {
         return hazelcast.getMap("anshar.subscriptions.retry.count");
     }

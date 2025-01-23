@@ -54,7 +54,7 @@ public class DiscoverySubscriptionsRouteBuilder extends BaseRouteBuilder {
     @Override
     public void configure() throws Exception {
 
-        if ((!configuration.processSM() && !configuration.processVM()) || !configuration.isCurrentInstanceLeader()) {
+        if (!configuration.processAdmin() || !configuration.isCurrentInstanceLeader()) {
             logger.info("Application non paramétrée en SM/VM ou instance non leader. Pas de création d'abonnement à partir des url discovery");
             return;
         }

@@ -4,11 +4,12 @@ import com.hazelcast.query.Predicate;
 import no.rutebanken.anshar.data.SiriObjectStorageKey;
 import uk.org.siri.siri21.*;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-public class SiriObjectStorageKeyUtil {
+public class SiriObjectStorageKeyUtil implements Serializable {
 
 
     public static Predicate<SiriObjectStorageKey, MonitoredStopVisit> getStopPredicate(Set<String> searchedStopRefs, String datasetId, List<String> excludedDatasetIds) {

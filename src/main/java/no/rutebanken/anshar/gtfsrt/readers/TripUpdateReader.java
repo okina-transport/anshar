@@ -5,12 +5,16 @@ import no.rutebanken.anshar.api.PublishedLineNameMapping;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.DiscoveryCache;
 import no.rutebanken.anshar.gtfsrt.mappers.TripUpdateMapper;
+import no.rutebanken.anshar.gtfsrt.model.GtfsRtInboundEt;
+import no.rutebanken.anshar.gtfsrt.model.GtfsRtInboundSm;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import uk.org.siri.siri21.*;
 
@@ -32,6 +36,8 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.GTFSRT
 @Component
 public class TripUpdateReader extends AbstractSwallower {
 
+    private static final Logger logger = LoggerFactory.getLogger(TripUpdateReader.class);
+
     private final SubscriptionManager subscriptionManager;
 
     private final AnsharConfiguration configuration;
@@ -39,6 +45,7 @@ public class TripUpdateReader extends AbstractSwallower {
     private final TripUpdateMapper tripUpdateMapper;
 
     private final DiscoveryCache discoveryCache;
+
 
     @Produce("direct:send.et.to.realtime.server")
     protected ProducerTemplate gtfsrtEtProducer;
@@ -52,7 +59,6 @@ public class TripUpdateReader extends AbstractSwallower {
         this.tripUpdateMapper = tripUpdateMapper;
         this.discoveryCache = discoveryCache;
     }
-
 
     /**
      * Processes and ingests GTFS-Realtime trip update data, converting it into structured SIRI data formats
@@ -73,8 +79,6 @@ public class TripUpdateReader extends AbstractSwallower {
             List<String> lineList = getLines(estimatedVehicleJourneys);
             discoveryCache.addLines(datasetId, lineList);
             buildSiriAndSend(estimatedVehicleJourneys, datasetId);
-
-
         }
 
         if (configuration.processSM()) {
@@ -85,6 +89,121 @@ public class TripUpdateReader extends AbstractSwallower {
             checkAndCreateSubscriptions(visitSubscriptionList, GTFSRT_SM_PREFIX, SiriDataType.STOP_MONITORING, RequestType.GET_STOP_MONITORING, datasetId);
             buildSiriSMAndSend(stopVisits, stopCancellations, datasetId);
         }
+
+    }
+
+    public void consumeEstimatedTimeTables(GtfsRtInboundEt gtfsRtInboundEt) {
+        logger.debug("Consuming estimated time tables");
+        if (gtfsRtInboundEt != null) {
+            logDebugProxyMode(gtfsRtInboundEt.getUrl(), gtfsRtInboundEt.getDataSet());
+            this.url = gtfsRtInboundEt.getUrl();
+            String datasetId = gtfsRtInboundEt.getDataSet();
+            List<EstimatedVehicleJourney> estimatedVehicleJourneys = gtfsRtInboundEt.getEstimatedVehicleJourneys();
+            List<String> etSubscriptionList = getSubscriptionsFromEstimatedTimeTables(estimatedVehicleJourneys);
+            checkAndCreateSubscriptions(etSubscriptionList, GTFSRT_ET_PREFIX, SiriDataType.ESTIMATED_TIMETABLE, RequestType.GET_ESTIMATED_TIMETABLE, datasetId);
+            List<String> lineList = getLines(estimatedVehicleJourneys);
+            discoveryCache.addLines(datasetId, lineList);
+            buildSiriAndSend(estimatedVehicleJourneys, datasetId);
+        }
+    }
+
+    public void consumeStopVisits(GtfsRtInboundSm gtfsRtInboundSm) {
+        logger.debug("Consuming stop visits");
+        if (gtfsRtInboundSm != null) {
+            logDebugProxyMode(gtfsRtInboundSm.getUrl(), gtfsRtInboundSm.getDataSet());
+            this.url = gtfsRtInboundSm.getUrl();
+            String datasetId = gtfsRtInboundSm.getDataSet();
+            List<MonitoredStopVisit> stopVisits = gtfsRtInboundSm.getStopVisits();
+            List<MonitoredStopVisitCancellation> stopCancellations = gtfsRtInboundSm.getStopCancellations();
+            List<String> visitSubscriptionList = getSubscriptionsFromVisits(stopVisits);
+            checkAndCreateSubscriptions(visitSubscriptionList, GTFSRT_SM_PREFIX, SiriDataType.STOP_MONITORING, RequestType.GET_STOP_MONITORING, datasetId);
+            buildSiriSMAndSend(stopVisits, stopCancellations, datasetId);
+        }
+    }
+
+    /**
+     * Builds a list of {@link MonitoredStopVisit} instances from a GTFS-Realtime {@link GtfsRealtime.FeedMessage}.
+     * This method processes trip updates from the feed message, extracts stop visit information,
+     * and assigns a recorded timestamp.
+     *
+     * @param feedMessage              The GTFS-Realtime {@link GtfsRealtime.FeedMessage} containing trip update data.
+     * @param datasetId                The identifier of the dataset associated with the stop visits.
+     * @param routeIdList              A list of route IDs used to filter relevant stop visits.
+     * @param publishedLineNameMapping The way to map PublishedLineName from GTFS-RT TripUpdate to Siri StopMonitoring
+     * @return A list of {@link MonitoredStopVisit} objects representing structured stop visit data.
+     */
+    public List<MonitoredStopVisit> buildStopVisitList(GtfsRealtime.FeedMessage feedMessage, String datasetId, List<String> routeIdList, PublishedLineNameMapping publishedLineNameMapping) {
+        List<MonitoredStopVisit> stopVisits = new ArrayList<>();
+
+        long recordedAtTimeLong = feedMessage.getHeader().getTimestamp();
+        ZonedDateTime recordedAtTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(recordedAtTimeLong * 1000), ZoneId.systemDefault());
+
+        for (GtfsRealtime.FeedEntity feedEntity : feedMessage.getEntityList()) {
+            if (feedEntity.getTripUpdate() == null)
+                continue;
+
+            List<MonitoredStopVisit> currentStopVisitList = tripUpdateMapper.mapStopVisitFromTripUpdate(feedEntity.getTripUpdate(), datasetId, routeIdList, publishedLineNameMapping);
+            stopVisits.addAll(currentStopVisitList);
+        }
+
+        stopVisits.forEach(stopVisit -> stopVisit.setRecordedAtTime(recordedAtTime));
+
+        return stopVisits;
+
+    }
+
+    /**
+     * Builds a list of {@link MonitoredStopVisitCancellation} instances from a GTFS-Realtime {@link GtfsRealtime.FeedMessage}.
+     * This method processes trip updates from the feed message, extracts stop visit cancellations,
+     * and assigns a recorded timestamp.
+     *
+     * @param feedMessage The GTFS-Realtime {@link GtfsRealtime.FeedMessage} containing trip update data.
+     * @param datasetId   The identifier of the dataset associated with the stop visit cancellations.
+     * @param routeIdList A list of route IDs used to filter relevant stop visit cancellations.
+     * @return A list of {@link MonitoredStopVisitCancellation} objects representing structured stop visit cancellation data.
+     */
+    public List<MonitoredStopVisitCancellation> buildStopCancellationList(GtfsRealtime.FeedMessage feedMessage, String datasetId, List<String> routeIdList) {
+        List<MonitoredStopVisitCancellation> stopVisitCancellations = new ArrayList<>();
+
+        long recordedAtTimeLong = feedMessage.getHeader().getTimestamp();
+        ZonedDateTime recordedAtTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(recordedAtTimeLong * 1000), ZoneId.systemDefault());
+
+        for (GtfsRealtime.FeedEntity feedEntity : feedMessage.getEntityList()) {
+            if (feedEntity.getTripUpdate() == null)
+                continue;
+
+            List<MonitoredStopVisitCancellation> currentStopCancellationList = tripUpdateMapper.mapStopCancellationFromTripUpdate(feedEntity.getTripUpdate(), datasetId, routeIdList);
+            stopVisitCancellations.addAll(currentStopCancellationList);
+        }
+
+        stopVisitCancellations.forEach(stopVisit -> stopVisit.setRecordedAtTime(recordedAtTime));
+
+        return stopVisitCancellations;
+    }
+
+    /**
+     * Builds a list of {@link EstimatedVehicleJourney} instances from a GTFS-Realtime {@link GtfsRealtime.FeedMessage}.
+     * This method processes trip updates from the feed message and converts them into structured estimated vehicle journeys.
+     *
+     * @param feedMessage The GTFS-Realtime {@link GtfsRealtime.FeedMessage} containing trip update data.
+     * @param datasedId   datasetId used to check known id
+     * @param routeIdList A list of route IDs used to filter relevant estimated vehicle journeys.
+     * @return A list of {@link EstimatedVehicleJourney} objects representing structured estimated vehicle journey data.
+     */
+    public List<EstimatedVehicleJourney> buildEstimatedVehicleJourneyList(GtfsRealtime.FeedMessage feedMessage, String datasedId, List<String> routeIdList) {
+        List<EstimatedVehicleJourney> estimatedVehicleJourneys = new ArrayList<>();
+
+
+        for (GtfsRealtime.FeedEntity feedEntity : feedMessage.getEntityList()) {
+            if (feedEntity.getTripUpdate() == null)
+                continue;
+
+            EstimatedVehicleJourney estimatedVehicleJourney = tripUpdateMapper.mapVehicleJourneyFromTripUpdate(feedEntity.getTripUpdate(), datasedId, routeIdList);
+            if (estimatedVehicleJourney != null) {
+                estimatedVehicleJourneys.add(estimatedVehicleJourney);
+            }
+        }
+        return estimatedVehicleJourneys;
 
     }
 
@@ -136,92 +255,6 @@ public class TripUpdateReader extends AbstractSwallower {
     }
 
     /**
-     * Builds a list of {@link MonitoredStopVisit} instances from a GTFS-Realtime {@link GtfsRealtime.FeedMessage}.
-     * This method processes trip updates from the feed message, extracts stop visit information,
-     * and assigns a recorded timestamp.
-     *
-     * @param feedMessage              The GTFS-Realtime {@link GtfsRealtime.FeedMessage} containing trip update data.
-     * @param datasetId                The identifier of the dataset associated with the stop visits.
-     * @param routeIdList              A list of route IDs used to filter relevant stop visits.
-     * @param publishedLineNameMapping The way to map PublishedLineName from GTFS-RT TripUpdate to Siri StopMonitoring
-     * @return A list of {@link MonitoredStopVisit} objects representing structured stop visit data.
-     */
-    private List<MonitoredStopVisit> buildStopVisitList(GtfsRealtime.FeedMessage feedMessage, String datasetId, List<String> routeIdList, PublishedLineNameMapping publishedLineNameMapping) {
-        List<MonitoredStopVisit> stopVisits = new ArrayList<>();
-
-        long recordedAtTimeLong = feedMessage.getHeader().getTimestamp();
-        ZonedDateTime recordedAtTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(recordedAtTimeLong * 1000), ZoneId.systemDefault());
-
-        for (GtfsRealtime.FeedEntity feedEntity : feedMessage.getEntityList()) {
-            if (feedEntity.getTripUpdate() == null)
-                continue;
-
-            List<MonitoredStopVisit> currentStopVisitList = tripUpdateMapper.mapStopVisitFromTripUpdate(feedEntity.getTripUpdate(), datasetId, routeIdList, publishedLineNameMapping);
-            stopVisits.addAll(currentStopVisitList);
-        }
-
-        stopVisits.forEach(stopVisit -> stopVisit.setRecordedAtTime(recordedAtTime));
-
-        return stopVisits;
-
-    }
-
-    /**
-     * Builds a list of {@link MonitoredStopVisitCancellation} instances from a GTFS-Realtime {@link GtfsRealtime.FeedMessage}.
-     * This method processes trip updates from the feed message, extracts stop visit cancellations,
-     * and assigns a recorded timestamp.
-     *
-     * @param feedMessage The GTFS-Realtime {@link GtfsRealtime.FeedMessage} containing trip update data.
-     * @param datasetId   The identifier of the dataset associated with the stop visit cancellations.
-     * @param routeIdList A list of route IDs used to filter relevant stop visit cancellations.
-     * @return A list of {@link MonitoredStopVisitCancellation} objects representing structured stop visit cancellation data.
-     */
-    private List<MonitoredStopVisitCancellation> buildStopCancellationList(GtfsRealtime.FeedMessage feedMessage, String datasetId, List<String> routeIdList) {
-        List<MonitoredStopVisitCancellation> stopVisitCancellations = new ArrayList<>();
-
-        long recordedAtTimeLong = feedMessage.getHeader().getTimestamp();
-        ZonedDateTime recordedAtTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(recordedAtTimeLong * 1000), ZoneId.systemDefault());
-
-        for (GtfsRealtime.FeedEntity feedEntity : feedMessage.getEntityList()) {
-            if (feedEntity.getTripUpdate() == null)
-                continue;
-
-            List<MonitoredStopVisitCancellation> currentStopCancellationList = tripUpdateMapper.mapStopCancellationFromTripUpdate(feedEntity.getTripUpdate(), datasetId, routeIdList);
-            stopVisitCancellations.addAll(currentStopCancellationList);
-        }
-
-        stopVisitCancellations.forEach(stopVisit -> stopVisit.setRecordedAtTime(recordedAtTime));
-
-        return stopVisitCancellations;
-    }
-
-    /**
-     * Builds a list of {@link EstimatedVehicleJourney} instances from a GTFS-Realtime {@link GtfsRealtime.FeedMessage}.
-     * This method processes trip updates from the feed message and converts them into structured estimated vehicle journeys.
-     *
-     * @param feedMessage The GTFS-Realtime {@link GtfsRealtime.FeedMessage} containing trip update data.
-     * @param datasedId   datasetId used to check known id
-     * @param routeIdList A list of route IDs used to filter relevant estimated vehicle journeys.
-     * @return A list of {@link EstimatedVehicleJourney} objects representing structured estimated vehicle journey data.
-     */
-    private List<EstimatedVehicleJourney> buildEstimatedVehicleJourneyList(GtfsRealtime.FeedMessage feedMessage, String datasedId, List<String> routeIdList) {
-        List<EstimatedVehicleJourney> estimatedVehicleJourneys = new ArrayList<>();
-
-
-        for (GtfsRealtime.FeedEntity feedEntity : feedMessage.getEntityList()) {
-            if (feedEntity.getTripUpdate() == null)
-                continue;
-
-            EstimatedVehicleJourney estimatedVehicleJourney = tripUpdateMapper.mapVehicleJourneyFromTripUpdate(feedEntity.getTripUpdate(), datasedId, routeIdList);
-            if (estimatedVehicleJourney != null) {
-                estimatedVehicleJourneys.add(estimatedVehicleJourney);
-            }
-        }
-        return estimatedVehicleJourneys;
-
-    }
-
-    /**
      * Read all estimated timetable messages and build a list of subscriptions that must be checked(or created if not exists)
      *
      * @param estimatedVehicleJourneys The list of estimated time tables
@@ -237,7 +270,7 @@ public class TripUpdateReader extends AbstractSwallower {
 
     /***
      * Read the list of subscription ids and for each, check if it exists. If not, a new subscription is created
-     * @param subscriptionsList
+     * @param subscriptionsList - List of subscription
      * @param customPrefix
      *  The list of subscription ids
      */
@@ -289,5 +322,8 @@ public class TripUpdateReader extends AbstractSwallower {
 
     }
 
-
+    private void logDebugProxyMode(String url, String datasetId) {
+        logger.debug("URL : {}", url);
+        logger.debug("dataset : {}", datasetId);
+    }
 }

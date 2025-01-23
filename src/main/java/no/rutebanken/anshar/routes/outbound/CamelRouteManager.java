@@ -289,6 +289,7 @@ public class CamelRouteManager {
         if (!outboundSubscription.hasNotificationBeenAlreadySent(notificationId)) {
             // this notification has never been sent to this customer. Initial delivery for this customer. Recording this notification and keeping the message that must be sent
             outboundSubscription.recordNotification(notificationId);
+            subscriptionManager.addSubcriptionToReverseList(outboundSubscription, stopVisit.getMonitoringRef().getValue());
             return true;
         }
 
