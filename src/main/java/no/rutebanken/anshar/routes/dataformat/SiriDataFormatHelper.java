@@ -26,10 +26,14 @@ import java.util.Map;
 public class SiriDataFormatHelper {
 
     private static final HashMap<String, DataFormat> dataformats = new HashMap<>();
+    private static final HashMap<String, DataFormat> threadSafeDataformats = new HashMap<>();
 
     static {
         dataformats.put("internal-siri20", createDataformat("siri20", SiriValidator.Version.VERSION_2_0));
         dataformats.put("internal-siri21", createDataformat("siri21", SiriValidator.Version.VERSION_2_1));
+        threadSafeDataformats.put("internal-siri20", createThreadSafeDataformat("siri20",
+                SiriValidator.Version.VERSION_2_0));
+        threadSafeDataformats.put("internal-siri21", createThreadSafeDataformat("siri21", SiriValidator.Version.VERSION_2_1));
     }
 
     public static DataFormat getSiriJaxbDataformat() {
@@ -78,6 +82,51 @@ public class SiriDataFormatHelper {
         return siriJaxb;
     }
 
+    public static DataFormat getThreadSafeSiriJaxbDataformat() {
+        return getThreadSafeSiriJaxbDataformat(SiriValidator.Version.VERSION_2_0);
+    }
+
+    public static DataFormat getThreadSafeSiriJaxbDataformat(SiriValidator.Version version) {
+        return createThreadSafeDataformat("", version);
+    }
+
+    public static DataFormat getThreadSafeSiriJaxbDataformat(NamespacePrefixMapper namespacePrefixMapper) {
+        return getThreadSafeSiriJaxbDataformat(namespacePrefixMapper, SiriValidator.Version.VERSION_2_0);
+    }
+
+    public static DataFormat getThreadSafeSiriJaxbDataformat(NamespacePrefixMapper namespacePrefixMapper, SiriValidator.Version version) {
+
+        if (namespacePrefixMapper != null) {
+            String preferredPrefix = namespacePrefixMapper.getPreferredPrefix("", "", true);
+            if (preferredPrefix != null) {
+                return createThreadSafeDataformat(preferredPrefix, version);
+            }
+        }
+
+        return getThreadSafeSiriJaxbDataformat(version);
+    }
+
+    private static DataFormat createThreadSafeDataformat(String prefix, SiriValidator.Version version) {
+        if (threadSafeDataformats.containsKey(prefix)) {
+            return threadSafeDataformats.get(prefix);
+        }
+        Map<String, String> prefixMap = new HashMap<>();
+        if (prefix.startsWith("internal")) {
+            prefixMap.put("http://www.siri.org.uk/siri", "");
+        } else {
+            prefixMap.put("http://www.siri.org.uk/siri", prefix);
+        }
+        String contextPath = "uk.org.siri.siri20";
+        if (version.equals(SiriValidator.Version.VERSION_2_1)) {
+            contextPath = "uk.org.siri.siri21";
+        }
+
+        ThreadSafeDataFormat siriJaxb = new ThreadSafeDataFormat(contextPath);
+        siriJaxb.setNamespacePrefix(prefixMap);
+
+        threadSafeDataformats.put(prefix, siriJaxb);
+        return siriJaxb;
+    }
 
 }
 

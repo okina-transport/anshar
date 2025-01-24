@@ -39,7 +39,7 @@ public class SendSiriOutRouteBuilder extends RouteBuilder {
         ;
 
         from("direct:send.sx.to.realtime.server")
-                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .marshal(SiriDataFormatHelper.getThreadSafeSiriJaxbDataformat())
                 .setExchangePattern(ExchangePattern.InOnly)
                 .to(ACTIVEMQ_PREFIX + GTFSRT_SX_QUEUE)
         ;
@@ -64,14 +64,14 @@ public class SendSiriOutRouteBuilder extends RouteBuilder {
 
         from("direct:send.sx.to.kafka")
                 .log(LoggingLevel.INFO, "Send SX to " + sxToKafkaUri + " for env " + env)
-                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .marshal(SiriDataFormatHelper.getThreadSafeSiriJaxbDataformat())
                 .setHeader(ENV_HEADER_NAME, constant(env.getBytes(StandardCharsets.UTF_8)))
                 .setExchangePattern(ExchangePattern.InOnly)
                 .to(sxToKafkaUri)
         ;
 
         from("direct:send.sx.to.external.consumer")
-                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .marshal(SiriDataFormatHelper.getThreadSafeSiriJaxbDataformat())
                 .setExchangePattern(ExchangePattern.InOnly)
                 .to(externalSxQueue)
         ;
