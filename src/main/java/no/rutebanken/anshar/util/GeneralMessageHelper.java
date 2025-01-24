@@ -52,39 +52,23 @@ public class GeneralMessageHelper {
         Optional<OutboundIdAdapter> lineRefAdapterOpt = getLineRefAdapter(valueAdapters);
 
         if (content.getLineRefs() != null && content.getLineRefs().size() > 0 && idProcLineOpt.isPresent()) {
-            IdProcessingParameters idProcessingParams = idProcLineOpt.get();
-            List<String> processedIds = content.getLineRefs().stream()
-                    .map(idProcessingParams::applyTransformationToString)
-                    .collect(Collectors.toList());
-
             if (lineRefAdapterOpt.isPresent()) {
-
                 OutboundIdAdapter lineRefAdapter = lineRefAdapterOpt.get();
-                processedIds = processedIds.stream()
+                List<String> processedIds = content.getLineRefs().stream()
                         .map(lineRefAdapter::apply)
                         .collect(Collectors.toList());
-
+                content.setLineRefs(processedIds);
             }
-
-            content.setLineRefs(processedIds);
         }
 
         if (content.getStopPointRefs() != null && content.getStopPointRefs().size() > 0 && idProcStopOpt.isPresent()) {
-            IdProcessingParameters idProcessingParams = idProcStopOpt.get();
-            List<String> processedIds = content.getStopPointRefs().stream()
-                    .map(idProcessingParams::applyTransformationToString)
-                    .collect(Collectors.toList());
-
             if (stopRefAdapterOpt.isPresent()) {
-
                 OutboundIdAdapter stopRefAdapter = stopRefAdapterOpt.get();
-                processedIds = processedIds.stream()
+                List<String> processedIds = content.getStopPointRefs().stream()
                         .map(stopRefAdapter::apply)
                         .collect(Collectors.toList());
-
+                content.setStopPointRefs(processedIds);
             }
-
-            content.setStopPointRefs(processedIds);
         }
     }
 
