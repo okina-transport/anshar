@@ -29,5 +29,6 @@ public class DiscoverySubscription implements Serializable {
     private int durationOfSubscriptionHours;
     private String vendorBaseName;
     private String subscriptionIdBase;
+    private Boolean validated;
 
 }

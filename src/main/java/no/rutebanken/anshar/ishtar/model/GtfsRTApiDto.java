@@ -13,5 +13,6 @@ public class GtfsRTApiDto {
     private String url;
     private Boolean active;
     private Date updateDatetime;
-    
+    private Boolean validated;
+
 }

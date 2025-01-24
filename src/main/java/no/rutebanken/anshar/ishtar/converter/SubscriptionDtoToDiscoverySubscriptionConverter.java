@@ -42,6 +42,7 @@ public class SubscriptionDtoToDiscoverySubscriptionConverter implements Converte
             target.setDurationOfSubscriptionHours(source.getDurationOfSubscriptionHours());
             target.setVendorBaseName(source.getVendor());
             target.setSubscriptionIdBase(source.getSubscriptionId());
+            target.setValidated(source.getValidated());
         }
         log.debug("target: {}", target);
         return target;

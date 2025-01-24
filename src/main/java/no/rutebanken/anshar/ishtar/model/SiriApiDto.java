@@ -12,6 +12,7 @@ public class SiriApiDto {
     private String type;
     private String url;
     private Boolean active;
+    private Boolean validated;
     private Date updateDatetime;
 
 }

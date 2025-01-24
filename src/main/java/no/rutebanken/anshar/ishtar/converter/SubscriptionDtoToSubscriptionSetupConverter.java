@@ -50,7 +50,6 @@ public class SubscriptionDtoToSubscriptionSetupConverter implements Converter<Su
             target.setContentType(source.getContentType());
             target.setHeartbeatIntervalSeconds(source.getHeartbeatIntervalSeconds());
             target.setVersion(source.getVersion());
-            // TODO [AF] should validation be set to True or False or retrieved from ISHTAR ?
             target.setOperatorNamespace(source.getOperatorNamespace());
             target.setRestartTime(source.getRestartTime());
             target.setRevertIds(source.getRevertIds());
@@ -61,9 +60,9 @@ public class SubscriptionDtoToSubscriptionSetupConverter implements Converter<Su
             );
             target.setLineRefValues(ListUtils.emptyIfNull(source.getSubscriptionLines()).stream().map(SubscriptionLineDto::getLineRef).collect(Collectors.toList()));
             target.setMappingAdapterId(source.getMappingAdapterId());
-            // TODO [AF] shall we retrieve vehicleMonitoringRefValue from ISHTAR ?
             target.setUpdateIntervalSeconds(source.getUpdateIntervalSeconds());
             target.setPreviewIntervalSeconds(source.getPreviewIntervalSeconds());
+            target.setValidated(source.getValidated());
 
             // required to avoid NPE on to SubscriptionSetup#buildUrl()
             target.setAddress(inboundUrl);

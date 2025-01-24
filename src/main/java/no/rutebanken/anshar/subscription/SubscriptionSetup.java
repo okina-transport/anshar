@@ -82,6 +82,9 @@ public class SubscriptionSetup implements Serializable {
     private boolean active;
     @Setter
     @Getter
+    private boolean validated;
+    @Setter
+    @Getter
     private boolean dataSupplyRequestForInitialDelivery;
     @Setter
     @Getter

@@ -20,6 +20,7 @@ public class GtfsRTApiDtoConverter implements Converter<GtfsRTApiDto, GtfsRTApi>
         target.setUrl(source.getUrl());
         target.setDatasetId(source.getDatasetId());
         target.setType(GTFSRTType.valueOf(source.getType()));
+        target.setValidated(source.getValidated());
         log.debug("target: {}", target);
         return target;
     }
