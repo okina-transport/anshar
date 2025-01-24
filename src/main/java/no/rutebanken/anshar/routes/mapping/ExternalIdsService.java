@@ -148,6 +148,12 @@ public class ExternalIdsService extends BaseRouteBuilder {
         }
         logger.info("Starting updating mapping external ids stops cache for dataset : " + datasetId);
 
+        if (mappingStopsDirectory.list() == null) {
+            logger.info("Pas de répertoires de mapping externe");
+            return;
+        }
+
+
         for (String fileName : Objects.requireNonNull(mappingStopsDirectory.list())) {
             String datasetIdInFileName = fileName.replace("_stops_mapping.csv", "");
             if (datasetId.equalsIgnoreCase(datasetIdInFileName)) {
