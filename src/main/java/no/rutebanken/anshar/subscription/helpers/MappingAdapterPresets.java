@@ -55,6 +55,7 @@ public class MappingAdapterPresets {
             RuterOutboundDatedVehicleRefAdapter datedVjRefAdapter = new RuterOutboundDatedVehicleRefAdapter(MappingAdapterPresets.class, outboundIdMappingPolicy);
             OutboundIdAdapter operatorRefAdapter = new OutboundIdAdapter(OperatorRefStructure.class, outboundIdMappingPolicy);
             OutboundIdAdapter networkRefAdapter = new OutboundIdAdapter(NetworkRefStructure.class, outboundIdMappingPolicy);
+            OutboundIdAdapter routeRefAdapter = new OutboundIdAdapter(RouteRefStructure.class, outboundIdMappingPolicy, true);
 
 
             if (idProcessingMap.containsKey(ObjectType.STOP) && idProcessingMap.get(ObjectType.STOP).isPresent()) {
@@ -74,6 +75,11 @@ public class MappingAdapterPresets {
             if (idProcessingMap.containsKey(ObjectType.VEHICLE_JOURNEY) && idProcessingMap.get(ObjectType.VEHICLE_JOURNEY).isPresent()) {
                 IdProcessingParameters vehicleIdProcessingParameters = idProcessingMap.get(ObjectType.VEHICLE_JOURNEY).get();
                 datedVjRefAdapter.setIdProcessingParameters(vehicleIdProcessingParameters);
+            }
+
+            if (idProcessingMap.containsKey(ObjectType.ROUTE) && idProcessingMap.get(ObjectType.ROUTE).isPresent()) {
+                IdProcessingParameters routeIdProcessingParameters = idProcessingMap.get(ObjectType.ROUTE).get();
+                routeRefAdapter.setIdProcessingParameters(routeIdProcessingParameters);
             }
 
             if (idProcessingMap.containsKey(ObjectType.OPERATOR) && idProcessingMap.get(ObjectType.OPERATOR).isPresent()) {
@@ -97,6 +103,7 @@ public class MappingAdapterPresets {
             adapters.add(datedVjRefAdapter);
             adapters.add(operatorRefAdapter);
             adapters.add(networkRefAdapter);
+            adapters.add(routeRefAdapter);
             adapters.add(new CodespaceOutboundProcessor(outboundIdMappingPolicy));
 
 
@@ -137,6 +144,7 @@ public class MappingAdapterPresets {
         adapters.add(new OutboundIdAdapter(JourneyPlaceRefStructure.class, outboundIdMappingPolicy));
         adapters.add(new OutboundIdAdapter(DestinationRef.class, outboundIdMappingPolicy));
         adapters.add(new OutboundIdAdapter(CourseOfJourneyRefStructure.class, outboundIdMappingPolicy));
+        adapters.add(new OutboundIdAdapter(RouteRefStructure.class, outboundIdMappingPolicy));
 
         //Adapter for SIRI-SX ParticipantRefdatasetId
         adapters.add(new OutboundIdAdapter(RequestorRef.class, outboundIdMappingPolicy));

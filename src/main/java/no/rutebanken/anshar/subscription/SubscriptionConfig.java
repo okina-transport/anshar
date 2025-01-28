@@ -315,6 +315,7 @@ public class SubscriptionConfig {
         resultmap.put(ObjectType.VEHICLE_JOURNEY, getIdParametersForDataset(datasetId, ObjectType.VEHICLE_JOURNEY));
         resultmap.put(ObjectType.OPERATOR, getIdParametersForDataset(datasetId, ObjectType.OPERATOR));
         resultmap.put(ObjectType.NETWORK, getIdParametersForDataset(datasetId, ObjectType.NETWORK));
+        resultmap.put(ObjectType.ROUTE, getIdParametersForDataset(datasetId, ObjectType.ROUTE));
         return resultmap;
     }
 
