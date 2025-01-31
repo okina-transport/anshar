@@ -33,16 +33,16 @@ public class TripUpdateMapper {
     StopPlaceUpdaterService stopPlaceService;
 
     /**
-     * Read a tripUpdate and creates siri objects
+     * Maps a GTFS-Realtime {@link GtfsRealtime.TripUpdate} into a list of {@link MonitoredStopVisit} instances.
+     * This method extracts relevant stop visit information and structures it for monitoring purposes.
      *
-     * @param tripUpdate GTFS-RT object to read
-     * @param datasetId
-     * @return A list of siri objects
+     * @param tripUpdate The GTFS-Realtime {@link GtfsRealtime.TripUpdate} containing trip update data.
+     * @param datasetId The identifier of the dataset associated with the trip update.
+     * @param routeIdList A list of route IDs used to filter relevant stop visits.
+     * @return A list of {@link MonitoredStopVisit} objects representing structured stop visit data.
      */
-    public List<MonitoredStopVisit> mapStopVisitFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate, String datasetId) {
+    public List<MonitoredStopVisit> mapStopVisitFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate, String datasetId, List<String> routeIdList) {
         List<MonitoredStopVisit> stopVisitList = new ArrayList<>();
-
-
         FramedVehicleJourneyRefStructure vehicleJourneyRef = createVehicleJourneyRef(tripUpdate);
 
         String tripId = tripUpdate.getTrip().getTripId();
@@ -58,6 +58,10 @@ public class TripUpdateMapper {
             MonitoredStopVisit stopVisit = new MonitoredStopVisit();
 
             String stopId = getStopId(stopTimeUpdate, datasetId, tripId);
+
+            if (stopId != null && !routeIdList.isEmpty() && !routeIdList.contains(stopId)) {
+                continue;
+            }
             if (StringUtils.isEmpty(stopId)) {
                 logger.error("Unable to determine stopId for dataset:{}, tripId:{}, stopSequence:{}, stopId:{}", datasetId, tripId, stopTimeUpdate.getStopSequence(), stopTimeUpdate.getStopId());
                 continue;
@@ -82,7 +86,6 @@ public class TripUpdateMapper {
             feedItemIdentifier(stopVisit, stopId);
             stopVisitList.add(stopVisit);
         }
-
 
         return stopVisitList;
     }
@@ -214,18 +217,23 @@ public class TripUpdateMapper {
 
 
     /**
-     * Main function that converts tripUpdate (GTFS-RT) to estimated time table (SIRI)
+     * Maps a GTFS-Realtime {@link GtfsRealtime.TripUpdate} into an {@link EstimatedVehicleJourney}.
+     * This method extracts relevant trip update details, including vehicle and stop information,
+     * and structures it for estimated journey tracking.
      *
-     * @param tripUpdate A tripUpdate coming from GTFS-RT
-     * @return An estimated time table (SIRI format)
+     * @param tripUpdate The GTFS-Realtime {@link GtfsRealtime.TripUpdate} containing trip update data.
+     * @param routeIdList A list of route IDs used to filter relevant vehicle journeys.
+     * @return An {@link EstimatedVehicleJourney} object representing the structured journey data,
+     *         or {@code null} if the route ID is not in the provided list.
      */
-    public static EstimatedVehicleJourney mapVehicleJourneyFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate) {
-
+    public static EstimatedVehicleJourney mapVehicleJourneyFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate, List<String> routeIdList) {
         GtfsRealtime.TripDescriptor tripDescriptor = tripUpdate.getTrip();
 
+        if (tripDescriptor.getRouteId() != null && !routeIdList.isEmpty() && !routeIdList.contains(tripDescriptor.getRouteId())) {
+            return null;
+        }
+
         EstimatedVehicleJourney journey = new EstimatedVehicleJourney();
-
-
         DatedVehicleJourneyRef datedVehicleJourneyRef = new DatedVehicleJourneyRef();
         datedVehicleJourneyRef.setValue(CustomStringUtils.removeSpecialCharacters(tripDescriptor.getTripId()));
         journey.setDatedVehicleJourneyRef(datedVehicleJourneyRef);
@@ -241,7 +249,6 @@ public class TripUpdateMapper {
             journey.setLineRef(lineRef);
         }
 
-
         GtfsRealtime.VehicleDescriptor vehicleDescriptor = tripUpdate.getVehicle();
 
         if (vehicleDescriptor.getId() != null) {
@@ -252,14 +259,12 @@ public class TripUpdateMapper {
 
         EstimatedVehicleJourney.EstimatedCalls estimatedCalls = new EstimatedVehicleJourney.EstimatedCalls();
 
-
         for (GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate : tripUpdate.getStopTimeUpdateList()) {
             EstimatedCall estimatedCall = mapEstimatedCallFromTripUpdate(stopTimeUpdate);
             estimatedCalls.getEstimatedCalls().add(estimatedCall);
         }
 
         journey.setEstimatedCalls(estimatedCalls);
-
         return journey;
     }
 
@@ -296,13 +301,16 @@ public class TripUpdateMapper {
     }
 
     /**
-     * Read a tripUpdate and creates siri objects
+     * Maps a GTFS-Realtime {@link GtfsRealtime.TripUpdate} into a list of {@link MonitoredStopVisitCancellation} instances.
+     * This method processes trip updates that indicate trip cancellations and structures the affected stop visits.
      *
-     * @param tripUpdate GTFS-RT object to read
-     * @param datasetId
-     * @return A list of siri objects
+     * @param tripUpdate The GTFS-Realtime {@link GtfsRealtime.TripUpdate} containing trip update data.
+     * @param datasetId The identifier of the dataset associated with the trip update.
+     * @param routeIdList A list of route IDs used to filter relevant stop visit cancellations.
+     * @return A list of {@link MonitoredStopVisitCancellation} objects representing structured stop visit cancellation data.
+     *         If the trip is not canceled, returns an empty list.
      */
-    public List<MonitoredStopVisitCancellation> mapStopCancellationFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate, String datasetId) {
+    public List<MonitoredStopVisitCancellation> mapStopCancellationFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate, String datasetId, List<String> routeIdList) {
         if (tripUpdate.getTrip().getScheduleRelationship() != null && !GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED.equals(
                 tripUpdate.getTrip().getScheduleRelationship())) {
             return Collections.emptyList();
@@ -319,6 +327,9 @@ public class TripUpdateMapper {
 
             String stopId = getStopId(stopTimeUpdate, datasetId, tripId);
 
+            if (stopId != null && !routeIdList.isEmpty() && !routeIdList.contains(stopId)) {
+                continue;
+            }
             if (StringUtils.isEmpty(stopId)) {
                 logger.error("Unable to determine stopId for dataset:{}, tripId:{}, stopSequence:{}, stopId:{}", datasetId, tripId, stopTimeUpdate.getStopSequence(), stopTimeUpdate.getStopId());
             }

@@ -36,18 +36,20 @@ public class AlertMapper {
     private static StopPlaceUpdaterService stopPlaceService;
 
     /**
-     * Main function that converts alert (GTFS-RT) to situation exchange(SIRI)
+     * Maps a GTFS-RT Alert to a PtSituationElement, converting relevant alert data into a structured format.
      *
-     * @param alert An alert coming from GTFS-RT
-     * @return A situation exchange time table (SIRI format)
+     * @param alert      The GTFS-Realtime Alert to be mapped.
+     * @param datasetId  The identifier of the dataset associated with the alert.
+     * @param routeIdList A list of route IDs to filter the alert’s applicability.
+     * @return A {@link PtSituationElement} object containing the structured data from the alert.
      */
-    public static PtSituationElement mapSituationFromAlert(GtfsRealtime.Alert alert, String datasetId) {
+    public static PtSituationElement mapSituationFromAlert(GtfsRealtime.Alert alert, String datasetId, List<String> routeIdList) {
 
         PtSituationElement ptSituationElement = new PtSituationElement();
         mapDescription(ptSituationElement, alert);
         mapPeriod(ptSituationElement, alert);
         mapReasons(ptSituationElement, alert);
-        mapAffects(ptSituationElement, alert, datasetId);
+        mapAffects(ptSituationElement, alert, datasetId, routeIdList);
         mapEffect(ptSituationElement, alert);
         mapSeverity(ptSituationElement, alert);
 
@@ -117,21 +119,25 @@ public class AlertMapper {
 
     }
 
-    private static void mapAffects(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert, String datasetId) {
-
+    /**
+     * Maps the affected entities from a GTFS-Realtime Alert to a {@link PtSituationElement}.
+     *
+     * @param ptSituationElement The {@link PtSituationElement} to which the affected entities will be mapped.
+     * @param alert The GTFS-Realtime {@link GtfsRealtime.Alert} containing the affected entities.
+     * @param datasetId The identifier of the dataset associated with the alert.
+     * @param routeIdList A list of route IDs used to filter the affected entities.
+     */
+    private static void mapAffects(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert, String datasetId, List<String> routeIdList) {
         List<GtfsRealtime.EntitySelector> informedEntities = alert.getInformedEntityList();
         if (informedEntities == null || informedEntities.size() == 0)
             return;
 
-
         AffectsScopeStructure affectStruct = new AffectsScopeStructure();
         AffectsScopeStructure.VehicleJourneys vehicleJourneys = new AffectsScopeStructure.VehicleJourneys();
 
-
         for (GtfsRealtime.EntitySelector informedEntity : informedEntities) {
-
-            vehicleJourneys.getAffectedVehicleJourneies().addAll(getVehicleJourneys(informedEntity));
-            recordAffect(affectStruct, informedEntity, datasetId);
+            vehicleJourneys.getAffectedVehicleJourneies().addAll(getVehicleJourneys(informedEntity, routeIdList));
+            recordAffect(affectStruct, informedEntity, datasetId, routeIdList);
         }
         affectStruct.setVehicleJourneys(vehicleJourneys);
         ptSituationElement.setAffects(affectStruct);
@@ -139,20 +145,24 @@ public class AlertMapper {
 
 
     /**
-     * Add a new affect
+     * Records the affected entities from a GTFS-Realtime {@link GtfsRealtime.EntitySelector} into an {@link AffectsScopeStructure}.
+     * This method determines whether the affected entity is related to an agency, route, or stop and updates the structure accordingly.
      *
-     * @param affects        all already processed affects
-     * @param informedEntity new entity containing affects that must be recorded
+     * @param affects The {@link AffectsScopeStructure} that stores the affected elements.
+     * @param informedEntity The GTFS-Realtime {@link GtfsRealtime.EntitySelector} representing the affected entity.
+     * @param datasetId The identifier of the dataset associated with the affected entity.
+     * @param routeIdList A list of route IDs used to filter the affected entities.
      */
-    private static void recordAffect(AffectsScopeStructure affects, GtfsRealtime.EntitySelector informedEntity, String datasetId) {
-
+    private static void recordAffect(AffectsScopeStructure affects, GtfsRealtime.EntitySelector informedEntity, String datasetId, List<String> routeIdList) {
 
         if (informedEntity.hasAgencyId() || informedEntity.hasRouteId()) {
             AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork = getOrCreateNetwork(affects, informedEntity);
 
             if (informedEntity.hasRouteId()) {
-                AffectedLineStructure affectedLine = getOrCreateLine(affectedNetwork, informedEntity);
-                addAffectedStopInAffectedLine(affectedLine, informedEntity);
+                AffectedLineStructure affectedLine = getOrCreateLine(affectedNetwork, informedEntity, routeIdList);
+                if (affectedLine != null) {
+                    addAffectedStopInAffectedLine(affectedLine, informedEntity);
+                }
             }
         } else if (informedEntity.hasStopId()) {
             addAffectedStop(affects, informedEntity, datasetId);
@@ -289,15 +299,20 @@ public class AlertMapper {
     }
 
     /**
-     * Read affects to find the line affected by the situation
+     * Retrieves an existing {@link AffectedLineStructure} from the given {@link AffectsScopeStructure.Networks.AffectedNetwork}
+     * based on the route ID of the informed entity. If the route is not found, a new {@link AffectedLineStructure} is created and added.
      *
-     * @param affectedNetwork currently affected network
-     * @param informedEntity  the entity containing the affected line that must be recorded
-     * @return the current affected line (recovered or created)
+     * @param affectedNetwork The {@link AffectsScopeStructure.Networks.AffectedNetwork} containing affected lines.
+     * @param informedEntity The GTFS-Realtime {@link GtfsRealtime.EntitySelector} providing the route ID.
+     * @param routeIdList A list of route IDs used to filter valid routes.
+     * @return The existing or newly created {@link AffectedLineStructure}, or {@code null} if the route ID is not in the provided list.
      */
-
-    private static AffectedLineStructure getOrCreateLine(AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork, GtfsRealtime.EntitySelector informedEntity) {
+    private static AffectedLineStructure getOrCreateLine(AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork, GtfsRealtime.EntitySelector informedEntity, List<String> routeIdList) {
         String routeId = informedEntity.getRouteId();
+
+        if (!routeIdList.isEmpty() && !routeIdList.contains(routeId)){
+            return null;
+        }
 
         for (AffectedLineStructure affectedLine : affectedNetwork.getAffectedLines()) {
 
@@ -358,7 +373,7 @@ public class AlertMapper {
     }
 
 
-    private static List<AffectedVehicleJourneyStructure> getVehicleJourneys(GtfsRealtime.EntitySelector informedEntity) {
+    private static List<AffectedVehicleJourneyStructure> getVehicleJourneys(GtfsRealtime.EntitySelector informedEntity, List<String> routeIdList) {
         AffectsScopeStructure.VehicleJourneys vehicleJourneys = new AffectsScopeStructure.VehicleJourneys();
 
         if (informedEntity.hasTrip()) {
@@ -366,7 +381,7 @@ public class AlertMapper {
 
             GtfsRealtime.TripDescriptor tripDescriptor = informedEntity.getTrip();
             if (tripDescriptor != null)
-                mapTripDescriptor(tripDescriptor, vehicleJourney);
+                mapTripDescriptor(tripDescriptor, vehicleJourney, routeIdList);
 
             vehicleJourneys.getAffectedVehicleJourneies().add(vehicleJourney);
         }
@@ -375,7 +390,7 @@ public class AlertMapper {
     }
 
 
-    private static void mapTripDescriptor(GtfsRealtime.TripDescriptor tripDescriptor, AffectedVehicleJourneyStructure vehicleJourney) {
+    private static void mapTripDescriptor(GtfsRealtime.TripDescriptor tripDescriptor, AffectedVehicleJourneyStructure vehicleJourney, List<String> routeIdList) {
         if (StringUtils.isNotEmpty(tripDescriptor.getStartDate())) {
             try {
                 Date startDate = DATE_FORMATTER.parse(tripDescriptor.getStartDate());
@@ -387,12 +402,12 @@ public class AlertMapper {
         }
 
         if (StringUtils.isNotEmpty(tripDescriptor.getRouteId())) {
-            LineRef lineRef = new LineRef();
-            lineRef.setValue(tripDescriptor.getRouteId());
-            vehicleJourney.setLineRef(lineRef);
+            if (routeIdList.contains(tripDescriptor.getRouteId())) {
+                LineRef lineRef = new LineRef();
+                lineRef.setValue(tripDescriptor.getRouteId());
+                vehicleJourney.setLineRef(lineRef);
+            }
         }
-
-
     }
 
     private static void mapReasons(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert) {

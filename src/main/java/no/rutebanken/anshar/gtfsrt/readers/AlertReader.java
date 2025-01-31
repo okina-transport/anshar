@@ -49,12 +49,15 @@ public class AlertReader extends AbstractSwallower {
 
 
     /**
-     * Main function to ingest data : take a complete GTFS-RT object (FeedMessage), read and map data about Alerts and ingest it
+     * Processes and ingests GTFS-Realtime alert data, converting it into a structured format
+     * and handling updates, subscriptions, and message dispatching.
      *
-     * @param completeGTFSRTMessage The complete message (GTFS-RT format)
+     * @param datasetId The identifier of the dataset associated with the GTFS-Realtime feed.
+     * @param routeIdList A list of route IDs used to filter relevant alerts.
+     * @param completeGTFSRTMessage The complete GTFS-Realtime {@link GtfsRealtime.FeedMessage} containing alert data.
      */
-    public void ingestAlertData(String datasetId, GtfsRealtime.FeedMessage completeGTFSRTMessage) {
-        List<PtSituationElement> situations = buildSituationList(completeGTFSRTMessage, datasetId);
+    public void ingestAlertData(String datasetId, List<String> routeIdList, GtfsRealtime.FeedMessage completeGTFSRTMessage) {
+        List<PtSituationElement> situations = buildSituationList(completeGTFSRTMessage, datasetId, routeIdList);
         updateParticipantRef(datasetId, situations);
         List<String> subscriptionList = getSubscriptions(situations);
         checkAndCreateSubscriptions(subscriptionList, datasetId);
@@ -97,12 +100,15 @@ public class AlertReader extends AbstractSwallower {
     }
 
     /**
-     * Read the complete GTS-RT message and build a list of situations to integrate
+     * Converts a GTFS-Realtime feed message into a list of {@link PtSituationElement} instances.
+     * Each alert in the feed is transformed into a structured situation element.
      *
-     * @param feedMessage The complete message (GTFS-RT format)
-     * @return A list of situations, build by mapping alerts from GTFS-RT message
+     * @param feedMessage The GTFS-Realtime {@link GtfsRealtime.FeedMessage} containing alert data.
+     * @param datasetId The identifier of the dataset associated with the alerts.
+     * @param routeIdList A list of route IDs used to filter relevant alerts.
+     * @return A list of {@link PtSituationElement} objects representing the structured alert data.
      */
-    public List<PtSituationElement> buildSituationList(GtfsRealtime.FeedMessage feedMessage, String datasetId) {
+    public List<PtSituationElement> buildSituationList(GtfsRealtime.FeedMessage feedMessage, String datasetId, List<String> routeIdList) {
         List<PtSituationElement> situtations = new ArrayList<>();
 
 
@@ -110,8 +116,7 @@ public class AlertReader extends AbstractSwallower {
             if (isEmptyAlert(feedEntity.getAlert()))
                 continue;
 
-
-            PtSituationElement situation = AlertMapper.mapSituationFromAlert(feedEntity.getAlert(), datasetId);
+            PtSituationElement situation = AlertMapper.mapSituationFromAlert(feedEntity.getAlert(), datasetId, routeIdList);
 
             SituationNumber situationNumber = new SituationNumber();
             situationNumber.setValue(feedEntity.getId());

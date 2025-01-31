@@ -53,7 +53,9 @@ public class AlertReaderTest extends SpringBootBaseTest {
         JsonFormat.parser().ignoringUnknownFields().merge(content, feedMessageBuilder);
 
         assertNotNull(stopPlaceService);
-        List<PtSituationElement> situations = alertReader.buildSituationList(feedMessageBuilder.build(),"ALEOP");
+        List<String> routeIdList = Arrays.asList("12,13".split(","));
+
+        List<PtSituationElement> situations = alertReader.buildSituationList(feedMessageBuilder.build(),"ALEOP", routeIdList);
 
         assertFalse(situations.isEmpty());
 

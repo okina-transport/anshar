@@ -9,6 +9,10 @@ import org.junit.jupiter.api.Test;
 import uk.org.siri.siri20.EstimatedVehicleJourney;
 import uk.org.siri.siri20.VehicleActivityStructure;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import static junit.framework.Assert.assertTrue;
 
 
@@ -30,7 +34,10 @@ public class VehiclePositionMapperTest extends SpringBootBaseTest {
         pos.setLatitude(5.5f);
         pos.setLongitude(0.8f);
         vehiclePosition.setPosition(pos);
-        VehicleActivityStructure vehicleJourney = VehiclePositionMapper.mapVehicleActivityFromVehiclePosition(vehiclePosition.build());
+
+        List<String> routeIdList = Arrays.asList("".split(","));
+
+        VehicleActivityStructure vehicleJourney = VehiclePositionMapper.mapVehicleActivityFromVehiclePosition(vehiclePosition.build(), routeIdList);
         assertTrue(vehicleJourney != null);
 
     }

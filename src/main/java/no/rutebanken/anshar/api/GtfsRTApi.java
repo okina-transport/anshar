@@ -11,5 +11,6 @@ public class GtfsRTApi {
     private GTFSRTType type;
     private Boolean active;
     private Boolean validated;
+    private String routeIdList;
 
 }

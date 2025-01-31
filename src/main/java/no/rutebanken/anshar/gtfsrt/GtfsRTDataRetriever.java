@@ -20,7 +20,8 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.Charset;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -104,18 +105,24 @@ public class GtfsRTDataRetriever {
             return;
         }
 
+        List<String> routeIdList = gtfsRTApi.getRouteIdList() != null
+                ? Arrays.stream(gtfsRTApi.getRouteIdList().split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList())
+                : new ArrayList<>();
 
         tripUpdateReader.setUrl(gtfsRTApi.getUrl());
-        tripUpdateReader.ingestTripUpdateData(gtfsRTApi.getDatasetId(), completeGTFSFeed);
+        tripUpdateReader.ingestTripUpdateData(gtfsRTApi.getDatasetId(), routeIdList, completeGTFSFeed);
 
         if (configuration.processVM()) {
             vehiclePositionReader.setUrl(gtfsRTApi.getUrl());
-            vehiclePositionReader.ingestVehiclePositionData(gtfsRTApi.getDatasetId(), completeGTFSFeed);
+            vehiclePositionReader.ingestVehiclePositionData(gtfsRTApi.getDatasetId(), routeIdList, completeGTFSFeed);
         }
 
         if (configuration.processSX()) {
             alertReader.setUrl(gtfsRTApi.getUrl());
-            alertReader.ingestAlertData(gtfsRTApi.getDatasetId(), completeGTFSFeed);
+            alertReader.ingestAlertData(gtfsRTApi.getDatasetId(), routeIdList, completeGTFSFeed);
         }
         logger.info("GTFS-RT Reading completed for datasetId:" + gtfsRTApi.getDatasetId() + " and  URL:" + gtfsRTApi.getUrl());
     }

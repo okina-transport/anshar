@@ -6,6 +6,10 @@ import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import org.junit.jupiter.api.Test;
 import uk.org.siri.siri20.*;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertTrue;
 import static junit.framework.TestCase.assertEquals;
@@ -35,8 +39,9 @@ public class AlertMapperTest extends SpringBootBaseTest {
         GtfsRealtime.TranslatedString.Builder descTextBuilder = GtfsRealtime.TranslatedString.newBuilder().addTranslation(descTextTrans);
         alertBuilder.setDescriptionText(descTextBuilder);
 
-        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build(), "");
+        List<String> routeIdList = Arrays.asList("12,13".split(","));
 
+        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
 
         assertEquals("headerText", situation.getSummaries().get(0).getValue());
         assertEquals("desc", situation.getDescriptions().get(0).getValue());
@@ -69,7 +74,9 @@ public class AlertMapperTest extends SpringBootBaseTest {
         newEnt.setAgencyId(agencyId);
 
         alertBuilder.addInformedEntity(newEnt.build());
-        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build(), "");
+        List<String> routeIdList = Arrays.asList("12,13".split(","));
+
+        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
 
         assertTrue(situation.getAffects() != null);
         assertTrue(situation.getAffects().getNetworks() != null);
@@ -107,7 +114,10 @@ public class AlertMapperTest extends SpringBootBaseTest {
         newEnt.setRouteId(lineId);
 
         alertBuilder.addInformedEntity(newEnt.build());
-        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build(), "");
+
+        List<String> routeIdList = Arrays.asList("lineIdTest".split(","));
+
+        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
 
         assertTrue(situation.getAffects() != null);
         assertTrue(situation.getAffects().getNetworks() != null);
@@ -148,7 +158,10 @@ public class AlertMapperTest extends SpringBootBaseTest {
         newEnt.setStopId(stopId);
 
         alertBuilder.addInformedEntity(newEnt.build());
-        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build(), "");
+
+        List<String> routeIdList = Arrays.asList("lineIdTest".split(","));
+
+        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
 
         assertTrue(situation.getAffects() != null);
         assertTrue(situation.getAffects().getNetworks() != null);
@@ -198,7 +211,10 @@ public class AlertMapperTest extends SpringBootBaseTest {
         newEnt.setAgencyId(agencyId);
 
         alertBuilder.addInformedEntity(newEnt.build());
-        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build(), "");
+
+        List<String> routeIdList = Arrays.asList("lineIdTest".split(","));
+
+        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
 
         assertTrue(situation.getAffects() != null);
         assertTrue(situation.getAffects().getNetworks() != null);
@@ -260,7 +276,9 @@ public class AlertMapperTest extends SpringBootBaseTest {
 
         alertBuilder.addInformedEntity(newEnt.build());
         alertBuilder.addInformedEntity(newEnt2.build());
-        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build(), "");
+        List<String> routeIdList = Arrays.asList("12,13".split(","));
+
+        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
 
         assertTrue(situation.getAffects() != null);
         assertTrue(situation.getAffects().getStopPoints() != null);
@@ -285,7 +303,9 @@ public class AlertMapperTest extends SpringBootBaseTest {
 
     private void testSeverityConversion(GtfsRealtime.Alert.SeverityLevel inputSeverityLevel, SeverityEnumeration outputSeverity) {
         GtfsRealtime.Alert alert = buildAlertWithSeverity(inputSeverityLevel);
-        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alert, "");
+        List<String> routeIdList = Arrays.asList("12,13".split(","));
+
+        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alert, "", routeIdList);
         assertEquals("severity conversion issue between :" + inputSeverityLevel + " , and :" + outputSeverity, situation.getSeverity(), outputSeverity);
     }
 
@@ -311,7 +331,9 @@ public class AlertMapperTest extends SpringBootBaseTest {
 
     private void testEffectConversion(GtfsRealtime.Alert.Effect inputEffect, ServiceConditionEnumeration outputServiceCondition) {
         GtfsRealtime.Alert alert = buildAlertWithEffect(inputEffect);
-        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alert, "");
+        List<String> routeIdList = Arrays.asList("12,13".split(","));
+
+        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alert, "", routeIdList);
         assertNotNull(situation.getConsequences());
         assertNotNull(situation.getConsequences().getConsequences());
         assertNotNull(situation.getConsequences().getConsequences().get(0));

@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri21.EstimatedVehicleJourney;
 import uk.org.siri.siri21.MonitoredStopVisitCancellation;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static junit.framework.Assert.assertTrue;
@@ -40,7 +42,9 @@ public class TripUpdateMapperTest extends SpringBootBaseTest {
         stopTimeUpd.setDeparture(ste.build());
         tripBuilder.addStopTimeUpdate(stopTimeUpd);
 
-        EstimatedVehicleJourney vehicleJourney = TripUpdateMapper.mapVehicleJourneyFromTripUpdate(tripBuilder.build());
+        List<String> routeIdList = Arrays.asList("".split(","));
+
+        EstimatedVehicleJourney vehicleJourney = TripUpdateMapper.mapVehicleJourneyFromTripUpdate(tripBuilder.build(), routeIdList);
         assertTrue(vehicleJourney != null);
 
     }
@@ -63,7 +67,9 @@ public class TripUpdateMapperTest extends SpringBootBaseTest {
         stopTimeUpd.setDeparture(ste.build());
         tripBuilder.addStopTimeUpdate(stopTimeUpd);
 
-        List<MonitoredStopVisitCancellation> monitoredStopVisitCancellations = tripUpdateMapper.mapStopCancellationFromTripUpdate(tripBuilder.build(), "test");
+        List<String> routeIdList = Arrays.asList("stopId".split(","));
+
+        List<MonitoredStopVisitCancellation> monitoredStopVisitCancellations = tripUpdateMapper.mapStopCancellationFromTripUpdate(tripBuilder.build(), "test", routeIdList);
         Assertions.assertFalse(monitoredStopVisitCancellations.isEmpty());
         Assertions.assertEquals("test-tripId-stopId-routeId", monitoredStopVisitCancellations.get(0).getItemRef().getValue());
         Assertions.assertEquals("routeId", monitoredStopVisitCancellations.get(0).getLineRef().getValue());
@@ -84,7 +90,7 @@ public class TripUpdateMapperTest extends SpringBootBaseTest {
         stopTimeUpd2.setDeparture(ste2.build());
         tripBuilder2.addStopTimeUpdate(stopTimeUpd2);
 
-        List<MonitoredStopVisitCancellation> monitoredStopVisitCancellations2 = tripUpdateMapper.mapStopCancellationFromTripUpdate(tripBuilder2.build(), "test2");
+        List<MonitoredStopVisitCancellation> monitoredStopVisitCancellations2 = tripUpdateMapper.mapStopCancellationFromTripUpdate(tripBuilder2.build(), "test2", routeIdList);
         Assertions.assertTrue(monitoredStopVisitCancellations2.isEmpty());
     }
 }

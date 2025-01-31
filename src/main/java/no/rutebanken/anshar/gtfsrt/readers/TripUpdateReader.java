@@ -64,16 +64,18 @@ public class TripUpdateReader extends AbstractSwallower {
 
 
     /**
-     * Main function to ingest data : take a complete GTFS-RT object (FeedMessage), read and map data about TripUpdates and ingest it
+     * Processes and ingests GTFS-Realtime trip update data, converting it into structured SIRI data formats
+     * for estimated timetables and stop monitoring. This method handles subscription management and message dispatching.
      *
-     * @param completeGTFSRTMessage The complete message (GTFS-RT format)
+     * @param datasetId The identifier of the dataset associated with the GTFS-Realtime feed.
+     * @param routeIdList A list of route IDs used to filter relevant trip updates.
+     * @param completeGTFSRTMessage The complete GTFS-Realtime {@link GtfsRealtime.FeedMessage} containing trip update data.
      */
-    public void ingestTripUpdateData(String datasetId, GtfsRealtime.FeedMessage completeGTFSRTMessage) {
-
+    public void ingestTripUpdateData(String datasetId, List<String> routeIdList, GtfsRealtime.FeedMessage completeGTFSRTMessage) {
 
         if (configuration.processET()) {
             //// ESTIMATED TIME TABLES
-            List<EstimatedVehicleJourney> estimatedVehicleJourneys = buildEstimatedVehicleJourneyList(completeGTFSRTMessage);
+            List<EstimatedVehicleJourney> estimatedVehicleJourneys = buildEstimatedVehicleJourneyList(completeGTFSRTMessage, routeIdList);
             List<String> etSubscriptionList = getSubscriptionsFromEstimatedTimeTables(estimatedVehicleJourneys);
             checkAndCreateSubscriptions(etSubscriptionList, GTFSRT_ET_PREFIX, SiriDataType.ESTIMATED_TIMETABLE, RequestType.GET_ESTIMATED_TIMETABLE, datasetId);
             List<String> lineList = getLines(estimatedVehicleJourneys);
@@ -83,11 +85,10 @@ public class TripUpdateReader extends AbstractSwallower {
 
         }
 
-
         if (configuration.processSM()) {
             //// STOP VISITS
-            List<MonitoredStopVisit> stopVisits = buildStopVisitList(completeGTFSRTMessage, datasetId);
-            List<MonitoredStopVisitCancellation> stopCancellations = buildStopCancellationList(completeGTFSRTMessage, datasetId);
+            List<MonitoredStopVisit> stopVisits = buildStopVisitList(completeGTFSRTMessage, datasetId, routeIdList);
+            List<MonitoredStopVisitCancellation> stopCancellations = buildStopCancellationList(completeGTFSRTMessage, datasetId, routeIdList);
             List<String> visitSubscriptionList = getSubscriptionsFromVisits(stopVisits);
             checkAndCreateSubscriptions(visitSubscriptionList, GTFSRT_SM_PREFIX, SiriDataType.STOP_MONITORING, RequestType.GET_STOP_MONITORING, datasetId);
             buildSiriSMAndSend(stopVisits, stopCancellations, datasetId);
@@ -143,13 +144,16 @@ public class TripUpdateReader extends AbstractSwallower {
     }
 
     /**
-     * Read the complete GTS-RT message and build a list of stop visits to integrate
+     * Builds a list of {@link MonitoredStopVisit} instances from a GTFS-Realtime {@link GtfsRealtime.FeedMessage}.
+     * This method processes trip updates from the feed message, extracts stop visit information,
+     * and assigns a recorded timestamp.
      *
-     * @param feedMessage The complete message (GTFS-RT format)
-     * @param datasetId
-     * @return A list of visits, build by mapping trip updates from GTFS-RT message
+     * @param feedMessage The GTFS-Realtime {@link GtfsRealtime.FeedMessage} containing trip update data.
+     * @param datasetId The identifier of the dataset associated with the stop visits.
+     * @param routeIdList A list of route IDs used to filter relevant stop visits.
+     * @return A list of {@link MonitoredStopVisit} objects representing structured stop visit data.
      */
-    private List<MonitoredStopVisit> buildStopVisitList(GtfsRealtime.FeedMessage feedMessage, String datasetId) {
+    private List<MonitoredStopVisit> buildStopVisitList(GtfsRealtime.FeedMessage feedMessage, String datasetId, List<String> routeIdList) {
         List<MonitoredStopVisit> stopVisits = new ArrayList<>();
 
         long recordedAtTimeLong = feedMessage.getHeader().getTimestamp();
@@ -159,7 +163,7 @@ public class TripUpdateReader extends AbstractSwallower {
             if (feedEntity.getTripUpdate() == null)
                 continue;
 
-            List<MonitoredStopVisit> currentStopVisitList = tripUpdateMapper.mapStopVisitFromTripUpdate(feedEntity.getTripUpdate(), datasetId);
+            List<MonitoredStopVisit> currentStopVisitList = tripUpdateMapper.mapStopVisitFromTripUpdate(feedEntity.getTripUpdate(), datasetId, routeIdList);
             stopVisits.addAll(currentStopVisitList);
         }
 
@@ -170,13 +174,16 @@ public class TripUpdateReader extends AbstractSwallower {
     }
 
     /**
-     * Read the complete GTS-RT message and build a list of stop visits to integrate
+     * Builds a list of {@link MonitoredStopVisitCancellation} instances from a GTFS-Realtime {@link GtfsRealtime.FeedMessage}.
+     * This method processes trip updates from the feed message, extracts stop visit cancellations,
+     * and assigns a recorded timestamp.
      *
-     * @param feedMessage The complete message (GTFS-RT format)
-     * @param datasetId
-     * @return A list of visits, build by mapping trip updates from GTFS-RT message
+     * @param feedMessage The GTFS-Realtime {@link GtfsRealtime.FeedMessage} containing trip update data.
+     * @param datasetId The identifier of the dataset associated with the stop visit cancellations.
+     * @param routeIdList A list of route IDs used to filter relevant stop visit cancellations.
+     * @return A list of {@link MonitoredStopVisitCancellation} objects representing structured stop visit cancellation data.
      */
-    private List<MonitoredStopVisitCancellation> buildStopCancellationList(GtfsRealtime.FeedMessage feedMessage, String datasetId) {
+    private List<MonitoredStopVisitCancellation> buildStopCancellationList(GtfsRealtime.FeedMessage feedMessage, String datasetId, List<String> routeIdList) {
         List<MonitoredStopVisitCancellation> stopVisitCancellations = new ArrayList<>();
 
         long recordedAtTimeLong = feedMessage.getHeader().getTimestamp();
@@ -186,7 +193,7 @@ public class TripUpdateReader extends AbstractSwallower {
             if (feedEntity.getTripUpdate() == null)
                 continue;
 
-            List<MonitoredStopVisitCancellation> currentStopCancellationList = tripUpdateMapper.mapStopCancellationFromTripUpdate(feedEntity.getTripUpdate(), datasetId);
+            List<MonitoredStopVisitCancellation> currentStopCancellationList = tripUpdateMapper.mapStopCancellationFromTripUpdate(feedEntity.getTripUpdate(), datasetId, routeIdList);
             stopVisitCancellations.addAll(currentStopCancellationList);
         }
 
@@ -196,12 +203,14 @@ public class TripUpdateReader extends AbstractSwallower {
     }
 
     /**
-     * Read the complete GTS-RT message and build a list of estimated journeys to integrate
+     * Builds a list of {@link EstimatedVehicleJourney} instances from a GTFS-Realtime {@link GtfsRealtime.FeedMessage}.
+     * This method processes trip updates from the feed message and converts them into structured estimated vehicle journeys.
      *
-     * @param feedMessage The complete message (GTFS-RT format)
-     * @return A list of estimated vehicle journeys, build by mapping trip updates from GTFS-RT message
+     * @param feedMessage The GTFS-Realtime {@link GtfsRealtime.FeedMessage} containing trip update data.
+     * @param routeIdList A list of route IDs used to filter relevant estimated vehicle journeys.
+     * @return A list of {@link EstimatedVehicleJourney} objects representing structured estimated vehicle journey data.
      */
-    private List<EstimatedVehicleJourney> buildEstimatedVehicleJourneyList(GtfsRealtime.FeedMessage feedMessage) {
+    private List<EstimatedVehicleJourney> buildEstimatedVehicleJourneyList(GtfsRealtime.FeedMessage feedMessage, List<String> routeIdList) {
         List<EstimatedVehicleJourney> estimatedVehicleJourneys = new ArrayList<>();
 
 
@@ -209,8 +218,10 @@ public class TripUpdateReader extends AbstractSwallower {
             if (feedEntity.getTripUpdate() == null)
                 continue;
 
-            EstimatedVehicleJourney estimatedVehicleJourney = tripUpdateMapper.mapVehicleJourneyFromTripUpdate(feedEntity.getTripUpdate());
-            estimatedVehicleJourneys.add(estimatedVehicleJourney);
+            EstimatedVehicleJourney estimatedVehicleJourney = tripUpdateMapper.mapVehicleJourneyFromTripUpdate(feedEntity.getTripUpdate(), routeIdList);
+            if (estimatedVehicleJourney != null) {
+                estimatedVehicleJourneys.add(estimatedVehicleJourney);
+            }
         }
         return estimatedVehicleJourneys;
 

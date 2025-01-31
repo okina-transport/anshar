@@ -21,6 +21,7 @@ public class GtfsRTApiDtoConverter implements Converter<GtfsRTApiDto, GtfsRTApi>
         target.setDatasetId(source.getDatasetId());
         target.setType(GTFSRTType.valueOf(source.getType()));
         target.setValidated(source.getValidated());
+        target.setRouteIdList(source.getRouteIdList());
         log.debug("target: {}", target);
         return target;
     }

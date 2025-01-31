@@ -16,7 +16,7 @@ public class GtfsRTRouteBuilder extends BaseRouteBuilder {
     private static final Logger logger = LoggerFactory.getLogger(GtfsRTRouteBuilder.class);
 
 
-    @Value("${anshar.gtfs.interval.millis:120000}")
+    @Value("${anshar.gtfs.interval.millis:60000}") //120000
     private int gtfsIntervalInMillis;
 
     @Autowired

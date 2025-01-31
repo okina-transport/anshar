@@ -18,8 +18,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Date;
-
-
+import java.util.List;
 
 
 /***
@@ -31,22 +30,23 @@ public class VehiclePositionMapper {
     private static final DateFormat gtfsRtDateFormat = new SimpleDateFormat("yyyyMMdd HH:mm:ss");
     private static final Logger logger = LoggerFactory.getLogger(VehiclePositionMapper.class);
 
-
-
     /**
-     * Main function that converts vehiclePosition (GTFS-RT) to a vehicleActivity(SIRI)
+     * Maps a GTFS-Realtime {@link GtfsRealtime.VehiclePosition} into a {@link VehicleActivityStructure}.
+     * This method extracts relevant vehicle position details, such as trip information, vehicle reference,
+     * location, status, and occupancy, and structures them into a vehicle activity format.
      *
-     * @param vehiclePosition
-     *      A vehiclePosition coming from GTFS-RT
-     * @return
-     *      A vehicleActivity (SIRI format)
+     * @param vehiclePosition The GTFS-Realtime {@link GtfsRealtime.VehiclePosition} containing real-time vehicle data.
+     * @param routeIdList A list of route IDs used to filter relevant vehicle positions.
+     * @return A {@link VehicleActivityStructure} object representing the structured vehicle activity data,
+     *         or {@code null} if the vehicle's route ID is not in the provided list.
      */
-    public static VehicleActivityStructure mapVehicleActivityFromVehiclePosition(GtfsRealtime.VehiclePosition vehiclePosition) {
-
-
+    public static VehicleActivityStructure mapVehicleActivityFromVehiclePosition(GtfsRealtime.VehiclePosition vehiclePosition, List<String> routeIdList) {
         VehicleActivityStructure activity = new VehicleActivityStructure();
-
         GtfsRealtime.TripDescriptor tripDescriptor = vehiclePosition.getTrip();
+
+        if (tripDescriptor.getRouteId() != null && !routeIdList.isEmpty() && !routeIdList.contains(tripDescriptor.getRouteId())) {
+            return null;
+        }
 
         FramedVehicleJourneyRefStructure framedVehicleJourneyRefBuilder = new FramedVehicleJourneyRefStructure();
         framedVehicleJourneyRefBuilder.setDatedVehicleJourneyRef(tripDescriptor.getTripId());
@@ -58,9 +58,6 @@ public class VehiclePositionMapper {
 
         monitoredVehiclejourney.setFramedVehicleJourneyRef(framedVehicleJourneyRefBuilder);
         monitoredVehiclejourney.setDataSource("MOBIITI");
-
-
-
 
         mapTridData(monitoredVehiclejourney, vehiclePosition.getTrip());
         mapVehicleRef(activity, monitoredVehiclejourney, vehiclePosition.getVehicle());

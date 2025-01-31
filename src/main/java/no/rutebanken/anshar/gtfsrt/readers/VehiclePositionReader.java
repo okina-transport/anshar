@@ -59,12 +59,15 @@ public class VehiclePositionReader extends AbstractSwallower {
     }
 
     /**
-     * Main function to ingest data : take a complete GTFS-RT object (FeedMessage), read and map data about vehiclePositions and ingest it
+     * Processes and ingests GTFS-Realtime vehicle position data, converting it into structured SIRI data.
+     * This method builds vehicle activity records, manages subscriptions, and sends the structured data.
      *
-     * @param completeGTFSRTMessage The complete message (GTFS-RT format)
+     * @param datasetId The identifier of the dataset associated with the GTFS-Realtime feed.
+     * @param routeIdList A list of route IDs used to filter relevant vehicle positions.
+     * @param completeGTFSRTMessage The complete GTFS-Realtime {@link GtfsRealtime.FeedMessage} containing vehicle position data.
      */
-    public void ingestVehiclePositionData(String datasetId, GtfsRealtime.FeedMessage completeGTFSRTMessage) {
-        List<VehicleActivityStructure> vehicleActivities = buildVehicleActivityList(completeGTFSRTMessage);
+    public void ingestVehiclePositionData(String datasetId, List<String> routeIdList, GtfsRealtime.FeedMessage completeGTFSRTMessage) {
+        List<VehicleActivityStructure> vehicleActivities = buildVehicleActivityList(completeGTFSRTMessage, routeIdList);
 
 
         if (vehicleActivities.size() == 0) {
@@ -93,12 +96,14 @@ public class VehiclePositionReader extends AbstractSwallower {
     }
 
     /**
-     * Read the complete GTS-RT message and build a list of vehicle activities to integrate
+     * Builds a list of {@link VehicleActivityStructure} instances from a GTFS-Realtime {@link GtfsRealtime.FeedMessage}.
+     * This method processes vehicle position updates from the feed message and converts them into structured vehicle activity records.
      *
-     * @param feedMessage The complete message (GTFS-RT format)
-     * @return A list of vehicle activities, build by mapping vehicle positions from GTFS-RT message
+     * @param feedMessage The GTFS-Realtime {@link GtfsRealtime.FeedMessage} containing vehicle position data.
+     * @param routeIdList A list of route IDs used to filter relevant vehicle activities.
+     * @return A list of {@link VehicleActivityStructure} objects representing structured vehicle activity data.
      */
-    private List<VehicleActivityStructure> buildVehicleActivityList(GtfsRealtime.FeedMessage feedMessage) {
+    private List<VehicleActivityStructure> buildVehicleActivityList(GtfsRealtime.FeedMessage feedMessage, List<String> routeIdList) {
         List<VehicleActivityStructure> vehicleActivities = new ArrayList<>();
 
 
@@ -106,8 +111,10 @@ public class VehiclePositionReader extends AbstractSwallower {
             if (feedEntity.getVehicle() == null)
                 continue;
 
-            VehicleActivityStructure vehicleActivity = VehiclePositionMapper.mapVehicleActivityFromVehiclePosition(feedEntity.getVehicle());
-
+            VehicleActivityStructure vehicleActivity = VehiclePositionMapper.mapVehicleActivityFromVehiclePosition(feedEntity.getVehicle(), routeIdList);
+            if (vehicleActivity == null) {
+                continue;
+            }
             if (isEmptyVehicleRef(vehicleActivity) && isEmptyLocation(vehicleActivity)) {
                 continue;
             }
