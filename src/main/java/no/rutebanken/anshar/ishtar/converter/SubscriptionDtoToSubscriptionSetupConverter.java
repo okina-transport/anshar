@@ -62,7 +62,9 @@ public class SubscriptionDtoToSubscriptionSetupConverter implements Converter<Su
             target.setMappingAdapterId(source.getMappingAdapterId());
             target.setUpdateIntervalSeconds(source.getUpdateIntervalSeconds());
             target.setPreviewIntervalSeconds(source.getPreviewIntervalSeconds());
-            target.setValidated(source.getValidated());
+
+            target.setValidated(BooleanUtils.isTrue(source.getValidated()));
+
 
             // required to avoid NPE on to SubscriptionSetup#buildUrl()
             target.setAddress(inboundUrl);

@@ -45,7 +45,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static javax.ws.rs.core.MediaType.*;
+import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+import static javax.ws.rs.core.MediaType.TEXT_HTML;
 import static no.rutebanken.anshar.routes.admin.AdminRouteHelper.mergeJsonStats;
 import static no.rutebanken.anshar.routes.policy.SingletonRoutePolicyFactory.DEFAULT_LOCK_VALUE;
 
@@ -59,6 +60,7 @@ public class AdministrationRoute extends RestRouteBuilder {
     private static final String OUTBOUND_STATS_ROUTE = "direct:outbound.stats";
     private static final String OUTBOUND_DATA_ROUTE = "direct:outbound.data";
     private static final String OUTBOUND_UNSUBSCRIBE_BY_SIRI_DATA_TYPE_ROUTE = "direct:outbound.siri.unsubscribe";
+    private static final String OUTBOUND_UNSUBSCRIBE_BY_SIRI_DATA_TYPE_AND_REQUESTOR_ROUTE = "direct:outbound.siri.unsubscribe.by.requestor";
     private static final String OPERATION_ROUTE = "direct:operation";
     private static final String CLUSTERSTATS_ROUTE = "direct:clusterstats";
     private static final String UNMAPPED_ROUTE = "direct:unmapped";
@@ -119,6 +121,7 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .get("/outbound/stats").produces(APPLICATION_JSON).to(OUTBOUND_STATS_ROUTE)
                 .get("/outbound").produces(APPLICATION_JSON).to(OUTBOUND_DATA_ROUTE)
                 .delete("/outbound/{siriDataType}").produces(APPLICATION_JSON).to(OUTBOUND_UNSUBSCRIBE_BY_SIRI_DATA_TYPE_ROUTE)
+                .delete("/outbound/{siriDataType}/{requestorRef}").produces(APPLICATION_JSON).to(OUTBOUND_UNSUBSCRIBE_BY_SIRI_DATA_TYPE_AND_REQUESTOR_ROUTE)
                 .get("/clusterstats").produces(APPLICATION_JSON).to(CLUSTERSTATS_ROUTE)
                 .put("/stats").to(OPERATION_ROUTE)
                 .get("/unmapped").produces(TEXT_HTML).to(UNMAPPED_ROUTE)
@@ -260,7 +263,7 @@ public class AdministrationRoute extends RestRouteBuilder {
 
         from(OUTBOUND_STATS_ROUTE)
                 .process(p -> {
-                    JSONArray outboundStats =  serverSubscriptionManager.getSubscriptionsCountAsJson();
+                    JSONArray outboundStats = serverSubscriptionManager.getSubscriptionsCountAsJson();
 
                     if (APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE, String.class))) {
                         p.getMessage().setBody(outboundStats);
@@ -283,7 +286,7 @@ public class AdministrationRoute extends RestRouteBuilder {
                         if (pageSize == null || pageSize < 0) {
                             pageSize = 50;
                         }
-                        JSONObject outboundDataWithPagination =  serverSubscriptionManager.getSubscriptionsWithPagination(type, page, pageSize);
+                        JSONObject outboundDataWithPagination = serverSubscriptionManager.getSubscriptionsWithPagination(type, page, pageSize);
 
                         if (APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE, String.class))) {
                             p.getMessage().setBody(outboundDataWithPagination);
@@ -302,6 +305,19 @@ public class AdministrationRoute extends RestRouteBuilder {
                     try {
                         SiriDataType siriDataType = SiriDataType.valueOf(siriDataTypeInput);
                         serverSubscriptionManager.terminateAllSubscriptionsByType(siriDataType, false);
+                    } catch (IllegalArgumentException e) {
+                        p.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 400);
+                    }
+                })
+        ;
+
+        from(OUTBOUND_UNSUBSCRIBE_BY_SIRI_DATA_TYPE_AND_REQUESTOR_ROUTE)
+                .process(p -> {
+                    String siriDataTypeInput = p.getIn().getHeader("siriDataType", String.class);
+                    String requestorRef = p.getIn().getHeader("requestorRef", String.class);
+                    log.info("Deleting subscriptions for dataType : " + siriDataTypeInput + " and requestorRef : " + requestorRef);
+                    try {
+                        serverSubscriptionManager.terminateAllsubscriptionsForTypeAndRequestor(SiriDataType.valueOf(siriDataTypeInput), requestorRef, false);
                     } catch (IllegalArgumentException e) {
                         p.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 400);
                     }

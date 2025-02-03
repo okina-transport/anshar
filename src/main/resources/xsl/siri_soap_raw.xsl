@@ -348,9 +348,6 @@
                                 <xsl:apply-templates select="* | node()"/>
                             </xsl:element>
                         </xsl:for-each>
-                        <xsl:element name="siril:SituationExchangeDelivery">
-                            <xsl:copy-of select="Answer/SituationExchangeDelivery/*" copy-namespaces="no"/>
-                        </xsl:element>
                     </xsl:element>
                 </xsl:element>
             </xsl:when>

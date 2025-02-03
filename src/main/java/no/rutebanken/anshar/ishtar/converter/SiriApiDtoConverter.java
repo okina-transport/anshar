@@ -3,6 +3,7 @@ package no.rutebanken.anshar.ishtar.converter;
 import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.api.SiriApi;
 import no.rutebanken.anshar.ishtar.model.SiriApiDto;
+import org.apache.commons.lang3.BooleanUtils;
 import org.springframework.core.convert.converter.Converter;
 
 /**
@@ -19,7 +20,7 @@ public class SiriApiDtoConverter implements Converter<SiriApiDto, SiriApi> {
         target.setUrl(source.getUrl());
         target.setDatasetId(source.getDatasetId());
         target.setType(source.getType());
-        target.setValidated(source.getValidated());
+        target.setValidated(BooleanUtils.isTrue(source.getValidated()));
         log.debug("target: {}", target);
         return target;
     }

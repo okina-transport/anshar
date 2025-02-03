@@ -213,6 +213,7 @@ public class ServerSubscriptionManager {
         obj.put("initialTerminationTime", formatter.format(subscription.getInitialTerminationTime()));
         obj.put("clientTrackingName", subscription.getClientTrackingName() != null ? subscription.getClientTrackingName() : "");
         obj.put("filteredRefs", getFilteredRefs(subscription));
+        obj.put("requestorRef", subscription.getRequestorRef());
         return obj;
     }
 
@@ -867,6 +868,17 @@ public class ServerSubscriptionManager {
         } else {
             logger.trace("Got TerminateSubscriptionRequest for non-existing subscription");
         }
+    }
+
+    public void terminateAllsubscriptionsForTypeAndRequestor(SiriDataType siriDataType, String requestorRef, boolean postResponse) {
+        logger.info("Terminating all subscriptions for requestor:" + requestorRef + " and type:" + siriDataType.toString());
+        for (OutboundSubscriptionSetup subscription : subscriptions.values()) {
+            if (subscription.getRequestorRef().equals(requestorRef) && subscription.getSubscriptionType().equals(siriDataType)) {
+
+                terminateSubscription(subscription.getSubscriptionId(), postResponse);
+            }
+        }
+
     }
 
     public List<String> terminateAllsubscriptionsForRequestor(String requestorRef, boolean postResponse) {
