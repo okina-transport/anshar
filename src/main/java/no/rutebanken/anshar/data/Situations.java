@@ -20,12 +20,12 @@ import com.hazelcast.query.Predicate;
 import lombok.Getter;
 import lombok.Setter;
 import no.rutebanken.anshar.config.AnsharConfiguration;
-import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import org.apache.commons.collections4.CollectionUtils;
 import org.quartz.utils.counter.Counter;
 import org.quartz.utils.counter.CounterImpl;
 import org.slf4j.Logger;
@@ -36,6 +36,7 @@ import org.springframework.stereotype.Repository;
 import uk.org.ifopt.siri21.StopPlaceRef;
 import uk.org.siri.siri21.*;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
@@ -46,6 +47,9 @@ import java.util.stream.Collectors;
 @Repository
 public class Situations extends SiriRepository<PtSituationElement> {
     private static final Logger logger = LoggerFactory.getLogger(Situations.class);
+
+    // ~ 10 years in milliseconds
+    public static final long TEN_YEARS_MS = 315_569_520_000L;
 
     @Getter
     @Setter
@@ -72,15 +76,15 @@ public class Situations extends SiriRepository<PtSituationElement> {
     private AnsharConfiguration configuration;
 
     @Autowired
-    ExtendedHazelcastService hazelcastService;
-
-    @Autowired
     private StopPlaceUpdaterService stopPlaceService;
+
+    @Setter
+    private Clock clock;
 
     protected Situations() {
         super(SiriDataType.SITUATION_EXCHANGE);
+        this.clock = Clock.systemUTC();
     }
-
 
     /**
      * @return All situationElements
@@ -94,7 +98,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
     }
 
     public int getSize() {
-        return situationElements.keySet().size();
+        return situationElements.size();
     }
 
 
@@ -148,8 +152,6 @@ public class Situations extends SiriRepository<PtSituationElement> {
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientName, int maxSize) {
 
         requestorRefRepository.touchRequestorRef(requestorId, datasetId, clientName, SiriDataType.SITUATION_EXCHANGE);
-
-        int trackingPeriodMinutes = configuration.getTrackingPeriodMinutes();
 
         boolean isAdHocRequest = false;
 
@@ -236,7 +238,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
         if (requestorId != null) {
 
             Set<SiriObjectStorageKey> idSet = changesMap.get(requestorId);
-            lastUpdateRequested.set(requestorId, Instant.now(), configuration.getTrackingPeriodMinutes(), TimeUnit.MINUTES);
+            lastUpdateRequested.set(requestorId, Instant.now(clock), configuration.getTrackingPeriodMinutes(), TimeUnit.MINUTES);
             if (idSet != null) {
                 Set<SiriObjectStorageKey> datasetFilteredIdSet = new HashSet<>();
 
@@ -269,28 +271,22 @@ public class Situations extends SiriRepository<PtSituationElement> {
     }
 
     public long getExpiration(PtSituationElement situationElement) {
-        List<HalfOpenTimestampOutputRangeStructure> validityPeriods = situationElement.getValidityPeriods();
-
-        ZonedDateTime expiry = null;
-
-        if (validityPeriods != null) {
-            for (HalfOpenTimestampOutputRangeStructure validity : validityPeriods) {
-
-                //Find latest validity
-                if (expiry == null) {
-                    expiry = validity.getEndTime();
-                } else if (validity != null && validity.getEndTime().isAfter(expiry)) {
-                    expiry = validity.getEndTime();
-                }
-            }
+        List<HalfOpenTimestampOutputRangeStructure> availibilityRange = situationElement.getPublicationWindows();
+        if (CollectionUtils.isEmpty(availibilityRange)) {
+            availibilityRange = situationElement.getValidityPeriods();
         }
-
-        if (expiry != null && expiry.getYear() < 2100) {
-            return ZonedDateTime.now().until(expiry.plusMinutes(configuration.getSxGraceperiodMinutes()), ChronoUnit.MILLIS);
-        } else {
-            // No expiration set - keep "forever"
-            return ZonedDateTime.now().until(ZonedDateTime.now().plusYears(10), ChronoUnit.MILLIS);
+        Optional<Instant> expiry = Optional.empty();
+        if (CollectionUtils.isNotEmpty(availibilityRange)) {
+            expiry = availibilityRange.stream()
+                    .map(HalfOpenTimestampOutputRangeStructure::getEndTime)
+                    // endTime may be null
+                    .filter(Objects::nonNull)
+                    .map(ZonedDateTime::toInstant)
+                    .max(Comparator.naturalOrder());
         }
+        return expiry
+                .map(instant -> Instant.now(clock).until(instant.plus(configuration.getSxGraceperiodMinutes(), ChronoUnit.MINUTES), ChronoUnit.MILLIS))
+                .orElse(TEN_YEARS_MS);
     }
 
     public Collection<PtSituationElement> addAll(String datasetId, List<PtSituationElement> sxList) {

@@ -26,20 +26,27 @@ import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri21.*;
 
 import javax.xml.bind.UnmarshalException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
 
+import static no.rutebanken.anshar.data.Situations.TEN_YEARS_MS;
 import static org.junit.jupiter.api.Assertions.*;
 
 
 public class SituationsTest extends SpringBootBaseTest {
 
+    public static final ZoneId PARIS_ZONE_ID = ZoneId.of("Europe/Paris");
     @Autowired
     private Situations situations;
 
@@ -58,6 +65,7 @@ public class SituationsTest extends SpringBootBaseTest {
     @BeforeEach
     public void init() {
         situations.clearAll();
+        situations.setClock(Clock.systemUTC());
     }
 
     @Test
@@ -76,7 +84,7 @@ public class SituationsTest extends SpringBootBaseTest {
         situations.add("test", closedSituation);
 
 
-        ArrayList<PtSituationElement> storedSituations = new ArrayList<>(situations.getAll());
+        // ArrayList<PtSituationElement> storedSituations = new ArrayList<>(situations.getAll());
         // not working on jekins. depending on the server resources
         // assertEquals(1, storedSituations.size());
         // progress has been updated to "closed" and situation is still stored in cache until the grace period has passed
@@ -149,7 +157,7 @@ public class SituationsTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void test_add__when_adding_situation_with_same_datasetid_and_participantref_and_situation_number__should_not_add_situations() {
+    public void test_add_whenAddingSituationWithSameDatasetidAndParticipantrefAndSituationNumber_thenDoNotAddSituations() {
         PtSituationElement original = TestObjectFactory.createPtSituationElement("ruter", "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
         PtSituationElement update = TestObjectFactory.createPtSituationElement("ruter", "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
 
@@ -160,7 +168,7 @@ public class SituationsTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void test_add__when_adding_situation_with_different_datasetid__should_add_situations() {
+    public void test_add_whenAddingSituationWithDifferentDatasetid_thenAddSituations() {
         PtSituationElement original = TestObjectFactory.createPtSituationElement("ruter", "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
         PtSituationElement originalCopy = TestObjectFactory.createPtSituationElement("ruter", "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
 
@@ -171,7 +179,7 @@ public class SituationsTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void test_add__when_adding_situation_with_same_datasetid_and_different_participantref_and_same_situation_number__should_not_add_situations() {
+    public void test_add_whenAddingSituationWithSameDatasetidAndDifferentParticipantrefAndSameSituationNumber_thenDoNotAddSituations() {
         PtSituationElement original = TestObjectFactory.createPtSituationElement("ruter", "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
         PtSituationElement originalWithDifferentParticipantRef = TestObjectFactory.createPtSituationElement("mobiiti", "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
 
@@ -299,6 +307,130 @@ public class SituationsTest extends SpringBootBaseTest {
                 assertEquals(standardlineId, lineId);
             }
         }
+    }
+
+    @CsvSource({
+            "2025-01-01T23:59:59Z,2025-01-01T12:00:00Z,10,43799000",
+            "2025-01-01T23:59:59Z,2024-12-31T12:00:00Z,10,130199000",
+            "2025-01-01T23:59:59Z,2024-12-31T12:00:00Z,-10,128999000",
+            "2025-01-01T23:59:59Z,2025-01-03T12:00:00Z,10,-129001000",
+            "2025-06-18T16:33:11Z,2025-04-16T09:36:15Z,0,5468216000",
+    })
+    @ParameterizedTest
+    public void test_getExpiration_whenPWindowIsPresentAndEndTimeIsPresent_thenComputeExpirationFromIt(String pwEndTs, String clockTs, long sxGracePeriod, long expectedExpiration) {
+        // Arrange
+        PtSituationElement s = new PtSituationElement();
+        var pw = new HalfOpenTimestampOutputRangeStructure();
+        pw.setEndTime(ZonedDateTime.ofInstant(Instant.parse(pwEndTs), PARIS_ZONE_ID));
+        s.getPublicationWindows().add(pw);
+
+        configuration.setSxGraceperiodMinutes(sxGracePeriod);
+
+        situations.setClock(Clock.fixed(Instant.parse(clockTs), PARIS_ZONE_ID));
+
+        // Act
+        var output = situations.getExpiration(s);
+
+        // Assert
+        assertEquals(expectedExpiration, output, "should compute expiration from PublicationWindow/EndTime");
+    }
+
+    @Test
+    public void test_getExpiration_whenPWindowIsPresentAndEndTimeNotPresent_thenExpirationIsAbout10Years() {
+        PtSituationElement s = new PtSituationElement();
+        var pw = new HalfOpenTimestampOutputRangeStructure();
+        s.getPublicationWindows().add(pw);
+
+        var output = situations.getExpiration(s);
+
+        assertEquals(TEN_YEARS_MS, output, "expiration should be about 10 years");
+    }
+
+    @CsvSource({
+            "2025-01-01T23:59:59Z,2025-01-01T12:00:00Z,10,43799000",
+            "2025-01-01T23:59:59Z,2024-12-31T12:00:00Z,10,130199000",
+            "2025-01-01T23:59:59Z,2024-12-31T12:00:00Z,-10,128999000",
+            "2025-01-01T23:59:59Z,2025-01-03T12:00:00Z,10,-129001000",
+            "2025-06-18T16:33:11Z,2025-04-16T09:36:15Z,0,5468216000",
+    })
+    @ParameterizedTest
+    public void test_getExpiration_whenPWindowIsNotPresentButVPeriodIsPresentAndEndTimeIsPresent_thenComputeExpirationFromIt(String vpEndTs, String clockTs, long sxGracePeriod, long expectedExpiration) {
+        // Arrange
+        PtSituationElement s = new PtSituationElement();
+        var vp = new HalfOpenTimestampOutputRangeStructure();
+        vp.setEndTime(ZonedDateTime.ofInstant(Instant.parse(vpEndTs), PARIS_ZONE_ID));
+        s.getValidityPeriods().add(vp);
+
+        configuration.setSxGraceperiodMinutes(sxGracePeriod);
+
+        situations.setClock(Clock.fixed(Instant.parse(clockTs), PARIS_ZONE_ID));
+
+        // Act
+        var output = situations.getExpiration(s);
+
+        // Assert
+        assertEquals(expectedExpiration, output, "should compute expiration from ValidityPeriod/EndTime");
+    }
+
+    @Test
+    public void test_getExpiration_whenPWindowIsNotPresentButVPeriodIsPresentAndEndTimeNotPresent_thenExpirationIsAbout10Years() {
+        PtSituationElement s = new PtSituationElement();
+        var vp = new HalfOpenTimestampOutputRangeStructure();
+        s.getValidityPeriods().add(vp);
+
+        var output = situations.getExpiration(s);
+
+        assertEquals(TEN_YEARS_MS, output, "expiration should be about 10 years");
+    }
+
+    @Test
+    public void test_getExpiration_whenMultiplePW_thenComputeExpirationFromLatestPW() {
+        // Arrange
+        configuration.setSxGraceperiodMinutes(0);
+
+        PtSituationElement s = new PtSituationElement();
+        var pw1 = new HalfOpenTimestampOutputRangeStructure();
+        pw1.setEndTime(ZonedDateTime.ofInstant(Instant.parse("2025-01-02T16:54:27Z"), PARIS_ZONE_ID));
+        var pw2 = new HalfOpenTimestampOutputRangeStructure();
+        pw2.setEndTime(ZonedDateTime.ofInstant(Instant.parse("2025-02-07T13:14:15Z"), PARIS_ZONE_ID));
+        var pw3 = new HalfOpenTimestampOutputRangeStructure();
+        pw3.setEndTime(ZonedDateTime.ofInstant(Instant.parse("2025-02-07T14:00:00Z"), PARIS_ZONE_ID));
+        s.getPublicationWindows().add(pw1);
+        s.getPublicationWindows().add(pw2);
+        s.getPublicationWindows().add(pw3);
+
+        situations.setClock(Clock.fixed(Instant.parse("2025-02-07T13:00:00Z"), PARIS_ZONE_ID));
+
+        // Act
+        var output = situations.getExpiration(s);
+
+        // Assert
+        assertEquals(3_600_000, output, "should compute expiration from latest PW (1 hour)");
+    }
+
+    @Test
+    public void test_getExpiration_whenMultipleVP_thenComputeExpirationFromLatestVP() {
+        // Arrange
+        configuration.setSxGraceperiodMinutes(0);
+
+        PtSituationElement s = new PtSituationElement();
+        var pw1 = new HalfOpenTimestampOutputRangeStructure();
+        pw1.setEndTime(ZonedDateTime.ofInstant(Instant.parse("2025-01-02T16:54:27Z"), PARIS_ZONE_ID));
+        var pw2 = new HalfOpenTimestampOutputRangeStructure();
+        pw2.setEndTime(ZonedDateTime.ofInstant(Instant.parse("2025-02-07T13:14:15Z"), PARIS_ZONE_ID));
+        var pw3 = new HalfOpenTimestampOutputRangeStructure();
+        pw3.setEndTime(ZonedDateTime.ofInstant(Instant.parse("2025-02-07T14:00:00Z"), PARIS_ZONE_ID));
+        s.getValidityPeriods().add(pw1);
+        s.getValidityPeriods().add(pw2);
+        s.getValidityPeriods().add(pw3);
+
+        situations.setClock(Clock.fixed(Instant.parse("2025-02-07T13:00:00Z"), PARIS_ZONE_ID));
+
+        // Act
+        var output = situations.getExpiration(s);
+
+        // Assert
+        assertEquals(3_600_000, output, "should compute expiration from latest VP (1 hour)");
     }
 
     private void addLineRef(PtSituationElement sx, String lineId) {
