@@ -49,6 +49,8 @@ public class Constants {
 
     public static final String DATASET_ID_HEADER_NAME = "datasetId";
 
+    public static final String ORIGINAL_BODY_HEADER = "originalBody";
+
     public static final String HEARTBEAT_HEADER = "HeartBeat";
     public static final String URL_HEADER_NAME = "URL";
 

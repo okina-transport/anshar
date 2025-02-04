@@ -22,11 +22,17 @@ import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
+import org.apache.camel.CamelContext;
+import org.apache.camel.CamelContextAware;
+import org.apache.camel.Produce;
+import org.apache.camel.ProducerTemplate;
+import org.apache.camel.component.mock.MockEndpoint;
 import org.apache.commons.io.IOUtils;
 import org.junit.Ignore;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri21.*;
 
@@ -37,13 +43,15 @@ import java.time.ZonedDateTime;
 import java.util.*;
 
 import static no.rutebanken.anshar.idTests.TestUtils.*;
+import static no.rutebanken.anshar.routes.HttpParameter.SIRI_VERSION_HEADER_NAME;
+import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_SOAP;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 
-public class MonitoredStopVisitsTest extends SpringBootBaseTest {
+public class MonitoredStopVisitsTest extends SpringBootBaseTest implements CamelContextAware {
 
 
     @Autowired
@@ -58,9 +66,52 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
     @Autowired
     private LineUpdaterService lineupdaterService;
 
+
+    @Produce(uri = "direct:send.to.external.subscription")
+    protected ProducerTemplate sendExternalSubscription;
+
     @BeforeEach
     public void init() {
         monitoredStopVisits.clearAll();
+    }
+
+    private CamelContext camelContext;
+
+    @Test
+    public void testEmptyBodyCheck() throws InterruptedException {
+
+        Siri siriToSend = new Siri();
+//        ServiceDelivery serviceDelivery = new ServiceDelivery();
+//        StopMonitoringDeliveryStructure smstruct = new StopMonitoringDeliveryStructure();
+//        MonitoredStopVisitCancellation cancellation = new MonitoredStopVisitCancellation();
+//        LineRef lineRef = new LineRef();
+//        lineRef.setValue("a");
+//        cancellation.setLineRef(lineRef);
+
+
+//        smstruct.getMonitoredStopVisitCancellations().add(cancellation);
+//
+//
+//        serviceDelivery.getStopMonitoringDeliveries().add(smstruct);
+//
+//        siriToSend.setServiceDelivery(serviceDelivery);
+
+        MockEndpoint mock = getCamelContext().getEndpoint("mock:result", MockEndpoint.class);
+        mock.expectedBodiesReceived("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+
+        Map<String, Object> headers = new HashMap<>();
+
+        headers.put("breadcrumbId", MDC.get("camel.breadcrumbId"));
+        headers.put("endpoint", "mock:result");
+        headers.put("SubscriptionId", "id1");
+        headers.put("showBody", false);
+        headers.put("datasetId", "dat1");
+        headers.put("requestorRef", "reqRef");
+        headers.put(SIRI_VERSION_HEADER_NAME, "2.1");
+        headers.put(TRANSFORM_SOAP, TRANSFORM_SOAP);
+
+        sendExternalSubscription.sendBodyAndHeaders(siriToSend, headers);
+        //    mock.assertIsSatisfied();
     }
 
     @Test
@@ -331,4 +382,13 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest {
         }
     }
 
+    @Override
+    public CamelContext getCamelContext() {
+        return camelContext;
+    }
+
+    @Override
+    public void setCamelContext(CamelContext camelContext) {
+        this.camelContext = camelContext;
+    }
 }

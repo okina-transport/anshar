@@ -18,6 +18,7 @@ import java.io.ByteArrayOutputStream;
 
 import static no.rutebanken.anshar.routes.HttpParameter.SIRI_VERSION_HEADER_NAME;
 import static no.rutebanken.anshar.routes.RestRouteBuilder.downgradeSiriVersion;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.ORIGINAL_BODY_HEADER;
 
 @Service
 public class OutboundSiriDistributionRoute extends RouteBuilder {
@@ -79,8 +80,22 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
                 })
                 .choice()
                 .when(header(Siri20RequestHandlerRoute.TRANSFORM_SOAP).isEqualTo(simple(Siri20RequestHandlerRoute.TRANSFORM_SOAP)))
-                .log(LoggingLevel.DEBUG, "Transforming SOAP")
-                .to("xslt-saxon:xsl/siri_subscription_raw_soap.xsl") // Convert SIRI raw request to SOAP version
+                    .log(LoggingLevel.DEBUG, "Transforming SOAP")
+                    .process(e->{
+                        // saving original body in header
+                        String originalBody = e.getIn().getBody(String.class);
+                        e.getIn().setHeader(ORIGINAL_BODY_HEADER,originalBody);
+                    })
+                    .to("xslt-saxon:xsl/siri_subscription_raw_soap.xsl")// Convert SIRI raw request to SOAP version
+                    .process(e->{
+                        String transformedBody = e.getIn().getBody(String.class);
+                        if (transformedBody.length() < 40){
+                            // transform msg too short. means there was an issue
+                            log.error("Error while transforming soap response. Original body was: " + e.getIn().getHeader(ORIGINAL_BODY_HEADER));
+                            log.error("transformed body: " + transformedBody);
+                        }
+                        e.getIn().removeHeader(ORIGINAL_BODY_HEADER);
+                     })
                 .endChoice()
                 .end()
                 .setHeader("httpClient.socketTimeout", constant(timeout))
