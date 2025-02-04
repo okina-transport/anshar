@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.okinaDisruptions;
 
+import no.rutebanken.anshar.data.util.CustomStringUtils;
 import no.rutebanken.anshar.okinaDisruptions.model.*;
 import uk.org.siri.siri20.EnvironmentReasonEnumeration;
 import uk.org.siri.siri20.EquipmentReasonEnumeration;
@@ -103,7 +104,7 @@ public class SituationExchangeGenerator {
 
                 AffectedLineStructure affectedLine = new AffectedLineStructure();
                 LineRef lineRef = new LineRef();
-                lineRef.setValue(line.getObjectId());
+                lineRef.setValue(CustomStringUtils.revertChouetteIdTransformation(line.getObjectId()));
                 affectedLine.setLineRef(lineRef);
                 currentNetwork.getAffectedLines().add(affectedLine);
             }
