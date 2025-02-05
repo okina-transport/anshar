@@ -402,7 +402,7 @@ public class AlertMapper {
         }
 
         if (StringUtils.isNotEmpty(tripDescriptor.getRouteId())) {
-            if (routeIdList.contains(tripDescriptor.getRouteId())) {
+            if (!routeIdList.isEmpty() && routeIdList.contains(tripDescriptor.getRouteId())) {
                 LineRef lineRef = new LineRef();
                 lineRef.setValue(tripDescriptor.getRouteId());
                 vehicleJourney.setLineRef(lineRef);
