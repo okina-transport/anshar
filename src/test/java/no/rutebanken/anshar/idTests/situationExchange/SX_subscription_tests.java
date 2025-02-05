@@ -164,6 +164,50 @@ public class SX_subscription_tests extends SpringBootBaseTest {
     }
 
     @Test
+    public void SX_useOriginalId_true_IDFM2_4() throws JAXBException, InterruptedException {
+
+        mockServer.when(
+                request()
+                        .withMethod("POST")
+                        .withPath("/incomingSiri")
+        ).respond(
+                response()
+                        .withStatusCode(200)
+                        .withBody("{\"message\":\"success\"}")
+        );
+
+        String sitNumber1 = "SIT-LIN1";
+        resetIdProcessings();
+        IMap<SiriObjectStorageKey, PtSituationElement> originalSaved = situations.getSituationElements();
+        HazelcastTestMap<PtSituationElement> testMap = new HazelcastTestMap<PtSituationElement>();
+        situations.setSituationElements(testMap);
+
+        PtSituationElement situation1 = TestUtils.createSituationForLine(sitNumber1, OLD_LINE1_REF);
+        TestUtils.addAffectedStop(situation1, OLD_STOP1_REF);
+
+        OutboundSubscriptionSetup outboundSubscription = createOutboundSubscription(true);
+        outboundSubscription.setSiriVersion(SiriValidator.Version.VERSION_2_0_IDFM_2_4);
+        serverSubscriptionManager.addSubscription(outboundSubscription);
+
+        List<PtSituationElement> situationsToIngest = new ArrayList<>();
+        situationsToIngest.add(situation1);
+
+
+        situationExchangeInbound.ingestSituations("DAT1", situationsToIngest, true);
+
+        //Attente nécessaire car le post est traité par un thread
+        Thread.sleep(5000);
+
+        // Récupérer et tracer les requêtes reçues
+        TestUtils.printReceivedRequests(mockServer);
+
+        //Faire les vérifications
+        TestUtils.verifyStringInResponse(mockServer, "<StopPointRef>" + NEW_STOP1_REF + "</StopPointRef>");
+        TestUtils.verifyStringInResponse(mockServer, " version=\"2.0[FR-IDF-2.4]\"");
+        situations.setSituationElements(originalSaved);
+    }
+
+    @Test
     public void SX_useOriginalId_false() throws JAXBException, InterruptedException {
         initStopPlaceMapper();
 

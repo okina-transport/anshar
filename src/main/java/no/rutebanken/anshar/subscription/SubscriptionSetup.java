@@ -189,7 +189,14 @@ public class SubscriptionSetup implements Serializable {
     }
 
     public String buildUrl(boolean includeServerAddress) {
-        return (includeServerAddress ? address : "") + MessageFormat.format("/{0}/{1}/{2}/{3}", version, serviceType == ServiceType.REST ? "rs" : "ws", vendor, subscriptionId);
+        return (includeServerAddress ? address : "") + MessageFormat.format("/{0}/{1}/{2}/{3}", sanitizeVersion(version), serviceType == ServiceType.REST ? "rs" : "ws", vendor, subscriptionId);
+    }
+
+    private String sanitizeVersion(String version) {
+        if (version == null) {
+            return "2.1";
+        }
+        return version.replace("[", "_").replace("]", "_");
     }
 
     public String getStartSubscriptionRouteName() {

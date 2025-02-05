@@ -13,6 +13,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.*;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -373,6 +375,15 @@ public class Utils {
         return stopRefs.stream()
                 .distinct()
                 .collect(Collectors.joining(","));
+    }
+
+    public static String encodeOrReturnRaw(String rawURL) {
+        try {
+            return URLEncoder.encode(rawURL, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            logger.error("Unable to encode URL:" + rawURL);
+            return rawURL;
+        }
     }
 
 }

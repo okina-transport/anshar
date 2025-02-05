@@ -677,46 +677,50 @@ public class RestRouteBuilder extends RouteBuilder {
     }
 
     public static uk.org.siri.siri20.Siri downgradeSiriVersion(Siri response) throws JAXBException, XMLStreamException {
+        return downgradeSiriVersion(response, "2.0");
+    }
+
+    public static uk.org.siri.siri20.Siri downgradeSiriVersion(Siri response, String targetVersion) throws JAXBException, XMLStreamException {
         uk.org.siri.siri20.Siri siri20Response;
 
         Map<String, Content> savedContent = saveGMContent(response);
         String siri2_0Xml = CustomSiriXml.toXml(response);
         siri20Response = CustomSiriXml.parseSiri20Xml(siri2_0Xml);
         restoreContent(siri20Response, savedContent);
-        siri20Response.setVersion("2.0");
+        siri20Response.setVersion(targetVersion);
         ServiceDelivery serviceDelivery = siri20Response.getServiceDelivery();
         if (serviceDelivery != null) {
             if (!serviceDelivery.getEstimatedTimetableDeliveries().isEmpty()) {
                 for (EstimatedTimetableDeliveryStructure delivery : serviceDelivery.getEstimatedTimetableDeliveries()) {
-                    delivery.setVersion("2.0");
+                    delivery.setVersion(targetVersion);
                 }
             }
             if (!serviceDelivery.getVehicleMonitoringDeliveries().isEmpty()) {
                 for (VehicleMonitoringDeliveryStructure delivery : serviceDelivery.getVehicleMonitoringDeliveries()) {
-                    delivery.setVersion("2.0");
+                    delivery.setVersion(targetVersion);
                 }
             }
             if (!serviceDelivery.getSituationExchangeDeliveries().isEmpty()) {
                 for (SituationExchangeDeliveryStructure delivery : serviceDelivery.getSituationExchangeDeliveries()) {
-                    delivery.setVersion("2.0");
+                    delivery.setVersion(targetVersion);
                 }
             }
 
             if (!serviceDelivery.getStopMonitoringDeliveries().isEmpty()) {
                 for (StopMonitoringDeliveryStructure stopMonitoringDelivery : serviceDelivery.getStopMonitoringDeliveries()) {
-                    stopMonitoringDelivery.setVersion("2.0");
+                    stopMonitoringDelivery.setVersion(targetVersion);
                 }
             }
 
             if (!serviceDelivery.getGeneralMessageDeliveries().isEmpty()) {
                 for (uk.org.siri.siri20.GeneralMessageDeliveryStructure generalMessageDelivery : serviceDelivery.getGeneralMessageDeliveries()) {
-                    generalMessageDelivery.setVersion("2.0");
+                    generalMessageDelivery.setVersion(targetVersion);
                 }
             }
 
             if (!serviceDelivery.getFacilityMonitoringDeliveries().isEmpty()) {
                 for (FacilityMonitoringDeliveryStructure facilityMonitoringDelivery : serviceDelivery.getFacilityMonitoringDeliveries()) {
-                    facilityMonitoringDelivery.setVersion("2.0");
+                    facilityMonitoringDelivery.setVersion(targetVersion);
                 }
             }
 

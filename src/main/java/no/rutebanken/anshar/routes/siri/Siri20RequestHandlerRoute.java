@@ -390,7 +390,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
                         if (!"2.1".equals(incomingSiriParameters.getVersion())){
-                            uk.org.siri.siri20.Siri siri20response = downgradeSiriVersion(response);
+                            uk.org.siri.siri20.Siri siri20response = downgradeSiriVersion(response, incomingSiriParameters.getVersion());
                             CustomSiriXml.toXml(siri20response, null, byteArrayOutputStream);
                         }else{
                             CustomSiriXml.toXml(response, null, byteArrayOutputStream);

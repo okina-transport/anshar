@@ -20,6 +20,8 @@ import com.google.common.cache.CacheBuilder;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.entur.siri.validator.SiriValidator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.text.MessageFormat;
@@ -29,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 
 public class OutboundSubscriptionSetup implements Serializable {
 
+    private static final Logger log = LoggerFactory.getLogger(OutboundSubscriptionSetup.class);
     private SiriValidator.Version siriVersion = SiriValidator.Version.VERSION_2_0;
     private ZonedDateTime requestTimestamp;
     private final SiriDataType subscriptionType;

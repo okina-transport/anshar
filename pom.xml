@@ -350,7 +350,7 @@
         <dependency>
             <groupId>org.entur</groupId>
             <artifactId>siri-java-model</artifactId>
-            <version>0.15.2-mobi-iti</version>
+            <version>0.15.3-mobi-iti</version>
         </dependency>
 
         <dependency>
