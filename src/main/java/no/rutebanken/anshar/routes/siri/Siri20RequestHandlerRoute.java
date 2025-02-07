@@ -262,13 +262,9 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .when().xpath("/siri:Siri/siri:SubscriptionRequest/siri:FacilityMonitoringSubscriptionRequest", nameSpace)
                 .to("direct:process.fm.subscription.request")
                 .when().xpath("/siri:Siri/siri:TerminateSubscriptionRequest", nameSpace)
-                // Forwarding TerminateRequest to all data-instances
-                .wireTap("direct:process.et.subscription.request")
-                .wireTap("direct:process.vm.subscription.request")
-                .wireTap("direct:process.sx.subscription.request")
-                .wireTap("direct:process.sm.subscription.request")
-                .wireTap("direct:process.gm.subscription.request")
-                .wireTap("direct:process.fm.subscription.request")
+                .process(e->{
+                    log.info("Received a terminate subscription request from outbound client:" + e.getIn().getBody(String.class));
+                })
                 .to("direct:internal.handle.subscription") //Build response
                 .endChoice()
                 .otherwise()
