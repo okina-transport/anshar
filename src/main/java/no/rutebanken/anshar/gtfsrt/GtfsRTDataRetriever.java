@@ -91,7 +91,7 @@ public class GtfsRTDataRetriever {
         for (GtfsRTApi gtfsRTApi : subscriptionConfig.getGtfsRTApis()) {
             try {
                 recoverDataForApi(gtfsRTApi);
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 logger.error("Error on GTFSRT feed:" + gtfsRTApi.getDatasetId() + " - " + gtfsRTApi.getUrl());
                 logger.error("Error detail", e);
             }
