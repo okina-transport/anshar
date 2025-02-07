@@ -171,7 +171,7 @@ class ServerSubscriptionManagerTest {
         assertThat(result).isNotEmpty()
                 .containsEntry("count", 2);
 
-        assertThat(result.get("data").toString()).hasToString( "[{\"heartbeatInterval\":\"0 s\",\"address\":\"adress\",\"subscriptionType\":\"SITUATION_EXCHANGE\",\"filteredRefs\":\"\",\"datasetId\":\"dataSetId\",\"subscriptionRef\":\"subscriptionId2\",\"requestReceived\":\"2023-01-01 01:01:01\",\"initialTerminationTime\":\"2025-01-01 01:01:01\",\"clientTrackingName\":\"clientName\"}]");
+        assertThat(result.get("data").toString()).hasToString("[{\"heartbeatInterval\":\"0 s\",\"address\":\"adress\",\"subscriptionType\":\"SITUATION_EXCHANGE\",\"filteredRefs\":\"\",\"datasetId\":\"dataSetId\",\"subscriptionRef\":\"subscriptionId2\",\"requestReceived\":\"2023-01-01 01:01:01\",\"initialTerminationTime\":\"2025-01-01 01:01:01\",\"clientTrackingName\":\"clientName\",\"requestorRef\":\"requestorRef\"}]");
     }
 
     @Test
@@ -228,7 +228,7 @@ class ServerSubscriptionManagerTest {
         assertThat(result).isNotEmpty()
                 .containsEntry("count", 1);
 
-        assertThat(result.get("data").toString()).hasToString( "[]");
+        assertThat(result.get("data").toString()).hasToString("[]");
     }
 
     @Test
@@ -237,7 +237,7 @@ class ServerSubscriptionManagerTest {
         try (InputStream inputStream = new FileInputStream("src/test/resources/siri-sm-missing-monitoring-ref.xml")) {
             incomingSiri = SiriValueTransformer.parseXml(inputStream);
         } catch (Exception e) {
-           throw new AssertionError("Illegal state");
+            throw new AssertionError("Illegal state");
         }
 
         boolean useOriginalId = false;
