@@ -24,9 +24,7 @@ import no.rutebanken.anshar.subscription.OAuthConfigElement;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
-import org.apache.camel.Exchange;
-import org.apache.camel.ExchangePattern;
-import org.apache.camel.Processor;
+import org.apache.camel.*;
 import org.apache.camel.http.common.HttpMethods;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -165,8 +163,12 @@ public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
         }
 
         //Cancel subscription
-        from("direct:" + subscriptionSetup.getCancelSubscriptionRouteName())
-                .log("Cancelling subscription " + subscriptionSetup.toString())
+        from("direct:cancelSubscription")
+                .log("Cancelling subscription ${body}")
+                .process(exchange -> {
+                    SubscriptionSetup subscriptionSetup = exchange.getIn().getBody(SubscriptionSetup.class);
+                    exchange.setProperty("subscriptionId", subscriptionSetup.getSubscriptionId());
+                })
                 .process(oauthHeadersProcess)
                 .to("direct:oauth2.authorize")
                 .bean(helper, "createSiriTerminateSubscriptionRequest")
@@ -180,10 +182,11 @@ public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
                 .to("log:sent request:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .to(getCamelUrl(urlMap.get(RequestType.DELETE_SUBSCRIPTION), getTimeout()))
                 .to("log:received response:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
-                .process(p -> {
-                    InputStream body = p.getIn().getBody(InputStream.class);
+                .process(exchange -> {
+                    InputStream body = exchange.getIn().getBody(InputStream.class);
                     if (body != null && body.available() > 0) {
-                        handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), body));
+                        String subscriptionId = exchange.getProperty("subscriptionId", String.class);
+                        handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionId, body));
                     }
                 })
                 .routeId("cancel.rs.20.subscription." + subscriptionSetup.getVendor())
@@ -191,5 +194,4 @@ public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
 
         initTriggerRoutes();
     }
-
 }
