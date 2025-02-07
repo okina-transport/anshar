@@ -81,24 +81,50 @@ public class GtfsRTDataRetriever {
         return lastExecutionTime != null ? (long) lastExecutionTime : 0;
     }
 
+//    private void startGtfsRtRecovering() {
+//
+//        hazelcastService.getHazelcastInstance().getMap(lockMap).put(gtfsRtLock, true);
+//        logger.info("Démarrage récupération des flux GTFS-RT n°:" + iterationNb);
+//
+//
+//        hazelcastService.getHazelcastInstance().getMap(lockMap).put(gtfsRtLastExecutionTime, System.currentTimeMillis());
+//
+//
+//        for (GtfsRTApi gtfsRTApi : subscriptionConfig.getGtfsRTApis()) {
+//            try {
+//                recoverDataForApi(gtfsRTApi);
+//            } catch (Throwable e) {
+//                logger.error("Error on GTFSRT feed:" + gtfsRTApi.getDatasetId() + " - " + gtfsRTApi.getUrl());
+//                logger.error("Error detail", e);
+//            }
+//        }
+//
+//
+//        hazelcastService.getHazelcastInstance().getMap(lockMap).put(gtfsRtLock, false);
+//        logger.info("Intégration des flux GTFS-RT terminée n°:" + iterationNb);
+//        iterationNb++;
+//    }
+
     private void startGtfsRtRecovering() {
+        try {
+            hazelcastService.getHazelcastInstance().getMap(lockMap).put(gtfsRtLock, true);
+            logger.info("Démarrage récupération des flux GTFS-RT n°:" + iterationNb);
 
-        hazelcastService.getHazelcastInstance().getMap(lockMap).put(gtfsRtLock, true);
-        logger.info("Démarrage récupération des flux GTFS-RT n°:" + iterationNb);
-        hazelcastService.getHazelcastInstance().getMap(lockMap).put(gtfsRtLastExecutionTime, System.currentTimeMillis());
-
-
-        for (GtfsRTApi gtfsRTApi : subscriptionConfig.getGtfsRTApis()) {
-            try {
-                recoverDataForApi(gtfsRTApi);
-            } catch (Throwable e) {
-                logger.error("Error on GTFSRT feed:" + gtfsRTApi.getDatasetId() + " - " + gtfsRTApi.getUrl());
-                logger.error("Error detail", e);
+            for (GtfsRTApi gtfsRTApi : subscriptionConfig.getGtfsRTApis()) {
+                try {
+                    recoverDataForApi(gtfsRTApi);
+                } catch (Throwable e) {
+                    logger.error("Error on GTFSRT feed:" + gtfsRTApi.getDatasetId() + " - " + gtfsRTApi.getUrl());
+                    logger.error("Error detail", e);
+                }
             }
+            logger.info("Intégration des flux GTFS-RT terminée n°:" + iterationNb);
+            iterationNb++;
+        } catch (Throwable e) {
+            logger.error("Error on while iterating GTFSRT feed", e);
+        } finally {
+            hazelcastService.getHazelcastInstance().getMap(lockMap).put(gtfsRtLock, false);
         }
-        hazelcastService.getHazelcastInstance().getMap(lockMap).put(gtfsRtLock, false);
-        logger.info("Intégration des flux GTFS-RT terminée n°:" + iterationNb);
-        iterationNb++;
     }
 
     private void recoverDataForApi(GtfsRTApi gtfsRTApi) {
