@@ -20,7 +20,10 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.Charset;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 
@@ -49,6 +52,7 @@ public class GtfsRTDataRetriever {
 
     private final String lockMap = "ansharRouteLockMap";
     private final String gtfsRtLock = "isGtfsRtRunning";
+    private final String gtfsRtLastExecutionTime = "gtfsRTLastExecutionTime";
 
     private long iterationNb = 0;
 
@@ -57,7 +61,13 @@ public class GtfsRTDataRetriever {
         if (!isGtfsRtRunning()) {
             startGtfsRtRecovering();
         } else {
-            logger.info(" GTFS-RT en cours. Pas de nouveau lancement");
+            long lastExecutionTime = getLastExecutionTime();
+            logger.info(" GTFS-RT en cours. Pas de nouveau lancement. Dernier lancement:" + lastExecutionTime);
+
+            if (System.currentTimeMillis() - lastExecutionTime > 120000) {
+                logger.warn("GTFS-RT : dernière exécution datant de plus de 2 minutes. Force unlock.");
+                hazelcastService.getHazelcastInstance().getMap(lockMap).put(gtfsRtLock, false);
+            }
         }
     }
 
@@ -66,10 +76,17 @@ public class GtfsRTDataRetriever {
         return isGtfsRtRunning != null && (boolean) isGtfsRtRunning;
     }
 
+    private long getLastExecutionTime() {
+        Object lastExecutionTime = hazelcastService.getHazelcastInstance().getMap(lockMap).get(gtfsRtLastExecutionTime);
+        return lastExecutionTime != null ? (long) lastExecutionTime : 0;
+    }
+
     private void startGtfsRtRecovering() {
 
         hazelcastService.getHazelcastInstance().getMap(lockMap).put(gtfsRtLock, true);
         logger.info("Démarrage récupération des flux GTFS-RT n°:" + iterationNb);
+        hazelcastService.getHazelcastInstance().getMap(lockMap).put(gtfsRtLastExecutionTime, System.currentTimeMillis());
+
 
         for (GtfsRTApi gtfsRTApi : subscriptionConfig.getGtfsRTApis()) {
             try {
