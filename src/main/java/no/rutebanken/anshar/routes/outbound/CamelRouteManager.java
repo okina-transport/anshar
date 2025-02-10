@@ -362,12 +362,8 @@ public class CamelRouteManager {
             headers.put("datasetId", datasetId);
             headers.put("requestorRef", subscription.getRequestorRef());
             headers.put(SIRI_VERSION_HEADER_NAME, subscription.getSiriVersion());
-            List<ValueAdapter> adapters;
-            if (StringUtils.isNotEmpty(datasetId) && subscription.getValueAdaptersByDataset().containsKey(datasetId)) {
-                adapters = subscription.getValueAdaptersByDataset().get(datasetId);
-            } else {
-                adapters = subscription.getValueAdapters();
-            }
+            List<ValueAdapter> adapters = getAdapters(datasetId, subscription);
+
             headers.put(OUTPUT_ADAPTERS_HEADER_NAME, adapters);
             if (subscription.isSOAPSubscription()) {
                 headers.put(TRANSFORM_SOAP, TRANSFORM_SOAP);
@@ -379,6 +375,20 @@ public class CamelRouteManager {
 
             siriSubscriptionProcessor.sendBodyAndHeaders(payload, headers);
         }
+    }
+
+    private List<ValueAdapter> getAdapters(String datasetId, OutboundSubscriptionSetup subscription) {
+
+        if (StringUtils.isEmpty(datasetId)) {
+            //Initial delivery possibly multi-dataset. Has already been converted. No need to apply additionnal conversion
+            return Collections.emptyList();
+        }
+        if (StringUtils.isNotEmpty(datasetId) && subscription.getValueAdaptersByDataset().containsKey(datasetId)) {
+            return subscription.getValueAdaptersByDataset().get(datasetId);
+        } else {
+            return subscription.getValueAdapters();
+        }
+
     }
 
     /**

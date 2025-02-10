@@ -431,7 +431,7 @@ public class ServerSubscriptionManager {
             Siri subscriptionResponse = siriObjectFactory.createSubscriptionResponse(subscription.getSubscriptionId(), true, null, incomingSiri.getVersion());
 
             if (subscription.getSubscriptionType().equals(SiriDataType.SITUATION_EXCHANGE)) {
-                sendInitialDelivery(subscription);
+                sendInitialDelivery(subscription, outboundIdMappingPolicy);
             }
             return subscriptionResponse;
         }
@@ -448,7 +448,7 @@ public class ServerSubscriptionManager {
         return missingMonitoringRef;
     }
 
-    private void sendInitialDelivery(OutboundSubscriptionSetup subscription) {
+    private void sendInitialDelivery(OutboundSubscriptionSetup subscription, OutboundIdMappingPolicy outboundIdMappingPolicy) {
         final String breadcrumbId = MDC.get("camel.breadcrumbId");
         Executors.newSingleThreadScheduledExecutor().execute(() -> {
             try {
@@ -456,7 +456,7 @@ public class ServerSubscriptionManager {
 
                 //Send initial ServiceDelivery
                 logger.info("Find initial delivery for {}", subscription);
-                Siri delivery = siriHelper.findInitialDeliveryData(subscription);
+                Siri delivery = siriHelper.findInitialDeliveryData(subscription, outboundIdMappingPolicy);
 
                 if (delivery != null) {
                     logger.info("Sending initial delivery to {}", subscription.getAddress());
@@ -515,6 +515,8 @@ public class ServerSubscriptionManager {
                 filterMapByDataset,
                 outboundChangeBeforeUpdateCacheTTL
         );
+
+        newOutboundSubscription.setOutboundIdMappingPolicy(outboundIdMappingPolicy);
 
         return newOutboundSubscription;
     }
@@ -1038,14 +1040,14 @@ public class ServerSubscriptionManager {
 
         boolean logFullContents = true;
         for (OutboundSubscriptionSetup recipient : recipients) {
-            OutboundIdMappingPolicy policy = recipient.isUseOriginalId() ? OutboundIdMappingPolicy.ORIGINAL_ID : OutboundIdMappingPolicy.DEFAULT;
-            Siri modifiedIdDelivery = convertIds(delivery, datasetId, policy, true);
+            Siri modifiedIdDelivery = convertIds(delivery, datasetId, recipient.getOutboundIdMappingPolicy(), true);
             camelRouteManager.pushSiriData(datasetId, modifiedIdDelivery, recipient, logFullContents);
             logFullContents = false;
         }
 
         MDC.remove("camel.breadcrumbId");
     }
+
 
     private Siri fillStopNames(Siri delivery, String datasetId) {
 

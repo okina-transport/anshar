@@ -274,6 +274,11 @@ public class SiriHelper {
         return subscriptionConfig.buildIdProcessingParams(datasetId, requestedIds, ObjectType.LINE);
     }
 
+    public Map<ObjectType, Optional<IdProcessingParameters>> getIdProcessingParamsFromDataset(String datasetId) {
+        return subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);
+    }
+
+
     public Map<ObjectType, Optional<IdProcessingParameters>> getIdProcessingParamsFromSubscription(EstimatedTimetableSubscriptionStructure estimatedTimetableSubscription, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
 
         Set<String> requestedIds = new HashSet<>();
@@ -290,13 +295,12 @@ public class SiriHelper {
     }
 
 
-    Siri findInitialDeliveryData(OutboundSubscriptionSetup subscriptionRequest) {
+    Siri findInitialDeliveryData(OutboundSubscriptionSetup subscriptionRequest, OutboundIdMappingPolicy policy) {
         Siri delivery = null;
 
         switch (subscriptionRequest.getSubscriptionType()) {
 
             case SITUATION_EXCHANGE:
-                OutboundIdMappingPolicy policy = subscriptionRequest.isUseOriginalId() ? OutboundIdMappingPolicy.ORIGINAL_ID : OutboundIdMappingPolicy.DEFAULT;
                 delivery = situationExchangeOutbound.createServiceDelivery(subscriptionRequest.getRequestorRef(), subscriptionRequest.getDatasetId(), subscriptionRequest.getClientTrackingName(), policy, 1000);
                 logger.info("Initial SX-delivery: {} elements", delivery.getServiceDelivery().getSituationExchangeDeliveries().size());
                 break;

@@ -139,6 +139,10 @@ public class OutboundIdAdapter extends ValueAdapter {
         return text;
     }
 
+    public OutboundIdMappingPolicy getOutboundIdMappingPolicy() {
+        return outboundIdMappingPolicy;
+    }
+
     public String getProcessedId(String text) {
         return idProcessingParameters == null ? text : idProcessingParameters.applyTransformationToString(text);
     }

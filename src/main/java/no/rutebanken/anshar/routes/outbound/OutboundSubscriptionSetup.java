@@ -17,6 +17,7 @@ package no.rutebanken.anshar.routes.outbound;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.entur.siri.validator.SiriValidator;
@@ -52,6 +53,7 @@ public class OutboundSubscriptionSetup implements Serializable {
     private Map<String, List<ValueAdapter>> valueAdaptersByDataset = new HashMap<>();
     private Map<String, Map<Class, Set<String>>> filterMapByDataset = new HashMap<>();
     private Cache<String, String> alreadySentNotifications;
+    private OutboundIdMappingPolicy outboundIdMappingPolicy;
 
 
     private boolean isSOAPSubscription;
@@ -215,6 +217,14 @@ public class OutboundSubscriptionSetup implements Serializable {
 
     public void setSiriVersion(SiriValidator.Version siriVersion) {
         this.siriVersion = siriVersion;
+    }
+
+    public OutboundIdMappingPolicy getOutboundIdMappingPolicy() {
+        return outboundIdMappingPolicy;
+    }
+
+    public void setOutboundIdMappingPolicy(OutboundIdMappingPolicy outboundIdMappingPolicy) {
+        this.outboundIdMappingPolicy = outboundIdMappingPolicy;
     }
 
     public boolean hasNotificationBeenAlreadySent(String notificationId) {
