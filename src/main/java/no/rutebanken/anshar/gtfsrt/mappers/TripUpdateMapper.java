@@ -7,7 +7,6 @@ import no.rutebanken.anshar.routes.mapping.StopTimesService;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.org.siri.siri21.*;
 
@@ -26,11 +25,14 @@ public class TripUpdateMapper {
 
     private static final Logger logger = LoggerFactory.getLogger(TripUpdateMapper.class);
 
-    @Autowired
-    StopTimesService stopTimesService;
+    private final StopTimesService stopTimesService;
 
-    @Autowired
-    StopPlaceUpdaterService stopPlaceService;
+    private final StopPlaceUpdaterService stopPlaceService;
+
+    public TripUpdateMapper(StopTimesService stopTimesService, StopPlaceUpdaterService stopPlaceService) {
+        this.stopTimesService = stopTimesService;
+        this.stopPlaceService = stopPlaceService;
+    }
 
     /**
      * Maps a GTFS-Realtime {@link GtfsRealtime.TripUpdate} into a list of {@link MonitoredStopVisit} instances.
@@ -58,8 +60,8 @@ public class TripUpdateMapper {
             MonitoredStopVisit stopVisit = new MonitoredStopVisit();
 
             String stopId = getStopId(stopTimeUpdate, datasetId, tripId);
-
-            if (stopId != null && !routeIdList.isEmpty() && !routeIdList.contains(stopId)) {
+            String routeIdInCache = stopTimesService.getRouteId(datasetId, tripId).orElse("");
+            if (shouldFilterStop(routeIdList, stopId, routeIdInCache)) {
                 continue;
             }
             if (StringUtils.isEmpty(stopId)) {
@@ -226,11 +228,18 @@ public class TripUpdateMapper {
      * @return An {@link EstimatedVehicleJourney} object representing the structured journey data,
      *         or {@code null} if the route ID is not in the provided list.
      */
-    public static EstimatedVehicleJourney mapVehicleJourneyFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate, List<String> routeIdList) {
+    public EstimatedVehicleJourney mapVehicleJourneyFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate, String datasetId, List<String> routeIdList) {
         GtfsRealtime.TripDescriptor tripDescriptor = tripUpdate.getTrip();
-
-        if (tripDescriptor.getRouteId() != null && !routeIdList.isEmpty() && !routeIdList.contains(tripDescriptor.getRouteId())) {
-            return null;
+        if (!routeIdList.isEmpty()) {
+            String routeIdInCache = "";
+            if (tripDescriptor.hasTripId()) {
+                routeIdInCache = stopTimesService.getRouteId(datasetId, tripDescriptor.getTripId()).orElse("");
+            } else if (tripDescriptor.hasRouteId()) {
+                routeIdInCache = stopTimesService.checkIfKnownRouteId(datasetId, tripDescriptor.getRouteId()).orElse("");
+            }
+            if (StringUtils.isNotBlank(routeIdInCache) && !routeIdList.contains(routeIdInCache)) {
+                return null;
+            }
         }
 
         EstimatedVehicleJourney journey = new EstimatedVehicleJourney();
@@ -326,8 +335,8 @@ public class TripUpdateMapper {
             MonitoredStopVisitCancellation monitoredStopVisitCancellation = new MonitoredStopVisitCancellation();
 
             String stopId = getStopId(stopTimeUpdate, datasetId, tripId);
-
-            if (stopId != null && !routeIdList.isEmpty() && !routeIdList.contains(stopId)) {
+            String routeIdInCache = stopTimesService.getRouteId(datasetId, tripId).orElse("");
+            if (shouldFilterStop(routeIdList, stopId, routeIdInCache)) {
                 continue;
             }
             if (StringUtils.isEmpty(stopId)) {
@@ -350,5 +359,9 @@ public class TripUpdateMapper {
         }
 
         return stopVisitCancellations;
+    }
+
+    private static boolean shouldFilterStop(List<String> routeIdList, String stopId, String routeIdInCache) {
+        return stopId != null && StringUtils.isNotBlank(routeIdInCache) && !routeIdList.isEmpty() && !routeIdList.contains(routeIdInCache);
     }
 }

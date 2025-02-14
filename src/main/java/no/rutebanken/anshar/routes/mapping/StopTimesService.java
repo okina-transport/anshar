@@ -1,13 +1,11 @@
 package no.rutebanken.anshar.routes.mapping;
 
-import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.util.CSVUtils;
 import no.rutebanken.anshar.util.FileUtils;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
@@ -16,10 +14,7 @@ import javax.annotation.PostConstruct;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -48,14 +43,13 @@ public class StopTimesService {
     @Value("${anshar.trips.root.directory}")
     private String tripsRootDir;
 
-    @Autowired
-    SubscriptionConfig subscriptionConfig;
-
     //datasetId -> tripId -> sequence
-    private final Map<String, Map<String, Map<Integer, Pair<String, String>>>> stopTimesCache = new HashMap();
+    private final Map<String, Map<String, Map<Integer, Pair<String, String>>>> stopTimesCache = new HashMap<>();
 
     //datasetId -> 0tripId -> routeId
-    private final Map<String, Map<String, String>> tripsCache = new HashMap();
+    private final Map<String, Map<String, String>> tripsCache = new HashMap<>();
+
+    private final Map<String, Set<String>> knownRoutesCache = new HashMap<>();
 
     private final FilenameFilter stopTimesFilter = (f, name) -> name.startsWith("stop_times_") && name.endsWith(".txt");
     private final FilenameFilter tripsFilter = (f, name) -> name.startsWith("trips_") && name.endsWith(".txt");
@@ -103,7 +97,7 @@ public class StopTimesService {
         if (!organisationDirectory.exists()) {
             return;
         }
-        logger.info("Starting updating stop times cache for dataset : " + datasetId);
+        logger.info("Starting updating stop times cache for dataset : {}", datasetId);
 
 
         String[] fileList = organisationDirectory.list(stopTimesFilter);
@@ -113,7 +107,7 @@ public class StopTimesService {
             feedCacheWithFile(fileToRead, datasetId);
         }
 
-        logger.info("Feeding cache completed for datasetId: " + datasetId);
+        logger.info("Feeding cache completed for datasetId: {}", datasetId);
     }
 
     /**
@@ -127,7 +121,7 @@ public class StopTimesService {
         if (!organisationDirectory.exists()) {
             return;
         }
-        logger.info("Starting updating trips cache for dataset : " + datasetId);
+        logger.info("Starting updating trips cache for dataset : {}", datasetId);
 
 
         String[] fileList = organisationDirectory.list(tripsFilter);
@@ -137,7 +131,7 @@ public class StopTimesService {
             feedCacheWithTripsFile(fileToRead, datasetId);
         }
 
-        logger.info("Feeding cache completed for datasetId: " + datasetId);
+        logger.info("Feeding cache completed for datasetId: {}", datasetId);
     }
 
 
@@ -162,12 +156,12 @@ public class StopTimesService {
                 stopTimesCache.put(datasetId, currentDatasetCache);
             }
 
-            for (CSVRecord record : records) {
+            for (CSVRecord csvRecord : records) {
 
-                String stopId = record.get("stop_id");
-                String tripId = record.get("trip_id");
-                String departureTime = record.get("departure_time");
-                Integer sequence = Integer.parseInt(record.get("stop_sequence"));
+                String stopId = csvRecord.get("stop_id");
+                String tripId = csvRecord.get("trip_id");
+                String departureTime = csvRecord.get("departure_time");
+                Integer sequence = Integer.parseInt(csvRecord.get("stop_sequence"));
 
                 Map<Integer, Pair<String, String>> currentTripCache;
 
@@ -179,10 +173,10 @@ public class StopTimesService {
                 }
                 currentTripCache.put(sequence, Pair.of(stopId, departureTime));
             }
-            logger.info("Feeding cache with stop_times file: " + fileToRead.getAbsolutePath() + " completed");
+            logger.info("Feeding cache with stop_times file: {} completed", fileToRead.getAbsolutePath());
 
         } catch (IOException | IllegalArgumentException e) {
-            logger.error("Unable to feed cache with file:" + fileToRead.getAbsolutePath(), e);
+            logger.error("Unable to feed cache with file: {}", fileToRead.getAbsolutePath(), e);
         }
     }
 
@@ -198,6 +192,7 @@ public class StopTimesService {
             Iterable<CSVRecord> records = CSVUtils.getRecords(fileToRead);
 
             Map<String, String> currentDatasetCache;
+            Set<String> knownRoutes = new HashSet<>();
 
             if (tripsCache.containsKey(datasetId)) {
                 currentDatasetCache = tripsCache.get(datasetId);
@@ -206,18 +201,20 @@ public class StopTimesService {
                 tripsCache.put(datasetId, currentDatasetCache);
             }
 
-            for (CSVRecord record : records) {
+            for (CSVRecord csvRecord : records) {
 
-                String routeId = record.get("route_id");
-                String tripId = record.get("trip_id");
+                String routeId = csvRecord.get("route_id");
+                String tripId = csvRecord.get("trip_id");
 
                 currentDatasetCache.put(tripId, routeId);
+                knownRoutes.add(routeId);
 
             }
-            logger.info("Feeding cache with trips file: " + fileToRead.getAbsolutePath() + " completed");
+            knownRoutesCache.put(datasetId, knownRoutes);
+            logger.info("Feeding cache with trips file: {} completed", fileToRead.getAbsolutePath());
 
         } catch (IOException | IllegalArgumentException e) {
-            logger.error("Unable to feed cache with file:" + fileToRead.getAbsolutePath(), e);
+            logger.error("Unable to feed cache with file: {}", fileToRead.getAbsolutePath(), e);
         }
     }
 
@@ -310,6 +307,31 @@ public class StopTimesService {
         String routeId = datasetMap.get(tripId);
 
         return Optional.ofNullable(routeId);
+    }
+
+    /**
+     * Read the cache and recover a routeId, for a given datasetId
+     *
+     * @param datasetId the datasetId for which the routeId must be recovered
+     * @param routeId   the searched routeId
+     * @return routeId if found in cache
+     */
+    public Optional<String> checkIfKnownRouteId(String datasetId, String routeId) {
+        Optional<String> result = Optional.empty();
+        if (knownRoutesCache.isEmpty()) {
+            refreshCache();
+        }
+
+        if (!knownRoutesCache.containsKey(datasetId)) {
+            return Optional.empty();
+        }
+
+        Set<String> knownRouteIdInCache = knownRoutesCache.get(datasetId);
+
+        if (knownRouteIdInCache.contains(routeId)) {
+            result = Optional.of(routeId);
+        }
+        return result;
     }
 
     /**

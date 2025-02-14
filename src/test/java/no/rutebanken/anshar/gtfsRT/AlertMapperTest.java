@@ -3,26 +3,27 @@ package no.rutebanken.anshar.gtfsRT;
 import com.google.transit.realtime.GtfsRealtime;
 import no.rutebanken.anshar.gtfsrt.mappers.AlertMapper;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import uk.org.siri.siri20.*;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static junit.framework.Assert.assertNotNull;
-import static junit.framework.Assert.assertTrue;
-import static junit.framework.TestCase.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 
-public class AlertMapperTest extends SpringBootBaseTest {
+class AlertMapperTest extends SpringBootBaseTest {
 
-    private static String GTFS_RT_URL = "https://www.data.gouv.fr/fr/datasets/r/3bd20bc6-bfae-48d8-8785-6a34cf272df2";
-    private static final int DEFAULT_HEARTBEAT_SECONDS = 300;
+    private AlertMapper alertMapper;
 
+    @BeforeEach
+    public void setup() {
+        alertMapper = new AlertMapper(null);
+    }
 
     @Test
-    public void testGTFSRTAlertMapperTest() {
+    void testGTFSRTAlertMapperTest() {
         GtfsRealtime.Alert.Builder alertBuilder = GtfsRealtime.Alert.newBuilder();
 
         GtfsRealtime.TranslatedString.Translation.Builder translation = GtfsRealtime.TranslatedString.Translation.newBuilder();
@@ -41,16 +42,16 @@ public class AlertMapperTest extends SpringBootBaseTest {
 
         List<String> routeIdList = Arrays.asList("12,13".split(","));
 
-        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
 
-        assertEquals("headerText", situation.getSummaries().get(0).getValue());
-        assertEquals("desc", situation.getDescriptions().get(0).getValue());
+        assertThat(situation.getSummaries().get(0).getValue()).isEqualTo("headerText");
+        assertThat(situation.getDescriptions().get(0).getValue()).isEqualTo("desc");
 
 
     }
 
     @Test
-    public void testAffectsWithOnlyNetwork() {
+    void testAffectsWithOnlyNetwork() {
 
         String agencyId = "agencyIdTest";
 
@@ -76,22 +77,20 @@ public class AlertMapperTest extends SpringBootBaseTest {
         alertBuilder.addInformedEntity(newEnt.build());
         List<String> routeIdList = Arrays.asList("12,13".split(","));
 
-        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
 
-        assertTrue(situation.getAffects() != null);
-        assertTrue(situation.getAffects().getNetworks() != null);
-        assertTrue(situation.getAffects().getNetworks().getAffectedNetworks() != null && situation.getAffects().getNetworks().getAffectedNetworks().size() > 0);
+        assertThat(situation.getAffects()).isNotNull();
+        assertThat(situation.getAffects().getNetworks()).isNotNull();
+        assertThat(situation.getAffects().getNetworks().getAffectedNetworks()).isNotEmpty();
 
         AffectsScopeStructure.Networks.AffectedNetwork firstNetwork = situation.getAffects().getNetworks().getAffectedNetworks().get(0);
-        assertTrue(firstNetwork.getNetworkRef() != null);
-        assertEquals(agencyId, firstNetwork.getNetworkRef().getValue());
-
+        assertThat(firstNetwork.getNetworkRef()).isNotNull();
+        assertThat(firstNetwork.getNetworkRef().getValue()).isEqualTo(agencyId);
     }
 
     @Test
-    public void testAffectsWithOnlyLine() {
+    void testAffectsWithOnlyLine() {
 
-        String agencyId = "agencyIdTest";
         String lineId = "lineIdTest";
 
         GtfsRealtime.Alert.Builder alertBuilder = GtfsRealtime.Alert.newBuilder();
@@ -115,25 +114,24 @@ public class AlertMapperTest extends SpringBootBaseTest {
 
         alertBuilder.addInformedEntity(newEnt.build());
 
-        List<String> routeIdList = Arrays.asList("lineIdTest".split(","));
+        List<String> routeIdList = List.of(lineId);
 
-        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
 
-        assertTrue(situation.getAffects() != null);
-        assertTrue(situation.getAffects().getNetworks() != null);
-        assertTrue(situation.getAffects().getNetworks().getAffectedNetworks() != null && situation.getAffects().getNetworks().getAffectedNetworks().size() > 0);
+        assertThat(situation.getAffects()).isNotNull();
+        assertThat(situation.getAffects().getNetworks()).isNotNull();
+        assertThat(situation.getAffects().getNetworks().getAffectedNetworks()).isNotEmpty();
 
         AffectsScopeStructure.Networks.AffectedNetwork firstNetwork = situation.getAffects().getNetworks().getAffectedNetworks().get(0);
-        assertTrue(firstNetwork.getAffectedLines() != null && firstNetwork.getAffectedLines().size() > 0);
+        assertThat(firstNetwork.getAffectedLines()).isNotEmpty();
         AffectedLineStructure affectedLine = firstNetwork.getAffectedLines().get(0);
-        assertTrue(affectedLine.getLineRef() != null);
-        assertEquals(lineId, affectedLine.getLineRef().getValue());
+        assertThat(affectedLine.getLineRef()).isNotNull();
+        assertThat(affectedLine.getLineRef().getValue()).isEqualTo(lineId);
     }
 
     @Test
-    public void testAffectsWithLineAndStop() {
+    void testAffectsWithLineAndStop() {
 
-        String agencyId = "agencyIdTest";
         String lineId = "lineIdTest";
         String stopId = "stopIdTest";
 
@@ -159,31 +157,34 @@ public class AlertMapperTest extends SpringBootBaseTest {
 
         alertBuilder.addInformedEntity(newEnt.build());
 
-        List<String> routeIdList = Arrays.asList("lineIdTest".split(","));
+        List<String> routeIdList = List.of(lineId);
 
-        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
 
-        assertTrue(situation.getAffects() != null);
-        assertTrue(situation.getAffects().getNetworks() != null);
-        assertTrue(situation.getAffects().getNetworks().getAffectedNetworks() != null && situation.getAffects().getNetworks().getAffectedNetworks().size() > 0);
+        assertThat(situation.getAffects()).isNotNull();
+        assertThat(situation.getAffects().getNetworks()).isNotNull();
+        assertThat(situation.getAffects().getNetworks().getAffectedNetworks()).isNotEmpty();
 
         AffectsScopeStructure.Networks.AffectedNetwork firstNetwork = situation.getAffects().getNetworks().getAffectedNetworks().get(0);
-        assertTrue(firstNetwork.getAffectedLines() != null && firstNetwork.getAffectedLines().size() > 0);
+        assertThat(firstNetwork.getAffectedLines()).isNotEmpty();
         AffectedLineStructure affectedLine = firstNetwork.getAffectedLines().get(0);
-        assertTrue(affectedLine.getLineRef() != null);
-        assertEquals(lineId, affectedLine.getLineRef().getValue());
+        assertThat(affectedLine.getLineRef()).isNotNull();
+        assertThat(affectedLine.getLineRef().getValue()).isEqualTo(lineId);
 
 
-        assertTrue(affectedLine.getRoutes() != null);
-        assertTrue(affectedLine.getRoutes().getAffectedRoutes().get(0).getStopPoints() != null);
-        assertTrue(affectedLine.getRoutes().getAffectedRoutes().get(0).getStopPoints().getAffectedStopPointsAndLinkProjectionToNextStopPoints().get(0) != null);
+        assertThat(affectedLine.getRoutes()).isNotNull();
+        assertThat(affectedLine.getRoutes().getAffectedRoutes()).isNotEmpty();
+        assertThat(affectedLine.getRoutes().getAffectedRoutes()).isNotEmpty();
+        AffectedRouteStructure firstAffectedRoute = affectedLine.getRoutes().getAffectedRoutes().get(0);
+        assertThat(firstAffectedRoute.getStopPoints()).isNotNull();
+        assertThat(firstAffectedRoute.getStopPoints().getAffectedStopPointsAndLinkProjectionToNextStopPoints()).isNotEmpty();
 
-        AffectedStopPointStructure affStopPoint = (AffectedStopPointStructure) affectedLine.getRoutes().getAffectedRoutes().get(0).getStopPoints().getAffectedStopPointsAndLinkProjectionToNextStopPoints().get(0);
-        assertEquals(stopId, affStopPoint.getStopPointRef().getValue());
+        AffectedStopPointStructure affStopPoint = (AffectedStopPointStructure) firstAffectedRoute.getStopPoints().getAffectedStopPointsAndLinkProjectionToNextStopPoints().get(0);
+        assertThat(affStopPoint.getStopPointRef().getValue()).isEqualTo(stopId);
     }
 
     @Test
-    public void testAffectsWithNetworkLineAndStop() {
+    void testAffectsWithNetworkLineAndStop() {
 
         String agencyId = "agencyIdTest";
         String lineId = "lineIdTest";
@@ -212,42 +213,41 @@ public class AlertMapperTest extends SpringBootBaseTest {
 
         alertBuilder.addInformedEntity(newEnt.build());
 
-        List<String> routeIdList = Arrays.asList("lineIdTest".split(","));
+        List<String> routeIdList = List.of(lineId);
 
-        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
 
-        assertTrue(situation.getAffects() != null);
-        assertTrue(situation.getAffects().getNetworks() != null);
-        assertTrue(situation.getAffects().getNetworks().getAffectedNetworks() != null && situation.getAffects().getNetworks().getAffectedNetworks().size() > 0);
+        assertThat(situation.getAffects()).isNotNull();
+        assertThat(situation.getAffects().getNetworks()).isNotNull();
+        assertThat(situation.getAffects().getNetworks().getAffectedNetworks()).isNotEmpty();
 
         AffectsScopeStructure.Networks.AffectedNetwork firstNetwork = situation.getAffects().getNetworks().getAffectedNetworks().get(0);
-        assertTrue(firstNetwork.getAffectedLines() != null && firstNetwork.getAffectedLines().size() > 0);
+        assertThat(firstNetwork.getAffectedLines()).isNotEmpty();
         AffectedLineStructure affectedLine = firstNetwork.getAffectedLines().get(0);
-        assertTrue(affectedLine.getLineRef() != null);
-        assertEquals(lineId, affectedLine.getLineRef().getValue());
+        assertThat(affectedLine.getLineRef()).isNotNull();
+        assertThat(affectedLine.getLineRef().getValue()).isEqualTo(lineId);
 
 
-        assertTrue(affectedLine.getRoutes() != null);
-        assertTrue(affectedLine.getRoutes().getAffectedRoutes().get(0).getStopPoints() != null);
-        assertTrue(affectedLine.getRoutes().getAffectedRoutes().get(0).getStopPoints().getAffectedStopPointsAndLinkProjectionToNextStopPoints().get(0) != null);
+        assertThat(affectedLine.getRoutes()).isNotNull();
+        AffectedRouteStructure.StopPoints stopPointsFromFirstAffectedRoute = affectedLine.getRoutes().getAffectedRoutes().get(0).getStopPoints();
+        assertThat(stopPointsFromFirstAffectedRoute).isNotNull();
+        assertThat(stopPointsFromFirstAffectedRoute.getAffectedStopPointsAndLinkProjectionToNextStopPoints()).isNotEmpty();
 
-        AffectedStopPointStructure affStopPoint = (AffectedStopPointStructure) affectedLine.getRoutes().getAffectedRoutes().get(0).getStopPoints().getAffectedStopPointsAndLinkProjectionToNextStopPoints().get(0);
-        assertEquals(stopId, affStopPoint.getStopPointRef().getValue());
-
-
-        assertTrue(situation.getAffects().getNetworks() != null);
-        assertTrue(situation.getAffects().getNetworks().getAffectedNetworks() != null && situation.getAffects().getNetworks().getAffectedNetworks().size() > 0);
+        AffectedStopPointStructure affStopPoint = (AffectedStopPointStructure) stopPointsFromFirstAffectedRoute.getAffectedStopPointsAndLinkProjectionToNextStopPoints().get(0);
+        assertThat(affStopPoint.getStopPointRef().getValue()).isEqualTo(stopId);
 
 
-        assertTrue(firstNetwork.getNetworkRef() != null);
-        assertEquals(agencyId, firstNetwork.getNetworkRef().getValue());
+        assertThat(situation.getAffects().getNetworks()).isNotNull();
+        assertThat(situation.getAffects().getNetworks().getAffectedNetworks()).isNotEmpty();
+
+
+        assertThat(firstNetwork.getNetworkRef()).isNotNull();
+        assertThat(firstNetwork.getNetworkRef().getValue()).isEqualTo(agencyId);
     }
 
     @Test
-    public void testAffectsWithOnlyStop() {
+    void testAffectsWithOnlyStop() {
 
-        String agencyId = "agencyIdTest";
-        String lineId = "lineIdTest";
         String stopId = "stopIdTest";
         String stopId2 = "stopIdTest2";
 
@@ -278,23 +278,22 @@ public class AlertMapperTest extends SpringBootBaseTest {
         alertBuilder.addInformedEntity(newEnt2.build());
         List<String> routeIdList = Arrays.asList("12,13".split(","));
 
-        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
 
-        assertTrue(situation.getAffects() != null);
-        assertTrue(situation.getAffects().getStopPoints() != null);
-        assertTrue(situation.getAffects().getStopPoints().getAffectedStopPoints() != null);
-        assertEquals(2, situation.getAffects().getStopPoints().getAffectedStopPoints().size());
+        assertThat(situation.getAffects()).isNotNull();
+        assertThat(situation.getAffects().getStopPoints()).isNotNull();
+        assertThat(situation.getAffects().getStopPoints().getAffectedStopPoints()).isNotEmpty().hasSize(2);
         AffectedStopPointStructure firstPoint = situation.getAffects().getStopPoints().getAffectedStopPoints().get(0);
-        assertTrue(firstPoint.getStopPointRef() != null);
-        assertEquals(stopId, firstPoint.getStopPointRef().getValue());
+        assertThat(firstPoint).isNotNull();
+        assertThat(firstPoint.getStopPointRef().getValue()).isEqualTo(stopId);
 
         AffectedStopPointStructure secondPoint = situation.getAffects().getStopPoints().getAffectedStopPoints().get(1);
-        assertTrue(secondPoint.getStopPointRef() != null);
-        assertEquals(stopId2, secondPoint.getStopPointRef().getValue());
+        assertThat(secondPoint).isNotNull();
+        assertThat(secondPoint.getStopPointRef().getValue()).isEqualTo(stopId2);
     }
 
     @Test
-    public void testSeverityConversions() {
+    void testSeverityConversions() {
         testSeverityConversion(GtfsRealtime.Alert.SeverityLevel.UNKNOWN_SEVERITY, SeverityEnumeration.UNKNOWN);
         testSeverityConversion(GtfsRealtime.Alert.SeverityLevel.INFO, SeverityEnumeration.VERY_SLIGHT);
         testSeverityConversion(GtfsRealtime.Alert.SeverityLevel.WARNING, SeverityEnumeration.NORMAL);
@@ -305,8 +304,8 @@ public class AlertMapperTest extends SpringBootBaseTest {
         GtfsRealtime.Alert alert = buildAlertWithSeverity(inputSeverityLevel);
         List<String> routeIdList = Arrays.asList("12,13".split(","));
 
-        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alert, "", routeIdList);
-        assertEquals("severity conversion issue between :" + inputSeverityLevel + " , and :" + outputSeverity, situation.getSeverity(), outputSeverity);
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(alert, "", routeIdList);
+        assertThat(situation.getSeverity()).isEqualTo( outputSeverity);
     }
 
     private GtfsRealtime.Alert buildAlertWithSeverity(GtfsRealtime.Alert.SeverityLevel severityLevel) {
@@ -316,7 +315,7 @@ public class AlertMapperTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testEffectConversions() {
+    void testEffectConversions() {
         testEffectConversion(GtfsRealtime.Alert.Effect.NO_SERVICE, ServiceConditionEnumeration.NO_SERVICE);
         testEffectConversion(GtfsRealtime.Alert.Effect.REDUCED_SERVICE, ServiceConditionEnumeration.SHORT_FORMED_SERVICE);
         testEffectConversion(GtfsRealtime.Alert.Effect.SIGNIFICANT_DELAYS, ServiceConditionEnumeration.DELAYED);
@@ -333,12 +332,12 @@ public class AlertMapperTest extends SpringBootBaseTest {
         GtfsRealtime.Alert alert = buildAlertWithEffect(inputEffect);
         List<String> routeIdList = Arrays.asList("12,13".split(","));
 
-        PtSituationElement situation = AlertMapper.mapSituationFromAlert(alert, "", routeIdList);
-        assertNotNull(situation.getConsequences());
-        assertNotNull(situation.getConsequences().getConsequences());
-        assertNotNull(situation.getConsequences().getConsequences().get(0));
-        assertNotNull(situation.getConsequences().getConsequences().get(0).getConditions());
-        assertEquals("effect conversion issue between :" + inputEffect + " , and :" + outputServiceCondition, outputServiceCondition, situation.getConsequences().getConsequences().get(0).getConditions().get(0));
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(alert, "", routeIdList);
+        assertThat(situation.getConsequences()).isNotNull();
+        assertThat(situation.getConsequences().getConsequences()).isNotEmpty();
+        assertThat(situation.getConsequences().getConsequences().get(0)).isNotNull();
+        assertThat(situation.getConsequences().getConsequences().get(0).getConditions()).isNotNull();
+        assertThat(situation.getConsequences().getConsequences().get(0).getConditions().get(0)).isEqualTo(outputServiceCondition);
     }
 
     private GtfsRealtime.Alert buildAlertWithEffect(GtfsRealtime.Alert.Effect effect) {

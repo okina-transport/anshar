@@ -4,7 +4,6 @@ import com.google.transit.realtime.GtfsRealtime;
 import net.logstash.logback.encoder.org.apache.commons.lang3.StringUtils;
 import no.rutebanken.anshar.data.DiscoveryCache;
 import no.rutebanken.anshar.gtfsrt.mappers.VehiclePositionMapper;
-import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
@@ -13,7 +12,6 @@ import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.org.siri.siri20.ServiceDelivery;
 import uk.org.siri.siri20.Siri;
@@ -38,21 +36,20 @@ public class VehiclePositionReader extends AbstractSwallower {
 
     private static final Logger logger = LoggerFactory.getLogger(VehiclePositionReader.class);
 
+    private final SubscriptionManager subscriptionManager;
 
-    @Autowired
-    private SubscriptionManager subscriptionManager;
+    private final DiscoveryCache discoveryCache;
 
-    @Autowired
-    private SiriHandler handler;
+    private final VehiclePositionMapper vehiclePositionMapper;
 
-    @Produce(uri = "direct:send.vm.to.realtime.server")
+    @Produce("direct:send.vm.to.realtime.server")
     protected ProducerTemplate gtfsrtVmProducer;
 
-    @Autowired
-    private DiscoveryCache discoveryCache;
 
-
-    public VehiclePositionReader() {
+    public VehiclePositionReader(SubscriptionManager subscriptionManager, DiscoveryCache discoveryCache, VehiclePositionMapper vehiclePositionMapper) {
+        this.subscriptionManager = subscriptionManager;
+        this.vehiclePositionMapper = vehiclePositionMapper;
+        this.discoveryCache = discoveryCache;
         prefix = GTFSRT_VM_PREFIX;
         dataType = SiriDataType.VEHICLE_MONITORING;
         requestType = RequestType.GET_VEHICLE_MONITORING;
@@ -67,10 +64,10 @@ public class VehiclePositionReader extends AbstractSwallower {
      * @param completeGTFSRTMessage The complete GTFS-Realtime {@link GtfsRealtime.FeedMessage} containing vehicle position data.
      */
     public void ingestVehiclePositionData(String datasetId, List<String> routeIdList, GtfsRealtime.FeedMessage completeGTFSRTMessage) {
-        List<VehicleActivityStructure> vehicleActivities = buildVehicleActivityList(completeGTFSRTMessage, routeIdList);
+        List<VehicleActivityStructure> vehicleActivities = buildVehicleActivityList(completeGTFSRTMessage, datasetId, routeIdList);
 
 
-        if (vehicleActivities.size() == 0) {
+        if (vehicleActivities.isEmpty()) {
             logger.info("No vehicle activities in GTFS RT feed");
             return;
         }
@@ -103,7 +100,7 @@ public class VehiclePositionReader extends AbstractSwallower {
      * @param routeIdList A list of route IDs used to filter relevant vehicle activities.
      * @return A list of {@link VehicleActivityStructure} objects representing structured vehicle activity data.
      */
-    private List<VehicleActivityStructure> buildVehicleActivityList(GtfsRealtime.FeedMessage feedMessage, List<String> routeIdList) {
+    private List<VehicleActivityStructure> buildVehicleActivityList(GtfsRealtime.FeedMessage feedMessage, String datasetId, List<String> routeIdList) {
         List<VehicleActivityStructure> vehicleActivities = new ArrayList<>();
 
 
@@ -111,7 +108,7 @@ public class VehiclePositionReader extends AbstractSwallower {
             if (feedEntity.getVehicle() == null)
                 continue;
 
-            VehicleActivityStructure vehicleActivity = VehiclePositionMapper.mapVehicleActivityFromVehiclePosition(feedEntity.getVehicle(), routeIdList);
+            VehicleActivityStructure vehicleActivity = vehiclePositionMapper.mapVehicleActivityFromVehiclePosition(feedEntity.getVehicle(), datasetId, routeIdList);
             if (vehicleActivity == null) {
                 continue;
             }

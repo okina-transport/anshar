@@ -10,26 +10,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri21.EstimatedVehicleJourney;
 import uk.org.siri.siri21.MonitoredStopVisitCancellation;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static junit.framework.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 
-public class TripUpdateMapperTest extends SpringBootBaseTest {
-
-    private static String GTFS_RT_URL = "https://www.data.gouv.fr/fr/datasets/r/3bd20bc6-bfae-48d8-8785-6a34cf272df2";
-    private static final int DEFAULT_HEARTBEAT_SECONDS = 300;
+class TripUpdateMapperTest extends SpringBootBaseTest {
 
     @Autowired
     private TripUpdateMapper tripUpdateMapper;
 
-
     @Test
-    public void testGTFSRTTripUpdateMapperTest() {
-
-
+    void testGTFSRTTripUpdateMapperTest() {
         GtfsRealtime.TripUpdate.Builder tripBuilder = GtfsRealtime.TripUpdate.newBuilder();
         GtfsRealtime.TripDescriptor.Builder tripDescBuild = GtfsRealtime.TripDescriptor.newBuilder();
         tripDescBuild.setTripId("tripId");
@@ -44,15 +37,13 @@ public class TripUpdateMapperTest extends SpringBootBaseTest {
 
         List<String> routeIdList = Arrays.asList("".split(","));
 
-        EstimatedVehicleJourney vehicleJourney = TripUpdateMapper.mapVehicleJourneyFromTripUpdate(tripBuilder.build(), routeIdList);
-        assertTrue(vehicleJourney != null);
+        EstimatedVehicleJourney vehicleJourney = tripUpdateMapper.mapVehicleJourneyFromTripUpdate(tripBuilder.build(), "", routeIdList);
+        assertThat(vehicleJourney).isNotNull();
 
     }
 
     @Test
-    public void testGTFSRTTripUpdateCancellationMapperTest() {
-
-
+    void testGTFSRTTripUpdateCancellationMapperTest() {
         GtfsRealtime.TripUpdate.Builder tripBuilder = GtfsRealtime.TripUpdate.newBuilder();
         GtfsRealtime.TripDescriptor.Builder tripDescBuild = GtfsRealtime.TripDescriptor.newBuilder();
         tripDescBuild.setTripId("tripId");
@@ -91,6 +82,6 @@ public class TripUpdateMapperTest extends SpringBootBaseTest {
         tripBuilder2.addStopTimeUpdate(stopTimeUpd2);
 
         List<MonitoredStopVisitCancellation> monitoredStopVisitCancellations2 = tripUpdateMapper.mapStopCancellationFromTripUpdate(tripBuilder2.build(), "test2", routeIdList);
-        Assertions.assertTrue(monitoredStopVisitCancellations2.isEmpty());
+        assertThat(monitoredStopVisitCancellations2).isEmpty();
     }
 }

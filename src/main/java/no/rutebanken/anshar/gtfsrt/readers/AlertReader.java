@@ -2,7 +2,6 @@ package no.rutebanken.anshar.gtfsrt.readers;
 
 import com.google.transit.realtime.GtfsRealtime;
 import no.rutebanken.anshar.gtfsrt.mappers.AlertMapper;
-import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
@@ -11,7 +10,6 @@ import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.org.siri.siri20.*;
 
@@ -31,17 +29,17 @@ public class AlertReader extends AbstractSwallower {
 
     private static final Logger logger = LoggerFactory.getLogger(AlertReader.class);
 
-    @Autowired
-    private SubscriptionManager subscriptionManager;
+    private final SubscriptionManager subscriptionManager;
 
-    @Autowired
-    private SiriHandler handler;
+    private final AlertMapper alertMapper;
 
-    @Produce(uri = "direct:send.sx.to.realtime.server")
+    @Produce("direct:send.sx.to.realtime.server")
     protected ProducerTemplate gtfsrtSxProducer;
 
 
-    public AlertReader() {
+    public AlertReader(SubscriptionManager subscriptionManager, AlertMapper alertMapper) {
+        this.subscriptionManager = subscriptionManager;
+        this.alertMapper = alertMapper;
         prefix = GTFSRT_SX_PREFIX;
         dataType = SiriDataType.SITUATION_EXCHANGE;
         requestType = RequestType.GET_SITUATION_EXCHANGE;
@@ -67,7 +65,7 @@ public class AlertReader extends AbstractSwallower {
     private void buildSiriAndSend(List<PtSituationElement> situations, String datasetId) {
 
         if (situations.isEmpty()) {
-            logger.info("no situations to ingest on dataset :" + datasetId);
+            logger.info("no situations to ingest on dataset : {}", datasetId);
             return;
         }
 
@@ -116,12 +114,15 @@ public class AlertReader extends AbstractSwallower {
             if (isEmptyAlert(feedEntity.getAlert()))
                 continue;
 
-            PtSituationElement situation = AlertMapper.mapSituationFromAlert(feedEntity.getAlert(), datasetId, routeIdList);
+            PtSituationElement situation = alertMapper.mapSituationFromAlert(feedEntity.getAlert(), datasetId, routeIdList);
 
-            SituationNumber situationNumber = new SituationNumber();
-            situationNumber.setValue(feedEntity.getId());
-            situation.setSituationNumber(situationNumber);
-            situtations.add(situation);
+            if (situation != null) {
+                SituationNumber situationNumber = new SituationNumber();
+                situationNumber.setValue(feedEntity.getId());
+                situation.setSituationNumber(situationNumber);
+                situtations.add(situation);
+            }
+
         }
         return situtations;
 
@@ -130,8 +131,8 @@ public class AlertReader extends AbstractSwallower {
     private boolean isEmptyAlert(GtfsRealtime.Alert alert) {
 
         return alert == null || alert.getInformedEntityCount() == 0 ||
-                alert.getHeaderText() == null || alert.getHeaderText().getTranslationList().size() == 0 ||
-                alert.getDescriptionText() == null || alert.getDescriptionText().getTranslationList().size() == 0 ||
+                alert.getHeaderText() == null || alert.getHeaderText().getTranslationList().isEmpty() ||
+                alert.getDescriptionText() == null || alert.getDescriptionText().getTranslationList().isEmpty() ||
                 hasNoStartAndNoEndDate(alert);
 
     }
