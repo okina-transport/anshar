@@ -3,9 +3,11 @@ package no.rutebanken.anshar.gtfsrt.mappers;
 
 import com.google.protobuf.Timestamp;
 import com.google.transit.realtime.GtfsRealtime;
-import io.micrometer.core.instrument.util.StringUtils;
+import no.rutebanken.anshar.routes.mapping.StopTimesService;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 import uk.org.siri.siri20.*;
 
 
@@ -24,11 +26,17 @@ import java.util.List;
 /***
  * Utility class to convert vehiclePosition (GTFS RT) to vehicleActivity (SIRI)
  */
-
+@Component
 public class VehiclePositionMapper {
 
     private static final DateFormat gtfsRtDateFormat = new SimpleDateFormat("yyyyMMdd HH:mm:ss");
     private static final Logger logger = LoggerFactory.getLogger(VehiclePositionMapper.class);
+
+    private final StopTimesService stopTimesService;
+
+    public VehiclePositionMapper(StopTimesService stopTimesService) {
+        this.stopTimesService = stopTimesService;
+    }
 
     /**
      * Maps a GTFS-Realtime {@link GtfsRealtime.VehiclePosition} into a {@link VehicleActivityStructure}.
@@ -36,16 +44,24 @@ public class VehiclePositionMapper {
      * location, status, and occupancy, and structures them into a vehicle activity format.
      *
      * @param vehiclePosition The GTFS-Realtime {@link GtfsRealtime.VehiclePosition} containing real-time vehicle data.
+     * @param datasetId dataset.
      * @param routeIdList A list of route IDs used to filter relevant vehicle positions.
      * @return A {@link VehicleActivityStructure} object representing the structured vehicle activity data,
      *         or {@code null} if the vehicle's route ID is not in the provided list.
      */
-    public static VehicleActivityStructure mapVehicleActivityFromVehiclePosition(GtfsRealtime.VehiclePosition vehiclePosition, List<String> routeIdList) {
+    public VehicleActivityStructure mapVehicleActivityFromVehiclePosition(GtfsRealtime.VehiclePosition vehiclePosition, String datasetId, List<String> routeIdList) {
         VehicleActivityStructure activity = new VehicleActivityStructure();
         GtfsRealtime.TripDescriptor tripDescriptor = vehiclePosition.getTrip();
-
-        if (tripDescriptor.getRouteId() != null && !routeIdList.isEmpty() && !routeIdList.contains(tripDescriptor.getRouteId())) {
-            return null;
+        if (!routeIdList.isEmpty()) {
+            String routeIdInCache = "";
+            if (tripDescriptor.hasTripId()) {
+                routeIdInCache = stopTimesService.getRouteId(datasetId, tripDescriptor.getTripId()).orElse("");
+            } else if (tripDescriptor.hasRouteId()) {
+                routeIdInCache = stopTimesService.checkIfKnownRouteId(datasetId, tripDescriptor.getRouteId()).orElse("");
+            }
+            if (StringUtils.isNotBlank(routeIdInCache) && !routeIdList.contains(routeIdInCache)) {
+                return null;
+            }
         }
 
         FramedVehicleJourneyRefStructure framedVehicleJourneyRefBuilder = new FramedVehicleJourneyRefStructure();

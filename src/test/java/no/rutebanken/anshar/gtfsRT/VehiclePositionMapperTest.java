@@ -2,29 +2,31 @@ package no.rutebanken.anshar.gtfsRT;
 
 
 import com.google.transit.realtime.GtfsRealtime;
-import no.rutebanken.anshar.gtfsrt.mappers.TripUpdateMapper;
 import no.rutebanken.anshar.gtfsrt.mappers.VehiclePositionMapper;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
+import no.rutebanken.anshar.routes.mapping.StopTimesService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import uk.org.siri.siri20.EstimatedVehicleJourney;
 import uk.org.siri.siri20.VehicleActivityStructure;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static junit.framework.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
+class VehiclePositionMapperTest extends SpringBootBaseTest {
 
-public class VehiclePositionMapperTest extends SpringBootBaseTest {
+    private static final String DATASET_ID = "BERTHELET";
 
-    private static String GTFS_RT_URL = "https://www.data.gouv.fr/fr/datasets/r/3bd20bc6-bfae-48d8-8785-6a34cf272df2";
-    private static final int DEFAULT_HEARTBEAT_SECONDS = 300;
+    private VehiclePositionMapper vehiclePositionMapper;
 
-
+    @BeforeEach
+    public void setup() {
+        vehiclePositionMapper = new VehiclePositionMapper(new StopTimesService());
+    }
 
     @Test
-    public void testGTFSRTVehiclePositionMapperTest() {
+    void testGTFSRTVehiclePositionMapperTest() {
         GtfsRealtime.TripUpdate.Builder tripBuilder = GtfsRealtime.TripUpdate.newBuilder();
         GtfsRealtime.TripDescriptor.Builder tripDescBuild = GtfsRealtime.TripDescriptor.newBuilder();
         tripDescBuild.setTripId("tripId");
@@ -37,8 +39,8 @@ public class VehiclePositionMapperTest extends SpringBootBaseTest {
 
         List<String> routeIdList = Arrays.asList("".split(","));
 
-        VehicleActivityStructure vehicleJourney = VehiclePositionMapper.mapVehicleActivityFromVehiclePosition(vehiclePosition.build(), routeIdList);
-        assertTrue(vehicleJourney != null);
+        VehicleActivityStructure vehicleJourney = vehiclePositionMapper.mapVehicleActivityFromVehiclePosition(vehiclePosition.build(), DATASET_ID, routeIdList);
+        assertThat(vehicleJourney).isNotNull();
 
     }
 

@@ -2,11 +2,15 @@ package no.rutebanken.anshar.gtfsrt.mappers;
 
 
 import com.google.transit.realtime.GtfsRealtime;
+import no.rutebanken.anshar.gtfsrt.readers.AlertFilterHelper;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
+import no.rutebanken.anshar.routes.mapping.StopTimesService;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 import uk.org.ifopt.siri20.StopPlaceRef;
 import uk.org.siri.siri20.*;
 
@@ -25,15 +29,20 @@ import java.util.List;
  * Utility class to convert Alert (GTFS RT)  to situation exchange (SIRI)
  */
 
-
+@Component
 public class AlertMapper {
 
     private static final SimpleDateFormat DATE_FORMATTER = new SimpleDateFormat("yyyyMMdd");
 
     private static final Logger logger = LoggerFactory.getLogger(AlertMapper.class);
 
-
     private static StopPlaceUpdaterService stopPlaceService;
+
+    private final StopTimesService stopTimesService;
+
+    public AlertMapper(StopTimesService stopTimesService) {
+        this.stopTimesService = stopTimesService;
+    }
 
     /**
      * Maps a GTFS-RT Alert to a PtSituationElement, converting relevant alert data into a structured format.
@@ -43,17 +52,55 @@ public class AlertMapper {
      * @param routeIdList A list of route IDs to filter the alert’s applicability.
      * @return A {@link PtSituationElement} object containing the structured data from the alert.
      */
-    public static PtSituationElement mapSituationFromAlert(GtfsRealtime.Alert alert, String datasetId, List<String> routeIdList) {
+    public PtSituationElement mapSituationFromAlert(GtfsRealtime.Alert alert, String datasetId, List<String> routeIdList) {
 
         PtSituationElement ptSituationElement = new PtSituationElement();
+        if (shouldFilterAlert(alert, datasetId, routeIdList)) {
+            return null;
+        }
         mapDescription(ptSituationElement, alert);
         mapPeriod(ptSituationElement, alert);
         mapReasons(ptSituationElement, alert);
-        mapAffects(ptSituationElement, alert, datasetId, routeIdList);
+        mapAffects(ptSituationElement, alert, datasetId);
         mapEffect(ptSituationElement, alert);
         mapSeverity(ptSituationElement, alert);
 
         return ptSituationElement;
+    }
+
+    private boolean shouldFilterAlert(GtfsRealtime.Alert alert, String datasetId, List<String> routeIdList) {
+        if (CollectionUtils.isNotEmpty(routeIdList)) {
+            List<GtfsRealtime.EntitySelector> informedEntityList = alert.getInformedEntityList();
+            if (CollectionUtils.isNotEmpty(informedEntityList)) {
+                AlertFilterHelper alertFilterHelper = new AlertFilterHelper(stopTimesService, datasetId, routeIdList);
+                for (GtfsRealtime.EntitySelector entitySelector : informedEntityList) {
+                    if (alertFilterHelper.isShouldKeepAlert()) {
+                        return false;
+                    }
+                    updateAlertFilterHelper(entitySelector, alertFilterHelper);
+                }
+                return !alertFilterHelper.checkAllEntity();
+            }
+        }
+        return false;
+    }
+
+    private static void updateAlertFilterHelper(GtfsRealtime.EntitySelector entitySelector, AlertFilterHelper alertFilterHelper) {
+        if (entitySelector.hasAgencyId()) {
+            alertFilterHelper.addAgencyId(entitySelector.getAgencyId());
+        }
+        if (entitySelector.hasRouteId()) {
+            alertFilterHelper.addRoute(entitySelector.getRouteId());
+        }
+        if (entitySelector.hasTrip()) {
+            alertFilterHelper.addTrip(entitySelector.getTrip().getTripId());
+        }
+        if (entitySelector.hasStopId()) {
+            alertFilterHelper.addAffectedStops(entitySelector.getStopId());
+        }
+        if (entitySelector.hasRouteType()) {
+            alertFilterHelper.addRouteType(entitySelector.getRouteType());
+        }
     }
 
     private static void mapSeverity(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert) {
@@ -125,19 +172,18 @@ public class AlertMapper {
      * @param ptSituationElement The {@link PtSituationElement} to which the affected entities will be mapped.
      * @param alert The GTFS-Realtime {@link GtfsRealtime.Alert} containing the affected entities.
      * @param datasetId The identifier of the dataset associated with the alert.
-     * @param routeIdList A list of route IDs used to filter the affected entities.
      */
-    private static void mapAffects(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert, String datasetId, List<String> routeIdList) {
+    private static void mapAffects(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert, String datasetId) {
         List<GtfsRealtime.EntitySelector> informedEntities = alert.getInformedEntityList();
-        if (informedEntities == null || informedEntities.size() == 0)
+        if (informedEntities == null || informedEntities.isEmpty())
             return;
 
         AffectsScopeStructure affectStruct = new AffectsScopeStructure();
         AffectsScopeStructure.VehicleJourneys vehicleJourneys = new AffectsScopeStructure.VehicleJourneys();
 
         for (GtfsRealtime.EntitySelector informedEntity : informedEntities) {
-            vehicleJourneys.getAffectedVehicleJourneies().addAll(getVehicleJourneys(informedEntity, routeIdList));
-            recordAffect(affectStruct, informedEntity, datasetId, routeIdList);
+            vehicleJourneys.getAffectedVehicleJourneies().addAll(getVehicleJourneys(informedEntity));
+            recordAffect(affectStruct, informedEntity, datasetId);
         }
         affectStruct.setVehicleJourneys(vehicleJourneys);
         ptSituationElement.setAffects(affectStruct);
@@ -151,18 +197,15 @@ public class AlertMapper {
      * @param affects The {@link AffectsScopeStructure} that stores the affected elements.
      * @param informedEntity The GTFS-Realtime {@link GtfsRealtime.EntitySelector} representing the affected entity.
      * @param datasetId The identifier of the dataset associated with the affected entity.
-     * @param routeIdList A list of route IDs used to filter the affected entities.
      */
-    private static void recordAffect(AffectsScopeStructure affects, GtfsRealtime.EntitySelector informedEntity, String datasetId, List<String> routeIdList) {
+    private static void recordAffect(AffectsScopeStructure affects, GtfsRealtime.EntitySelector informedEntity, String datasetId) {
 
         if (informedEntity.hasAgencyId() || informedEntity.hasRouteId()) {
             AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork = getOrCreateNetwork(affects, informedEntity);
 
             if (informedEntity.hasRouteId()) {
-                AffectedLineStructure affectedLine = getOrCreateLine(affectedNetwork, informedEntity, routeIdList);
-                if (affectedLine != null) {
-                    addAffectedStopInAffectedLine(affectedLine, informedEntity);
-                }
+                AffectedLineStructure affectedLine = getOrCreateLine(affectedNetwork, informedEntity);
+                addAffectedStopInAffectedLine(affectedLine, informedEntity);
             }
         } else if (informedEntity.hasStopId()) {
             addAffectedStop(affects, informedEntity, datasetId);
@@ -304,15 +347,10 @@ public class AlertMapper {
      *
      * @param affectedNetwork The {@link AffectsScopeStructure.Networks.AffectedNetwork} containing affected lines.
      * @param informedEntity The GTFS-Realtime {@link GtfsRealtime.EntitySelector} providing the route ID.
-     * @param routeIdList A list of route IDs used to filter valid routes.
      * @return The existing or newly created {@link AffectedLineStructure}, or {@code null} if the route ID is not in the provided list.
      */
-    private static AffectedLineStructure getOrCreateLine(AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork, GtfsRealtime.EntitySelector informedEntity, List<String> routeIdList) {
+    private static AffectedLineStructure getOrCreateLine(AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork, GtfsRealtime.EntitySelector informedEntity) {
         String routeId = informedEntity.getRouteId();
-
-        if (!routeIdList.isEmpty() && !routeIdList.contains(routeId)){
-            return null;
-        }
 
         for (AffectedLineStructure affectedLine : affectedNetwork.getAffectedLines()) {
 
@@ -373,7 +411,7 @@ public class AlertMapper {
     }
 
 
-    private static List<AffectedVehicleJourneyStructure> getVehicleJourneys(GtfsRealtime.EntitySelector informedEntity, List<String> routeIdList) {
+    private static List<AffectedVehicleJourneyStructure> getVehicleJourneys(GtfsRealtime.EntitySelector informedEntity) {
         AffectsScopeStructure.VehicleJourneys vehicleJourneys = new AffectsScopeStructure.VehicleJourneys();
 
         if (informedEntity.hasTrip()) {
@@ -381,7 +419,7 @@ public class AlertMapper {
 
             GtfsRealtime.TripDescriptor tripDescriptor = informedEntity.getTrip();
             if (tripDescriptor != null)
-                mapTripDescriptor(tripDescriptor, vehicleJourney, routeIdList);
+                mapTripDescriptor(tripDescriptor, vehicleJourney);
 
             vehicleJourneys.getAffectedVehicleJourneies().add(vehicleJourney);
         }
@@ -390,23 +428,21 @@ public class AlertMapper {
     }
 
 
-    private static void mapTripDescriptor(GtfsRealtime.TripDescriptor tripDescriptor, AffectedVehicleJourneyStructure vehicleJourney, List<String> routeIdList) {
+    private static void mapTripDescriptor(GtfsRealtime.TripDescriptor tripDescriptor, AffectedVehicleJourneyStructure vehicleJourney) {
         if (StringUtils.isNotEmpty(tripDescriptor.getStartDate())) {
             try {
                 Date startDate = DATE_FORMATTER.parse(tripDescriptor.getStartDate());
                 ZonedDateTime departureTime = ZonedDateTime.ofInstant(startDate.toInstant(), ZoneId.systemDefault());
                 vehicleJourney.setOriginAimedDepartureTime(departureTime);
             } catch (ParseException e) {
-                logger.error("Unable to parse start date :" + tripDescriptor.getStartDate());
+                logger.error("Unable to parse start date : {}", tripDescriptor.getStartDate());
             }
         }
 
         if (StringUtils.isNotEmpty(tripDescriptor.getRouteId())) {
-            if (!routeIdList.isEmpty() && routeIdList.contains(tripDescriptor.getRouteId())) {
-                LineRef lineRef = new LineRef();
-                lineRef.setValue(tripDescriptor.getRouteId());
-                vehicleJourney.setLineRef(lineRef);
-            }
+            LineRef lineRef = new LineRef();
+            lineRef.setValue(tripDescriptor.getRouteId());
+            vehicleJourney.setLineRef(lineRef);
         }
     }
 
@@ -499,7 +535,7 @@ public class AlertMapper {
 
     private static List<DefaultedTextStructure> translate(GtfsRealtime.TranslatedString gtfsTranslatedString) {
 
-        if (gtfsTranslatedString.getTranslationList() == null || gtfsTranslatedString.getTranslationList().size() == 0)
+        if (gtfsTranslatedString.getTranslationList() == null || gtfsTranslatedString.getTranslationList().isEmpty())
             return new ArrayList<>();
 
         List<DefaultedTextStructure> siriTextStructures = new ArrayList<>();
@@ -514,7 +550,7 @@ public class AlertMapper {
             DefaultedTextStructure defaultedTextStructure = new DefaultedTextStructure();
             defaultedTextStructure.setValue(translationText);
 
-            String lang = translation.getLanguage() == null || translation.getLanguage().equals("") ? "FR" : translation.getLanguage();
+            String lang = translation.getLanguage() == null || translation.getLanguage().isEmpty() ? "FR" : translation.getLanguage();
 
             defaultedTextStructure.setLang(lang);
 

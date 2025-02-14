@@ -4,16 +4,12 @@ import com.google.transit.realtime.GtfsRealtime;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.DiscoveryCache;
 import no.rutebanken.anshar.gtfsrt.mappers.TripUpdateMapper;
-import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.org.siri.siri21.*;
 
@@ -35,31 +31,25 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.GTFSRT
 @Component
 public class TripUpdateReader extends AbstractSwallower {
 
-    private static final Logger logger = LoggerFactory.getLogger(TripUpdateReader.class);
+    private final SubscriptionManager subscriptionManager;
 
-    @Autowired
-    private SubscriptionManager subscriptionManager;
+    private final AnsharConfiguration configuration;
 
-    @Autowired
-    private SiriHandler handler;
+    private final TripUpdateMapper tripUpdateMapper;
 
-    @Autowired
-    private AnsharConfiguration configuration;
+    private final DiscoveryCache discoveryCache;
 
-    @Autowired
-    private TripUpdateMapper tripUpdateMapper;
-
-    @Produce(uri = "direct:send.et.to.realtime.server")
+    @Produce("direct:send.et.to.realtime.server")
     protected ProducerTemplate gtfsrtEtProducer;
 
-    @Produce(uri = "direct:send.sm.to.realtime.server")
+    @Produce("direct:send.sm.to.realtime.server")
     protected ProducerTemplate gtfsrtSmProducer;
 
-    @Autowired
-    private DiscoveryCache discoveryCache;
-
-
-    public TripUpdateReader() {
+    public TripUpdateReader(SubscriptionManager subscriptionManager, AnsharConfiguration configuration, TripUpdateMapper tripUpdateMapper, DiscoveryCache discoveryCache) {
+        this.subscriptionManager = subscriptionManager;
+        this.configuration = configuration;
+        this.tripUpdateMapper = tripUpdateMapper;
+        this.discoveryCache = discoveryCache;
     }
 
 
@@ -75,7 +65,7 @@ public class TripUpdateReader extends AbstractSwallower {
 
         if (configuration.processET()) {
             //// ESTIMATED TIME TABLES
-            List<EstimatedVehicleJourney> estimatedVehicleJourneys = buildEstimatedVehicleJourneyList(completeGTFSRTMessage, routeIdList);
+            List<EstimatedVehicleJourney> estimatedVehicleJourneys = buildEstimatedVehicleJourneyList(completeGTFSRTMessage, datasetId, routeIdList);
             List<String> etSubscriptionList = getSubscriptionsFromEstimatedTimeTables(estimatedVehicleJourneys);
             checkAndCreateSubscriptions(etSubscriptionList, GTFSRT_ET_PREFIX, SiriDataType.ESTIMATED_TIMETABLE, RequestType.GET_ESTIMATED_TIMETABLE, datasetId);
             List<String> lineList = getLines(estimatedVehicleJourneys);
@@ -207,10 +197,11 @@ public class TripUpdateReader extends AbstractSwallower {
      * This method processes trip updates from the feed message and converts them into structured estimated vehicle journeys.
      *
      * @param feedMessage The GTFS-Realtime {@link GtfsRealtime.FeedMessage} containing trip update data.
+     * @param datasedId datasetId used to check known id
      * @param routeIdList A list of route IDs used to filter relevant estimated vehicle journeys.
      * @return A list of {@link EstimatedVehicleJourney} objects representing structured estimated vehicle journey data.
      */
-    private List<EstimatedVehicleJourney> buildEstimatedVehicleJourneyList(GtfsRealtime.FeedMessage feedMessage, List<String> routeIdList) {
+    private List<EstimatedVehicleJourney> buildEstimatedVehicleJourneyList(GtfsRealtime.FeedMessage feedMessage, String datasedId, List<String> routeIdList) {
         List<EstimatedVehicleJourney> estimatedVehicleJourneys = new ArrayList<>();
 
 
@@ -218,7 +209,7 @@ public class TripUpdateReader extends AbstractSwallower {
             if (feedEntity.getTripUpdate() == null)
                 continue;
 
-            EstimatedVehicleJourney estimatedVehicleJourney = tripUpdateMapper.mapVehicleJourneyFromTripUpdate(feedEntity.getTripUpdate(), routeIdList);
+            EstimatedVehicleJourney estimatedVehicleJourney = tripUpdateMapper.mapVehicleJourneyFromTripUpdate(feedEntity.getTripUpdate(), datasedId, routeIdList);
             if (estimatedVehicleJourney != null) {
                 estimatedVehicleJourneys.add(estimatedVehicleJourney);
             }
