@@ -149,6 +149,7 @@ public class SubscriptionConfig {
             if (existingOpt.isPresent()) {
                 //API is already existing in the list. Updatig the status
                 existingOpt.get().setActive(incomingAPI.getActive());
+                existingOpt.get().setRouteIdList(incomingAPI.getRouteIdList());
                 logger.info("gtfsrt already existing.updating. " + incomingAPI.getDatasetId() + "-" + incomingAPI.getUrl());
             } else {
                 gtfsRTApis.add(incomingAPI);
