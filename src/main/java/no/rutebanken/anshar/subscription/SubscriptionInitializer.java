@@ -25,8 +25,8 @@ import no.rutebanken.anshar.routes.siri.processor.*;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
-import org.apache.camel.*;
-import org.apache.camel.builder.ExchangeBuilder;
+import org.apache.camel.CamelContext;
+import org.apache.camel.CamelContextAware;
 import org.apache.camel.builder.RouteBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,9 +56,6 @@ public class SubscriptionInitializer implements CamelContextAware {
 
     @Autowired
     private DiscoveryCache discoveryCache;
-
-    @Autowired
-    private ProducerTemplate producerTemplate;
 
     private CamelContext camelContext;
 
@@ -257,12 +254,12 @@ public class SubscriptionInitializer implements CamelContextAware {
      *
      * @param disabledSubscriptions
      */
-    public void disableSubscriptions(List<SubscriptionSetup> disabledSubscriptions) {
+    private void disableSubscriptions(List<SubscriptionSetup> disabledSubscriptions) {
+
         for (SubscriptionSetup disabledSubscription : disabledSubscriptions) {
             String subscriptionIdToDisable = disabledSubscription.getSubscriptionId();
+
             if (subscriptionManager.isSubscriptionRegistered(subscriptionIdToDisable) && subscriptionManager.get(subscriptionIdToDisable).isActive()) {
-                Exchange exchange = ExchangeBuilder.anExchange(camelContext).withBody(disabledSubscription).build();
-                producerTemplate.send("direct:cancelSubscription", exchange);
                 subscriptionManager.removeSubscription(subscriptionIdToDisable);
             }
         }
