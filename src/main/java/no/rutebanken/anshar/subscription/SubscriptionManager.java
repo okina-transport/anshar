@@ -133,10 +133,9 @@ public class SubscriptionManager {
     private static Integer MAX_RESTART_TRIES = 3;
 
     public void addSubscription(String subscriptionId, SubscriptionSetup setup) {
-
-        subscriptions.put(subscriptionId, setup);
-        logger.trace("Added subscription {}", setup);
         if (setup.isActive()) {
+            subscriptions.put(subscriptionId, setup);
+            logger.trace("Added subscription {}", setup);
             activatePendingSubscription(subscriptionId);
         }
         //  logStats();
@@ -794,6 +793,15 @@ public class SubscriptionManager {
             }
         }
         logger.warn("Stopped {} subscriptions, {} inactive.", counter, inactiveCounter);
+    }
+
+    public void terminateSubscription(String subscriptionId) {
+        logger.warn("Terminating subscription by id : {}", subscriptionId);
+        for (SubscriptionSetup subscription : subscriptions.values()) {
+            if (subscription.getSubscriptionId().equals(subscriptionId)) {
+                stopSubscription(subscription.getSubscriptionId());
+            }
+        }
     }
 
 

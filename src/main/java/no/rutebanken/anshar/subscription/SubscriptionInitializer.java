@@ -122,7 +122,9 @@ public class SubscriptionInitializer implements CamelContextAware {
                     .filter(subscriptionSetup -> !subscriptionSetup.isActive())
                     .collect(Collectors.toList());
 
-            disableSubscriptions(disabledSubscriptions);
+            if (!disabledSubscriptions.isEmpty()) {
+                disableSubscriptions(disabledSubscriptions);
+            }
 
             logger.info("Initializing {} subscriptions", activeSubscriptions.size());
             // Validation and consistency-verification
