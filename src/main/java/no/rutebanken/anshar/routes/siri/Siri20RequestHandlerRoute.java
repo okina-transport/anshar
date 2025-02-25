@@ -187,7 +187,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .choice()
                 .when(e -> subscriptionExistsAndIsActive(e))
                     //Valid subscription
-                    .to("seda:async.process.request?size=100000")
+                    .to("seda:async.process.request?size=100000&waitForTaskToComplete=Never")
                     //.wireTap("direct:async.process.request")
                     .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("200"))
                     .setBody(constant(null))

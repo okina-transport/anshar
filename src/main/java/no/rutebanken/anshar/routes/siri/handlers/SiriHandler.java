@@ -486,7 +486,11 @@ public class SiriHandler {
 
             } else if (incoming.getTerminateSubscriptionResponse() != null) {
                 TerminateSubscriptionResponseStructure terminateSubscriptionResponse = incoming.getTerminateSubscriptionResponse();
-
+                terminateSubscriptionResponse.getTerminationResponseStatuses().forEach(sub -> {
+                    if(sub.isStatus()) {
+                        subscriptionManager.terminateSubscription(subscriptionId);
+                    }
+                });
                 logger.info("Subscription terminated {}", subscriptionSetup);
 
             } else if (incoming.getDataReadyNotification() != null) {
