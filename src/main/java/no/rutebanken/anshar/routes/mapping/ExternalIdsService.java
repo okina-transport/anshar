@@ -98,12 +98,6 @@ public class ExternalIdsService extends BaseRouteBuilder {
 
         stopsCache.clear();
         linesCache.clear();
-
-        File mappingAltIdDirectory = new File(mappingExternalIdsRootDir);
-        if (!mappingAltIdDirectory.exists() && !mappingAltIdDirectory.exists()) {
-            logger.info("The directory for mapping externalIds does not exist: " + mappingAltIdDirectory);
-            return;
-        }
         updateMappingExternalIdsCache();
     }
 
