@@ -86,19 +86,24 @@ public class ExternalIdsService extends BaseRouteBuilder {
      * Download and refresh the cache containing data from mapping stops and lines files
      */
     public void downloadFilesAndRefreshCache() {
-        Flux<String> stopsMappingUrls = Flux.fromArray(urlsStopsMappingFile.split(","));
-        Flux<String> linesMappingUrls = Flux.fromArray(urlsLinesMappingFile.split(","));
-
-        Mono<Void> downloadFilesMono = Flux.zip(
-                        downloadFilesMapping(stopsMappingUrls, pathStops, "BERTHELET_stops_mapping.csv"),
-                        downloadFilesMapping(linesMappingUrls, pathLines, "BERTHELET_lines_mapping.csv"))
-                .then();
-
-        downloadFilesMono.block();
+//        Flux<String> stopsMappingUrls = Flux.fromArray(urlsStopsMappingFile.split(","));
+//        Flux<String> linesMappingUrls = Flux.fromArray(urlsLinesMappingFile.split(","));
+//
+//        Mono<Void> downloadFilesMono = Flux.zip(
+//                        downloadFilesMapping(stopsMappingUrls, pathStops, "BERTHELET_stops_mapping.csv"),
+//                        downloadFilesMapping(linesMappingUrls, pathLines, "BERTHELET_lines_mapping.csv"))
+//                .then();
+//
+//        downloadFilesMono.block();
 
         stopsCache.clear();
         linesCache.clear();
 
+        File mappingAltIdDirectory = new File(mappingExternalIdsRootDir);
+        if (!mappingAltIdDirectory.exists() && !mappingAltIdDirectory.exists()) {
+            logger.info("The directory for mapping externalIds does not exist: " + mappingAltIdDirectory);
+            return;
+        }
         updateMappingExternalIdsCache();
     }
 
