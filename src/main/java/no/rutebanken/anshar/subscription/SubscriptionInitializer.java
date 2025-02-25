@@ -233,6 +233,10 @@ public class SubscriptionInitializer implements CamelContextAware {
                         continue;
                     }
 
+                    Exchange exchange = ExchangeBuilder.anExchange(camelContext).withBody(subscriptionSetup).build();
+                    if (!subscriptionManager.isActiveSubscription(subscriptionSetup.getSubscriptionId()) && subscriptionSetup.isActive()) {
+                        producerTemplate.send("direct:" + subscriptionSetup.getStartSubscriptionRouteName(), exchange);
+                    }
 
                     try {
 
@@ -268,9 +272,9 @@ public class SubscriptionInitializer implements CamelContextAware {
             if (subscriptionManager.isSubscriptionRegistered(subscriptionIdToDisable) && subscriptionManager.get(subscriptionIdToDisable).isActive()) {
                 Exchange exchange = ExchangeBuilder.anExchange(camelContext).withBody(disabledSubscription).build();
                 if (disabledSubscription.getServiceType().equals(SOAP)) {
-                    producerTemplate.send("direct:cancelws20subscription", exchange);
+                    producerTemplate.send("direct:" + disabledSubscription.getCancelSubscriptionRouteName(), exchange);
                 } else if (disabledSubscription.getServiceType().equals(REST)) {
-                    producerTemplate.send("direct:cancelrs20subscription", exchange);
+                    producerTemplate.send("direct:" + disabledSubscription.getCancelSubscriptionRouteName(), exchange);
                 }
                 subscriptionManager.removeSubscription(subscriptionIdToDisable);
             }

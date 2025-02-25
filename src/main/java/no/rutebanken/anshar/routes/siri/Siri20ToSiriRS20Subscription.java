@@ -163,12 +163,8 @@ public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
         }
 
         //Cancel subscription
-        from("direct:cancelrs20subscription")
-                .log("Cancelling subscription ${body}")
-                .process(exchange -> {
-                    SubscriptionSetup subscriptionSetup = exchange.getIn().getBody(SubscriptionSetup.class);
-                    exchange.setProperty("subscriptionId", subscriptionSetup.getSubscriptionId());
-                })
+        from("direct:" + subscriptionSetup.getCancelSubscriptionRouteName())
+                .log("Cancelling subscription " + subscriptionSetup.toString())
                 .process(oauthHeadersProcess)
                 .to("direct:oauth2.authorize")
                 .bean(helper, "createSiriTerminateSubscriptionRequest")
