@@ -163,7 +163,7 @@ public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
         }
 
         //Cancel subscription
-        from("direct:cancelSubscription")
+        from("direct:cancelrs20subscription")
                 .log("Cancelling subscription ${body}")
                 .process(exchange -> {
                     SubscriptionSetup subscriptionSetup = exchange.getIn().getBody(SubscriptionSetup.class);

@@ -72,7 +72,7 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
                 .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
                 .setHeader("SOAPAction", constant("Subscribe"))
                 .setHeader("operatorNamespace", constant(subscriptionSetup.getOperatorNamespace())) // Need to make SOAP request with endpoint specific element namespace
-                .setHeader("endpointUrl", constant(endpointUrl)) // Need to make SOAP request with endpoint specific element namespace
+                .setHeader("endpointUrl", constant(urlMap.get(RequestType.SUBSCRIBE))) // Need to make SOAP request with endpoint specific element namespace
                 .setHeader("soapEnvelopeNamespace", constant(subscriptionSetup.getSoapenvNamespace())) // Need to make SOAP request with endpoint specific element namespace
                 .process(p -> {
                     String originalxml = p.getIn().getBody(String.class);
@@ -163,15 +163,19 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
         }
 
         //Cancel subscription
-        from("direct:" + subscriptionSetup.getCancelSubscriptionRouteName())
-                .log("Cancelling subscription " + subscriptionSetup.toString())
+        from("direct:cancelws20subscription")
+                .log("Cancelling subscription ${body}")
+                .process(exchange -> {
+                    SubscriptionSetup subscriptionSetup = exchange.getIn().getBody(SubscriptionSetup.class);
+                    exchange.setProperty("subscriptionId", subscriptionSetup.getSubscriptionId());
+                })
                 .bean(helper, "createSiriTerminateSubscriptionRequest")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat(customNamespacePrefixMapper))
                 .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
                 .setProperty(Exchange.LOG_DEBUG_BODY_STREAMS, constant("true"))
                 .setHeader("SOAPAction", constant("DeleteSubscription")) // set SOAPAction Header (Microsoft requirement)
                 .setHeader("operatorNamespace", constant(subscriptionSetup.getOperatorNamespace())) // Need to make SOAP request with endpoint specific element namespace
-                .setHeader("endpointUrl", constant(endpointUrl)) // Need to make SOAP request with endpoint specific element namespace
+                .setHeader("endpointUrl", constant(urlMap.get(RequestType.DELETE_SUBSCRIPTION))) // Need to make SOAP request with endpoint specific element namespace
                 .to("xslt-saxon:xsl/siri_raw_soap.xsl") // Convert SIRI raw request to SOAP version
                 .to("xslt-saxon:xsl/siri_14_20.xsl") // Convert SIRI raw request to SOAP version
                 .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition

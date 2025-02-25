@@ -38,6 +38,9 @@ import javax.annotation.PreDestroy;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static no.rutebanken.anshar.subscription.SubscriptionSetup.ServiceType.REST;
+import static no.rutebanken.anshar.subscription.SubscriptionSetup.ServiceType.SOAP;
+
 @Component
 public class SubscriptionInitializer implements CamelContextAware {
     private static final Logger logger = LoggerFactory.getLogger(SubscriptionInitializer.class);
@@ -264,7 +267,11 @@ public class SubscriptionInitializer implements CamelContextAware {
             String subscriptionIdToDisable = disabledSubscription.getSubscriptionId();
             if (subscriptionManager.isSubscriptionRegistered(subscriptionIdToDisable) && subscriptionManager.get(subscriptionIdToDisable).isActive()) {
                 Exchange exchange = ExchangeBuilder.anExchange(camelContext).withBody(disabledSubscription).build();
-                producerTemplate.send("direct:cancelSubscription", exchange);
+                if (disabledSubscription.getServiceType().equals(SOAP)) {
+                    producerTemplate.send("direct:cancelws20subscription", exchange);
+                } else if (disabledSubscription.getServiceType().equals(REST)) {
+                    producerTemplate.send("direct:cancelrs20subscription", exchange);
+                }
                 subscriptionManager.removeSubscription(subscriptionIdToDisable);
             }
         }
@@ -277,7 +284,7 @@ public class SubscriptionInitializer implements CamelContextAware {
         boolean isLite = subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.LITE || subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.LITE_XML;
         boolean isFetchedDelivery = subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.FETCHED_DELIVERY |
                 subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.POLLING_FETCHED_DELIVERY;
-        boolean isSoap = subscriptionSetup.getServiceType() == SubscriptionSetup.ServiceType.SOAP;
+        boolean isSoap = subscriptionSetup.getServiceType() == SOAP;
 
         if (subscriptionSetup.getVersion().equals("1.4")) {
             if (isSoap) {
