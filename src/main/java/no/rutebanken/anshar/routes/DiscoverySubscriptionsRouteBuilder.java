@@ -4,15 +4,15 @@ import com.sun.xml.bind.marshaller.NamespacePrefixMapper;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
 import no.rutebanken.anshar.subscription.DiscoverySubscriptionCreator;
-import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.component.http.HttpMethods;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import static no.rutebanken.anshar.subscription.SubscriptionConstants.DISCOVERY_SUBSCRIPTION_SOAP_TRANSFORMATION;
 
 @Component
 public class DiscoverySubscriptionsRouteBuilder extends BaseRouteBuilder {
@@ -22,16 +22,13 @@ public class DiscoverySubscriptionsRouteBuilder extends BaseRouteBuilder {
 
     private static final Logger logger = LoggerFactory.getLogger(DiscoverySubscriptionsRouteBuilder.class);
 
-    @Autowired
-    private SubscriptionConfig subscriptionConfig;
-
-    @Autowired
-    private AnsharConfiguration configuration;
+    private final AnsharConfiguration configuration;
 
     NamespacePrefixMapper customNamespacePrefixMapper;
 
-    protected DiscoverySubscriptionsRouteBuilder(AnsharConfiguration config, SubscriptionManager subscriptionManager) {
+    protected DiscoverySubscriptionsRouteBuilder(AnsharConfiguration config, SubscriptionManager subscriptionManager, AnsharConfiguration configuration) {
         super(config, subscriptionManager);
+        this.configuration = configuration;
         this.customNamespacePrefixMapper = new NamespacePrefixMapper() {
             @Override
             public String getPreferredPrefix(String arg0, String arg1, boolean arg2) {
@@ -63,28 +60,23 @@ public class DiscoverySubscriptionsRouteBuilder extends BaseRouteBuilder {
                 .bean(DiscoverySubscriptionCreator.class, "createDiscoverySubscriptions")
                 .end();
 
-
         from("direct:send.discovery.request")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat(customNamespacePrefixMapper))
                 .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
-//                .process(e -> {
-//                    logger.info(e.getIn().getBody(String.class));
-//                })
-                .to("xslt-saxon:xsl/siri_raw_soap.xsl") // Convert SIRI raw request to SOAP version
+                    .choice()
+                        .when(header(DISCOVERY_SUBSCRIPTION_SOAP_TRANSFORMATION).isEqualTo(true))
+                        .to("xslt-saxon:xsl/siri_raw_soap.xsl") // Convert SIRI raw request to SOAP version
+                    .end()
                 .setHeader("Content-type", constant("text/xml"))
-//                .process(e -> {
-//                    logger.info(e.getIn().getBody(String.class));
-//                })
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
                 .toD("${header.endpointUrl}")
                 .choice().when(simple("${in.body} != null"))
-                .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
-                .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Extract SOAP version and convert to raw SIRI
+                    .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
+                    .choice()
+                        .when(header(DISCOVERY_SUBSCRIPTION_SOAP_TRANSFORMATION).isEqualTo(true))
+                        .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Extract SOAP version and convert to raw SIRI
+                    .end()
                 .bean(DiscoverySubscriptionCreator.class, "createSubscriptionsFromProviderResponse")
-
-                .end()
-
-
-        ;
+                .end();
     }
 }
