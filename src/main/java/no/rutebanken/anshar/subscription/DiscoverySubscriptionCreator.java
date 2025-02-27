@@ -1,6 +1,5 @@
 package no.rutebanken.anshar.subscription;
 
-import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
@@ -8,15 +7,14 @@ import no.rutebanken.anshar.util.IDUtils;
 import org.apache.camel.Exchange;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.*;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.stream.XMLStreamException;
-import java.io.IOException;
 import java.io.InputStream;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -26,26 +24,23 @@ import java.util.stream.Collectors;
 @Service
 public class DiscoverySubscriptionCreator {
     private static final Logger logger = LoggerFactory.getLogger(DiscoverySubscriptionCreator.class);
-
-
-    @Autowired
-    private SubscriptionConfig subscriptionConfig;
-
-    @Autowired
-    private AnsharConfiguration configuration;
-
-    @Autowired
-    private SubscriptionInitializer subscriptionInitializer;
-
-    @Produce(uri = "direct:send.discovery.request")
-    protected ProducerTemplate discoveryRequestProducer;
-
     private static final String ENDPOINT_URL_HEADER = "endpointUrl";
     private static final String SOAP_ACTION_HEADER = "SOAPAction";
     private static final int NB_OF_REFS_BY_SUBSCRIPTION = 30;
 
+    private final SubscriptionConfig subscriptionConfig;
 
-    public void createDiscoverySubscriptions() throws IOException {
+    private final SubscriptionInitializer subscriptionInitializer;
+
+    @Produce("direct:send.discovery.request")
+    protected ProducerTemplate discoveryRequestProducer;
+
+    public DiscoverySubscriptionCreator(SubscriptionConfig subscriptionConfig, SubscriptionInitializer subscriptionInitializer) {
+        this.subscriptionConfig = subscriptionConfig;
+        this.subscriptionInitializer = subscriptionInitializer;
+    }
+
+    public void createDiscoverySubscriptions() {
         logger.info("Starting subscription creation from discovery");
         for (DiscoverySubscription stopDiscoverySubscription : subscriptionConfig.getDiscoverySubscriptions()) {
             createSubscriptions(stopDiscoverySubscription);
@@ -53,7 +48,7 @@ public class DiscoverySubscriptionCreator {
         logger.info("Subscription creations from discovery completed");
     }
 
-    public void createSubscriptionsFromProviderResponse(Exchange e) throws IOException, XMLStreamException, JAXBException {
+    public void createSubscriptionsFromProviderResponse(Exchange e) throws XMLStreamException, JAXBException {
         InputStream body = e.getIn().getBody(InputStream.class);
         Siri incoming = SiriValueTransformer.parseXml(body);
         String originalUrl = (String) e.getIn().getHeader(ENDPOINT_URL_HEADER);
@@ -72,10 +67,12 @@ public class DiscoverySubscriptionCreator {
         if (SiriDataType.STOP_MONITORING.equals(discoveryType)) {
             referenceList = incoming.getStopPointsDelivery().getAnnotatedStopPointReves().stream()
                     .map(pointStructure -> pointStructure.getStopPointRef().getValue())
+                    .filter(StringUtils::isNotBlank)
                     .collect(Collectors.toList());
         } else if (SiriDataType.VEHICLE_MONITORING.equals(discoveryType)) {
             referenceList = incoming.getLinesDelivery().getAnnotatedLineReves().stream()
                     .map(annotatedLineRef -> annotatedLineRef.getLineRef().getValue())
+                    .filter(StringUtils::isNotBlank)
                     .collect(Collectors.toList());
         }
 
@@ -128,7 +125,7 @@ public class DiscoverySubscriptionCreator {
         newSubscription.setSubscriptionType(discoveryParams.getDiscoveryType());
         newSubscription.setName(type + "-" + discoveryParams.getSubscriptionIdBase() + "-" + currentSubcrtiptionNb);
         newSubscription.setVendor(type + "-" + discoveryParams.getVendorBaseName() + "-" + currentSubcrtiptionNb);
-        newSubscription.setServiceType(SubscriptionSetup.ServiceType.SOAP);
+        newSubscription.setServiceType(discoveryParams.getServiceType());
         newSubscription.setSubscriptionMode(discoveryParams.getSubscriptionMode());
         newSubscription.setHeartbeatIntervalSeconds(discoveryParams.getHeartbeatIntervalSeconds());
         newSubscription.setChangeBeforeUpdatesSeconds(discoveryParams.getChangeBeforeUpdatesSeconds());
@@ -137,7 +134,7 @@ public class DiscoverySubscriptionCreator {
         newSubscription.setOperatorNamespace("http://wsdl.siri.org.uk");
         newSubscription.setInternalId(IDUtils.getUniqueInternalIdForDiscoverySubscription());
 
-        Map<RequestType, String> urlMap = new HashMap<>();
+        Map<RequestType, String> urlMap = new EnumMap<>(RequestType.class);
         urlMap.put(RequestType.SUBSCRIBE, discoveryParams.getUrl());
         urlMap.put(RequestType.DELETE_SUBSCRIPTION, discoveryParams.getUrl());
         RequestType reqType;
@@ -174,24 +171,6 @@ public class DiscoverySubscriptionCreator {
         return newSubscription;
     }
 
-    private String buildVendor(DiscoverySubscription discoveryParams, String value) {
-        String type = SiriDataType.STOP_MONITORING.equals(discoveryParams.getDiscoveryType()) ? "SM" : "VM";
-        return discoveryParams.getVendorBaseName() + extractValueFromRef(value) + "-" + type + "-SUB";
-    }
-
-    private String buildSubscriptionId(DiscoverySubscription discoveryParams, String value) {
-        String type = SiriDataType.STOP_MONITORING.equals(discoveryParams.getDiscoveryType()) ? "SM" : "VM";
-        return discoveryParams.getSubscriptionIdBase() + extractValueFromRef(value) + "-" + type + "-SUB";
-    }
-
-    private String extractValueFromRef(String value) {
-        if (!value.contains(":") || value.split(":").length != 5) {
-            return value;
-        }
-        return value.split(":")[3];
-    }
-
-
     private Optional<DiscoverySubscription> findDiscoveryParam(String originalUrl, SiriDataType discoveryType) {
 
         if (subscriptionConfig.getDiscoverySubscriptions() == null || subscriptionConfig.getDiscoverySubscriptions().isEmpty()) {
@@ -214,16 +193,15 @@ public class DiscoverySubscriptionCreator {
             case VEHICLE_MONITORING:
                 return "LinesDiscovery";
             default:
-                return "can't convert to soap action datatype:" + dataType.toString();
+                return "can't convert to soap action datatype:" + dataType;
         }
     }
 
     private SiriDataType convertSoapActionToDataType(String soapAction) {
-        switch (soapAction) {
-            case "LinesDiscovery":
-                return SiriDataType.VEHICLE_MONITORING;
-            default:
-                return SiriDataType.STOP_MONITORING;
+        if ("LinesDiscovery".equals(soapAction)) {
+            return SiriDataType.VEHICLE_MONITORING;
+        } else {
+            return SiriDataType.STOP_MONITORING;
         }
     }
 
@@ -231,7 +209,7 @@ public class DiscoverySubscriptionCreator {
     private void createSubscriptions(DiscoverySubscription discoverySubscription) {
 
         if (discoverySubscription.getDiscoveryType() == null) {
-            logger.error("Unable to create subscriptions because discoveryType is not specified for url:" + discoverySubscription.getUrl());
+            logger.error("Unable to create subscriptions because discoveryType is not specified for url: {}", discoverySubscription.getUrl());
             return;
         }
 
@@ -239,6 +217,7 @@ public class DiscoverySubscriptionCreator {
         headers.put(SOAP_ACTION_HEADER, convertDataTypeToSoapAction(discoverySubscription.getDiscoveryType()));
         headers.put(ENDPOINT_URL_HEADER, discoverySubscription.getUrl());
         headers.put("Content-type", "text/xml");
+        headers.putAll(discoverySubscription.getCustomHeaders());
 
         Siri siriToSend = createDiscoveryRequest(discoverySubscription);
 
@@ -253,7 +232,7 @@ public class DiscoverySubscriptionCreator {
         RequestorRef requestorRef = new RequestorRef();
         requestorRef.setValue(discoverySubscription.getRequestorRef());
 
-        logger.info("Creating discovery request for url :{}, type:{}, messageId:{}", discoverySubscription.getUrl(), discoverySubscription.getDiscoveryType().toString(), msgId);
+        logger.info("Creating discovery request for url :{}, type:{}, messageId:{}", discoverySubscription.getUrl(), discoverySubscription.getDiscoveryType(), msgId);
 
         if (SiriDataType.STOP_MONITORING.equals(discoverySubscription.getDiscoveryType())) {
             StopPointsRequest stopPointsRequest = new StopPointsRequest();

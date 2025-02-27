@@ -45,7 +45,7 @@ public class SubscriptionDtoToSubscriptionSetupConverter implements Converter<Su
             target.setRequestorRef(source.getRequestorRef());
             target.setDurationOfSubscriptionHours(source.getDurationOfSubscriptionHours());
             target.setSubscriptionMode(SubscriptionSetup.SubscriptionMode.valueOf(source.getSubscriptionMode()));
-            target.setUrlMap(ListUtils.emptyIfNull(source.getUrlMaps()).stream().collect(Collectors.toMap(e -> RequestType.valueOf(e.getName()), UrlMapDto::getUrl)));
+            target.setUrlMap(ListUtils.emptyIfNull(source.getUrlMaps()).stream().collect(Collectors.toMap(UrlMapDto::getName, UrlMapDto::getUrl)));
             target.setServiceType(SubscriptionSetup.ServiceType.valueOf(source.getServiceType()));
             target.setContentType(source.getContentType());
             target.setHeartbeatIntervalSeconds(source.getHeartbeatIntervalSeconds());

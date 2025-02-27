@@ -26,6 +26,7 @@ public class DiscoverySubscription implements Serializable {
     private int previewIntervalSeconds;
     private Map<String, Object> customHeaders;
     private SubscriptionSetup.SubscriptionMode subscriptionMode;
+    private SubscriptionSetup.ServiceType serviceType;
     private int durationOfSubscriptionHours;
     private String vendorBaseName;
     private String subscriptionIdBase;

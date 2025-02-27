@@ -173,7 +173,7 @@ public class SubscriptionInitializer implements CamelContextAware {
 
                 subscriptionSetup.getMappingAdapters().addAll(valueAdapters);
 
-                if (subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.FETCHED_DELIVERY |
+                if (subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.FETCHED_DELIVERY ||
                         subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.POLLING_FETCHED_DELIVERY) {
 
                     //Fetched delivery needs both subscribe-route and ServiceRequest-route

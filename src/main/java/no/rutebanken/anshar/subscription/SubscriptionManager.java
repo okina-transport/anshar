@@ -319,8 +319,6 @@ public class SubscriptionManager {
             }
 
             if (!dataReceived.containsKey(subscriptionId)) {
-
-
                 dataReceived(subscriptionId, shouldLogSuccess);
             }
             if (!receivedBytes.containsKey(subscriptionId)) {
