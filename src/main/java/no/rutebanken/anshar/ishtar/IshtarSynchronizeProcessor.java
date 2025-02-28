@@ -99,7 +99,7 @@ public class IshtarSynchronizeProcessor implements Processor {
 
 
             Map<Boolean, List<SubscriptionSetup>> validationMap = setups.stream()
-                    .filter(setup -> setup != null)
+                    .filter(Objects::nonNull)
                     .collect(Collectors.partitioningBy(SubscriptionSetup::isValidated));
 
             if (validationMap.containsKey(false) && !validationMap.get(false).isEmpty()) {
@@ -117,14 +117,17 @@ public class IshtarSynchronizeProcessor implements Processor {
             }
 
 
-            List<DiscoverySubscription> discoveries =
-                    partionedByDiscoverySubs.get(true).stream().map(toDiscoverySubscriptionConverter::convert).collect(Collectors.toList());
+            List<DiscoverySubscription> discoveries = partionedByDiscoverySubs.get(true)
+                    .stream()
+                    .map(toDiscoverySubscriptionConverter::convert)
+                    .collect(Collectors.toList());
             log.info("Converted {} ISHTAR Subscription(s) into {} ANSHAR Discovery Subscription(s)", subs.size(), discoveries.size());
             log.info("Before merge {} Discovery Subscription(s) in cache",
                     subscriptionConfig.getDiscoverySubscriptions().size());
 
 
             Map<Boolean, List<DiscoverySubscription>> discoveryMap = discoveries.stream()
+                    .filter(Objects::nonNull)
                     .collect(Collectors.partitioningBy(DiscoverySubscription::getValidated));
 
             if (discoveryMap.containsKey(false) && !discoveryMap.get(false).isEmpty()) {
