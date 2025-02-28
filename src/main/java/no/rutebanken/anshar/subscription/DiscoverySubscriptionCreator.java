@@ -7,6 +7,7 @@ import no.rutebanken.anshar.util.IDUtils;
 import org.apache.camel.Exchange;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,10 +77,10 @@ public class DiscoverySubscriptionCreator {
                     .collect(Collectors.toList());
         }
 
-
-        List<SubscriptionSetup> subscriptionsToStart = createSubscriptionsSetups(referenceList, discoveryParams);
-
-        subscriptionConfig.getSubscriptions().addAll(subscriptionsToStart);
+        if (CollectionUtils.isNotEmpty(referenceList)) {
+            List<SubscriptionSetup> subscriptionsToStart = createSubscriptionsSetups(referenceList, discoveryParams);
+            subscriptionConfig.getSubscriptions().addAll(subscriptionsToStart);
+        }
         subscriptionInitializer.createSubscriptions();
     }
 
