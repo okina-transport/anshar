@@ -2,6 +2,7 @@ package no.rutebanken.anshar.gtfsrt;
 
 import com.google.protobuf.util.JsonFormat;
 import com.google.transit.realtime.GtfsRealtime;
+import no.rutebanken.anshar.api.FlowStatus;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.GTFSRTType;
@@ -92,6 +93,7 @@ public class GtfsRTDataRetriever {
                 } catch (Throwable e) {
                     logger.error("Error on GTFSRT feed:" + gtfsRTApi.getDatasetId() + " - " + gtfsRTApi.getUrl());
                     logger.error("Error detail", e);
+                    gtfsRTApi.setStatus(FlowStatus.ERROR);
                 }
             }
             logger.info("Intégration des flux GTFS-RT terminée n°:" + iterationNb);
@@ -107,20 +109,23 @@ public class GtfsRTDataRetriever {
 
         if (gtfsRTApi.getActive() != null && !gtfsRTApi.getActive()) {
             logger.info("GTRS-RT flow disabled:" + gtfsRTApi.getDatasetId() + " - " + gtfsRTApi.getUrl());
+            gtfsRTApi.setStatus(FlowStatus.DISABLED);
             return;
         }
 
-
+        gtfsRTApi.setLastUpdate(System.currentTimeMillis());
         logger.info("======> Reading GTFS-RT for datasetId:" + gtfsRTApi.getDatasetId() + " and  URL:" + gtfsRTApi.getUrl());
         Optional<GtfsRealtime.FeedMessage> completeGTFSFeedOpt = buildMessageFromApi(gtfsRTApi);
         if (completeGTFSFeedOpt.isEmpty()) {
             logger.info("Empty feed for datasetId:" + gtfsRTApi.getDatasetId() + " and  URL:" + gtfsRTApi.getUrl());
+            gtfsRTApi.setStatus(FlowStatus.EMPTY_FEED);
             return;
         }
 
         GtfsRealtime.FeedMessage completeGTFSFeed = completeGTFSFeedOpt.get();
         if (completeGTFSFeed.getEntityList().size() == 0) {
             logger.info("Flux vide détecté sur le datasetId :" + gtfsRTApi.getDatasetId());
+            gtfsRTApi.setStatus(FlowStatus.EMPTY_FEED);
             return;
         }
 
@@ -143,6 +148,7 @@ public class GtfsRTDataRetriever {
             alertReader.setUrl(gtfsRTApi.getUrl());
             alertReader.ingestAlertData(gtfsRTApi.getDatasetId(), routeIdList, completeGTFSFeed);
         }
+        gtfsRTApi.setStatus(FlowStatus.OK);
         logger.info("GTFS-RT Reading completed for datasetId:" + gtfsRTApi.getDatasetId() + " and  URL:" + gtfsRTApi.getUrl());
     }
 

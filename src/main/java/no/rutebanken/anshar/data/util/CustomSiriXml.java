@@ -2,6 +2,7 @@ package no.rutebanken.anshar.data.util;
 
 import com.sun.xml.bind.marshaller.NamespacePrefixMapper;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
+import no.rutebanken.anshar.routes.health.LivenessReadinessRoute;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -21,10 +22,13 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
+import javax.xml.transform.stream.StreamSource;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 
 public class CustomSiriXml {
 
@@ -95,6 +99,33 @@ public class CustomSiriXml {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         jaxbMarshaller.marshal(siri, byteArrayOutputStream);
         doLastModifications(out, byteArrayOutputStream);
+    }
+
+    public static String soapToRaw(String soapXml) throws FileNotFoundException, TransformerException {
+        return transformUsingXSLT(soapXml, "xsl/siri_soap_raw.xsl");
+    }
+
+    public static String rawToSoap(String rawXml) throws FileNotFoundException, TransformerException {
+        return transformUsingXSLT(rawXml, "xsl/siri_raw_soap.xsl");
+    }
+
+    public static String transformUsingXSLT(String input, String xsltFile) throws FileNotFoundException, TransformerException {
+        InputStream xsltStream = LivenessReadinessRoute.class.getClassLoader().getResourceAsStream(xsltFile);
+        if (xsltStream == null) {
+            throw new FileNotFoundException(xsltFile + " not found in classpath!");
+        }
+        InputStream inputStream = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
+        return transformXml(inputStream, xsltStream);
+    }
+
+    public static String transformXml(InputStream xml, InputStream xslt) throws TransformerException {
+        TransformerFactory factory = TransformerFactory.newInstance();
+        Transformer transformer = factory.newTransformer(new StreamSource(xslt));
+
+        StringWriter writer = new StringWriter();
+        transformer.transform(new StreamSource(xml), new StreamResult(writer));
+
+        return writer.toString();
     }
 
     public static void toXml(uk.org.siri.siri20.Siri siri, NamespacePrefixMapper customNamespacePrefixMapper, OutputStream out) throws JAXBException, IOException {

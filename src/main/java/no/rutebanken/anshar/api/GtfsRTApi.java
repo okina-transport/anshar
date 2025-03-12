@@ -12,5 +12,7 @@ public class GtfsRTApi {
     private Boolean active;
     private Boolean validated;
     private String routeIdList;
+    private FlowStatus status;
+    private long lastUpdate;
 
 }

@@ -18,10 +18,18 @@ package no.rutebanken.anshar.routes.health;
 import com.hazelcast.collection.ISet;
 import io.prometheus.jmx.JmxCollector;
 import io.prometheus.metrics.model.snapshots.MetricSnapshots;
+import no.rutebanken.anshar.api.FlowStatus;
+import no.rutebanken.anshar.api.GtfsRTApi;
+import no.rutebanken.anshar.data.util.CustomSiriXml;
 import no.rutebanken.anshar.metrics.JmxMetricsConverter;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
+import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
+import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
+import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
+import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.apache.camel.Exchange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,10 +38,26 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
+import uk.org.siri.siri21.Siri;
 
 import javax.annotation.PostConstruct;
+import javax.ws.rs.core.MediaType;
+import javax.xml.bind.JAXBException;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.transform.TransformerException;
+import java.io.ByteArrayInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.text.MessageFormat;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -93,6 +117,9 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
     @Autowired
     private PrometheusMetricsService prometheusRegistry;
 
+    @Autowired
+    private SubscriptionConfig subscriptionConfig;
+
     public static boolean triggerRestart;
 
     private JmxCollector jmxCollector;
@@ -120,10 +147,23 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
                 .get("/scrape").to("direct:scrape")
                 .get("/ready").to("direct:ready")
                 .get("/up").to("direct:up")
+                .get("/incomingdatahealth").to("direct:incoming.data.health")
                 .get("/healthy").to("direct:healthy")
                 .get("/anshardata").to("direct:anshardata")
                 .get("/favicon.ico").to("direct:notfound")
         ;
+
+        from("direct:incoming.data.health")
+                .process(p -> {
+                    IncomingDataHealth incomingDataHealth = getIncomingDataHealth();
+                    p.getIn().setBody(incomingDataHealth);
+                })
+                .marshal().json()
+                .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.APPLICATION_JSON))
+                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("200"))
+                .routeId("incoming.data.health")
+        ;
+
 
         //To avoid large stacktraces in the log when fetching data using browser
         from("direct:notfound")
@@ -253,6 +293,110 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
                 .routeId("health.notify.hubot")
         ;
 
+    }
+
+    private IncomingDataHealth getIncomingDataHealth() {
+        IncomingDataHealth result = new IncomingDataHealth();
+        List<GtfsRTApi> gtfsRtApis = subscriptionConfig.getGtfsRTApis();
+        if (gtfsRtApis.size() > 0) {
+            result.getGtfsStatuses().addAll(getGtfsRTStatus(gtfsRtApis));
+        }
+
+        List<SubscriptionSetup> subscriptions = subscriptionConfig.getSubscriptions();
+        if (subscriptions.size() > 0) {
+            result.getSiriStatuses().addAll(getSiriStatus(subscriptions));
+        }
+
+
+        return result;
+    }
+
+    private List<IncomingFlowStatus> getSiriStatus(List<SubscriptionSetup> subscriptions) {
+        List<IncomingFlowStatus> results = new ArrayList<>();
+        List<SubscriptionSetup> uniqueURLSubscription = new ArrayList<>();
+        List<String> urlList = new ArrayList<>();
+
+
+        for (SubscriptionSetup subscription : subscriptions) {
+            if (!subscription.isActive() || !subscription.getSubscriptionMode().equals(SubscriptionSetup.SubscriptionMode.SUBSCRIBE)) {
+                continue;
+            }
+
+            if (!urlList.contains(subscription.getUrlMap().get(RequestType.SUBSCRIBE))) {
+                urlList.add(subscription.getUrlMap().get(RequestType.SUBSCRIBE));
+                uniqueURLSubscription.add(subscription);
+            }
+        }
+
+        uniqueURLSubscription.forEach(subscription -> results.add(getFlowStatusFromSubscription(subscription)));
+        return results;
+    }
+
+    private IncomingFlowStatus getFlowStatusFromSubscription(SubscriptionSetup subscriptionSetup) {
+        String body = "";
+        IncomingFlowStatus siriStatus = new IncomingFlowStatus();
+        siriStatus.setLastUpdate(System.currentTimeMillis());
+        String url = subscriptionSetup.getUrlMap().get(RequestType.SUBSCRIBE);
+        siriStatus.setUrl(url);
+        siriStatus.setDataset(subscriptionSetup.getDatasetId());
+        try {
+
+            Siri checkStatusRequest = SiriObjectFactory.createCheckStatusRequest(subscriptionSetup);
+            body = CustomSiriXml.toXml(checkStatusRequest);
+
+            if (subscriptionSetup.getServiceType().equals(SubscriptionSetup.ServiceType.SOAP)) {
+                body = CustomSiriXml.rawToSoap(body);
+            }
+
+            FlowStatus status = launchCheckStatus(url, body);
+            siriStatus.setStatus(status.name());
+        } catch (Exception e) {
+            siriStatus.setStatus(FlowStatus.ERROR.name());
+        }
+        return siriStatus;
+    }
+
+    private FlowStatus launchCheckStatus(String url, String requestBody) throws IOException, InterruptedException, XMLStreamException, JAXBException, TransformerException {
+        HttpClient client = HttpClient.newHttpClient();
+
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Content-Type", "text/xml")
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody, StandardCharsets.UTF_8))
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 200 && isStatusOk(response.body())) {
+            return FlowStatus.OK;
+        }
+        return FlowStatus.ERROR;
+    }
+
+    private boolean isStatusOk(String body) throws XMLStreamException, JAXBException, FileNotFoundException, TransformerException {
+        if (body.contains("<soapenv:Body>")) {
+            body = CustomSiriXml.soapToRaw(body);
+        }
+        InputStream inputStream = new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8));
+        Siri siriResponse = SiriValueTransformer.parseXml(inputStream);
+        return siriResponse.getCheckStatusResponse() != null && siriResponse.getCheckStatusResponse().isStatus();
+
+    }
+
+
+    private List<IncomingFlowStatus> getGtfsRTStatus(List<GtfsRTApi> gtfsRtApis) {
+        List<IncomingFlowStatus> result = new ArrayList<>();
+        for (GtfsRTApi gtfsRtApi : gtfsRtApis) {
+            IncomingFlowStatus incomingFlowStatus = new IncomingFlowStatus();
+            incomingFlowStatus.setStatus(gtfsRtApi.getStatus() != null ? gtfsRtApi.getStatus().name() : "UNKNOWN");
+            incomingFlowStatus.setLastUpdate(gtfsRtApi.getLastUpdate());
+            incomingFlowStatus.setDataset(gtfsRtApi.getDatasetId());
+            incomingFlowStatus.setUrl(gtfsRtApi.getUrl());
+            result.add(incomingFlowStatus);
+        }
+
+        return result;
     }
 
     private Set<String> getAllUnhealthySubscriptions() {
