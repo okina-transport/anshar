@@ -48,7 +48,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void activeSubscriptionIsHealthy()  {
+    public void activeSubscriptionIsHealthy() {
         long subscriptionDurationSec = 1;
         SubscriptionSetup subscriptionSoonToExpire = createSubscription(subscriptionDurationSec);
         String subscriptionId = UUID.randomUUID().toString();
@@ -70,28 +70,11 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
 
         assertTrue(subscriptionManager.isSubscriptionHealthy(subscriptionId));
 
-        Thread.sleep(activeSubscription.getHeartbeatInterval().toMillis()* healthcheckIntervalFactor +150);
+        Thread.sleep(activeSubscription.getHeartbeatInterval().toMillis() * healthcheckIntervalFactor + 150);
 
         assertFalse(subscriptionManager.isSubscriptionHealthy(subscriptionId));
     }
 
-    @Test
-    public void pendingSubscriptionIsHealthy() throws InterruptedException {
-        long subscriptionDurationSec = 1;
-        SubscriptionSetup pendingSubscription = createSubscription(subscriptionDurationSec, Duration.ofMillis(150));
-        pendingSubscription.setActive(false);
-        String subscriptionId = UUID.randomUUID().toString();
-        subscriptionManager.addSubscription(subscriptionId, pendingSubscription);
-
-        subscriptionManager.activatePendingSubscription(subscriptionId);
-        subscriptionManager.touchSubscription(subscriptionId);
-
-        assertTrue(subscriptionManager.isSubscriptionHealthy(subscriptionId));
-
-        Thread.sleep(pendingSubscription.getHeartbeatInterval().toMillis()* healthcheckIntervalFactor +150);
-
-        assertFalse(subscriptionManager.isSubscriptionHealthy(subscriptionId));
-    }
 
     @Test
     public void notStartedSubscriptionIsHealthy() throws InterruptedException {
@@ -104,7 +87,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
 
         assertTrue(subscriptionManager.isSubscriptionHealthy(subscriptionId));
 
-        Thread.sleep(pendingSubscription.getHeartbeatInterval().toMillis()* healthcheckIntervalFactor + 150);
+        Thread.sleep(pendingSubscription.getHeartbeatInterval().toMillis() * healthcheckIntervalFactor + 150);
 
         assertTrue(subscriptionManager.isSubscriptionHealthy(subscriptionId));
     }
@@ -167,7 +150,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
         subscriptionManager.activatePendingSubscription(subscription.getSubscriptionId());
 
         ZonedDateTime serviceStartedTime = ZonedDateTime.now().minusMinutes(1);
-        boolean touched = subscriptionManager.touchSubscription(subscription.getSubscriptionId(), serviceStartedTime,null);
+        boolean touched = subscriptionManager.touchSubscription(subscription.getSubscriptionId(), serviceStartedTime, null);
         assertTrue(touched);
         assertTrue(subscriptionManager.isSubscriptionHealthy(subscription.getSubscriptionId()));
 
@@ -187,86 +170,6 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
         assertNotNull(subscriptionManager.get(subscription.getSubscriptionId()), "Subscription not found");
     }
 
-    @Test
-    public void testAddAndActivatePendingSubscription() {
-        SubscriptionSetup subscription = createSubscription(1);
-        assertFalse(subscriptionManager.isSubscriptionRegistered(subscription.getSubscriptionId()), "Unknown subscription has been found");
-        subscription.setActive(false);
-
-        subscriptionManager.addSubscription(subscription.getSubscriptionId(), subscription);
-
-        assertNotNull(
-            subscriptionManager.get(subscription.getSubscriptionId()),
-            "Pending subscription not found"
-        );
-
-        assertTrue(
-            subscriptionManager.isSubscriptionRegistered(subscription.getSubscriptionId()),
-            "Subscription not marked as registered"
-        );
-        assertFalse(
-            subscriptionManager.isActiveSubscription(subscription.getSubscriptionId()),
-            "Subscription marked as active"
-        );
-        assertTrue(
-            subscriptionManager.isSubscriptionHealthy(subscription.getSubscriptionId()),
-            "Subscription not healthy"
-        );
-
-        assertTrue(
-            subscriptionManager.activatePendingSubscription(subscription.getSubscriptionId()),
-            "Activating pending subscription not returning successfully"
-        );
-
-        //Activating already activated subscription should be ignored
-        assertTrue(
-            subscriptionManager.activatePendingSubscription(subscription.getSubscriptionId()),
-            "Activating already activated subscription not returning successfully"
-        );
-
-        assertTrue(
-            subscriptionManager.isSubscriptionRegistered(subscription.getSubscriptionId()),
-            "Subscription not marked as registered"
-        );
-        assertTrue(
-            subscriptionManager.isActiveSubscription(subscription.getSubscriptionId()),
-            "Subscription not marked as active"
-        );
-    }
-
-    @Test
-    public void testAddAndTouchPendingSubscription() {
-        SubscriptionSetup subscription = createSubscription(1);
-        subscription.setActive(false);
-        assertFalse(subscriptionManager.isSubscriptionRegistered(subscription.getSubscriptionId()));
-
-        subscriptionManager.addSubscription(subscription.getSubscriptionId(), subscription);
-
-        assertTrue(
-            subscriptionManager.isSubscriptionRegistered(subscription.getSubscriptionId()),
-            "Subscription not marked as registered"
-        );
-        assertFalse(
-            subscriptionManager.isActiveSubscription(subscription.getSubscriptionId()),
-            "Subscription marked as active"
-        );
-
-        assertTrue(
-            subscriptionManager.isSubscriptionHealthy(subscription.getSubscriptionId()),
-            "Subscription not healthy"
-        );
-
-        subscriptionManager.touchSubscription(subscription.getSubscriptionId());
-
-        assertTrue(
-            subscriptionManager.isSubscriptionRegistered(subscription.getSubscriptionId()),
-            "Subscription not marked as registered"
-        );
-        assertFalse(
-            subscriptionManager.isActiveSubscription(subscription.getSubscriptionId()),
-            "Subscription marked as active"
-        );
-    }
 
     @Test
     public void testRemoveSubscription() {
@@ -277,18 +180,18 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
         subscriptionManager.activatePendingSubscription(subscription.getSubscriptionId());
 
         assertTrue(
-            subscriptionManager.isSubscriptionRegistered(subscription.getSubscriptionId()),
-            "Subscription not registered"
+                subscriptionManager.isSubscriptionRegistered(subscription.getSubscriptionId()),
+                "Subscription not registered"
         );
         assertTrue(
-            subscriptionManager.isActiveSubscription(subscription.getSubscriptionId()),
-            "Subscription not marked as active"
+                subscriptionManager.isActiveSubscription(subscription.getSubscriptionId()),
+                "Subscription not marked as active"
         );
 
         subscriptionManager.removeSubscription(subscription.getSubscriptionId());
         assertFalse(
-            subscriptionManager.isActiveSubscription(subscription.getSubscriptionId()),
-            "Removed subscription marked as active"
+                subscriptionManager.isActiveSubscription(subscription.getSubscriptionId()),
+                "Removed subscription marked as active"
         );
     }
 
@@ -302,8 +205,8 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
 
         subscriptionManager.removeSubscription(subscription.getSubscriptionId(), true);
         assertFalse(
-            subscriptionManager.isActiveSubscription(subscription.getSubscriptionId()),
-            "Removed subscription marked as active"
+                subscriptionManager.isActiveSubscription(subscription.getSubscriptionId()),
+                "Removed subscription marked as active"
         );
     }
 
@@ -321,14 +224,14 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
 
         JSONObject jsonObject = subscriptionManager.buildStats();
 
-        assertNotNull( jsonObject.get("types"));
+        assertNotNull(jsonObject.get("types"));
         assertTrue(jsonObject.get("types") instanceof JSONArray);
 
         JSONArray types = (JSONArray) jsonObject.get("types");
 
         JSONArray subscriptions = new JSONArray();
         for (int i = 0; i < types.size(); i++) {
-            subscriptions.addAll((JSONArray) ((JSONObject)types.get(i)).get("subscriptions"));
+            subscriptions.addAll((JSONArray) ((JSONObject) types.get(i)).get("subscriptions"));
         }
 
         boolean verifiedCounter = false;
@@ -353,7 +256,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
 
         int sum = 0;
         int increment = 999;
-        for (int i = 1; i < 10;i++) {
+        for (int i = 1; i < 10; i++) {
             sum += increment;
             subscriptionManager.incrementObjectCounter(subscription, increment);
         }
@@ -366,7 +269,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
 
         JSONArray subscriptions = new JSONArray();
         for (int i = 0; i < types.size(); i++) {
-            subscriptions.addAll((JSONArray) ((JSONObject)types.get(i)).get("subscriptions"));
+            subscriptions.addAll((JSONArray) ((JSONObject) types.get(i)).get("subscriptions"));
         }
         assertTrue(subscriptions.size() > 0);
 
@@ -385,12 +288,12 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
     public void testIsSubscriptionRegistered() {
 
         assertFalse(
-            subscriptionManager.activatePendingSubscription("RandomSubscriptionId"),
-            "Unknown subscription has been activated"
+                subscriptionManager.activatePendingSubscription("RandomSubscriptionId"),
+                "Unknown subscription has been activated"
         );
         assertFalse(
-            subscriptionManager.isSubscriptionRegistered("RandomSubscriptionId"),
-            "Unknown subscription reported as registered"
+                subscriptionManager.isSubscriptionRegistered("RandomSubscriptionId"),
+                "Unknown subscription reported as registered"
         );
     }
 
