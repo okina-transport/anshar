@@ -74,6 +74,8 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
         subscriptionSetup.setSubscriptionId("TST:1234-VM");
         subscriptionSetup.setDatasetId("VM-TST");
         subscriptionSetup.setSubscriptionType(SiriDataType.VEHICLE_MONITORING);
+        subscriptionSetup.setActive(true);
+        subscriptionSetup.setVendor("TSTvendor");
 
         manager.addSubscription(subscriptionSetup.getSubscriptionId(), subscriptionSetup);
 
