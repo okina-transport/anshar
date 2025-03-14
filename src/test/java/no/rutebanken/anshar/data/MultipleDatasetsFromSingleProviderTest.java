@@ -121,6 +121,8 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
         subscriptionSetup.setSubscriptionId("TST:1234-ET");
         subscriptionSetup.setDatasetId("ET-TST");
         subscriptionSetup.setSubscriptionType(SiriDataType.ESTIMATED_TIMETABLE);
+        subscriptionSetup.setActive(true);
+        subscriptionSetup.setVendor("TSTvendor");
         manager.addSubscription(subscriptionSetup.getSubscriptionId(), subscriptionSetup);
 
 
@@ -164,6 +166,8 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
         subscriptionSetup.setSubscriptionId("TST:1234-SX");
         subscriptionSetup.setDatasetId("SX-TST");
         subscriptionSetup.setSubscriptionType(SiriDataType.SITUATION_EXCHANGE);
+        subscriptionSetup.setActive(true);
+        subscriptionSetup.setVendor("TSTvendor");
 
         manager.addSubscription(subscriptionSetup.getSubscriptionId(), subscriptionSetup);
 
