@@ -17,9 +17,14 @@ package no.rutebanken.anshar.routes.siri;
 
 import io.micrometer.core.instrument.util.StringUtils;
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.config.IdProcessingParameters;
+import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.*;
+import no.rutebanken.anshar.data.util.CustomStringUtils;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
+import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
+import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.handlers.outbound.DiscoveryLinesOutbound;
@@ -31,6 +36,7 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
+import no.rutebanken.anshar.util.IDUtils;
 import org.apache.camel.Exchange;
 import org.apache.camel.model.rest.RestParamType;
 import org.apache.http.HttpHeaders;
@@ -44,10 +50,8 @@ import uk.org.siri.siri21.VehicleActivityStructure;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.MediaType;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static no.rutebanken.anshar.routes.HttpParameter.*;
 import static no.rutebanken.anshar.routes.validation.validators.Constants.SIRI_LITE_SERVICE_NAME;
@@ -96,6 +100,12 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
     @Autowired
     private SubscriptionConfig subscriptionConfig;
+
+    @Autowired
+    StopPlaceUpdaterService stopPlaceUpdaterService;
+
+    @Autowired
+    ExternalIdsService externalIdsService;
 
 
     // @formatter:off
@@ -443,7 +453,16 @@ public class SiriLiteRoute extends RestRouteBuilder {
                         searchedStopIds.add(stopRef);
                     }
 
-                    response = monitoredStopVisits.createServiceDelivery(requestorId, datasetId, etClientName, excludedIdList, maxSize, previewIntervalMillis, searchedStopIds);
+                    OutboundIdMappingPolicy outboundIdMappingPolicy = SiriHandler.getIdMappingPolicy(originalId, altId);
+                    Set<String> importedIds = getImportedIds(outboundIdMappingPolicy, searchedStopIds, datasetId);
+
+                    Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParams(datasetId, importedIds, ObjectType.STOP);
+                    Set<String> revertedMonitoringRefs = IDUtils.revertMonitoringRefs(importedIds, idMap.get(ObjectType.STOP));
+                    revertedMonitoringRefs = revertedMonitoringRefs.stream()
+                            .map(CustomStringUtils::revertChouetteIdTransformation)
+                            .collect(Collectors.toSet());
+
+                    response = monitoredStopVisits.createServiceDelivery(requestorId, datasetId, etClientName, excludedIdList, maxSize, previewIntervalMillis, revertedMonitoringRefs);
                     List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.STOP_MONITORING,
                             SiriHandler.getIdMappingPolicy(originalId, altId),
@@ -791,6 +810,46 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
     private String resolveRequestorId(HttpServletRequest request) {
         return request.getParameter("requestorId");
+    }
+
+    public Set<String> getImportedIds(OutboundIdMappingPolicy outboundIdMappingPolicy, Set<String> originalMonitoringRefs, String datasetId) {
+        Set<String> importedIds;
+        if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)) {
+            importedIds = convertToImportedIds(originalMonitoringRefs, datasetId);
+        } else if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy)) {
+            importedIds = convertFromAltIdsToImportedIdsStop(originalMonitoringRefs, datasetId);
+        } else if (OutboundIdMappingPolicy.ORIGINAL_ID.equals(outboundIdMappingPolicy) && StringUtils.isEmpty(datasetId)) {
+            importedIds = new HashSet<>();
+        } else {
+            importedIds = originalMonitoringRefs;
+        }
+
+        return importedIds;
+    }
+
+    public Set<String> convertToImportedIds(Set<String> originalMonitoringRefs, String datasetId) {
+        Set<String> importedIds = new HashSet<>();
+        for (String originalMonitoringRef : originalMonitoringRefs) {
+            if (StringUtils.isNotEmpty(datasetId) && StringUtils.isNotEmpty(originalMonitoringRef) && stopPlaceUpdaterService.canBeReverted(originalMonitoringRef, datasetId)) {
+                importedIds.addAll(stopPlaceUpdaterService.getReverse(originalMonitoringRef, datasetId));
+            } else if (StringUtils.isEmpty(datasetId) && stopPlaceUpdaterService.canBeRevertedWithoutDatasetId(originalMonitoringRef)) {
+                importedIds.addAll(stopPlaceUpdaterService.getReverseWithoutDatasetId(originalMonitoringRef));
+            } else {
+                return new HashSet<>();
+            }
+        }
+
+        return importedIds;
+    }
+
+    public Set<String> convertFromAltIdsToImportedIdsStop(Set<String> originalMonitoringRefs, String datasetId) {
+        Set<String> importedIds = new HashSet<>();
+        for (String originalMonitoringRef : originalMonitoringRefs) {
+            if (StringUtils.isNotEmpty(datasetId) && StringUtils.isNotEmpty(originalMonitoringRef) && !externalIdsService.getReverseAltIdStop(datasetId, originalMonitoringRef).isEmpty()) {
+                importedIds.addAll(externalIdsService.getReverseAltIdStop(datasetId, originalMonitoringRef));
+            }
+        }
+        return importedIds;
     }
 
 }
