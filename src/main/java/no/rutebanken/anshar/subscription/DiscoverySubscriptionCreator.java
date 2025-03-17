@@ -21,6 +21,9 @@ import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static no.rutebanken.anshar.subscription.SubscriptionConstants.DISCOVERY_SUBSCRIPTION_SOAP_TRANSFORMATION;
+import static no.rutebanken.anshar.subscription.SubscriptionSetup.ServiceType.SOAP;
+
 
 @Service
 public class DiscoverySubscriptionCreator {
@@ -218,6 +221,7 @@ public class DiscoverySubscriptionCreator {
         headers.put(SOAP_ACTION_HEADER, convertDataTypeToSoapAction(discoverySubscription.getDiscoveryType()));
         headers.put(ENDPOINT_URL_HEADER, discoverySubscription.getUrl());
         headers.put("Content-type", "text/xml");
+        headers.put(DISCOVERY_SUBSCRIPTION_SOAP_TRANSFORMATION, discoverySubscription.getServiceType() == SOAP);
         headers.putAll(discoverySubscription.getCustomHeaders());
 
         Siri siriToSend = createDiscoveryRequest(discoverySubscription);
