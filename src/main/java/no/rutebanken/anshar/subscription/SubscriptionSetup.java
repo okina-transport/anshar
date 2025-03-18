@@ -414,6 +414,15 @@ public class SubscriptionSetup implements Serializable {
         this.durationOfSubscription = Duration.ofMinutes(minutes);
     }
 
+
+    public String getBaseRouteId() {
+        String customServiceType = serviceType != null ? serviceType.name() : "emptyServiceType";
+        String customSubscriptionMode = subscriptionMode != null ? subscriptionMode.name() : "emptySubscriptionMode";
+        String customVersion = version != null ? version : "emptyVersion";
+        String customVendor = vendor != null ? vendor : "emptyVendor";
+        return customServiceType + "." + customSubscriptionMode + "." + customVendor + "." + customVersion + "." + subscriptionId;
+    }
+
     public boolean forwardPositionData() {
         return forwardPositionData;
     }

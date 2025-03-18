@@ -24,7 +24,9 @@ import no.rutebanken.anshar.subscription.OAuthConfigElement;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
-import org.apache.camel.*;
+import org.apache.camel.Exchange;
+import org.apache.camel.ExchangePattern;
+import org.apache.camel.Processor;
 import org.apache.camel.http.common.HttpMethods;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -113,7 +115,7 @@ public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
                     p.getOut().setBody(null);
                 })
                 .endDoTry()
-                .routeId("start.rs.20.subscription." + subscriptionSetup.getVendor())
+                .routeId(START_ROUTE_PREFIX + subscriptionSetup.getBaseRouteId())
         ;
 
         if (urlMap.get(RequestType.CHECK_STATUS) != null) {
@@ -159,7 +161,7 @@ public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
                     .when(header("routename").isNotNull())
                     .toD("direct:${header.routename}")
                     .endChoice()
-                    .routeId("check.status.rs.20.subscription." + subscriptionSetup.getVendor());
+                    .routeId(CHECK_STATUS_ROUTE_PREFIX + subscriptionSetup.getBaseRouteId());
         }
 
         //Cancel subscription
@@ -185,7 +187,7 @@ public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
                         handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionId, body));
                     }
                 })
-                .routeId("cancel.rs.20.subscription." + subscriptionSetup.getVendor())
+                .routeId(CANCEL_ROUTE_PREFIX + subscriptionSetup.getBaseRouteId())
         ;
 
         initTriggerRoutes();

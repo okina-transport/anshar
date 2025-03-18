@@ -40,12 +40,16 @@ import java.time.Instant;
 public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
 
     private static final Logger logger = LoggerFactory.getLogger(SiriSubscriptionRouteBuilder.class);
-    
+
     NamespacePrefixMapper customNamespacePrefixMapper;
 
     SubscriptionSetup subscriptionSetup;
 
     private Instant restartTriggered = Instant.MIN;
+
+    public static final String START_ROUTE_PREFIX = "start.";
+    public static final String CHECK_STATUS_ROUTE_PREFIX = "check.status.";
+    public static final String CANCEL_ROUTE_PREFIX = "cancel.";
 
     @Autowired
     EstimatedTimetables estimatedTimetables;
@@ -101,24 +105,24 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
                 "monitor.subscription." + subscriptionSetup.getVendor())
                 .choice()
                 .when(p -> shouldPerformDataNotReceivedAction(p.getFromRouteId()))
-                    .log("Performing DataNotReceivedAction: " + subscriptionSetup)
-                    .setBody(simple(subscriptionSetup.getDataNotReceivedAction() != null ? subscriptionSetup.getDataNotReceivedAction().getJsonPostContent():""))
-                    .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.APPLICATION_JSON))
-                    .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
-                    .to("log:datanotreceived:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
-                    .toD(subscriptionSetup.getDataNotReceivedAction() != null ? subscriptionSetup.getDataNotReceivedAction().getEndpoint():"empty", true)
+                .log("Performing DataNotReceivedAction: " + subscriptionSetup)
+                .setBody(simple(subscriptionSetup.getDataNotReceivedAction() != null ? subscriptionSetup.getDataNotReceivedAction().getJsonPostContent() : ""))
+                .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.APPLICATION_JSON))
+                .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
+                .to("log:datanotreceived:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .toD(subscriptionSetup.getDataNotReceivedAction() != null ? subscriptionSetup.getDataNotReceivedAction().getEndpoint() : "empty", true)
                 .when(p -> shouldBeStarted(p.getFromRouteId()))
-                    .log("Triggering start subscription: " + subscriptionSetup)
-                    .process(p -> hasBeenStarted = true)
-                    .to("direct:" + subscriptionSetup.getStartSubscriptionRouteName()) // Start subscription
+                .log("Triggering start subscription: " + subscriptionSetup)
+                .process(p -> hasBeenStarted = true)
+                .to("direct:" + subscriptionSetup.getStartSubscriptionRouteName()) // Start subscription
                 .when(p -> shouldBeCancelled(p.getFromRouteId()))
-                    .log("Triggering cancel subscription: " + subscriptionSetup)
-                    .process(p -> hasBeenStarted = false)
-                    .to("direct:" + subscriptionSetup.getCancelSubscriptionRouteName())// Cancel subscription
+                .log("Triggering cancel subscription: " + subscriptionSetup)
+                .process(p -> hasBeenStarted = false)
+                .to("direct:" + subscriptionSetup.getCancelSubscriptionRouteName())// Cancel subscription
                 .when(p -> shouldCheckStatus(p.getFromRouteId()))
-                    .log("Check status: " + subscriptionSetup)
-                    .process(p -> lastCheckStatus = Instant.now())
-                    .to("direct:" + subscriptionSetup.getCheckStatusRouteName()) // Check status
+                .log("Check status: " + subscriptionSetup)
+                .process(p -> lastCheckStatus = Instant.now())
+                .to("direct:" + subscriptionSetup.getCheckStatusRouteName()) // Check status
                 .end()
         ;
     }
@@ -198,13 +202,13 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
             return true;
         }
 
-        if (config.isHealthcheckDisabled()){
+        if (config.isHealthcheckDisabled()) {
             //Healthcheck is disabled : subscription must never be restarted
             return false;
         }
 
 
-        if(subscriptionManager.shouldTryRestart(subscriptionId) && subscriptionManager.isRestartTimePassed(subscriptionId)){
+        if (subscriptionManager.shouldTryRestart(subscriptionId) && subscriptionManager.isRestartTimePassed(subscriptionId)) {
             return true;
         }
 

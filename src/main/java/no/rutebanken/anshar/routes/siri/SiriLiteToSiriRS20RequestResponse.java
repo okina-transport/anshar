@@ -63,7 +63,7 @@ public class SiriLiteToSiriRS20RequestResponse extends SiriSubscriptionRouteBuil
             releaseLeadershipOnError = false;
         }
 
-        String routeId = "request.rs.20." + subscriptionSetup.getSubscriptionType() + "." + subscriptionSetup.getVendor();
+        String routeId = subscriptionSetup.getBaseRouteId();
         from("direct:" + subscriptionSetup.getServiceRequestRouteName())
                 .messageHistory()
                 .process(p -> requestStarted())

@@ -41,7 +41,7 @@ public class Utils {
     public void handleFlexibleLines(Siri siri) {
 
 
-        if (siri.getServiceDelivery() == null) {
+        if (siri == null || siri.getServiceDelivery() == null) {
             return;
         }
 
