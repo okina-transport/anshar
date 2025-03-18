@@ -1,10 +1,12 @@
 package no.rutebanken.anshar.ishtar.converter;
 
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.ishtar.model.*;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
+import org.apache.camel.TypeConverters;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang.StringUtils;
@@ -20,13 +22,14 @@ import java.util.stream.Collectors;
  */
 @Component
 @Slf4j
-public class SubscriptionDtoToSubscriptionSetupConverter implements Converter<SubscriptionDto, SubscriptionSetup> {
+public class SubscriptionDtoToSubscriptionSetupConverter implements Converter<SubscriptionDto, SubscriptionSetup>, TypeConverters {
 
     @Value("${anshar.inbound.url}")
     private String inboundUrl;
 
     @Override
-    public SubscriptionSetup convert(SubscriptionDto source) {
+    @org.apache.camel.Converter
+    public SubscriptionSetup convert(@NonNull SubscriptionDto source) {
         log.debug("source: {}", source);
         SubscriptionSetup target = null;
         if (BooleanUtils.isTrue(source.getDiscoverySubscription())) {
@@ -35,8 +38,8 @@ public class SubscriptionDtoToSubscriptionSetupConverter implements Converter<Su
             target = new SubscriptionSetup();
             target.setSubscriptionId(source.getSubscriptionId());
             target.setDatasetId(source.getDatasetId());
-            target.setInternalId(source.getId());
-            target.setActive(source.getActive());
+            target.setInternalId(source.getId() != null ? source.getId() : 0L);
+            target.setActive(BooleanUtils.isTrue(source.getActive()));
             target.setSubscriptionType(SiriDataType.valueOf(source.getSubscriptionType()));
             target.setIdMappingPrefixes(ListUtils.emptyIfNull(source.getIdMappingPrefixes()).stream().map(IdMappingPrefixDto::getValue).collect(Collectors.toList()));
             target.setStopMonitoringRefValue(ListUtils.emptyIfNull(source.getSubscriptionStops()).stream().map(SubscriptionStopDto::getStopRef).collect(Collectors.toList()));

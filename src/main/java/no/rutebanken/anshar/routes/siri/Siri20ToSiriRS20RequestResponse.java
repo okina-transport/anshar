@@ -65,18 +65,18 @@ public class Siri20ToSiriRS20RequestResponse extends SiriSubscriptionRouteBuilde
 
         String routeId = subscriptionSetup.getBaseRouteId();
         from("direct:" + subscriptionSetup.getServiceRequestRouteName())
-                .messageHistory()
-                .process(p -> requestStarted())
-                .log(LoggingLevel.DEBUG, "Retrieving data " + subscriptionSetup.toString())
-                .bean(helper, "createSiriDataRequest")
-                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
-                .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
-                .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
-                .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
-                .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
-                .process(addCustomHeaders())
-                .to("log:request:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
-                .doTry()
+            .messageHistory()
+            .process(p -> requestStarted())
+            .log(LoggingLevel.DEBUG,"Retrieving data " + subscriptionSetup.toString())
+            .bean(helper, "createSiriDataRequest")
+            .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+            .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
+            .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
+            .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
+            .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
+            .process(addCustomHeaders())
+            .to("log:request:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
+            .doTry()
                 .to(getRequestUrl(subscriptionSetup, httpOptions))
                 .setHeader("CamelHttpPath", constant("/appContext" + subscriptionSetup.buildUrl(false)))
                 .log(LoggingLevel.DEBUG, "Got response " + subscriptionSetup.toString())
@@ -84,15 +84,15 @@ public class Siri20ToSiriRS20RequestResponse extends SiriSubscriptionRouteBuilde
                 .setHeader(PARAM_SUBSCRIPTION_ID, simple(subscriptionSetup.getSubscriptionId()))
                 .setHeader(INTERNAL_SIRI_DATA_TYPE, simple(subscriptionSetup.getSubscriptionType().name()))
                 .to("direct:enqueue.message")
-                .doCatch(Exception.class)
-                .log("Caught exception -" + (releaseLeadershipOnError ? "" : " NOT") + " releasing leadership: " + subscriptionSetup.toString())
+            .doCatch(Exception.class)
+                .log("Caught exception -" + (releaseLeadershipOnError ? "":" NOT") + " releasing leadership: " + subscriptionSetup.toString())
                 .to("log:response:" + getClass().getSimpleName() + "?showCaughtException=true&showAll=true&multiline=true")
                 .process(p -> {
                     if (releaseLeadershipOnError) {
                         releaseLeadership(monitoringRouteId);
                     }
                 })
-                .doFinally()
+            .doFinally()
                 .process(p -> {
                     requestFinished();
                     List<MessageHistory> list = p.getProperty(Exchange.MESSAGE_HISTORY, List.class);
@@ -110,8 +110,8 @@ public class Siri20ToSiriRS20RequestResponse extends SiriSubscriptionRouteBuilde
                         }
                     }
                 })
-                .endDoTry()
-                .routeId(routeId)
+            .endDoTry()
+            .routeId(routeId)
         ;
     }
 

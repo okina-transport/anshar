@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.ishtar.converter;
 
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
@@ -13,7 +14,7 @@ import org.springframework.core.convert.converter.Converter;
 public class IdProcessingParameterDtoConverter implements Converter<IdProcessingParameterDto, IdProcessingParameters> {
 
     @Override
-    public IdProcessingParameters convert(IdProcessingParameterDto source) {
+    public IdProcessingParameters convert(@NonNull IdProcessingParameterDto source) {
         log.debug("source: {}", source);
         IdProcessingParameters target = new IdProcessingParameters();
         target.setDatasetId(source.getDatasetId());

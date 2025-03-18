@@ -15,20 +15,24 @@
 
 package no.rutebanken.anshar.routes.siri;
 
+import com.sun.xml.bind.marshaller.NamespacePrefixMapper;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.data.util.CustomSiriXml;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
+import no.rutebanken.anshar.routes.ServiceNotSupportedException;
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
+import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
+import no.rutebanken.anshar.subscription.OAuthConfigElement;
+import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
-import org.apache.camel.CamelContextAware;
-import org.apache.camel.Exchange;
-import org.apache.camel.ExchangePattern;
-import org.apache.camel.Message;
+import no.rutebanken.anshar.subscription.helpers.RequestType;
+import org.apache.camel.*;
 import org.apache.camel.http.common.HttpMethods;
 import org.apache.camel.model.rest.RestParamType;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +48,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.List;
 
+import static no.rutebanken.anshar.routes.BaseRouteBuilder.getRequestUrl;
 import static no.rutebanken.anshar.routes.HttpParameter.*;
+import static no.rutebanken.anshar.subscription.DiscoverySubscriptionCreator.ENDPOINT_URL_HEADER;
+import static no.rutebanken.anshar.subscription.DiscoverySubscriptionCreator.SUBSCRIPTION_URL_HEADER;
 
 @SuppressWarnings("unchecked")
 @Service
@@ -444,7 +451,187 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .routeId("process.service.cache")
         ;
 
+        from("direct:siri.20.to.siri.rs.14.subscription.preprocess")
+                .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
+                .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
+                .setHeader(Exchange.CONTENT_TYPE, simple("${body.contentType}")) // Necessary when talking to Microsoft web services
+                .setHeader(Exchange.HTTP_METHOD, constant(org.apache.camel.component.http.HttpMethods.POST))
+                .process(addSubscriptionUrlHeader)
+                .process(addCustomHeaders)
+                .bean(SiriObjectFactory.class, "createSubscriptionRequest")
+                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .to("xslt-saxon:xsl/siri_20_14.xsl") // Convert from SIRI 2.0 to SIRI 1.4
+                .end();
+
+        from("direct:siri.20.to.siri.rs.20.request-response.preprocess")
+                .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
+                .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
+                .setHeader(Exchange.CONTENT_TYPE, simple("${body.contentType}")) // Necessary when talking to Microsoft web services
+                .setHeader(Exchange.HTTP_METHOD, constant(org.apache.camel.component.http.HttpMethods.POST))
+                .process(addRequestResponseSubscriptionUrlHeader)
+                .process(addCustomHeaders)
+                .bean(SiriObjectFactory.class, "createSubscriptionRequest")
+                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .end();
+
+        from("direct:siri.20.to.siri.rs.20.subscription.preprocess")
+                .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
+                .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
+                .process(oauthHeadersProcess)
+                .to("direct:oauth2.authorize")
+                .setHeader(Exchange.CONTENT_TYPE, simple("${body.contentType}")) // Necessary when talking to Microsoft web services
+                .setHeader(Exchange.HTTP_METHOD, constant(org.apache.camel.component.http.HttpMethods.POST))
+                .process(addSubscriptionUrlHeader)
+                .process(addCustomHeaders)
+                .bean(SiriObjectFactory.class, "createSubscriptionRequest")
+                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .end();
+
+        from("direct:siri.20.to.siri.ws.14.request-response.preprocess")
+                .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
+                .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
+                .setHeader(Exchange.CONTENT_TYPE, simple("${body.contentType}")) // Necessary when talking to Microsoft web services
+                .setHeader(Exchange.HTTP_METHOD, constant(org.apache.camel.component.http.HttpMethods.POST))
+                .process(addRequestResponseSubscriptionUrlHeader)
+                .process(addCustomHeaders)
+                .process(e -> {
+                    e.getIn().setHeader("SOAPAction", getSoapAction(e.getIn().getBody(SubscriptionSetup.class)));
+                })
+                .setHeader("operatorNamespace", simple("${body.operatorNamespace}")) // Need to make SOAP request with endpoint specific element namespace
+                .bean(SiriObjectFactory.class, "createSubscriptionRequest")
+                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .to("xslt-saxon:xsl/siri_20_14.xsl") // Convert SIRI raw request to SOAP version
+                .to("xslt-saxon:xsl/siri_raw_soap.xsl") // Convert SIRI raw request to SOAP version
+                .removeHeader("operatorNamespace")
+                .end();
+
+        from("direct:siri.20.to.siri.ws.14.subscription.preprocess")
+                .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
+                .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
+                .setHeader(Exchange.CONTENT_TYPE, simple("${body.contentType}")) // Necessary when talking to Microsoft web services
+                .setHeader(Exchange.HTTP_METHOD, constant(org.apache.camel.component.http.HttpMethods.POST))
+                .process(addSubscriptionUrlHeader)
+                .process(addCustomHeaders)
+                .setHeader("SOAPAction", constant("Subscribe"))
+                .setHeader("operatorNamespace", simple("${body.operatorNamespace}")) // Need to make SOAP request with endpoint specific element namespace
+                .bean(SiriObjectFactory.class, "createSubscriptionRequest")
+                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat(customNamespacePrefixMapper))
+                .to("xslt-saxon:xsl/siri_20_14.xsl") // Convert from SIRI 2.0 to SIRI 1.4
+                .to("xslt-saxon:xsl/siri_raw_soap.xsl") // Convert SIRI raw request to SOAP version
+                .removeHeader("operatorNamespace")
+                .end();
+
+        from("direct:siri.20.to.siri.ws.20.request-response.preprocess")
+                .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
+                .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
+                .setHeader(Exchange.CONTENT_TYPE, simple("${body.contentType}")) // Necessary when talking to Microsoft web services
+                .setHeader(Exchange.HTTP_METHOD, constant(org.apache.camel.component.http.HttpMethods.POST))
+                .process(addRequestResponseSubscriptionUrlHeader)
+                .process(addCustomHeaders)
+                .process(e -> {
+                    e.getIn().setHeader("SOAPAction", getSoapAction(e.getIn().getBody(SubscriptionSetup.class)));
+                })
+                .setHeader(ENDPOINT_URL_HEADER, header(SUBSCRIPTION_URL_HEADER)) // Need to make SOAP request with endpoint specific element namespace
+                .setHeader("operatorNamespace", simple("${body.operatorNamespace}")) // Need to make SOAP request with endpoint specific element namespace
+                .bean(SiriObjectFactory.class, "createSubscriptionRequest")
+                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .process(e -> log.debug("========> Request Before transformed to soap siri : {}",e.getIn().getBody(String.class)))
+                .to("xslt-saxon:xsl/siri_raw_soap.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Convert SIRI raw request to SOAP version
+                .to("xslt-saxon:xsl/siri_14_20.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Convert SIRI raw request to SOAP version
+                .process(e -> log.debug("========> Request transformed to soap siri : {}", e.getIn().getBody(String.class)))
+                .removeHeader(ENDPOINT_URL_HEADER)
+                .removeHeader("operatorNamespace")
+                .end();
+
+        from("direct:siri.20.to.siri.ws.20.subscription.preprocess")
+                .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
+                .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
+                .setHeader(Exchange.CONTENT_TYPE, simple("${body.contentType}")) // Necessary when talking to Microsoft web services
+                .setHeader(Exchange.HTTP_METHOD, constant(org.apache.camel.component.http.HttpMethods.POST))
+                .process(addSubscriptionUrlHeader)
+                .process(addCustomHeaders)
+                .setHeader("SOAPAction", constant("Subscribe"))
+                .setHeader("operatorNamespace", simple("${body.operatorNamespace}")) // Need to make SOAP request with endpoint specific element namespace
+                .setHeader("soapEnvelopeNamespace", constant("${body.soapenvNamespace}")) // Need to make SOAP request with endpoint specific element namespace
+                .setHeader(ENDPOINT_URL_HEADER, header(SUBSCRIPTION_URL_HEADER)) // Need to make SOAP request with endpoint specific element namespace
+                .bean(SiriObjectFactory.class, "createSubscriptionRequest")
+                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat(customNamespacePrefixMapper))
+                .process(removeXsiType)
+                .to("xslt-saxon:xsl/siri_raw_soap.xsl") // Convert SIRI raw request to SOAP version
+                .to("xslt-saxon:xsl/siri_14_20.xsl") // Convert SIRI raw request to SOAP version
+                .removeHeader(ENDPOINT_URL_HEADER)
+                .removeHeader("operatorNamespace")
+                .removeHeader("soapEnvelopeNamespace")
+                .end();
+
+        from("direct:siri.lite.to.siri.rs.20.request-response.preprocess")
+            .removeHeaders("CamelHttp*")
+            .setExchangePattern(ExchangePattern.InOut)
+            .setHeader(Exchange.CONTENT_TYPE, simple("${body.contentType}"))
+            .setHeader(Exchange.HTTP_METHOD, constant(org.apache.camel.component.http.HttpMethods.GET))
+            .process(addRequestResponseSubscriptionUrlHeader)
+            .process(addCustomHeaders)
+            .setBody(constant(""))
+            .end();
     }
+
+    private String getSoapAction(SubscriptionSetup subscriptionSetup) throws ServiceNotSupportedException {
+        if (subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.SUBSCRIBE &&
+                subscriptionSetup.isDataSupplyRequestForInitialDelivery()) {
+            return "DataSupplyRequest";
+        }
+        if (subscriptionSetup.getSubscriptionType() == SiriDataType.ESTIMATED_TIMETABLE) {
+            return "GetEstimatedTimetableRequest";
+        } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.VEHICLE_MONITORING) {
+            return "GetVehicleMonitoring";
+        } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.SITUATION_EXCHANGE) {
+            return "GetSituationExchange";
+        } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.STOP_MONITORING) {
+            return "GetStopMonitoring";
+        } else {
+            throw new ServiceNotSupportedException();
+        }
+    }
+
+    private final NamespacePrefixMapper customNamespacePrefixMapper = new NamespacePrefixMapper() {
+        @Override
+        public String getPreferredPrefix(String arg0, String arg1, boolean arg2) {
+            return "siri";
+        }
+    };
+
+    private final Processor removeXsiType = (e) -> {
+        String originalxml = e.getIn().getBody(String.class);
+        String xmlWithoutXsiType = originalxml.replaceAll("xsi:type=\"SubscriptionRefStructure\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"", "");
+        logger.debug("xmlWithoutXsiType:" + xmlWithoutXsiType);
+        e.getIn().setBody(xmlWithoutXsiType);
+    };
+
+    private final Processor addSubscriptionUrlHeader = (e) -> {
+        e.getIn().setHeader(SUBSCRIPTION_URL_HEADER, e.getIn().getBody(SubscriptionSetup.class).getUrlMap().get(RequestType.SUBSCRIBE));
+    };
+
+    private final Processor addRequestResponseSubscriptionUrlHeader = (e) -> {
+        e.getIn().setHeader(SUBSCRIPTION_URL_HEADER, getRequestUrl(e.getIn().getBody(SubscriptionSetup.class)));
+    };
+
+    private final Processor addCustomHeaders = (e) -> {
+        SubscriptionSetup sub = e.getIn().getBody(SubscriptionSetup.class);
+        if (MapUtils.isNotEmpty(sub.getCustomHeaders())) {
+            e.getIn().getHeaders().putAll(sub.getCustomHeaders());
+        }
+    };
+
+    private final Processor oauthHeadersProcess = (e) -> {
+        SubscriptionSetup subscriptionSetup = e.getIn().getBody(SubscriptionSetup.class);
+        if (subscriptionSetup.getOauth2Config() != null) {
+            e.getMessage().setHeader("oauth-client-id", subscriptionSetup.getOauth2Config().get(OAuthConfigElement.CLIENT_ID));
+            e.getMessage().setHeader("oauth-client-secret", subscriptionSetup.getOauth2Config().get(OAuthConfigElement.CLIENT_SECRET));
+            e.getMessage().setHeader("oauth-grant-type", subscriptionSetup.getOauth2Config().get(OAuthConfigElement.GRANT_TYPE));
+            e.getMessage().setHeader("oauth-server", subscriptionSetup.getOauth2Config().get(OAuthConfigElement.SERVER));
+            e.getMessage().setHeader("oauth-audience",subscriptionSetup.getOauth2Config().get(OAuthConfigElement.AUDIENCE));
+        }
+    };
 
     private String getSubscriptionDataType(Exchange e) {
         String subscriptionId = e.getIn().getHeader(PARAM_SUBSCRIPTION_ID, String.class);

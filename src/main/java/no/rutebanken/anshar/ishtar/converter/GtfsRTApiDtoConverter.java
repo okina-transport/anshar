@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.ishtar.converter;
 
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.config.GTFSRTType;
@@ -14,7 +15,7 @@ import org.springframework.core.convert.converter.Converter;
 public class GtfsRTApiDtoConverter implements Converter<GtfsRTApiDto, GtfsRTApi> {
 
     @Override
-    public GtfsRTApi convert(GtfsRTApiDto source) {
+    public GtfsRTApi convert(@NonNull GtfsRTApiDto source) {
         log.debug("source: {}", source);
         GtfsRTApi target = new GtfsRTApi();
         target.setActive(source.getActive());

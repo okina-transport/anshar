@@ -1,4 +1,4 @@
-package no.rutebanken.anshar.ishtar;
+package no.rutebanken.anshar.ishtar.synchronize;
 
 import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.api.GtfsRTApi;

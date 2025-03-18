@@ -138,7 +138,7 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
                 boolean enabled = dataNotReceivedAction.isEnabled();
 
                 boolean isReceiving = subscriptionManager.isSubscriptionReceivingData(subscriptionId,
-                        dataNotReceivedAction.getInactivityMinutes() * 60);
+                        dataNotReceivedAction.getInactivityMinutes() * 60L);
 
                 if (!isReceiving) {
                     Instant lastDataReceived = subscriptionManager.getLastDataReceived(subscriptionId);
@@ -163,7 +163,7 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
 
                     }
 
-                    return enabled & true;
+                    return enabled;
                 }
             }
         }

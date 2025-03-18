@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.ishtar.converter;
 
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.api.SiriApi;
 import no.rutebanken.anshar.ishtar.model.SiriApiDto;
@@ -13,7 +14,7 @@ import org.springframework.core.convert.converter.Converter;
 public class SiriApiDtoConverter implements Converter<SiriApiDto, SiriApi> {
 
     @Override
-    public SiriApi convert(SiriApiDto source) {
+    public SiriApi convert(@NonNull SiriApiDto source) {
         log.debug("source: {}", source);
         SiriApi target = new SiriApi();
         target.setActive(source.getActive());

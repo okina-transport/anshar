@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.ishtar.converter;
 
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.ishtar.model.CustomHeaderDto;
@@ -8,10 +9,12 @@ import no.rutebanken.anshar.ishtar.model.UrlMapDto;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
+import org.apache.camel.TypeConverters;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -19,11 +22,13 @@ import java.util.stream.Collectors;
 /**
  * Convert ISHTAR SubscriptionDto into ANSHAR DiscoverySubscription.
  */
+@Component
 @Slf4j
-public class SubscriptionDtoToDiscoverySubscriptionConverter implements Converter<SubscriptionDto, DiscoverySubscription> {
+public class SubscriptionDtoToDiscoverySubscriptionConverter implements Converter<SubscriptionDto, DiscoverySubscription>, TypeConverters {
 
     @Override
-    public DiscoverySubscription convert(SubscriptionDto source) {
+    @org.apache.camel.Converter
+    public DiscoverySubscription convert(@NonNull SubscriptionDto source) {
         log.debug("source: {}", source);
         DiscoverySubscription target = null;
         if (BooleanUtils.isFalse(source.getDiscoverySubscription())) {

@@ -67,28 +67,12 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
         //Start subscription
         from("direct:" + subscriptionSetup.getStartSubscriptionRouteName())
                 .log("Starting subscription " + subscriptionSetup.toString())
-                .bean(helper, "createSiriSubscriptionRequest")
-                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat(customNamespacePrefixMapper))
+                .setBody(constant(subscriptionSetup))
                 .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
-                .setHeader("SOAPAction", constant("Subscribe"))
-                .setHeader("operatorNamespace", constant(subscriptionSetup.getOperatorNamespace())) // Need to make SOAP request with endpoint specific element namespace
-                .setHeader("endpointUrl", constant(endpointUrl)) // Need to make SOAP request with endpoint specific element namespace
-                .setHeader("soapEnvelopeNamespace", constant(subscriptionSetup.getSoapenvNamespace())) // Need to make SOAP request with endpoint specific element namespace
-                .process(p -> {
-                    String originalxml = p.getIn().getBody(String.class);
-                    String xmlWithoutXsiType = originalxml.replaceAll("xsi:type=\"SubscriptionRefStructure\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"", "");
-                    logger.debug("xmlWithoutXsiType:" + xmlWithoutXsiType);
-                    p.getIn().setBody(xmlWithoutXsiType);
-                })
-                .to("xslt-saxon:xsl/siri_raw_soap.xsl") // Convert SIRI raw request to SOAP version
-                .to("xslt-saxon:xsl/siri_14_20.xsl") // Convert SIRI raw request to SOAP version
+                .to("direct:siri.20.to.siri.ws.20.subscription.preprocess")
                 .process(p -> {
                     logger.debug("Subscription request content:" + p.getIn().getBody());
                 })
-                .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
-                .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
-                .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
-                .process(addCustomHeaders())
                 .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .to(getCamelUrl(urlMap.get(RequestType.SUBSCRIBE), getTimeout()))
                 .process(p -> {

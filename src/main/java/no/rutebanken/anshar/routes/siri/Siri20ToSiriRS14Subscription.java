@@ -25,7 +25,6 @@ import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
-import org.apache.camel.component.http.HttpMethods;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,16 +58,9 @@ public class Siri20ToSiriRS14Subscription extends SiriSubscriptionRouteBuilder {
         //Start subscription
         from("direct:" + subscriptionSetup.getStartSubscriptionRouteName())
                 .log("Starting subscription " + subscriptionSetup.toString())
-                .bean(helper, "createSiriSubscriptionRequest")
-                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
-                .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
-                .setHeader("SOAPAction", constant("Subscribe"))
-                .setHeader("operatorNamespace", constant(subscriptionSetup.getOperatorNamespace())) // Need to make SOAP request with endpoint specific element namespace
-                .to("xslt-saxon:xsl/siri_20_14.xsl") // Convert from SIRI 2.0 to SIRI 1.4
-                .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
-                .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
-                .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
-                .process(addCustomHeaders())
+                .setExchangePattern(ExchangePattern.InOut)
+                .setBody(constant(subscriptionSetup))
+                .to("direct:siri.20.to.siri.rs.14.subscription.preprocess")
                 .process(p -> {
                     logger.debug("Subscription request content:" + p.getIn().getBody());
                 })

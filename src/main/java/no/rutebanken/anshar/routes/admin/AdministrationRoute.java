@@ -67,7 +67,10 @@ public class AdministrationRoute extends RestRouteBuilder {
     private static final String SITUATIONS_ROUTE = "direct:situations";
     private static final String SYNTHESIS_ROUTE = "direct:synthesis";
     private static final String INTERNAL_SYNTHESIS_ROUTE = "direct:internal.synthesis";
-
+    public static final String ISHTAR_SYNCHRONIZE_DATA_ROUTE = "direct:isthar.synchronize.data";
+    public static final String ISHTAR_GET_GTFS_RT_API_REQUEST_ROUTE = "direct:ishtar.get.gtfs-rt-api.request";
+    public static final String ISHTAR_GET_SIRI_API_REQUEST_ROUTE = "direct:ishtar.get.siri-api.request";
+    public static final String ISHTAR_GET_SUBSCRIPTION_REQUEST_ROUTE = "direct:ishtar.get.subscription.request";
 
     @Autowired
     private ExtendedHazelcastService extendedHazelcastService;
@@ -128,7 +131,10 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .get("/unmapped/{datasetId}").produces(TEXT_HTML).to(UNMAPPED_ROUTE)
                 .get("/situations/{datasetId}").produces(TEXT_HTML).to(SITUATIONS_ROUTE)
                 .get("/synthesis").produces(TEXT_HTML).to(SYNTHESIS_ROUTE)
-                .get("/synchronize/data").to("direct:startDataFetch")
+                .get("/synchronize/data").to(ISHTAR_SYNCHRONIZE_DATA_ROUTE)
+                .post("/gtfs-rt-request").produces(APPLICATION_JSON).to(ISHTAR_GET_GTFS_RT_API_REQUEST_ROUTE)
+                .post("/siri-request").produces(APPLICATION_JSON).to(ISHTAR_GET_SIRI_API_REQUEST_ROUTE)
+                .post("/subscription-request").produces(APPLICATION_JSON).to(ISHTAR_GET_SUBSCRIPTION_REQUEST_ROUTE)
         ;
 
         if (autoLockVerificationEnabled) {

@@ -17,26 +17,25 @@ import uk.org.siri.siri21.*;
 import javax.xml.bind.JAXBException;
 import javax.xml.stream.XMLStreamException;
 import java.io.InputStream;
-import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static no.rutebanken.anshar.subscription.SubscriptionConstants.DISCOVERY_SUBSCRIPTION_SOAP_TRANSFORMATION;
-import static no.rutebanken.anshar.subscription.SubscriptionSetup.ServiceType.SOAP;
+import static no.rutebanken.anshar.routes.DiscoverySubscriptionsRouteBuilder.SEND_DISCOVERY_REQUEST_ROUTE;
 
 
 @Service
 public class DiscoverySubscriptionCreator {
     private static final Logger logger = LoggerFactory.getLogger(DiscoverySubscriptionCreator.class);
-    private static final String ENDPOINT_URL_HEADER = "endpointUrl";
-    private static final String SOAP_ACTION_HEADER = "SOAPAction";
+    public static final String SUBSCRIPTION_URL_HEADER = "subscriptionUrl";
+    public static final String ENDPOINT_URL_HEADER = "endpointUrl";
+    public static final String SOAP_ACTION_HEADER = "SOAPAction";
     private static final int NB_OF_REFS_BY_SUBSCRIPTION = 30;
 
     private final SubscriptionConfig subscriptionConfig;
 
     private final SubscriptionInitializer subscriptionInitializer;
 
-    @Produce("direct:send.discovery.request")
+    @Produce(SEND_DISCOVERY_REQUEST_ROUTE)
     protected ProducerTemplate discoveryRequestProducer;
 
     public DiscoverySubscriptionCreator(SubscriptionConfig subscriptionConfig, SubscriptionInitializer subscriptionInitializer) {
@@ -190,18 +189,7 @@ public class DiscoverySubscriptionCreator {
         return Optional.empty();
     }
 
-    private String convertDataTypeToSoapAction(SiriDataType dataType) {
-        switch (dataType) {
-            case STOP_MONITORING:
-                return "StopPointsDiscovery";
-            case VEHICLE_MONITORING:
-                return "LinesDiscovery";
-            default:
-                return "can't convert to soap action datatype:" + dataType;
-        }
-    }
-
-    private SiriDataType convertSoapActionToDataType(String soapAction) {
+    private static SiriDataType convertSoapActionToDataType(String soapAction) {
         if ("LinesDiscovery".equals(soapAction)) {
             return SiriDataType.VEHICLE_MONITORING;
         } else {
@@ -217,45 +205,7 @@ public class DiscoverySubscriptionCreator {
             return;
         }
 
-        Map<String, Object> headers = new HashMap<>();
-        headers.put(SOAP_ACTION_HEADER, convertDataTypeToSoapAction(discoverySubscription.getDiscoveryType()));
-        headers.put(ENDPOINT_URL_HEADER, discoverySubscription.getUrl());
-        headers.put("Content-type", "text/xml");
-        headers.put(DISCOVERY_SUBSCRIPTION_SOAP_TRANSFORMATION, discoverySubscription.getServiceType() == SOAP);
-        headers.putAll(discoverySubscription.getCustomHeaders());
-
-        Siri siriToSend = createDiscoveryRequest(discoverySubscription);
-
-        discoveryRequestProducer.asyncRequestBodyAndHeaders(discoveryRequestProducer.getDefaultEndpoint(), siriToSend, headers);
-    }
-
-    private Siri createDiscoveryRequest(DiscoverySubscription discoverySubscription) {
-        Siri siriRequest = new Siri();
-        MessageQualifierStructure messageId = new MessageQualifierStructure();
-        String msgId = UUID.randomUUID().toString();
-        messageId.setValue(msgId);
-        RequestorRef requestorRef = new RequestorRef();
-        requestorRef.setValue(discoverySubscription.getRequestorRef());
-
-        logger.info("Creating discovery request for url :{}, type:{}, messageId:{}", discoverySubscription.getUrl(), discoverySubscription.getDiscoveryType(), msgId);
-
-        if (SiriDataType.STOP_MONITORING.equals(discoverySubscription.getDiscoveryType())) {
-            StopPointsRequest stopPointsRequest = new StopPointsRequest();
-            stopPointsRequest.setRequestTimestamp(ZonedDateTime.now());
-            stopPointsRequest.setMessageIdentifier(messageId);
-            stopPointsRequest.setRequestorRef(requestorRef);
-            siriRequest.setStopPointsRequest(stopPointsRequest);
-
-        }
-
-        if (SiriDataType.VEHICLE_MONITORING.equals(discoverySubscription.getDiscoveryType())) {
-            LinesDiscoveryRequestStructure lineRequest = new LinesDiscoveryRequestStructure();
-            lineRequest.setMessageIdentifier(messageId);
-            lineRequest.setRequestTimestamp(ZonedDateTime.now());
-            lineRequest.setRequestorRef(requestorRef);
-            siriRequest.setLinesRequest(lineRequest);
-        }
-        return siriRequest;
+        discoveryRequestProducer.asyncRequestBody(discoveryRequestProducer.getDefaultEndpoint(), discoverySubscription);
     }
 
 

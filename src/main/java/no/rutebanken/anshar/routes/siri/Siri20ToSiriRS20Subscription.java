@@ -81,16 +81,9 @@ public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
 
         from("direct:" + subscriptionSetup.getStartSubscriptionRouteName())
                 .log("Starting subscription " + subscriptionSetup.toString())
-                .process(oauthHeadersProcess)
-                .to("direct:oauth2.authorize")
-                .bean(helper, "createSiriSubscriptionRequest")
-                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
-                .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
-                .setHeader("operatorNamespace", constant(subscriptionSetup.getOperatorNamespace())) // Need to make SOAP request with endpoint specific element namespace
-                .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
-                .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
-                .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
-                .process(addCustomHeaders())
+                .setExchangePattern(ExchangePattern.InOut)
+                .setBody(constant(subscriptionSetup))
+                .to("direct:siri.20.to.siri.rs.20.subscription.preprocess")
                 .to("log:sent request:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .doTry()
                 .to(getCamelUrl(urlMap.get(RequestType.SUBSCRIBE), getTimeout()))

@@ -121,43 +121,24 @@ public abstract class BaseRouteBuilder extends SpringRouteBuilder {
         }
     }
 
-
-    protected String getRequestUrl(SubscriptionSetup subscriptionSetup, String parameters) throws ServiceNotSupportedException {
+    public static String getRequestUrl(SubscriptionSetup subscriptionSetup) throws ServiceNotSupportedException {
         Map<RequestType, String> urlMap = subscriptionSetup.getUrlMap();
-        String url;
         if (subscriptionSetup.getSubscriptionType() == SiriDataType.ESTIMATED_TIMETABLE) {
-            url = urlMap.get(RequestType.GET_ESTIMATED_TIMETABLE);
+            return urlMap.get(RequestType.GET_ESTIMATED_TIMETABLE);
         } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.VEHICLE_MONITORING) {
-            url = urlMap.get(RequestType.GET_VEHICLE_MONITORING);
+            return urlMap.get(RequestType.GET_VEHICLE_MONITORING);
         } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.SITUATION_EXCHANGE) {
-            url = urlMap.get(RequestType.GET_SITUATION_EXCHANGE);
+            return urlMap.get(RequestType.GET_SITUATION_EXCHANGE);
         } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.STOP_MONITORING) {
-            url = urlMap.get(RequestType.GET_STOP_MONITORING);
+            return urlMap.get(RequestType.GET_STOP_MONITORING);
         } else {
             throw new ServiceNotSupportedException();
         }
-
-        return getCamelUrl(url, parameters);
     }
 
-    protected String getSoapAction(SubscriptionSetup subscriptionSetup) throws ServiceNotSupportedException {
-
-        if (subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.SUBSCRIBE &&
-                subscriptionSetup.isDataSupplyRequestForInitialDelivery()) {
-            return "DataSupplyRequest";
-        }
-
-        if (subscriptionSetup.getSubscriptionType() == SiriDataType.ESTIMATED_TIMETABLE) {
-            return "GetEstimatedTimetableRequest";
-        } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.VEHICLE_MONITORING) {
-            return "GetVehicleMonitoring";
-        } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.SITUATION_EXCHANGE) {
-            return "GetSituationExchange";
-        } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.STOP_MONITORING) {
-            return "GetStopMonitoring";
-        } else {
-            throw new ServiceNotSupportedException();
-        }
+    public static String getCamelRequestUrl(SubscriptionSetup subscriptionSetup, String parameters) throws ServiceNotSupportedException {
+        String url = getRequestUrl(subscriptionSetup);
+        return getCamelUrl(url, parameters);
     }
 
 }

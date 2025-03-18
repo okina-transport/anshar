@@ -16,7 +16,6 @@
 package no.rutebanken.anshar.routes.siri;
 
 import no.rutebanken.anshar.config.AnsharConfiguration;
-import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
 import no.rutebanken.anshar.routes.siri.helpers.SiriRequestFactory;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
@@ -69,21 +68,13 @@ public class Siri20ToSiriWS14RequestResponse extends SiriSubscriptionRouteBuilde
         from("direct:" + subscriptionSetup.getServiceRequestRouteName())
                 .messageHistory()
                 .process(p -> requestStarted())
+                .setExchangePattern(ExchangePattern.InOut)
+                .setBody(constant(subscriptionSetup))
+                .to("direct:siri.20.to.siri.ws.14.request-response.preprocess")
                 .log("Retrieving data " + subscriptionSetup.toString())
-                .bean(helper, "createSiriDataRequest")
-                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
-                .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
-                .setHeader("SOAPAction", simple(getSoapAction(subscriptionSetup))) // extract and compute SOAPAction (Microsoft requirement)
-                .setHeader("operatorNamespace", constant(subscriptionSetup.getOperatorNamespace())) // Need to make SOAP request with endpoint specific element namespace
-                .to("xslt-saxon:xsl/siri_20_14.xsl") // Convert SIRI raw request to SOAP version
-                .to("xslt-saxon:xsl/siri_raw_soap.xsl") // Convert SIRI raw request to SOAP version
-                .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
-                .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
-                .setHeader(Exchange.HTTP_METHOD, constant(org.apache.camel.component.http.HttpMethods.POST))
-                .process(addCustomHeaders())
                 .to("log:request:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .doTry()
-                    .to(getRequestUrl(subscriptionSetup, httpOptions))
+                    .to(getCamelRequestUrl(subscriptionSetup, httpOptions))
                     .setHeader("CamelHttpPath", constant("/appContext" + subscriptionSetup.buildUrl(false)))
                     .log("Got response " + subscriptionSetup.toString())
                     .setHeader(TRANSFORM_VERSION, constant(TRANSFORM_VERSION))

@@ -23,7 +23,6 @@ import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.MessageHistory;
-import org.apache.camel.component.http.HttpMethods;
 
 import java.util.List;
 
@@ -71,13 +70,11 @@ public class SiriLiteToSiriRS20RequestResponse extends SiriSubscriptionRouteBuil
                 //  .bean(helper, "createSiriDataRequest")
                 //.marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
                 .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
-                .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
-                .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
-                .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.GET))
-                .process(addCustomHeaders())
+                .setBody(constant(subscriptionSetup))
+                .to("direct:siri.lite.to.siri.rs.20.request-response.preprocess")
                 .to("log:request:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .doTry()
-                .to(getRequestUrl(subscriptionSetup, httpOptions))
+                .to(getCamelRequestUrl(subscriptionSetup, httpOptions))
                 .setHeader("CamelHttpPath", constant("/appContext" + subscriptionSetup.buildUrl(false)))
                 .log(LoggingLevel.DEBUG, "Got response " + subscriptionSetup.toString())
                 .to("log:response:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
