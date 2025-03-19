@@ -581,7 +581,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
             return "DataSupplyRequest";
         }
         if (subscriptionSetup.getSubscriptionType() == SiriDataType.ESTIMATED_TIMETABLE) {
-            return "GetEstimatedTimetableRequest";
+            return "GetEstimatedTimetable";
         } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.VEHICLE_MONITORING) {
             return "GetVehicleMonitoring";
         } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.SITUATION_EXCHANGE) {
