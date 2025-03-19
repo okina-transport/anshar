@@ -16,15 +16,12 @@
 package no.rutebanken.anshar.routes.siri;
 
 import no.rutebanken.anshar.config.AnsharConfiguration;
-import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
-import no.rutebanken.anshar.routes.siri.helpers.SiriRequestFactory;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.MessageHistory;
-import org.apache.camel.component.http.HttpMethods;
 
 import java.util.List;
 
@@ -42,8 +39,6 @@ public class Siri20ToSiriRS20RequestResponse extends SiriSubscriptionRouteBuilde
     public void configure() throws Exception {
 
         long heartbeatIntervalMillis = subscriptionSetup.getHeartbeatInterval().toMillis();
-
-        SiriRequestFactory helper = new SiriRequestFactory(subscriptionSetup);
 
         String httpOptions = getTimeout();
 
@@ -67,14 +62,10 @@ public class Siri20ToSiriRS20RequestResponse extends SiriSubscriptionRouteBuilde
         from("direct:" + subscriptionSetup.getServiceRequestRouteName())
             .messageHistory()
             .process(p -> requestStarted())
-            .log(LoggingLevel.DEBUG,"Retrieving data " + subscriptionSetup.toString())
-            .bean(helper, "createSiriDataRequest")
-            .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
             .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
-            .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
-            .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
-            .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
-            .process(addCustomHeaders())
+            .setBody(constant(subscriptionSetup))
+            .to("direct:siri.20.to.siri.rs.20.request-response.preprocess")
+            .log(LoggingLevel.DEBUG,"Retrieving data " + subscriptionSetup.toString())
             .to("log:request:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
             .doTry()
                 .to(getCamelRequestUrl(subscriptionSetup, httpOptions))
