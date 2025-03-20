@@ -109,6 +109,10 @@ public class CustomSiriXml {
         return transformUsingXSLT(rawXml, "xsl/siri_raw_soap.xsl");
     }
 
+    public static String subscriptionRawToSoap(String rawXml) throws FileNotFoundException, TransformerException {
+        return transformUsingXSLT(rawXml, "xsl/siri_subscription_raw_soap.xsl");
+    }
+
     public static String transformUsingXSLT(String input, String xsltFile) throws FileNotFoundException, TransformerException {
         InputStream xsltStream = LivenessReadinessRoute.class.getClassLoader().getResourceAsStream(xsltFile);
         if (xsltStream == null) {
