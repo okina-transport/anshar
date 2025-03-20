@@ -462,7 +462,13 @@ public class SiriLiteRoute extends RestRouteBuilder {
                             .map(CustomStringUtils::revertChouetteIdTransformation)
                             .collect(Collectors.toSet());
 
-                    response = monitoredStopVisits.createServiceDelivery(requestorId, datasetId, etClientName, excludedIdList, maxSize, previewIntervalMillis, revertedMonitoringRefs);
+                    if (!revertedMonitoringRefs.isEmpty()) {
+                        response = monitoredStopVisits.createServiceDelivery(requestorId, datasetId, etClientName, excludedIdList, maxSize, previewIntervalMillis, revertedMonitoringRefs);
+                    }
+                    else {
+                        response = monitoredStopVisits.createServiceDelivery(requestorId, datasetId, etClientName, excludedIdList, maxSize, previewIntervalMillis, searchedStopIds);
+                    }
+
                     List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.STOP_MONITORING,
                             SiriHandler.getIdMappingPolicy(originalId, altId),
