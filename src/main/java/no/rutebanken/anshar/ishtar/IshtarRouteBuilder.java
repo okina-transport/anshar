@@ -33,19 +33,19 @@ public class IshtarRouteBuilder extends BaseRouteBuilder {
     private static final Predicate isDiscoverySubscription = Builder.body().method("discoverySubscription").isEqualTo(true);
     private static final Predicate isSubscription  = Builder.body().method("subscriptionMode").isEqualTo(SUBSCRIBE);
     private static final Predicate isLite  = Builder.body().method("subscriptionMode").in(LITE, LITE_XML);
-    private static final Predicate isFecthedDelivery = Builder.body().method("subscriptionMode").in(FETCHED_DELIVERY,
+    private static final Predicate isFetchedDelivery = Builder.body().method("subscriptionMode").in(FETCHED_DELIVERY,
             POLLING_FETCHED_DELIVERY);
     private static final Predicate isSubscriptionV1_4 = Builder.body().method("version").isEqualTo("1.4");
     private static final Predicate isSOAP = Builder.body().method("serviceType").isEqualTo("SOAP");
     private static final Predicate isREST = Builder.body().method("serviceType").isEqualTo("REST");
-    private static final Predicate isSiri20ToSiriWS14Subscription = and(isSubscriptionV1_4, isSOAP,  or(isSubscription, isFecthedDelivery));
-    private static final Predicate isSiri20ToSiriWS14RequestResponse = and(isSubscriptionV1_4, isSOAP,  not(isSubscription), not(isFecthedDelivery));
+    private static final Predicate isSiri20ToSiriWS14Subscription = and(isSubscriptionV1_4, isSOAP,  or(isSubscription, isFetchedDelivery));
+    private static final Predicate isSiri20ToSiriWS14RequestResponse = and(isSubscriptionV1_4, isSOAP,  not(isSubscription), not(isFetchedDelivery));
     private static final Predicate isSiri20ToSiriRS14Subscription = and(isSubscriptionV1_4, isREST);
-    private static final Predicate isSiri20ToSiriWS20Subscription = and(not(isSubscriptionV1_4), isSOAP, or(isSubscription, isFecthedDelivery));
-    private static final Predicate isSiri20ToSiriWS20RequestResponse = and(not(isSubscriptionV1_4), isSOAP, not(isSubscription), not(isFecthedDelivery));
-    private static final Predicate isSiri20ToSiriRS20Subscription = and(not(isSubscriptionV1_4), isREST, or(isSubscription, isFecthedDelivery));
-    private static final Predicate isSiri20ToSiriRS20RequestResponse = and(not(isSubscriptionV1_4), isREST, not(isSubscription), not(isFecthedDelivery));
-    private static final Predicate isSiriLiteToSiriRS20RequestResponse = and(not(isSubscriptionV1_4), not(isSubscription), not(isFecthedDelivery), isLite);
+    private static final Predicate isSiri20ToSiriWS20Subscription = and(not(isSubscriptionV1_4), isSOAP, or(isSubscription, isFetchedDelivery));
+    private static final Predicate isSiri20ToSiriWS20RequestResponse = and(not(isSubscriptionV1_4), isSOAP, not(isSubscription), not(isFetchedDelivery));
+    private static final Predicate isSiri20ToSiriRS20Subscription = and(not(isSubscriptionV1_4), isREST, or(isSubscription, isFetchedDelivery));
+    private static final Predicate isSiri20ToSiriRS20RequestResponse = and(not(isSubscriptionV1_4), isREST, not(isSubscription), not(isFetchedDelivery));
+    private static final Predicate isSiriLiteToSiriRS20RequestResponse = and(not(isSubscriptionV1_4), not(isSubscription), not(isFetchedDelivery), isLite);
 
 
     protected IshtarRouteBuilder(AnsharConfiguration config,
