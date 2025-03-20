@@ -63,7 +63,7 @@ public class Siri20ToSiriRS20RequestResponse extends SiriSubscriptionRouteBuilde
             .messageHistory()
             .process(p -> requestStarted())
             .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
-            .setBody(constant(subscriptionSetup))
+            .setBody(e -> subscriptionSetup)
             .to("direct:siri.20.to.siri.rs.20.request-response.preprocess")
             .log(LoggingLevel.DEBUG,"Retrieving data " + subscriptionSetup.toString())
             .to("log:request:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")

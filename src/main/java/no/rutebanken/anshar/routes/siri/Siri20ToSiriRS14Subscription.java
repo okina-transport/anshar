@@ -59,7 +59,7 @@ public class Siri20ToSiriRS14Subscription extends SiriSubscriptionRouteBuilder {
         from("direct:" + subscriptionSetup.getStartSubscriptionRouteName())
                 .log("Starting subscription " + subscriptionSetup.toString())
                 .setExchangePattern(ExchangePattern.InOut)
-                .setBody(constant(subscriptionSetup))
+                .setBody(e -> subscriptionSetup)
                 .to("direct:siri.20.to.siri.rs.14.subscription.preprocess")
                 .process(p -> {
                     logger.debug("Subscription request content:" + p.getIn().getBody());

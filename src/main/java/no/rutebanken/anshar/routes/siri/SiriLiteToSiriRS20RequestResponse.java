@@ -70,7 +70,7 @@ public class SiriLiteToSiriRS20RequestResponse extends SiriSubscriptionRouteBuil
                 //  .bean(helper, "createSiriDataRequest")
                 //.marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
                 .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
-                .setBody(constant(subscriptionSetup))
+                .setBody(e -> subscriptionSetup)
                 .to("direct:siri.lite.to.siri.rs.20.request-response.preprocess")
                 .to("log:request:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .doTry()

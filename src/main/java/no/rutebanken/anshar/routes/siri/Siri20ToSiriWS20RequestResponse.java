@@ -16,14 +16,12 @@
 package no.rutebanken.anshar.routes.siri;
 
 import no.rutebanken.anshar.config.AnsharConfiguration;
-import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
 import no.rutebanken.anshar.routes.siri.helpers.SiriRequestFactory;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.MessageHistory;
-import org.apache.camel.component.http.HttpMethods;
 
 import java.util.List;
 
@@ -71,7 +69,7 @@ public class Siri20ToSiriWS20RequestResponse extends SiriSubscriptionRouteBuilde
                 .process(p -> requestStarted())
                 .log("Retrieving data " + subscriptionSetup.toString())
                 .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
-                .setBody(constant(subscriptionSetup))
+                .setBody(e -> subscriptionSetup)
                 .to("direct:siri.20.to.siri.ws.20.request-response.preprocess")
              //   .to("log:request:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .doTry()

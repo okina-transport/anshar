@@ -69,7 +69,7 @@ public class Siri20ToSiriWS14RequestResponse extends SiriSubscriptionRouteBuilde
                 .messageHistory()
                 .process(p -> requestStarted())
                 .setExchangePattern(ExchangePattern.InOut)
-                .setBody(constant(subscriptionSetup))
+                .setBody(e -> subscriptionSetup)
                 .to("direct:siri.20.to.siri.ws.14.request-response.preprocess")
                 .log("Retrieving data " + subscriptionSetup.toString())
                 .to("log:request:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
