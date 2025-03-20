@@ -552,7 +552,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .process(addCustomHeaders)
                 .setHeader("SOAPAction", constant("Subscribe"))
                 .setHeader("operatorNamespace", simple("${body.operatorNamespace}")) // Need to make SOAP request with endpoint specific element namespace
-                .setHeader("soapEnvelopeNamespace", constant("${body.soapenvNamespace}")) // Need to make SOAP request with endpoint specific element namespace
+                .setHeader("soapEnvelopeNamespace", simple("${body.soapenvNamespace}")) // Need to make SOAP request with endpoint specific element namespace
                 .setHeader(ENDPOINT_URL_HEADER, header(SUBSCRIPTION_URL_HEADER)) // Need to make SOAP request with endpoint specific element namespace
                 .bean(SiriObjectFactory.class, "createSubscriptionRequest")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat(customNamespacePrefixMapper))
