@@ -7,6 +7,7 @@ import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
 import no.rutebanken.anshar.subscription.DiscoverySubscriptionCreator;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
+import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.component.http.HttpMethods;
@@ -102,8 +103,13 @@ public class DiscoverySubscriptionsRouteBuilder extends BaseRouteBuilder {
 
     public static Map<String, Object> createDiscoveryHeaders(DiscoverySubscription discoverySubscription) {
         Map<String, Object> headers = new HashMap<>();
-        headers.put(SOAP_ACTION_HEADER, convertDataTypeToSoapAction(discoverySubscription.getDiscoveryType()));
-        headers.put(ENDPOINT_URL_HEADER, discoverySubscription.getUrl());
+        if (discoverySubscription.getServiceType() == SubscriptionSetup.ServiceType.SOAP) {
+            headers.put(DISCOVERY_SUBSCRIPTION_SOAP_TRANSFORMATION, true);
+            headers.put(SOAP_ACTION_HEADER, convertDataTypeToSoapAction(discoverySubscription.getDiscoveryType()));
+            headers.put(ENDPOINT_URL_HEADER, discoverySubscription.getUrl());
+        } else {
+            headers.put(DISCOVERY_SUBSCRIPTION_SOAP_TRANSFORMATION, false);
+        }
         headers.put(SUBSCRIPTION_URL_HEADER, discoverySubscription.getUrl());
         headers.put("Content-type", "text/xml");
         if (MapUtils.isNotEmpty(discoverySubscription.getCustomHeaders())) {
