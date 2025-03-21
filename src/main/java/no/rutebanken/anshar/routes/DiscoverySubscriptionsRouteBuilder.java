@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static no.rutebanken.anshar.subscription.DiscoverySubscriptionCreator.*;
+import static no.rutebanken.anshar.subscription.SubscriptionConstants.DISCOVERY_SUBSCRIPTION_SERVICE_TYPE;
 import static no.rutebanken.anshar.subscription.SubscriptionConstants.DISCOVERY_SUBSCRIPTION_SOAP_TRANSFORMATION;
 
 @Component
@@ -110,6 +111,7 @@ public class DiscoverySubscriptionsRouteBuilder extends BaseRouteBuilder {
         } else {
             headers.put(DISCOVERY_SUBSCRIPTION_SOAP_TRANSFORMATION, false);
         }
+        headers.put(DISCOVERY_SUBSCRIPTION_SERVICE_TYPE, discoverySubscription.getDiscoveryType().name());
         headers.put(SUBSCRIPTION_URL_HEADER, discoverySubscription.getUrl());
         headers.put("Content-type", "text/xml");
         if (MapUtils.isNotEmpty(discoverySubscription.getCustomHeaders())) {
@@ -137,7 +139,8 @@ public class DiscoverySubscriptionsRouteBuilder extends BaseRouteBuilder {
 
         }
 
-        if (SiriDataType.VEHICLE_MONITORING.equals(discoverySubscription.getDiscoveryType())) {
+        if (SiriDataType.VEHICLE_MONITORING.equals(discoverySubscription.getDiscoveryType())
+                || SiriDataType.ESTIMATED_TIMETABLE.equals(discoverySubscription.getDiscoveryType())) {
             LinesDiscoveryRequestStructure lineRequest = new LinesDiscoveryRequestStructure();
             lineRequest.setMessageIdentifier(messageId);
             lineRequest.setRequestTimestamp(ZonedDateTime.now());
@@ -152,9 +155,10 @@ public class DiscoverySubscriptionsRouteBuilder extends BaseRouteBuilder {
             case STOP_MONITORING:
                 return "StopPointsDiscovery";
             case VEHICLE_MONITORING:
+            case ESTIMATED_TIMETABLE:
                 return "LinesDiscovery";
             default:
-                return "can't convert to soap action datatype:" + dataType;
+                return "can't convert to soap action datatype: " + dataType;
         }
     }
 

@@ -7,4 +7,5 @@ public class SubscriptionConstants {
     }
 
     public static final String DISCOVERY_SUBSCRIPTION_SOAP_TRANSFORMATION = "discoverySubscriptionSoapTransformation";
+    public static final String DISCOVERY_SUBSCRIPTION_SERVICE_TYPE = "discoverySubscriptionServiceType";
 }
