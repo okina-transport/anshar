@@ -271,6 +271,10 @@ public class Situations extends SiriRepository<PtSituationElement> {
     }
 
     public long getExpiration(PtSituationElement situationElement) {
+        if (situationElement.getProgress() == WorkflowStatusEnumeration.CLOSED) {
+            // Integration of closed disturbances: addition of a delay for transmission to Damona for SIC
+            return configuration.getSxGraceperiodMinutes() * 60 * 1000;
+        }
         List<HalfOpenTimestampOutputRangeStructure> availibilityRange = situationElement.getPublicationWindows();
         if (CollectionUtils.isEmpty(availibilityRange)) {
             availibilityRange = situationElement.getValidityPeriods();
@@ -335,7 +339,6 @@ public class Situations extends SiriRepository<PtSituationElement> {
                 updated = true;
             }
             timingTracer.mark("compareChecksum");
-
 
             if (keepByProgressStatus(situation) && updated) {
                 timingTracer.mark("keepByProgressStatus");
