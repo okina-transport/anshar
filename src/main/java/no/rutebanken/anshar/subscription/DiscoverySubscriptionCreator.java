@@ -21,6 +21,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static no.rutebanken.anshar.routes.DiscoverySubscriptionsRouteBuilder.SEND_DISCOVERY_REQUEST_ROUTE;
+import static no.rutebanken.anshar.subscription.SubscriptionConstants.DISCOVERY_SUBSCRIPTION_SERVICE_TYPE;
 
 
 @Service
@@ -56,11 +57,11 @@ public class DiscoverySubscriptionCreator {
         Siri incoming = SiriValueTransformer.parseXml(body);
         String originalUrl = (String) e.getIn().getHeader(ENDPOINT_URL_HEADER);
         String soapActionHeader = (String) e.getIn().getHeader(SOAP_ACTION_HEADER);
-        SiriDataType discoveryType = convertSoapActionToDataType(soapActionHeader);
+        SiriDataType discoveryType = SiriDataType.valueOf((String) e.getIn().getHeader(DISCOVERY_SUBSCRIPTION_SERVICE_TYPE));
         Optional<DiscoverySubscription> discoverySubsOpt = findDiscoveryParam(originalUrl, discoveryType);
 
         if (discoverySubsOpt.isEmpty()) {
-            logger.error("Unable to find subscription for url : {}, soapActionHeader:{}", originalUrl, soapActionHeader);
+            logger.error("Unable to find subscription for url : {}, soapActionHeader : {}", originalUrl, soapActionHeader);
             return;
         }
 
@@ -72,7 +73,7 @@ public class DiscoverySubscriptionCreator {
                     .map(pointStructure -> pointStructure.getStopPointRef().getValue())
                     .filter(StringUtils::isNotBlank)
                     .collect(Collectors.toList());
-        } else if (SiriDataType.VEHICLE_MONITORING.equals(discoveryType)) {
+        } else if (SiriDataType.VEHICLE_MONITORING.equals(discoveryType) || SiriDataType.ESTIMATED_TIMETABLE.equals(discoveryType)) {
             referenceList = incoming.getLinesDelivery().getAnnotatedLineReves().stream()
                     .map(annotatedLineRef -> annotatedLineRef.getLineRef().getValue())
                     .filter(StringUtils::isNotBlank)
@@ -122,7 +123,7 @@ public class DiscoverySubscriptionCreator {
     }
 
     private SubscriptionSetup createSubscriptionSetup(String value, DiscoverySubscription discoveryParams, int currentSubcrtiptionNb) {
-        String type = SiriDataType.STOP_MONITORING.equals(discoveryParams.getDiscoveryType()) ? "SM" : "VM";
+        String type = getSubscriptionTypePrefix(discoveryParams.getDiscoveryType());
         SubscriptionSetup newSubscription = new SubscriptionSetup();
         newSubscription.setDatasetId(discoveryParams.getDatasetId());
         newSubscription.setSubscriptionType(discoveryParams.getDiscoveryType());
@@ -149,9 +150,13 @@ public class DiscoverySubscriptionCreator {
             reqType = RequestType.GET_STOP_MONITORING;
             mappingAdapter = "okina_sm";
             stopMonitoringValue = value;
-        } else {
+        } else if (SiriDataType.VEHICLE_MONITORING.equals(discoveryParams.getDiscoveryType())) {
             reqType = RequestType.GET_VEHICLE_MONITORING;
             mappingAdapter = "okina_vm";
+            lineRefValue = value;
+        } else {
+            reqType = RequestType.GET_ESTIMATED_TIMETABLE;
+            mappingAdapter = "okina_et";
             lineRefValue = value;
         }
 
@@ -189,14 +194,15 @@ public class DiscoverySubscriptionCreator {
         return Optional.empty();
     }
 
-    private static SiriDataType convertSoapActionToDataType(String soapAction) {
-        if ("LinesDiscovery".equals(soapAction)) {
-            return SiriDataType.VEHICLE_MONITORING;
+    private String getSubscriptionTypePrefix(SiriDataType siriDataType) {
+        if (siriDataType.equals(SiriDataType.VEHICLE_MONITORING)) {
+            return "VM";
+        } else if (siriDataType.equals(SiriDataType.STOP_MONITORING)) {
+            return "SM";
         } else {
-            return SiriDataType.STOP_MONITORING;
+            return "ET";
         }
     }
-
 
     private void createSubscriptions(DiscoverySubscription discoverySubscription) {
 

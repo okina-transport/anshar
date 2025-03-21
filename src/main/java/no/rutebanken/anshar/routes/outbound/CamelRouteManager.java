@@ -61,7 +61,7 @@ public class CamelRouteManager {
     @Value("${anshar.default.max.threads.per.outbound.subscription:20}")
     private int maximumThreadsPerOutboundSubscription;
 
-    @Produce(uri = "direct:send.to.external.subscription")
+    @Produce("direct:send.to.external.subscription")
     protected ProducerTemplate siriSubscriptionProcessor;
 
     @Autowired
@@ -101,6 +101,7 @@ public class CamelRouteManager {
                 long startTime = System.currentTimeMillis();
                 MDC.put("camel.breadcrumbId", breadcrumbId);
                 if (!subscriptionManager.subscriptions.containsKey(subscriptionRequest.getSubscriptionId())) {
+                    logger.debug("Subscription has been terminated - ignoring data.");
                     // Short circuit if subscription has been terminated while waiting
                     return;
                 }

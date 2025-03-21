@@ -25,6 +25,7 @@ import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.routes.outbound.SiriHelper;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.xerces.dom.ElementNSImpl;
 import org.objenesis.strategy.StdInstantiatorStrategy;
@@ -135,7 +136,9 @@ public class SiriObjectFactory {
                     subscriptionSetup.getAddressFieldName(),
                     subscriptionSetup.getIncrementalUpdates(),
                     subscriptionSetup.getPreviewInterval(),
-                    subscriptionSetup.getChangeBeforeUpdates());
+                    subscriptionSetup.getChangeBeforeUpdates(),
+                    subscriptionSetup.getLineRefValues()
+                    );
         }
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
             request = createStopMonitoringSubscriptionRequest(
@@ -515,7 +518,7 @@ public class SiriObjectFactory {
     }
 
 
-    private static SubscriptionRequest createEstimatedTimetableSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap, String addressFieldName, Boolean incrementalUpdates, Duration previewInterval, Duration changeBeforeUpdates) {
+    private static SubscriptionRequest createEstimatedTimetableSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap, String addressFieldName, Boolean incrementalUpdates, Duration previewInterval, Duration changeBeforeUpdates, List<String> lineRefValues) {
         SubscriptionRequest request = createSubscriptionRequest(requestorRef, heartbeatInterval, address, addressFieldName);
 
         EstimatedTimetableSubscriptionStructure etSubRequest = new EstimatedTimetableSubscriptionStructure();
@@ -558,6 +561,20 @@ public class SiriObjectFactory {
                     }
                 }
             }
+        }
+
+        if (CollectionUtils.isNotEmpty(lineRefValues)) {
+            EstimatedTimetableRequestStructure.Lines lines = new EstimatedTimetableRequestStructure.Lines();
+            LineDirectionStructure lineDirection;
+            LineRef lineRef;
+            for (String lineRefValue : lineRefValues) {
+                lineDirection = new LineDirectionStructure();
+                lineRef = new LineRef();
+                lineRef.setValue(lineRefValue);
+                lineDirection.setLineRef(lineRef);
+                lines.getLineDirections().add(lineDirection);
+            }
+            etRequest.setLines(lines);
         }
 
 
