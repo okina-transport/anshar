@@ -213,6 +213,11 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .setExchangePattern(ExchangePattern.InOnly)
                 .convertBodyTo(String.class)
                 .process(p -> {
+                    String msg = p.getIn().getBody(String.class);
+                    String[] msgSplited = msg.split("Envelope");
+                    if (msgSplited.length > 3) {
+                        log.warn("Found multiple soap enveloppe in one msg. After seda");
+                    }
                     p.getMessage().setBody(p.getIn().getBody());
                     p.getMessage().setHeaders(p.getIn().getHeaders());
                     p.getMessage().setHeader(INTERNAL_SIRI_DATA_TYPE, getSubscriptionDataType(p));

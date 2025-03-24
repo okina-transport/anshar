@@ -2,6 +2,7 @@ package no.rutebanken.anshar.routes.messaging;
 
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
+import no.rutebanken.anshar.data.util.SOAPSplitProcessor;
 import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.gtfsrt.ingesters.EstimatedTimetableIngester;
 import no.rutebanken.anshar.gtfsrt.ingesters.SituationExchangeIngester;
@@ -57,6 +58,9 @@ public class MessagingRoute extends RestRouteBuilder {
     @Autowired
     private AdminRouteHelper adminRouteHelper;
 
+    @Autowired
+    private SOAPSplitProcessor soapSplitProcessor;
+
 
     @Value("${default.use.original.id:false}")
     private boolean defaultUseOriginalId;
@@ -69,6 +73,7 @@ public class MessagingRoute extends RestRouteBuilder {
 
     @Value("${anshar.internal.gtfsrt.stop.monitoring}")
     private String internalGtfsrtSMQueue;
+
 
     @Override
     // @formatter:off
@@ -311,14 +316,15 @@ public class MessagingRoute extends RestRouteBuilder {
                 .routeId("transform.siri")
                 .choice()
                 .when(header(TRANSFORM_SOAP).isEqualTo(simple(TRANSFORM_SOAP)))
-                .log(LoggingLevel.DEBUG, "Transforming SOAP")
-                .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Extract SOAP version and convert to raw SIRI
-                .endChoice()
+                    .log(LoggingLevel.DEBUG, "Transforming SOAP")
+                    .process(soapSplitProcessor)
+                    .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Extract SOAP version and convert to raw SIRI
+                    .endChoice()
                 .end()
                 .choice()
-                .when(header(TRANSFORM_VERSION).isEqualTo(simple(TRANSFORM_VERSION)))
-                .log("Transforming version")
-                .to("xslt-saxon:xsl/siri_14_20.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Convert from v1.4 to 2.0
+                    .when(header(TRANSFORM_VERSION).isEqualTo(simple(TRANSFORM_VERSION)))
+                    .log("Transforming version")
+                    .to("xslt-saxon:xsl/siri_14_20.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Convert from v1.4 to 2.0
                 .endChoice()
                 .end()
                 .to("direct:process.mapping")

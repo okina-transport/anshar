@@ -21,6 +21,7 @@ import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
+import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.apache.camel.CamelContext;
 import org.apache.camel.CamelContextAware;
@@ -43,6 +44,7 @@ import java.time.ZonedDateTime;
 import java.util.*;
 
 import static no.rutebanken.anshar.idTests.TestUtils.*;
+import static no.rutebanken.anshar.routes.HttpParameter.INTERNAL_SIRI_DATA_TYPE;
 import static no.rutebanken.anshar.routes.HttpParameter.SIRI_VERSION_HEADER_NAME;
 import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_SOAP;
 import static org.junit.Assert.assertNotNull;
@@ -76,6 +78,224 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest implements Camel
     }
 
     private CamelContext camelContext;
+
+
+    @Produce(uri = "direct:enqueue.message")
+    protected ProducerTemplate enqueueMessageProducer;
+
+
+    @Test
+    public void testSplitDoubleMessage() throws InterruptedException {
+
+        String msg = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+                "  <soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">\n" +
+                "    <soapenv:Header/>\n" +
+                "    <soapenv:Body>\n" +
+                "       <NotifyStopMonitoring xmlns=\"http://wsdl.siri.org.uk\">\n" +
+                "          <ServiceDeliveryInfo xmlns=\"\">\n" +
+                "             <ResponseTimestamp xmlns=\"http://www.siri.org.uk/siri\">2025-03-24T09:10:38.009402+01:00</ResponseTimestamp>\n" +
+                "             <ProducerRef xmlns=\"http://www.siri.org.uk/siri\">OKI</ProducerRef>\n" +
+                "          </ServiceDeliveryInfo>\n" +
+                "          <Notification xmlns=\"\">\n" +
+                "             <siri:StopMonitoringDelivery xmlns:siri=\"http://www.siri.org.uk/siri\" version=\"2.0\">\n" +
+                "                <siri:ResponseTimestamp>2025-03-24T09:10:38.009402+01:00</siri:ResponseTimestamp>\n" +
+                "                <siri:RequestMessageRef/>\n" +
+                "                <MonitoredStopVisit xmlns=\"http://www.siri.org.uk/siri\">\n" +
+                "                   <RecordedAtTime>2025-03-24T09:10:37.927094+01:00</RecordedAtTime>\n" +
+                "                   <ItemIdentifier>C3-MKSU2-R-2025-03-24T09:10+01:00[Europe/Paris]</ItemIdentifier>\n" +
+                "                   <MonitoringRef>FR_NAOLIB:Quay:2458</MonitoringRef>\n" +
+                "                   <MonitoredVehicleJourney>\n" +
+                "                      <LineRef>NAOLIBORG:Line:C3:LOC</LineRef>\n" +
+                "                      <FramedVehicleJourneyRef>\n" +
+                "                         <DataFrameRef>any</DataFrameRef>\n" +
+                "                         <DatedVehicleJourneyRef>NAOLIBORG:VehicleJourney:36558869-CR_24_25-HS25H1K1-L-Ma-Me-J-00:LOC</DatedVehicleJourneyRef>\n" +
+                "                      </FramedVehicleJourneyRef>\n" +
+                "                      <VehicleMode>bus</VehicleMode>\n" +
+                "                      <DirectionName>R</DirectionName>\n" +
+                "                      <DestinationRef>FR_NAOLIB:Quay:4</DestinationRef>\n" +
+                "                      <DestinationName xml:lang=\"FR\">Bd de Doulon</DestinationName>\n" +
+                "                      <Monitored>true</Monitored>\n" +
+                "                      <MonitoredCall>\n" +
+                "                         <StopPointRef>FR_NAOLIB:Quay:2458</StopPointRef>\n" +
+                "                         <Order>63</Order>\n" +
+                "                         <VehicleAtStop>true</VehicleAtStop>\n" +
+                "                         <AimedArrivalTime>2025-03-24T09:10:00+01:00</AimedArrivalTime>\n" +
+                "                         <ExpectedArrivalTime>2025-03-24T09:11:07+01:00</ExpectedArrivalTime>\n" +
+                "                         <ArrivalStatus>delayed</ArrivalStatus>\n" +
+                "                         <ArrivalProximityText>Départ proche</ArrivalProximityText>\n" +
+                "                         <AimedDepartureTime>2025-03-24T09:10:00+01:00</AimedDepartureTime>\n" +
+                "                         <ExpectedDepartureTime>2025-03-24T09:11:07+01:00</ExpectedDepartureTime>\n" +
+                "                      </MonitoredCall>\n" +
+                "                   </MonitoredVehicleJourney>\n" +
+                "                </MonitoredStopVisit>\n" +
+                "             </siri:StopMonitoringDelivery>\n" +
+                "          </Notification>\n" +
+                "          <SiriExtension xmlns=\"\"/>\n" +
+                "       </NotifyStopMonitoring>\n" +
+                "    </soapenv:Body>\n" +
+                "  </soapenv:Envelope>\n" +
+                "  <?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+                "  <soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">\n" +
+                "    <soapenv:Header/>\n" +
+                "    <soapenv:Body>\n" +
+                "       <NotifyStopMonitoring xmlns=\"http://wsdl.siri.org.uk\">\n" +
+                "          <ServiceDeliveryInfo xmlns=\"\">\n" +
+                "             <ResponseTimestamp xmlns=\"http://www.siri.org.uk/siri\">2025-03-24T09:10:38.009402+01:00</ResponseTimestamp>\n" +
+                "             <ProducerRef xmlns=\"http://www.siri.org.uk/siri\">OKI</ProducerRef>\n" +
+                "          </ServiceDeliveryInfo>\n" +
+                "          <Notification xmlns=\"\">\n" +
+                "             <siri:StopMonitoringDelivery xmlns:siri=\"http://www.siri.org.uk/siri\" version=\"2.0\">\n" +
+                "                <siri:ResponseTimestamp>2025-03-24T09:10:38.009402+01:00</siri:ResponseTimestamp>\n" +
+                "                <siri:RequestMessageRef/>\n" +
+                "                <MonitoredStopVisit xmlns=\"http://www.siri.org.uk/siri\">\n" +
+                "                   <RecordedAtTime>2025-03-24T09:10:37.927094+01:00</RecordedAtTime>\n" +
+                "                   <ItemIdentifier>C3-MKSU2-R-2025-03-24T09:10+01:00[Europe/Paris]</ItemIdentifier>\n" +
+                "                   <MonitoringRef>FR_NAOLIB:Quay:2459</MonitoringRef>\n" +
+                "                   <MonitoredVehicleJourney>\n" +
+                "                      <LineRef>NAOLIBORG:Line:C3:LOC</LineRef>\n" +
+                "                      <FramedVehicleJourneyRef>\n" +
+                "                         <DataFrameRef>any</DataFrameRef>\n" +
+                "                         <DatedVehicleJourneyRef>NAOLIBORG:VehicleJourney:36558869-CR_24_25-HS25H1K1-L-Ma-Me-J-00:LOC</DatedVehicleJourneyRef>\n" +
+                "                      </FramedVehicleJourneyRef>\n" +
+                "                      <VehicleMode>bus</VehicleMode>\n" +
+                "                      <DirectionName>R</DirectionName>\n" +
+                "                      <DestinationRef>FR_NAOLIB:Quay:4</DestinationRef>\n" +
+                "                      <DestinationName xml:lang=\"FR\">Bd de Doulon</DestinationName>\n" +
+                "                      <Monitored>true</Monitored>\n" +
+                "                      <MonitoredCall>\n" +
+                "                         <StopPointRef>FR_NAOLIB:Quay:2458</StopPointRef>\n" +
+                "                         <Order>63</Order>\n" +
+                "                         <VehicleAtStop>true</VehicleAtStop>\n" +
+                "                         <AimedArrivalTime>2025-03-24T09:10:00+01:00</AimedArrivalTime>\n" +
+                "                         <ExpectedArrivalTime>2025-03-24T09:11:07+01:00</ExpectedArrivalTime>\n" +
+                "                         <ArrivalStatus>delayed</ArrivalStatus>\n" +
+                "                         <ArrivalProximityText>Départ proche</ArrivalProximityText>\n" +
+                "                         <AimedDepartureTime>2025-03-24T09:10:00+01:00</AimedDepartureTime>\n" +
+                "                         <ExpectedDepartureTime>2025-03-24T09:11:07+01:00</ExpectedDepartureTime>\n" +
+                "                      </MonitoredCall>\n" +
+                "                   </MonitoredVehicleJourney>\n" +
+                "                </MonitoredStopVisit>\n" +
+                "             </siri:StopMonitoringDelivery>\n" +
+                "          </Notification>\n" +
+                "          <SiriExtension xmlns=\"\"/>\n" +
+                "       </NotifyStopMonitoring>\n" +
+                "    </soapenv:Body>\n" +
+                "  </soapenv:Envelope>";
+
+
+        Map<String, Object> headers = new HashMap<>();
+        headers.put(TRANSFORM_SOAP, TRANSFORM_SOAP);
+        headers.put(INTERNAL_SIRI_DATA_TYPE, SiriDataType.STOP_MONITORING);
+
+        enqueueMessageProducer.asyncRequestBodyAndHeaders(enqueueMessageProducer.getDefaultEndpoint(), msg, headers);
+    }
+
+
+    @Test
+    public void testSplitDoubleMessage2() throws InterruptedException {
+
+        String msg = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+                "  <soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">\n" +
+                "    <soapenv:Header/>\n" +
+                "    <soapenv:Body>\n" +
+                "       <NotifyStopMonitoring xmlns=\"http://wsdl.siri.org.uk\">\n" +
+                "          <ServiceDeliveryInfo xmlns=\"\">\n" +
+                "             <ResponseTimestamp xmlns=\"http://www.siri.org.uk/siri\">2025-03-24T09:10:38.009402+01:00</ResponseTimestamp>\n" +
+                "             <ProducerRef xmlns=\"http://www.siri.org.uk/siri\">OKI</ProducerRef>\n" +
+                "          </ServiceDeliveryInfo>\n" +
+                "          <Notification xmlns=\"\">\n" +
+                "             <siri:StopMonitoringDelivery xmlns:siri=\"http://www.siri.org.uk/siri\" version=\"2.0\">\n" +
+                "                <siri:ResponseTimestamp>2025-03-24T09:10:38.009402+01:00</siri:ResponseTimestamp>\n" +
+                "                <siri:RequestMessageRef/>\n" +
+                "                <MonitoredStopVisit xmlns=\"http://www.siri.org.uk/siri\">\n" +
+                "                   <RecordedAtTime>2025-03-24T09:10:37.927094+01:00</RecordedAtTime>\n" +
+                "                   <ItemIdentifier>C3-MKSU2-R-2025-03-24T09:10+01:00[Europe/Paris]</ItemIdentifier>\n" +
+                "                   <MonitoringRef>FR_NAOLIB:Quay:2458</MonitoringRef>\n" +
+                "                   <MonitoredVehicleJourney>\n" +
+                "                      <LineRef>NAOLIBORG:Line:C3:LOC</LineRef>\n" +
+                "                      <FramedVehicleJourneyRef>\n" +
+                "                         <DataFrameRef>any</DataFrameRef>\n" +
+                "                         <DatedVehicleJourneyRef>NAOLIBORG:VehicleJourney:36558869-CR_24_25-HS25H1K1-L-Ma-Me-J-00:LOC</DatedVehicleJourneyRef>\n" +
+                "                      </FramedVehicleJourneyRef>\n" +
+                "                      <VehicleMode>bus</VehicleMode>\n" +
+                "                      <DirectionName>R</DirectionName>\n" +
+                "                      <DestinationRef>FR_NAOLIB:Quay:4</DestinationRef>\n" +
+                "                      <DestinationName xml:lang=\"FR\">Bd de Doulon</DestinationName>\n" +
+                "                      <Monitored>true</Monitored>\n" +
+                "                      <MonitoredCall>\n" +
+                "                         <StopPointRef>FR_NAOLIB:Quay:2458</StopPointRef>\n" +
+                "                         <Order>63</Order>\n" +
+                "                         <VehicleAtStop>true</VehicleAtStop>\n" +
+                "                         <AimedArrivalTime>2025-03-24T09:10:00+01:00</AimedArrivalTime>\n" +
+                "                         <ExpectedArrivalTime>2025-03-24T09:11:07+01:00</ExpectedArrivalTime>\n" +
+                "                         <ArrivalStatus>delayed</ArrivalStatus>\n" +
+                "                         <ArrivalProximityText>Départ proche</ArrivalProximityText>\n" +
+                "                         <AimedDepartureTime>2025-03-24T09:10:00+01:00</AimedDepartureTime>\n" +
+                "                         <ExpectedDepartureTime>2025-03-24T09:11:07+01:00</ExpectedDepartureTime>\n" +
+                "                      </MonitoredCall>\n" +
+                "                   </MonitoredVehicleJourney>\n" +
+                "                </MonitoredStopVisit>\n" +
+                "             </siri:StopMonitoringDelivery>\n" +
+                "          </Notification>\n" +
+                "          <SiriExtension xmlns=\"\"/>\n" +
+                "       </NotifyStopMonitoring>\n" +
+                "    </soapenv:Body>\n" +
+                "  </soapenv:Envelope>\n" +
+                "  <?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+                "  <soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">\n" +
+                "    <soapenv:Header/>\n" +
+                "    <soapenv:Body>\n" +
+                "       <NotifyStopMonitoring xmlns=\"http://wsdl.siri.org.uk\">\n" +
+                "          <ServiceDeliveryInfo xmlns=\"\">\n" +
+                "             <ResponseTimestamp xmlns=\"http://www.siri.org.uk/siri\">2025-03-24T09:10:38.009402+01:00</ResponseTimestamp>\n" +
+                "             <ProducerRef xmlns=\"http://www.siri.org.uk/siri\">OKI</ProducerRef>\n" +
+                "          </ServiceDeliveryInfo>\n" +
+                "          <Notification xmlns=\"\">\n" +
+                "             <siri:StopMonitoringDelivery xmlns:siri=\"http://www.siri.org.uk/siri\" version=\"2.0\">\n" +
+                "                <siri:ResponseTimestamp>2025-03-24T09:10:38.009402+01:00</siri:ResponseTimestamp>\n" +
+                "                <siri:RequestMessageRef/>\n" +
+                "                <MonitoredStopVisit xmlns=\"http://www.siri.org.uk/siri\">\n" +
+                "                   <RecordedAtTime>2025-03-24T09:10:37.927094+01:00</RecordedAtTime>\n" +
+                "                   <ItemIdentifier>C3-MKSU2-R-2025-03-24T09:10+01:00[Europe/Paris]</ItemIdentifier>\n" +
+                "                   <MonitoringRef>FR_NAOLIB:Quay:2458</MonitoringRef>\n" +
+                "                   <MonitoredVehicleJourney>\n" +
+                "                      <LineRef>NAOLIBORG:Line:C3:LOC</LineRef>\n" +
+                "                      <FramedVehicleJourneyRef>\n" +
+                "                         <DataFrameRef>any</DataFrameRef>\n" +
+                "                         <DatedVehicleJourneyRef>NAOLIBORG:VehicleJourney:36558869-CR_24_25-HS25H1K1-L-Ma-Me-J-00:LOC</DatedVehicleJourneyRef>\n" +
+                "                      </FramedVehicleJourneyRef>\n" +
+                "                      <VehicleMode>bus</VehicleMode>\n" +
+                "                      <DirectionName>R</DirectionName>\n" +
+                "                      <DestinationRef>FR_NAOLIB:Quay:4</DestinationRef>\n" +
+                "                      <DestinationName xml:lang=\"FR\">Bd de Doulon</DestinationName>\n" +
+                "                      <Monitored>true</Monitored>\n" +
+                "                      <MonitoredCall>\n" +
+                "                         <StopPointRef>FR_NAOLIB:Quay:2458</StopPointRef>\n" +
+                "                         <Order>63</Order>\n" +
+                "                         <VehicleAtStop>true</VehicleAtStop>\n" +
+                "                         <AimedArrivalTime>2025-03-24T09:10:00+01:00</AimedArrivalTime>\n" +
+                "                         <ExpectedArrivalTime>2025-03-24T09:11:07+01:00</ExpectedArrivalTime>\n" +
+                "                         <ArrivalStatus>delayed</ArrivalStatus>\n" +
+                "                         <ArrivalProximityText>Départ proche</ArrivalProximityText>\n" +
+                "                         <AimedDepartureTime>2025-03-24T09:10:00+01:00</AimedDepartureTime>\n" +
+                "                         <ExpectedDepartureTime>2025-03-24T09:11:07+01:00</ExpectedDepartureTime>\n" +
+                "                      </MonitoredCall>\n" +
+                "                   </MonitoredVehicleJourney>\n" +
+                "                </MonitoredStopVisit>\n" +
+                "             </siri:StopMonitoringDelivery>\n" +
+                "          </Notification>\n" +
+                "          <SiriExtension xmlns=\"\"/>\n" +
+                "       </NotifyStopMonitoring>\n" +
+                "    </soapenv:Body>\n" +
+                "  </soapenv:Envelope>";
+
+
+        Map<String, Object> headers = new HashMap<>();
+        headers.put(TRANSFORM_SOAP, TRANSFORM_SOAP);
+        headers.put(INTERNAL_SIRI_DATA_TYPE, SiriDataType.STOP_MONITORING);
+
+        enqueueMessageProducer.asyncRequestBodyAndHeaders(enqueueMessageProducer.getDefaultEndpoint(), msg, headers);
+    }
 
     @Test
     public void testEmptyBodyCheck() throws InterruptedException {
