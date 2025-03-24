@@ -70,7 +70,7 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
 
     @Override
     public int getSize() {
-        return generalMessages.keySet().size();
+        return generalMessages.size();
     }
 
     @Override
@@ -180,7 +180,7 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
 
     @Override
     public GeneralMessage add(String datasetId, GeneralMessage generalMessage) {
-        Collection<GeneralMessage> added = addAll(datasetId, Arrays.asList(generalMessage));
+        Collection<GeneralMessage> added = addAll(datasetId, Collections.singletonList(generalMessage));
         return added.size() > 0 ? added.iterator().next() : null;
     }
 
@@ -188,11 +188,11 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
     public long getExpiration(GeneralMessage s) {
         ZonedDateTime validUntil = s.getValidUntilTime();
         return validUntil == null ? ZonedDateTime.now().until(ZonedDateTime.now().plusYears(10), ChronoUnit.MILLIS) :
-                ZonedDateTime.now().until(validUntil.plus(configuration.getSxGraceperiodMinutes(), ChronoUnit.MINUTES), ChronoUnit.MILLIS);
+                ZonedDateTime.now().until(validUntil.plusMinutes(configuration.getSxGraceperiodMinutes()), ChronoUnit.MILLIS);
     }
 
     @Override
-    void clearAllByDatasetId(String datasetId) {
+    public void clearAllByDatasetId(String datasetId) {
         Set<SiriObjectStorageKey> idsToRemove = generalMessages.keySet(createCodespacePredicate(datasetId));
         logger.warn("Removing all data ({} ids) for {}", idsToRemove.size(), datasetId);
 

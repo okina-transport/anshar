@@ -62,7 +62,7 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
 
     @Override
     public int getSize() {
-        return facilityMonitoring.keySet().size();
+        return facilityMonitoring.size();
     }
 
     @Override
@@ -183,7 +183,7 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
     }
 
     @Override
-    void clearAllByDatasetId(String datasetId) {
+    public void clearAllByDatasetId(String datasetId) {
         Set<SiriObjectStorageKey> idsToRemove = facilityMonitoring.keySet(createCodespacePredicate(datasetId));
         logger.warn("Removing all data ({} ids) for {}", idsToRemove.size(), datasetId);
 

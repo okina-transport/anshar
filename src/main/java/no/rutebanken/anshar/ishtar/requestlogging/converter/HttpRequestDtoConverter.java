@@ -1,8 +1,8 @@
-package no.rutebanken.anshar.ishtar.requestLogging.converter;
+package no.rutebanken.anshar.ishtar.requestlogging.converter;
 
 import no.rutebanken.anshar.ishtar.model.GtfsRTApiDto;
 import no.rutebanken.anshar.ishtar.model.SiriApiDto;
-import no.rutebanken.anshar.ishtar.requestLogging.model.HttpRequestDto;
+import no.rutebanken.anshar.ishtar.requestlogging.model.HttpRequestDto;
 import org.apache.camel.Converter;
 import org.apache.camel.TypeConverters;
 import org.apache.commons.lang.StringUtils;

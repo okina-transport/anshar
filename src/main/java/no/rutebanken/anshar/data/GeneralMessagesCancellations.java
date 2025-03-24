@@ -65,7 +65,7 @@ public class GeneralMessagesCancellations extends SiriRepository<GeneralMessageC
 
     @Override
     public int getSize() {
-        return generalMessagesCancellations.keySet().size();
+        return generalMessagesCancellations.size();
     }
 
     @Override
@@ -165,7 +165,7 @@ public class GeneralMessagesCancellations extends SiriRepository<GeneralMessageC
 
     @Override
     public GeneralMessageCancellation add(String datasetId, GeneralMessageCancellation generalMessage) {
-        Collection<GeneralMessageCancellation> added = addAll(datasetId, Arrays.asList(generalMessage));
+        Collection<GeneralMessageCancellation> added = addAll(datasetId, Collections.singletonList(generalMessage));
         return added.size() > 0 ? added.iterator().next() : null;
     }
 
@@ -176,7 +176,7 @@ public class GeneralMessagesCancellations extends SiriRepository<GeneralMessageC
 
 
     @Override
-    void clearAllByDatasetId(String datasetId) {
+    public void clearAllByDatasetId(String datasetId) {
         Set<SiriObjectStorageKey> idsToRemove = generalMessagesCancellations.keySet(createCodespacePredicate(datasetId));
         logger.warn("Removing all data ({} ids) for {}", idsToRemove.size(), datasetId);
 

@@ -1,4 +1,4 @@
-package no.rutebanken.anshar.ishtar.requestLogging.model;
+package no.rutebanken.anshar.ishtar.requestlogging.model;
 
 import lombok.Data;
 

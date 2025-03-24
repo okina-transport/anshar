@@ -71,6 +71,7 @@ public class AdministrationRoute extends RestRouteBuilder {
     public static final String ISHTAR_GET_GTFS_RT_API_REQUEST_ROUTE = "direct:ishtar.get.gtfs-rt-api.request";
     public static final String ISHTAR_GET_SIRI_API_REQUEST_ROUTE = "direct:ishtar.get.siri-api.request";
     public static final String ISHTAR_GET_SUBSCRIPTION_REQUEST_ROUTE = "direct:ishtar.get.subscription.request";
+    public static final String ISHTAR_CLEAR_CACHE_BY_DATASET_ID = "direct:ishtar.clear.cache.by.datasetId";
 
     @Autowired
     private ExtendedHazelcastService extendedHazelcastService;
@@ -135,6 +136,7 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .post("/gtfs-rt-request").produces(APPLICATION_JSON).to(ISHTAR_GET_GTFS_RT_API_REQUEST_ROUTE)
                 .post("/siri-request").produces(APPLICATION_JSON).to(ISHTAR_GET_SIRI_API_REQUEST_ROUTE)
                 .post("/subscription-request").produces(APPLICATION_JSON).to(ISHTAR_GET_SUBSCRIPTION_REQUEST_ROUTE)
+                .delete("/dataset/{datasetId}").to(ISHTAR_CLEAR_CACHE_BY_DATASET_ID)
         ;
 
         if (autoLockVerificationEnabled) {

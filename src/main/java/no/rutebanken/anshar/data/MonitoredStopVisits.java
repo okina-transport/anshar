@@ -27,8 +27,6 @@ import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.util.StopMonitoringUtils;
-import org.apache.camel.Produce;
-import org.apache.camel.ProducerTemplate;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.quartz.utils.counter.Counter;
@@ -90,11 +88,6 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
     @Autowired
     StopPlaceUpdaterService stopPlaceUpdaterService;
-
-    @Produce(uri = "direct:send.to.expired.data.queue")
-    protected ProducerTemplate expiredDataProcessor;
-
-    int negativeExpirationCount = 0;
 
     private final Set<String> localSMDatasetList = new HashSet<>();
 
@@ -160,7 +153,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     }
 
     @Override
-    void clearAllByDatasetId(String datasetId) {
+    public void clearAllByDatasetId(String datasetId) {
         //Set<SiriObjectStorageKey> idsToRemove = monitoredStopVisits.keySet(createCodespacePredicate(datasetId));
 
         Set<SiriObjectStorageKey> keysToRemove = hazelcastService.getMonitoredStopVisitsForDataset(datasetId).keySet();

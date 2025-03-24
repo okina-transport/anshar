@@ -2,10 +2,11 @@ package no.rutebanken.anshar.ishtar;
 
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.DiscoverySubscription;
+import no.rutebanken.anshar.ishtar.clearcache.ClearCacheProcessor;
 import no.rutebanken.anshar.ishtar.model.GtfsRTApiDto;
 import no.rutebanken.anshar.ishtar.model.SiriApiDto;
 import no.rutebanken.anshar.ishtar.model.SubscriptionDto;
-import no.rutebanken.anshar.ishtar.requestLogging.model.HttpRequestDto;
+import no.rutebanken.anshar.ishtar.requestlogging.model.HttpRequestDto;
 import no.rutebanken.anshar.ishtar.synchronize.IshtarSynchronizeProcessor;
 import no.rutebanken.anshar.routes.BaseRouteBuilder;
 import no.rutebanken.anshar.subscription.SubscriptionInitializer;
@@ -28,6 +29,7 @@ import static org.apache.camel.support.builder.PredicateBuilder.*;
 public class IshtarRouteBuilder extends BaseRouteBuilder {
 
     private final IshtarSynchronizeProcessor ishtarSynchronizeProcessor;
+    private final ClearCacheProcessor clearCacheProcessor;
     private final int ishtarSynchronizeIntervalMs;
 
     private static final Predicate isDiscoverySubscription = Builder.body().method("discoverySubscription").isEqualTo(true);
@@ -51,9 +53,12 @@ public class IshtarRouteBuilder extends BaseRouteBuilder {
     protected IshtarRouteBuilder(AnsharConfiguration config,
                                  SubscriptionManager subscriptionManager,
                                  IshtarSynchronizeProcessor ishtarSynchronizeProcessor,
-                                 @Value("${ishtar.interval.millis:180000}") int ishtarSynchronizeIntervalMs) {
+                                 ClearCacheProcessor clearCacheProcessor,
+                                 @Value("${ishtar.interval.millis:180000}") int ishtarSynchronizeIntervalMs)
+    {
         super(config, subscriptionManager);
         this.ishtarSynchronizeProcessor = ishtarSynchronizeProcessor;
+        this.clearCacheProcessor = clearCacheProcessor;
         this.ishtarSynchronizeIntervalMs = ishtarSynchronizeIntervalMs;
     }
 
@@ -139,6 +144,11 @@ public class IshtarRouteBuilder extends BaseRouteBuilder {
                 e.getIn().setBody(out);
             })
             .marshal().json()
+            .end();
+
+        from(ISHTAR_CLEAR_CACHE_BY_DATASET_ID)
+            .routeId(ISHTAR_CLEAR_CACHE_BY_DATASET_ID)
+            .process(clearCacheProcessor)
             .end();
 
     }
