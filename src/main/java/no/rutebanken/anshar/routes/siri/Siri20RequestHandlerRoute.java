@@ -193,6 +193,13 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .removeHeaders("<Siri*") //Since Camel 3, entire body is also included as header
                 .choice()
                 .when(e -> subscriptionExistsAndIsActive(e))
+                    .convertBodyTo(String.class)
+                    .process(p -> {
+                        String msg = p.getIn().getBody(String.class);
+                        String[] msgSplited = msg.split("Envelope");
+                        if (msgSplited.length > 3) {
+                            log.warn("Found multiple soap enveloppe in one msg. Before seda");
+                        }})
                     //Valid subscription
                     .to("seda:async.process.request?size=100000&waitForTaskToComplete=Never")
                     //.wireTap("direct:async.process.request")
@@ -221,6 +228,12 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                     p.getMessage().setBody(p.getIn().getBody());
                     p.getMessage().setHeaders(p.getIn().getHeaders());
                     p.getMessage().setHeader(INTERNAL_SIRI_DATA_TYPE, getSubscriptionDataType(p));
+
+                    String msgFromGetMsg = p.getMessage().getBody(String.class);
+                    String[] msgSplited2 = msgFromGetMsg.split("Envelope");
+                    if (msgSplited2.length > 3) {
+                        log.warn("Found multiple soap enveloppe in one msg. After getMessage");
+                    }
                 })
                 .to("direct:enqueue.message")
                 .routeId("async.process.incoming")
