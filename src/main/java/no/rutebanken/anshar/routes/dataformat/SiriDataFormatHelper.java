@@ -77,6 +77,7 @@ public class SiriDataFormatHelper {
 
         JaxbDataFormat siriJaxb = new JaxbDataFormat(contextPath);
         siriJaxb.setNamespacePrefix(prefixMap);
+        siriJaxb.setContentTypeHeader(false);
 
         dataformats.put(prefix, siriJaxb);
         return siriJaxb;
@@ -123,6 +124,7 @@ public class SiriDataFormatHelper {
 
         ThreadSafeDataFormat siriJaxb = new ThreadSafeDataFormat(contextPath);
         siriJaxb.setNamespacePrefix(prefixMap);
+        siriJaxb.setContentTypeHeader(false);
 
         threadSafeDataformats.put(prefix, siriJaxb);
         return siriJaxb;
