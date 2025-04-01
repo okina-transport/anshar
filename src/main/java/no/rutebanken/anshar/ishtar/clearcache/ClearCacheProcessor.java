@@ -42,7 +42,7 @@ public class ClearCacheProcessor implements Processor {
 
     @Override
     public void process(Exchange exchange) throws Exception {
-        if (!config.isCurrentInstanceLeader()) {
+        if (!config.processAdmin()) {
             log.info("Current instance is not leader, abort processing");
             return;
         }
@@ -54,25 +54,13 @@ public class ClearCacheProcessor implements Processor {
             return;
         }
         log.info("Start clearing cache for dataset {}", datasetId);
-        if (config.processET()) {
-            et.clearAllByDatasetId(datasetId);
-        }
-        if (config.processFM()) {
-            fm.clearAllByDatasetId(datasetId);
-        }
-        if (config.processGM()) {
-            gm.clearAllByDatasetId(datasetId);
-            gmc.clearAllByDatasetId(datasetId);
-        }
-        if(config.processSM()) {
-            sm.clearAllByDatasetId(datasetId);
-        }
-        if (config.processSX()) {
-            sx.clearAllByDatasetId(datasetId);
-        }
-        if (config.processVM()) {
-            vm.clearAllByDatasetId(datasetId);
-        }
+        et.clearAllByDatasetId(datasetId);
+        fm.clearAllByDatasetId(datasetId);
+        gm.clearAllByDatasetId(datasetId);
+        gmc.clearAllByDatasetId(datasetId);
+        sm.clearAllByDatasetId(datasetId);
+        sx.clearAllByDatasetId(datasetId);
+        vm.clearAllByDatasetId(datasetId);
         try {
             this.kisharClient.clearCacheByDatasetId(datasetId);
         } catch (Exception e) {

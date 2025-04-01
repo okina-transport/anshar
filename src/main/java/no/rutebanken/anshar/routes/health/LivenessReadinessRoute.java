@@ -429,7 +429,7 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
     }
 
 
-    private List<IncomingFlowStatus> getGtfsRTStatus(List<GtfsRTApi> gtfsRtApis) {
+    private List<IncomingFlowStatus> getGtfsRTStatus(ISet<GtfsRTApi> gtfsRtApis) {
         List<IncomingFlowStatus> result = new ArrayList<>();
         for (GtfsRTApi gtfsRtApi : gtfsRtApis) {
             IncomingFlowStatus incomingFlowStatus = new IncomingFlowStatus();

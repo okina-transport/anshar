@@ -1,6 +1,7 @@
 package no.rutebanken.anshar.routes.siri;
 
 import no.rutebanken.anshar.api.FlowStatus;
+import com.hazelcast.collection.ISet;
 import no.rutebanken.anshar.api.SiriApi;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.DiscoveryCache;
@@ -88,7 +89,7 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
 
 
     private void createSubscriptionsFromApis() throws IOException, SAXException, ParserConfigurationException, XMLStreamException {
-        List<SiriApi> siriApis = subscriptionConfig.getSiriApis();
+        ISet<SiriApi> siriApis = subscriptionConfig.getSiriApis();
 
         long startTime = DateTime.now().toInstant().getMillis();
 

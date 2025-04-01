@@ -16,7 +16,9 @@
 package no.rutebanken.anshar.subscription;
 
 
+import com.hazelcast.collection.ISet;
 import io.micrometer.core.instrument.util.StringUtils;
+import lombok.Getter;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.api.SiriApi;
 import no.rutebanken.anshar.config.DiscoverySubscription;
@@ -36,7 +38,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 
 import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_SOAP;
@@ -47,55 +48,52 @@ import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFO
 public class SubscriptionConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(SubscriptionConfig.class);
-    private final List<IdProcessingParameters> idProcessingParameters = new CopyOnWriteArrayList<>();
+
     @Produce(AdministrationRoute.TERMINATE_SUBSCRIPTION_ROUTE)
     protected ProducerTemplate terminateSubscriptionRoute;
+
     @Value("${anshar.subscriptions.datatypes.filter:}")
     List<SiriDataType> dataTypes;
-    private List<SubscriptionSetup> subscriptions = new CopyOnWriteArrayList();
-    private List<GtfsRTApi> gtfsRTApis = new CopyOnWriteArrayList<>();
-    private List<SiriApi> siriApis = new CopyOnWriteArrayList<>();
-    private List<DiscoverySubscription> discoverySubscriptions = new ArrayList<>();
 
-    public List<SubscriptionSetup> getSubscriptions() {
-        if (dataTypes != null && !dataTypes.isEmpty()) {
-            return subscriptions.stream()
-                    .filter(sub -> dataTypes.contains(sub.getSubscriptionType()))
-                    .collect(Collectors.toList());
-        }
-        return subscriptions;
-    }
+    @Getter
+    private final ISet<IdProcessingParameters> idProcessingParameters;
 
-    public void setSubscriptions(List<SubscriptionSetup> subscriptions) {
-        this.subscriptions = subscriptions;
-    }
+    @Getter
+    private final ISet<GtfsRTApi> gtfsRTApis;
 
-    public List<GtfsRTApi> getGtfsRTApis() {
-        return gtfsRTApis;
-    }
+    private final ISet<SubscriptionSetup> subscriptions;
 
-    public void setGtfsRTApis(List<GtfsRTApi> gtfsRTApis) {
+    @Getter
+    private final ISet<SiriApi> siriApis;
+
+    @Getter
+    private final ISet<DiscoverySubscription> discoverySubscriptions;
+
+    public SubscriptionConfig(ISet<IdProcessingParameters> idProcessingParameters,
+                              ISet<GtfsRTApi> gtfsRTApis,
+                              ISet<SubscriptionSetup> subscriptions,
+                              ISet<SiriApi> siriApis,
+                              ISet<DiscoverySubscription> discoverySubscriptions) {
+        this.idProcessingParameters = idProcessingParameters;
         this.gtfsRTApis = gtfsRTApis;
-    }
-
-    public List<SiriApi> getSiriApis() {
-        return siriApis;
-    }
-
-    public void setSiriApis(List<SiriApi> siriApis) {
+        this.subscriptions = subscriptions;
         this.siriApis = siriApis;
-    }
-
-    public List<DiscoverySubscription> getDiscoverySubscriptions() {
-        return discoverySubscriptions;
-    }
-
-    public void setDiscoverySubscriptions(List<DiscoverySubscription> discoverySubscriptions) {
         this.discoverySubscriptions = discoverySubscriptions;
     }
 
-    public List<IdProcessingParameters> getIdProcessingParameters() {
-        return idProcessingParameters;
+    public ISet<SubscriptionSetup> getSubscriptions() {
+        if (dataTypes != null && !dataTypes.isEmpty()) {
+            Set<SubscriptionSetup> subscriptionToFilter = new HashSet<>();
+            subscriptions.forEach(sub -> {
+                if (!dataTypes.contains(sub.getSubscriptionType())) {
+                    subscriptionToFilter.add(sub);
+                }
+            });
+            subscriptionToFilter.forEach(subscriptions::remove);
+            return subscriptions;
+
+        }
+        return subscriptions;
     }
 
     public void mergeIdProcessingParams(List<IdProcessingParameters> incomingParams) {
@@ -104,10 +102,12 @@ public class SubscriptionConfig {
             if (existingOpt.isPresent()) {
                 //idProc is already existing in the list. Updating
                 IdProcessingParameters existingIdProc = existingOpt.get();
+                idProcessingParameters.remove(existingIdProc);
                 existingIdProc.setInputPrefixToRemove(incomingParam.getInputPrefixToRemove());
                 existingIdProc.setInputSuffixToRemove(incomingParam.getInputSuffixToRemove());
                 existingIdProc.setOutputPrefixToAdd(incomingParam.getOutputPrefixToAdd());
                 existingIdProc.setOutputSuffixToAdd(incomingParam.getOutputSuffixToAdd());
+                idProcessingParameters.add(existingIdProc);
             } else {
                 idProcessingParameters.add(incomingParam);
             }
@@ -130,8 +130,10 @@ public class SubscriptionConfig {
             Optional<SiriApi> existingOpt = getExistingSiriAPI(incomingAPI);
             if (existingOpt.isPresent()) {
                 //API is already existing in the list. Updatig the status
+                siriApis.remove(existingOpt.get());
                 existingOpt.get().setActive(incomingAPI.getActive());
                 existingOpt.get().setUrl(incomingAPI.getUrl());
+                siriApis.add(existingOpt.get());
             } else {
                 siriApis.add(incomingAPI);
             }
@@ -156,6 +158,8 @@ public class SubscriptionConfig {
             Optional<GtfsRTApi> existingOpt = getExistingGtfsAPI(incomingAPI);
             if (existingOpt.isPresent()) {
                 //API is already existing in the list. Updatig the status
+                GtfsRTApi gtfsRTApi = existingOpt.get();
+                gtfsRTApis.remove(gtfsRTApi);
                 existingOpt.get().setUrl(incomingAPI.getUrl());
                 existingOpt.get().setActive(incomingAPI.getActive());
                 existingOpt.get().setRouteIdList(incomingAPI.getRouteIdList());
@@ -163,10 +167,11 @@ public class SubscriptionConfig {
                 existingOpt.get().setCloseMissingAlerts(incomingAPI.getCloseMissingAlerts());
                 existingOpt.get().setGenerateActivePeriod(incomingAPI.getGenerateActivePeriod());
                 existingOpt.get().setPublishedLineNameMapping(incomingAPI.getPublishedLineNameMapping());
+                gtfsRTApis.add(gtfsRTApi);
                 logger.info("gtfsrt already existing.updating. " + incomingAPI.getDatasetId() + "-" + incomingAPI.getUrl());
             } else {
                 gtfsRTApis.add(incomingAPI);
-                logger.info("new gtfsrt adding. " + incomingAPI.getDatasetId() + "-" + incomingAPI.getUrl());
+                logger.info("new gtfsrt adding. {} - {}", incomingAPI.getDatasetId(), incomingAPI.getUrl());
             }
         }
     }
@@ -178,6 +183,7 @@ public class SubscriptionConfig {
             Optional<SubscriptionSetup> existingSubscriptionOpt = getExistingSubscription(incomingSubscription);
             if (existingSubscriptionOpt.isPresent()) {
                 SubscriptionSetup existingSubscription = existingSubscriptionOpt.get();
+                subscriptions.remove(existingSubscription);
                 existingSubscription.setDatasetId(existingSubscription.getDatasetId());
                 existingSubscription.setInternalId(existingSubscription.getInternalId());
                 existingSubscription.setActive(incomingSubscription.isActive());
@@ -210,6 +216,7 @@ public class SubscriptionConfig {
                 existingSubscription.setVehicleMonitoringRefValue(incomingSubscription.getVehicleMonitoringRefValue());
                 existingSubscription.setUpdateIntervalSeconds(incomingSubscription.getUpdateInterval().toSeconds());
                 existingSubscription.setPreviewIntervalSeconds(incomingSubscription.getPreviewInterval().toSeconds());
+                subscriptions.add(existingSubscription);
             } else {
                 subscriptions.add(incomingSubscription);
             }
@@ -258,12 +265,12 @@ public class SubscriptionConfig {
 
     public void mergeDiscoverySubscriptions(List<DiscoverySubscription> incomingSubscriptions) {
         for (DiscoverySubscription incomingSubscription : incomingSubscriptions) {
-
             Optional<DiscoverySubscription> existingSubscriptionOpt = getExistingDiscoverySubscription(incomingSubscription);
             if (existingSubscriptionOpt.isEmpty()) {
                 discoverySubscriptions.add(incomingSubscription);
             } else {
                 DiscoverySubscription existingSubscription = existingSubscriptionOpt.get();
+                discoverySubscriptions.remove(existingSubscription);
                 existingSubscription.setDatasetId(incomingSubscription.getDatasetId());
                 existingSubscription.setUrl(incomingSubscription.getUrl());
                 existingSubscription.setDiscoveryType(incomingSubscription.getDiscoveryType());
@@ -277,6 +284,7 @@ public class SubscriptionConfig {
                 existingSubscription.setDurationOfSubscriptionHours(incomingSubscription.getDurationOfSubscriptionHours());
                 existingSubscription.setVendorBaseName(incomingSubscription.getVendorBaseName());
                 existingSubscription.setSubscriptionIdBase(incomingSubscription.getSubscriptionIdBase());
+                discoverySubscriptions.add(existingSubscription);
             }
         }
     }
@@ -374,7 +382,7 @@ public class SubscriptionConfig {
     }
 
     public Map<ObjectType, Optional<IdProcessingParameters>> buildIdProcessingParamsFromDataset(String datasetId) {
-        Map<ObjectType, Optional<IdProcessingParameters>> resultmap = new HashMap<>();
+        Map<ObjectType, Optional<IdProcessingParameters>> resultmap = new EnumMap<>(ObjectType.class);
         resultmap.put(ObjectType.STOP, getIdParametersForDataset(datasetId, ObjectType.STOP));
         resultmap.put(ObjectType.LINE, getIdParametersForDataset(datasetId, ObjectType.LINE));
         resultmap.put(ObjectType.VEHICLE_JOURNEY, getIdParametersForDataset(datasetId, ObjectType.VEHICLE_JOURNEY));

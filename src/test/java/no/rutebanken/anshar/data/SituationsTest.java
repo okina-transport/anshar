@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.data;
 
+import com.hazelcast.collection.ISet;
 import jakarta.xml.bind.UnmarshalException;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.config.AnsharConfiguration;
@@ -52,7 +53,7 @@ public class SituationsTest extends SpringBootBaseTest {
     private Situations situations;
 
     @Autowired
-    private SubscriptionConfig subscriptionConfig;
+    private ISet<GtfsRTApi> gtfsRTApiSet;
 
     @Autowired
     private AnsharConfiguration configuration;
@@ -67,7 +68,7 @@ public class SituationsTest extends SpringBootBaseTest {
     private SiriHandler handler;
 
     @BeforeEach
-    public void init() {
+    void init() {
         situations.clearAll();
         situations.setClock(Clock.systemUTC());
     }
@@ -95,7 +96,7 @@ public class SituationsTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testClosedSituation() throws InterruptedException {
+    void testClosedSituation() throws InterruptedException {
         configuration.setSxGraceperiodMinutes(1);
 
         ZonedDateTime startTime = ZonedDateTime.now().minusDays(1);
@@ -171,7 +172,7 @@ public class SituationsTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testRemoveSituation() throws InterruptedException {
+    void testRemoveSituation() throws InterruptedException {
 
         configuration.setSxGraceperiodMinutes(0);
         int initialSize = situations.getAll().size();
@@ -189,7 +190,7 @@ public class SituationsTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testDraftSituationIgnored() {
+    void testDraftSituationIgnored() {
         int previousSize = situations.getAll().size();
         PtSituationElement element = TestObjectFactory.createPtSituationElement("tst", "43123", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(4));
 
@@ -201,7 +202,7 @@ public class SituationsTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testAddNullSituation() {
+    void testAddNullSituation() {
         int previousSize = situations.getAll().size();
         situations.add("test", null);
 
@@ -209,7 +210,7 @@ public class SituationsTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void test_add_whenAddingSituationWithSameDatasetidAndParticipantrefAndSituationNumber_thenDoNotAddSituations() {
+    void test_add_whenAddingSituationWithSameDatasetidAndParticipantrefAndSituationNumber_thenDoNotAddSituations() {
         PtSituationElement original = TestObjectFactory.createPtSituationElement("ruter", "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
         PtSituationElement update = TestObjectFactory.createPtSituationElement("ruter", "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
 
@@ -220,7 +221,7 @@ public class SituationsTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void test_add_whenAddingSituationWithDifferentDatasetid_thenAddSituations() {
+    void test_add_whenAddingSituationWithDifferentDatasetid_thenAddSituations() {
         PtSituationElement original = TestObjectFactory.createPtSituationElement("ruter", "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
         PtSituationElement originalCopy = TestObjectFactory.createPtSituationElement("ruter", "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
 
@@ -231,7 +232,7 @@ public class SituationsTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void test_add_whenAddingSituationWithSameDatasetidAndDifferentParticipantrefAndSameSituationNumber_thenDoNotAddSituations() {
+    void test_add_whenAddingSituationWithSameDatasetidAndDifferentParticipantrefAndSameSituationNumber_thenDoNotAddSituations() {
         PtSituationElement original = TestObjectFactory.createPtSituationElement("ruter", "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
         PtSituationElement originalWithDifferentParticipantRef = TestObjectFactory.createPtSituationElement("mobiiti", "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
 
@@ -276,19 +277,16 @@ public class SituationsTest extends SpringBootBaseTest {
 //    }
 
     @Test
-    public void testFlexibleLineConversion() throws UnmarshalException {
+    void testFlexibleLineConversion() throws UnmarshalException {
         String flexibleLineId = "PROV1:Line:35";
         String standardlineId = "PROV2:Line:AAA";
 
-        List<GtfsRTApi> gtfsApis = new ArrayList<>();
         GtfsRTApi api1 = new GtfsRTApi();
         api1.setDatasetId("PROV1");
         GtfsRTApi api2 = new GtfsRTApi();
         api2.setDatasetId("PROV2");
-        gtfsApis.add(api1);
-        gtfsApis.add(api2);
-
-        subscriptionConfig.setGtfsRTApis(gtfsApis);
+        gtfsRTApiSet.add(api1);
+        gtfsRTApiSet.add(api2);
 
         Map<String, Boolean> flexibleLineMap = new HashMap<>();
         flexibleLineMap.put(flexibleLineId, true);
@@ -369,7 +367,7 @@ public class SituationsTest extends SpringBootBaseTest {
             "2025-06-18T16:33:11Z,2025-04-16T09:36:15Z,0,5468216000",
     })
     @ParameterizedTest
-    public void test_getExpiration_whenPWindowIsPresentAndEndTimeIsPresent_thenComputeExpirationFromIt(String pwEndTs, String clockTs, long sxGracePeriod, long expectedExpiration) {
+    void test_getExpiration_whenPWindowIsPresentAndEndTimeIsPresent_thenComputeExpirationFromIt(String pwEndTs, String clockTs, long sxGracePeriod, long expectedExpiration) {
         // Arrange
         PtSituationElement s = new PtSituationElement();
         var pw = new HalfOpenTimestampOutputRangeStructure();
@@ -388,7 +386,7 @@ public class SituationsTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void test_getExpiration_whenPWindowIsPresentAndEndTimeNotPresent_thenExpirationIsAbout10Years() {
+    void test_getExpiration_whenPWindowIsPresentAndEndTimeNotPresent_thenExpirationIsAbout10Years() {
         PtSituationElement s = new PtSituationElement();
         var pw = new HalfOpenTimestampOutputRangeStructure();
         s.getPublicationWindows().add(pw);
@@ -406,7 +404,7 @@ public class SituationsTest extends SpringBootBaseTest {
             "2025-06-18T16:33:11Z,2025-04-16T09:36:15Z,0,5468216000",
     })
     @ParameterizedTest
-    public void test_getExpiration_whenPWindowIsNotPresentButVPeriodIsPresentAndEndTimeIsPresent_thenComputeExpirationFromIt(String vpEndTs, String clockTs, long sxGracePeriod, long expectedExpiration) {
+    void test_getExpiration_whenPWindowIsNotPresentButVPeriodIsPresentAndEndTimeIsPresent_thenComputeExpirationFromIt(String vpEndTs, String clockTs, long sxGracePeriod, long expectedExpiration) {
         // Arrange
         PtSituationElement s = new PtSituationElement();
         var vp = new HalfOpenTimestampOutputRangeStructure();
@@ -425,7 +423,7 @@ public class SituationsTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void test_getExpiration_whenPWindowIsNotPresentButVPeriodIsPresentAndEndTimeNotPresent_thenExpirationIsAbout10Years() {
+    void test_getExpiration_whenPWindowIsNotPresentButVPeriodIsPresentAndEndTimeNotPresent_thenExpirationIsAbout10Years() {
         PtSituationElement s = new PtSituationElement();
         var vp = new HalfOpenTimestampOutputRangeStructure();
         s.getValidityPeriods().add(vp);
@@ -436,7 +434,7 @@ public class SituationsTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void test_getExpiration_whenMultiplePW_thenComputeExpirationFromLatestPW() {
+    void test_getExpiration_whenMultiplePW_thenComputeExpirationFromLatestPW() {
         // Arrange
         configuration.setSxGraceperiodMinutes(0);
 
@@ -461,7 +459,7 @@ public class SituationsTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void test_getExpiration_whenMultipleVP_thenComputeExpirationFromLatestVP() {
+    void test_getExpiration_whenMultipleVP_thenComputeExpirationFromLatestVP() {
         // Arrange
         configuration.setSxGraceperiodMinutes(0);
 

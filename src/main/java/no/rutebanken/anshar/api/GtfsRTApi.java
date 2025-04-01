@@ -3,8 +3,10 @@ package no.rutebanken.anshar.api;
 import lombok.Data;
 import no.rutebanken.anshar.config.GTFSRTType;
 
+import java.io.Serializable;
+
 @Data
-public class GtfsRTApi {
+public class GtfsRTApi implements Serializable {
     private Long id;
     private String datasetId;
     private String url;

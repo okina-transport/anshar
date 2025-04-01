@@ -28,6 +28,11 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.LifecycleEvent;
 import com.hazelcast.map.IMap;
 import com.hazelcast.replicatedmap.ReplicatedMap;
+import lombok.Getter;
+import no.rutebanken.anshar.api.GtfsRTApi;
+import no.rutebanken.anshar.api.SiriApi;
+import no.rutebanken.anshar.config.DiscoverySubscription;
+import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.data.RequestorRefStats;
 import no.rutebanken.anshar.data.SiriObjectStorageKey;
 import no.rutebanken.anshar.routes.outbound.OutboundSubscriptionSetup;
@@ -93,7 +98,6 @@ public class ExtendedHazelcastService extends HazelCastService {
         defaultMapConfig.setAsyncBackupCount(0);
         defaultMapConfig.setBackupCount(0);
         defaultMapConfig.setCacheDeserializedValues(CacheDeserializedValues.NEVER);
-
     }
 
     @Override
@@ -405,6 +409,31 @@ public class ExtendedHazelcastService extends HazelCastService {
     @Bean
     public IMap<String, List<OutboundSubscriptionSetup>> getOutboundSubscriptionsByMonitoringRef() {
         return hazelcast.getMap("anshar.mapping.outbound.subscriptionsByMonitoring");
+    }
+
+    @Bean
+    public ISet<IdProcessingParameters> getIdProcessingParameters() {
+        return hazelcast.getSet("anshar.idprocessing.parameters");
+    }
+
+    @Bean
+    public ISet<GtfsRTApi> getGtfsRTApis() {
+        return hazelcast.getSet("anshar.gtfsrt.apis");
+    }
+
+    @Bean
+    public ISet<SubscriptionSetup> getSubscriptions() {
+        return hazelcast.getSet("anshar.inbound.subscriptions");
+    }
+
+    @Bean
+    public ISet<SiriApi> getSiriApis() {
+        return hazelcast.getSet("anshar.siri.apis");
+    }
+
+    @Bean
+    public ISet<DiscoverySubscription> getDiscoverySubscriptions() {
+        return hazelcast.getSet("anshar.discovery.subscriptions");
     }
 
     @Bean

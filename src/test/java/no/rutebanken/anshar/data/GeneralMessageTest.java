@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.data;
 
+import com.hazelcast.collection.ISet;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
@@ -38,25 +39,25 @@ public class GeneralMessageTest extends SpringBootBaseTest {
     private SiriHandler handler;
 
     @Autowired
-    private SubscriptionConfig subscriptionConfig;
+    private ISet<GtfsRTApi> gtfsRTApiSet;
 
     @Autowired
     private LineUpdaterService lineupdaterService;
 
     @BeforeEach
-    public void init() {
+    void init() {
         generalMessages.clearAll();
     }
 
     @Test
-    public void testAddNull() {
+    void testAddNull() {
         int previousSize = generalMessages.getAll().size();
         generalMessages.add("test", null);
         assertEquals(previousSize, generalMessages.getAll().size());
     }
 
     @Test
-    public void testAddGeneralMessage() {
+    void testAddGeneralMessage() {
         int previousSize = generalMessages.getAll().size();
         GeneralMessage msg = TestObjectFactory.createGeneralMessage();
         generalMessages.add("test", msg);
@@ -65,19 +66,17 @@ public class GeneralMessageTest extends SpringBootBaseTest {
 
 
     @Test
-    public void testFlexibleLineConversion() throws UnmarshalException {
+    void testFlexibleLineConversion() throws UnmarshalException {
         String flexibleLineId = "PROV1:Line:35";
         String standardlineId = "PROV2:Line:AAA";
 
-        List<GtfsRTApi> gtfsApis = new ArrayList<>();
         GtfsRTApi api1 = new GtfsRTApi();
         api1.setDatasetId("PROV1");
         GtfsRTApi api2 = new GtfsRTApi();
         api2.setDatasetId("PROV2");
-        gtfsApis.add(api1);
-        gtfsApis.add(api2);
+        gtfsRTApiSet.add(api1);
+        gtfsRTApiSet.add(api2);
 
-        subscriptionConfig.setGtfsRTApis(gtfsApis);
 
         Map<String, Boolean> flexibleLineMap = new HashMap<>();
         flexibleLineMap.put(flexibleLineId, true);
@@ -149,7 +148,7 @@ public class GeneralMessageTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testUpdate() {
+    void testUpdate() {
 
 
         GeneralMessage msg = TestObjectFactory.createGeneralMessage();
@@ -188,7 +187,7 @@ public class GeneralMessageTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void test_SOAP_conversion() throws JAXBException, FileNotFoundException, TransformerException {
+    void test_SOAP_conversion() throws FileNotFoundException, TransformerException {
 
         String siriString = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
                 "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\"\n" +
@@ -701,7 +700,7 @@ public class GeneralMessageTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testChannelFilter() {
+    void testChannelFilter() {
         GeneralMessage msg = TestObjectFactory.createGeneralMessage();
         Content content1 = new Content();
         content1.setStopPointRefs(Arrays.asList("stop1"));
@@ -723,7 +722,7 @@ public class GeneralMessageTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testDatasetFilter() {
+    void testDatasetFilter() {
         GeneralMessage msg = TestObjectFactory.createGeneralMessage();
         Content content1 = new Content();
         content1.setStopPointRefs(Arrays.asList("stop1"));
@@ -745,7 +744,7 @@ public class GeneralMessageTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testLumiplanFormat() {
+    void testLumiplanFormat() {
         GeneralMessage msg = TestObjectFactory.createGeneralMessage();
         Content content1 = new Content();
         content1.setStopPointRefs(Arrays.asList("stop1"));
@@ -765,7 +764,7 @@ public class GeneralMessageTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testCancellations() throws UnmarshalException {
+    void testCancellations() throws UnmarshalException {
         GeneralMessage msg = TestObjectFactory.createGeneralMessage();
         Content content1 = new Content();
         content1.setStopPointRefs(Arrays.asList("stop1"));

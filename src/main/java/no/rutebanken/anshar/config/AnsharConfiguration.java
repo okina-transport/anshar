@@ -26,7 +26,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.quartz.SchedulerFactoryBeanCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.util.CollectionUtils;
 
 import javax.annotation.PostConstruct;
 import java.time.Instant;
@@ -109,6 +108,8 @@ public class AnsharConfiguration {
     private List<String> blockedEtClientNames;
     @Value("${anshar.application.mode:}")
     private List<AppMode> appModes;
+    @Value("${anshar.leader.check.interval:180000}")
+    private int leaderCheckIntervalMs;
     @Value("${anshar.client.name}")
     private String clientName;
     @Value("${anshar.generate-siri-from-th.enabled:false}")
@@ -177,7 +178,7 @@ public class AnsharConfiguration {
 
     private void initCurrentInstanceLeader() {
         if (!lockMap.containsKey(CURRENT_INSTANCE_LEADER_KEY)) {
-            if (CollectionUtils.isEmpty(appModes) || appModes.contains(AppMode.PROXY)) {
+            if (processAdmin()) {
                 lockMap.set(CURRENT_INSTANCE_LEADER_KEY, Instant.now());
                 isCurrentInstanceLeader = true;
                 logger.info("=====> Current instance is leader. Will launch all GTFS-RT or SIRI Requests   <=================");

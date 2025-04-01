@@ -57,7 +57,9 @@ public class IshtarSynchronizeProcessor implements Processor {
     public IshtarSynchronizeProcessor(SubscriptionConfig subscriptionConfig,
                                       DiscoverySubscriptionCreator discoverySubscriptionCreator,
                                       @Value("${ishtar.server.url}") URL ishtarUrl,
-                                      SubscriptionDtoToSubscriptionSetupConverter toSubscriptionSetupConverter, ExternalIdsService externalIdsService, TokenService tokenService) {
+                                      SubscriptionDtoToSubscriptionSetupConverter toSubscriptionSetupConverter,
+                                      ExternalIdsService externalIdsService,
+                                      TokenService tokenService) {
         this.subscriptionConfig = subscriptionConfig;
         this.discoverySubscriptionCreator = discoverySubscriptionCreator;
         this.webClient = WebClient.builder()
@@ -130,7 +132,7 @@ public class IshtarSynchronizeProcessor implements Processor {
 
             if (discoveryMap.containsKey(false) && !discoveryMap.get(false).isEmpty()) {
                 for (DiscoverySubscription unValidatedApi : discoveryMap.get(false)) {
-                    log.info("Unvalidated discovery subscription :  {} - {}", unValidatedApi.getDatasetId(),unValidatedApi.getUrl());
+                    log.info("Unvalidated discovery subscription :  {} - {}", unValidatedApi.getDatasetId(), unValidatedApi.getUrl());
                 }
             }
 
@@ -186,7 +188,7 @@ public class IshtarSynchronizeProcessor implements Processor {
 
             if (validationMap.containsKey(false) && !validationMap.get(false).isEmpty()) {
                 for (SiriApi unValidatedApi : validationMap.get(false)) {
-                    log.info("Unvalidated Siri API :  {} - {}", unValidatedApi.getDatasetId(),unValidatedApi.getUrl());
+                    log.info("Unvalidated Siri API :  {} - {}", unValidatedApi.getDatasetId(), unValidatedApi.getUrl());
                 }
             }
 

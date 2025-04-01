@@ -27,6 +27,8 @@ import static no.rutebanken.anshar.gtfsrt.GtfsRtConstants.*;
 @Component
 public class GtfsRTRouteBuilder extends BaseRouteBuilder {
 
+    public static final String IMPORT_GTFSRT_ROUTE_ID = "import_GTFSRT_DATA";
+
     private static final Logger logger = LoggerFactory.getLogger(GtfsRTRouteBuilder.class);
 
     @Value("${anshar.gtfs.interval.millis:60000}") //120000
@@ -67,11 +69,11 @@ public class GtfsRTRouteBuilder extends BaseRouteBuilder {
     @Override
     public void configure() throws Exception {
         if (configuration.getAppModes().isEmpty()) {
-            singletonFrom("quartz://anshar/import_GTFSRT_DATA?trigger.repeatInterval=" + gtfsIntervalInMillis, "import_GTFSRT_DATA")
+            singletonFrom("quartz://anshar/import_GTFSRT_DATA?trigger.repeatInterval=" + gtfsIntervalInMillis, IMPORT_GTFSRT_ROUTE_ID)
                     .bean(GtfsRTDataRetriever.class, "getGTFSRTData")
                     .end();
-        } else if (configuration.isCurrentInstanceLeader() && configuration.getAppModes().contains(AppMode.PROXY)) {
-            singletonFrom("quartz://anshar/import_GTFSRT_DATA?trigger.repeatInterval=" + gtfsIntervalInMillis, "import_GTFSRT_DATA")
+        } else if (configuration.getAppModes().contains(AppMode.PROXY)) {
+            singletonFrom("quartz://anshar/import_GTFSRT_DATA?trigger.repeatInterval=" + gtfsIntervalInMillis, IMPORT_GTFSRT_ROUTE_ID)
                     .process(new GtfsRtProxyProcessor(producerTemplate, subscriptionConfig, hazelcastService, tripUpdateReader, vehiclePositionReader, alertReader, gtfsRtHelper))
                     .end();
         }

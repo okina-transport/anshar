@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.siri.handler;
 
+import com.hazelcast.collection.ISet;
 import com.hazelcast.map.IMap;
 import jakarta.xml.bind.JAXBException;
 import jakarta.xml.bind.UnmarshalException;
@@ -93,7 +94,10 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     private SiriApisRequestHandlerRoute siriApisRequestHandlerRoute;
 
     @Autowired
-    private SubscriptionConfig subscriptionConfig;
+    private ISet<GtfsRTApi> gtfsRTApiSet;
+
+    @Autowired
+    private ISet<IdProcessingParameters> idProcessingParametersSet;
 
     @Autowired
     private DiscoveryCache discoveryCache;
@@ -109,7 +113,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         generalMessage.clearAll();
         facilityMonitoring.clearAll();
         SiriValueTransformer.clearCachedGettersForAdapter();
-        subscriptionConfig.getIdProcessingParameters().clear();
+        idProcessingParametersSet.clear();
     }
 
 
@@ -144,7 +148,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
 
     @Test
-    public void testErrorInETServiceDelivery() {
+    void testErrorInETServiceDelivery() {
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
                 "<siri:Siri xmlns:siri=\"http://www.siri.org.uk/siri\">\n" +
                 "  <siril:ServiceDelivery xmlns:siril=\"http://www.siri.org.uk/siri\">\n" +
@@ -202,7 +206,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testErrorInSMServiceDelivery() {
+    void testErrorInSMServiceDelivery() {
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
                 "<siri:Siri xmlns:siri=\"http://www.siri.org.uk/siri\">\n" +
                 "  <siril:ServiceDelivery xmlns:siril=\"http://www.siri.org.uk/siri\">\n" +
@@ -231,7 +235,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testErrorInFMServiceDelivery() {
+    void testErrorInFMServiceDelivery() {
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
                 "<siri:Siri xmlns:siri=\"http://www.siri.org.uk/siri\">\n" +
                 "  <siril:ServiceDelivery xmlns:siril=\"http://www.siri.org.uk/siri\">\n" +
@@ -267,7 +271,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
      * @throws JAXBException
      */
     @Test
-    public void testCitywaySxCompliance() throws JAXBException {
+    void testCitywaySxCompliance() throws JAXBException {
         SubscriptionSetup sxSubscription = getSxSubscription("tst");
         subscriptionManager.addSubscription(sxSubscription.getSubscriptionId(), sxSubscription);
         ClassLoader classLoader = getClass().getClassLoader();
@@ -290,7 +294,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
      * @throws JAXBException
      */
     @Test
-    public void testCitywaySmCompliance() throws JAXBException {
+    void testCitywaySmCompliance() throws JAXBException {
         SubscriptionSetup smSubscription = getSmSubscription("tst");
         smSubscription.getStopMonitoringRefValues().add("sp4");
         subscriptionManager.addSubscription(smSubscription.getSubscriptionId(), smSubscription);
@@ -390,7 +394,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void stopPointsDiscoveryTest() throws JAXBException, IOException {
+    void stopPointsDiscoveryTest() throws JAXBException, IOException {
         discoveryCache.clearDiscoveryStops();
         Map<String, Pair<String, String>> stopPlaceMap;
         stopPlaceMap = new HashMap<>();
@@ -478,7 +482,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
 
     @Test
-    public void linesDiscoveryTest() throws JAXBException, IOException {
+    void linesDiscoveryTest() throws JAXBException, IOException {
         estimatedTimetables.clearAll();
         discoveryCache.clearDiscoveryLines();
 //        SubscriptionSetup vmSubscription1 = getVmSubscription("tst");
@@ -536,7 +540,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void linesDiscoveryTestWithDifferentDatasetId() throws JAXBException, IOException {
+    void linesDiscoveryTestWithDifferentDatasetId() throws JAXBException, IOException {
         estimatedTimetables.clearAll();
         discoveryCache.clearDiscoveryLines();
         SubscriptionSetup vmSubscription1 = getVmSubscription("tst1");
@@ -648,25 +652,25 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
 
     private void resetIdProcessings() {
-        subscriptionConfig.getIdProcessingParameters().clear();
+        idProcessingParametersSet.clear();
 
 
         IdProcessingParameters dat1Stop = new IdProcessingParameters();
         dat1Stop.setObjectType(ObjectType.STOP);
         dat1Stop.setDatasetId("TEST1");
         dat1Stop.setOutputPrefixToAdd("TEST1:Quay:");
-        subscriptionConfig.getIdProcessingParameters().add(dat1Stop);
+        idProcessingParametersSet.add(dat1Stop);
 
         IdProcessingParameters dat2Stop = new IdProcessingParameters();
         dat2Stop.setObjectType(ObjectType.STOP);
         dat2Stop.setDatasetId("TEST2");
         dat2Stop.setOutputPrefixToAdd("TEST2:Quay:");
-        subscriptionConfig.getIdProcessingParameters().add(dat2Stop);
+        idProcessingParametersSet.add(dat2Stop);
 
         IdProcessingParameters dat3VJ = new IdProcessingParameters();
         dat3VJ.setObjectType(ObjectType.LINE);
         dat3VJ.setDatasetId("TEST");
-        subscriptionConfig.getIdProcessingParameters().add(dat3VJ);
+        idProcessingParametersSet.add(dat3VJ);
 
     }
 
@@ -763,7 +767,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
      * retour données producteurs identifiants locaux
      **/
     @Test
-    public void SM_idProducer_DatasetId() throws JAXBException {
+    void SM_idProducer_DatasetId() throws JAXBException {
         initStopPlaceMapper();
         File fileInject1 = new File("src/test/resources/siri-sm-test1.zip");
         try {
@@ -816,7 +820,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
      * retour rien
      **/
     @Test
-    public void SM_idProducer_No_DatasetId() throws JAXBException {
+    void SM_idProducer_No_DatasetId() throws JAXBException {
         initStopPlaceMapper();
         File fileInject1 = new File("src/test/resources/siri-sm-test1.zip");
         try {
@@ -866,7 +870,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
      * retour rien
      **/
     @Test
-    public void SM_IdProducer_UseOriginalId_False_No_DatasetId() throws JAXBException {
+    void SM_IdProducer_UseOriginalId_False_No_DatasetId() throws JAXBException {
         initStopPlaceMapper();
         File fileInject1 = new File("src/test/resources/siri-sm-test1.zip");
         try {
@@ -916,7 +920,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
      * retour rien
      **/
     @Test
-    public void SM_IdProducer_UseOriginalId_False_DatasetId() throws JAXBException {
+    void SM_IdProducer_UseOriginalId_False_DatasetId() throws JAXBException {
         initStopPlaceMapper();
         File fileInject1 = new File("src/test/resources/siri-sm-test1.zip");
         try {
@@ -968,7 +972,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
      * retour tous les points d'arrêt du datasetId
      **/
     @Test
-    public void SM_No_Id_UseOriginalId_False_DatasetId() throws JAXBException {
+    void SM_No_Id_UseOriginalId_False_DatasetId() throws JAXBException {
         initStopPlaceMapper();
         File fileInject1 = new File("src/test/resources/siri-sm-test1.zip");
         try {
@@ -1032,7 +1036,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
      * retour rien
      **/
     @Test
-    public void SM_No_Id_UseOriginalId_False_No_DatasetId() throws JAXBException {
+    void SM_No_Id_UseOriginalId_False_No_DatasetId() throws JAXBException {
         initStopPlaceMapper();
         File fileInject1 = new File("src/test/resources/siri-sm-test1.zip");
         try {
@@ -1094,7 +1098,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
      * retour données producteurs identifiants locaux
      **/
     @Test
-    public void ET_Id_DatasetId_UseOriginalId_True() throws JAXBException {
+    void ET_Id_DatasetId_UseOriginalId_True() throws JAXBException {
         resetIdProcessings();
         SiriValueTransformer.clearCachedGettersForAdapter();
         initStopPlaceMapper();
@@ -1154,7 +1158,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
      * retour données MOBIITI
      **/
     @Test
-    public void ET_Id_DatasetId_UseOriginalId_False() throws JAXBException {
+    void ET_Id_DatasetId_UseOriginalId_False() throws JAXBException {
         resetIdProcessings();
         initStopPlaceMapper();
         File fileInject1 = new File("src/test/resources/siri-et-test1.zip");
@@ -1213,7 +1217,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
      * retour rien
      **/
     @Test
-    public void ET_Id_No_DatasetId_UseOriginalId_True() throws JAXBException {
+    void ET_Id_No_DatasetId_UseOriginalId_True() throws JAXBException {
         initStopPlaceMapper();
         File fileInject1 = new File("src/test/resources/siri-et-test1.zip");
         try {
@@ -1267,7 +1271,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
      * retour rien
      **/
     @Test
-    public void ET_Id_No_DatasetId_UseOriginalId_False() throws JAXBException {
+    void ET_Id_No_DatasetId_UseOriginalId_False() throws JAXBException {
         initStopPlaceMapper();
         File fileInject1 = new File("src/test/resources/siri-et-test1.zip");
         try {
@@ -1321,7 +1325,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
      * retour rien
      **/
     @Test
-    public void ET_No_Id_No_DatasetId_UseOriginalId_False() throws JAXBException {
+    void ET_No_Id_No_DatasetId_UseOriginalId_False() throws JAXBException {
         initStopPlaceMapper();
         File fileInject1 = new File("src/test/resources/siri-et-test1.zip");
         try {
@@ -1370,7 +1374,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
      * retour tous les ET du datasetId
      **/
     @Test
-    public void ET_No_Id_DatasetId_UseOriginalId_False() throws JAXBException {
+    void ET_No_Id_DatasetId_UseOriginalId_False() throws JAXBException {
         resetIdProcessings();
         initStopPlaceMapper();
         File fileInject1 = new File("src/test/resources/siri-et-test1.zip");
@@ -1422,7 +1426,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
      * retour données producteurs identifiants locaux
      **/
     @Test
-    public void VM_DatasetId() throws JAXBException {
+    void VM_DatasetId() throws JAXBException {
         File fileInject1 = new File("src/test/resources/siri-vm-test1.zip");
         try {
             siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-vm", fileInject1, fileInject1.getPath(), "TEST1");
@@ -1492,7 +1496,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
      * retour rien
      **/
     @Test
-    public void VM_No_DatasetId() throws JAXBException {
+    void VM_No_DatasetId() throws JAXBException {
         File fileInject1 = new File("src/test/resources/siri-vm-test1.zip");
         try {
             siriApisRequestHandlerRoute.createSubscriptionsFromFile("siri-vm", fileInject1, fileInject1.getPath(), "TEST1");
@@ -1558,7 +1562,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
      * retour données producteurs identifiants locaux
      **/
     @Test
-    public void SX_DatasetId() throws JAXBException {
+    void SX_DatasetId() throws JAXBException {
 
         IMap<SiriObjectStorageKey, PtSituationElement> originalSaved = situations.getSituationElements();
         HazelcastTestMap<PtSituationElement> testMap = new HazelcastTestMap<PtSituationElement>();
@@ -1618,17 +1622,16 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         HazelcastTestMap<PtSituationElement> testMap = new HazelcastTestMap<PtSituationElement>();
         situations.setSituationElements(testMap);
 
-        List<GtfsRTApi> gtfsRTApiList = new ArrayList<>();
         GtfsRTApi firstSub = new GtfsRTApi();
         firstSub.setActive(true);
         firstSub.setDatasetId("TEST1");
-        gtfsRTApiList.add(firstSub);
 
         GtfsRTApi second = new GtfsRTApi();
         second.setActive(true);
         second.setDatasetId("TEST2");
-        gtfsRTApiList.add(second);
-        subscriptionConfig.setGtfsRTApis(gtfsRTApiList);
+
+        gtfsRTApiSet.add(firstSub);
+        gtfsRTApiSet.add(second);
 
 
         File fileInject1 = new File("src/test/resources/siri-sx-test1.zip");
@@ -1882,7 +1885,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
      * retour données du datasetId
      **/
     @Test
-    public void SM_idMobi_datasetId() throws JAXBException {
+    void SM_idMobi_datasetId() throws JAXBException {
         initStopPlaceMapper();
         File fileInject1 = new File("src/test/resources/siri-sm-test1.zip");
         try {
@@ -1934,7 +1937,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
      * retour données de tous les producteurs
      **/
     @Test
-    public void SM_idMobi_No_datasetId() throws JAXBException {
+    void SM_idMobi_No_datasetId() throws JAXBException {
         initStopPlaceMapper();
         File fileInject1 = new File("src/test/resources/siri-sm-test1.zip");
         try {
@@ -1978,7 +1981,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void SM_AltID_DatasetId() throws JAXBException {
+    void SM_AltID_DatasetId() throws JAXBException {
         resetIdProcessings();
         File file = new File("src/test/resources/stops_mapping.csv");
         externalIdsService.feedCacheStopWithFile(file, "TEST1");
@@ -2017,7 +2020,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void SM_AltID_No_DatasetId() throws JAXBException {
+    void SM_AltID_No_DatasetId() throws JAXBException {
         File file = new File("src/test/resources/stops_mapping.csv");
         externalIdsService.feedCacheStopWithFile(file, "TEST1");
 
@@ -2061,7 +2064,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
      * retour données identifiants producteurs locaux
      **/
     @Test
-    public void VM_AltId_DatasetId() throws JAXBException {
+    void VM_AltId_DatasetId() throws JAXBException {
         File file = new File("src/test/resources/lines_mapping.csv");
         resetIdProcessings();
         externalIdsService.feedCacheLineWithFile(file, "TEST");

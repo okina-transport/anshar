@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.data;
 
+import com.hazelcast.collection.ISet;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.helpers.TestObjectFactory;
@@ -54,7 +55,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 
-public class MonitoredStopVisitsTest extends SpringBootBaseTest implements CamelContextAware {
+class MonitoredStopVisitsTest extends SpringBootBaseTest implements CamelContextAware {
 
 
     @Autowired
@@ -64,29 +65,28 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest implements Camel
     private SiriHandler handler;
 
     @Autowired
-    private SubscriptionConfig subscriptionConfig;
+    private LineUpdaterService lineupdaterService;
 
     @Autowired
-    private LineUpdaterService lineupdaterService;
+    private ISet<GtfsRTApi> gtfsRTApiSet;
 
 
     @Produce(value = "direct:send.to.external.subscription")
     protected ProducerTemplate sendExternalSubscription;
 
     @BeforeEach
-    public void init() {
+    void init() {
         monitoredStopVisits.clearAll();
     }
 
     private CamelContext camelContext;
-
 
     @Produce(value = "direct:enqueue.message")
     protected ProducerTemplate enqueueMessageProducer;
 
 
     @Test
-    public void testSplitDoubleMessage() throws InterruptedException {
+    void testSplitDoubleMessage() {
 
         String msg = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
                 "  <soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">\n" +
@@ -193,7 +193,7 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest implements Camel
 
 
     @Test
-    public void testSplitDoubleMessage2() throws InterruptedException {
+    void testSplitDoubleMessage2() {
 
         String msg = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
                 "  <soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">\n" +
@@ -299,7 +299,7 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest implements Camel
     }
 
     @Test
-    public void testEmptyBodyCheck() throws InterruptedException {
+    void testEmptyBodyCheck() {
 
         Siri siriToSend = new Siri();
 //        ServiceDelivery serviceDelivery = new ServiceDelivery();
@@ -336,7 +336,7 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest implements Camel
     }
 
     @Test
-    public void testAddMonitoredStopVisit() {
+    void testAddMonitoredStopVisit() {
         int previousSize = monitoredStopVisits.getAll().size();
         MonitoredStopVisit element = createMonitoredStopVisit(
                 ZonedDateTime.now().plusMinutes(1), UUID.randomUUID().toString());
@@ -346,7 +346,7 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest implements Camel
     }
 
     @Test
-    public void testNullStopReference() {
+    void testNullStopReference() {
         int previousSize = monitoredStopVisits.getAll().size();
 
         monitoredStopVisits.add("test", null);
@@ -354,19 +354,18 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest implements Camel
     }
 
     @Test
-    public void testFlexibleLineConversion() throws UnmarshalException {
+    void testFlexibleLineConversion() throws UnmarshalException {
         String flexibleLineId = "PROV1:Line:35";
         String standardlineId = "PROV2:Line:AAA";
 
-        List<GtfsRTApi> gtfsApis = new ArrayList<>();
+
         GtfsRTApi api1 = new GtfsRTApi();
         api1.setDatasetId("PROV1");
         GtfsRTApi api2 = new GtfsRTApi();
         api2.setDatasetId("PROV2");
-        gtfsApis.add(api1);
-        gtfsApis.add(api2);
 
-        subscriptionConfig.setGtfsRTApis(gtfsApis);
+        gtfsRTApiSet.add(api1);
+        gtfsRTApiSet.add(api2);
 
         Map<String, Boolean> flexibleLineMap = new HashMap<>();
         flexibleLineMap.put(flexibleLineId, true);
@@ -424,7 +423,7 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest implements Camel
     }
 
     @Test
-    public void testUpdatedMonitoredStopvisit() {
+    void testUpdatedMonitoredStopvisit() {
         int previousSize = monitoredStopVisits.getAll().size();
 
         //Add element
@@ -467,7 +466,7 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest implements Camel
 
 
     @Test
-    public void testUpdatedMonitoredStopvisitCancellation() {
+    void testUpdatedMonitoredStopvisitCancellation() {
         int previousSize = monitoredStopVisits.getAll().size();
 
         //Add element
@@ -504,7 +503,7 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest implements Camel
 
 
     @Test
-    public void testUpdatedMonitoredStopvisitWithMonitoredChanges() {
+    void testUpdatedMonitoredStopvisitWithMonitoredChanges() {
         int previousSize = monitoredStopVisits.getAll().size();
 
         //Add element
@@ -559,7 +558,7 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest implements Camel
 
     @Test
     @Ignore
-    public void testExcludeDatasetIds() {
+    void testExcludeDatasetIds() {
 
         String prefix = "excludedOnly-";
 

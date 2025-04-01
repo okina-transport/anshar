@@ -72,10 +72,12 @@ public class IshtarRouteBuilder extends BaseRouteBuilder {
     @Override
     public void configure() throws Exception {
 
-        singletonFrom("quartz://anshar/autoGetAllDataFromIshtar?trigger.repeatInterval=" + ishtarSynchronizeIntervalMs,
-                "autoGetAllDataFromIshtar")
-                .to(ISHTAR_SYNCHRONIZE_DATA_ROUTE)
-                .end();
+        if (config.processAdmin()) {
+            singletonFrom("quartz://anshar/autoGetAllDataFromIshtar?trigger.repeatInterval=" + ishtarSynchronizeIntervalMs,
+                    "autoGetAllDataFromIshtar")
+                    .to(ISHTAR_SYNCHRONIZE_DATA_ROUTE)
+                    .end();
+        }
 
         from("direct://isthar.synchronize.data")
             .routeId(ISHTAR_SYNCHRONIZE_DATA_ROUTE)
