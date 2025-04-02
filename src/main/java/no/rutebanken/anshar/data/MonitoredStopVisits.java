@@ -20,12 +20,16 @@ import com.hazelcast.map.IMap;
 import com.hazelcast.query.Predicate;
 import com.hazelcast.replicatedmap.ReplicatedMap;
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.config.IdProcessingParameters;
+import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.data.util.CustomStringUtils;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
+import no.rutebanken.anshar.routes.mapping.VehicleJourneyService;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.util.StopMonitoringUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -39,6 +43,7 @@ import org.springframework.stereotype.Repository;
 import uk.org.siri.siri21.*;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -88,6 +93,12 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
     @Autowired
     StopPlaceUpdaterService stopPlaceUpdaterService;
+
+    @Autowired
+    private SubscriptionConfig subscriptionConfig;
+
+    @Autowired
+    private VehicleJourneyService vehicleJourneyService;
 
     private final Set<String> localSMDatasetList = new HashSet<>();
 
@@ -524,6 +535,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
 
                         if (expiration > 0 && keep) {
+                            feedFirstOrLastJourney(datasetId, monitoredStopVisit);
                             replaceSpecialCharacters(monitoredStopVisit);
                             changes.add(key);
                             addedData.add(monitoredStopVisit);
@@ -550,6 +562,56 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         markDataReceived(SiriDataType.STOP_MONITORING, datasetId, smList.size(), changes.size(), outdatedCounter.getValue(), (invalidLocationCounter.getValue() + notMeaningfulCounter.getValue() + notUpdatedCounter.getValue()));
         return addedData;
+    }
+
+    private void feedFirstOrLastJourney(String datasetId, MonitoredStopVisit monitoredStopVisit) {
+
+        if (monitoredStopVisit.getMonitoredVehicleJourney() == null) {
+            MonitoredVehicleJourneyStructure monVJStructure = new MonitoredVehicleJourneyStructure();
+            monVJStructure.setFirstOrLastJourney(FirstOrLastJourneyEnumeration.UNSPECIFIED);
+            monitoredStopVisit.setMonitoredVehicleJourney(monVJStructure);
+            return;
+        }
+
+        if (monitoredStopVisit.getMonitoredVehicleJourney().getFirstOrLastJourney() != null) {
+            // keeping the incoming data, if existing
+            return;
+        }
+
+        MonitoredVehicleJourneyStructure vehicleJourney = monitoredStopVisit.getMonitoredVehicleJourney();
+
+        if (vehicleJourney.getFramedVehicleJourneyRef() == null || vehicleJourney.getFramedVehicleJourneyRef().getDatedVehicleJourneyRef() == null) {
+            // no vehicle journey id specified. Can't determine FirstOrLastJourney
+            vehicleJourney.setFirstOrLastJourney(FirstOrLastJourneyEnumeration.UNSPECIFIED);
+            return;
+        }
+
+
+        String vehicleJourneyRef = vehicleJourney.getFramedVehicleJourneyRef().getDatedVehicleJourneyRef();
+        Optional<IdProcessingParameters> idParamsOpt = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.VEHICLE_JOURNEY);
+        if (idParamsOpt.isPresent()) {
+            vehicleJourneyRef = idParamsOpt.get().applyTransformationToString(vehicleJourneyRef);
+        }
+
+        LocalDate transitDate = getDateFromMonitoredCall(vehicleJourney.getMonitoredCall());
+        vehicleJourney.setFirstOrLastJourney(vehicleJourneyService.getServicePosition(transitDate, vehicleJourneyRef));
+    }
+
+    private LocalDate getDateFromMonitoredCall(MonitoredCallStructure monitoredCallStructure) {
+        ZonedDateTime transitTime;
+
+        if (monitoredCallStructure.getAimedDepartureTime() != null) {
+            transitTime = monitoredCallStructure.getAimedDepartureTime();
+        } else if (monitoredCallStructure.getExpectedDepartureTime() != null) {
+            transitTime = monitoredCallStructure.getExpectedDepartureTime();
+        } else if (monitoredCallStructure.getAimedArrivalTime() != null) {
+            transitTime = monitoredCallStructure.getAimedArrivalTime();
+        } else if (monitoredCallStructure.getExpectedArrivalTime() != null) {
+            transitTime = monitoredCallStructure.getExpectedArrivalTime();
+        } else {
+            transitTime = ZonedDateTime.now();
+        }
+        return transitTime.toLocalDate();
     }
 
     private void replaceSpecialCharacters(MonitoredStopVisit monitoredStopVisit) {
