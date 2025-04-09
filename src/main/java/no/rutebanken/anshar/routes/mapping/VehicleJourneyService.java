@@ -112,6 +112,15 @@ public class VehicleJourneyService {
      */
     public FirstOrLastJourneyEnumeration getServicePosition(LocalDate date, String vehicleJourneyId) {
         if (!servicePositionMap.containsKey(date) || !servicePositionMap.get(date).containsKey(vehicleJourneyId)) {
+
+            if (!servicePositionMap.containsKey(date)) {
+                logger.debug("First-or-last-VJ date not found:" + date.toString());
+            }
+
+            if (!servicePositionMap.get(date).containsKey(vehicleJourneyId)) {
+                logger.debug("First-or-last-VJ vj not found:" + vehicleJourneyId);
+            }
+
             return FirstOrLastJourneyEnumeration.UNSPECIFIED;
         }
         return servicePositionMap.get(date).get(vehicleJourneyId);
