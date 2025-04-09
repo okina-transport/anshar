@@ -18,6 +18,7 @@ package no.rutebanken.anshar.config;
 import com.hazelcast.map.IMap;
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.camel.Handler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -116,6 +117,8 @@ public class AnsharConfiguration {
     private boolean siriGenerationFromTheoreticalDataEnabled;
     @Value("${anshar.generate-siri-from-th.interval:86400000}")
     private long siriGenerationFromTheoreticalDataIntervalMs;
+    @Value("${hazelcast.external.service.enabled:false}")
+    private boolean isExternalHazelcast;
     @Autowired
     @Qualifier("getLockMap")
     private IMap<String, Instant> lockMap;
@@ -168,6 +171,7 @@ public class AnsharConfiguration {
         return isHealthcheckDisabled;
     }
 
+    @Handler
     public boolean isCurrentInstanceLeader() {
 
         if (isCurrentInstanceLeader == null) {

@@ -139,12 +139,22 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
     public Map<String, Integer> getLocalDatasetSize() {
         Map<String, Integer> sizeMap = new HashMap<>();
         long t1 = System.currentTimeMillis();
-        timetableDeliveries.localKeySet().forEach(key -> {
-            String datasetId = key.getCodespaceId();
+        if (configuration.isExternalHazelcast()) {
+            timetableDeliveries.keySet().forEach(key -> {
+                String datasetId = key.getCodespaceId();
 
-            Integer count = sizeMap.getOrDefault(datasetId, 0);
-            sizeMap.put(datasetId, count + 1);
-        });
+                Integer count = sizeMap.getOrDefault(datasetId, 0);
+                sizeMap.put(datasetId, count + 1);
+            });
+        } else {
+            timetableDeliveries.localKeySet().forEach(key -> {
+                String datasetId = key.getCodespaceId();
+
+                Integer count = sizeMap.getOrDefault(datasetId, 0);
+                sizeMap.put(datasetId, count + 1);
+            });
+        }
+
         logger.debug("Calculating local data-distribution (ET) took {} ms: {}", (System.currentTimeMillis() - t1), sizeMap);
         return sizeMap;
     }
