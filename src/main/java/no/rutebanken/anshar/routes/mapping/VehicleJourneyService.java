@@ -123,6 +123,7 @@ public class VehicleJourneyService {
 
             return FirstOrLastJourneyEnumeration.UNSPECIFIED;
         }
+        logger.debug("First-or-last-VJ vj found:" + servicePositionMap.get(date).get(vehicleJourneyId));
         return servicePositionMap.get(date).get(vehicleJourneyId);
     }
 
