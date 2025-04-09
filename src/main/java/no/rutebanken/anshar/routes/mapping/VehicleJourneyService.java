@@ -91,6 +91,12 @@ public class VehicleJourneyService {
             }
             dayMap.put(vehicleJourneyId, servicePosition);
         }
+        logger.info("VJ data completed. Size:" + servicePositionMap.size());
+
+        for (Map.Entry<LocalDate, Map<String, FirstOrLastJourneyEnumeration>> servicePosEntry : servicePositionMap.entrySet()) {
+            logger.info("VJ data date:" + servicePosEntry.getKey() + ", size:" + servicePosEntry.getValue().size());
+        }
+
     }
 
 
