@@ -541,7 +541,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
                         if (expiration > 0 && keep) {
                             feedFirstOrLastJourney(datasetId, monitoredStopVisit);
                             feedPublishedLineName(datasetId, monitoredStopVisit);
-                            replaceSpecialCharacters(monitoredStopVisit);
+                            replaceSpecialCharacters(datasetId, monitoredStopVisit);
                             changes.add(key);
                             addedData.add(monitoredStopVisit);
                             currentHazelcastCache.set(key, monitoredStopVisit, expiration, TimeUnit.MILLISECONDS);
@@ -653,12 +653,18 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         return transitTime.toLocalDate();
     }
 
-    private void replaceSpecialCharacters(MonitoredStopVisit monitoredStopVisit) {
+    private void replaceSpecialCharacters(String datasetId, MonitoredStopVisit monitoredStopVisit) {
         if (monitoredStopVisit.getMonitoredVehicleJourney() == null || monitoredStopVisit.getMonitoredVehicleJourney().getFramedVehicleJourneyRef() == null ||
                 StringUtils.isEmpty(monitoredStopVisit.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().getDatedVehicleJourneyRef())) {
             return;
         }
         String vehicleJourneyRef = monitoredStopVisit.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().getDatedVehicleJourneyRef();
+
+        Optional<IdProcessingParameters> idParamsOpt = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.VEHICLE_JOURNEY);
+        if (idParamsOpt.isPresent()) {
+            vehicleJourneyRef = idParamsOpt.get().removeInputPrefixAndSuffix(vehicleJourneyRef);
+        }
+
         monitoredStopVisit.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().setDatedVehicleJourneyRef(CustomStringUtils.removeSpecialCharacters(vehicleJourneyRef));
     }
 

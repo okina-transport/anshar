@@ -52,6 +52,29 @@ public class IdProcessingParameters implements Serializable {
     }
 
     /**
+     * Removes input prefix and input suffix from a string.
+     * e.g : input : PROV1:Quay:abcd:LOC  output : abcd
+     *
+     * @param text input text to process
+     * @return text without prefix and suffix
+     */
+    public String removeInputPrefixAndSuffix(String text) {
+        if (StringUtils.isEmpty(text)) {
+            return text;
+        }
+
+        if (inputPrefixToRemove != null && text.startsWith(inputPrefixToRemove)) {
+            text = text.substring(inputPrefixToRemove.length());
+        }
+
+        if (inputSuffixToRemove != null && text.endsWith(inputSuffixToRemove)) {
+            text = text.substring(0, text.length() - inputSuffixToRemove.length());
+        }
+        return text;
+    }
+
+
+    /**
      * Removes output prefix and output suffix from a string.
      * e.g : input : PROV1:Quay:abcd:LOC  output : abcd
      *

@@ -115,13 +115,14 @@ public class VehicleJourneyService {
 
             if (!servicePositionMap.containsKey(date)) {
                 logger.debug("First-or-last-VJ date not found:" + date.toString());
+                return FirstOrLastJourneyEnumeration.UNSPECIFIED;
             }
 
             if (!servicePositionMap.get(date).containsKey(vehicleJourneyId)) {
                 logger.debug("First-or-last-VJ vj not found:" + vehicleJourneyId);
+                return FirstOrLastJourneyEnumeration.UNSPECIFIED;
             }
 
-            return FirstOrLastJourneyEnumeration.UNSPECIFIED;
         }
         return servicePositionMap.get(date).get(vehicleJourneyId);
     }
