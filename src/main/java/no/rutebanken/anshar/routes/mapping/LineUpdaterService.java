@@ -99,7 +99,18 @@ public class LineUpdaterService {
     }
 
     public Optional<String> getLineName(String lineId) {
-        return Optional.ofNullable(lineNameMap.get(lineId));
+
+        String lineName = lineNameMap.get(lineId);
+        if (lineName == null) {
+            // trying 2nd time with/without LOC suffix
+            if (lineId.endsWith(":LOC")) {
+                lineId = lineId.replace(":LOC", "");
+            } else {
+                lineId = lineId + ":LOC";
+            }
+            lineName = lineNameMap.get(lineId);
+        }
+        return Optional.ofNullable(lineName);
     }
 
     public void addLineName(String lineId, String lineName) {

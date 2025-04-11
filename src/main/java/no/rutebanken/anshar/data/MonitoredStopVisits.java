@@ -25,6 +25,7 @@ import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.data.util.CustomStringUtils;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
+import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.mapping.VehicleJourneyService;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
@@ -99,6 +100,9 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
     @Autowired
     private VehicleJourneyService vehicleJourneyService;
+
+    @Autowired
+    private LineUpdaterService lineUpdaterService;
 
     private final Set<String> localSMDatasetList = new HashSet<>();
 
@@ -536,6 +540,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
                         if (expiration > 0 && keep) {
                             feedFirstOrLastJourney(datasetId, monitoredStopVisit);
+                            feedPublishedLineName(datasetId, monitoredStopVisit);
                             replaceSpecialCharacters(monitoredStopVisit);
                             changes.add(key);
                             addedData.add(monitoredStopVisit);
@@ -562,6 +567,40 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         markDataReceived(SiriDataType.STOP_MONITORING, datasetId, smList.size(), changes.size(), outdatedCounter.getValue(), (invalidLocationCounter.getValue() + notMeaningfulCounter.getValue() + notUpdatedCounter.getValue()));
         return addedData;
+    }
+
+    private void feedPublishedLineName(String datasetId, MonitoredStopVisit monitoredStopVisit) {
+        MonitoredVehicleJourneyStructure vehicleJourney = monitoredStopVisit.getMonitoredVehicleJourney();
+        if (vehicleJourney.getPublishedLineNames() != null && vehicleJourney.getPublishedLineNames().size() > 0) {
+            // published line name already filled. no need to add it
+            return;
+        }
+
+        if (vehicleJourney.getLineRef() == null) {
+            setEmptyPublishedLineName(vehicleJourney);
+            return;
+        }
+
+        String lineId = vehicleJourney.getLineRef().getValue();
+        Optional<IdProcessingParameters> idParamsOpt = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.LINE);
+        if (idParamsOpt.isPresent()) {
+            lineId = idParamsOpt.get().applyTransformationToString(lineId);
+        }
+
+        Optional<String> lineNameOpt = lineUpdaterService.getLineName(lineId);
+        if (lineNameOpt.isPresent()) {
+            NaturalLanguageStringStructure lineNameStruct = new NaturalLanguageStringStructure();
+            lineNameStruct.setValue(lineNameOpt.get());
+            vehicleJourney.getPublishedLineNames().add(lineNameStruct);
+            return;
+        }
+        setEmptyPublishedLineName(vehicleJourney);
+    }
+
+    private void setEmptyPublishedLineName(MonitoredVehicleJourneyStructure vehicleJourney) {
+        NaturalLanguageStringStructure lineNameStruct = new NaturalLanguageStringStructure();
+        lineNameStruct.setValue("EMPTY_LINE");
+        vehicleJourney.getPublishedLineNames().add(lineNameStruct);
     }
 
     private void feedFirstOrLastJourney(String datasetId, MonitoredStopVisit monitoredStopVisit) {
