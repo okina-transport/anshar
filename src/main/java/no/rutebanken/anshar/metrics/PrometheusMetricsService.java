@@ -68,77 +68,57 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
     private static final String VALIDATION_RULE_TAG_NAME = "category";
     private static final String SCHEMA_VALID_TAG_NAME = "schema";
     private static final String PROFILE_VALID_TAG_NAME = "profile";
-
-    @Autowired
-    protected SubscriptionManager manager;
-
-    @Autowired
-    private CamelRouteManager camelRouteManager;
-
-    @Autowired
-    private ServerSubscriptionManager serverSubscriptionManager;
-
-    private CamelContext camelContext;
-
     private static final String METRICS_PREFIX = "app.anshar.";
+    private static final String STARTUP_TIME = METRICS_PREFIX + "startup.time";
     private static final String DATA_COUNTER_NAME = METRICS_PREFIX + "data.counter";
     private static final String DATA_TOTAL_COUNTER_NAME = METRICS_PREFIX + "data.total";
-
     private static final String DATA_EXTERNAL_SOURCE_TOTAL_COUNTER_NAME = METRICS_PREFIX + "data.external.source.total";
     private static final String DATA_SUCCESS_COUNTER_NAME = METRICS_PREFIX + "data.success";
     private static final String DATA_EXPIRED_COUNTER_NAME = METRICS_PREFIX + "data.expired";
     private static final String DATA_IGNORED_COUNTER_NAME = METRICS_PREFIX + "data.ignored";
     private static final String DATA_OUTBOUND_COUNTER_NAME = METRICS_PREFIX + "data.outbound";
-
     private static final String DATA_MAPPING_COUNTER_NAME = METRICS_PREFIX + "data.mapping";
-
     private static final String KAFKA_COUNTER_NAME = METRICS_PREFIX + "data.kafka";
-
     private static final String DATA_VALIDATION_COUNTER = METRICS_PREFIX + "data.validation";
     private static final String DATA_VALIDATION_RESULT_COUNTER = METRICS_PREFIX + "data.validation.result";
-
     private static final String EMPTY_RECORDED_AT_TIME = METRICS_PREFIX + "data.empty.recoreded.at.time";
     private static final String NEW_RECORDED_AFTER_OLD = METRICS_PREFIX + "data.new.recorded.before.old.recorded";
-
     private static final String NEGATIVE_EXPIRATATION = METRICS_PREFIX + "data.negative.expiration";
-
-
     private static final String SUBS_PUSH_WAITING_THREADS = METRICS_PREFIX + "subscription.push.waiting.threads";
     private static final String SUBS_PUSH_ACTIVE_THREADS = METRICS_PREFIX + "subscription.push.active.threads";
     private static final String PUSH_UPDATES_WAITING_THREADS = METRICS_PREFIX + "push.updates.waiting.threads";
     private static final String PUSH_UPDATES_ACTIVE_THREADS = METRICS_PREFIX + "push.updates..active.threads";
-
-
     private static final String OUTBOUND_PUSH_TIME = METRICS_PREFIX + "data.outbound.push.time";
-
     private static final String DELTA_RECORDED_AT_TIME = METRICS_PREFIX + "data.delta.recorded.at.time";
-
     private static final String OUTBOUND_PUSH_ERRORS = METRICS_PREFIX + "outbound.push.errors";
     private static final String OUTBOUND_SUBSCRIPTIONS_COUNT = METRICS_PREFIX + "outbound.subscriptions.count";
-
     private static final String ASYNC_PROCESS_SEDA_CURRENT_QUEUE_SIZE = METRICS_PREFIX + "async.process.seda.current.queue.size";
-
-
-    public PrometheusMetricsService() {
-        super(PrometheusConfig.DEFAULT);
-    }
-
     final Map<String, Integer> nbOfOutboundPushByRequestor = new HashMap<>();
     final Map<String, Long> totalPushTimeByRequestor = new HashMap<>();
     final Map<String, Set<Long>> smDeltaTimesTmp = new ConcurrentHashMap<>();
     final Map<String, Double> smDeltaTimesResults = new HashMap<>();
     final Map<String, Double> outboundPushTimeResults = new HashMap<>();
-
-
     final Map<String, Set<Long>> smDeltaTimesTmpBeforePush = new ConcurrentHashMap<>();
     final Map<String, Double> smDeltaTimesResultsBeforePush = new HashMap<>();
+    final Map<String, Integer> gaugeValues = new HashMap<>();
+    @Autowired
+    protected SubscriptionManager manager;
+    @Autowired
+    private CamelRouteManager camelRouteManager;
+    @Autowired
+    private ServerSubscriptionManager serverSubscriptionManager;
+    private CamelContext camelContext;
 
+
+    public PrometheusMetricsService() {
+        super(PrometheusConfig.DEFAULT);
+        counter(STARTUP_TIME).increment((double) System.currentTimeMillis() / 1000);
+    }
 
     @PreDestroy
     public void shutdown() {
         this.close();
     }
-
 
     /**
      * Record delta times between recordedAtTime field and real time
@@ -240,7 +220,6 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
         counter(DATA_EXTERNAL_SOURCE_TOTAL_COUNTER_NAME, counterTags).increment(total);
     }
 
-
     public void registerDataMapping(SiriDataType dataType, String agencyId, MappingNames mappingName, int mappedCount) {
 
         List<Tag> counterTags = new ArrayList<>();
@@ -262,8 +241,6 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
         this.camelContext = camelContext;
         logger.info("ShutdownStrategy: {}", camelContext.getShutdownStrategy());
     }
-
-    public enum KafkaStatus {SENT, ACKED, FAILED}
 
     public void registerAckedKafkaRecord(String topic) {
         registerKafkaRecord(topic, KafkaStatus.ACKED);
@@ -365,15 +342,13 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
         }
     }
 
-    final Map<String, Integer> gaugeValues = new HashMap<>();
-
     public void gaugeDataset(SiriDataType subscriptionType, String agencyId, Integer count) {
 
         List<Tag> counterTags = new ArrayList<>();
         counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, subscriptionType.name()));
         counterTags.add(new ImmutableTag(AGENCY_TAG_NAME, agencyId));
 
-        String key = "" + subscriptionType + agencyId;
+        String key = subscriptionType + agencyId;
         gaugeValues.put(key, count);
 
         gauge(DATA_COUNTER_NAME, counterTags, key, value -> gaugeValues.get(key));
@@ -385,7 +360,6 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
         update();
         return super.scrape();
     }
-
 
     private void updateDeltaTimes() {
         for (Map.Entry<String, Set<Long>> smDeltaTimeEntry : smDeltaTimesTmp.entrySet()) {
@@ -505,7 +479,6 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
         }
     }
 
-
     private void updateDeltaTimesBeforePush() {
 
         for (Map.Entry<String, Set<Long>> smDeltaTimeEntry : smDeltaTimesTmpBeforePush.entrySet()) {
@@ -535,7 +508,6 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
         return sedaEndpoint == null ? 0 : ((SedaEndpoint) sedaEndpoint).getCurrentQueueSize();
     }
 
-
     private List<Tag> getTagsWithTimeLimit(List<Tag> counterTags, String timeLimit) {
         List<Tag> counterTagsClone = new ArrayList<>(counterTags);
         counterTagsClone.add(new ImmutableTag("timelimit", timeLimit));
@@ -549,4 +521,6 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
         }
         return 0;
     }
+
+    public enum KafkaStatus {SENT, ACKED, FAILED}
 }
