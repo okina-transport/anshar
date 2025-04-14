@@ -17,9 +17,13 @@ package no.rutebanken.anshar.routes.admin;
 
 import com.google.common.net.HttpHeaders;
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.consistency.ConsistencyForAllDatasetsProcessor;
+import no.rutebanken.anshar.consistency.ConsistencyService;
+import no.rutebanken.anshar.consistency.exception.DatasetNotFoundException;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.health.HealthManager;
+import no.rutebanken.anshar.routes.kafka.KafkaRouteBuilder;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.validation.SiriXmlValidator;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -55,6 +59,13 @@ import static no.rutebanken.anshar.routes.policy.SingletonRoutePolicyFactory.DEF
 @Configuration
 public class AdministrationRoute extends RestRouteBuilder {
 
+    public static final String ISHTAR_SYNCHRONIZE_DATA_ROUTE = "direct:isthar.synchronize.data";
+    public static final String ISHTAR_GET_GTFS_RT_API_REQUEST_ROUTE = "direct:ishtar.get.gtfs-rt-api.request";
+    public static final String ISHTAR_GET_SIRI_API_REQUEST_ROUTE = "direct:ishtar.get.siri-api.request";
+    public static final String ISHTAR_GET_SUBSCRIPTION_REQUEST_ROUTE = "direct:ishtar.get.subscription.request";
+    public static final String ISHTAR_CLEAR_CACHE_BY_DATASET_ID = "direct:ishtar.clear.cache.by.datasetId";
+    public static final String GET_CONSISTENCY_REPORT_BY_DATASET_ID = "direct:get.consistency.report.by.datasetId";
+    public static final String GET_CONSISTENCY_REPORTS_FOR_ALL_DATASETS = "direct:get.consistency.reports.for.all.datasets";
     private static final String STATS_ROUTE = "direct:stats";
     private static final String INTERNAL_STATS_ROUTE = "direct:internal.stats";
     private static final String OUTBOUND_STATS_ROUTE = "direct:outbound.stats";
@@ -67,12 +78,6 @@ public class AdministrationRoute extends RestRouteBuilder {
     private static final String SITUATIONS_ROUTE = "direct:situations";
     private static final String SYNTHESIS_ROUTE = "direct:synthesis";
     private static final String INTERNAL_SYNTHESIS_ROUTE = "direct:internal.synthesis";
-    public static final String ISHTAR_SYNCHRONIZE_DATA_ROUTE = "direct:isthar.synchronize.data";
-    public static final String ISHTAR_GET_GTFS_RT_API_REQUEST_ROUTE = "direct:ishtar.get.gtfs-rt-api.request";
-    public static final String ISHTAR_GET_SIRI_API_REQUEST_ROUTE = "direct:ishtar.get.siri-api.request";
-    public static final String ISHTAR_GET_SUBSCRIPTION_REQUEST_ROUTE = "direct:ishtar.get.subscription.request";
-    public static final String ISHTAR_CLEAR_CACHE_BY_DATASET_ID = "direct:ishtar.clear.cache.by.datasetId";
-
     @Autowired
     private ExtendedHazelcastService extendedHazelcastService;
 
@@ -93,6 +98,12 @@ public class AdministrationRoute extends RestRouteBuilder {
 
     @Autowired
     private SiriXmlValidator siriXmlValidator;
+
+    @Autowired
+    private ConsistencyService consistencyService;
+
+    @Autowired
+    private ConsistencyForAllDatasetsProcessor cfadp;
 
     @Value("${anshar.route.singleton.policy.automatic.verification:false}")
     private boolean autoLockVerificationEnabled;
@@ -137,6 +148,8 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .post("/siri-request").produces(APPLICATION_JSON).to(ISHTAR_GET_SIRI_API_REQUEST_ROUTE)
                 .post("/subscription-request").produces(APPLICATION_JSON).to(ISHTAR_GET_SUBSCRIPTION_REQUEST_ROUTE)
                 .delete("/dataset/{datasetId}").to(ISHTAR_CLEAR_CACHE_BY_DATASET_ID)
+                .get("/consistency-reports/{datasetId}").produces(APPLICATION_JSON).to(GET_CONSISTENCY_REPORT_BY_DATASET_ID)
+                .get("/consistency-reports").to(GET_CONSISTENCY_REPORTS_FOR_ALL_DATASETS)
         ;
 
         if (autoLockVerificationEnabled) {
@@ -212,6 +225,28 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .routeId("admin.synthesis")
         ;
 
+        from(GET_CONSISTENCY_REPORT_BY_DATASET_ID)
+                .onException(DatasetNotFoundException.class)
+                .handled(true)
+                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant(404))
+                .setBody(exceptionMessage())
+                .end()
+                .onException(Exception.class)
+                .handled(true)
+                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant(500))
+                .end()
+                .process(e -> e.getIn().setBody(consistencyService.buildReportForDataset(e.getIn().getHeader("datasetId", String.class))))
+                .wireTap(KafkaRouteBuilder.SEND_TH_TR_CONSISTENCY_REPORT_TO_KAFKA) // send to KAFKA async
+                .marshal()
+                .json();
+
+        from(GET_CONSISTENCY_REPORTS_FOR_ALL_DATASETS)
+                .wireTap("direct:generateConsistencyReportForAllDatasets")
+                .setBody(constant(""))
+                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant(204));
+
+        from("direct:generateConsistencyReportForAllDatasets")
+                .process(cfadp);
 
         if (configuration.processAdmin() && !configuration.processData()) {
             from(STATS_ROUTE)

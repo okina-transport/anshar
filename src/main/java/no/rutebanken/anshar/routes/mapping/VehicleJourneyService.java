@@ -15,7 +15,9 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -28,18 +30,13 @@ import java.util.concurrent.TimeUnit;
 public class VehicleJourneyService {
 
     private static final Logger logger = LoggerFactory.getLogger(VehicleJourneyService.class);
-
-
+    private static final Object LOCK = new Object();
+    private final Set<String> vehicleJourneyMobiitiIds = new HashSet<>();
+    private final Map<LocalDate, Map<String, FirstOrLastJourneyEnumeration>> servicePositionMap = new HashMap<>();
     @Value("${anshar.first.or.last.vj.file}")
     private String firstOrLastVehicleJourneyFile;
-
     @Value("${anshar.line.ids.update.frequency.hours:10}")
     private int updateFrequency = 10;
-
-    private static final Object LOCK = new Object();
-
-    private Map<LocalDate, Map<String, FirstOrLastJourneyEnumeration>> servicePositionMap = new HashMap<>();
-
 
     @PostConstruct
     private void initialize() {
@@ -68,7 +65,7 @@ public class VehicleJourneyService {
         File fileToRead = new File(firstOrLastVehicleJourneyFile);
         Iterable<CSVRecord> records = CSVUtils.getRecords(fileToRead);
         servicePositionMap.clear();
-
+        vehicleJourneyMobiitiIds.clear();
         for (CSVRecord record : records) {
 
             String lineId = record.isSet("lineId") ? record.get("lineId") : null;
@@ -81,6 +78,7 @@ public class VehicleJourneyService {
                 continue;
             }
 
+            vehicleJourneyMobiitiIds.add(vehicleJourneyId);
             Map<String, FirstOrLastJourneyEnumeration> dayMap;
 
             if (servicePositionMap.containsKey(date)) {
@@ -98,7 +96,6 @@ public class VehicleJourneyService {
         }
 
     }
-
 
     /**
      * Return the service position of the vehicle journey
@@ -127,5 +124,15 @@ public class VehicleJourneyService {
         return servicePositionMap.get(date).get(vehicleJourneyId);
     }
 
+    /**
+     * @param vehicleJourneyMobiitiId vehicle journey id to check existence from
+     * @return true if vehicle journey id belongs to Mobi-iti referential
+     */
+    public boolean exists(String vehicleJourneyMobiitiId) {
+        if (vehicleJourneyMobiitiId.endsWith(":LOC")) {
+            vehicleJourneyMobiitiId = vehicleJourneyMobiitiId.substring(0, vehicleJourneyMobiitiId.length() - 4);
+        }
+        return vehicleJourneyMobiitiIds.contains(vehicleJourneyMobiitiId);
+    }
 
 }

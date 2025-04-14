@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Siri xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns="http://www.siri.org.uk/siri" version="2.0">
+    <ServiceDelivery>
+        <ResponseTimestamp>2025-04-07T09:52:19.036489+02:00</ResponseTimestamp>
+        <ProducerRef>OKI</ProducerRef>
+        <RequestMessageRef>TD-staging-test-GM</RequestMessageRef>
+        <Status>true</Status>
+        <MoreData>false</MoreData>
+        <GeneralMessageDelivery version="2.0">
+            <ResponseTimestamp>2025-04-07T09:52:19.036538+02:00</ResponseTimestamp>
+            <GeneralMessage formatRef="France">
+                <RecordedAtTime>2025-04-02T12:53:56+02:00</RecordedAtTime>
+                <ItemIdentifier>c5f82c2c-0fb0-11f0-b3d8-0a58a9feac02</ItemIdentifier>
+                <InfoMessageIdentifier>c5f82c2c-0fb0-11f0-b3d8-0a58a9feac02</InfoMessageIdentifier>
+                <InfoChannelRef>Perturbation</InfoChannelRef>
+                <ValidUntilTime>2025-04-11T23:59:00+02:00</ValidUntilTime>
+                <SituationRef>
+                    <SituationSimpleRef>c5f82c2c-0fb0-11f0-b3d8-0a58a9feac02</SituationSimpleRef>
+                </SituationRef>
+                <Content xsi:type="FrGeneralMessageStructure">
+                    <LineRef>NAOLIBORG:Line:30:LOC</LineRef>
+                    <StopPointRef>FR_NAOLIB:Quay:320</StopPointRef>
+                    <StopPointRef>FR_NAOLIB:Quay:1546</StopPointRef>
+                    <StopPointRef>FR_NAOLIB:Quay:1509</StopPointRef>
+                    <Message>
+                        <MessageType>textOnly</MessageType>
+                        <MessageText>Du lundi 7 au vendredi 11 avril 2025 Travaux rue Villeneuve à St-Sébastien, la
+                            ligne 30 est déviée uniquement vers Trentemoult entre les arrêts Violettes et Radigois. Où
+                            prendre votre bus &gt; vers Trentemoult arrêt Largeau reporté à l'arrêt Largeau de la L28
+                            (vers Pirmil) arrêts Villeneuve et Augé reportés à l'arrêt Radigois &gt; vers Îles de Loire
+                            parcours normal Itinéraire de déviation pendant les travaux 25/226
+                        </MessageText>
+                    </Message>
+                </Content>
+                <Extensions>
+                    <Alerts>
+                        <SendNotifications>true</SendNotifications>
+                        <NotificationsDate>2025-04-03T06:58:53Z</NotificationsDate>
+                        <AlertMessages>
+                            <AlertMessage>
+                                <ChannelName>BIV Decaux</ChannelName>
+                                <ChannelType>pids</ChannelType>
+                                <MessageUsage>start</MessageUsage>
+                                <NotificationDate>2025-04-03T06:58:53Z</NotificationDate>
+                                <MessageText>Travaux L30 arrêt non desservi / Info sur appli Naolib</MessageText>
+                            </AlertMessage>
+                            <AlertMessage>
+                                <ChannelName>Site web</ChannelName>
+                                <ChannelType>web</ChannelType>
+                                <MessageUsage>start</MessageUsage>
+                                <NotificationDate>2025-04-03T06:58:53Z</NotificationDate>
+                                <MessageText>&lt;h4&gt;&lt;span class="text-big"&gt;&lt;strong&gt;Du lundi 7 au vendredi
+                                    11 avril 2025&lt;/strong&gt;&lt;/span&gt;&lt;/h4&gt;&lt;p&gt;Travaux rue Villeneuve
+                                    à St-Sébastien, la ligne 30 est déviée uniquement vers Trentemoult entre les arrêts
+                                    Violettes et Radigois.&lt;/p&gt;&lt;h4&gt;Où prendre votre bus&lt;/h4&gt;&lt;p&gt;&lt;strong&gt;&amp;gt;
+                                    vers Trentemoult&lt;/strong&gt;&lt;br&gt;arrêt Largeau reporté à l'arrêt Largeau de
+                                    la L28 (vers Pirmil)&lt;br&gt;arrêts Villeneuve et Augé reportés à l'arrêt Radigois&lt;/p&gt;&lt;p&gt;&lt;strong&gt;&amp;gt;
+                                    vers Îles de Loire&lt;/strong&gt;&lt;br&gt;parcours normal&lt;/p&gt;&lt;p&gt;&amp;nbsp;&lt;/p&gt;&lt;p&gt;&lt;a
+                                    href="https://naolib.fr/medias/photo/plan-l30-tvx-rue-villeneuve_1743663490384-jpg"
+                                    target="_blank" rel="noopener noreferrer"&gt;Itinéraire de déviation pendant les
+                                    travaux&amp;nbsp;&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&amp;nbsp;&lt;/p&gt;&lt;p&gt;&lt;span
+                                    class="text-small"&gt;25/226&lt;/span&gt;&lt;/p&gt;
+                                </MessageText>
+                            </AlertMessage>
+                            <AlertMessage>
+                                <ChannelName>Titre</ChannelName>
+                                <ChannelType>title</ChannelType>
+                                <MessageUsage>start</MessageUsage>
+                                <NotificationDate>2025-04-03T06:58:53Z</NotificationDate>
+                                <MessageText>Travaux rue Villeneuve à St-Sébastien</MessageText>
+                            </AlertMessage>
+                        </AlertMessages>
+                    </Alerts>
+                </Extensions>
+            </GeneralMessage>
+        </GeneralMessageDelivery>
+    </ServiceDelivery>
+</Siri>

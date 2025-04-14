@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Siri xmlns="http://www.siri.org.uk/siri"
+      version="2.1">
+    <ServiceDelivery>
+        <ResponseTimestamp>2025-04-07T09:54:36.799404+02:00</ResponseTimestamp>
+        <ProducerRef>OKI</ProducerRef>
+        <RequestMessageRef>#RequestorREF#12EFS1aaa-2</RequestMessageRef>
+        <Status>true</Status>
+        <MoreData>false</MoreData>
+        <StopMonitoringDelivery version="2.1">
+            <ResponseTimestamp>2025-04-07T09:54:36.802552+02:00</ResponseTimestamp>
+            <MonitoredStopVisit>
+                <RecordedAtTime>2025-04-07T09:00:52.404849+02:00</RecordedAtTime>
+                <ItemIdentifier>23-CRQU3-R-2025-04-07T11:57:05+02:00[Europe/Paris]</ItemIdentifier>
+                <MonitoringRef>FR_NAOLIB:Quay:515</MonitoringRef>
+                <MonitoredVehicleJourney>
+                    <LineRef>NAOLIBORG:Line:23:LOC</LineRef>
+                    <FramedVehicleJourneyRef>
+                        <DataFrameRef>any</DataFrameRef>
+                        <DatedVehicleJourneyRef>NAOLIBORG:VehicleJourney:44542228-CR_24_25-HD25P1J1-L-Ma-Me-J-20:LOC
+                        </DatedVehicleJourneyRef>
+                    </FramedVehicleJourneyRef>
+                    <VehicleMode>bus</VehicleMode>
+                    <PublishedLineName>Haluchère Batignolles - Mendès France - Bellevue</PublishedLineName>
+                    <DirectionName>R</DirectionName>
+                    <DestinationRef>FR_NAOLIB:Quay:29</DestinationRef>
+                    <DestinationName xml:lang="FR">Mendès France - Bellevue</DestinationName>
+                    <Monitored>true</Monitored>
+                    <MonitoredCall>
+                        <StopPointRef>FR_NAOLIB:Quay:515</StopPointRef>
+                        <Order>26</Order>
+                        <VehicleAtStop>true</VehicleAtStop>
+                        <AimedArrivalTime>2025-04-07T11:57:05+02:00</AimedArrivalTime>
+                        <ExpectedArrivalTime>2025-04-07T11:39:28+02:00</ExpectedArrivalTime>
+                        <ArrivalStatus>early</ArrivalStatus>
+                        <ArrivalProximityText>Départ proche</ArrivalProximityText>
+                        <AimedDepartureTime>2025-04-07T11:57:05+02:00</AimedDepartureTime>
+                        <ExpectedDepartureTime>2025-04-07T11:39:28+02:00</ExpectedDepartureTime>
+                    </MonitoredCall>
+                </MonitoredVehicleJourney>
+            </MonitoredStopVisit>
+            <MonitoredStopVisit>
+                <RecordedAtTime>2025-04-07T09:00:52.404849+02:00</RecordedAtTime>
+                <ItemIdentifier>23-CRQU3-R-2025-04-07T11:57:05+02:00[Europe/Paris]</ItemIdentifier>
+                <MonitoringRef>FR_NAOLIB:Quay:516</MonitoringRef>
+                <MonitoredVehicleJourney>
+                    <LineRef>NAOLIBORG:Line:24:LOC</LineRef>
+                    <FramedVehicleJourneyRef>
+                        <DataFrameRef>any</DataFrameRef>
+                        <DatedVehicleJourneyRef>NAOLIBORG:VehicleJourney:666666-CR_24_25-HD25P1J1-L-Ma-Me-J-20:LOC
+                        </DatedVehicleJourneyRef>
+                    </FramedVehicleJourneyRef>
+                    <VehicleMode>bus</VehicleMode>
+                    <PublishedLineName>Haluchère Batignolles - Mendès France - Bellevue</PublishedLineName>
+                    <DirectionName>R</DirectionName>
+                    <DestinationRef>FR_NAOLIB:Quay:30</DestinationRef>
+                    <DestinationName xml:lang="FR">Mendès France - Bellevue</DestinationName>
+                    <Monitored>true</Monitored>
+                    <MonitoredCall>
+                        <StopPointRef>FR_NAOLIB:Quay:516</StopPointRef>
+                        <Order>26</Order>
+                        <VehicleAtStop>true</VehicleAtStop>
+                        <AimedArrivalTime>2025-04-07T11:57:05+02:00</AimedArrivalTime>
+                        <ExpectedArrivalTime>2025-04-07T11:39:28+02:00</ExpectedArrivalTime>
+                        <ArrivalStatus>early</ArrivalStatus>
+                        <ArrivalProximityText>Départ proche</ArrivalProximityText>
+                        <AimedDepartureTime>2025-04-07T11:57:05+02:00</AimedDepartureTime>
+                        <ExpectedDepartureTime>2025-04-07T11:39:28+02:00</ExpectedDepartureTime>
+                    </MonitoredCall>
+                </MonitoredVehicleJourney>
+            </MonitoredStopVisit>
+        </StopMonitoringDelivery>
+    </ServiceDelivery>
+</Siri>

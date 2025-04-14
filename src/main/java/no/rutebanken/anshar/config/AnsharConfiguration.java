@@ -106,6 +106,8 @@ public class AnsharConfiguration {
     private List<String> blockedEtClientNames;
     @Value("${anshar.application.mode:}")
     private List<AppMode> appModes;
+    @Value("${anshar.client.name}")
+    private String clientName;
 
     @Autowired
     @Qualifier("getLockMap")

@@ -36,11 +36,9 @@ import java.util.*;
 public class SiriValueTransformer {
 
     public static final String SEPARATOR = "$";
-
+    public static final List<String> methodsToIgnore = Collections.singletonList("getMonitoringError");
     private static final Logger logger = LoggerFactory.getLogger(SiriValueTransformer.class);
-
     private static final Map<GetterKey, Set<Method>> cachedGettersForAdapter = new HashMap<>();
-
     private static final LoadingCache<Class, List<Method>> getterMethodsCache = CacheBuilder.newBuilder()
             .build(
                     new CacheLoader<Class, List<Method>>() {
@@ -56,8 +54,6 @@ public class SiriValueTransformer {
                             return getterMethods;
                         }
                     });
-
-    private static final List<String> methodsToIgnore = Collections.singletonList("getMonitoringError");
 
     /**
      * @param xml
@@ -254,6 +250,11 @@ public class SiriValueTransformer {
         }
     }
 
+    public static void clearCachedGettersForAdapter() {
+        logger.warn("Clearing cached getters for adapter. Test usage only!!!!!!!");
+        cachedGettersForAdapter.clear();
+    }
+
     private static class GetterKey {
         private final ValueAdapter adapter;
         private final Class clazz;
@@ -274,10 +275,10 @@ public class SiriValueTransformer {
 
             GetterKey getterKey = (GetterKey) o;
 
-            if (adapter != null ? !adapter.equals(getterKey.adapter) : getterKey.adapter != null) {
+            if (!Objects.equals(adapter, getterKey.adapter)) {
                 return false;
             }
-            return clazz != null ? clazz.equals(getterKey.clazz) : getterKey.clazz == null;
+            return Objects.equals(clazz, getterKey.clazz);
         }
 
         @Override
@@ -286,11 +287,5 @@ public class SiriValueTransformer {
             result = 31 * result + (clazz != null ? clazz.hashCode() : 0);
             return result;
         }
-    }
-
-
-    public static void clearCachedGettersForAdapter() {
-        logger.warn("Clearing cached getters for adapter. Test usage only!!!!!!!");
-        cachedGettersForAdapter.clear();
     }
 }

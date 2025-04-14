@@ -22,21 +22,15 @@ import java.util.concurrent.*;
 @Configuration
 public class LineUpdaterService {
     private static final Logger logger = LoggerFactory.getLogger(LineUpdaterService.class);
-
-    @Value("${anshar.lineIds.file}")
-    private String lineIdsPath;
-
-    @Value("${anshar.line.ids.update.frequency.hours:10}")
-    private int updateFrequency = 10;
-
+    private static final Object LOCK = new Object();
+    private transient final ConcurrentMap<String, Boolean> areLineFlexible = new ConcurrentHashMap<>();
+    private final Map<String, String> lineNameMap = new HashMap<>();
     @Autowired
     BlobStoreService blobStoreService;
-
-    private transient final ConcurrentMap<String, Boolean> areLineFlexible = new ConcurrentHashMap<>();
-
-    private final Map<String, String> lineNameMap = new HashMap<>();
-
-    private static final Object LOCK = new Object();
+    @Value("${anshar.lineIds.file}")
+    private String lineIdsPath;
+    @Value("${anshar.line.ids.update.frequency.hours:10}")
+    private int updateFrequency = 10;
 
     @PostConstruct
     private void initialize() {
@@ -115,5 +109,12 @@ public class LineUpdaterService {
 
     public void addLineName(String lineId, String lineName) {
         lineNameMap.put(lineId, lineName);
+    }
+
+    public boolean exists(String lineOriginalId) {
+        if (lineOriginalId.endsWith(":LOC")) {
+            lineOriginalId = lineOriginalId.substring(0, lineOriginalId.length() - 4);
+        }
+        return lineNameMap.containsKey(lineOriginalId);
     }
 }

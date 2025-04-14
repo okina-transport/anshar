@@ -1,67 +1,55 @@
 package no.rutebanken.anshar.routes.kafka;
 
-import org.apache.camel.builder.RouteBuilder;
-import org.apache.commons.lang3.StringUtils;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
-public abstract class KafkaConfig extends RouteBuilder {
 
+@Component
+@Getter
+@Slf4j
+public class KafkaConfig {
 
-    public static final String CODESPACE_ID_KAFKA_HEADER_NAME = "codespaceId";
+    private final boolean kafkaEnabled;
+    private final boolean sendSiriToKafka;
+    private final String brokers;
+    private final String clientId;
+    private final String groupId;
+    private final String sxTopic;
+    private final String thTrConsistencyTopic;
 
-    private final static String jaasConfigContents = "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"%s\" password=\"%s\";";
+    public KafkaConfig(@Value("${anshar.kafka.enabled:false}") boolean kafkaEnabled,
+                       @Value("${anshar.send.siri.to.kafka:false}") boolean sendSiriToKafka,
+                       @Value("${anshar.kafka.brokers:}") String brokers,
+                       @Value("${anshar.kafka.clientId:}") String clientId,
+                       @Value("${anshar.kafka.groupId:}") String groupId,
+                       @Value("${anshar.kafka.topic.sx:}") String sxTopic,
+                       @Value("${anshar.kafka.topic.th.tr.consistency:th_tr_consistency}") String thTrConsistencyTopic) {
+        this.kafkaEnabled = kafkaEnabled;
+        this.sendSiriToKafka = sendSiriToKafka;
+        this.brokers = brokers;
+        this.clientId = clientId;
+        this.groupId = groupId;
+        this.sxTopic = sxTopic;
+        this.thTrConsistencyTopic = thTrConsistencyTopic;
+    }
 
-    @Value("${anshar.kafka.et.enabled:false}")
-    protected boolean publishEtToKafkaEnabled;
-    @Value("${anshar.kafka.vm.enabled:false}")
-    protected boolean publishVmToKafkaEnabled;
-    @Value("${anshar.kafka.sx.enabled:false}")
-    protected boolean publishSxToKafkaEnabled;
-
-    @Value("${anshar.kafka.siri.enrich.et.enabled:false}")
-    protected boolean kafkaEnrichEtEnabled;
-
-    @Value("${anshar.kafka.security.protocol}")
-    protected String securityProtocol;
-    @Value("${anshar.kafka.security.sasl.mechanism}")
-    protected String saslMechanism;
-    @Value("${anshar.kafka.sasl.username}")
-    protected String saslUsername;
-    @Value("${anshar.kafka.sasl.password}")
-    protected String saslPassword;
-    @Value("${anshar.kafka.brokers}")
-    protected String brokers;
-    @Value("${anshar.kafka.clientId:}")
-    protected String clientId;
-    @Value("${anshar.kafka.compressionType:gzip}")
-    private String compressionType;
-
-    protected String createConsumerConfig(String topicName) {
-        String config = topicName;
+    public String createCamelConsumerConfig(String topicName) {
+        String config = "kafka:" + topicName;
         config += "?brokers=" + brokers;
         config += "&clientId=" + clientId;
-        config += "&groupId=" + clientId;
-        config += "&securityProtocol=" + securityProtocol;
-        config += "&saslMechanism=" + saslMechanism;
-        config += "&saslJaasConfig=" + getSaslJaasConfigString();
+        config += "&groupId=" + groupId;
+        log.info("KAFKA consumer config: {}", config);
         return config;
     }
 
-    protected String createProducerConfig(String topicName) {
-        String config = topicName;
+    public String createCamelProducerConfig(String topicName) {
+        String config = "kafka:" + topicName;
         config += "?brokers=" + brokers;
-        config += "&compressionCodec=" + compressionType;
         config += "&clientId=" + clientId;
-        config += "&securityProtocol=" + securityProtocol;
-        config += "&saslMechanism=" + saslMechanism;
-        config += "&saslJaasConfig=" + getSaslJaasConfigString();
+        log.info("KAFKA producer config: {}", config);
         return config;
     }
 
-    private String getSaslJaasConfigString() {
-        if (StringUtils.isEmpty(saslUsername) || StringUtils.isEmpty(saslPassword)) {
-            return null;
-        }
-        return String.format(jaasConfigContents, saslUsername.trim(), saslPassword.trim());
-    }
 }

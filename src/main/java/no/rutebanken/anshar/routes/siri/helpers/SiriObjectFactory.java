@@ -27,6 +27,7 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.NotImplementedException;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.xerces.dom.ElementNSImpl;
 import org.objenesis.strategy.StdInstantiatorStrategy;
 import org.slf4j.Logger;
@@ -36,6 +37,7 @@ import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.*;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.xml.bind.JAXBException;
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
@@ -86,10 +88,9 @@ public class SiriObjectFactory {
 
     }
 
+    public final Instant serverStartTime;
     @Autowired
     private AnsharConfiguration configuration;
-
-    public final Instant serverStartTime;
 
     public SiriObjectFactory(@Autowired Instant serverStartTime) {
         this.serverStartTime = serverStartTime;
@@ -138,7 +139,7 @@ public class SiriObjectFactory {
                     subscriptionSetup.getPreviewInterval(),
                     subscriptionSetup.getChangeBeforeUpdates(),
                     subscriptionSetup.getLineRefValues()
-                    );
+            );
         }
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
             request = createStopMonitoringSubscriptionRequest(
@@ -182,50 +183,54 @@ public class SiriObjectFactory {
 
 
     public static Siri createServiceRequest(SubscriptionSetup subscriptionSetup) {
-        Siri siri = createSiriObject(subscriptionSetup.getVersion());
+        return createServiceRequest(subscriptionSetup.getSubscriptionType(), subscriptionSetup.getVersion(), subscriptionSetup.getRequestorRef(), subscriptionSetup.getPreviewInterval(), subscriptionSetup.getStopMonitoringRefValues());
+    }
+
+    public static Siri createServiceRequest(SiriDataType type, String version, String requestorRef, @Nullable Duration previewInterval, List<String> stopMonitoringRefValues) {
+        Siri siri = createSiriObject(version);
 
         ServiceRequest request = new ServiceRequest();
         request.setRequestTimestamp(ZonedDateTime.now());
-        request.setRequestorRef(createRequestorRef(subscriptionSetup.getRequestorRef()));
+        request.setRequestorRef(createRequestorRef(requestorRef));
 
-        if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.SITUATION_EXCHANGE)) {
-            SituationExchangeRequestStructure sxRequestStruct = createSituationExchangeRequestStructure(subscriptionSetup.getPreviewInterval());
+        if (type.equals(SiriDataType.SITUATION_EXCHANGE)) {
+            SituationExchangeRequestStructure sxRequestStruct = createSituationExchangeRequestStructure(previewInterval);
             request.setMessageIdentifier(sxRequestStruct.getMessageIdentifier());
             request.getSituationExchangeRequests().add(sxRequestStruct);
 
         }
-        if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.VEHICLE_MONITORING)) {
+        if (type.equals(SiriDataType.VEHICLE_MONITORING)) {
             VehicleMonitoringRequestStructure vmRequestStruct = createVehicleMonitoringRequestStructure();
             request.setMessageIdentifier(vmRequestStruct.getMessageIdentifier());
             request.getVehicleMonitoringRequests().add(vmRequestStruct);
         }
-        if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.ESTIMATED_TIMETABLE)) {
-            EstimatedTimetableRequestStructure etRequestStruct = createEstimatedTimetableRequestStructure(subscriptionSetup.getPreviewInterval());
+        if (type.equals(SiriDataType.ESTIMATED_TIMETABLE)) {
+            EstimatedTimetableRequestStructure etRequestStruct = createEstimatedTimetableRequestStructure(previewInterval);
             request.setMessageIdentifier(etRequestStruct.getMessageIdentifier());
             request.getEstimatedTimetableRequests().add(etRequestStruct);
         }
-        if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
-
-            for (String stopMonitoringRefValue : subscriptionSetup.getStopMonitoringRefValues()) {
-                StopMonitoringRequestStructure smRequestStruct = createStopMonitoringRequestStructure(subscriptionSetup, stopMonitoringRefValue);
-                request.setMessageIdentifier(smRequestStruct.getMessageIdentifier());
-                request.getStopMonitoringRequests().add(smRequestStruct);
+        if (type.equals(SiriDataType.STOP_MONITORING)) {
+            if (CollectionUtils.isNotEmpty(stopMonitoringRefValues)) {
+                for (String stopMonitoringRefValue : stopMonitoringRefValues) {
+                    StopMonitoringRequestStructure smRequestStruct = createStopMonitoringRequestStructure(previewInterval, stopMonitoringRefValue);
+                    request.setMessageIdentifier(smRequestStruct.getMessageIdentifier());
+                    request.getStopMonitoringRequests().add(smRequestStruct);
+                }
+            } else {
+                request.getStopMonitoringRequests().add(createStopMonitoringRequestStructure(previewInterval, null));
             }
-
-
         }
-        if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.GENERAL_MESSAGE)) {
-            GeneralMessageRequestStructure gmRequestStruct = createGeneralMessageRequestStructure(subscriptionSetup);
+        if (type.equals(SiriDataType.GENERAL_MESSAGE)) {
+            GeneralMessageRequestStructure gmRequestStruct = createGeneralMessageRequestStructure();
             request.setMessageIdentifier(gmRequestStruct.getMessageIdentifier());
             request.getGeneralMessageRequests().add(gmRequestStruct);
         }
-        if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.FACILITY_MONITORING)) {
-            FacilityMonitoringRequestStructure fmRequestStruct = createFacilityMonitoringRequestStructure(subscriptionSetup);
+        if (type.equals(SiriDataType.FACILITY_MONITORING)) {
+            FacilityMonitoringRequestStructure fmRequestStruct = createFacilityMonitoringRequestStructure();
             request.setMessageIdentifier(fmRequestStruct.getMessageIdentifier());
             request.getFacilityMonitoringRequests().add(fmRequestStruct);
         }
         siri.setServiceRequest(request);
-
         return siri;
     }
 
@@ -285,15 +290,15 @@ public class SiriObjectFactory {
         return etRequest;
     }
 
-    private static StopMonitoringRequestStructure createStopMonitoringRequestStructure(SubscriptionSetup subscriptionSetup, String stopMonitoringRefValue) {
+    private static StopMonitoringRequestStructure createStopMonitoringRequestStructure(@Nullable Duration previewInterval, @Nullable String stopMonitoringRefValue) {
         StopMonitoringRequestStructure smRequest = new StopMonitoringRequestStructure();
         smRequest.setRequestTimestamp(ZonedDateTime.now());
         smRequest.setVersion(SIRI_VERSION);
         smRequest.setMessageIdentifier(createMessageIdentifier());
-        if (subscriptionSetup.getPreviewInterval() != null) {
-            smRequest.setPreviewInterval(createDataTypeFactory().newDuration(subscriptionSetup.getPreviewInterval().toString()));
+        if (previewInterval != null) {
+            smRequest.setPreviewInterval(createDataTypeFactory().newDuration(previewInterval.toString()));
         }
-        if (subscriptionSetup.getStopMonitoringRefValues() != null) {
+        if (StringUtils.isNotBlank(stopMonitoringRefValue)) {
             MonitoringRefStructure monitoringRefStructure = new MonitoringRefStructure();
             monitoringRefStructure.setValue(stopMonitoringRefValue);
             smRequest.setMonitoringRef(monitoringRefStructure);
@@ -301,7 +306,7 @@ public class SiriObjectFactory {
         return smRequest;
     }
 
-    private static GeneralMessageRequestStructure createGeneralMessageRequestStructure(SubscriptionSetup subscriptionSetup) {
+    private static GeneralMessageRequestStructure createGeneralMessageRequestStructure() {
         GeneralMessageRequestStructure gmRequest = new GeneralMessageRequestStructure();
         gmRequest.setRequestTimestamp(ZonedDateTime.now());
         gmRequest.setVersion(SIRI_VERSION);
@@ -310,7 +315,7 @@ public class SiriObjectFactory {
         return gmRequest;
     }
 
-    private static FacilityMonitoringRequestStructure createFacilityMonitoringRequestStructure(SubscriptionSetup subscriptionSetup) {
+    private static FacilityMonitoringRequestStructure createFacilityMonitoringRequestStructure() {
         FacilityMonitoringRequestStructure fmRequest = new FacilityMonitoringRequestStructure();
         fmRequest.setRequestTimestamp(ZonedDateTime.now());
         fmRequest.setVersion(SIRI_VERSION);
@@ -676,6 +681,52 @@ public class SiriObjectFactory {
         return createMessageRefStruct(UUID.randomUUID().toString());
     }
 
+    public static DatatypeFactory createDataTypeFactory() {
+        try {
+            return DatatypeFactory.newInstance();
+        } catch (DatatypeConfigurationException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private static Siri createSiriObject(@Nonnull String version) {
+        Siri siri = new Siri();
+        siri.setVersion(version);
+        return siri;
+    }
+
+    /**
+     * Creates a deep copy of provided object
+     *
+     * @param siri
+     * @return
+     * @throws JAXBException
+     */
+    public static Siri deepCopy(Siri siri) {
+        Kryo kryo = kryoPool.borrow();
+        try {
+            return kryo.copy(siri);
+        } finally {
+            kryoPool.release(kryo);
+        }
+    }
+
+    /**
+     * Creates a deep copy of provided object
+     *
+     * @param estimatedVehicleJourney
+     * @return
+     * @throws JAXBException
+     */
+    public static EstimatedVehicleJourney deepCopy(EstimatedVehicleJourney estimatedVehicleJourney) {
+        Kryo kryo = kryoPool.borrow();
+        try {
+            return kryo.copy(estimatedVehicleJourney);
+        } finally {
+            kryoPool.release(kryo);
+        }
+    }
+
     public Siri createSXServiceDelivery(Collection<PtSituationElement> elements) {
         Siri siri = createSiriObject(SiriHelper.FALLBACK_SIRI_VERSION);
         ServiceDelivery delivery = createServiceDelivery();
@@ -730,7 +781,6 @@ public class SiriObjectFactory {
         return siri;
     }
 
-
     public <T extends AbstractItemStructure> Siri createSMServiceDelivery(Collection<T> collections) {
         Siri siri = createSiriObject(SiriHelper.FALLBACK_SIRI_VERSION);
         ServiceDelivery delivery = createServiceDelivery();
@@ -777,7 +827,6 @@ public class SiriObjectFactory {
         return siri;
     }
 
-
     /**
      * Creates a SIRI response message with all points recovered from discovery service
      *
@@ -810,7 +859,6 @@ public class SiriObjectFactory {
         return siri;
     }
 
-
     private ServiceDelivery createServiceDelivery() {
         ServiceDelivery delivery = new ServiceDelivery();
         delivery.setResponseTimestamp(ZonedDateTime.now());
@@ -819,14 +867,6 @@ public class SiriObjectFactory {
         }
         delivery.setStatus(true);
         return delivery;
-    }
-
-    public static DatatypeFactory createDataTypeFactory() {
-        try {
-            return DatatypeFactory.newInstance();
-        } catch (DatatypeConfigurationException e) {
-            throw new IllegalStateException(e);
-        }
     }
 
     public Siri createHeartbeatNotification(String requestorRef) {
@@ -866,12 +906,6 @@ public class SiriObjectFactory {
         }
 
         siri.setCheckStatusResponse(response);
-        return siri;
-    }
-
-    private static Siri createSiriObject(@Nonnull String version) {
-        Siri siri = new Siri();
-        siri.setVersion(version);
         return siri;
     }
 
@@ -941,38 +975,5 @@ public class SiriObjectFactory {
         dataReadyNotification.setRequestTimestamp(ZonedDateTime.now());
         siri.setDataReadyNotification(dataReadyNotification);
         return siri;
-    }
-
-
-    /**
-     * Creates a deep copy of provided object
-     *
-     * @param siri
-     * @return
-     * @throws JAXBException
-     */
-    public static Siri deepCopy(Siri siri) {
-        Kryo kryo = kryoPool.borrow();
-        try {
-            return kryo.copy(siri);
-        } finally {
-            kryoPool.release(kryo);
-        }
-    }
-
-    /**
-     * Creates a deep copy of provided object
-     *
-     * @param estimatedVehicleJourney
-     * @return
-     * @throws JAXBException
-     */
-    public static EstimatedVehicleJourney deepCopy(EstimatedVehicleJourney estimatedVehicleJourney) {
-        Kryo kryo = kryoPool.borrow();
-        try {
-            return kryo.copy(estimatedVehicleJourney);
-        } finally {
-            kryoPool.release(kryo);
-        }
     }
 }

@@ -154,15 +154,7 @@ public class SiriHandler {
                 inboundProcessSiriClientRequest(incomingSiriParameters.getSubscriptionId(), xml); // Response to a request we made on behalf of one of the subscriptions
             } else {
                 Siri incoming = SiriValueTransformer.parseXml(xml); // Someone asking us for siri update
-
-
-                Siri response = outboundProcessSiriServerRequest(incoming, incomingSiriParameters.getDatasetId(), incomingSiriParameters.getExcludedDatasetIdList(),
-                        incomingSiriParameters.getOutboundIdMappingPolicy(), incomingSiriParameters.getMaxSize(), incomingSiriParameters.getClientTrackingName(),
-                        incomingSiriParameters.isSoapTransformation(), incomingSiriParameters.isUseOriginalId());
-                utils.handleFlexibleLines(response);
-                incomingSiriParameters.setVersion(incoming.getVersion());
-                return response;
-
+                return buildSiriResponse(incomingSiriParameters, incoming);
             }
         } catch (UnmarshalException e) {
             throw e;
@@ -170,6 +162,15 @@ public class SiriHandler {
             logger.warn("Caught exception when parsing incoming XML", e);
         }
         return null;
+    }
+
+    public Siri buildSiriResponse(IncomingSiriParameters incomingSiriParameters, Siri request) {
+        Siri response = outboundProcessSiriServerRequest(request, incomingSiriParameters.getDatasetId(), incomingSiriParameters.getExcludedDatasetIdList(),
+                incomingSiriParameters.getOutboundIdMappingPolicy(), incomingSiriParameters.getMaxSize(), incomingSiriParameters.getClientTrackingName(),
+                incomingSiriParameters.isSoapTransformation(), incomingSiriParameters.isUseOriginalId());
+        utils.handleFlexibleLines(response);
+        incomingSiriParameters.setVersion(request.getVersion());
+        return response;
     }
 
     public Siri handleSiriCacheRequest(

@@ -2,12 +2,9 @@ package no.rutebanken.anshar.gtfsrt.readers;
 
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
 import org.apache.camel.ExchangePattern;
-import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
-import java.nio.charset.StandardCharsets;
 
 import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
 
@@ -15,19 +12,12 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
 public class SendSiriOutRouteBuilder extends RouteBuilder {
 
     private static final String ACTIVEMQ_PREFIX = "activemq:queue:";
-    private static final String ENV_HEADER_NAME = "env";
 
     @Value("${external.sx.consumer.queue}")
     private String externalSxQueue;
 
     @Value("${siri.sm.kafka.queue}")
     private String siriSMKafkaQueue;
-
-    @Value("${anshar.send.sx.to.kafka.uri:kafka:{{kafka.topic.sx}}?brokers{{kafka.brokers}}&clientId={{kafka.client-id.anshar}}}")
-    private String sxToKafkaUri;
-
-    @Value("${anshar.env}")
-    private String env;
 
     @Override
     public void configure() {
@@ -60,14 +50,6 @@ public class SendSiriOutRouteBuilder extends RouteBuilder {
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
                 .setExchangePattern(ExchangePattern.InOnly)
                 .to(siriSMKafkaQueue)
-        ;
-
-        from("direct:send.sx.to.kafka")
-                .log(LoggingLevel.INFO, "Send SX to " + sxToKafkaUri + " for env " + env)
-                .marshal(SiriDataFormatHelper.getThreadSafeSiriJaxbDataformat())
-                .setHeader(ENV_HEADER_NAME, constant(env.getBytes(StandardCharsets.UTF_8)))
-                .setExchangePattern(ExchangePattern.InOnly)
-                .to(sxToKafkaUri)
         ;
 
         from("direct:send.sx.to.external.consumer")
