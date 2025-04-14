@@ -9,6 +9,7 @@ import no.rutebanken.anshar.routes.mapping.VehicleJourneyService;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.subscription.DatasetService;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -100,7 +101,24 @@ public class ConsistencyServiceTest {
     public void test_buildReportForDataset_whenThereIsDataInCache_thenExtractAllIdsFromSiri() throws InvocationTargetException, IllegalAccessException {
         // Arrange
         Mockito.when(datasetService.exists(DATASET_ID)).thenReturn(true);
-        Mockito.when(siriHandler.buildSiriResponse(any(), any())).thenReturn(ANSHAR_CACHE_SIRI_ET, ANSHAR_CACHE_SIRI_FM, ANSHAR_CACHE_SIRI_GM, ANSHAR_CACHE_SIRI_SX, ANSHAR_CACHE_SIRI_SM, ANSHAR_CACHE_SIRI_VM);
+        Mockito.when(siriHandler.buildSiriResponse(any(), any())).thenAnswer(
+                invocation -> {
+                    Siri inputRequest = invocation.getArgument(1, Siri.class);
+                    if (CollectionUtils.isNotEmpty(inputRequest.getServiceRequest().getEstimatedTimetableRequests())) {
+                        return ANSHAR_CACHE_SIRI_ET;
+                    } else if (CollectionUtils.isNotEmpty(inputRequest.getServiceRequest().getFacilityMonitoringRequests())) {
+                        return ANSHAR_CACHE_SIRI_FM;
+                    } else if (CollectionUtils.isNotEmpty(inputRequest.getServiceRequest().getGeneralMessageRequests())) {
+                        return ANSHAR_CACHE_SIRI_GM;
+                    } else if (CollectionUtils.isNotEmpty(inputRequest.getServiceRequest().getStopMonitoringRequests())) {
+                        return ANSHAR_CACHE_SIRI_SM;
+                    } else if (CollectionUtils.isNotEmpty(inputRequest.getServiceRequest().getSituationExchangeRequests())) {
+                        return ANSHAR_CACHE_SIRI_SX;
+                    } else if (CollectionUtils.isNotEmpty(inputRequest.getServiceRequest().getVehicleMonitoringRequests())) {
+                        return ANSHAR_CACHE_SIRI_VM;
+                    }
+                    return null;
+                });
         Mockito.when(lineUpdaterService.exists(any())).thenReturn(false); // match all ids
         Mockito.when(stopPlaceUpdaterService.isKnownId(any())).thenReturn(false); // match all ids
         Mockito.when(vehicleJourneyService.exists(any())).thenReturn(false); // match all ids
@@ -189,7 +207,13 @@ public class ConsistencyServiceTest {
     public void test_buildReportForDataset_whenThereIsDataInCache_thenMatchedIdsAndUnmatchedIdsAreGeneratedProperly() throws InvocationTargetException, IllegalAccessException {
         // Arrange
         Mockito.when(datasetService.exists(DATASET_ID)).thenReturn(true);
-        Mockito.when(siriHandler.buildSiriResponse(any(), any())).thenReturn(new Siri(), new Siri(), new Siri(), new Siri(), ANSHAR_CACHE_SIRI_SM, new Siri());
+        Mockito.when(siriHandler.buildSiriResponse(any(), any())).thenAnswer(invocation -> {
+            if (CollectionUtils.isNotEmpty(invocation.getArgument(1, Siri.class).getServiceRequest().getStopMonitoringRequests())) {
+                return ANSHAR_CACHE_SIRI_SM;
+            } else {
+                return new Siri();
+            }
+        });
         Mockito.when(lineUpdaterService.exists(any())).thenAnswer(
                 i -> i.getArgument(0).toString().equals("NAOLIBORG:Line:23:LOC")
         );
