@@ -13,7 +13,7 @@ import java.util.List;
 
 @Getter
 @Setter
-@XmlType(name = "siri:FrGeneralMessageStructure")
+@XmlType(name = "FrGeneralMessageStructure")
 @XmlAccessorType(XmlAccessType.FIELD)
 public class Content implements Serializable {
 
