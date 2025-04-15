@@ -124,7 +124,7 @@ public class SubscriptionInitializer implements CamelContextAware {
         logger.info("Initializing subscriptions for environment: {}", configuration.getEnvironment());
 
         if (subscriptionConfig != null) {
-            ISet<SubscriptionSetup> subscriptionSetups = subscriptionConfig.getSubscriptions();
+            Collection<SubscriptionSetup> subscriptionSetups = subscriptionConfig.getSubscriptions();
             logger.info("Initializing {} subscriptions", subscriptionSetups.size());
             Set<String> subscriptionIds = new HashSet<>();
             Set<String> subscriptionNames = new HashSet<>();

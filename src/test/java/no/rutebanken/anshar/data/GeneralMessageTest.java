@@ -1,6 +1,5 @@
 package no.rutebanken.anshar.data;
 
-import com.hazelcast.collection.ISet;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
@@ -9,7 +8,6 @@ import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
-import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,7 +37,7 @@ public class GeneralMessageTest extends SpringBootBaseTest {
     private SiriHandler handler;
 
     @Autowired
-    private ISet<GtfsRTApi> gtfsRTApiSet;
+    private Collection<GtfsRTApi> gtfsRTApiSet;
 
     @Autowired
     private LineUpdaterService lineupdaterService;

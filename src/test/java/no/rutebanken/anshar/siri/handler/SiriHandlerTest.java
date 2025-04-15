@@ -15,7 +15,6 @@
 
 package no.rutebanken.anshar.siri.handler;
 
-import com.hazelcast.collection.ISet;
 import com.hazelcast.map.IMap;
 import jakarta.xml.bind.JAXBException;
 import jakarta.xml.bind.UnmarshalException;
@@ -34,7 +33,6 @@ import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.subscription.SiriDataType;
-import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.commons.io.FileUtils;
@@ -94,10 +92,10 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     private SiriApisRequestHandlerRoute siriApisRequestHandlerRoute;
 
     @Autowired
-    private ISet<GtfsRTApi> gtfsRTApiSet;
+    private Collection<GtfsRTApi> gtfsRTApiSet;
 
     @Autowired
-    private ISet<IdProcessingParameters> idProcessingParametersSet;
+    private Collection<IdProcessingParameters> idProcessingParametersSet;
 
     @Autowired
     private DiscoveryCache discoveryCache;

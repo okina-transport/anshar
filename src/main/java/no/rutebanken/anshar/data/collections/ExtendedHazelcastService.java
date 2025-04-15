@@ -28,9 +28,9 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.LifecycleEvent;
 import com.hazelcast.map.IMap;
 import com.hazelcast.replicatedmap.ReplicatedMap;
-import lombok.Getter;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.api.SiriApi;
+import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.data.RequestorRefStats;
@@ -55,18 +55,22 @@ import java.net.UnknownHostException;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 
 @Service
 @Configuration
 public class ExtendedHazelcastService extends HazelCastService {
 
+    private final AnsharConfiguration ansharConfiguration;
+
     private static final Logger logger = LoggerFactory.getLogger(ExtendedHazelcastService.class);
 
 
-    public ExtendedHazelcastService(@Value("${entur.hazelcast.backup.count.sync:2}") int backupCountSync, @Value("${anshar.hazelcast.members:}") List<String> members) throws UnknownHostException {
+    public ExtendedHazelcastService(@Value("${entur.hazelcast.backup.count.sync:2}") int backupCountSync, @Value("${anshar.hazelcast.members:}") List<String> members, AnsharConfiguration ansharConfiguration) throws UnknownHostException {
         super(null);
         // setBackupCount(backupCountSync);
+        this.ansharConfiguration = ansharConfiguration;
     }
 
     public void addBeforeShuttingDownHook(Runnable destroyFunction) {
@@ -412,28 +416,48 @@ public class ExtendedHazelcastService extends HazelCastService {
     }
 
     @Bean
-    public ISet<IdProcessingParameters> getIdProcessingParameters() {
-        return hazelcast.getSet("anshar.idprocessing.parameters");
+    public Collection<IdProcessingParameters> getIdProcessingParameters() {
+        if (ansharConfiguration.getAppModes().isEmpty()) {
+            return new CopyOnWriteArrayList<>();
+        } else {
+            return hazelcast.getSet("anshar.idprocessing.parameters");
+        }
     }
 
     @Bean
-    public ISet<GtfsRTApi> getGtfsRTApis() {
-        return hazelcast.getSet("anshar.gtfsrt.apis");
+    public Collection<GtfsRTApi> getGtfsRTApis() {
+        if (ansharConfiguration.getAppModes().isEmpty()) {
+            return new CopyOnWriteArrayList<>();
+        } else {
+            return hazelcast.getSet("anshar.gtfsrt.apis");
+        }
     }
 
     @Bean
-    public ISet<SubscriptionSetup> getSubscriptions() {
-        return hazelcast.getSet("anshar.inbound.subscriptions");
+    public Collection<SubscriptionSetup> getSubscriptions() {
+        if (ansharConfiguration.getAppModes().isEmpty()) {
+            return new CopyOnWriteArrayList<>();
+        } else {
+            return hazelcast.getSet("anshar.inbound.subscriptions");
+        }
     }
 
     @Bean
-    public ISet<SiriApi> getSiriApis() {
-        return hazelcast.getSet("anshar.siri.apis");
+    public Collection<SiriApi> getSiriApis() {
+        if (ansharConfiguration.getAppModes().isEmpty()) {
+            return new CopyOnWriteArrayList<>();
+        } else {
+            return hazelcast.getSet("anshar.siri.apis");
+        }
     }
 
     @Bean
-    public ISet<DiscoverySubscription> getDiscoverySubscriptions() {
-        return hazelcast.getSet("anshar.discovery.subscriptions");
+    public Collection<DiscoverySubscription> getDiscoverySubscriptions() {
+        if (ansharConfiguration.getAppModes().isEmpty()) {
+            return new CopyOnWriteArrayList<>();
+        } else {
+            return hazelcast.getSet("anshar.discovery.subscriptions");
+        }
     }
 
     @Bean

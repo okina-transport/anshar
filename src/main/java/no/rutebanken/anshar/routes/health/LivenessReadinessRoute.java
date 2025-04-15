@@ -318,7 +318,7 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
         return flowStatuses;
     }
 
-    private List<IncomingFlowStatus> getSiriStatus(List<SubscriptionSetup> subscriptions) {
+    private List<IncomingFlowStatus> getSiriStatus(Collection<SubscriptionSetup> subscriptions) {
         List<IncomingFlowStatus> results = new ArrayList<>();
         Map<String, Map<String, List<SubscriptionSetup>>> datasetIdToUrlToSubscriptions = new HashMap<>();
         for (SubscriptionSetup subscription : subscriptions) {
@@ -429,7 +429,7 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
     }
 
 
-    private List<IncomingFlowStatus> getGtfsRTStatus(ISet<GtfsRTApi> gtfsRtApis) {
+    private List<IncomingFlowStatus> getGtfsRTStatus(Collection<GtfsRTApi> gtfsRtApis) {
         List<IncomingFlowStatus> result = new ArrayList<>();
         for (GtfsRTApi gtfsRtApi : gtfsRtApis) {
             IncomingFlowStatus incomingFlowStatus = new IncomingFlowStatus();

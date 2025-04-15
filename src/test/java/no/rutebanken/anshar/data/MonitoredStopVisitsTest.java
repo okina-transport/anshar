@@ -15,7 +15,6 @@
 
 package no.rutebanken.anshar.data;
 
-import com.hazelcast.collection.ISet;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.helpers.TestObjectFactory;
@@ -23,7 +22,6 @@ import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.subscription.SiriDataType;
-import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.apache.camel.CamelContext;
 import org.apache.camel.CamelContextAware;
 import org.apache.camel.Produce;
@@ -68,7 +66,7 @@ class MonitoredStopVisitsTest extends SpringBootBaseTest implements CamelContext
     private LineUpdaterService lineupdaterService;
 
     @Autowired
-    private ISet<GtfsRTApi> gtfsRTApiSet;
+    private Collection<GtfsRTApi> gtfsRTApiSet;
 
 
     @Produce(value = "direct:send.to.external.subscription")

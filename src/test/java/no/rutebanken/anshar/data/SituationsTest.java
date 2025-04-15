@@ -40,7 +40,9 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 import static no.rutebanken.anshar.data.Situations.TEN_YEARS_MS;
 import static org.junit.jupiter.api.Assertions.*;
@@ -53,7 +55,7 @@ public class SituationsTest extends SpringBootBaseTest {
     private Situations situations;
 
     @Autowired
-    private ISet<GtfsRTApi> gtfsRTApiSet;
+    private Collection<GtfsRTApi> gtfsRTApiSet;
 
     @Autowired
     private AnsharConfiguration configuration;
@@ -162,7 +164,7 @@ public class SituationsTest extends SpringBootBaseTest {
 
 
     @Test
-    public void testAddSituation() {
+    void testAddSituation() {
         int previousSize = situations.getAll().size();
         PtSituationElement element = TestObjectFactory.createPtSituationElement("atb", "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(4));
 

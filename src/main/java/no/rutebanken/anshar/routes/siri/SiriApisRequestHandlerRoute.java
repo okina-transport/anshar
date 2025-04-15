@@ -89,7 +89,7 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
 
 
     private void createSubscriptionsFromApis() throws IOException, SAXException, ParserConfigurationException, XMLStreamException {
-        ISet<SiriApi> siriApis = subscriptionConfig.getSiriApis();
+        Collection<SiriApi> siriApis = subscriptionConfig.getSiriApis();
 
         long startTime = DateTime.now().toInstant().getMillis();
 

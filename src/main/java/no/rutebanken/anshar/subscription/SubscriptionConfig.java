@@ -16,8 +16,6 @@
 package no.rutebanken.anshar.subscription;
 
 
-import com.hazelcast.collection.ISet;
-import io.micrometer.core.instrument.util.StringUtils;
 import lombok.Getter;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.api.SiriApi;
@@ -30,6 +28,7 @@ import no.rutebanken.anshar.subscription.helpers.RequestType;
 import no.rutebanken.anshar.util.YamlPropertySourceFactory;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -56,24 +55,26 @@ public class SubscriptionConfig {
     List<SiriDataType> dataTypes;
 
     @Getter
-    private final ISet<IdProcessingParameters> idProcessingParameters;
+    private final Collection<IdProcessingParameters> idProcessingParameters;
 
     @Getter
-    private final ISet<GtfsRTApi> gtfsRTApis;
+    private final Collection<GtfsRTApi> gtfsRTApis;
 
-    private final ISet<SubscriptionSetup> subscriptions;
-
-    @Getter
-    private final ISet<SiriApi> siriApis;
+    private final Collection<SubscriptionSetup> subscriptions;
 
     @Getter
-    private final ISet<DiscoverySubscription> discoverySubscriptions;
+    private final Collection<SiriApi> siriApis;
 
-    public SubscriptionConfig(ISet<IdProcessingParameters> idProcessingParameters,
-                              ISet<GtfsRTApi> gtfsRTApis,
-                              ISet<SubscriptionSetup> subscriptions,
-                              ISet<SiriApi> siriApis,
-                              ISet<DiscoverySubscription> discoverySubscriptions) {
+    @Getter
+    private final Collection<DiscoverySubscription> discoverySubscriptions;
+
+
+
+    public SubscriptionConfig(Collection<IdProcessingParameters> idProcessingParameters,
+                              Collection<GtfsRTApi> gtfsRTApis,
+                              Collection<SubscriptionSetup> subscriptions,
+                              Collection<SiriApi> siriApis,
+                              Collection<DiscoverySubscription> discoverySubscriptions) {
         this.idProcessingParameters = idProcessingParameters;
         this.gtfsRTApis = gtfsRTApis;
         this.subscriptions = subscriptions;
@@ -81,7 +82,7 @@ public class SubscriptionConfig {
         this.discoverySubscriptions = discoverySubscriptions;
     }
 
-    public ISet<SubscriptionSetup> getSubscriptions() {
+    public Collection<SubscriptionSetup> getSubscriptions() {
         if (dataTypes != null && !dataTypes.isEmpty()) {
             Set<SubscriptionSetup> subscriptionToFilter = new HashSet<>();
             subscriptions.forEach(sub -> {
