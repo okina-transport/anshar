@@ -179,12 +179,12 @@ public class StopPlaceUpdaterService {
     private void updateStopPlaceMapping(String mappingUrl) {
         logger.info("Fetching mapping data - start. Fetching mapping-data from {}", mappingUrl);
 
-        Map<String, Pair<String,String>> foundMappings = stopPlaceRegisterMappingFetcher.fetchStopPlaceMapping(mappingUrl);
+        Map<String, Pair<String, String>> foundMappings = stopPlaceRegisterMappingFetcher.fetchStopPlaceMapping(mappingUrl);
         stopPlaceMappings.putAll(foundMappings);
 
         validNsrIds.addAll(stopPlaceMappings.keySet());
 
-        for (Map.Entry<String, Pair<String,String>> mappingEntry : foundMappings.entrySet()) {
+        for (Map.Entry<String, Pair<String, String>> mappingEntry : foundMappings.entrySet()) {
 
             List<String> providerIds;
             if (reverseStopPlaceMappings.containsKey(mappingEntry.getValue().getLeft())) {
@@ -240,7 +240,7 @@ public class StopPlaceUpdaterService {
         this.validNsrIds.addAll(stopQuays);
     }
 
-    public String getStopName(String stopId, String datasetId){
+    public String getStopName(String stopId, String datasetId) {
         if (stopPlaceMappings.isEmpty()) {
             // Avoid multiple calls at the same time.
             // Could have used a timed lock here.
@@ -252,7 +252,12 @@ public class StopPlaceUpdaterService {
             }
         }
         return stopPlaceMappings.get(datasetId + ":Quay:" + stopId) != null ? stopPlaceMappings.get(datasetId + ":Quay:" + stopId).getRight() :
-                stopPlaceMappings.get(datasetId + ":StopPlace:" + stopId)  != null ? stopPlaceMappings.get(datasetId + ":StopPlace:" + stopId).getRight() :
-                null;
+                stopPlaceMappings.get(datasetId + ":StopPlace:" + stopId) != null ? stopPlaceMappings.get(datasetId + ":StopPlace:" + stopId).getRight() :
+                        null;
     }
+
+    public boolean exists(String stopMobiitiId) {
+        return reverseStopPlaceMappings.containsKey(stopMobiitiId);
+    }
+
 }

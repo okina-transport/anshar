@@ -82,9 +82,9 @@ public class ConsistencyService {
         params.setMaxSize(-1);
         params.setClientTrackingName(CLIENT_TRACKING_NAME);
         params.setSoapTransformation(false);
-        params.setUseOriginalId(true);
+        params.setUseOriginalId(false);
         params.setExcludedDatasetIdList(List.of());
-        params.setOutboundIdMappingPolicy(OutboundIdMappingPolicy.ORIGINAL_ID);
+        params.setOutboundIdMappingPolicy(OutboundIdMappingPolicy.DEFAULT);
         params.setVersion("2.1");
         Siri request = SiriObjectFactory.createServiceRequest(type, "2.1", REQUESTOR_REF,
                 null, null);
@@ -125,7 +125,8 @@ public class ConsistencyService {
 
         if (!ids.getStopIds().isEmpty()) {
             ConsistencyReport.MatchResult stops = new ConsistencyReport.MatchResult();
-            List<String> unmatchedIds = ids.getStopIds().stream().filter(id -> !stopPlaceUpdaterService.isKnownId(id)).collect(Collectors.toList());
+            List<String> unmatchedIds = ids.getStopIds().stream().filter(id -> !stopPlaceUpdaterService.exists
+                    (id)).collect(Collectors.toList());
             stops.setUnmatchedIds(unmatchedIds);
             stops.setNbMatch(ids.getStopIds().size() - unmatchedIds.size());
             consistency.setStops(stops);

@@ -120,7 +120,7 @@ public class ConsistencyServiceTest {
                     return null;
                 });
         Mockito.when(lineUpdaterService.exists(any())).thenReturn(false); // match all ids
-        Mockito.when(stopPlaceUpdaterService.isKnownId(any())).thenReturn(false); // match all ids
+        Mockito.when(stopPlaceUpdaterService.exists(any())).thenReturn(false); // match all ids
         Mockito.when(vehicleJourneyService.exists(any())).thenReturn(false); // match all ids
 
         // Act
@@ -217,7 +217,7 @@ public class ConsistencyServiceTest {
         Mockito.when(lineUpdaterService.exists(any())).thenAnswer(
                 i -> i.getArgument(0).toString().equals("NAOLIBORG:Line:23:LOC")
         );
-        Mockito.when(stopPlaceUpdaterService.isKnownId(any())).thenAnswer(
+        Mockito.when(stopPlaceUpdaterService.exists(any())).thenAnswer(
                 i -> List.of("FR_NAOLIB:Quay:29", "FR_NAOLIB:Quay:30").contains(i.getArgument(0).toString()));
         Mockito.when(vehicleJourneyService.exists(any())).thenAnswer(i -> i.getArgument(0).toString().equals("NAOLIBORG:VehicleJourney:44542228-CR_24_25-HD25P1J1-L-Ma-Me-J-20:LOC"));
 
