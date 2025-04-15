@@ -24,7 +24,9 @@ import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.entur.siri.validator.SiriValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -44,40 +46,31 @@ import static no.rutebanken.anshar.routes.HttpParameter.SIRI_VERSION_HEADER_NAME
 import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_SOAP;
 import static no.rutebanken.anshar.routes.siri.transformer.SiriOutputTransformerRoute.OUTPUT_ADAPTERS_HEADER_NAME;
 import static no.rutebanken.anshar.routes.validation.validators.Constants.HEARTBEAT_HEADER;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.IS_IDFM_GM;
 
 @Service
 public class CamelRouteManager {
     private static final Logger logger = LoggerFactory.getLogger(CamelRouteManager.class);
-
-    @Autowired
-    private SiriHelper siriHelper;
-
-    @Autowired
-    ServerSubscriptionManager subscriptionManager;
-
-    @Value("${anshar.default.max.elements.per.delivery:1000}")
-    private int maximumSizePerDelivery;
-
-    @Value("${anshar.default.max.threads.per.outbound.subscription:20}")
-    private int maximumThreadsPerOutboundSubscription;
-
     @Produce("direct:send.to.external.subscription")
     protected ProducerTemplate siriSubscriptionProcessor;
-
+    @Autowired
+    ServerSubscriptionManager subscriptionManager;
     @Autowired
     ScheduledOutboundSubscriptionConfig scheduledOutboundSubscriptionConfig;
-
+    Map<String, ExecutorService> threadFactoryMap = new HashMap<>();
+    @Autowired
+    private SiriHelper siriHelper;
+    @Value("${anshar.default.max.elements.per.delivery:1000}")
+    private int maximumSizePerDelivery;
+    @Value("${anshar.default.max.threads.per.outbound.subscription:20}")
+    private int maximumThreadsPerOutboundSubscription;
     @Autowired
     private VehicleActivities vehicleActivities;
-
     @Autowired
     private SituationExchangeOutbound situationExchangeOutbound;
-
     @Autowired
     private PrometheusMetricsService prometheusMetricsService;
-
     private ThreadPoolExecutor executors;
-
 
     /**
      * Splits SIRI-data if applicable, and pushes data to external subscription
@@ -181,7 +174,6 @@ public class CamelRouteManager {
         });
     }
 
-
     /**
      * Check if a siri object contains stopMonitoringVisits
      *
@@ -222,7 +214,6 @@ public class CamelRouteManager {
             }
         }
     }
-
 
     /**
      * Determines if the stopVisit should be kept or not.
@@ -296,7 +287,6 @@ public class CamelRouteManager {
                 null, Integer.MAX_VALUE, subscriptionRequest.getFilterMap().get(LineRef.class), subscriptionRequest.getFilterMap().get(VehicleRef.class)));
     }
 
-
     private void removeVehicleMonitoringIfChangeBeforeUpdates(List<Siri> splitSiri, OutboundSubscriptionSetup subscriptionRequest) {
         splitSiri.stream()
                 .filter(siri -> siri.getServiceDelivery().getVehicleMonitoringDeliveries() != null)
@@ -306,8 +296,6 @@ public class CamelRouteManager {
                                 ifChangeBeforeUpdates(vehicleActivityStructure, subscriptionRequest)
                         ));
     }
-
-    Map<String, ExecutorService> threadFactoryMap = new HashMap<>();
 
     private ExecutorService getOrCreateExecutorService(OutboundSubscriptionSetup subscriptionRequest) {
 
@@ -372,6 +360,13 @@ public class CamelRouteManager {
 
             if (payload.getHeartbeatNotification() != null) {
                 headers.put(HEARTBEAT_HEADER, HEARTBEAT_HEADER);
+            }
+
+            if (payload.getServiceDelivery() != null &&
+                    CollectionUtils.isNotEmpty(payload.getServiceDelivery().getGeneralMessageDeliveries()) &&
+                    subscription.getSiriVersion() == SiriValidator.Version.VERSION_2_0_IDFM_2_4
+            ) {
+                headers.put(IS_IDFM_GM, Boolean.TRUE);
             }
 
             siriSubscriptionProcessor.sendBodyAndHeaders(payload, headers);

@@ -54,6 +54,8 @@ public class Constants {
     public static final String HEARTBEAT_HEADER = "HeartBeat";
     public static final String URL_HEADER_NAME = "URL";
 
+    public static final String IS_IDFM_GM = "isIdfmGM";
+
     public final static String GTFSRT_ET_PREFIX = "GTFS-RT_ET_";
     public final static String GTFSRT_SM_PREFIX = "GTFS-RT_SM_";
     public final static String GTFSRT_VM_PREFIX = "GTFS-RT_VM_";

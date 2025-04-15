@@ -18,6 +18,7 @@ import java.io.ByteArrayOutputStream;
 
 import static no.rutebanken.anshar.routes.HttpParameter.SIRI_VERSION_HEADER_NAME;
 import static no.rutebanken.anshar.routes.RestRouteBuilder.downgradeSiriVersion;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.IS_IDFM_GM;
 import static no.rutebanken.anshar.routes.validation.validators.Constants.ORIGINAL_BODY_HEADER;
 
 @Service
@@ -80,6 +81,15 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
                     }
                     p.getIn().setBody(byteArrayOutputStream.toString());
                 })
+                .choice()
+                .when(header(IS_IDFM_GM).isEqualTo(Boolean.TRUE))
+                .process(p -> {
+                    String siriGmXml = p.getIn().getBody(String.class);
+                    siriGmXml = siriGmXml.replaceAll("FrGeneralMessageStructure", "IDFGeneralMessageStructure");
+                    p.getIn().setBody(siriGmXml);
+                })
+                .endChoice()
+                .end()
                 .choice()
                 .when(header(Siri20RequestHandlerRoute.TRANSFORM_SOAP).isEqualTo(simple(Siri20RequestHandlerRoute.TRANSFORM_SOAP)))
                     .log(LoggingLevel.DEBUG, "Transforming SOAP")
