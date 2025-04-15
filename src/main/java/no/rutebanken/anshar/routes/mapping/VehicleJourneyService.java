@@ -129,8 +129,8 @@ public class VehicleJourneyService {
      * @return true if vehicle journey id belongs to Mobi-iti referential
      */
     public boolean exists(String vehicleJourneyMobiitiId) {
-        if (vehicleJourneyMobiitiId.endsWith(":LOC")) {
-            vehicleJourneyMobiitiId = vehicleJourneyMobiitiId.substring(0, vehicleJourneyMobiitiId.length() - 4);
+        if (!vehicleJourneyMobiitiId.endsWith(":LOC")) {
+            vehicleJourneyMobiitiId += ":LOC";
         }
         return vehicleJourneyMobiitiIds.contains(vehicleJourneyMobiitiId);
     }
