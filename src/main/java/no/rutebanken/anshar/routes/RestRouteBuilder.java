@@ -95,7 +95,7 @@ public class RestRouteBuilder extends RouteBuilder {
                 .enableCORS(true)
                 .corsAllowCredentials(true)
                 .corsHeaderProperty("Access-Control-Allow-Origin", "*")
-                .corsHeaderProperty("Access-Control-Allow-Headers", "Origin, Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, Authorization")
+                .corsHeaderProperty("Access-Control-Allow-Headers", "Origin, Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, Authorization, X-Gravitee-Api-Key")
         ;
 
         onException(ConnectException.class)
