@@ -12,6 +12,7 @@ import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.CamelRouteNames;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.admin.AdminRouteHelper;
+import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
 import no.rutebanken.anshar.routes.external.ExternalDataHandler;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.transformer.SiriJsonTransformer;
@@ -21,6 +22,7 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.Exchange;
+import org.apache.camel.ExchangePattern;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.Predicate;
 import org.apache.commons.lang3.StringUtils;
@@ -498,6 +500,12 @@ public class MessagingRoute extends RestRouteBuilder {
                 .toD("direct:${header.routename}")
                 .endChoice()
                 .routeId("incoming.processor.fetched_delivery")
+        ;
+
+        from("direct:send.sm.from.th.to.realtime.server")
+                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                .setExchangePattern(ExchangePattern.InOnly)
+                .to(externalSiriSMQueue)
         ;
     }
 

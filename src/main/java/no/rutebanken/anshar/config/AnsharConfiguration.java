@@ -108,6 +108,10 @@ public class AnsharConfiguration {
     private List<AppMode> appModes;
     @Value("${anshar.client.name}")
     private String clientName;
+    @Value("${anshar.generate-siri-from-th.enabled:false}")
+    private boolean siriGenerationFromTheoreticalDataEnabled;
+    @Value("${anshar.generate-siri-from-th.interval:86400000}")
+    private long siriGenerationFromTheoreticalDataIntervalMs;
 
     @Autowired
     @Qualifier("getLockMap")
