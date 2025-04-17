@@ -24,6 +24,7 @@ import org.entur.siri.validator.SiriValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.xml.datatype.Duration;
 import java.io.Serializable;
 import java.text.MessageFormat;
 import java.time.ZonedDateTime;
@@ -54,6 +55,7 @@ public class OutboundSubscriptionSetup implements Serializable {
     private Map<String, Map<Class, Set<String>>> filterMapByDataset = new HashMap<>();
     private Cache<String, String> alreadySentNotifications;
     private OutboundIdMappingPolicy outboundIdMappingPolicy;
+    private Duration previewInterval;
 
 
     private boolean isSOAPSubscription;
@@ -229,6 +231,14 @@ public class OutboundSubscriptionSetup implements Serializable {
 
     public boolean hasNotificationBeenAlreadySent(String notificationId) {
         return alreadySentNotifications.getIfPresent(notificationId) != null;
+    }
+
+    public Duration getPreviewInterval() {
+        return previewInterval;
+    }
+
+    public void setPreviewInterval(Duration previewInterval) {
+        this.previewInterval = previewInterval;
     }
 
     public void recordNotification(String notificationId) {

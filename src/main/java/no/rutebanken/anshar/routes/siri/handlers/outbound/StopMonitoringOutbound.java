@@ -144,7 +144,7 @@ public class StopMonitoringOutbound {
         return serviceResponse;
     }
 
-    private Siri getServiceResponseStopVisits(OutboundIdMappingPolicy outboundIdMappingPolicy, String requestorRef, String clientTrackingName, int maxSize, String datasetId, Set<String> importedIds) {
+    public Siri getServiceResponseStopVisits(OutboundIdMappingPolicy outboundIdMappingPolicy, String requestorRef, String clientTrackingName, int maxSize, String datasetId, Set<String> importedIds) {
         Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParams(datasetId, importedIds, ObjectType.STOP);
         Set<String> revertedMonitoringRefs = IDUtils.revertMonitoringRefs(importedIds, idMap.get(ObjectType.STOP));
         revertedMonitoringRefs = revertedMonitoringRefs.stream()
@@ -155,5 +155,26 @@ public class StopMonitoringOutbound {
         List<ValueAdapter> valueAdapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.STOP_MONITORING, outboundIdMappingPolicy, idMap);
         Siri serviceResponse = monitoredStopVisits.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, revertedMonitoringRefs);
         return SiriValueTransformer.transform(serviceResponse, valueAdapters, false, false);
+    }
+
+    /**
+     * Build a map with all data that must be send by scheduled Notification sender
+     *
+     * @return Map<String, Siri>
+     * key : datasetId
+     * value : Siri that contains all data linked to searchedStops
+     */
+    public Map<String, Siri> getScheduledDeliveryToSend(Set<String> stopsToSearch) {
+        Map<String, Siri> results = new HashMap<>();
+        Set<String> datasetIds = monitoredStopVisits.getAllDatasetIds();
+
+        for (String datasetId : datasetIds) {
+            Siri datasetResults = monitoredStopVisits.createServiceDelivery("SCHEDULED_DELIVERY", datasetId, null, Integer.MAX_VALUE, stopsToSearch);
+            if (datasetResults.getServiceDelivery() != null && datasetResults.getServiceDelivery().getStopMonitoringDeliveries() != null
+                    && !datasetResults.getServiceDelivery().getStopMonitoringDeliveries().isEmpty()) {
+                results.put(datasetId, datasetResults);
+            }
+        }
+        return results;
     }
 }

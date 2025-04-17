@@ -22,6 +22,7 @@ import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.handlers.outbound.SituationExchangeOutbound;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import no.rutebanken.anshar.util.SiriUtils;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
 import org.apache.commons.collections4.CollectionUtils;
@@ -78,7 +79,7 @@ public class CamelRouteManager {
      * @param payload
      * @param subscriptionRequest
      */
-    void pushSiriData(String datasetId, Siri payload, OutboundSubscriptionSetup subscriptionRequest, boolean logBody) {
+    public void pushSiriData(String datasetId, Siri payload, OutboundSubscriptionSetup subscriptionRequest, boolean logBody) {
 
         String consumerAddress = subscriptionRequest.getAddress();
         if (consumerAddress == null) {
@@ -138,8 +139,13 @@ public class CamelRouteManager {
                 }
 
                 for (Siri siri : splitSiri) {
-                    if (subscriptionRequest.getSubscriptionType().equals(SiriDataType.STOP_MONITORING) && !hasStopMonitoringData(siri)) {
-                        continue;
+                    if (subscriptionRequest.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
+                        if (subscriptionRequest.getPreviewInterval() != null) {
+                            siri = SiriUtils.filterStopMonitoringOnPreviewInterval(siri, subscriptionRequest);
+                        }
+                        if (!hasStopMonitoringData(siri)) {
+                            continue;
+                        }
                     }
 
                     // On crée des déclencheurs pour ne notifier les abonnés que tous les x moments définis par l'updateInterval

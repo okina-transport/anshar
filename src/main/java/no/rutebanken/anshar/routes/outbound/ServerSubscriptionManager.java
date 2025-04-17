@@ -506,9 +506,13 @@ public class ServerSubscriptionManager {
         SubscriptionRequest subscriptionRequest = incomingSiri.getSubscriptionRequest();
         List<ValueAdapter> mappers;
         String version = getVersion(incomingSiri);
+        Duration previewInterval = null;
         if (subscriptionRequest.getStopMonitoringSubscriptionRequests() != null && subscriptionRequest.getStopMonitoringSubscriptionRequests().size() > 0) {
             Map<ObjectType, Optional<IdProcessingParameters>> idProcessingParams = siriHelper.getIdProcessingParamsFromSubscription(subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0), outboundIdMappingPolicy, datasetId);
             mappers = MappingAdapterPresets.getOutboundAdapters(SiriDataType.STOP_MONITORING, outboundIdMappingPolicy, idProcessingParams);
+            if (subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0).getStopMonitoringRequest().getPreviewInterval() != null) {
+                previewInterval = subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0).getStopMonitoringRequest().getPreviewInterval();
+            }
         } else if (subscriptionRequest.getVehicleMonitoringSubscriptionRequests() != null && subscriptionRequest.getVehicleMonitoringSubscriptionRequests().size() > 0) {
             Map<ObjectType, Optional<IdProcessingParameters>> idProcessingParams = siriHelper.getIdProcessingParamsFromSubscription(subscriptionRequest.getVehicleMonitoringSubscriptionRequests().get(0), outboundIdMappingPolicy, datasetId);
             mappers = MappingAdapterPresets.getOutboundAdapters(SiriDataType.VEHICLE_MONITORING, outboundIdMappingPolicy, idProcessingParams);
@@ -546,6 +550,7 @@ public class ServerSubscriptionManager {
         );
 
         newOutboundSubscription.setOutboundIdMappingPolicy(outboundIdMappingPolicy);
+        newOutboundSubscription.setPreviewInterval(previewInterval);
 
         return newOutboundSubscription;
     }
