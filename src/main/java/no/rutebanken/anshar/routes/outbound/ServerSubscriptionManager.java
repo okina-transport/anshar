@@ -412,6 +412,9 @@ public class ServerSubscriptionManager {
             //Subscription has already expired
             hasError = true;
             errorText = initialTerminationTimePassed;
+        } else if (isSmSubWithStartTime(incomingSiri)) {
+            hasError = true;
+            errorText = "Usage of startTime and previewInterval at the same time is not allowed in StopMonitoring";
         }
 
         if (subscriptions.containsKey(subscription.getSubscriptionId())) {
@@ -436,6 +439,31 @@ public class ServerSubscriptionManager {
             }
             return subscriptionResponse;
         }
+    }
+
+
+    /**
+     * Checks if a StopMonitoring subscriptin request is using previewInterval and startTime tags
+     * (it is forbidden)
+     *
+     * @param incomingSiri siri that contains subscription request
+     * @return true : the subscription has a previewInterval and startTime tag
+     * false : the subscription is not using previewInterval and startTime tags at the same time
+     */
+    private boolean isSmSubWithStartTime(Siri incomingSiri) {
+
+        if (incomingSiri.getSubscriptionRequest() == null || incomingSiri.getSubscriptionRequest().getStopMonitoringSubscriptionRequests() == null
+                || incomingSiri.getSubscriptionRequest().getStopMonitoringSubscriptionRequests().isEmpty()) {
+            // this is no an SM subscription request. no need to apply check
+            return false;
+        }
+
+        for (StopMonitoringSubscriptionStructure stopMonitoringSubscriptionRequest : incomingSiri.getSubscriptionRequest().getStopMonitoringSubscriptionRequests()) {
+            if (stopMonitoringSubscriptionRequest.getStopMonitoringRequest().getPreviewInterval() != null && stopMonitoringSubscriptionRequest.getStopMonitoringRequest().getStartTime() != null) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean checkMissingMonitoringRef(SubscriptionRequest subscriptionRequest) {
