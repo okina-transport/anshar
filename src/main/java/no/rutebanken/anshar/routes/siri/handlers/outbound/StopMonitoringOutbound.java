@@ -70,6 +70,9 @@ public class StopMonitoringOutbound {
         for (String originalMonitoringRef : originalMonitoringRefs) {
             if (StringUtils.isNotEmpty(datasetId) && StringUtils.isNotEmpty(originalMonitoringRef) && !externalIdsService.getReverseAltIdStop(datasetId, originalMonitoringRef).isEmpty()) {
                 importedIds.addAll(externalIdsService.getReverseAltIdStop(datasetId, originalMonitoringRef));
+            } else {
+                // we need to keep original search to avoid search with empty stops and recover all stops from cache
+                importedIds.add(originalMonitoringRef);
             }
         }
         return importedIds;
