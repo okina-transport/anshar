@@ -18,6 +18,7 @@ package no.rutebanken.anshar.subscription;
 import com.google.common.base.Preconditions;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.DiscoveryCache;
+import no.rutebanken.anshar.routes.admin.AdminRouteHelper;
 import no.rutebanken.anshar.routes.siri.*;
 import no.rutebanken.anshar.routes.siri.adapters.Mapping;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
@@ -65,6 +66,9 @@ public class SubscriptionInitializer implements CamelContextAware {
 
     @Autowired
     private ProducerTemplate producerTemplate;
+
+    @Autowired
+    private AdminRouteHelper helper;
 
     private CamelContext camelContext;
 
@@ -190,35 +194,14 @@ public class SubscriptionInitializer implements CamelContextAware {
                 SubscriptionSetup existingSubscription = subscriptionManager.getSubscriptionBySubscriptionId(subscriptionSetup.getSubscriptionId());
 
 
-                if (existingSubscription != null) {
-                    if (!existingSubscription.equals(subscriptionSetup)) {
-                        logger.info("Subscription with internalId={} is updated - reinitializing. {}", subscriptionSetup.getInternalId(), subscriptionSetup);
-
-                        subscriptionSetup.setSubscriptionId(existingSubscription.getSubscriptionId());
-
-                        // Keeping subscription active/inactive
-                        subscriptionSetup.setActive(existingSubscription.isActive());
-                        subscriptionManager.addSubscription(existingSubscription.getSubscriptionId(), subscriptionSetup);
-
-                        if (existingSubscription.isActive()) {
-                            subscriptionManager.activatePendingSubscription(existingSubscription.getSubscriptionId());
-                        }
-
-                        actualSubscriptionSetups.add(subscriptionSetup);
-                        subscriptionIds.add(subscriptionSetup.getSubscriptionId());
-                        subscriptionNames.add(subscriptionSetup.getVendor());
-                        subscriptionInternalIds.add(subscriptionSetup.getInternalId());
-                    } else {
-                        logger.info("Subscription with internalId={} already registered - keep existing. {}", subscriptionSetup.getInternalId(), subscriptionSetup);
-                        actualSubscriptionSetups.add(existingSubscription);
-                        subscriptionIds.add(existingSubscription.getSubscriptionId());
-                        subscriptionNames.add(existingSubscription.getVendor());
-                    }
-                } else {
-                    actualSubscriptionSetups.add(subscriptionSetup);
-                    subscriptionIds.add(subscriptionSetup.getSubscriptionId());
-                    subscriptionNames.add(subscriptionSetup.getVendor());
+                if (existingSubscription != null && !existingSubscription.equals(subscriptionSetup)) {
+                    logger.info("Subscription with internalId={} is updated - reinitializing. {}", subscriptionSetup.getInternalId(), subscriptionSetup);
+                    disableSubscriptions(Arrays.asList(existingSubscription));
                 }
+
+                actualSubscriptionSetups.add(subscriptionSetup);
+                subscriptionIds.add(subscriptionSetup.getSubscriptionId());
+                subscriptionNames.add(subscriptionSetup.getVendor());
 
             }
             if (configuration.processAdmin()) {
@@ -236,22 +219,7 @@ public class SubscriptionInitializer implements CamelContextAware {
                         continue;
                     }
 
-                    Exchange exchange = ExchangeBuilder.anExchange(camelContext).withBody(subscriptionSetup).build();
-                    if (!subscriptionManager.isActiveSubscription(subscriptionSetup.getSubscriptionId()) && subscriptionSetup.isActive()) {
-                        producerTemplate.send("direct:" + subscriptionSetup.getStartSubscriptionRouteName(), exchange);
-                    }
-
-                    try {
-
-                        List<RouteBuilder> routeBuilder = getRouteBuilders(subscriptionSetup);
-                        //Adding all routes to current context
-                        for (RouteBuilder builder : routeBuilder) {
-                            camelContext.addRoutes(builder);
-                        }
-
-                    } catch (Exception e) {
-                        logger.warn("Could not add subscription", e);
-                    }
+                    startSubscription(subscriptionSetup);
                 }
             }
             for (SubscriptionSetup subscriptionSetup : actualSubscriptionSetups) {
@@ -261,6 +229,26 @@ public class SubscriptionInitializer implements CamelContextAware {
             }
         } else {
             logger.error("Subscriptions not configured correctly - no subscriptions will be started");
+        }
+    }
+
+
+    private void startSubscription(SubscriptionSetup subscriptionSetup) {
+        Exchange exchange = ExchangeBuilder.anExchange(camelContext).withBody(subscriptionSetup).build();
+        if (!subscriptionManager.isActiveSubscription(subscriptionSetup.getSubscriptionId()) && subscriptionSetup.isActive()) {
+            producerTemplate.send("direct:" + subscriptionSetup.getStartSubscriptionRouteName(), exchange);
+        }
+
+        try {
+
+            List<RouteBuilder> routeBuilder = getRouteBuilders(subscriptionSetup);
+            //Adding all routes to current context
+            for (RouteBuilder builder : routeBuilder) {
+                camelContext.addRoutes(builder);
+            }
+
+        } catch (Exception e) {
+            logger.warn("Could not add subscription", e);
         }
     }
 
@@ -285,11 +273,14 @@ public class SubscriptionInitializer implements CamelContextAware {
                     camelContext.getRouteController().stopRoute(SiriSubscriptionRouteBuilder.START_ROUTE_PREFIX + disabledSubscription.getBaseRouteId());
                     camelContext.getRouteController().stopRoute(SiriSubscriptionRouteBuilder.CHECK_STATUS_ROUTE_PREFIX + disabledSubscription.getBaseRouteId());
                     camelContext.getRouteController().stopRoute(SiriSubscriptionRouteBuilder.CANCEL_ROUTE_PREFIX + disabledSubscription.getBaseRouteId());
+                    camelContext.getRouteController().stopRoute("monitor.subscription." + disabledSubscription.getVendor());
 
 
                     camelContext.removeRoute(SiriSubscriptionRouteBuilder.START_ROUTE_PREFIX + disabledSubscription.getBaseRouteId());
                     camelContext.removeRoute(SiriSubscriptionRouteBuilder.CHECK_STATUS_ROUTE_PREFIX + disabledSubscription.getBaseRouteId());
                     camelContext.removeRoute(SiriSubscriptionRouteBuilder.CANCEL_ROUTE_PREFIX + disabledSubscription.getBaseRouteId());
+                    camelContext.removeRoute("monitor.subscription." + disabledSubscription.getVendor());
+                    helper.forceUnlock("monitor.subscription." + disabledSubscription.getVendor());
 
                 } catch (Exception e) {
                     logger.error("Unable to remove route : " + disabledSubscription.getSubscriptionId(), e);

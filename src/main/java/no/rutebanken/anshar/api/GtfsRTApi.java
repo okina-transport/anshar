@@ -5,7 +5,7 @@ import no.rutebanken.anshar.config.GTFSRTType;
 
 @Data
 public class GtfsRTApi {
-
+    private Long id;
     private String datasetId;
     private String url;
     private GTFSRTType type;

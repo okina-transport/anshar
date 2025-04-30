@@ -22,6 +22,7 @@ public class SiriApiDtoConverter implements Converter<SiriApiDto, SiriApi> {
         target.setDatasetId(source.getDatasetId());
         target.setType(source.getType());
         target.setValidated(BooleanUtils.isTrue(source.getValidated()));
+        target.setId(source.getId());
         log.debug("target: {}", target);
         return target;
     }

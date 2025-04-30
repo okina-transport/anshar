@@ -122,6 +122,7 @@ public class SubscriptionConfig {
             if (existingOpt.isPresent()) {
                 //API is already existing in the list. Updatig the status
                 existingOpt.get().setActive(incomingAPI.getActive());
+                existingOpt.get().setUrl(incomingAPI.getUrl());
             } else {
                 siriApis.add(incomingAPI);
             }
@@ -132,9 +133,7 @@ public class SubscriptionConfig {
 
     private Optional<SiriApi> getExistingSiriAPI(SiriApi incomingAPI) {
         for (SiriApi existingSiriApi : siriApis) {
-            // same API = same URL & same datasetId & same type
-            if (existingSiriApi.getUrl().equals(incomingAPI.getUrl()) && existingSiriApi.getDatasetId().equals(incomingAPI.getDatasetId())
-                    && existingSiriApi.getType().equals(incomingAPI.getType())) {
+            if (incomingAPI.getId().equals(existingSiriApi.getId())) {
                 return Optional.of(existingSiriApi);
             }
         }
@@ -148,6 +147,7 @@ public class SubscriptionConfig {
             Optional<GtfsRTApi> existingOpt = getExistingGtfsAPI(incomingAPI);
             if (existingOpt.isPresent()) {
                 //API is already existing in the list. Updatig the status
+                existingOpt.get().setUrl(incomingAPI.getUrl());
                 existingOpt.get().setActive(incomingAPI.getActive());
                 existingOpt.get().setRouteIdList(incomingAPI.getRouteIdList());
                 logger.info("gtfsrt already existing.updating. " + incomingAPI.getDatasetId() + "-" + incomingAPI.getUrl());
@@ -244,8 +244,7 @@ public class SubscriptionConfig {
     private Optional<GtfsRTApi> getExistingGtfsAPI(GtfsRTApi incomingAPI) {
 
         for (GtfsRTApi existingGtfsRTApi : gtfsRTApis) {
-            // same API = same URL & same datasetId
-            if (existingGtfsRTApi.getUrl().equals(incomingAPI.getUrl()) && existingGtfsRTApi.getDatasetId().equals(incomingAPI.getDatasetId())) {
+            if (incomingAPI.getId().equals(existingGtfsRTApi.getId())) {
                 return Optional.of(existingGtfsRTApi);
             }
         }

@@ -228,6 +228,9 @@ public class SubscriptionSetup implements Serializable {
     }
 
     public Map<RequestType, String> getUrlMap() {
+        if (urlMap == null) {
+            urlMap = new HashMap<>();
+        }
         ensureHttpPrefixes(urlMap);
         return urlMap;
     }
@@ -239,7 +242,7 @@ public class SubscriptionSetup implements Serializable {
     }
 
     private void ensureHttpPrefixes(Map<RequestType, String> urlMap) {
-        if (urlMap != null) {
+        if (urlMap != null && !urlMap.isEmpty()) {
             for (Map.Entry<RequestType, String> entry : urlMap.entrySet()) {
                 final String url = entry.getValue();
                 if (!url.startsWith("http") && !url.startsWith("https")) {
@@ -461,10 +464,10 @@ public class SubscriptionSetup implements Serializable {
             log.info("getOperatorNamespace() does not match [{}] vs [{}]", getOperatorNamespace(), that.getOperatorNamespace());
             return false;
         }
-//        if (!getUrlMap().equals(that.getUrlMap())) {
-//            log.info("getUrlMap() does not match [{}] vs [{}]", getUrlMap(), that.getUrlMap());
-//            return false;
-//        }
+        if (!getUrlMap().equals(that.getUrlMap())) {
+            log.info("getUrlMap() does not match [{}] vs [{}]", getUrlMap(), that.getUrlMap());
+            return false;
+        }
         if (!getVersion().equals(that.getVersion())) {
             log.info("getVersion() does not match [{}] vs [{}]", getVersion(), that.getVersion());
             return false;
