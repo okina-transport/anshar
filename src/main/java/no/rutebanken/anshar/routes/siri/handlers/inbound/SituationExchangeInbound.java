@@ -8,6 +8,8 @@ import no.rutebanken.anshar.routes.siri.handlers.Utils;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import no.rutebanken.anshar.util.SiriSxExtensionUtils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -164,6 +166,7 @@ public class SituationExchangeInbound {
      * @return
      */
     public Collection<PtSituationElement> ingestSituations(String datasetId, List<PtSituationElement> incomingSituations, boolean publishToOutbound) {
+        transformDateInExtensionsNode(incomingSituations);
         Collection<PtSituationElement> result = situations.addAll(datasetId, incomingSituations);
         if (publishToOutbound && !result.isEmpty()) {
             serverSubscriptionManager.pushUpdatesAsync(SiriDataType.SITUATION_EXCHANGE, incomingSituations, datasetId);
@@ -215,5 +218,17 @@ public class SituationExchangeInbound {
 
     public void removeSituation(String datasetId, PtSituationElement situation) {
         situations.removeSituation(datasetId, situation);
+    }
+
+    private static void transformDateInExtensionsNode(List<PtSituationElement> incomingSituations) {
+        for (PtSituationElement incomingSituation : incomingSituations) {
+            if (incomingSituation.getExtensions() != null && CollectionUtils.isNotEmpty(incomingSituation.getExtensions().getAnies())) {
+                try {
+                    SiriSxExtensionUtils.transformDateInExtensionsNode(incomingSituation.getExtensions().getAnies());
+                } catch (Exception e) {
+                    logger.error("Unable to transform date format in incoming SX Extensions node", e);
+                }
+            }
+        }
     }
 }
