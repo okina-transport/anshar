@@ -65,7 +65,6 @@ public class AdministrationRoute extends RestRouteBuilder {
     public static final String ISHTAR_GET_SUBSCRIPTION_REQUEST_ROUTE = "direct:ishtar.get.subscription.request";
     public static final String ISHTAR_CLEAR_CACHE_BY_DATASET_ID = "direct:ishtar.clear.cache.by.datasetId";
     public static final String GET_CONSISTENCY_REPORT_BY_DATASET_ID = "direct:get.consistency.report.by.datasetId";
-    public static final String GET_CONSISTENCY_REPORTS_FOR_ALL_DATASETS = "direct:get.consistency.reports.for.all.datasets";
     private static final String STATS_ROUTE = "direct:stats";
     private static final String INTERNAL_STATS_ROUTE = "direct:internal.stats";
     private static final String OUTBOUND_STATS_ROUTE = "direct:outbound.stats";
@@ -149,7 +148,6 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .post("/subscription-request").produces(APPLICATION_JSON).to(ISHTAR_GET_SUBSCRIPTION_REQUEST_ROUTE)
                 .delete("/dataset/{datasetId}").to(ISHTAR_CLEAR_CACHE_BY_DATASET_ID)
                 .get("/consistency-reports/{datasetId}").produces(APPLICATION_JSON).to(GET_CONSISTENCY_REPORT_BY_DATASET_ID)
-                .get("/consistency-reports").to(GET_CONSISTENCY_REPORTS_FOR_ALL_DATASETS)
         ;
 
         if (autoLockVerificationEnabled) {
@@ -240,13 +238,11 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .marshal()
                 .json();
 
-        from(GET_CONSISTENCY_REPORTS_FOR_ALL_DATASETS)
-                .wireTap("direct:generateConsistencyReportForAllDatasets")
-                .setBody(constant(""))
-                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant(204));
-
-        from("direct:generateConsistencyReportForAllDatasets")
-                .process(cfadp);
+        if (configuration.isAutomaticConsistencyReportsEnabled()) {
+            from("quartz://anshar/automatic_consistency_reports?trigger.timeZone=Europe/Paris&cron=" + configuration.getAutomaticConsistencyReportsCron())
+                    .process(cfadp)
+                    .end();
+        }
 
         if (configuration.processAdmin() && !configuration.processData()) {
             from(STATS_ROUTE)

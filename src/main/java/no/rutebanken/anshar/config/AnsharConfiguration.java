@@ -112,15 +112,16 @@ public class AnsharConfiguration {
     private boolean siriGenerationFromTheoreticalDataEnabled;
     @Value("${anshar.generate-siri-from-th.interval:86400000}")
     private long siriGenerationFromTheoreticalDataIntervalMs;
-
     @Autowired
     @Qualifier("getLockMap")
     private IMap<String, Instant> lockMap;
-
     @Value("${anshar.default.time.zone}")
     private String defaultTimeZone;
-
     private Boolean isCurrentInstanceLeader;
+    @Value("${anshar.automaticConsistencyReports.enabled:true}")
+    private boolean automaticConsistencyReportsEnabled;
+    @Value("${anshar.automaticConsistencyReports.cron:0+0+9,17+*+*+?}")
+    private String automaticConsistencyReportsCron;
 
     public boolean processET() {
         return (appModes.isEmpty() || appModes.contains(AppMode.DATA_ET));
