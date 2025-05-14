@@ -347,6 +347,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
                 if (WorkflowStatusEnumeration.CLOSED.equals(situation.getProgress()) && situationElements.containsKey(key)) {
                     // Closed situations must be displayed until sx grace period and then disappear
                     expiration = configuration.getSxGraceperiodMinutes() * 60 * 1000;
+                    logger.info("Situation closed, setting new expiration {}, situationNumber : {}", expiration, situation.getSituationNumber().getValue());
                 }
 
                 if (expiration > 0) { //expiration < 0 => already expired
