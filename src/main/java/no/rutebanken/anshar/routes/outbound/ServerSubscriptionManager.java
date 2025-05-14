@@ -67,108 +67,84 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASE
 @Configuration
 public class ServerSubscriptionManager {
 
-    private static final Logger logger = LoggerFactory.getLogger(ServerSubscriptionManager.class);
-
     public static final String CODESPACE_ID_KAFKA_HEADER_NAME = "codespaceId";
-
+    private static final Logger logger = LoggerFactory.getLogger(ServerSubscriptionManager.class);
+    private final int pushIteration = 0;
+    @Produce("direct:send.to.pubsub.topic.estimated_timetable")
+    protected ProducerTemplate siriEtTopicProducer;
+    @Produce("direct:send.to.pubsub.topic.vehicle_monitoring")
+    protected ProducerTemplate siriVmTopicProducer;
+    @Produce("direct:send.to.pubsub.topic.situation_exchange")
+    protected ProducerTemplate siriSxTopicProducer;
+    @Produce("direct:send.to.pubsub.topic.stop_monitoring")
+    protected ProducerTemplate siriSmTopicProducer;
+    @Produce("direct:send.sm.to.kafka")
+    protected ProducerTemplate sendSMToKafka;
+    @Produce(KafkaRouteBuilder.SEND_SX_TO_KAFKA)
+    protected ProducerTemplate sendSXToKafka;
+    @Produce("direct:send.sx.to.external.consumer")
+    protected ProducerTemplate sendSXToExternalConsumer;
+    @Produce("direct:send.vm.to.kafka")
+    protected ProducerTemplate sendVMToKafka;
+    @Produce("direct:send.et.to.kafka")
+    protected ProducerTemplate sendETToKafka;
+    @Produce("direct:send.gm.to.kafka")
+    protected ProducerTemplate sendGMToKafka;
+    @Produce("direct:send.fm.to.kafka")
+    protected ProducerTemplate sendFMToKafka;
     @Autowired
     IMap<String, OutboundSubscriptionSetup> subscriptions;
-
+    Map<String, List<OutboundSubscriptionSetup>> outboundSubscriptionsByMonitoringRef = new HashMap<>();
+    ThreadPoolExecutor outboundSenderExecutorService;
     @Autowired
     @Qualifier("getFailTrackerMap")
     private IMap<String, Instant> failTrackerMap;
-
     @Autowired
     @Qualifier("getHeartbeatTimestampMap")
     private IMap<String, Instant> heartbeatTimestampMap;
-
     @Autowired
     private SiriObjectFactory siriObjectFactory;
-
     @Value("${anshar.outbound.heartbeatinterval.minimum}")
     private long minimumHeartbeatInterval = 10000;
-
     @Value("${anshar.outbound.heartbeatinterval.maximum}")
     private long maximumHeartbeatInterval = 300000;
-
     @Value("${anshar.outbound.error.consumeraddress}")
     private String errorConsumerAddressMissing = "Error";
-
     @Value("${anshar.outbound.error.monitoringref}")
     private String errorMonitoringRefMissing = "Error";
-
     @Value("${anshar.outbound.error.initialtermination}")
     private String initialTerminationTimePassed = "Error";
-
     @Value("${anshar.outbound.pubsub.topic.enabled}")
     private boolean pushToTopicEnabled;
-
     @Value("${external.sx.consumer.enabled}")
     private boolean pushToExternalSxConsumer;
-
-    @Produce("direct:send.to.pubsub.topic.estimated_timetable")
-    protected ProducerTemplate siriEtTopicProducer;
-
-    @Produce("direct:send.to.pubsub.topic.vehicle_monitoring")
-    protected ProducerTemplate siriVmTopicProducer;
-
-    @Produce("direct:send.to.pubsub.topic.situation_exchange")
-    protected ProducerTemplate siriSxTopicProducer;
-
-    @Produce("direct:send.to.pubsub.topic.stop_monitoring")
-    protected ProducerTemplate siriSmTopicProducer;
-
     @Autowired
     private CamelRouteManager camelRouteManager;
-
     @Autowired
     private SiriHelper siriHelper;
-
     @Autowired
     private KafkaConfig kafkaConfig;
-
-    @Produce("direct:send.sm.to.kafka")
-    protected ProducerTemplate sendSMToKafka;
-
-    protected ProducerTemplate sendSXToKafka;
-
-    @Produce("direct:send.sx.to.external.consumer")
-    protected ProducerTemplate sendSXToExternalConsumer;
-
-    @Produce("direct:send.vm.to.kafka")
-    protected ProducerTemplate sendVMToKafka;
-
-    @Produce("direct:send.et.to.kafka")
-    protected ProducerTemplate sendETToKafka;
-
-    @Produce("direct:send.gm.to.kafka")
-    protected ProducerTemplate sendGMToKafka;
-
-    @Produce("direct:send.fm.to.kafka")
-    protected ProducerTemplate sendFMToKafka;
-
     @Value("${outbound.change.before.update.cache.hours:5}")
     private int outboundChangeBeforeUpdateCacheTTL;
-
     @Autowired
     private SubscriptionConfig incomingSubscriptionConfig;
-
     @Autowired
     private StopPlaceUpdaterService stopPlaceUpdaterService;
-
-    Map<String, List<OutboundSubscriptionSetup>> outboundSubscriptionsByMonitoringRef = new HashMap<>();
-
     @Value("${anshar.push.updated.thread.pool:10}")
     private int pushUpdatedThreadPool;
-
-    private final int pushIteration = 0;
-
     @Value("${anshar.outbound.subscription.grace.period:30000}")
     private long outboundSubscriptionGracePeriod = 30000;
 
-
-    ThreadPoolExecutor outboundSenderExecutorService;
-
+    private static boolean checkMissingMonitoringRef(SubscriptionRequest subscriptionRequest) {
+        boolean missingMonitoringRef = false;
+        if (subscriptionRequest != null && CollectionUtils.isNotEmpty(subscriptionRequest.getStopMonitoringSubscriptionRequests())) {
+            missingMonitoringRef = subscriptionRequest.getStopMonitoringSubscriptionRequests()
+                    .stream()
+                    .anyMatch(subscriptionItem -> subscriptionItem.getStopMonitoringRequest() == null
+                            || subscriptionItem.getStopMonitoringRequest().getMonitoringRef() == null);
+        }
+        return missingMonitoringRef;
+    }
 
     public Collection getSubscriptions() {
         return Collections.unmodifiableCollection(subscriptions.values());
@@ -383,7 +359,6 @@ public class ServerSubscriptionManager {
         return result;
     }
 
-
     /**
      * Handle a subcription request that contains only one subscription
      *
@@ -441,7 +416,6 @@ public class ServerSubscriptionManager {
         }
     }
 
-
     /**
      * Checks if a StopMonitoring subscriptin request is using previewInterval and startTime tags
      * (it is forbidden)
@@ -464,17 +438,6 @@ public class ServerSubscriptionManager {
             }
         }
         return false;
-    }
-
-    private static boolean checkMissingMonitoringRef(SubscriptionRequest subscriptionRequest) {
-        boolean missingMonitoringRef = false;
-        if (subscriptionRequest != null && CollectionUtils.isNotEmpty(subscriptionRequest.getStopMonitoringSubscriptionRequests())) {
-            missingMonitoringRef = subscriptionRequest.getStopMonitoringSubscriptionRequests()
-                    .stream()
-                    .anyMatch(subscriptionItem -> subscriptionItem.getStopMonitoringRequest() == null
-                            || subscriptionItem.getStopMonitoringRequest().getMonitoringRef() == null);
-        }
-        return missingMonitoringRef;
     }
 
     private void sendInitialDelivery(OutboundSubscriptionSetup subscription, OutboundIdMappingPolicy outboundIdMappingPolicy) {
@@ -1050,7 +1013,7 @@ public class ServerSubscriptionManager {
         }
 
         if (kafkaConfig.isSendSiriToKafka()) {
-            sendSXToKafka.asyncRequestBodyAndHeaders(KafkaRouteBuilder.SEND_SX_TO_KAFKA, delivery, Map.of());
+            sendSXToKafka.asyncRequestBodyAndHeaders(sendSXToKafka.getDefaultEndpoint(), delivery, Map.of());
         }
 
         final List<OutboundSubscriptionSetup> recipients = subscriptions
