@@ -29,6 +29,7 @@ import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
+import no.rutebanken.anshar.util.GeneralMessageHelper;
 import no.rutebanken.anshar.util.SiriUtils;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
@@ -1035,7 +1036,7 @@ public class ServerSubscriptionManager {
 
         boolean logFullContents = true;
         for (OutboundSubscriptionSetup recipient : recipients) {
-            Siri modifiedIdDelivery = convertIds(delivery, datasetId, recipient.getOutboundIdMappingPolicy(), true);
+            Siri modifiedIdDelivery = convertIdsSituationExchange(delivery, datasetId, recipient.getOutboundIdMappingPolicy());
             camelRouteManager.pushSiriData(datasetId, modifiedIdDelivery, recipient, logFullContents);
             logFullContents = false;
         }
@@ -1086,16 +1087,21 @@ public class ServerSubscriptionManager {
      * @param delivery delivery that contains siri data
      * @return Siri data with ids converted
      */
-    private Siri convertIds(Siri delivery, String datasetId, OutboundIdMappingPolicy policy) {
-        return convertIds(delivery, datasetId, policy, false);
-    }
-
-    private Siri convertIds(Siri delivery, String datasetId, OutboundIdMappingPolicy policy, boolean deepCopy) {
+    private Siri convertIdsSituationExchange(Siri delivery, String datasetId, OutboundIdMappingPolicy policy) {
         return SiriValueTransformer.transform(
                 delivery,
                 MappingAdapterPresets.getOutboundAdapters(SiriDataType.SITUATION_EXCHANGE, policy, incomingSubscriptionConfig.buildIdProcessingParamsFromDataset(datasetId)),
-                deepCopy,
+                true,
                 false
+        );
+    }
+
+    private Siri convertIdsGeneralMessage(Siri delivery, String datasetId, OutboundIdMappingPolicy policy) {
+        return GeneralMessageHelper.applyTransformationsInContent(
+                delivery,
+                MappingAdapterPresets.getOutboundAdapters(SiriDataType.GENERAL_MESSAGE, policy, incomingSubscriptionConfig.buildIdProcessingParamsFromDataset(datasetId)),
+                incomingSubscriptionConfig.buildIdProcessingParamsFromDataset(datasetId),
+                true
         );
     }
 
@@ -1135,7 +1141,8 @@ public class ServerSubscriptionManager {
 
         boolean logFullContents = true;
         for (OutboundSubscriptionSetup recipient : recipients) {
-            camelRouteManager.pushSiriData(datasetId, delivery, recipient, logFullContents);
+            Siri modifiedIdDelivery = convertIdsGeneralMessage(delivery, datasetId, recipient.getOutboundIdMappingPolicy());
+            camelRouteManager.pushSiriData(datasetId, modifiedIdDelivery, recipient, logFullContents);
             logFullContents = false;
         }
 

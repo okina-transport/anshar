@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.idTests;
 
+import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.model.HttpRequest;
 import org.slf4j.Logger;
@@ -9,6 +10,7 @@ import uk.org.siri.siri21.*;
 import java.io.Serializable;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -37,6 +39,26 @@ public class TestUtils {
         affectedStruct.setNetworks(networks);
         situation.setAffects(affectedStruct);
         return situation;
+    }
+
+    public static GeneralMessage createGeneralMessageForLineAndStop(String situationNumber, String lineCode, String stopCode) {
+        GeneralMessage generalMessage = new GeneralMessage();
+        SituationRef situationRef = new SituationRef();
+        SituationSimpleRef situationSimpleRef = new SituationSimpleRef();
+        situationSimpleRef.setValue(situationNumber);
+        situationRef.setSituationSimpleRef(situationSimpleRef);
+        generalMessage.setSituationRef(situationRef);
+        Content content = new Content();
+        content.setLineRefs(Collections.singletonList(lineCode));
+        content.setStopPointRefs(Collections.singletonList(stopCode));
+        generalMessage.setContent(content);
+        InfoChannelRefStructure infoChannelRef = new InfoChannelRefStructure();
+        infoChannelRef.setValue(UUID.randomUUID().toString());
+        generalMessage.setInfoChannelRef(infoChannelRef);
+        InfoMessageRefStructure infoMessageRefStructure = new InfoMessageRefStructure();
+        infoMessageRefStructure.setValue(UUID.randomUUID().toString());
+        generalMessage.setInfoMessageIdentifier(infoMessageRefStructure);
+        return generalMessage;
     }
 
     public static void verifyStringInResponse(ClientAndServer mockServer, String stringToCheck) {

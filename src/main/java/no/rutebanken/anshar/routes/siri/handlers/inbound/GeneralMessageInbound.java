@@ -17,6 +17,7 @@ import uk.org.siri.siri21.GeneralMessageDeliveryStructure;
 import uk.org.siri.siri21.Siri;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 @Service
@@ -93,5 +94,12 @@ public class GeneralMessageInbound {
 //                        logger.info("Active GM-elements: {}, current delivery: {}, {}", situations.getSize(), addedOrUpdated.size(), subscriptionSetup);
         }
         return deliveryContainsData;
+    }
+
+    public void ingestGeneralMessages(String datasetId, List<GeneralMessage> incomingSituations, boolean publishToOutbound) {
+        Collection<GeneralMessage> result = generalMessages.addAll(datasetId, incomingSituations);
+        if (publishToOutbound && !result.isEmpty()) {
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.GENERAL_MESSAGE, incomingSituations, datasetId);
+        }
     }
 }

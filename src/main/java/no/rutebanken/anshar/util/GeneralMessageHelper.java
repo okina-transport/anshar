@@ -3,8 +3,12 @@ package no.rutebanken.anshar.util;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
+import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
+import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import uk.org.siri.siri21.*;
 
 import java.util.List;
@@ -14,6 +18,7 @@ import java.util.stream.Collectors;
 
 public class GeneralMessageHelper {
 
+    private static final Logger logger = LoggerFactory.getLogger(GeneralMessageHelper.class);
 
     public static void applyTransformationsInContent(Siri siri, List<ValueAdapter> valueAdapters, Map<ObjectType, Optional<IdProcessingParameters>> idMap) {
 
@@ -27,6 +32,35 @@ public class GeneralMessageHelper {
         }
 
     }
+
+    public static Siri applyTransformationsInContent(Siri siri, List<ValueAdapter> valueAdapters, Map<ObjectType, Optional<IdProcessingParameters>> idMap, Boolean deepCopyBeforeTransform) {
+
+        if (siri.getServiceDelivery() == null || siri.getServiceDelivery().getGeneralMessageDeliveries() == null ||
+                siri.getServiceDelivery().getGeneralMessageDeliveries().isEmpty()) {
+            return null;
+        }
+
+        Siri transformed;
+        if (deepCopyBeforeTransform) {
+            try {
+                transformed = SiriObjectFactory.deepCopy(siri);
+            } catch (Exception e) {
+                logger.warn("Unable to transform SIRI-object", e);
+                return siri;
+            }
+
+        } else {
+            transformed = siri;
+        }
+
+        for (GeneralMessageDeliveryStructure generalMessageDelivery : transformed.getServiceDelivery().getGeneralMessageDeliveries()) {
+            applyTransformationToGeneralMessageDelivery(generalMessageDelivery, valueAdapters, idMap);
+        }
+
+        return transformed;
+
+    }
+
 
     private static void applyTransformationToGeneralMessageDelivery(GeneralMessageDeliveryStructure generalMessageDelivery, List<ValueAdapter> valueAdapters, Map<ObjectType, Optional<IdProcessingParameters>> idMap) {
 
