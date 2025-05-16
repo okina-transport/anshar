@@ -103,8 +103,34 @@ public class SituationsTest extends SpringBootBaseTest {
         // Situation must have been deleted because the first closed status has been received for more than 1mn
         Thread.sleep(35 * 1000);
         assertEquals(0, situations.getAll().size());
+    }
 
+    @Test
+    public void test_add_whenAddingClosedSituationsMultipleTimes_thenIngestItOnlyOnce() throws InterruptedException {
+        // Arrange
+        configuration.setSxGraceperiodMinutes(1);
 
+        ZonedDateTime startTime = ZonedDateTime.now().minusDays(1);
+        ZonedDateTime endTime = ZonedDateTime.now().plusHours(4);
+        PtSituationElement initialSituation = TestObjectFactory.createPtSituationElement("atb", "1234", startTime, endTime);
+
+        PtSituationElement closedSituation = TestObjectFactory.createPtSituationElement("atb", "1234", startTime, endTime);
+        closedSituation.setProgress(WorkflowStatusEnumeration.CLOSED);
+
+        PtSituationElement closedSituation2 = TestObjectFactory.createPtSituationElement("atb", "1234", startTime, endTime);
+        closedSituation2.setProgress(WorkflowStatusEnumeration.CLOSED);
+
+        // Act
+        situations.add("test", initialSituation);
+        situations.add("test", closedSituation);
+        assertTrue(situations.getAll().stream().anyMatch(s -> "1234".equals(s.getSituationNumber().getValue()) && WorkflowStatusEnumeration.CLOSED == s.getProgress()),
+                "closed situation should be ingested");
+        Thread.sleep(70 * 1000); // wait for situation expiration (60 seconds)
+        situations.add("test", closedSituation2);
+
+        // Assert
+        assertTrue(situations.getAll().stream().noneMatch(s -> "1234".equals(s.getSituationNumber().getValue()) && WorkflowStatusEnumeration.CLOSED == s.getProgress()),
+                "closed situation should be ingested only once");
     }
 
 

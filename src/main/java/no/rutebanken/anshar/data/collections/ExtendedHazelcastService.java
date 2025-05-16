@@ -126,6 +126,11 @@ public class ExtendedHazelcastService extends HazelCastService {
     }
 
     @Bean
+    public IMap<SiriObjectStorageKey, Boolean> getClosedSituationsMap() {
+        return hazelcast.getMap("anshar.sx.closed");
+    }
+
+    @Bean
     public IMap<String, Set<SiriObjectStorageKey>> getSituationChangesMap() {
         return hazelcast.getMap("anshar.sx.changes");
     }

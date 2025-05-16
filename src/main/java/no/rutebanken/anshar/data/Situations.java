@@ -46,15 +46,19 @@ import java.util.stream.Collectors;
 
 @Repository
 public class Situations extends SiriRepository<PtSituationElement> {
-    private static final Logger logger = LoggerFactory.getLogger(Situations.class);
-
     // ~ 10 years in milliseconds
     public static final long TEN_YEARS_MS = 315_569_520_000L;
+    private static final Logger logger = LoggerFactory.getLogger(Situations.class);
 
     @Getter
     @Setter
     @Autowired
     private IMap<SiriObjectStorageKey, PtSituationElement> situationElements;
+
+    @Getter
+    @Setter
+    @Autowired
+    private IMap<SiriObjectStorageKey, Boolean> closedSituations;
 
     @Autowired
     @Qualifier("getSxChecksumMap")
@@ -63,7 +67,6 @@ public class Situations extends SiriRepository<PtSituationElement> {
     @Autowired
     @Qualifier("getSituationChangesMap")
     private IMap<String, Set<SiriObjectStorageKey>> changesMap;
-
 
     @Autowired
     @Qualifier("getLastSxUpdateRequest")
@@ -86,6 +89,11 @@ public class Situations extends SiriRepository<PtSituationElement> {
         this.clock = Clock.systemUTC();
     }
 
+    private static SiriObjectStorageKey createKey(String datasetId, PtSituationElement element) {
+        String situationNumber = element.getSituationNumber() != null ? element.getSituationNumber().getValue() : "null";
+        return new SiriObjectStorageKey(datasetId, null, String.format("%s:%s", datasetId, situationNumber));
+    }
+
     /**
      * @return All situationElements
      */
@@ -101,7 +109,6 @@ public class Situations extends SiriRepository<PtSituationElement> {
         return situationElements.size();
     }
 
-
     public Map<String, Integer> getDatasetSize() {
         Map<String, Integer> sizeMap = new HashMap<>();
         long t1 = System.currentTimeMillis();
@@ -114,7 +121,6 @@ public class Situations extends SiriRepository<PtSituationElement> {
         logger.debug("Calculating data-distribution (SX) took {} ms: {}", (System.currentTimeMillis() - t1), sizeMap);
         return sizeMap;
     }
-
 
     public Map<String, Integer> getLocalDatasetSize() {
         Map<String, Integer> sizeMap = new HashMap<>();
@@ -218,7 +224,6 @@ public class Situations extends SiriRepository<PtSituationElement> {
         return new HashSet<>(situationElements.keySet(predicate));
     }
 
-
     /**
      * @return All vehicle activities that are still valid
      */
@@ -229,7 +234,6 @@ public class Situations extends SiriRepository<PtSituationElement> {
 
         return getValuesByDatasetId(situationElements, datasetId);
     }
-
 
     /**
      * @return All vehicle activities that have been updated since last request from requestor
@@ -332,28 +336,28 @@ public class Situations extends SiriRepository<PtSituationElement> {
             timingTracer.mark("checksumCache.get");
             boolean updated;
             if (existingChecksum != null && situationElements.containsKey(key)) { // Checksum not compared if actual situation does not exist
-                //Exists - compare values
+                // Exists - compare values
                 updated = shouldBeUpdated(situation, key, currentChecksum, existingChecksum);
             } else {
-                //Does not exist
-                updated = true;
+                // Does not exist - do not add previously added closed situations
+                updated = WorkflowStatusEnumeration.CLOSED != situation.getProgress() || !closedSituations.containsKey(key);
             }
             timingTracer.mark("compareChecksum");
 
             if (keepByProgressStatus(situation) && updated) {
                 timingTracer.mark("keepByProgressStatus");
                 timingTracer.mark("getExpiration");
-
-                if (WorkflowStatusEnumeration.CLOSED.equals(situation.getProgress()) && situationElements.containsKey(key)) {
-                    // Closed situations must be displayed until sx grace period and then disappear
-                    expiration = configuration.getSxGraceperiodMinutes() * 60 * 1000;
-                    logger.info("Situation closed, setting new expiration {}, situationNumber : {}", expiration, situation.getSituationNumber().getValue());
-                }
-
                 if (expiration > 0) { //expiration < 0 => already expired
                     changes.put(key, situation);
                     checksumTmp.put(key, currentChecksum);
                     situationElements.set(key, situation, expiration, TimeUnit.MILLISECONDS);
+                    if (WorkflowStatusEnumeration.CLOSED.equals(situation.getProgress())) {
+                        closedSituations.set(key, Boolean.TRUE, 48, TimeUnit.HOURS);
+                    } else {
+                        // in case situation got opened -> closed -> reopened -> closed
+                        // 2nd close will be handled properly
+                        closedSituations.delete(key);
+                    }
                 } else if (situationElements.containsKey(key)) {
                     // Situation is no longer valid
                     situationElements.delete(key);
@@ -409,7 +413,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
     private boolean shouldBeUpdated(PtSituationElement situation, SiriObjectStorageKey key, String currentChecksum, String existingChecksum) {
         if (WorkflowStatusEnumeration.CLOSED.equals(situation.getProgress())) {
             // if the situation in cache has already a "closed" status, it must not be updated
-            return !situationElements.containsKey(key) || !WorkflowStatusEnumeration.CLOSED.equals(situationElements.get(key).getProgress());
+            return !closedSituations.containsKey(key);
         } else {
             return !Objects.equals(currentChecksum, existingChecksum);
         }
@@ -444,7 +448,6 @@ public class Situations extends SiriRepository<PtSituationElement> {
         }
     }
 
-
     public void removeSituation(String datasetId, PtSituationElement situation) {
 
         SiriObjectStorageKey key = createKey(datasetId, situation);
@@ -477,11 +480,6 @@ public class Situations extends SiriRepository<PtSituationElement> {
         situationList.add(situation);
         addAll(datasetId, situationList);
         return situationElements.get(createKey(datasetId, situation));
-    }
-
-    private static SiriObjectStorageKey createKey(String datasetId, PtSituationElement element) {
-        String situationNumber = element.getSituationNumber() != null ? element.getSituationNumber().getValue() : "null";
-        return new SiriObjectStorageKey(datasetId, null, String.format("%s:%s", datasetId, situationNumber));
     }
 
     public void cleanChangesMap() {
