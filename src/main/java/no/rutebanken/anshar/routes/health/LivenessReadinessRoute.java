@@ -31,6 +31,8 @@ import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.apache.camel.Exchange;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MapUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,72 +58,51 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.text.MessageFormat;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @Configuration
 public class LivenessReadinessRoute extends RestRouteBuilder {
     private static final Logger logger = LoggerFactory.getLogger(LivenessReadinessRoute.class);
-
+    public static boolean triggerRestart;
     @Value("${anshar.healthcheck.hubot.url}")
     private String hubotUrl;
-
     @Value("${anshar.healthcheck.hubot.payload.source}")
     private String hubotSource;
-
     @Value("${anshar.healthcheck.hubot.payload.icon.fail}")
     private String hubotIconFail;
-
     @Value("${anshar.healthcheck.hubot.payload.message.fail}")
     private String hubotMessageFail;
-
     @Value("${anshar.healthcheck.hubot.payload.icon.success}")
     private String hubotIconSuccess;
-
     @Value("${anshar.healthcheck.hubot.payload.message.success}")
     private String hubotMessageSuccess;
-
     @Value("${anshar.healthcheck.hubot.payload.template}")
     private String hubotTemplate;
-
     @Value("${anshar.healthcheck.hubot.allowed.inactivity.minutes:10}")
     private int allowedInactivityMinutes;
-
     @Value("${anshar.healthcheck.hubot.start.time}")
     private String startMonitorTimeStr;
     private LocalTime startMonitorTime;
-
     @Value("${anshar.healthcheck.hubot.end.time}")
     private String endMonitorTimeStr;
     private LocalTime endMonitorTime;
-
     @Value("${anshar.jmx.metrics.configuration.filepath}")
     private String pathToJmxMetricsConfiguration;
-
     @Value("${anshar.jmx.metrics.scraping.enabled}")
     private boolean jmxMetricsScrapingEnabled;
-
     @Autowired
     @Qualifier("getUnhealthySubscriptionsSet")
     private ISet<String> unhealthySubscriptionsAlreadyNotified;
-
     @Autowired
     private HealthManager healthManager;
-
     @Autowired
     private SubscriptionManager subscriptionManager;
-
     @Autowired
     private PrometheusMetricsService prometheusRegistry;
-
     @Autowired
     private SubscriptionConfig subscriptionConfig;
-
-    public static boolean triggerRestart;
-
     private JmxCollector jmxCollector;
 
     @PostConstruct
@@ -155,8 +136,7 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
 
         from("direct:incoming.data.health")
                 .process(p -> {
-                    IncomingDataHealth incomingDataHealth = getIncomingDataHealth();
-                    p.getIn().setBody(incomingDataHealth);
+                    p.getIn().setBody(getIncomingDataHealth());
                 })
                 .marshal().json()
                 .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.APPLICATION_JSON))
@@ -295,78 +275,74 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
 
     }
 
-    private IncomingDataHealth getIncomingDataHealth() {
-        IncomingDataHealth result = new IncomingDataHealth();
-        List<GtfsRTApi> gtfsRtApis = subscriptionConfig.getGtfsRTApis();
-        if (gtfsRtApis.size() > 0) {
-            result.getGtfsStatuses().addAll(getGtfsRTStatus(gtfsRtApis));
+    private List<IncomingFlowStatus> getIncomingDataHealth() {
+        List<IncomingFlowStatus> flowStatuses = new ArrayList<>();
+        if (CollectionUtils.isNotEmpty(subscriptionConfig.getGtfsRTApis())) {
+            flowStatuses.addAll(getGtfsRTStatus(subscriptionConfig.getGtfsRTApis()));
         }
-
-        List<SubscriptionSetup> subscriptions = subscriptionConfig.getSubscriptions();
-        if (subscriptions.size() > 0) {
-            result.getSiriStatuses().addAll(getSiriStatus(subscriptions));
+        if (CollectionUtils.isNotEmpty(subscriptionConfig.getSubscriptions())) {
+            flowStatuses.addAll(getSiriStatus(subscriptionConfig.getSubscriptions()));
         }
-
-
-        return result;
+        return flowStatuses;
     }
 
     private List<IncomingFlowStatus> getSiriStatus(List<SubscriptionSetup> subscriptions) {
         List<IncomingFlowStatus> results = new ArrayList<>();
-        List<SubscriptionSetup> uniqueURLSubscription = new ArrayList<>();
-        List<String> urlList = new ArrayList<>();
-
-
+        Map<String, Map<String, List<SubscriptionSetup>>> datasetIdToUrlToSubscriptions = new HashMap<>();
         for (SubscriptionSetup subscription : subscriptions) {
             if (!subscription.isActive() || !subscription.getSubscriptionMode().equals(SubscriptionSetup.SubscriptionMode.SUBSCRIBE)) {
                 continue;
             }
-
-            if (!urlList.contains(subscription.getUrlMap().get(RequestType.SUBSCRIBE))) {
-                urlList.add(subscription.getUrlMap().get(RequestType.SUBSCRIBE));
-                uniqueURLSubscription.add(subscription);
-            }
+            datasetIdToUrlToSubscriptions
+                    .computeIfAbsent(subscription.getDatasetId(), datasetId -> new HashMap<>())
+                    .computeIfAbsent(subscription.getUrlMap().get(RequestType.SUBSCRIBE), url -> new ArrayList<>())
+                    .add(subscription);
         }
-
-        uniqueURLSubscription.forEach(subscription -> results.add(getFlowStatusFromSubscription(subscription)));
+        datasetIdToUrlToSubscriptions
+                .forEach(
+                        (datasetId, urlToSubscriptions) ->
+                                urlToSubscriptions
+                                        .forEach((url, subscriptionsByUrl) -> results.add(getFlowStatusFromSubscription(url, subscriptionsByUrl))));
         return results;
     }
 
-    private IncomingFlowStatus getFlowStatusFromSubscription(SubscriptionSetup subscriptionSetup) {
-        String body = "";
+    private IncomingFlowStatus getFlowStatusFromSubscription(String url, List<SubscriptionSetup> subscriptionsByUrl) {
         IncomingFlowStatus siriStatus = new IncomingFlowStatus();
+
+        siriStatus.setId(subscriptionsByUrl.stream().map(SubscriptionSetup::getSubscriptionId).collect(Collectors.joining(",")));
         siriStatus.setLastUpdate(System.currentTimeMillis());
-        String url = subscriptionSetup.getUrlMap().get(RequestType.SUBSCRIBE);
         siriStatus.setUrl(url);
-        siriStatus.setDataset(subscriptionSetup.getDatasetId());
+        siriStatus.setDataset(subscriptionsByUrl.get(0).getDatasetId());
+        siriStatus.setType(IncomingFlowStatus.IncomingFlowType.SIRI);
+
         try {
-
-            Siri checkStatusRequest = SiriObjectFactory.createCheckStatusRequest(subscriptionSetup);
-            body = CustomSiriXml.toXml(checkStatusRequest);
-
-            if (subscriptionSetup.getServiceType().equals(SubscriptionSetup.ServiceType.SOAP)) {
-                body = CustomSiriXml.rawToSoap(body);
-            }
-
-            FlowStatus status = launchCheckStatus(url, body);
+            FlowStatus status = launchCheckStatus(subscriptionsByUrl.get(0));
             siriStatus.setStatus(status.name());
         } catch (Exception e) {
             siriStatus.setStatus(FlowStatus.ERROR.name());
         }
+
         return siriStatus;
     }
 
-    private FlowStatus launchCheckStatus(String url, String requestBody) throws IOException, InterruptedException, XMLStreamException, JAXBException, TransformerException {
+    private FlowStatus launchCheckStatus(SubscriptionSetup subscription) throws IOException, InterruptedException, XMLStreamException, JAXBException, TransformerException {
+        Siri checkStatusRequest = SiriObjectFactory.createCheckStatusRequest(subscription);
+        String body = CustomSiriXml.toXml(checkStatusRequest);
+        if (subscription.getServiceType().equals(SubscriptionSetup.ServiceType.SOAP)) {
+            body = CustomSiriXml.rawToSoap(body);
+        }
+
         HttpClient client = HttpClient.newHttpClient();
 
+        HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                .uri(URI.create(subscription.getUrlMap().get(RequestType.SUBSCRIBE)))
+                .header("Content-Type", subscription.getContentType())
+                .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8));
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .header("Content-Type", "text/xml")
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody, StandardCharsets.UTF_8))
-                .build();
+        if (MapUtils.isNotEmpty(subscription.getCustomHeaders()))
+            subscription.getCustomHeaders().forEach((key, value) -> requestBuilder.headers(key, value.toString()));
 
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() == 200 && isStatusOk(response.body())) {
             return FlowStatus.OK;
@@ -389,10 +365,14 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
         List<IncomingFlowStatus> result = new ArrayList<>();
         for (GtfsRTApi gtfsRtApi : gtfsRtApis) {
             IncomingFlowStatus incomingFlowStatus = new IncomingFlowStatus();
+            // id might be null if config comes from YML
+            String id = gtfsRtApi.getId() != null ? gtfsRtApi.getId().toString() : String.format("%s-%s-%s", gtfsRtApi.getDatasetId(), gtfsRtApi.getType(), gtfsRtApi.getRouteIdList());
+            incomingFlowStatus.setId(id);
             incomingFlowStatus.setStatus(gtfsRtApi.getStatus() != null ? gtfsRtApi.getStatus().name() : "UNKNOWN");
             incomingFlowStatus.setLastUpdate(gtfsRtApi.getLastUpdate());
             incomingFlowStatus.setDataset(gtfsRtApi.getDatasetId());
             incomingFlowStatus.setUrl(gtfsRtApi.getUrl());
+            incomingFlowStatus.setType(IncomingFlowStatus.IncomingFlowType.GTFS);
             result.add(incomingFlowStatus);
         }
 

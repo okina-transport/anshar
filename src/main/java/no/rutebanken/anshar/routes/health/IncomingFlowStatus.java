@@ -1,41 +1,20 @@
 package no.rutebanken.anshar.routes.health;
 
+import lombok.Data;
+
+@Data
 public class IncomingFlowStatus {
 
-    String status;
-    long lastUpdate;
-    String dataset;
-    String url;
+    private String id;
+    private String status;
+    private long lastUpdate;
+    private String dataset;
+    private String url;
+    private IncomingFlowType type;
 
-    public String getStatus() {
-        return status;
+    public enum IncomingFlowType {
+        GTFS,
+        SIRI,
     }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public long getLastUpdate() {
-        return lastUpdate;
-    }
-
-    public void setLastUpdate(long lastUpdate) {
-        this.lastUpdate = lastUpdate;
-    }
-
-    public String getDataset() {
-        return dataset;
-    }
-
-    public void setDataset(String dataset) {
-        this.dataset = dataset;
-    }
-
-    public String getUrl() {
-        return url;
-    }
-
-    public void setUrl(String url) {
-        this.url = url;
-    }
+    
 }
