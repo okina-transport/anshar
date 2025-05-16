@@ -14,10 +14,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.netty.http.client.HttpClient;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,6 +27,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -57,7 +60,7 @@ public class ExternalIdsService extends BaseRouteBuilder {
     @Autowired
     SubscriptionManager subscriptionManager;
 
-    WebClient webClient = WebClient.builder().build();
+    private final WebClient webClient;
 
     private final Map<String, Map<String, String>> stopsCache = new HashMap();
     private final Map<String, Map<String, List<String>>> linesCache = new HashMap();
@@ -67,6 +70,7 @@ public class ExternalIdsService extends BaseRouteBuilder {
 
     protected ExternalIdsService(AnsharConfiguration config, SubscriptionManager subscriptionManager) {
         super(config, subscriptionManager);
+        this.webClient = createWebClient();
     }
 
     @Override
@@ -83,18 +87,32 @@ public class ExternalIdsService extends BaseRouteBuilder {
     }
 
     /**
+     * Creates a WebClient configured to handle redirects and large files
+     */
+    private WebClient createWebClient() {
+        HttpClient httpClient = HttpClient.create()
+                .followRedirect(true)
+                .responseTimeout(Duration.ofMinutes(2));
+
+        return WebClient.builder()
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(16 * 1024 * 1024))
+                .build();
+    }
+
+    /**
      * Download and refresh the cache containing data from mapping stops and lines files
      */
     public void downloadFilesAndRefreshCache() {
-//        Flux<String> stopsMappingUrls = Flux.fromArray(urlsStopsMappingFile.split(","));
-//        Flux<String> linesMappingUrls = Flux.fromArray(urlsLinesMappingFile.split(","));
-//
-//        Mono<Void> downloadFilesMono = Flux.zip(
-//                        downloadFilesMapping(stopsMappingUrls, pathStops, "BERTHELET_stops_mapping.csv"),
-//                        downloadFilesMapping(linesMappingUrls, pathLines, "BERTHELET_lines_mapping.csv"))
-//                .then();
-//
-//        downloadFilesMono.block();
+        Flux<String> stopsMappingUrls = Flux.fromArray(urlsStopsMappingFile.split(","));
+        Flux<String> linesMappingUrls = Flux.fromArray(urlsLinesMappingFile.split(","));
+
+        Mono<Void> downloadFilesMono = Flux.zip(
+                        downloadFilesMapping(stopsMappingUrls, pathStops, "BERTHELET_stops_mapping.csv"),
+                        downloadFilesMapping(linesMappingUrls, pathLines, "BERTHELET_lines_mapping.csv"))
+                .then();
+
+        downloadFilesMono.block();
 
         stopsCache.clear();
         linesCache.clear();
@@ -107,24 +125,54 @@ public class ExternalIdsService extends BaseRouteBuilder {
     }
 
     private Mono<Void> downloadFileMapping(String url, String path, String name) {
+        logger.info("Downloading file from Google Drive URL: {}", url);
+
         return webClient.get()
                 .uri(url)
-                .retrieve()
-                .bodyToMono(byte[].class)
+                .exchangeToMono(response -> {
+                    if (response.statusCode().is3xxRedirection()) {
+                        String redirectUrl = response.headers().header("Location").stream().findFirst().orElse(null);
+                        logger.info("Redirecting to: {}", redirectUrl);
+                        if (redirectUrl != null) {
+                            return webClient.get()
+                                    .uri(redirectUrl)
+                                    .retrieve()
+                                    .bodyToMono(byte[].class);
+                        } else {
+                            return Mono.error(new RuntimeException("Redirection without Location header"));
+                        }
+                    } else if (response.statusCode().is2xxSuccessful()) {
+                        return response.bodyToMono(byte[].class);
+                    } else {
+                        return response.bodyToMono(String.class)
+                                .flatMap(body -> {
+                                    logger.error("Unexpected response: {} - {}", response.statusCode(), body);
+                                    return Mono.error(new RuntimeException("Failed to download file: " + response.statusCode()));
+                                });
+                    }
+                })
+                .doOnNext(bytes -> logger.info("Downloaded {} bytes", bytes.length))
                 .flatMap(fileBytes -> Mono.fromRunnable(() -> {
                     try {
-                        Files.createDirectories(Paths.get(mappingExternalIdsRootDir, path));
-                        Path filePath = Paths.get(mappingExternalIdsRootDir, path, name);
-                        Files.write(filePath, fileBytes, StandardOpenOption.CREATE);
+                        Path directoryPath = Paths.get(mappingExternalIdsRootDir, path);
+                        Files.createDirectories(directoryPath);
+                        Path filePath = directoryPath.resolve(name);
+
+                        Files.write(filePath, fileBytes,
+                                StandardOpenOption.CREATE,
+                                StandardOpenOption.TRUNCATE_EXISTING);
+
+                        logger.info("Successfully saved file to: {}", filePath.toAbsolutePath());
                     } catch (Exception e) {
-                        logger.error("An error occurred while downloading the file: " + e.getMessage());
+                        logger.error("Failed to save downloaded file: {}", e.getMessage(), e);
+                        throw new RuntimeException("Error saving downloaded file", e);
                     }
                 }))
-                .onErrorResume(error -> {
-                    logger.error("Unable to download file: " + error.getMessage());
-                    return Mono.empty();
-                }).then();
+                .doOnError(error -> logger.error("Failed to download file from {}: {}", url, error.getMessage(), error))
+                .onErrorResume(error -> Mono.empty())
+                .then();
     }
+
 
     /**
      * Refresh the cache containing data for all datasetIds
@@ -145,7 +193,7 @@ public class ExternalIdsService extends BaseRouteBuilder {
         if (!mappingStopsDirectory.exists() && !mappingLinesDirectory.exists()) {
             return;
         }
-        logger.info("Starting updating mapping external ids stops cache for dataset : " + datasetId);
+        logger.info("Starting updating mapping external ids stops cache for dataset : {}", datasetId);
 
         if (mappingStopsDirectory.list() == null) {
             logger.info("Pas de répertoires de mapping externe");
@@ -161,9 +209,9 @@ public class ExternalIdsService extends BaseRouteBuilder {
             }
         }
 
-        logger.info("Finishing updating mapping external ids stops cache for dataset : " + datasetId);
+        logger.info("Finishing updating mapping external ids stops cache for dataset : {}", datasetId);
 
-        logger.info("Starting updating mapping external ids lines cache for dataset : " + datasetId);
+        logger.info("Starting updating mapping external ids lines cache for dataset : {}", datasetId);
 
 
         for (String fileName : Objects.requireNonNull(mappingLinesDirectory.list())) {
@@ -200,7 +248,7 @@ public class ExternalIdsService extends BaseRouteBuilder {
         Optional<IdProcessingParameters> idParametersOpt = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.STOP);
 
         try {
-            Iterable<CSVRecord> records = CSVUtils.getRecords(fileToRead);
+            Iterable<CSVRecord> records = CSVUtils.getRecordsWithBomHandling(fileToRead);
 
             Map<String, String> currentStopAltStopCache;
             boolean firstRecord = true;
@@ -219,7 +267,7 @@ public class ExternalIdsService extends BaseRouteBuilder {
                 currentStopAltStopCache.put(stopId, stopAltId);
 
                 if (firstRecord) {
-                    logger.info("stop cache sample - alt : " + stopAltId + ", stopId:" + stopId);
+                    logger.info("stop cache sample - alt : {}, stopId:{}", stopAltId, stopId);
                     firstRecord = false;
                 }
             }
@@ -252,7 +300,7 @@ public class ExternalIdsService extends BaseRouteBuilder {
         Optional<IdProcessingParameters> idParametersOpt = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.LINE);
 
         try {
-            Iterable<CSVRecord> records = CSVUtils.getRecords(fileToRead);
+            Iterable<CSVRecord> records = CSVUtils.getRecordsWithBomHandling(fileToRead);
 
             Map<String, List<String>> currentLineAltLineCache;
 
@@ -267,9 +315,8 @@ public class ExternalIdsService extends BaseRouteBuilder {
 
 
                 String lineId = record.isSet("line_id") ? record.get("line_id") : record.get("route_id");
-
-
                 String lineAltId = record.isSet("line_alt_id") ? record.get("line_alt_id") : record.get("route_alt_id Titan");
+
                 lineId = applyTransformation(lineId, idParametersOpt);
                 List<String> lineIdList;
                 if (currentLineAltLineCache.containsKey(lineAltId)) {
@@ -280,16 +327,16 @@ public class ExternalIdsService extends BaseRouteBuilder {
                 lineIdList.add(lineId);
                 if (firstRecord) {
                     for (String line : lineIdList) {
-                        logger.info("line cache sample - alt : " + lineAltId + ", lineId:" + line);
+                        logger.info("line cache sample - alt : {}, lineId:{}", lineAltId, line);
                     }
                     firstRecord = false;
                 }
                 currentLineAltLineCache.put(lineAltId, lineIdList);
             }
-            logger.info("Feeding cache with lines_mapping file: " + fileToRead.getAbsolutePath() + " completed");
+            logger.info("Feeding cache with lines_mapping file: {} completed", fileToRead.getAbsolutePath());
 
         } catch (IOException | IllegalArgumentException e) {
-            logger.error("Unable to feed cache with file:" + fileToRead.getAbsolutePath(), e);
+            logger.error("Unable to feed cache with file:{}", fileToRead.getAbsolutePath(), e);
         }
     }
 
