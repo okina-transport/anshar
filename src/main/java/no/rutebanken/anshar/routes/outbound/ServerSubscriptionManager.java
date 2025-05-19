@@ -37,6 +37,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -212,26 +213,69 @@ public class ServerSubscriptionManager {
         return count;
     }
 
-    public JSONObject getSubscriptionsWithPagination(SiriDataType type, Integer page, Integer pageSize) {
+    public JSONObject getSubscriptionsWithPagination(
+            SiriDataType type,
+            int page,
+            int pageSize,
+            String filtersJson
+    ) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
-        JSONArray jsonFormattedSubscriptions = new JSONArray();
-        JSONArray result = new JSONArray();
-        for (Map.Entry<String, OutboundSubscriptionSetup> entry : subscriptions.entrySet()) {
-            OutboundSubscriptionSetup subscription = entry.getValue();
-            if (type == subscription.getSubscriptionType()) {
-                JSONObject subscriptionJson = mapSubscriptionToJsonObject(entry.getKey(), subscription, formatter);
-                jsonFormattedSubscriptions.add(subscriptionJson);
+        JSONArray filteredSubscriptions = new JSONArray();
+
+        Map<String, String> filters = new HashMap<>();
+        if (filtersJson != null && !filtersJson.isEmpty()) {
+            try {
+                JSONObject filtersObj = (JSONObject) new JSONParser().parse(filtersJson);
+                for (Object key : filtersObj.keySet()) {
+                    filters.put((String) key, (String) filtersObj.get(key));
+                }
+            } catch (org.json.simple.parser.ParseException e) {
+                throw new RuntimeException(e);
             }
         }
-        int startIndex = page * pageSize;
-        int endIndex = startIndex + pageSize;
-        for (int i = startIndex; i < endIndex && i < jsonFormattedSubscriptions.size(); i++) {
-            result.add(jsonFormattedSubscriptions.get(i));
+
+        for (Map.Entry<String, OutboundSubscriptionSetup> entry : subscriptions.entrySet()) {
+            OutboundSubscriptionSetup subscription = entry.getValue();
+
+            if (type != subscription.getSubscriptionType()) {
+                continue;
+            }
+
+            JSONObject subscriptionJson = mapSubscriptionToJsonObject(entry.getKey(), subscription, formatter);
+
+            boolean matchesAllFilters = true;
+            for (Map.Entry<String, String> filter : filters.entrySet()) {
+                String fieldValue = getStringSafe(subscriptionJson, filter.getKey());
+                if (!fieldValue.toLowerCase().contains(filter.getValue().toLowerCase())) {
+                    matchesAllFilters = false;
+                    break;
+                }
+            }
+
+            if (!matchesAllFilters) {
+                continue;
+            }
+
+            filteredSubscriptions.add(subscriptionJson);
         }
-        JSONObject obj = new JSONObject();
-        obj.put("data", result);
-        obj.put("count", jsonFormattedSubscriptions.size());
-        return obj;
+
+        JSONArray paginatedResult = new JSONArray();
+        int startIndex = page * pageSize;
+        int endIndex = Math.min(startIndex + pageSize, filteredSubscriptions.size());
+
+        for (int i = startIndex; i < endIndex; i++) {
+            paginatedResult.add(filteredSubscriptions.get(i));
+        }
+
+        JSONObject result = new JSONObject();
+        result.put("data", paginatedResult);
+        result.put("count", filteredSubscriptions.size());
+        return result;
+    }
+
+    private String getStringSafe(JSONObject json, String key) {
+        Object value = json.get(key);
+        return value != null ? value.toString() : "";
     }
 
     private String getFilteredRefs(OutboundSubscriptionSetup outboundSubscription) {

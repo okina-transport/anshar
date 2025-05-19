@@ -166,7 +166,7 @@ class ServerSubscriptionManagerTest {
         entrySet.add(entry3);
         Mockito.when(subscriptions.entrySet()).thenReturn(entrySet);
 
-        JSONObject result = serverSubscriptionManager.getSubscriptionsWithPagination(SiriDataType.SITUATION_EXCHANGE, 0, 1);
+        JSONObject result = serverSubscriptionManager.getSubscriptionsWithPagination(SiriDataType.SITUATION_EXCHANGE, 0, 1, null);
 
         assertThat(result).isNotEmpty()
                 .containsEntry("count", 2);
@@ -223,7 +223,7 @@ class ServerSubscriptionManagerTest {
         entrySet.add(entry2);
         Mockito.when(subscriptions.entrySet()).thenReturn(entrySet);
 
-        JSONObject result = serverSubscriptionManager.getSubscriptionsWithPagination(SiriDataType.SITUATION_EXCHANGE, 2, 5);
+        JSONObject result = serverSubscriptionManager.getSubscriptionsWithPagination(SiriDataType.SITUATION_EXCHANGE, 2, 5, null);
 
         assertThat(result).isNotEmpty()
                 .containsEntry("count", 1);
