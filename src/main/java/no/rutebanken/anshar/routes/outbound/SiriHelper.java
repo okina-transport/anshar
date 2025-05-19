@@ -306,21 +306,16 @@ public class SiriHelper {
                 break;
 
             case VEHICLE_MONITORING:
-                Collection<VehicleActivityStructure> vehicleActivityList = vehicleActivities.getAll(subscriptionRequest.getDatasetId());
-                logger.info("Initial VM-delivery: {} elements", vehicleActivityList.size());
-                delivery = siriObjectFactory.createVMServiceDelivery(vehicleActivityList);
+                delivery = getVMInitialDelivery(subscriptionRequest);
                 break;
 
             case ESTIMATED_TIMETABLE:
-                Collection<EstimatedVehicleJourney> timetables = estimatedTimetables.getAll(subscriptionRequest.getDatasetId());
-                logger.info("Initial ET-delivery: {} elements", timetables.size());
-                delivery = siriObjectFactory.createETServiceDelivery(timetables);
+                delivery = getETinitialDelivery(subscriptionRequest);
                 break;
 
             case STOP_MONITORING:
-                Collection<MonitoredStopVisit> stopVisits = monitoredStopVisits.getAll(subscriptionRequest.getDatasetId());
-                logger.info("Initial SM-delivery: {} elements", stopVisits.size());
-                delivery = siriObjectFactory.createSMServiceDelivery(stopVisits);
+                Set<String> searchedStopIds = getSeachedStopIds(subscriptionRequest);
+                delivery = monitoredStopVisits.createServiceDelivery(subscriptionRequest.getRequestorRef(), subscriptionRequest.getDatasetId(), "initialDelivery", Integer.MAX_VALUE, searchedStopIds);
                 break;
 
             case GENERAL_MESSAGE:
@@ -338,6 +333,85 @@ public class SiriHelper {
 
         }
         return delivery;
+    }
+
+    private Siri getETinitialDelivery(OutboundSubscriptionSetup subscriptionRequest) {
+
+
+        if (subscriptionRequest.getFilterMap() != null && subscriptionRequest.getFilterMap().containsKey(LineRef.class)) {
+            Set<String> filteredLines = subscriptionRequest.getFilterMap().get(LineRef.class);
+            return estimatedTimetables.createServiceDelivery(subscriptionRequest.getRequestorRef(), subscriptionRequest.getDatasetId(), "initialDelivery", new ArrayList<>(), Integer.MAX_VALUE, -1, filteredLines);
+        }
+
+        Siri result = null;
+
+        if (subscriptionRequest.getFilterMapByDataset() != null && !subscriptionRequest.getFilterMapByDataset().isEmpty()) {
+            for (Map.Entry<String, Map<Class, Set<String>>> fiterMapEntry : subscriptionRequest.getFilterMapByDataset().entrySet()) {
+                if (!fiterMapEntry.getValue().containsKey(LineRef.class)) {
+                    continue;
+                }
+
+                String datasetId = fiterMapEntry.getKey();
+                Set<String> filteredLines = fiterMapEntry.getValue().get(LineRef.class);
+                Siri datasetResults = estimatedTimetables.createServiceDelivery(subscriptionRequest.getRequestorRef(), datasetId, "initialDelivery", new ArrayList<>(), Integer.MAX_VALUE, -1, filteredLines);
+                if (result == null) {
+                    result = datasetResults;
+                } else if (result.getServiceDelivery() == null) {
+                    result.setServiceDelivery(datasetResults.getServiceDelivery());
+                } else {
+                    result.getServiceDelivery().getEstimatedTimetableDeliveries().addAll(datasetResults.getServiceDelivery().getEstimatedTimetableDeliveries());
+                }
+            }
+        }
+        return result != null ? result : new Siri();
+    }
+
+    private Siri getVMInitialDelivery(OutboundSubscriptionSetup subscriptionRequest) {
+
+        if (subscriptionRequest.getFilterMap() != null && subscriptionRequest.getFilterMap().containsKey(LineRef.class)) {
+            Set<String> filteredLines = subscriptionRequest.getFilterMap().get(LineRef.class);
+            return vehicleActivities.createServiceDelivery(subscriptionRequest.getRequestorRef(), subscriptionRequest.getDatasetId(), "initialDelivery", new ArrayList<>(), Integer.MAX_VALUE, filteredLines, new HashSet<>());
+        }
+
+        Siri result = null;
+
+        if (subscriptionRequest.getFilterMapByDataset() != null && !subscriptionRequest.getFilterMapByDataset().isEmpty()) {
+            for (Map.Entry<String, Map<Class, Set<String>>> fiterMapEntry : subscriptionRequest.getFilterMapByDataset().entrySet()) {
+                if (!fiterMapEntry.getValue().containsKey(LineRef.class)) {
+                    continue;
+                }
+
+                String datasetId = fiterMapEntry.getKey();
+                Set<String> filteredLines = fiterMapEntry.getValue().get(LineRef.class);
+                Siri datasetResults = vehicleActivities.createServiceDelivery(subscriptionRequest.getRequestorRef(), datasetId, "initialDelivery", new ArrayList<>(), Integer.MAX_VALUE, filteredLines, new HashSet<>());
+                if (result == null) {
+                    result = datasetResults;
+                } else if (result.getServiceDelivery() == null) {
+                    result.setServiceDelivery(datasetResults.getServiceDelivery());
+                } else {
+                    result.getServiceDelivery().getVehicleMonitoringDeliveries().addAll(datasetResults.getServiceDelivery().getVehicleMonitoringDeliveries());
+                }
+            }
+        }
+        return result != null ? result : new Siri();
+    }
+
+    private Set<String> getSeachedStopIds(OutboundSubscriptionSetup subscriptionRequest) {
+        Set<String> searchedStopIds = new HashSet<>();
+
+        if (subscriptionRequest.getFilterMap() != null && subscriptionRequest.getFilterMap().containsKey(MonitoringRefStructure.class)) {
+            searchedStopIds.addAll(subscriptionRequest.getFilterMap().get(MonitoringRefStructure.class));
+        }
+
+        if (subscriptionRequest.getFilterMapByDataset() != null) {
+            for (Map<Class, Set<String>> entry : subscriptionRequest.getFilterMapByDataset().values()) {
+                if (entry.containsKey(MonitoringRefStructure.class)) {
+                    searchedStopIds.addAll(entry.get(MonitoringRefStructure.class));
+                }
+            }
+        }
+
+        return searchedStopIds;
     }
 
     public List<Siri> splitDeliveries(Siri payload, int maximumSizePerDelivery) {

@@ -410,9 +410,9 @@ public class ServerSubscriptionManager {
 
             Siri subscriptionResponse = siriObjectFactory.createSubscriptionResponse(subscription.getSubscriptionId(), true, null, incomingSiri.getVersion());
 
-            if (subscription.getSubscriptionType().equals(SiriDataType.SITUATION_EXCHANGE)) {
-                sendInitialDelivery(subscription, outboundIdMappingPolicy);
-            }
+
+            sendInitialDelivery(subscription, outboundIdMappingPolicy);
+
             return subscriptionResponse;
         }
     }
@@ -453,7 +453,7 @@ public class ServerSubscriptionManager {
 
                 if (delivery != null) {
                     logger.info("Sending initial delivery to {}", subscription.getAddress());
-                    camelRouteManager.pushSiriData(null, delivery, subscription, false);
+                    camelRouteManager.pushSiriData(subscription.getDatasetId(), delivery, subscription, false);
                 } else {
                     logger.info("No initial delivery found for {}", subscription);
                 }
