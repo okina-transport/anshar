@@ -318,25 +318,28 @@ public class AdministrationRoute extends RestRouteBuilder {
                         String siriDataTypeInput = p.getIn().getHeader("type", String.class);
                         Integer page = p.getIn().getHeader("page", Integer.class);
                         Integer pageSize = p.getIn().getHeader("pageSize", Integer.class);
-                        SiriDataType type = SiriDataType.valueOf(siriDataTypeInput);
-                        if (page == null || page <= 0) {
-                            page = 0;
-                        }
-                        if (pageSize == null || pageSize < 0) {
-                            pageSize = 50;
-                        }
-                        JSONObject outboundDataWithPagination = serverSubscriptionManager.getSubscriptionsWithPagination(type, page, pageSize);
+                        String filtersJson = p.getIn().getHeader("filters", String.class);
 
-                        if (APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE, String.class))) {
-                            p.getMessage().setBody(outboundDataWithPagination);
-                        } else {
-                            p.getMessage().setBody(outboundDataWithPagination.toJSONString());
-                        }
+                        SiriDataType type = SiriDataType.valueOf(siriDataTypeInput);
+
+                        if (page == null || page <= 0) page = 0;
+                        if (pageSize == null || pageSize < 0) pageSize = 50;
+
+                        JSONObject outboundDataWithPagination = serverSubscriptionManager.getSubscriptionsWithPagination(
+                                type,
+                                page,
+                                pageSize,
+                                filtersJson
+                        );
+
+                        p.getMessage().setBody(APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE, String.class))
+                                ? outboundDataWithPagination
+                                : outboundDataWithPagination.toJSONString());
+
                     } catch (IllegalArgumentException e) {
                         p.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 400);
                     }
-                })
-        ;
+                });
 
         from(OUTBOUND_UNSUBSCRIBE_BY_SIRI_DATA_TYPE_ROUTE)
                 .process(p -> {
