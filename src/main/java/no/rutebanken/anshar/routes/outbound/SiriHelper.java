@@ -44,6 +44,7 @@ import java.util.stream.Collectors;
 public class SiriHelper {
     public static final String FALLBACK_SIRI_VERSION = "2.1";
     private static final Logger logger = LoggerFactory.getLogger(SiriHelper.class);
+    public static final String DEFAULT_DATASET = "DEFAULT_DATASET";
 
 
     @Autowired
@@ -292,6 +293,33 @@ public class SiriHelper {
         }
 
         return subscriptionConfig.buildIdProcessingParams(datasetId, requestedIds, ObjectType.LINE);
+    }
+
+    public Map<String, Siri> findInitialDeliveryDataByDataset(OutboundSubscriptionSetup subscriptionRequest) {
+        Map<String, Siri> results = new HashMap<>();
+        switch (subscriptionRequest.getSubscriptionType()) {
+
+            case STOP_MONITORING:
+                Set<String> searchedStopIds = getSeachedStopIds(subscriptionRequest);
+                return getSMinitialDelivery(subscriptionRequest, searchedStopIds);
+        }
+
+        return results;
+    }
+
+    private Map<String, Siri> getSMinitialDelivery(OutboundSubscriptionSetup subscriptionRequest, Set<String> searchedStopIds) {
+        Map<String, Siri> results = new HashMap<>();
+        if (StringUtils.isNotEmpty(subscriptionRequest.getDatasetId())) {
+            Siri delivery = monitoredStopVisits.createServiceDelivery(subscriptionRequest.getRequestorRef(), subscriptionRequest.getDatasetId(), "initialDelivery", Integer.MAX_VALUE, searchedStopIds);
+            results.put(DEFAULT_DATASET, delivery);
+        } else {
+            Set<String> datasetList = monitoredStopVisits.getAllDatasetIds();
+            for (String datasetId : datasetList) {
+                Siri delivery = monitoredStopVisits.createServiceDelivery(subscriptionRequest.getRequestorRef(), datasetId, "initialDelivery", Integer.MAX_VALUE, searchedStopIds);
+                results.put(datasetId, delivery);
+            }
+        }
+        return results;
     }
 
 

@@ -448,21 +448,34 @@ public class ServerSubscriptionManager {
                 MDC.put("camel.breadcrumbId", breadcrumbId);
 
                 //Send initial ServiceDelivery
-                logger.info("Find initial delivery for {}", subscription);
-                Siri delivery = siriHelper.findInitialDeliveryData(subscription, outboundIdMappingPolicy);
+                logger.debug("Find initial delivery for {}", subscription);
+                if (SiriDataType.STOP_MONITORING.equals(subscription.getSubscriptionType())) {
+                    Map<String, Siri> deliveriesByDataset = siriHelper.findInitialDeliveryDataByDataset(subscription);
+                    for (Map.Entry<String, Siri> datasetAndDelivery : deliveriesByDataset.entrySet()) {
+                        String datasetId = datasetAndDelivery.getKey().equals(siriHelper.DEFAULT_DATASET) ? subscription.getDatasetId() : datasetAndDelivery.getKey();
+                        sendInitialDelivery(datasetId, datasetAndDelivery.getValue(), subscription);
+                    }
 
-                if (delivery != null) {
-                    logger.info("Sending initial delivery to {}", subscription.getAddress());
-                    camelRouteManager.pushSiriData(subscription.getDatasetId(), delivery, subscription, false);
                 } else {
-                    logger.info("No initial delivery found for {}", subscription);
+                    Siri delivery = siriHelper.findInitialDeliveryData(subscription, outboundIdMappingPolicy);
+                    sendInitialDelivery(subscription.getDatasetId(), delivery, subscription);
                 }
+
             } catch (Exception e) {
                 logger.error("Error while sending initial delivery", e);
             } finally {
                 MDC.remove("camel.breadcrumbId");
             }
         });
+    }
+
+    private void sendInitialDelivery(String datasetId, Siri delivery, OutboundSubscriptionSetup subscription) {
+        if (delivery != null) {
+            logger.info("Sending initial delivery to {}", subscription.getSubscriptionId());
+            camelRouteManager.pushSiriData(datasetId, delivery, subscription, false);
+        } else {
+            logger.info("No initial delivery found for {}", subscription);
+        }
     }
 
 
