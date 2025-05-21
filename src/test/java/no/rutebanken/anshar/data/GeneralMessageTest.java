@@ -175,7 +175,7 @@ public class GeneralMessageTest extends SpringBootBaseTest {
 
         //adding an update of the msg with 2 stopRefs
         generalMessages.add("test", msg);
-        assertTrue(generalMessages.getAll().size() == 1);
+        assertEquals(1, generalMessages.getAll().size());
 
         siri = generalMessages.createServiceDelivery("test", "test", "name", 20, new ArrayList<>());
 

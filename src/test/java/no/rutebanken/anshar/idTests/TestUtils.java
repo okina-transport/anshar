@@ -1,6 +1,10 @@
 package no.rutebanken.anshar.idTests;
 
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
+import no.rutebanken.anshar.routes.outbound.OutboundSubscriptionSetup;
+import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
+import no.rutebanken.anshar.subscription.SiriDataType;
+import org.entur.siri.validator.SiriValidator;
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.model.HttpRequest;
 import org.slf4j.Logger;
@@ -9,10 +13,7 @@ import uk.org.siri.siri21.*;
 
 import java.io.Serializable;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.StringBody.subString;
@@ -323,5 +324,25 @@ public class TestUtils {
         element.setItemRef(itemRefStructure);
 
         return element;
+    }
+
+    public static OutboundSubscriptionSetup createSxOutboundSubscription(boolean useOriginalId) {
+        String address = "http://localhost:1080/incomingSiri";
+        List<ValueAdapter> adapters = new ArrayList<>();
+        return new OutboundSubscriptionSetup(ZonedDateTime.now(),
+                SiriDataType.SITUATION_EXCHANGE, address, 3600,
+                true, 30, 0,
+                new HashMap<>(), adapters,
+                "outSubId1", "requestorRef", ZonedDateTime.now().plusHours(1), "DAT1", "clientTrackingName", useOriginalId, SiriValidator.Version.VERSION_2_1);
+    }
+
+    public static OutboundSubscriptionSetup createGmOutboundSubscription(boolean useOriginalId) {
+        String address = "http://localhost:1080/incomingSiri";
+        List<ValueAdapter> adapters = new ArrayList<>();
+        return new OutboundSubscriptionSetup(ZonedDateTime.now(),
+                SiriDataType.GENERAL_MESSAGE, address, 3600,
+                true, 30, 0,
+                new HashMap<>(), adapters,
+                "outGmId1", "requestorRef", ZonedDateTime.now().plusHours(1), "DAT1", "clientTrackingName", useOriginalId, SiriValidator.Version.VERSION_2_1);
     }
 }
