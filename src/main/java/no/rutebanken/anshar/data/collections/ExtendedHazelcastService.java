@@ -226,6 +226,11 @@ public class ExtendedHazelcastService extends HazelCastService {
     }
 
     @Bean
+    public IMap<SiriObjectStorageKey, String> getGmChecksumMap() {
+        return hazelcast.getMap("anshar.gm.checksum.cache");
+    }
+
+    @Bean
     public IMap<SiriObjectStorageKey, String> getVmChecksumMap() {
         return hazelcast.getMap("anshar.vm.checksum.cache");
     }

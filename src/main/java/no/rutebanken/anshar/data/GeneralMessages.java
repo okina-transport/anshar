@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
+import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.apache.commons.lang3.StringUtils;
@@ -41,6 +42,9 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
     @Qualifier("getGeneralMessages")
     private IMap<SiriObjectStorageKey, GeneralMessage> generalMessages;
 
+    @Autowired
+    @Qualifier("getGmChecksumMap")
+    private IMap<SiriObjectStorageKey, String> checksumCache;
 
     @Autowired
     @Qualifier("getGeneralMessagesChangesMap")
@@ -135,13 +139,15 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
     public Collection<GeneralMessage> addAll(String datasetId, List<GeneralMessage> gmList) {
         Set<GeneralMessage> addedData = new HashSet<>();
         Counter outdatedCounter = new CounterImpl(0);
+        Counter ignoredCounter = new CounterImpl(0);
+        Map<SiriObjectStorageKey, String> localChecksum = new HashMap<>(gmList.size());
 
         gmList.stream()
-                .filter(generalMessage -> generalMessage != null)
+                .filter(Objects::nonNull)
                 .filter(generalMessage -> generalMessage.getInfoMessageIdentifier() != null)
                 .filter(generalMessage -> generalMessage.getInfoChannelRef() != null)
                 .forEach(generalMessage -> {
-
+                    TimingTracer timingTracer = new TimingTracer("single-gm");
                     if (generalMessage.getRecordedAtTime() == null) {
                         generalMessage.setRecordedAtTime(ZonedDateTime.now());
                     }
@@ -164,20 +170,48 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
 
 
                     SiriObjectStorageKey key = createKey(datasetId, generalMessage);
+                    timingTracer.mark("createKey");
 
                     long expiration = getExpiration(generalMessage);
-
-                    if (expiration > 0) {
-                        generalMessages.set(key, generalMessage, expiration, TimeUnit.MILLISECONDS);
-                        addedData.add(generalMessage);
-                    } else {
-                        outdatedCounter.increment();
+                    if (expiration < 0 && generalMessages.containsKey(key)) {
+                        generalMessages.remove(key);
+                        checksumCache.remove(key);
                     }
 
-                });
+                    String currentChecksum = null;
+                    try {
+                        currentChecksum = getChecksum(generalMessage);
+                        timingTracer.mark("getChecksum");
+                    } catch (Exception e) {
+                       logger.warn("Unable to get checksum for {}", generalMessage.getInfoMessageIdentifier(), e);
+                    }
+                    String existingChecksum = checksumCache.get(key);
 
-        logger.debug("Updated {} (of {}) :: Ignored elements - outdated : {}", addedData.size(), gmList.size(), outdatedCounter.getValue());
-        markDataReceived(SiriDataType.GENERAL_MESSAGE, datasetId, gmList.size(), addedData.size(), outdatedCounter.getValue(), 0);
+                    boolean updated = checksumCache.containsKey(key) && generalMessages.containsKey(key)
+                            && !Objects.equals(existingChecksum, currentChecksum);
+                    timingTracer.mark("compareChecksum");
+                    boolean newMessage = !generalMessages.containsKey(key);
+
+                    if (newMessage || updated) {
+                        if (expiration > 0) {
+                            generalMessages.set(key, generalMessage, expiration, TimeUnit.MILLISECONDS);
+                            localChecksum.put(key, currentChecksum);
+                            addedData.add(generalMessage);
+                        } else {
+                            outdatedCounter.increment();
+                        }
+                    } else {
+                        ignoredCounter.increment();
+                    }
+
+                    long elapsed = timingTracer.getTotalTime();
+                    if (elapsed > 500) {
+                        logger.info("Adding GM-object with key {} took {} ms: {}", key, elapsed, timingTracer);
+                    }
+                });
+        checksumCache.setAll(localChecksum);
+        logger.debug("Updated {} (of {}) :: Ignored elements {} - outdated : {}", addedData.size(), gmList.size(), ignoredCounter.getValue(), outdatedCounter.getValue());
+        markDataReceived(SiriDataType.GENERAL_MESSAGE, datasetId, gmList.size(), addedData.size(), outdatedCounter.getValue(), ignoredCounter.getValue());
 
         return addedData;
     }
@@ -202,6 +236,7 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
 
         for (SiriObjectStorageKey id : idsToRemove) {
             generalMessages.delete(id);
+            checksumCache.remove(id);
         }
         logger.warn("Removing all data done");
     }
@@ -290,5 +325,6 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
         changesMap.clear();
         lastUpdateRequested.clear();
         cache.clear();
+        checksumCache.clear();
     }
 }
