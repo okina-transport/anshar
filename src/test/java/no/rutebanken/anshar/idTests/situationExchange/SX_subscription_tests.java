@@ -14,8 +14,6 @@ import no.rutebanken.anshar.routes.outbound.OutboundSubscriptionSetup;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.SituationExchangeInbound;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
-import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
-import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.apache.commons.lang3.tuple.Pair;
 import org.entur.siri.validator.SiriValidator;
@@ -27,7 +25,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri21.PtSituationElement;
 
 import javax.xml.bind.JAXBException;
-import java.time.ZonedDateTime;
 import java.util.*;
 
 import static org.mockserver.integration.ClientAndServer.startClientAndServer;
@@ -97,7 +94,7 @@ public class SX_subscription_tests extends SpringBootBaseTest {
         PtSituationElement situation1 = TestUtils.createSituationForLine(sitNumber1, OLD_LINE1_REF);
         TestUtils.addAffectedStop(situation1, OLD_STOP1_REF);
 
-        OutboundSubscriptionSetup outboundSubscription = createOutboundSubscription(true);
+        OutboundSubscriptionSetup outboundSubscription = TestUtils.createSxOutboundSubscription(true);
         serverSubscriptionManager.addSubscription(outboundSubscription);
 
         List<PtSituationElement> situationsToIngest = new ArrayList<>();
@@ -141,7 +138,7 @@ public class SX_subscription_tests extends SpringBootBaseTest {
         PtSituationElement situation1 = TestUtils.createSituationForLine(sitNumber1, OLD_LINE1_REF);
         TestUtils.addAffectedStop(situation1, OLD_STOP1_REF);
 
-        OutboundSubscriptionSetup outboundSubscription = createOutboundSubscription(true);
+        OutboundSubscriptionSetup outboundSubscription = TestUtils.createSxOutboundSubscription(true);
         outboundSubscription.setSiriVersion(SiriValidator.Version.VERSION_2_0);
         serverSubscriptionManager.addSubscription(outboundSubscription);
 
@@ -185,7 +182,7 @@ public class SX_subscription_tests extends SpringBootBaseTest {
         PtSituationElement situation1 = TestUtils.createSituationForLine(sitNumber1, OLD_LINE1_REF);
         TestUtils.addAffectedStop(situation1, OLD_STOP1_REF);
 
-        OutboundSubscriptionSetup outboundSubscription = createOutboundSubscription(true);
+        OutboundSubscriptionSetup outboundSubscription = TestUtils.createSxOutboundSubscription(true);
         outboundSubscription.setSiriVersion(SiriValidator.Version.VERSION_2_0_IDFM_2_4);
         serverSubscriptionManager.addSubscription(outboundSubscription);
 
@@ -230,7 +227,7 @@ public class SX_subscription_tests extends SpringBootBaseTest {
         PtSituationElement situation1 = TestUtils.createSituationForLine(sitNumber1, OLD_LINE1_REF);
         TestUtils.addAffectedStop(situation1, OLD_STOP1_REF);
 
-        OutboundSubscriptionSetup outboundSubscription = createOutboundSubscription(false);
+        OutboundSubscriptionSetup outboundSubscription = TestUtils.createSxOutboundSubscription(false);
         serverSubscriptionManager.addSubscription(outboundSubscription);
 
         List<PtSituationElement> situationsToIngest = new ArrayList<>();
@@ -326,15 +323,5 @@ public class SX_subscription_tests extends SpringBootBaseTest {
         subscriptionConfig.getIdProcessingParameters().add(dat2Network);
     }
 
-    private OutboundSubscriptionSetup createOutboundSubscription(boolean useOriginalId) {
 
-        String address = "http://localhost:1080/incomingSiri";
-        List<ValueAdapter> adapters = new ArrayList<>();
-        OutboundSubscriptionSetup subscription = new OutboundSubscriptionSetup(ZonedDateTime.now(),
-                SiriDataType.SITUATION_EXCHANGE, address, 3600,
-                true, 30, 0,
-                new HashMap<>(), adapters,
-                "outSubId1", "requestorRef", ZonedDateTime.now().plusHours(1), "DAT1", "clientTrackingName", useOriginalId, SiriValidator.Version.VERSION_2_1);
-        return subscription;
-    }
 }
