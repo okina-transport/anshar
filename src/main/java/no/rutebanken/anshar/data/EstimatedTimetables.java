@@ -116,6 +116,12 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
         return timetableDeliveries.keySet().size();
     }
 
+    public Set<String> getAllDatasetIds() {
+        return timetableDeliveries.keySet().stream()
+                .map(SiriObjectStorageKey::getCodespaceId)
+                .collect(Collectors.toSet());
+    }
+
 
     public Map<String, Integer> getDatasetSize() {
         Map<String, Integer> sizeMap = new HashMap<>();
@@ -627,7 +633,7 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
     }
 
     private static SiriObjectStorageKey createKey(String datasetId, EstimatedVehicleJourney element) {
-        if(element.getFramedVehicleJourneyRef() != null) {
+        if (element.getFramedVehicleJourneyRef() != null) {
             element.getFramedVehicleJourneyRef().setDatedVehicleJourneyRef(CustomStringUtils.removeSpecialCharacters(element.getFramedVehicleJourneyRef().getDatedVehicleJourneyRef()));
         }
 

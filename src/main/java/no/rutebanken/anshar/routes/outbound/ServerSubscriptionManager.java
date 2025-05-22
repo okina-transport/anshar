@@ -137,6 +137,11 @@ public class ServerSubscriptionManager {
     @Value("${anshar.outbound.subscription.grace.period:30000}")
     private long outboundSubscriptionGracePeriod = 30000;
 
+    public static String DEFAULT_DATASET = "ALL";
+
+    @Autowired
+    private InitialDeliveryGenerator initialDeliveryGenerator;
+
     private static boolean checkMissingMonitoringRef(SubscriptionRequest subscriptionRequest) {
         boolean missingMonitoringRef = false;
         if (subscriptionRequest != null && CollectionUtils.isNotEmpty(subscriptionRequest.getStopMonitoringSubscriptionRequests())) {
@@ -493,15 +498,15 @@ public class ServerSubscriptionManager {
 
                 //Send initial ServiceDelivery
                 logger.debug("Find initial delivery for {}", subscription);
-                if (SiriDataType.STOP_MONITORING.equals(subscription.getSubscriptionType())) {
-                    Map<String, Siri> deliveriesByDataset = siriHelper.findInitialDeliveryDataByDataset(subscription);
+                List<SiriDataType> multipleDatasetDeliveryTypes = Arrays.asList(SiriDataType.STOP_MONITORING, SiriDataType.ESTIMATED_TIMETABLE, SiriDataType.VEHICLE_MONITORING);
+                if (multipleDatasetDeliveryTypes.contains(subscription.getSubscriptionType())) {
+                    Map<String, Siri> deliveriesByDataset = initialDeliveryGenerator.findInitialDeliveriesByDataset(subscription);
                     for (Map.Entry<String, Siri> datasetAndDelivery : deliveriesByDataset.entrySet()) {
-                        String datasetId = datasetAndDelivery.getKey().equals(siriHelper.DEFAULT_DATASET) ? subscription.getDatasetId() : datasetAndDelivery.getKey();
-                        sendInitialDelivery(datasetId, datasetAndDelivery.getValue(), subscription);
+                        sendInitialDelivery(datasetAndDelivery.getKey(), datasetAndDelivery.getValue(), subscription);
                     }
 
                 } else {
-                    Siri delivery = siriHelper.findInitialDeliveryData(subscription, outboundIdMappingPolicy);
+                    Siri delivery = initialDeliveryGenerator.findInitialDeliveryData(subscription, outboundIdMappingPolicy);
                     sendInitialDelivery(subscription.getDatasetId(), delivery, subscription);
                 }
 
@@ -596,7 +601,7 @@ public class ServerSubscriptionManager {
                 String rawLineRef = lineDirection.getLineRef().getValue();
                 HashSet<String> searchedIds = new HashSet<>(Collections.singleton(rawLineRef));
                 if (datasetId == null) {
-                    datasetId = incomingSubscriptionConfig.findDatasetFromSearch(searchedIds, ObjectType.LINE).orElse("ALL");
+                    datasetId = incomingSubscriptionConfig.findDatasetFromSearch(searchedIds, ObjectType.LINE).orElse(DEFAULT_DATASET);
                 }
 
                 Set<String> linerefValues = siriHelper.revertLineIds(outboundIdMappingPolicy, searchedIds, datasetId);
@@ -1290,7 +1295,7 @@ public class ServerSubscriptionManager {
 
         boolean logFullContents = true;
         for (OutboundSubscriptionSetup recipient : recipients) {
-            if (!recipient.getSubscriptionType().equals(SiriDataType.ESTIMATED_TIMETABLE) || !recipient.getFilterMapByDataset().containsKey(datasetId)) {
+            if (!recipient.getSubscriptionType().equals(SiriDataType.ESTIMATED_TIMETABLE)) {
                 continue;
             }
             camelRouteManager.pushSiriData(datasetId, delivery, recipient, logFullContents);

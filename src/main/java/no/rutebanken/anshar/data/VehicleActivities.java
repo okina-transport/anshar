@@ -539,4 +539,10 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
         String lineRef = monitoredVehicleJourney.getLineRef() == null ? null : monitoredVehicleJourney.getLineRef().getValue();
         return new SiriObjectStorageKey(datasetId, lineRef, key.toString(), null, vehicleJourney, null);
     }
+
+    public Set<String> getAllDatasetIds() {
+        return monitoredVehicles.keySet().stream()
+                .map(SiriObjectStorageKey::getCodespaceId)
+                .collect(Collectors.toSet());
+    }
 }

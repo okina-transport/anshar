@@ -17,12 +17,14 @@ package no.rutebanken.anshar.routes.outbound;
 
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
-import no.rutebanken.anshar.data.*;
+import no.rutebanken.anshar.data.EstimatedTimetables;
+import no.rutebanken.anshar.data.MonitoredStopVisits;
+import no.rutebanken.anshar.data.Situations;
+import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.data.util.CustomStringUtils;
 import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
-import no.rutebanken.anshar.routes.siri.handlers.outbound.SituationExchangeOutbound;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
@@ -44,7 +46,6 @@ import java.util.stream.Collectors;
 public class SiriHelper {
     public static final String FALLBACK_SIRI_VERSION = "2.1";
     private static final Logger logger = LoggerFactory.getLogger(SiriHelper.class);
-    public static final String DEFAULT_DATASET = "DEFAULT_DATASET";
 
 
     @Autowired
@@ -60,19 +61,10 @@ public class SiriHelper {
     private MonitoredStopVisits monitoredStopVisits;
 
     @Autowired
-    private GeneralMessages generalMessages;
-
-    @Autowired
-    private FacilityMonitoring facilityMonitoring;
-
-    @Autowired
     private StopPlaceUpdaterService stopPlaceUpdaterService;
 
     @Autowired
     private SubscriptionConfig subscriptionConfig;
-
-    @Autowired
-    private SituationExchangeOutbound situationExchangeOutbound;
 
     private final SiriObjectFactory siriObjectFactory;
 
@@ -263,16 +255,22 @@ public class SiriHelper {
 
     public Map<ObjectType, Optional<IdProcessingParameters>> getIdProcessingParamsFromSubscription(VehicleMonitoringSubscriptionStructure vehMonitoringSubscription, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
 
-        String requestedId = vehMonitoringSubscription.getVehicleMonitoringRequest().getLineRef().getValue();
+        if (StringUtils.isNotEmpty(datasetId)) {
+            return subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);
+        } else if (vehMonitoringSubscription.getVehicleMonitoringRequest().getLineRef() != null) {
+            String requestedId = vehMonitoringSubscription.getVehicleMonitoringRequest().getLineRef().getValue();
 
-        Set<String> requestedIds = new HashSet<>();
-        requestedIds.add(requestedId);
+            Set<String> requestedIds = new HashSet<>();
+            requestedIds.add(requestedId);
 
-        requestedIds = requestedIds.stream()
-                .map(value -> value.replace(":FlexibleLine:", ":Line:"))
-                .collect(Collectors.toSet());
+            requestedIds = requestedIds.stream()
+                    .map(value -> value.replace(":FlexibleLine:", ":Line:"))
+                    .collect(Collectors.toSet());
 
-        return subscriptionConfig.buildIdProcessingParams(datasetId, requestedIds, ObjectType.LINE);
+            return subscriptionConfig.buildIdProcessingParams(datasetId, requestedIds, ObjectType.LINE);
+        }
+
+        return new HashMap<>();
     }
 
     public Map<ObjectType, Optional<IdProcessingParameters>> getIdProcessingParamsFromDataset(String datasetId) {
@@ -295,136 +293,29 @@ public class SiriHelper {
         return subscriptionConfig.buildIdProcessingParams(datasetId, requestedIds, ObjectType.LINE);
     }
 
-    public Map<String, Siri> findInitialDeliveryDataByDataset(OutboundSubscriptionSetup subscriptionRequest) {
-        Map<String, Siri> results = new HashMap<>();
-        switch (subscriptionRequest.getSubscriptionType()) {
 
-            case STOP_MONITORING:
-                Set<String> searchedStopIds = getSeachedStopIds(subscriptionRequest);
-                return getSMinitialDelivery(subscriptionRequest, searchedStopIds);
+    public Set<String> getLineFiltersForDatasetId(OutboundSubscriptionSetup subscriptionRequest, String datasetId) {
+        Set<String> results = new HashSet<>();
+        if (subscriptionRequest.getFilterMap() != null && subscriptionRequest.getFilterMap().containsKey(LineRef.class)) {
+            results.addAll(subscriptionRequest.getFilterMap().get(LineRef.class));
         }
 
-        return results;
-    }
+        if (subscriptionRequest.getFilterMapByDataset() != null && !subscriptionRequest.getFilterMapByDataset().isEmpty()) {
+            if (subscriptionRequest.getFilterMapByDataset().containsKey(datasetId) &&
+                    subscriptionRequest.getFilterMapByDataset().get(datasetId).containsKey(LineRef.class)) {
+                results.addAll(subscriptionRequest.getFilterMapByDataset().get(datasetId).get(LineRef.class));
+            }
 
-    private Map<String, Siri> getSMinitialDelivery(OutboundSubscriptionSetup subscriptionRequest, Set<String> searchedStopIds) {
-        Map<String, Siri> results = new HashMap<>();
-        if (StringUtils.isNotEmpty(subscriptionRequest.getDatasetId())) {
-            Siri delivery = monitoredStopVisits.createServiceDelivery(subscriptionRequest.getRequestorRef(), subscriptionRequest.getDatasetId(), "initialDelivery", Integer.MAX_VALUE, searchedStopIds);
-            results.put(DEFAULT_DATASET, delivery);
-        } else {
-            Set<String> datasetList = monitoredStopVisits.getAllDatasetIds();
-            for (String datasetId : datasetList) {
-                Siri delivery = monitoredStopVisits.createServiceDelivery(subscriptionRequest.getRequestorRef(), datasetId, "initialDelivery", Integer.MAX_VALUE, searchedStopIds);
-                results.put(datasetId, delivery);
+            if (subscriptionRequest.getFilterMapByDataset().containsKey(ServerSubscriptionManager.DEFAULT_DATASET) &&
+                    subscriptionRequest.getFilterMapByDataset().get(ServerSubscriptionManager.DEFAULT_DATASET).containsKey(LineRef.class)) {
+                results.addAll(subscriptionRequest.getFilterMapByDataset().get(ServerSubscriptionManager.DEFAULT_DATASET).get(LineRef.class));
             }
         }
         return results;
     }
 
 
-    Siri findInitialDeliveryData(OutboundSubscriptionSetup subscriptionRequest, OutboundIdMappingPolicy policy) {
-        Siri delivery = null;
-
-        switch (subscriptionRequest.getSubscriptionType()) {
-
-            case SITUATION_EXCHANGE:
-                delivery = situationExchangeOutbound.createServiceDelivery(subscriptionRequest.getRequestorRef(), subscriptionRequest.getDatasetId(), subscriptionRequest.getClientTrackingName(), policy, 1000);
-                logger.info("Initial SX-delivery: {} elements", delivery.getServiceDelivery().getSituationExchangeDeliveries().size());
-                break;
-
-            case VEHICLE_MONITORING:
-                delivery = getVMInitialDelivery(subscriptionRequest);
-                break;
-
-            case ESTIMATED_TIMETABLE:
-                delivery = getETinitialDelivery(subscriptionRequest);
-                break;
-
-            case STOP_MONITORING:
-                Set<String> searchedStopIds = getSeachedStopIds(subscriptionRequest);
-                delivery = monitoredStopVisits.createServiceDelivery(subscriptionRequest.getRequestorRef(), subscriptionRequest.getDatasetId(), "initialDelivery", Integer.MAX_VALUE, searchedStopIds);
-                break;
-
-            case GENERAL_MESSAGE:
-                Collection<GeneralMessage> messages = generalMessages.getAll(subscriptionRequest.getDatasetId());
-                logger.info("Initial GM-delivery: {} elements", messages.size());
-                delivery = siriObjectFactory.createGMServiceDelivery(messages);
-                break;
-
-            case FACILITY_MONITORING:
-                Collection<FacilityConditionStructure> facility = facilityMonitoring.getAll(subscriptionRequest.getDatasetId());
-                logger.info("Initial FM-delivery: {} elements", facility.size());
-                delivery = siriObjectFactory.createFMServiceDelivery(facility);
-                break;
-
-
-        }
-        return delivery;
-    }
-
-    private Siri getETinitialDelivery(OutboundSubscriptionSetup subscriptionRequest) {
-
-
-        if (subscriptionRequest.getFilterMap() != null && subscriptionRequest.getFilterMap().containsKey(LineRef.class)) {
-            Set<String> filteredLines = subscriptionRequest.getFilterMap().get(LineRef.class);
-            return estimatedTimetables.createServiceDelivery(subscriptionRequest.getRequestorRef(), subscriptionRequest.getDatasetId(), "initialDelivery", new ArrayList<>(), Integer.MAX_VALUE, -1, filteredLines);
-        }
-
-        Siri result = null;
-
-        if (subscriptionRequest.getFilterMapByDataset() != null && !subscriptionRequest.getFilterMapByDataset().isEmpty()) {
-            for (Map.Entry<String, Map<Class, Set<String>>> fiterMapEntry : subscriptionRequest.getFilterMapByDataset().entrySet()) {
-                if (!fiterMapEntry.getValue().containsKey(LineRef.class)) {
-                    continue;
-                }
-
-                String datasetId = fiterMapEntry.getKey();
-                Set<String> filteredLines = fiterMapEntry.getValue().get(LineRef.class);
-                Siri datasetResults = estimatedTimetables.createServiceDelivery(subscriptionRequest.getRequestorRef(), datasetId, "initialDelivery", new ArrayList<>(), Integer.MAX_VALUE, -1, filteredLines);
-                if (result == null) {
-                    result = datasetResults;
-                } else if (result.getServiceDelivery() == null) {
-                    result.setServiceDelivery(datasetResults.getServiceDelivery());
-                } else {
-                    result.getServiceDelivery().getEstimatedTimetableDeliveries().addAll(datasetResults.getServiceDelivery().getEstimatedTimetableDeliveries());
-                }
-            }
-        }
-        return result != null ? result : new Siri();
-    }
-
-    private Siri getVMInitialDelivery(OutboundSubscriptionSetup subscriptionRequest) {
-
-        if (subscriptionRequest.getFilterMap() != null && subscriptionRequest.getFilterMap().containsKey(LineRef.class)) {
-            Set<String> filteredLines = subscriptionRequest.getFilterMap().get(LineRef.class);
-            return vehicleActivities.createServiceDelivery(subscriptionRequest.getRequestorRef(), subscriptionRequest.getDatasetId(), "initialDelivery", new ArrayList<>(), Integer.MAX_VALUE, filteredLines, new HashSet<>());
-        }
-
-        Siri result = null;
-
-        if (subscriptionRequest.getFilterMapByDataset() != null && !subscriptionRequest.getFilterMapByDataset().isEmpty()) {
-            for (Map.Entry<String, Map<Class, Set<String>>> fiterMapEntry : subscriptionRequest.getFilterMapByDataset().entrySet()) {
-                if (!fiterMapEntry.getValue().containsKey(LineRef.class)) {
-                    continue;
-                }
-
-                String datasetId = fiterMapEntry.getKey();
-                Set<String> filteredLines = fiterMapEntry.getValue().get(LineRef.class);
-                Siri datasetResults = vehicleActivities.createServiceDelivery(subscriptionRequest.getRequestorRef(), datasetId, "initialDelivery", new ArrayList<>(), Integer.MAX_VALUE, filteredLines, new HashSet<>());
-                if (result == null) {
-                    result = datasetResults;
-                } else if (result.getServiceDelivery() == null) {
-                    result.setServiceDelivery(datasetResults.getServiceDelivery());
-                } else {
-                    result.getServiceDelivery().getVehicleMonitoringDeliveries().addAll(datasetResults.getServiceDelivery().getVehicleMonitoringDeliveries());
-                }
-            }
-        }
-        return result != null ? result : new Siri();
-    }
-
-    private Set<String> getSeachedStopIds(OutboundSubscriptionSetup subscriptionRequest) {
+    public Set<String> getSeachedStopIds(OutboundSubscriptionSetup subscriptionRequest) {
         Set<String> searchedStopIds = new HashSet<>();
 
         if (subscriptionRequest.getFilterMap() != null && subscriptionRequest.getFilterMap().containsKey(MonitoringRefStructure.class)) {

@@ -103,7 +103,7 @@ public class EstimatedTimetableInbound {
     public Collection<EstimatedVehicleJourney> ingestEstimatedTimeTables(String datasetId, List<EstimatedVehicleJourney> incomingEstimatedTimeTables) {
         Collection<EstimatedVehicleJourney> result = estimatedTimetables.addAll(datasetId, incomingEstimatedTimeTables);
         if (result.size() > 0) {
-            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.ESTIMATED_TIMETABLE, incomingEstimatedTimeTables, datasetId);
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.ESTIMATED_TIMETABLE, Arrays.asList(result.toArray()), datasetId);
         }
         return result;
     }
