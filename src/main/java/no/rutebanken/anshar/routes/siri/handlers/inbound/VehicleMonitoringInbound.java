@@ -72,7 +72,7 @@ public class VehicleMonitoringInbound {
     public Collection<VehicleActivityStructure> ingestVehicleActivities(String datasetId, List<VehicleActivityStructure> incomingVehicleActivities) {
         Collection<VehicleActivityStructure> result = vehicleActivities.addAll(datasetId, incomingVehicleActivities);
         if (result.size() > 0) {
-            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.VEHICLE_MONITORING, incomingVehicleActivities, datasetId);
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.VEHICLE_MONITORING, Arrays.asList(result.toArray()), datasetId);
         }
         return result;
     }
