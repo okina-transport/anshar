@@ -41,6 +41,8 @@ import uk.org.siri.siri21.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager.DEFAULT_DATASET;
+
 @SuppressWarnings("unchecked")
 @Component
 public class SiriHelper {
@@ -71,6 +73,9 @@ public class SiriHelper {
     @Autowired
     ExternalIdsService externalIdsService;
 
+    @Autowired
+    private SubscriptionConfig incomingSubscriptionConfig;
+
 
     public SiriHelper(@Autowired SiriObjectFactory siriObjectFactory) {
         this.siriObjectFactory = siriObjectFactory;
@@ -91,6 +96,53 @@ public class SiriHelper {
         }
 
         return new HashMap<>();
+    }
+
+    public Map<String, Map<Class, Set<String>>> getFiltersByDataset(SubscriptionRequest subscriptionRequest, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
+
+        if (subscriptionRequest.getEstimatedTimetableSubscriptionRequests() == null || subscriptionRequest.getEstimatedTimetableSubscriptionRequests().size() == 0) {
+            // Currently only ET handles values/filterMap by dataset. will be modified progressively to handle all kind of Siri
+            return null;
+        }
+
+        List<EstimatedTimetableSubscriptionStructure> estimatedTimetableSubscriptionRequests = subscriptionRequest.getEstimatedTimetableSubscriptionRequests();
+
+        Map<String, Map<Class, Set<String>>> filterMapByDataset = new HashMap<>();
+        for (EstimatedTimetableSubscriptionStructure estimatedTimetableSubscriptionRequest : estimatedTimetableSubscriptionRequests) {
+
+            if (estimatedTimetableSubscriptionRequest.getEstimatedTimetableRequest().getLines() == null) {
+                continue;
+            }
+
+            for (LineDirectionStructure lineDirection : estimatedTimetableSubscriptionRequest.getEstimatedTimetableRequest().getLines().getLineDirections()) {
+                String rawLineRef = lineDirection.getLineRef().getValue();
+                HashSet<String> searchedIds = new HashSet<>(Collections.singleton(rawLineRef));
+                if (datasetId == null) {
+                    datasetId = incomingSubscriptionConfig.findDatasetFromSearch(searchedIds, ObjectType.LINE).orElse(DEFAULT_DATASET);
+                }
+
+                Set<String> linerefValues = revertLineIds(outboundIdMappingPolicy, searchedIds, datasetId);
+                if (linerefValues.isEmpty()) {
+                    // unable to revert. Subscription on raw id withoutIdProcessingParameters. Need to keep the raw id
+                    linerefValues = searchedIds;
+                }
+                Map<Class, Set<String>> currentFilterMapByDataset;
+                if (filterMapByDataset.containsKey(datasetId)) {
+                    currentFilterMapByDataset = filterMapByDataset.get(datasetId);
+                } else {
+                    currentFilterMapByDataset = new HashMap<>();
+                    filterMapByDataset.put(datasetId, currentFilterMapByDataset);
+                }
+
+                if (currentFilterMapByDataset.containsKey(LineRef.class)) {
+                    currentFilterMapByDataset.get(LineRef.class).addAll(linerefValues);
+                } else {
+                    currentFilterMapByDataset.put(LineRef.class, linerefValues);
+                }
+            }
+        }
+
+        return filterMapByDataset;
     }
 
     private Map<Class, Set<String>> getFilter(FacilityMonitoringSubscriptionStructure facilityMonitoringSubscriptionStructure, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
@@ -162,6 +214,11 @@ public class SiriHelper {
             Set<String> searchedValues = new HashSet<>();
             searchedValues.add(rawLineValue);
             Set<String> linerefValues = revertLineIds(outboundIdMappingPolicy, searchedValues, datasetId);
+            if (linerefValues.isEmpty()) {
+                // lines can't be reverted, happens when no idProcessings are defined. need to keep rawId
+                linerefValues.add(rawLineValue);
+            }
+
             filterMap.put(LineRef.class, linerefValues);
         }
         return filterMap;
@@ -306,9 +363,9 @@ public class SiriHelper {
                 results.addAll(subscriptionRequest.getFilterMapByDataset().get(datasetId).get(LineRef.class));
             }
 
-            if (subscriptionRequest.getFilterMapByDataset().containsKey(ServerSubscriptionManager.DEFAULT_DATASET) &&
-                    subscriptionRequest.getFilterMapByDataset().get(ServerSubscriptionManager.DEFAULT_DATASET).containsKey(LineRef.class)) {
-                results.addAll(subscriptionRequest.getFilterMapByDataset().get(ServerSubscriptionManager.DEFAULT_DATASET).get(LineRef.class));
+            if (subscriptionRequest.getFilterMapByDataset().containsKey(DEFAULT_DATASET) &&
+                    subscriptionRequest.getFilterMapByDataset().get(DEFAULT_DATASET).containsKey(LineRef.class)) {
+                results.addAll(subscriptionRequest.getFilterMapByDataset().get(DEFAULT_DATASET).get(LineRef.class));
             }
         }
         return results;

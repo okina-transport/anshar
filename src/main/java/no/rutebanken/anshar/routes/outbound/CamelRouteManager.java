@@ -100,8 +100,8 @@ public class CamelRouteManager {
                     return;
                 }
                 Map<Class, Set<String>> filterMap;
-                if (StringUtils.isNotEmpty(datasetId) && subscriptionRequest.getFilterMapByDataset().containsKey(datasetId)) {
-                    filterMap = subscriptionRequest.getFilterMapByDataset().get(datasetId);
+                if (subscriptionRequest.getFilterMapByDataset() != null && !subscriptionRequest.getFilterMapByDataset().isEmpty()) {
+                    filterMap = getfilterMap(subscriptionRequest, datasetId);
                 } else {
                     filterMap = subscriptionRequest.getFilterMap();
                 }
@@ -178,6 +178,28 @@ public class CamelRouteManager {
                 MDC.remove("camel.breadcrumbId");
             }
         });
+    }
+
+    private Map<Class, Set<String>> getfilterMap(OutboundSubscriptionSetup subscriptionRequest, String datasetId) {
+        Map<Class, Set<String>> results = new HashMap<>();
+
+        if (subscriptionRequest.getFilterMapByDataset().containsKey(datasetId)) {
+            results.putAll(subscriptionRequest.getFilterMapByDataset().get(datasetId));
+        }
+
+        if (subscriptionRequest.getFilterMapByDataset().containsKey(ServerSubscriptionManager.DEFAULT_DATASET)) {
+            for (Map.Entry<Class, Set<String>> entry : subscriptionRequest.getFilterMapByDataset().get(ServerSubscriptionManager.DEFAULT_DATASET).entrySet()) {
+                if (results.containsKey(entry.getKey())) {
+                    results.get(entry.getKey()).addAll(entry.getValue());
+                } else {
+                    results.put(entry.getKey(), entry.getValue());
+                }
+            }
+        }
+
+
+        return results;
+
     }
 
     /**
