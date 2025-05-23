@@ -17,12 +17,14 @@ package no.rutebanken.anshar.routes.outbound;
 
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
-import no.rutebanken.anshar.data.*;
+import no.rutebanken.anshar.data.EstimatedTimetables;
+import no.rutebanken.anshar.data.MonitoredStopVisits;
+import no.rutebanken.anshar.data.Situations;
+import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.data.util.CustomStringUtils;
 import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
-import no.rutebanken.anshar.routes.siri.handlers.outbound.SituationExchangeOutbound;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
@@ -71,6 +73,9 @@ public class SiriHelper {
     @Autowired
     ExternalIdsService externalIdsService;
 
+    @Autowired
+    private SubscriptionConfig incomingSubscriptionConfig;
+
 
     public SiriHelper(@Autowired SiriObjectFactory siriObjectFactory) {
         this.siriObjectFactory = siriObjectFactory;
@@ -91,6 +96,53 @@ public class SiriHelper {
         }
 
         return new HashMap<>();
+    }
+
+    public Map<String, Map<Class, Set<String>>> getFiltersByDataset(SubscriptionRequest subscriptionRequest, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
+
+        if (subscriptionRequest.getEstimatedTimetableSubscriptionRequests() == null || subscriptionRequest.getEstimatedTimetableSubscriptionRequests().size() == 0) {
+            // Currently only ET handles values/filterMap by dataset. will be modified progressively to handle all kind of Siri
+            return null;
+        }
+
+        List<EstimatedTimetableSubscriptionStructure> estimatedTimetableSubscriptionRequests = subscriptionRequest.getEstimatedTimetableSubscriptionRequests();
+
+        Map<String, Map<Class, Set<String>>> filterMapByDataset = new HashMap<>();
+        for (EstimatedTimetableSubscriptionStructure estimatedTimetableSubscriptionRequest : estimatedTimetableSubscriptionRequests) {
+
+            if (estimatedTimetableSubscriptionRequest.getEstimatedTimetableRequest().getLines() == null) {
+                continue;
+            }
+
+            for (LineDirectionStructure lineDirection : estimatedTimetableSubscriptionRequest.getEstimatedTimetableRequest().getLines().getLineDirections()) {
+                String rawLineRef = lineDirection.getLineRef().getValue();
+                HashSet<String> searchedIds = new HashSet<>(Collections.singleton(rawLineRef));
+                if (datasetId == null) {
+                    datasetId = incomingSubscriptionConfig.findDatasetFromSearch(searchedIds, ObjectType.LINE).orElse(DEFAULT_DATASET);
+                }
+
+                Set<String> linerefValues = revertLineIds(outboundIdMappingPolicy, searchedIds, datasetId);
+                if (linerefValues.isEmpty()) {
+                    // unable to revert. Subscription on raw id withoutIdProcessingParameters. Need to keep the raw id
+                    linerefValues = searchedIds;
+                }
+                Map<Class, Set<String>> currentFilterMapByDataset;
+                if (filterMapByDataset.containsKey(datasetId)) {
+                    currentFilterMapByDataset = filterMapByDataset.get(datasetId);
+                } else {
+                    currentFilterMapByDataset = new HashMap<>();
+                    filterMapByDataset.put(datasetId, currentFilterMapByDataset);
+                }
+
+                if (currentFilterMapByDataset.containsKey(LineRef.class)) {
+                    currentFilterMapByDataset.get(LineRef.class).addAll(linerefValues);
+                } else {
+                    currentFilterMapByDataset.put(LineRef.class, linerefValues);
+                }
+            }
+        }
+
+        return filterMapByDataset;
     }
 
     private Map<Class, Set<String>> getFilter(FacilityMonitoringSubscriptionStructure facilityMonitoringSubscriptionStructure, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
