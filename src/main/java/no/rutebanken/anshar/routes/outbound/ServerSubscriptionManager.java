@@ -37,7 +37,6 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -550,7 +549,7 @@ public class ServerSubscriptionManager {
         }
 
         Map<String, List<ValueAdapter>> valueAdaptersByDataset = getValueAdaptersByDataset(subscriptionRequest, outboundIdMappingPolicy, datasetId);
-        Map<String, Map<Class, Set<String>>> filterMapByDataset = getFiltersByDataset(subscriptionRequest, outboundIdMappingPolicy, datasetId);
+        Map<String, Map<Class, Set<String>>> filterMapByDataset = siriHelper.getFiltersByDataset(subscriptionRequest, outboundIdMappingPolicy, datasetId);
 
 
         OutboundSubscriptionSetup newOutboundSubscription = new OutboundSubscriptionSetup(
@@ -581,48 +580,6 @@ public class ServerSubscriptionManager {
         return newOutboundSubscription;
     }
 
-    private Map<String, Map<Class, Set<String>>> getFiltersByDataset(SubscriptionRequest subscriptionRequest, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
-
-        if (subscriptionRequest.getEstimatedTimetableSubscriptionRequests() == null || subscriptionRequest.getEstimatedTimetableSubscriptionRequests().size() == 0) {
-            // Currently only ET handles values/filterMap by dataset. will be modified progressively to handle all kind of Siri
-            return null;
-        }
-
-        List<EstimatedTimetableSubscriptionStructure> estimatedTimetableSubscriptionRequests = subscriptionRequest.getEstimatedTimetableSubscriptionRequests();
-
-        Map<String, Map<Class, Set<String>>> filterMapByDataset = new HashMap<>();
-        for (EstimatedTimetableSubscriptionStructure estimatedTimetableSubscriptionRequest : estimatedTimetableSubscriptionRequests) {
-
-            if (estimatedTimetableSubscriptionRequest.getEstimatedTimetableRequest().getLines() == null) {
-                continue;
-            }
-
-            for (LineDirectionStructure lineDirection : estimatedTimetableSubscriptionRequest.getEstimatedTimetableRequest().getLines().getLineDirections()) {
-                String rawLineRef = lineDirection.getLineRef().getValue();
-                HashSet<String> searchedIds = new HashSet<>(Collections.singleton(rawLineRef));
-                if (datasetId == null) {
-                    datasetId = incomingSubscriptionConfig.findDatasetFromSearch(searchedIds, ObjectType.LINE).orElse(DEFAULT_DATASET);
-                }
-
-                Set<String> linerefValues = siriHelper.revertLineIds(outboundIdMappingPolicy, searchedIds, datasetId);
-                Map<Class, Set<String>> currentFilterMapByDataset;
-                if (filterMapByDataset.containsKey(datasetId)) {
-                    currentFilterMapByDataset = filterMapByDataset.get(datasetId);
-                } else {
-                    currentFilterMapByDataset = new HashMap<>();
-                    filterMapByDataset.put(datasetId, currentFilterMapByDataset);
-                }
-
-                if (currentFilterMapByDataset.containsKey(LineRef.class)) {
-                    currentFilterMapByDataset.get(LineRef.class).addAll(linerefValues);
-                } else {
-                    currentFilterMapByDataset.put(LineRef.class, linerefValues);
-                }
-            }
-        }
-
-        return filterMapByDataset;
-    }
 
     private Map<String, List<ValueAdapter>> getValueAdaptersByDataset(SubscriptionRequest subscriptionRequest, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
 

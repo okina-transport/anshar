@@ -17,14 +17,12 @@ package no.rutebanken.anshar.routes.outbound;
 
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
-import no.rutebanken.anshar.data.EstimatedTimetables;
-import no.rutebanken.anshar.data.MonitoredStopVisits;
-import no.rutebanken.anshar.data.Situations;
-import no.rutebanken.anshar.data.VehicleActivities;
+import no.rutebanken.anshar.data.*;
 import no.rutebanken.anshar.data.util.CustomStringUtils;
 import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
+import no.rutebanken.anshar.routes.siri.handlers.outbound.SituationExchangeOutbound;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
@@ -40,6 +38,8 @@ import uk.org.siri.siri21.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager.DEFAULT_DATASET;
 
 @SuppressWarnings("unchecked")
 @Component
@@ -162,6 +162,11 @@ public class SiriHelper {
             Set<String> searchedValues = new HashSet<>();
             searchedValues.add(rawLineValue);
             Set<String> linerefValues = revertLineIds(outboundIdMappingPolicy, searchedValues, datasetId);
+            if (linerefValues.isEmpty()) {
+                // lines can't be reverted, happens when no idProcessings are defined. need to keep rawId
+                linerefValues.add(rawLineValue);
+            }
+
             filterMap.put(LineRef.class, linerefValues);
         }
         return filterMap;
@@ -306,9 +311,9 @@ public class SiriHelper {
                 results.addAll(subscriptionRequest.getFilterMapByDataset().get(datasetId).get(LineRef.class));
             }
 
-            if (subscriptionRequest.getFilterMapByDataset().containsKey(ServerSubscriptionManager.DEFAULT_DATASET) &&
-                    subscriptionRequest.getFilterMapByDataset().get(ServerSubscriptionManager.DEFAULT_DATASET).containsKey(LineRef.class)) {
-                results.addAll(subscriptionRequest.getFilterMapByDataset().get(ServerSubscriptionManager.DEFAULT_DATASET).get(LineRef.class));
+            if (subscriptionRequest.getFilterMapByDataset().containsKey(DEFAULT_DATASET) &&
+                    subscriptionRequest.getFilterMapByDataset().get(DEFAULT_DATASET).containsKey(LineRef.class)) {
+                results.addAll(subscriptionRequest.getFilterMapByDataset().get(DEFAULT_DATASET).get(LineRef.class));
             }
         }
         return results;
