@@ -1,9 +1,11 @@
 package no.rutebanken.anshar.routes.mapping;
 
+import lombok.Data;
 import no.rutebanken.anshar.util.CSVUtils;
 import no.rutebanken.anshar.util.FileUtils;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,12 +14,14 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import java.io.File;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 
 /**
@@ -33,31 +37,24 @@ public class StopTimesService {
 
     private static final Object LOCK = new Object();
 
+    // datasetId -> tripId -> StopTimeCacheEntry
+    private final Map<String, Map<String, List<StopTimeCacheEntry>>> stopTimesCache = new ConcurrentHashMap<>();
+    //datasetId -> 0tripId -> routeId
+    private final Map<String, Map<String, String>> tripsCache = new ConcurrentHashMap<>();
+    private final Map<String, Set<String>> knownRoutesCache = new ConcurrentHashMap<>();
+    private final Predicate<File> stopTimesFilter =
+            (f) -> f.getName().startsWith("stop_times_") && f.getName().endsWith(".txt");
+    private final Predicate<File> tripsFilter = (f) -> f.getName().startsWith("trips_") && f.getName().endsWith(
+            ".txt");
     @Value("${anshar.mapping.stopplaces.update.frequency.min:60}")
     private int updateFrequency = 60;
-
-
     @Value("${anshar.stop.times.root.directory}")
     private String stopTimesRootDir;
-
     @Value("${anshar.trips.root.directory}")
     private String tripsRootDir;
 
-    //datasetId -> tripId -> sequence
-    private final Map<String, Map<String, Map<Integer, Pair<String, String>>>> stopTimesCache = new HashMap<>();
-
-    //datasetId -> 0tripId -> routeId
-    private final Map<String, Map<String, String>> tripsCache = new HashMap<>();
-
-    private final Map<String, Set<String>> knownRoutesCache = new HashMap<>();
-
-    private final FilenameFilter stopTimesFilter = (f, name) -> name.startsWith("stop_times_") && name.endsWith(".txt");
-    private final FilenameFilter tripsFilter = (f, name) -> name.startsWith("trips_") && name.endsWith(".txt");
-
-
     @PostConstruct
     private void initialize() {
-
         ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
         executor.scheduleAtFixedRate(this::refreshCache, 0, updateFrequency, TimeUnit.MINUTES);
         logger.info("Initialized stopTimesService, updateFrequency:{} min", updateFrequency);
@@ -67,21 +64,32 @@ public class StopTimesService {
      * Refresh the cache containing data from stop_times files
      */
     private void refreshCache() {
+        List<String> datasetList = FileUtils.listDirectories(stopTimesRootDir);
         synchronized (LOCK) {
-            updateStopTimesCache();
+            logger.info("Refreshing stop times cache for datasets: {}", datasetList);
+            stopTimesCache.clear();
+            knownRoutesCache.clear();
+            tripsCache.clear();
+            for (String dataset : datasetList) {
+                try {
+                    updateStopTimesCacheForDatasetId(dataset);
+                } catch (IOException e) {
+                    logger.error("Failed to update stop times cache for dataset {}", dataset, e);
+                }
+                try {
+                    updateTripsCacheForDatasetId(dataset);
+                } catch (IOException e) {
+                    logger.error("Failed to update trips cache for dataset {}", dataset, e);
+                }
+            }
         }
     }
 
-    /**
-     * Refresh the cache containing data from stop_times files
-     */
-    private void updateStopTimesCache() {
-
-        List<String> datasetList = FileUtils.listDirectories(stopTimesRootDir);
-
-        for (String dataset : datasetList) {
-            updateStopTimesCacheForDatasetId(dataset);
-            updateTripsCacheForDatasetId(dataset);
+    private void refreshCacheIfEmpty() {
+        synchronized (LOCK) {
+            if (MapUtils.isEmpty(knownRoutesCache) || MapUtils.isEmpty(stopTimesCache) || MapUtils.isEmpty(tripsCache)) {
+                refreshCache();
+            }
         }
     }
 
@@ -91,7 +99,7 @@ public class StopTimesService {
      *
      * @param datasetId the dataset for which cache must be refreshed
      */
-    private void updateStopTimesCacheForDatasetId(String datasetId) {
+    private void updateStopTimesCacheForDatasetId(String datasetId) throws IOException {
 
         File organisationDirectory = new File(stopTimesRootDir, datasetId);
         if (!organisationDirectory.exists()) {
@@ -99,12 +107,12 @@ public class StopTimesService {
         }
         logger.info("Starting updating stop times cache for dataset : {}", datasetId);
 
-
-        String[] fileList = organisationDirectory.list(stopTimesFilter);
-
-        for (String fileName : fileList) {
-            File fileToRead = new File(organisationDirectory, fileName);
-            feedCacheWithFile(fileToRead, datasetId);
+        File[] stopTimesFiles = organisationDirectory.listFiles();
+        if (stopTimesFiles != null) {
+            Optional<File> mostRecentStopTimesFile = Stream.of(stopTimesFiles)
+                    .filter(stopTimesFilter)
+                    .max(Comparator.comparing(File::getName));
+            mostRecentStopTimesFile.ifPresent(p -> feedCacheWithFile(p, datasetId));
         }
 
         logger.info("Feeding cache completed for datasetId: {}", datasetId);
@@ -115,7 +123,7 @@ public class StopTimesService {
      *
      * @param datasetId the dataset for which cache must be refreshed
      */
-    private void updateTripsCacheForDatasetId(String datasetId) {
+    private void updateTripsCacheForDatasetId(String datasetId) throws IOException {
 
         File organisationDirectory = new File(tripsRootDir, datasetId);
         if (!organisationDirectory.exists()) {
@@ -123,17 +131,16 @@ public class StopTimesService {
         }
         logger.info("Starting updating trips cache for dataset : {}", datasetId);
 
-
-        String[] fileList = organisationDirectory.list(tripsFilter);
-
-        for (String fileName : fileList) {
-            File fileToRead = new File(organisationDirectory, fileName);
-            feedCacheWithTripsFile(fileToRead, datasetId);
+        File[] tripsFiles = organisationDirectory.listFiles();
+        if (tripsFiles != null) {
+            Optional<File> mostRecentTripsFile = Stream.of(tripsFiles)
+                    .filter(tripsFilter)
+                    .max(Comparator.comparing(File::getName));
+            mostRecentTripsFile.ifPresent(f -> feedCacheWithTripsFile(f, datasetId));
         }
 
         logger.info("Feeding cache completed for datasetId: {}", datasetId);
     }
-
 
     /**
      * Refresh the cache for a particular file/datasetId
@@ -142,36 +149,17 @@ public class StopTimesService {
      * @param datasetId  the datasetId
      */
     private void feedCacheWithFile(File fileToRead, String datasetId) {
-
         try {
             Iterable<CSVRecord> records = CSVUtils.getRecords(fileToRead);
-
-
-            Map<String, Map<Integer, Pair<String, String>>> currentDatasetCache;
-
-            if (stopTimesCache.containsKey(datasetId)) {
-                currentDatasetCache = stopTimesCache.get(datasetId);
-            } else {
-                currentDatasetCache = new HashMap<>();
-                stopTimesCache.put(datasetId, currentDatasetCache);
-            }
-
+            Map<String, List<StopTimeCacheEntry>> datasetCache = stopTimesCache.computeIfAbsent(datasetId, key -> new HashMap<>());
             for (CSVRecord csvRecord : records) {
-
                 String stopId = csvRecord.get("stop_id");
                 String tripId = csvRecord.get("trip_id");
                 String departureTime = csvRecord.get("departure_time");
-                Integer sequence = Integer.parseInt(csvRecord.get("stop_sequence"));
-
-                Map<Integer, Pair<String, String>> currentTripCache;
-
-                if (currentDatasetCache.containsKey(tripId)) {
-                    currentTripCache = currentDatasetCache.get(tripId);
-                } else {
-                    currentTripCache = new HashMap<>();
-                    currentDatasetCache.put(tripId, currentTripCache);
-                }
-                currentTripCache.put(sequence, Pair.of(stopId, departureTime));
+                String arrivalTime = csvRecord.get("arrival_time");
+                int stopSequence = Integer.parseInt(csvRecord.get("stop_sequence"));
+                datasetCache.computeIfAbsent(tripId, key -> new ArrayList<>())
+                        .add(new StopTimeCacheEntry(arrivalTime, departureTime, stopId, stopSequence));
             }
             logger.info("Feeding cache with stop_times file: {} completed", fileToRead.getAbsolutePath());
 
@@ -224,147 +212,122 @@ public class StopTimesService {
      * @param datasetId    the datasetId for which the stop_id must be recovered
      * @param tripId       the trip_id for which the stop_id must be recovered
      * @param stopSequence the stop_sequence for which the stop_id must be recovered
-     * @return
+     * @return stopId if found, else null wrapped in Optional
      */
-    public Optional<String> getStopId(String datasetId, String tripId, Integer stopSequence) {
+    public Optional<String> findStopIdByDatasetIdAndTripIdAndStopSequence(String datasetId, String tripId, Integer stopSequence) {
+        refreshCacheIfEmpty();
 
-        if (stopTimesCache.isEmpty()) {
-            refreshCache();
-        }
-
-        if (!stopTimesCache.containsKey(datasetId)) {
+        Map<String, List<StopTimeCacheEntry>> datasetCache = stopTimesCache.get(datasetId);
+        if (MapUtils.isEmpty(datasetCache)) {
             return Optional.empty();
         }
 
-        Map<String, Map<Integer, Pair<String, String>>> datasetMap = stopTimesCache.get(datasetId);
-
-        if (!datasetMap.containsKey(tripId)) {
+        List<StopTimeCacheEntry> stopTimeCacheEntries = datasetCache.get(tripId);
+        if (CollectionUtils.isEmpty(stopTimeCacheEntries)) {
             return Optional.empty();
         }
 
-        Map<Integer, Pair<String, String>> tripMap = datasetMap.get(tripId);
-
-        if (!tripMap.containsKey(stopSequence)) {
-            return Optional.empty();
-        }
-
-        return Optional.of(tripMap.get(stopSequence).getLeft());
+        return stopTimeCacheEntries
+                .stream()
+                .filter(stopTimeCacheEntry -> stopTimeCacheEntry.getStopSequence() == stopSequence)
+                .map(StopTimeCacheEntry::getStopId)
+                .findFirst();
     }
 
     /**
-     * Read the cache and recover a stop_id, for a given datasetId/tripId/stopSequence
+     * Read the cache and recover last stop_id of trip for a given datasetId/tripId
      *
      * @param datasetId the datasetId for which the stop_id must be recovered
      * @param tripId    the trip_id for which the stop_id must be recovered
-     * @return
+     * @return last stop_id of trip if found else null wrapped in Optional
      */
     public Optional<String> getDestinationId(String datasetId, String tripId) {
+        refreshCacheIfEmpty();
 
-        if (stopTimesCache.isEmpty()) {
-            refreshCache();
-        }
-
-        if (!stopTimesCache.containsKey(datasetId)) {
+        Map<String, List<StopTimeCacheEntry>> datasetCache = stopTimesCache.get(datasetId);
+        if (MapUtils.isEmpty(datasetCache)) {
             return Optional.empty();
         }
 
-        Map<String, Map<Integer, Pair<String, String>>> datasetMap = stopTimesCache.get(datasetId);
-
-        if (!datasetMap.containsKey(tripId)) {
+        List<StopTimeCacheEntry> stopTimeCacheEntries = datasetCache.get(tripId);
+        if (CollectionUtils.isEmpty(stopTimeCacheEntries)) {
             return Optional.empty();
         }
 
-        Map<Integer, Pair<String, String>> tripMap = datasetMap.get(tripId);
-
-        Integer maxKey = tripMap.keySet().stream().max(Integer::compareTo).orElse(null);
-
-        if (maxKey != null) {
-            return Optional.of(tripMap.get(maxKey).getLeft());
-        } else {
-            return Optional.empty();
-        }
+        return stopTimeCacheEntries
+                .stream()
+                .max(Comparator.comparing(StopTimeCacheEntry::getStopSequence))
+                .map(StopTimeCacheEntry::getStopId);
     }
 
     /**
-     * Read the cache and recover a stop_id, for a given datasetId/tripId/stopSequence
+     * Read the cache and recover a route_id, for a given datasetId/tripId
      *
-     * @param datasetId the datasetId for which the stop_id must be recovered
-     * @param tripId    the trip_id for which the stop_id must be recovered
-     * @return
+     * @param datasetId the datasetId for which the route_id must be recovered
+     * @param tripId    the trip_id for which the route_id must be recovered
+     * @return route_id if found else null wrapped in Optional
      */
     public Optional<String> getRouteId(String datasetId, String tripId) {
-
-        if (tripsCache.isEmpty()) {
-            refreshCache();
-        }
-
-        if (!tripsCache.containsKey(datasetId)) {
-            return Optional.empty();
-        }
+        refreshCacheIfEmpty();
 
         Map<String, String> datasetMap = tripsCache.get(datasetId);
+        if (MapUtils.isEmpty(datasetMap)) {
+            return Optional.empty();
+        }
 
-        String routeId = datasetMap.get(tripId);
-
-        return Optional.ofNullable(routeId);
+        return Optional.ofNullable(datasetMap.get(tripId));
     }
 
     /**
-     * Read the cache and recover a routeId, for a given datasetId
+     * Check if routeId is in datasetId's cache
      *
-     * @param datasetId the datasetId for which the routeId must be recovered
-     * @param routeId   the searched routeId
-     * @return routeId if found in cache
+     * @param datasetId datasetId to look for routeId
+     * @param routeId   routeId to check
+     * @return true if routeId is in cache, false otherwise
      */
-    public Optional<String> checkIfKnownRouteId(String datasetId, String routeId) {
-        Optional<String> result = Optional.empty();
-        if (knownRoutesCache.isEmpty()) {
-            refreshCache();
-        }
-
-        if (!knownRoutesCache.containsKey(datasetId)) {
-            return Optional.empty();
-        }
+    public boolean checkIfKnownRouteId(String datasetId, String routeId) {
+        refreshCacheIfEmpty();
 
         Set<String> knownRouteIdInCache = knownRoutesCache.get(datasetId);
-
-        if (knownRouteIdInCache.contains(routeId)) {
-            result = Optional.of(routeId);
+        if (CollectionUtils.isEmpty(knownRouteIdInCache)) {
+            return false;
         }
-        return result;
+
+        return knownRouteIdInCache.contains(routeId);
     }
 
     /**
-     * Read the cache and recover a stop_id, for a given datasetId/tripId/stopSequence
+     * Read the cache and recover a {@link StopTimeCacheEntry} for a given datasetId/tripId/stopId
      *
-     * @param datasetId    the datasetId for which the stop_id must be recovered
-     * @param tripId       the trip_id for which the stop_id must be recovered
-     * @param stopSequence the stop_sequence for which the stop_id must be recovered
-     * @return
+     * @param datasetId the datasetId to look for {@link StopTimeCacheEntry}
+     * @param tripId    the trip_id to look for {@link StopTimeCacheEntry}
+     * @param stopId    the stop_id to look for {@link StopTimeCacheEntry}
+     * @return {@link StopTimeCacheEntry} if found else null wrapped in Optional
      */
-    public Optional<String> getDepartureTime(String datasetId, String tripId, Integer stopSequence) {
+    public Optional<StopTimeCacheEntry> findStopTimeCacheEntryByDatasetIdAndTripIdAndStopId(String datasetId, String tripId, String stopId) {
+        refreshCacheIfEmpty();
 
-        if (stopTimesCache.isEmpty()) {
-            refreshCache();
-        }
-
-        if (!stopTimesCache.containsKey(datasetId)) {
+        Map<String, List<StopTimeCacheEntry>> datasetCache = stopTimesCache.get(datasetId);
+        if (MapUtils.isEmpty(datasetCache)) {
             return Optional.empty();
         }
 
-        Map<String, Map<Integer, Pair<String, String>>> datasetMap = stopTimesCache.get(datasetId);
-
-        if (!datasetMap.containsKey(tripId)) {
+        List<StopTimeCacheEntry> stopTimeCacheEntries = datasetCache.get(tripId);
+        if (CollectionUtils.isEmpty(stopTimeCacheEntries)) {
             return Optional.empty();
         }
 
-        Map<Integer, Pair<String, String>> tripMap = datasetMap.get(tripId);
+        return stopTimeCacheEntries.stream()
+                .filter(e -> stopId.equals(e.getStopId()))
+                .findFirst();
+    }
 
-        if (!tripMap.containsKey(stopSequence)) {
-            return Optional.empty();
-        }
-
-        return Optional.of(tripMap.get(stopSequence).getRight());
+    @Data
+    public static class StopTimeCacheEntry {
+        private final String arrivalTime;
+        private final String departureTime;
+        private final String stopId;
+        private final int stopSequence;
     }
 
 }

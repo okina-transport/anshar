@@ -14,39 +14,38 @@ public class CSVUtils {
      *
      * @param file the file to read
      * @return a collection of records
-     * @throws IOException
+     * @throws IOException when opening or parsing input file
      */
     public static Iterable<CSVRecord> getRecords(File file) throws IOException {
-        InputStream targetStream = new FileInputStream(file);
+        try (InputStream targetStream = new FileInputStream(file)) {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            byte[] buffer = new byte[1024];
+            int len;
+            while ((len = targetStream.read(buffer)) > -1) {
+                baos.write(buffer, 0, len);
+            }
+            baos.flush();
 
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        byte[] buffer = new byte[1024];
-        int len;
-        while ((len = targetStream.read(buffer)) > -1) {
-            baos.write(buffer, 0, len);
+            InputStream is1 = new ByteArrayInputStream(baos.toByteArray());
+            InputStream is2 = new ByteArrayInputStream(baos.toByteArray());
+            String result = IOUtils.toString(is1, StandardCharsets.UTF_8);
+
+            String delimiter = guessDelimiter(result);
+
+            Reader reader = new InputStreamReader(is2);
+
+            return CSVFormat.DEFAULT
+                    .builder()
+                    .setHeader()
+                    .setSkipHeaderRecord(false)
+                    .setDelimiter(delimiter)
+                    .build()
+                    .parse(reader);
         }
-        baos.flush();
-
-        InputStream is1 = new ByteArrayInputStream(baos.toByteArray());
-        InputStream is2 = new ByteArrayInputStream(baos.toByteArray());
-        String result = IOUtils.toString(is1, StandardCharsets.UTF_8);
-
-        String delimiter = guessDelimiter(result);
-
-        Reader reader = new InputStreamReader(is2);
-
-        return CSVFormat.DEFAULT
-                .builder()
-                .setHeader()
-                .setSkipHeaderRecord(false)
-                .setDelimiter(delimiter)
-                .build()
-                .parse(reader);
     }
 
     public static Iterable<CSVRecord> getRecordsWithBomHandling(File file) throws IOException {
-        try (InputStream fileStream = new FileInputStream(file);
-             BOMInputStream bomInputStream = new BOMInputStream(fileStream)) {
+        try (BOMInputStream bomInputStream = BOMInputStream.builder().setFile(file).get()) {
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             byte[] buffer = new byte[1024];

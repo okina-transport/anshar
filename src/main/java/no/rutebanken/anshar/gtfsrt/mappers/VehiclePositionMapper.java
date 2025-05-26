@@ -4,12 +4,12 @@ package no.rutebanken.anshar.gtfsrt.mappers;
 import com.google.protobuf.Timestamp;
 import com.google.transit.realtime.GtfsRealtime;
 import no.rutebanken.anshar.routes.mapping.StopTimesService;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import uk.org.siri.siri20.*;
-
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -38,64 +38,14 @@ public class VehiclePositionMapper {
         this.stopTimesService = stopTimesService;
     }
 
-    /**
-     * Maps a GTFS-Realtime {@link GtfsRealtime.VehiclePosition} into a {@link VehicleActivityStructure}.
-     * This method extracts relevant vehicle position details, such as trip information, vehicle reference,
-     * location, status, and occupancy, and structures them into a vehicle activity format.
-     *
-     * @param vehiclePosition The GTFS-Realtime {@link GtfsRealtime.VehiclePosition} containing real-time vehicle data.
-     * @param datasetId dataset.
-     * @param routeIdList A list of route IDs used to filter relevant vehicle positions.
-     * @return A {@link VehicleActivityStructure} object representing the structured vehicle activity data,
-     *         or {@code null} if the vehicle's route ID is not in the provided list.
-     */
-    public VehicleActivityStructure mapVehicleActivityFromVehiclePosition(GtfsRealtime.VehiclePosition vehiclePosition, String datasetId, List<String> routeIdList) {
-        VehicleActivityStructure activity = new VehicleActivityStructure();
-        GtfsRealtime.TripDescriptor tripDescriptor = vehiclePosition.getTrip();
-        if (!routeIdList.isEmpty()) {
-            String routeIdInCache = "";
-            if (tripDescriptor.hasTripId()) {
-                routeIdInCache = stopTimesService.getRouteId(datasetId, tripDescriptor.getTripId()).orElse("");
-            } else if (tripDescriptor.hasRouteId()) {
-                routeIdInCache = stopTimesService.checkIfKnownRouteId(datasetId, tripDescriptor.getRouteId()).orElse("");
-            }
-            if (StringUtils.isNotBlank(routeIdInCache) && !routeIdList.contains(routeIdInCache)) {
-                return null;
-            }
-        }
-
-        FramedVehicleJourneyRefStructure framedVehicleJourneyRefBuilder = new FramedVehicleJourneyRefStructure();
-        framedVehicleJourneyRefBuilder.setDatedVehicleJourneyRef(tripDescriptor.getTripId());
-        DataFrameRefStructure dataFrameRef = new DataFrameRefStructure();
-        dataFrameRef.setValue("");
-        framedVehicleJourneyRefBuilder.setDataFrameRef(dataFrameRef);
-
-        VehicleActivityStructure.MonitoredVehicleJourney monitoredVehiclejourney = new VehicleActivityStructure.MonitoredVehicleJourney();
-
-        monitoredVehiclejourney.setFramedVehicleJourneyRef(framedVehicleJourneyRefBuilder);
-        monitoredVehiclejourney.setDataSource("MOBIITI");
-
-        mapTridData(monitoredVehiclejourney, vehiclePosition.getTrip());
-        mapVehicleRef(activity, monitoredVehiclejourney, vehiclePosition.getVehicle());
-        mapRecordedAtTime(activity, vehiclePosition);
-        mapPosition(monitoredVehiclejourney, vehiclePosition.getPosition());
-        mapStatus(activity, monitoredVehiclejourney, vehiclePosition);
-        mapOccupancy(monitoredVehiclejourney, vehiclePosition);
-        mapCongestion(monitoredVehiclejourney, vehiclePosition);
-
-        activity.setMonitoredVehicleJourney(monitoredVehiclejourney);
-        return activity;
-    }
-
     private static void mapCongestion(VehicleActivityStructure.MonitoredVehicleJourney monitoredVehicleJourney, GtfsRealtime.VehiclePosition vehiclePosition) {
-        if (vehiclePosition.getCongestionLevel() != null){
+        if (vehiclePosition.getCongestionLevel() != null) {
             monitoredVehicleJourney.setInCongestion(GtfsRealtime.VehiclePosition.CongestionLevel.CONGESTION.equals(vehiclePosition.getCongestionLevel()));
         }
     }
 
-
-    private static void mapOccupancy(VehicleActivityStructure.MonitoredVehicleJourney monitoredVehicleJourney,GtfsRealtime.VehiclePosition vehiclePosition) {
-        if(vehiclePosition.getOccupancyStatus() != null){
+    private static void mapOccupancy(VehicleActivityStructure.MonitoredVehicleJourney monitoredVehicleJourney, GtfsRealtime.VehiclePosition vehiclePosition) {
+        if (vehiclePosition.getOccupancyStatus() != null) {
             switch (vehiclePosition.getOccupancyStatus()) {
                 case FULL:
                     monitoredVehicleJourney.setOccupancy(OccupancyEnumeration.FULL);
@@ -110,7 +60,7 @@ public class VehiclePositionMapper {
         }
     }
 
-    private static void mapStatus(VehicleActivityStructure activity , VehicleActivityStructure.MonitoredVehicleJourney monitoredVehicleJourney, GtfsRealtime.VehiclePosition vehiclePosition) {
+    private static void mapStatus(VehicleActivityStructure activity, VehicleActivityStructure.MonitoredVehicleJourney monitoredVehicleJourney, GtfsRealtime.VehiclePosition vehiclePosition) {
 
         if (GtfsRealtime.VehiclePosition.VehicleStopStatus.STOPPED_AT.equals(vehiclePosition.getCurrentStatus())) {
             MonitoredCallStructure monitoredCallStruct = new MonitoredCallStructure();
@@ -119,7 +69,7 @@ public class VehiclePositionMapper {
             locStruct.setLatitude(BigDecimal.valueOf(vehiclePosition.getPosition().getLatitude()));
             monitoredCallStruct.setVehicleLocationAtStop(locStruct);
 
-            if (StringUtils.isNotEmpty(vehiclePosition.getStopId())){
+            if (StringUtils.isNotEmpty(vehiclePosition.getStopId())) {
                 StopPointRef stopPointRef = new StopPointRef();
                 stopPointRef.setValue(vehiclePosition.getStopId());
                 monitoredCallStruct.setStopPointRef(stopPointRef);
@@ -127,7 +77,7 @@ public class VehiclePositionMapper {
             monitoredCallStruct.setOrder(BigInteger.valueOf(vehiclePosition.getCurrentStopSequence()));
             monitoredVehicleJourney.setMonitoredCall(monitoredCallStruct);
 
-        }else if(GtfsRealtime.VehiclePosition.VehicleStopStatus.INCOMING_AT.equals(vehiclePosition.getCurrentStatus())){
+        } else if (GtfsRealtime.VehiclePosition.VehicleStopStatus.INCOMING_AT.equals(vehiclePosition.getCurrentStatus())) {
             // Arbitrary behaviour : "incoming at" status set to 90% progress
             ProgressBetweenStopsStructure progressBetStruct = new ProgressBetweenStopsStructure();
             progressBetStruct.setPercentage(BigDecimal.valueOf(90));
@@ -143,7 +93,7 @@ public class VehiclePositionMapper {
         locationStructure.setLatitude(BigDecimal.valueOf(position.getLatitude()));
         locationStructure.setLongitude(BigDecimal.valueOf(position.getLongitude()));
         monitoredVehicleJourney.setBearing(position.getSpeed());
-        monitoredVehicleJourney.setVelocity(BigInteger.valueOf((long)position.getSpeed()));
+        monitoredVehicleJourney.setVelocity(BigInteger.valueOf((long) position.getSpeed()));
         monitoredVehicleJourney.setVehicleLocation(locationStructure);
     }
 
@@ -185,6 +135,54 @@ public class VehiclePositionMapper {
         }
     }
 
+    /**
+     * Maps a GTFS-Realtime {@link GtfsRealtime.VehiclePosition} into a {@link VehicleActivityStructure}.
+     * This method extracts relevant vehicle position details, such as trip information, vehicle reference,
+     * location, status, and occupancy, and structures them into a vehicle activity format.
+     *
+     * @param vehiclePosition The GTFS-Realtime {@link GtfsRealtime.VehiclePosition} containing real-time vehicle data.
+     * @param datasetId       dataset.
+     * @param routeIdList     A list of route IDs used to filter relevant vehicle positions.
+     * @return A {@link VehicleActivityStructure} object representing the structured vehicle activity data,
+     * or {@code null} if the vehicle's route ID is not in the provided list.
+     */
+    public VehicleActivityStructure mapVehicleActivityFromVehiclePosition(GtfsRealtime.VehiclePosition vehiclePosition, String datasetId, List<String> routeIdList) {
+        VehicleActivityStructure activity = new VehicleActivityStructure();
+        GtfsRealtime.TripDescriptor tripDescriptor = vehiclePosition.getTrip();
+        if (CollectionUtils.isNotEmpty(routeIdList)) {
+            String routeIdInCache = "";
+            if (tripDescriptor.hasTripId()) {
+                routeIdInCache = stopTimesService.getRouteId(datasetId, tripDescriptor.getTripId()).orElse("");
+            } else if (tripDescriptor.hasRouteId()) {
+                routeIdInCache = stopTimesService.checkIfKnownRouteId(datasetId, tripDescriptor.getRouteId()) ? tripDescriptor.getRouteId() : "";
+            }
+            if (StringUtils.isNotBlank(routeIdInCache) && !routeIdList.contains(routeIdInCache)) {
+                return null;
+            }
+        }
+
+        FramedVehicleJourneyRefStructure framedVehicleJourneyRefBuilder = new FramedVehicleJourneyRefStructure();
+        framedVehicleJourneyRefBuilder.setDatedVehicleJourneyRef(tripDescriptor.getTripId());
+        DataFrameRefStructure dataFrameRef = new DataFrameRefStructure();
+        dataFrameRef.setValue("");
+        framedVehicleJourneyRefBuilder.setDataFrameRef(dataFrameRef);
+
+        VehicleActivityStructure.MonitoredVehicleJourney monitoredVehiclejourney = new VehicleActivityStructure.MonitoredVehicleJourney();
+
+        monitoredVehiclejourney.setFramedVehicleJourneyRef(framedVehicleJourneyRefBuilder);
+        monitoredVehiclejourney.setDataSource("MOBIITI");
+
+        mapTridData(monitoredVehiclejourney, vehiclePosition.getTrip());
+        mapVehicleRef(activity, monitoredVehiclejourney, vehiclePosition.getVehicle());
+        mapRecordedAtTime(activity, vehiclePosition);
+        mapPosition(monitoredVehiclejourney, vehiclePosition.getPosition());
+        mapStatus(activity, monitoredVehiclejourney, vehiclePosition);
+        mapOccupancy(monitoredVehiclejourney, vehiclePosition);
+        mapCongestion(monitoredVehiclejourney, vehiclePosition);
+
+        activity.setMonitoredVehicleJourney(monitoredVehiclejourney);
+        return activity;
+    }
 
 
 }

@@ -28,7 +28,7 @@ public class AlertFilterHelper {
     @Getter
     private boolean shouldKeepAlert = false;
 
-    public AlertFilterHelper(StopTimesService stopTimesService, String datasetId,List<String> routeIdList) {
+    public AlertFilterHelper(StopTimesService stopTimesService, String datasetId, List<String> routeIdList) {
         this.stopTimesService = stopTimesService;
         this.routeIdToFilter = routeIdList;
         this.datasetId = datasetId;
@@ -51,7 +51,7 @@ public class AlertFilterHelper {
     public void addRoute(String routeId) {
         String routeIdInCache = "";
         if (stopTimesService != null) {
-            routeIdInCache = stopTimesService.checkIfKnownRouteId(datasetId, routeId).orElse("");
+            routeIdInCache = stopTimesService.checkIfKnownRouteId(datasetId, routeId) ? routeId : "";
         }
         boolean shouldBeFiltered = false;
         if (StringUtils.isNotBlank(routeIdInCache)) {
