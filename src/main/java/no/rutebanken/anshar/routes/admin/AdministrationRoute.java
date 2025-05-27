@@ -25,18 +25,24 @@ import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.kafka.KafkaRouteBuilder;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
+import no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute;
+import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.validation.SiriXmlValidator;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.Exchange;
+import org.apache.camel.LoggingLevel;
 import org.apache.commons.lang3.StringUtils;
+import org.entur.siri21.util.SiriXml;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
+import uk.org.siri.siri21.RequestorRef;
+import uk.org.siri.siri21.Siri;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -77,6 +83,8 @@ public class AdministrationRoute extends RestRouteBuilder {
     private static final String SITUATIONS_ROUTE = "direct:situations";
     private static final String SYNTHESIS_ROUTE = "direct:synthesis";
     private static final String INTERNAL_SYNTHESIS_ROUTE = "direct:internal.synthesis";
+    public static final String TERMINATE_SUBSCRIPTION_ROUTE = "direct:terminate.subscription";
+
     @Autowired
     private ExtendedHazelcastService extendedHazelcastService;
 
@@ -109,6 +117,9 @@ public class AdministrationRoute extends RestRouteBuilder {
 
     @Value("${anshar.situations.debug.endpoint.enabled:false}")
     private boolean situationsDebugEndpoint;
+
+    @Autowired
+    private SiriObjectFactory siriObjectFactory;
 
 
 //    @Autowired
@@ -598,6 +609,24 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .bean(helper, "listClusterStats")
                 .routeId("admin.clusterstats")
         ;
+
+
+        from(TERMINATE_SUBSCRIPTION_ROUTE)
+                .log("Launching terminate subscription request ${header.subscriptionId}")
+                .process(e -> {
+                    String subscriptionId = (String) e.getIn().getHeader("subscriptionId");
+                    RequestorRef requestorRef = new RequestorRef();
+                    requestorRef.setValue((String) e.getIn().getHeader("requestorRef"));
+                    Siri terminateRequest = SiriObjectFactory.createTerminateSubscriptionRequestWithParams(subscriptionId, requestorRef, "2.1");
+                    e.getIn().setBody(SiriXml.toXml(terminateRequest));
+                })
+                .choice()
+                .when(header(Siri20RequestHandlerRoute.TRANSFORM_SOAP).isEqualTo(simple(Siri20RequestHandlerRoute.TRANSFORM_SOAP)))
+                .log(LoggingLevel.DEBUG, "Transforming SOAP")
+                .to("xslt-saxon:xsl/siri_raw_soap.xsl")
+                .end()
+                .toD("${header.url}")
+                .routeId("terminate.subcription");
     }
 
 

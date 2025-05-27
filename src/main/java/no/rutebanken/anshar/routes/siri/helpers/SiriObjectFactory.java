@@ -631,10 +631,10 @@ public class SiriObjectFactory {
         if (subscriptionSetup == null) {
             return null;
         }
-        return createTerminateSubscriptionRequest(subscriptionSetup.getSubscriptionId(), createRequestorRef(subscriptionSetup.getRequestorRef()), subscriptionSetup.getVersion());
+        return createTerminateSubscriptionRequestWithParams(subscriptionSetup.getSubscriptionId(), createRequestorRef(subscriptionSetup.getRequestorRef()), subscriptionSetup.getVersion());
     }
 
-    private static Siri createTerminateSubscriptionRequest(String subscriptionId, RequestorRef requestorRef, String version) {
+    public static Siri createTerminateSubscriptionRequestWithParams(String subscriptionId, RequestorRef requestorRef, String version) {
         if (requestorRef == null || requestorRef.getValue() == null) {
             logger.warn("RequestorRef cannot be null");
             return null;
