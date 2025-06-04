@@ -19,6 +19,7 @@ import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.validation.SiriXmlValidator;
 import no.rutebanken.anshar.routes.validation.validators.CustomValidator;
+import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -137,7 +138,7 @@ public class CustomValidatorTest extends SpringBootBaseTest {
         File file = new File("src/test/resources/siri-et-gir-npe.xml");
         ByteArrayInputStream inputStream = new ByteArrayInputStream(FileUtils.readFileToByteArray(file));
 
-        Siri incoming = siriXmlValidator.parseXml(null, inputStream);
+        Siri incoming = siriXmlValidator.parseXml(new SubscriptionSetup(), inputStream);
         assertNotNull(incoming);
     }
 }
