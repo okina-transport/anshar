@@ -330,8 +330,10 @@ public class MessagingRoute extends RestRouteBuilder {
                 .endChoice()
                 .end()
                 .to("direct:process.mapping")
-                .to("direct:format.xml")
-        ;
+                .choice()
+                    .when(body().isNull()).stop()
+                .end()
+                .to("direct:format.xml");
 
 
         from("direct:process.mapping")
@@ -340,6 +342,10 @@ public class MessagingRoute extends RestRouteBuilder {
                     String subscriptionId = p.getIn().getHeader("subscriptionId", String.class);
                     if (StringUtils.isNotEmpty(subscriptionId)) {
                         SubscriptionSetup subscriptionSetup = subscriptionManager.get(p.getIn().getHeader("subscriptionId", String.class));
+                        if (subscriptionSetup == null) {
+                            p.getMessage().setBody(null);
+                            return;
+                        }
                         Siri originalInput = siriXmlValidator.parseXml(subscriptionSetup, p.getIn().getBody(String.class));
 
                         Siri incoming = SiriValueTransformer.transform(originalInput, subscriptionSetup.getMappingAdapters(), false, true);

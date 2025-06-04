@@ -74,62 +74,11 @@ import static no.rutebanken.anshar.util.CompressionUtil.compress;
 public class SiriXmlValidator extends ApplicationContextHolder {
 
     private static final Logger logger = LoggerFactory.getLogger(SiriXmlValidator.class);
-
-    private static JAXBContext jaxbContext;
-    private static Schema schema;
     private static final XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
     private static final DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
-
-
-    @Autowired
-    private AnsharConfiguration configuration;
-
-    /**
-     * Keeps a list of references to unique ids
-     */
-    @Autowired
-    @Qualifier("getValidationResultRefMap")
-    private IMap<String, List<String>> validationResultRefs;
-
-    @Autowired
-    @Qualifier("getValidationResultSiriMap")
-    private IMap<String, byte[]> validatedSiri;
-
-    @Autowired
-    @Qualifier("getValidationSizeTracker")
-    private IMap<String, Long> validationSize;
-
-    @Autowired
-    @Qualifier("getValidationResultJsonMap")
-    private IMap<String, JSONObject> validationResults;
-
-    @Autowired
-    @Qualifier("getSubscriptionsMap")
-    private ReplicatedMap<String, SubscriptionSetup> subscriptions;
-
-    @Autowired
-    @Qualifier("getValidationFilterMap")
-    private ReplicatedMap<String, String> validationFilters;
-
-    @Autowired
-    private SubscriptionManager subscriptionManager;
-
-    @Autowired
-    private PrometheusMetricsService metricsService;
-
-    private final Map<SiriDataType, Set<CustomValidator>> validationRules = new EnumMap(SiriDataType.class);
-
-    private ExecutorService validationExecutorService;
-    private ExecutorService validationReportExecutorService;
-
-    public SiriXmlValidator() {
-        ThreadFactory factory = new ThreadFactoryBuilder()
-                .setNameFormat("validation")
-                .setDaemon(true)
-                .build();
-
-        validationExecutorService = Executors.newCachedThreadPool(factory);
-    }
+    private static final AtomicInteger concurrentValidationThreads = new AtomicInteger();
+    private static JAXBContext jaxbContext;
+    private static Schema schema;
 
     static {
         if (jaxbContext == null) {
@@ -144,6 +93,46 @@ public class SiriXmlValidator extends ApplicationContextHolder {
                 logger.warn("Caught exception when initializing validator", e);
             }
         }
+    }
+
+    private final Map<SiriDataType, Set<CustomValidator>> validationRules = new EnumMap(SiriDataType.class);
+    private final ExecutorService validationExecutorService;
+    @Autowired
+    private AnsharConfiguration configuration;
+    /**
+     * Keeps a list of references to unique ids
+     */
+    @Autowired
+    @Qualifier("getValidationResultRefMap")
+    private IMap<String, List<String>> validationResultRefs;
+    @Autowired
+    @Qualifier("getValidationResultSiriMap")
+    private IMap<String, byte[]> validatedSiri;
+    @Autowired
+    @Qualifier("getValidationSizeTracker")
+    private IMap<String, Long> validationSize;
+    @Autowired
+    @Qualifier("getValidationResultJsonMap")
+    private IMap<String, JSONObject> validationResults;
+    @Autowired
+    @Qualifier("getSubscriptionsMap")
+    private ReplicatedMap<String, SubscriptionSetup> subscriptions;
+    @Autowired
+    @Qualifier("getValidationFilterMap")
+    private ReplicatedMap<String, String> validationFilters;
+    @Autowired
+    private SubscriptionManager subscriptionManager;
+    @Autowired
+    private PrometheusMetricsService metricsService;
+    private ExecutorService validationReportExecutorService;
+
+    public SiriXmlValidator() {
+        ThreadFactory factory = new ThreadFactoryBuilder()
+                .setNameFormat("validation")
+                .setDaemon(true)
+                .build();
+
+        validationExecutorService = Executors.newCachedThreadPool(factory);
     }
 
     private void populateValidationRules() {
@@ -163,15 +152,20 @@ public class SiriXmlValidator extends ApplicationContextHolder {
         }
     }
 
-
     public Siri parseXml(SubscriptionSetup subscriptionSetup, String xml)
             throws XMLStreamException {
+        if (subscriptionSetup == null) {
+            return null;
+        }
         ByteArrayInputStream stream = new ByteArrayInputStream(xml.getBytes());
         return parseXml(subscriptionSetup, stream);
     }
 
     public Siri parseXml(SubscriptionSetup subscriptionSetup, InputStream xml)
             throws XMLStreamException {
+        if (subscriptionSetup == null) {
+            return null;
+        }
         try {
             long parseStart = System.currentTimeMillis();
 
@@ -275,8 +269,6 @@ public class SiriXmlValidator extends ApplicationContextHolder {
         }
         return null;
     }
-
-    private static AtomicInteger concurrentValidationThreads = new AtomicInteger();
 
     private boolean performValidation(
             SubscriptionSetup subscriptionSetup, InputStream xml, SiriValidationEventHandler handler
@@ -680,7 +672,7 @@ public class SiriXmlValidator extends ApplicationContextHolder {
         validationResultRefs.set(subscriptionSetup.getSubscriptionId(), subscriptionValidationRefs);
         validationSize.set(subscriptionSetup.getSubscriptionId(), totalXmlSize);
 
-        if (totalXmlSize > (configuration.getMaxTotalXmlSizeOfValidation() * 1024 * 1024)) {
+        if (totalXmlSize > ((long) configuration.getMaxTotalXmlSizeOfValidation() * 1024 * 1024)) {
             subscriptionSetup.setValidation(false);
             subscriptionManager.updateSubscription(subscriptionSetup);
             logger.info("Reached max size - {}mb - for validations, validated {} deliveries,  disabling validation for {}", configuration.getMaxTotalXmlSizeOfValidation(), subscriptionValidationRefs.size(), subscriptionSetup);
