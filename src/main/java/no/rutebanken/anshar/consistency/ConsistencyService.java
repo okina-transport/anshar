@@ -59,7 +59,7 @@ public class ConsistencyService {
         ConsistencyReport report = new ConsistencyReport();
         report.setStart(ZonedDateTime.now());
         report.setDataset(datasetId);
-        Map<SiriDataType, ConsistencyReport.Consistency> consistencies = new HashMap<>();
+        Map<SiriDataType, ConsistencyReport.Consistency> consistencies = new EnumMap<>(SiriDataType.class);
         for (var type : SiriDataType.values()) {
             ConsistencyReport.Consistency consistencyByTypeAndDatasetId = getConsistencyByTypeAndDatasetId(type, datasetId);
             if (consistencyByTypeAndDatasetId != null) {
@@ -213,6 +213,8 @@ public class ConsistencyService {
             ids.getVehicleJourneyIds().add(((DatedVehicleJourneyRef) o).getValue());
         } else if (o instanceof FramedVehicleJourneyRefStructure) {
             ids.getVehicleJourneyIds().add(((FramedVehicleJourneyRefStructure) o).getDatedVehicleJourneyRef());
+        } else if (o instanceof VehicleJourneyRef) {
+            ids.getVehicleJourneyIds().add(((VehicleJourneyRef) o).getValue());
         }
         for (var method : o.getClass().getMethods()) {
             if (method.getParameterCount() == 0
