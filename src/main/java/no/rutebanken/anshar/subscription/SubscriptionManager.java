@@ -46,55 +46,43 @@ import static no.rutebanken.anshar.subscription.SiriDataType.*;
 public class SubscriptionManager {
 
     private static final Logger logger = LoggerFactory.getLogger(SubscriptionManager.class);
-
-    @Value("${anshar.healthcheck.interval.factor:12}")
-    private int healthcheckIntervalFactor;
-
-    @Autowired
-    private AnsharConfiguration configuration;
-
+    private static final Integer MAX_RESTART_TRIES = 3;
+    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
+    private final Set<String> gtfsSubscriptions = new HashSet<>();
+    private final Map<String, String> siriAPISubscriptions = new HashMap<>();
     @Autowired
     @Qualifier("getSubscriptionsMap")
     public ReplicatedMap<String, SubscriptionSetup> subscriptions;
-
-    @Autowired
-    @Qualifier("getLastActivityMap")
-    private ReplicatedMap<String, Instant> lastActivity;
-
-    @Autowired
-    @Qualifier("getDataReceivedMap")
-    private ReplicatedMap<String, java.time.Instant> dataReceived;
-
-    @Autowired
-    @Qualifier("getReceivedBytesMap")
-    private IMap<String, Long> receivedBytes;
-
     @Autowired
     @Qualifier("getActivatedTimestampMap")
     IMap<String, java.time.Instant> activatedTimestamp;
-
+    @Value("${anshar.healthcheck.interval.factor:12}")
+    private int healthcheckIntervalFactor;
+    @Autowired
+    private AnsharConfiguration configuration;
+    @Autowired
+    @Qualifier("getLastActivityMap")
+    private ReplicatedMap<String, Instant> lastActivity;
+    @Autowired
+    @Qualifier("getDataReceivedMap")
+    private ReplicatedMap<String, java.time.Instant> dataReceived;
+    @Autowired
+    @Qualifier("getReceivedBytesMap")
+    private IMap<String, Long> receivedBytes;
     @Value("${anshar.environment}")
     private String environment;
-
     @Autowired
     @Qualifier("getHitcountMap")
     private IMap<String, Integer> hitcount;
-
     @Autowired
     @Qualifier("getForceRestartMap")
     private IMap<String, String> forceRestart;
-
     @Autowired
     private IMap<String, BigInteger> objectCounter;
-
     @Autowired
     private SiriObjectFactory siriObjectFactory;
-
     @Autowired
     private HealthManager healthManager;
-
-    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
-
     @Autowired
     private Situations sx;
     @Autowired
@@ -103,34 +91,23 @@ public class SubscriptionManager {
     private VehicleActivities vm;
     @Autowired
     private MonitoredStopVisits sm;
-
     @Autowired
     @Qualifier("getSituationChangesMap")
     private IMap<String, Set<SiriObjectStorageKey>> sxChanges;
-
     @Autowired
     @Qualifier("getEstimatedTimetableChangesMap")
     private IMap<String, Set<SiriObjectStorageKey>> etChanges;
-
     @Autowired
     @Qualifier("getVehicleChangesMap")
     private IMap<String, Set<SiriObjectStorageKey>> vmChanges;
-
     @Autowired
     @Qualifier("getMonitoredStopVisitChangesMap")
     private IMap<String, Set<SiriObjectStorageKey>> smChanges;
-
     @Autowired
     private RequestorRefRepository requestorRefRepository;
-
     @Autowired
     @Qualifier("getRetryCountMap")
     private IMap<String, Integer> retryCountMap;
-
-    private Set<String> gtfsSubscriptions = new HashSet<>();
-    private Map<String, String> siriAPISubscriptions = new HashMap<>();
-
-    private static Integer MAX_RESTART_TRIES = 3;
 
     public void addSubscription(String subscriptionId, SubscriptionSetup setup) {
         if (setup.isActive()) {
@@ -405,7 +382,7 @@ public class SubscriptionManager {
         Instant activated = activatedTimestamp.get(subscriptionId);
 
 
-        if (activated != null) {
+        if (activeSubscription != null && activated != null) {
 
             if (activeSubscription.getRestartTime() != null && activeSubscription.getRestartTime().contains(":")) {
                 // Allowing subscriptions to be restarted at specified time
@@ -430,7 +407,7 @@ public class SubscriptionManager {
      * false : current try nb is > MAX_RESTART_TRIES : no more try should be done
      */
     public boolean shouldTryRestart(String subscriptionId) {
-        return retryCountMap.containsKey(subscriptionId) ? retryCountMap.get(subscriptionId) < MAX_RESTART_TRIES : true;
+        return !retryCountMap.containsKey(subscriptionId) || retryCountMap.get(subscriptionId) < MAX_RESTART_TRIES;
     }
 
 
@@ -720,8 +697,8 @@ public class SubscriptionManager {
         }
         JSONObject obj = setup.toJSON();
         obj.put("activated", formatTimestamp(activatedTimestamp.get(setup.getSubscriptionId())));
-        obj.put("lastActivity", "" + formatTimestamp(lastActivity.get(setup.getSubscriptionId())));
-        obj.put("lastDataReceived", "" + formatTimestamp(dataReceived.get(setup.getSubscriptionId())));
+        obj.put("lastActivity", formatTimestamp(lastActivity.get(setup.getSubscriptionId())));
+        obj.put("lastDataReceived", formatTimestamp(dataReceived.get(setup.getSubscriptionId())));
         if (!setup.isActive()) {
             obj.put("status", "deactivated");
             obj.put("healthy", null);
