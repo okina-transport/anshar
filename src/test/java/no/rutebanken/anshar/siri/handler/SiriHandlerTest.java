@@ -713,7 +713,8 @@ public class SiriHandlerTest extends SpringBootBaseTest {
                 UUID.randomUUID().toString(),
                 "RutebankenDEV",
                 Duration.ofSeconds(600),
-                true
+                true,
+                ZonedDateTime.now()
         );
     }
 

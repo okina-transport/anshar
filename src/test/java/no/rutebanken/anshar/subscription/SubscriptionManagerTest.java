@@ -343,7 +343,8 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
                 UUID.randomUUID().toString(),
                 "RutebankenDEV",
                 Duration.ofSeconds(initialDuration),
-                true
+                true,
+                ZonedDateTime.now()
         );
     }
 }

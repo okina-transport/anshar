@@ -20,6 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.UUID;
@@ -58,7 +59,8 @@ public class SubscriptionSetupTest {
                 UUID.randomUUID().toString(),
                 "RutebankenDEV",
                 Duration.ofSeconds((long) 1000),
-                true
+                true,
+                ZonedDateTime.now()
         );
 
         setup_2 = new SubscriptionSetup(
@@ -79,7 +81,8 @@ public class SubscriptionSetupTest {
                 UUID.randomUUID().toString(),
                 "RutebankenDEV",
                 Duration.ofSeconds((long) 1000),
-                true
+                true,
+                ZonedDateTime.now()
         );
     }
 
