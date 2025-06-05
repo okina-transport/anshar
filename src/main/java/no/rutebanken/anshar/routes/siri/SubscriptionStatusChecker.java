@@ -1,6 +1,8 @@
 package no.rutebanken.anshar.routes.siri;
 
 import com.hazelcast.replicatedmap.ReplicatedMap;
+import no.rutebanken.anshar.routes.health.IncomingFlowStatus;
+import no.rutebanken.anshar.routes.health.LivenessReadinessRoute;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
@@ -11,16 +13,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Component
 @Configuration
@@ -29,6 +27,9 @@ public class SubscriptionStatusChecker extends RouteBuilder {
     @Autowired
     @Qualifier("getSubscriptionsMap")
     private ReplicatedMap<String, SubscriptionSetup> subscriptions;
+
+    @Autowired
+    private LivenessReadinessRoute livenessReadinessRoute;
 
     @Value("${interval.check.auto.subscription.restart}")
     private String interval;
@@ -49,19 +50,21 @@ public class SubscriptionStatusChecker extends RouteBuilder {
     }
 
     private void checkSubscriptionStatuses() {
-        Set<String> uniqueUrls = new HashSet<>();
-        subscriptions.values().forEach(subscription -> {
-            Map<RequestType, String> urlMap = subscription.getUrlMap();
-            if (urlMap != null && !urlMap.isEmpty()) {
-                uniqueUrls.addAll(urlMap.values());
-            }
-        });
+        Map<Collection<String>, SubscriptionSetup> uniqueUrls = subscriptions.values().stream()
+                .filter(sub -> sub.getUrlMap() != null && !sub.getUrlMap().isEmpty())
+                .collect(Collectors.toMap(
+                        sub -> new HashSet<>(sub.getUrlMap().values()),
+                        sub -> sub,
+                        (existing, replacement) -> existing
+                ));
 
-        uniqueUrls.forEach(url -> {
-            ZonedDateTime restartDate = performStatusCheck(url);
-            if (restartDate != null) {
-                urlRestartDates.put(url, restartDate);
-            }
+        uniqueUrls.forEach((urls, provider) -> {
+            urls.forEach((url) -> {
+                ZonedDateTime restartDate = performStatusCheck(url, List.of(provider));
+                if (restartDate != null) {
+                    urlRestartDates.put(url, restartDate);
+                }
+            });
         });
 
         subscriptions.entrySet().forEach(entry -> {
@@ -80,6 +83,7 @@ public class SubscriptionStatusChecker extends RouteBuilder {
                         .anyMatch(url -> subscriptionStartDate.isBefore(urlRestartDates.get(url)));
 
                 if (needsRestart) {
+                    subscription.setStartedAt(ZonedDateTime.now());
                     subscriptionManager.forceRestart(subscription.getSubscriptionId());
                     log.info("Subscription {} needs restart (started at {}). At least one URL was restarted after subscription start.",
                             subscriptionId, subscriptionStartDate);
@@ -88,21 +92,11 @@ public class SubscriptionStatusChecker extends RouteBuilder {
         });
     }
 
-    private ZonedDateTime performStatusCheck(String url) {
+    private ZonedDateTime performStatusCheck(String url, List<SubscriptionSetup> subscriptions) {
         try {
-            HttpResponse<Void> response = HttpClient.newHttpClient()
-                    .send(HttpRequest.newBuilder()
-                                    .uri(URI.create(url))
-                                    .method("HEAD", HttpRequest.BodyPublishers.noBody())
-                                    .timeout(Duration.ofSeconds(5))
-                                    .build(),
-                            HttpResponse.BodyHandlers.discarding());
-
-            if (!(response.statusCode() >= 200 && response.statusCode() < 500)) {
-                return response.headers()
-                        .firstValue("X-Service-Restart")
-                        .map(ZonedDateTime::parse)
-                        .orElse(ZonedDateTime.now());
+            IncomingFlowStatus result = livenessReadinessRoute.getFlowStatusFromSubscription(url, subscriptions);
+            if (result != null && result.getStatus() != "OK") {
+                return Instant.ofEpochMilli(result.getLastUpdate()).atZone(ZoneId.systemDefault());
             }
             return null;
         } catch (Exception e) {

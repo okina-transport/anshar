@@ -306,7 +306,7 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
         return results;
     }
 
-    private IncomingFlowStatus getFlowStatusFromSubscription(String url, List<SubscriptionSetup> subscriptionsByUrl) {
+    public IncomingFlowStatus getFlowStatusFromSubscription(String url, List<SubscriptionSetup> subscriptionsByUrl) {
         IncomingFlowStatus siriStatus = new IncomingFlowStatus();
 
         siriStatus.setId(subscriptionsByUrl.stream().map(SubscriptionSetup::getSubscriptionId).collect(Collectors.joining(",")));
