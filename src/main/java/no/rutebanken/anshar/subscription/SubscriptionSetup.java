@@ -28,6 +28,7 @@ import org.json.simple.JSONObject;
 import java.io.Serializable;
 import java.text.MessageFormat;
 import java.time.Duration;
+import java.time.ZonedDateTime;
 import java.util.*;
 
 @Slf4j
@@ -142,6 +143,9 @@ public class SubscriptionSetup implements Serializable {
     private boolean useProvidedCodespaceId = false;
     @Setter
     private boolean enrichSiriData = false;
+    @Getter
+    @Setter
+    private ZonedDateTime startedAt;
 
     public SubscriptionSetup() {
     }
@@ -163,7 +167,7 @@ public class SubscriptionSetup implements Serializable {
      */
     public SubscriptionSetup(SiriDataType subscriptionType, SubscriptionMode subscriptionMode, String address, Duration heartbeatInterval, Duration updateInterval, String operatorNamespace, Map<RequestType, String> urlMap,
                              String version, String vendor, String datasetId, ServiceType serviceType, List<ValueAdapter> mappingAdapters, Map<Class, Set<Object>> filterMap, List<String> idMappingPrefixes,
-                             String subscriptionId, String requestorRef, Duration durationOfSubscription, boolean active) {
+                             String subscriptionId, String requestorRef, Duration durationOfSubscription, boolean active, ZonedDateTime startedAt) {
         this.subscriptionType = subscriptionType;
         this.subscriptionMode = subscriptionMode;
         this.address = address;
@@ -182,6 +186,7 @@ public class SubscriptionSetup implements Serializable {
         this.requestorRef = requestorRef;
         this.durationOfSubscription = durationOfSubscription;
         this.active = active;
+        this.startedAt = startedAt;
     }
 
     public String buildUrl() {

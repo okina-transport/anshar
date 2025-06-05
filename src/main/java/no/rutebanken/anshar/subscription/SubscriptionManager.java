@@ -76,7 +76,7 @@ public class SubscriptionManager {
     private IMap<String, Integer> hitcount;
     @Autowired
     @Qualifier("getForceRestartMap")
-    private IMap<String, String> forceRestart;
+    private IMap<String, String> forceRestartMap;
     @Autowired
     private IMap<String, BigInteger> objectCounter;
     @Autowired
@@ -287,6 +287,7 @@ public class SubscriptionManager {
             subscriptionSetup.setActive(true);
             boolean shouldLogSuccess = !subscriptionSetup.getVendor().contains("AURA-MULTITUD-CITYWAY-SIRI-") && (subscriptionSetup.getContentType() == null || !subscriptionSetup.getContentType().equals("GTFS-RT"));
             // Subscriptions are inserted as immutable - need to replace previous value
+            subscriptionSetup.setStartedAt(ZonedDateTime.now());
             subscriptions.put(subscriptionId, subscriptionSetup);
             lastActivity.put(subscriptionId, Instant.now());
             activatedTimestamp.put(subscriptionId, Instant.now());
@@ -316,16 +317,37 @@ public class SubscriptionManager {
         return dataReceived.get(subscriptionId);
     }
 
-    void forceRestart(String subscriptionId) {
-        forceRestart.set(subscriptionId, subscriptionId);
+    public void forceRestart(String subscriptionId) {
+        forceRestartMap.put(subscriptionId, subscriptionId);
+        forceRestartMap.flush();
     }
 
     public boolean isForceRestart(String subscriptionId) {
-        if (forceRestart.containsKey(subscriptionId)) {
-            logger.info("Subscription {} has triggered a forced restart", subscriptions.get(subscriptionId));
-            return forceRestart.remove(subscriptionId) != null;
+        if (subscriptionId == null) {
+            logger.warn("Null subscriptionId provided to isForceRestart check");
+            return false;
         }
-        return false;
+
+        try {
+            String removedValue = forceRestartMap.remove(subscriptionId);
+
+            if (removedValue != null) {
+                SubscriptionSetup subscription = subscriptions.get(subscriptionId);
+                String subscriptionInfo = (subscription != null)
+                        ? subscription.toString()
+                        : "unknown subscription";
+
+                logger.info("Forced restart triggered for subscription {} - {}",
+                        subscriptionInfo, removedValue);
+                return true;
+            }
+            return false;
+
+        } catch (Exception e) {
+            logger.error("Error checking forced restart for subscription {}: {}",
+                    subscriptionId, e.getMessage());
+            return false;
+        }
     }
 
     public Boolean isSubscriptionHealthy(String subscriptionId) {
