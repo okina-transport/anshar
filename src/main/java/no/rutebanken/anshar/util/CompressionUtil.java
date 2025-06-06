@@ -15,19 +15,20 @@
 
 package no.rutebanken.anshar.util;
 
+import no.rutebanken.anshar.routes.outbound.CompressionFormat;
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
+import java.util.zip.Deflater;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 public class CompressionUtil {
     private static final Logger logger = LoggerFactory.getLogger(CompressionUtil.class);
+
+    private static final int BUFFER_SIZE = 1024;
 
     private CompressionUtil() {
         //should not be instantiated
@@ -42,6 +43,7 @@ public class CompressionUtil {
 
         return baos.toByteArray();
     }
+
     public static Object decompress(byte[] b) throws IOException {
         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(b);
         GZIPInputStream gzipIn = new GZIPInputStream(byteArrayInputStream);
@@ -52,6 +54,45 @@ public class CompressionUtil {
             logger.warn("Execption caught when decompressing Hazelcast object", e);
         }
         return null;
+    }
+
+    public static CompressionFormat getCompressionFormatFromHeader(String headerAcceptEncoding) {
+        CompressionFormat result = CompressionFormat.NONE;
+        if (StringUtils.isNotBlank(headerAcceptEncoding)) {
+            String[] headers = headerAcceptEncoding.split(",");
+            for (String header : headers) {
+                CompressionFormat parsedCompressionFormat = CompressionFormat.valueOfByCode(header.trim());
+                if (parsedCompressionFormat.ordinal() < result.ordinal()) {
+                    result = parsedCompressionFormat;
+                }
+            }
+        }
+        return result;
+    }
+
+    public static byte[] deflateCompress(byte[] input) {
+        Deflater deflater = new Deflater();
+        deflater.setInput(input);
+        deflater.finish();
+
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        byte[] buffer = new byte[BUFFER_SIZE];
+
+        while (!deflater.finished()) {
+            int compressedSize = deflater.deflate(buffer);
+            outputStream.write(buffer, 0, compressedSize);
+        }
+
+        return outputStream.toByteArray();
+    }
+
+    public static byte[] gzip(byte[] input) throws IOException {
+        ByteArrayOutputStream obj = new ByteArrayOutputStream();
+        GZIPOutputStream gzip = new GZIPOutputStream(obj);
+        gzip.write(input);
+        gzip.flush();
+        gzip.close();
+        return obj.toByteArray();
     }
 
 }

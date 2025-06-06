@@ -1,6 +1,7 @@
 package no.rutebanken.anshar.outbound;
 
 import lombok.extern.slf4j.Slf4j;
+import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.idTests.TestUtils;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
@@ -121,10 +122,12 @@ class OutboundSubscriptionTest extends SpringBootBaseTest {
                 "</Siri>";
 
         boolean soapTransformation = false;
+        IncomingSiriParameters incomingSiriParameters = new IncomingSiriParameters();
+        incomingSiriParameters.setSoapTransformation(soapTransformation);
+        incomingSiriParameters.setUseOriginalId(true);
 
-
-        final Siri siriSX = serverSubscriptionManager.handleMultipleSubscriptionsRequest(SiriXml.parseXml(sxSubscription), null, null, null, soapTransformation, true);
-        final Siri siriET = serverSubscriptionManager.handleMultipleSubscriptionsRequest(SiriXml.parseXml(etSubscription), null, null, null, soapTransformation, true);
+        final Siri siriSX = serverSubscriptionManager.handleMultipleSubscriptionsRequest(SiriXml.parseXml(sxSubscription), incomingSiriParameters);
+        final Siri siriET = serverSubscriptionManager.handleMultipleSubscriptionsRequest(SiriXml.parseXml(etSubscription), incomingSiriParameters);
 
         assertNotNull(siriSX);
         assertNotNull(siriET);

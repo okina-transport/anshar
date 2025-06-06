@@ -1,6 +1,7 @@
 package no.rutebanken.anshar.routes.outbound;
 
 import com.hazelcast.map.IMap;
+import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -242,8 +243,12 @@ class ServerSubscriptionManagerTest {
 
         boolean useOriginalId = false;
         boolean soapTransformation = false;
-
-        serverSubscriptionManager.handleSingleSubscriptionRequest(incomingSiri, DATA_SET_ID, null, CLIENT_NAME, soapTransformation, useOriginalId);
+        IncomingSiriParameters incomingSiriParameters = new IncomingSiriParameters();
+        incomingSiriParameters.setUseOriginalId(useOriginalId);
+        incomingSiriParameters.setSoapTransformation(soapTransformation);
+        incomingSiriParameters.setDatasetId(DATA_SET_ID);
+        incomingSiriParameters.setClientTrackingName(CLIENT_NAME);
+        serverSubscriptionManager.handleSingleSubscriptionRequest(incomingSiri, incomingSiriParameters);
 
         Mockito.verify(siriObjectFactory).createSubscriptionResponse("OKINA", false, "Error", "2.0");
     }

@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar;
 
+import com.aayushatharva.brotli4j.Brotli4jLoader;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
@@ -27,6 +28,7 @@ public class App {
 
     // must have a main method spring-boot can run
     public static void main(String[] args) {
+        Brotli4jLoader.ensureAvailability();
         SpringApplication.run(App.class, args);
     }
 

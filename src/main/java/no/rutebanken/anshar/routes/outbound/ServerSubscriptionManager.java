@@ -17,6 +17,7 @@ package no.rutebanken.anshar.routes.outbound;
 
 import com.hazelcast.map.IMap;
 import no.rutebanken.anshar.config.IdProcessingParameters;
+import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.routes.kafka.KafkaConfig;
@@ -324,25 +325,22 @@ public class ServerSubscriptionManager {
     /**
      * Handle subscription request that can contain one or multiple subcriptions
      *
-     * @param incomingSiri
-     * @param datasetId
-     * @param outboundIdMappingPolicy
-     * @param clientTrackingName
-     * @param soapTransformation
+     * @param incomingSiri raw Siri
+     * @param incomingSiriParameters incoming parameters
      * @return
      */
-    public Siri handleMultipleSubscriptionsRequest(Siri incomingSiri, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName, boolean soapTransformation, boolean useOriginalId) {
+    public Siri handleMultipleSubscriptionsRequest(Siri incomingSiri, IncomingSiriParameters incomingSiriParameters) {
         SubscriptionRequest subscriptionRequest = incomingSiri.getSubscriptionRequest();
         if (subscriptionRequest.getStopMonitoringSubscriptionRequests() != null && subscriptionRequest.getStopMonitoringSubscriptionRequests().size() > 1) {
-            return handleMultipleStopMonitoringRequest(incomingSiri, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation, useOriginalId);
+            return handleMultipleStopMonitoringRequest(incomingSiri, incomingSiriParameters);
         } else if (subscriptionRequest.getVehicleMonitoringSubscriptionRequests() != null && subscriptionRequest.getVehicleMonitoringSubscriptionRequests().size() > 1) {
-            return handleMultipleVehicleMonitoringRequest(incomingSiri, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation, useOriginalId);
+            return handleMultipleVehicleMonitoringRequest(incomingSiri, incomingSiriParameters);
         } else {
-            return handleSingleSubscriptionRequest(incomingSiri, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation, useOriginalId);
+            return handleSingleSubscriptionRequest(incomingSiri, incomingSiriParameters);
         }
     }
 
-    private Siri handleMultipleVehicleMonitoringRequest(Siri incomingSiri, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName, boolean soapTransformation, boolean useOriginalId) {
+    private Siri handleMultipleVehicleMonitoringRequest(Siri incomingSiri, IncomingSiriParameters incomingSiriParameters) {
 
         SubscriptionRequest subscriptionRequest = incomingSiri.getSubscriptionRequest();
         List<Siri> resultList = new ArrayList<>();
@@ -362,14 +360,14 @@ public class ServerSubscriptionManager {
             singleSiriRequest.setSubscriptionRequest(singleRequest);
             singleSiriRequest.setVersion(incomingSiri.getVersion());
 
-            Siri currentResult = handleSingleSubscriptionRequest(singleSiriRequest, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation, useOriginalId);
+            Siri currentResult = handleSingleSubscriptionRequest(singleSiriRequest, incomingSiriParameters);
             resultList.add(currentResult);
         }
 
         return aggregateResults(resultList);
     }
 
-    private Siri handleMultipleStopMonitoringRequest(Siri incomingSiri, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName, boolean soapTransformation, boolean useOriginalId) {
+    private Siri handleMultipleStopMonitoringRequest(Siri incomingSiri, IncomingSiriParameters incomingSiriParameters) {
 
         SubscriptionRequest subscriptionRequest = incomingSiri.getSubscriptionRequest();
         List<Siri> resultList = new ArrayList<>();
@@ -389,7 +387,7 @@ public class ServerSubscriptionManager {
             singleSiriRequest.setSubscriptionRequest(singleRequest);
             singleSiriRequest.setVersion(incomingSiri.getVersion());
 
-            Siri currentResult = handleSingleSubscriptionRequest(singleSiriRequest, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation, useOriginalId);
+            Siri currentResult = handleSingleSubscriptionRequest(singleSiriRequest, incomingSiriParameters);
             resultList.add(currentResult);
         }
 
@@ -412,19 +410,19 @@ public class ServerSubscriptionManager {
     /**
      * Handle a subcription request that contains only one subscription
      *
-     * @param incomingSiri
-     * @param datasetId
-     * @param outboundIdMappingPolicy
-     * @param clientTrackingName
+     * @param incomingSiri raw Siri
+     * @param incomingSiriParameters received parameters
      * @return
      */
-    public Siri handleSingleSubscriptionRequest(Siri incomingSiri, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName, boolean soapTransformation, boolean useOriginalId) {
+    public Siri handleSingleSubscriptionRequest(Siri incomingSiri, IncomingSiriParameters incomingSiriParameters) {
+        OutboundIdMappingPolicy outboundIdMappingPolicy = incomingSiriParameters.getOutboundIdMappingPolicy();
+        boolean soapTransformation = incomingSiriParameters.isSoapTransformation();
         boolean missingMonitoringRef = checkMissingMonitoringRef(incomingSiri.getSubscriptionRequest());
         if (missingMonitoringRef) {
             String subscriptionId = findSubscriptionIdentifier(incomingSiri.getSubscriptionRequest());
             return siriObjectFactory.createSubscriptionResponse(StringUtils.defaultIfBlank(subscriptionId, "Undefined subscription id"), false, errorMonitoringRefMissing, incomingSiri.getVersion());
         }
-        OutboundSubscriptionSetup subscription = createSubscription(incomingSiri, datasetId, outboundIdMappingPolicy, clientTrackingName, useOriginalId);
+        OutboundSubscriptionSetup subscription = createSubscription(incomingSiri, incomingSiriParameters);
         subscription.setSOAPSubscription(soapTransformation);
 
         boolean hasError = false;
@@ -528,21 +526,25 @@ public class ServerSubscriptionManager {
     }
 
 
-    private OutboundSubscriptionSetup createSubscription(Siri incomingSiri, String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String clientTrackingName, boolean useOrignalId) {
+    private OutboundSubscriptionSetup createSubscription(Siri incomingSiri, IncomingSiriParameters incomingSiriParameters) {
+        String datasetId =  incomingSiriParameters.getDatasetId();
+        OutboundIdMappingPolicy outboundIdMappingPolicy = incomingSiriParameters.getOutboundIdMappingPolicy();
+        String clientTrackingName = incomingSiriParameters.getClientTrackingName();
+        boolean useOrignalId = incomingSiriParameters.isUseOriginalId();
         SubscriptionRequest subscriptionRequest = incomingSiri.getSubscriptionRequest();
         List<ValueAdapter> mappers;
         String version = getVersion(incomingSiri);
         Duration previewInterval = null;
-        if (subscriptionRequest.getStopMonitoringSubscriptionRequests() != null && subscriptionRequest.getStopMonitoringSubscriptionRequests().size() > 0) {
+        if (subscriptionRequest.getStopMonitoringSubscriptionRequests() != null && !subscriptionRequest.getStopMonitoringSubscriptionRequests().isEmpty()) {
             Map<ObjectType, Optional<IdProcessingParameters>> idProcessingParams = siriHelper.getIdProcessingParamsFromSubscription(subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0), outboundIdMappingPolicy, datasetId);
             mappers = MappingAdapterPresets.getOutboundAdapters(SiriDataType.STOP_MONITORING, outboundIdMappingPolicy, idProcessingParams);
             if (subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0).getStopMonitoringRequest().getPreviewInterval() != null) {
                 previewInterval = subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0).getStopMonitoringRequest().getPreviewInterval();
             }
-        } else if (subscriptionRequest.getVehicleMonitoringSubscriptionRequests() != null && subscriptionRequest.getVehicleMonitoringSubscriptionRequests().size() > 0) {
+        } else if (subscriptionRequest.getVehicleMonitoringSubscriptionRequests() != null && !subscriptionRequest.getVehicleMonitoringSubscriptionRequests().isEmpty()) {
             Map<ObjectType, Optional<IdProcessingParameters>> idProcessingParams = siriHelper.getIdProcessingParamsFromSubscription(subscriptionRequest.getVehicleMonitoringSubscriptionRequests().get(0), outboundIdMappingPolicy, datasetId);
             mappers = MappingAdapterPresets.getOutboundAdapters(SiriDataType.VEHICLE_MONITORING, outboundIdMappingPolicy, idProcessingParams);
-        } else if (subscriptionRequest.getEstimatedTimetableSubscriptionRequests() != null && subscriptionRequest.getEstimatedTimetableSubscriptionRequests().size() > 0) {
+        } else if (subscriptionRequest.getEstimatedTimetableSubscriptionRequests() != null && !subscriptionRequest.getEstimatedTimetableSubscriptionRequests().isEmpty()) {
             Map<ObjectType, Optional<IdProcessingParameters>> idProcessingParams = siriHelper.getIdProcessingParamsFromSubscription(subscriptionRequest.getEstimatedTimetableSubscriptionRequests().get(0), outboundIdMappingPolicy, datasetId);
             mappers = MappingAdapterPresets.getOutboundAdapters(SiriDataType.ESTIMATED_TIMETABLE, outboundIdMappingPolicy, idProcessingParams);
         } else {
@@ -572,7 +574,8 @@ public class ServerSubscriptionManager {
                 SiriUtils.getVersionEnum(version),
                 valueAdaptersByDataset,
                 filterMapByDataset,
-                outboundChangeBeforeUpdateCacheTTL
+                outboundChangeBeforeUpdateCacheTTL,
+                incomingSiriParameters.getCompressionFormat()
         );
 
         newOutboundSubscription.setOutboundIdMappingPolicy(outboundIdMappingPolicy);

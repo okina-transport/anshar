@@ -17,12 +17,12 @@ package no.rutebanken.anshar.routes.outbound;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import lombok.Getter;
+import lombok.Setter;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.entur.siri.validator.SiriValidator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.xml.datatype.Duration;
 import java.io.Serializable;
@@ -33,7 +33,6 @@ import java.util.concurrent.TimeUnit;
 
 public class OutboundSubscriptionSetup implements Serializable {
 
-    private static final Logger log = LoggerFactory.getLogger(OutboundSubscriptionSetup.class);
     private SiriValidator.Version siriVersion = SiriValidator.Version.VERSION_2_0;
     private ZonedDateTime requestTimestamp;
     private final SiriDataType subscriptionType;
@@ -56,6 +55,9 @@ public class OutboundSubscriptionSetup implements Serializable {
     private Cache<String, String> alreadySentNotifications;
     private OutboundIdMappingPolicy outboundIdMappingPolicy;
     private Duration previewInterval;
+    @Getter
+    @Setter
+    private CompressionFormat compressionFormat = CompressionFormat.NONE;
 
 
     private boolean isSOAPSubscription;
@@ -65,14 +67,14 @@ public class OutboundSubscriptionSetup implements Serializable {
                                      Map<Class, Set<String>> filterMap, List<ValueAdapter> valueAdapters,
                                      String subscriptionId, String requestorRef, ZonedDateTime initialTerminationTime, String datasetId, String clientTrackingName, boolean useOriginalId, SiriValidator.Version siriVersion) {
         this(requestTimestamp, subscriptionType, address, heartbeatInterval, incrementalUpdates, changeBeforeUpdates, updateInterval, filterMap, valueAdapters,
-                subscriptionId, requestorRef, initialTerminationTime, datasetId, clientTrackingName, useOriginalId, siriVersion, null, null, 5);
+                subscriptionId, requestorRef, initialTerminationTime, datasetId, clientTrackingName, useOriginalId, siriVersion, null, null, 5, CompressionFormat.NONE);
     }
 
     public OutboundSubscriptionSetup(ZonedDateTime requestTimestamp, SiriDataType subscriptionType, String address, long heartbeatInterval,
                                      boolean incrementalUpdates, long changeBeforeUpdates, long updateInterval,
                                      Map<Class, Set<String>> filterMap, List<ValueAdapter> valueAdapters,
                                      String subscriptionId, String requestorRef, ZonedDateTime initialTerminationTime, String datasetId, String clientTrackingName,
-                                     boolean useOriginalId, SiriValidator.Version siriVersion, Map<String, List<ValueAdapter>> valueAdaptersByDataset, Map<String, Map<Class, Set<String>>> filterMapByDataset, int cacheTTL) {
+                                     boolean useOriginalId, SiriValidator.Version siriVersion, Map<String, List<ValueAdapter>> valueAdaptersByDataset, Map<String, Map<Class, Set<String>>> filterMapByDataset, int cacheTTL, CompressionFormat compressionFormat) {
         this.requestTimestamp = requestTimestamp;
         this.subscriptionType = subscriptionType;
         this.address = address;
@@ -102,6 +104,8 @@ public class OutboundSubscriptionSetup implements Serializable {
         alreadySentNotifications = CacheBuilder.newBuilder()
                 .expireAfterWrite(cacheTTL, TimeUnit.HOURS)  // by default, already sent notifications are deleted after 5 hours to avoid huge data in memory
                 .build();
+
+        this.compressionFormat = compressionFormat;
     }
 
     OutboundSubscriptionSetup(SiriDataType subscriptionType, String address, int timeToLive, List<ValueAdapter> outboundAdapters, String subscriptionId) {
