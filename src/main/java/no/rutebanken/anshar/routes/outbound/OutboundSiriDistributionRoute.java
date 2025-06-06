@@ -9,7 +9,6 @@ import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
 import org.entur.siri.validator.SiriValidator;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.Siri;
@@ -24,15 +23,6 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.ORIGIN
 @Service
 public class OutboundSiriDistributionRoute extends RouteBuilder {
 
-    @Autowired
-    private ServerSubscriptionManager subscriptionManager;
-
-    @Autowired
-    private PrometheusMetricsService metrics;
-
-    @Autowired
-    private Utils utils;
-
     @Value("${outbound.distribution.route.maxTotalConnections}")
     private long maxTotalConnections;
 
@@ -45,6 +35,20 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
     @Value("${outbound.distribution.max.pool.size}")
     private int maxPoolSize;
 
+    private final ServerSubscriptionManager subscriptionManager;
+
+    private final PrometheusMetricsService metrics;
+
+    private final Utils utils;
+
+    private final CompressionProcessor compressionProcessor;
+
+    public OutboundSiriDistributionRoute(ServerSubscriptionManager subscriptionManager, PrometheusMetricsService metrics, Utils utils, CompressionProcessor compressionProcessor) {
+        this.subscriptionManager = subscriptionManager;
+        this.metrics = metrics;
+        this.utils = utils;
+        this.compressionProcessor = compressionProcessor;
+    }
 
     // @formatter:off
     @Override
@@ -120,6 +124,7 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
 //                .to("log:push:" + getClass().getSimpleName() + "?showAll=false&showExchangeId=true&showHeaders=true&showException=true&multiline=true&showBody=false")
 //                .end()
                 .removeHeader("showBody")
+                .process(compressionProcessor)
                 .toD("${header.endpoint}?maxTotalConnections=" + maxTotalConnections + "&connectionsPerRoute=" + connectionsByRoute)
                 .process(e->{
                     String subsId = (String) e.getIn().getHeader("SubscriptionId");

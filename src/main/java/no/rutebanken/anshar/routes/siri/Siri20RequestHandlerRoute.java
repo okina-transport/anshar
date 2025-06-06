@@ -22,6 +22,7 @@ import no.rutebanken.anshar.data.util.CustomSiriXml;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.ServiceNotSupportedException;
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
+import no.rutebanken.anshar.routes.outbound.CompressionFormat;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.OAuthConfigElement;
@@ -29,6 +30,7 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
+import no.rutebanken.anshar.util.CompressionUtil;
 import org.apache.camel.*;
 import org.apache.camel.http.common.HttpMethods;
 import org.apache.camel.model.rest.RestParamType;
@@ -52,6 +54,7 @@ import static no.rutebanken.anshar.routes.BaseRouteBuilder.getRequestUrl;
 import static no.rutebanken.anshar.routes.HttpParameter.*;
 import static no.rutebanken.anshar.subscription.DiscoverySubscriptionCreator.ENDPOINT_URL_HEADER;
 import static no.rutebanken.anshar.subscription.DiscoverySubscriptionCreator.SUBSCRIPTION_URL_HEADER;
+import static org.springframework.http.HttpHeaders.ACCEPT_ENCODING;
 
 @SuppressWarnings("unchecked")
 @Service
@@ -301,7 +304,8 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .process(p -> {
                     String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
                     String clientTrackingName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
-
+                    String acceptEncoding = p.getIn().getHeader(ACCEPT_ENCODING, String.class);
+                    CompressionFormat acceptedEncoding = CompressionUtil.getCompressionFormatFromHeader(acceptEncoding);
                     InputStream xml = p.getIn().getBody(InputStream.class);
                     String useOriginalId = (String) p.getIn().getHeader(PARAM_USE_ORIGINAL_ID);
 
@@ -318,7 +322,8 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                     incomingSiriParameters.setMaxSize(-1);
                     incomingSiriParameters.setClientTrackingName(clientTrackingName);
                     incomingSiriParameters.setSoapTransformation(soapTransformation);
-                    incomingSiriParameters.setUseOriginalId(Boolean.valueOf(useOriginalId));
+                    incomingSiriParameters.setUseOriginalId(Boolean.parseBoolean(useOriginalId));
+                    incomingSiriParameters.setCompressionFormat(acceptedEncoding);
 
                     Siri response = handler.handleIncomingSiri(incomingSiriParameters);
                     if (response != null) {

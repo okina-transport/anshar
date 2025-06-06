@@ -48,6 +48,7 @@ import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFO
 import static no.rutebanken.anshar.routes.siri.transformer.SiriOutputTransformerRoute.OUTPUT_ADAPTERS_HEADER_NAME;
 import static no.rutebanken.anshar.routes.validation.validators.Constants.HEARTBEAT_HEADER;
 import static no.rutebanken.anshar.routes.validation.validators.Constants.IS_IDFM_GM;
+import static org.springframework.http.HttpHeaders.CONTENT_ENCODING;
 
 @Service
 public class CamelRouteManager {
@@ -379,6 +380,7 @@ public class CamelRouteManager {
             headers.put("datasetId", datasetId);
             headers.put("requestorRef", subscription.getRequestorRef());
             headers.put(SIRI_VERSION_HEADER_NAME, subscription.getSiriVersion());
+            headers.put(CONTENT_ENCODING, subscription.getCompressionFormat().getCode());
             List<ValueAdapter> adapters = getAdapters(datasetId, subscription);
 
             headers.put(OUTPUT_ADAPTERS_HEADER_NAME, adapters);

@@ -165,9 +165,7 @@ public class SiriHandler {
     }
 
     public Siri buildSiriResponse(IncomingSiriParameters incomingSiriParameters, Siri request) {
-        Siri response = outboundProcessSiriServerRequest(request, incomingSiriParameters.getDatasetId(), incomingSiriParameters.getExcludedDatasetIdList(),
-                incomingSiriParameters.getOutboundIdMappingPolicy(), incomingSiriParameters.getMaxSize(), incomingSiriParameters.getClientTrackingName(),
-                incomingSiriParameters.isSoapTransformation(), incomingSiriParameters.isUseOriginalId());
+        Siri response = outboundProcessSiriServerRequest(request, incomingSiriParameters);
         utils.handleFlexibleLines(response);
         incomingSiriParameters.setVersion(request.getVersion());
         return response;
@@ -242,10 +240,14 @@ public class SiriHandler {
      * Handling incoming requests from external clients
      *
      * @param incoming              incoming message
-     * @param excludedDatasetIdList dataset to exclude
+     * @param incomingSiriParameters received parameters
      */
-    private Siri outboundProcessSiriServerRequest(Siri incoming, String datasetId, List<String> excludedDatasetIdList, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String clientTrackingName, boolean soapTransformation, boolean useOriginalId) {
-
+    private Siri outboundProcessSiriServerRequest(Siri incoming, IncomingSiriParameters incomingSiriParameters) {
+        String datasetId = incomingSiriParameters.getDatasetId();
+        List<String> excludedDatasetIdList = incomingSiriParameters.getExcludedDatasetIdList();
+        OutboundIdMappingPolicy outboundIdMappingPolicy = incomingSiriParameters.getOutboundIdMappingPolicy();
+        int maxSize = incomingSiriParameters.getMaxSize();
+        String clientTrackingName = incomingSiriParameters.getClientTrackingName();
         if (maxSize < 0) {
             maxSize = configuration.getDefaultMaxSize();
 
@@ -259,7 +261,7 @@ public class SiriHandler {
         Siri results;
         if (incoming.getSubscriptionRequest() != null) {
             logger.info("Handling subscriptionrequest with ID-policy {}.", outboundIdMappingPolicy);
-            return serverSubscriptionManager.handleMultipleSubscriptionsRequest(incoming, datasetId, outboundIdMappingPolicy, clientTrackingName, soapTransformation, useOriginalId);
+            return serverSubscriptionManager.handleMultipleSubscriptionsRequest(incoming, incomingSiriParameters);
 
         } else if (incoming.getTerminateSubscriptionRequest() != null) {
             logger.info("Handling terminateSubscriptionrequest...");
