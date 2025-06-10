@@ -21,8 +21,7 @@ public class CompressionProcessor implements Processor {
             byte[] bodyAsBytes = exchange.getIn().getBody(byte[].class);
             switch (compressionFormat) {
                 case GZIP:
-                    log.debug("Compressing body with GZIP format");
-                    exchange.getIn().setBody(CompressionUtil.gzip(bodyAsBytes));
+                    log.debug("Compressing body with GZIP format - automatically handled by camel with HTTP Header Content-Encoding");
                     break;
                 case DEFLATE:
                     log.debug("Compressing body with deflate format");
