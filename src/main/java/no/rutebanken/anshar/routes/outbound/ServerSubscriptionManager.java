@@ -325,7 +325,7 @@ public class ServerSubscriptionManager {
     /**
      * Handle subscription request that can contain one or multiple subcriptions
      *
-     * @param incomingSiri raw Siri
+     * @param incomingSiri           raw Siri
      * @param incomingSiriParameters incoming parameters
      * @return
      */
@@ -410,7 +410,7 @@ public class ServerSubscriptionManager {
     /**
      * Handle a subcription request that contains only one subscription
      *
-     * @param incomingSiri raw Siri
+     * @param incomingSiri           raw Siri
      * @param incomingSiriParameters received parameters
      * @return
      */
@@ -496,7 +496,7 @@ public class ServerSubscriptionManager {
 
                 //Send initial ServiceDelivery
                 logger.debug("Find initial delivery for {}", subscription);
-                List<SiriDataType> multipleDatasetDeliveryTypes = Arrays.asList(SiriDataType.STOP_MONITORING, SiriDataType.ESTIMATED_TIMETABLE, SiriDataType.VEHICLE_MONITORING);
+                List<SiriDataType> multipleDatasetDeliveryTypes = Arrays.asList(SiriDataType.STOP_MONITORING, SiriDataType.ESTIMATED_TIMETABLE, SiriDataType.VEHICLE_MONITORING, SiriDataType.GENERAL_MESSAGE);
                 if (multipleDatasetDeliveryTypes.contains(subscription.getSubscriptionType())) {
                     Map<String, Siri> deliveriesByDataset = initialDeliveryGenerator.findInitialDeliveriesByDataset(subscription);
                     for (Map.Entry<String, Siri> datasetAndDelivery : deliveriesByDataset.entrySet()) {
@@ -518,6 +518,10 @@ public class ServerSubscriptionManager {
 
     private void sendInitialDelivery(String datasetId, Siri delivery, OutboundSubscriptionSetup subscription) {
         if (delivery != null) {
+            if (SiriDataType.GENERAL_MESSAGE.equals(subscription.getSubscriptionType())) {
+                delivery = convertIdsGeneralMessage(delivery, subscription.getDatasetId(), subscription.getOutboundIdMappingPolicy());
+            }
+
             logger.info("Sending initial delivery to {}", subscription.getSubscriptionId());
             camelRouteManager.pushSiriData(datasetId, delivery, subscription, false);
         } else {
@@ -527,7 +531,7 @@ public class ServerSubscriptionManager {
 
 
     private OutboundSubscriptionSetup createSubscription(Siri incomingSiri, IncomingSiriParameters incomingSiriParameters) {
-        String datasetId =  incomingSiriParameters.getDatasetId();
+        String datasetId = incomingSiriParameters.getDatasetId();
         OutboundIdMappingPolicy outboundIdMappingPolicy = incomingSiriParameters.getOutboundIdMappingPolicy();
         String clientTrackingName = incomingSiriParameters.getClientTrackingName();
         boolean useOrignalId = incomingSiriParameters.isUseOriginalId();
