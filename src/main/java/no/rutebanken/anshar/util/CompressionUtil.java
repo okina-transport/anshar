@@ -86,13 +86,4 @@ public class CompressionUtil {
         return outputStream.toByteArray();
     }
 
-    public static byte[] gzip(byte[] input) throws IOException {
-        ByteArrayOutputStream obj = new ByteArrayOutputStream();
-        GZIPOutputStream gzip = new GZIPOutputStream(obj);
-        gzip.write(input);
-        gzip.flush();
-        gzip.close();
-        return obj.toByteArray();
-    }
-
 }
