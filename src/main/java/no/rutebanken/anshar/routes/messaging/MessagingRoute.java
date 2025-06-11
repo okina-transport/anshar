@@ -111,7 +111,6 @@ public class MessagingRoute extends RestRouteBuilder {
         final String pubsubQueueSM = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_SM;
         final String pubsubQueueGM = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_GM;
         final String pubsubQueueFM = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_FM;
-        final String pubsubQueueDefault = messageQueueCamelRoutePrefix + CamelRouteNames.TRANSFORM_QUEUE_DEFAULT;
 
         final String externalSiriSMQueue = messageQueueCamelRoutePrefix + externalSMQueue;
         final String externalSiriSXQueue = messageQueueCamelRoutePrefix + "anshar.external.siri.sx.data";
@@ -129,123 +128,132 @@ public class MessagingRoute extends RestRouteBuilder {
                 })
         ;
 
+        if (configuration.processET()){
+            from(messageQueueCamelRoutePrefix + GTFSRT_ET_QUEUE)
+                    .routeId("gtfsrt.et.queue")
+                    .threads(100)
+                    .maxPoolSize(100)
+                    .process(e -> {
+                        String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
+                        e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
 
-        from(messageQueueCamelRoutePrefix + GTFSRT_ET_QUEUE)
-                .routeId("gtfsrt.et.queue")
-                .threads(100)
-                .maxPoolSize(100)
-                .process(e -> {
-                    String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
-                    e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
+                        String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
+                        e.getIn().setHeader(URL_HEADER_NAME, url);
 
-                    String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
-                    e.getIn().setHeader(URL_HEADER_NAME, url);
+                    })
+                    .to("direct:transform.siri")
+                    .bean(EstimatedTimetableIngester.class, "processIncomingETFromGTFSRT")
+            ;
 
-                })
-                .to("direct:transform.siri")
-                .bean(EstimatedTimetableIngester.class, "processIncomingETFromGTFSRT")
-        ;
+            from(externalSiriETQueue)
+                    .routeId("external.siri.et.queue")
+                    .process(e -> {
+                        String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
+                        e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
 
-        from(internalGtfsrtSMQueue)
-                .routeId("gtfsrt.sm.queue")
-                .threads(100)
-                .maxPoolSize(100)
-                .process(e -> {
-                    String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
-                    e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
+                        String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
+                        e.getIn().setHeader(URL_HEADER_NAME, url);
+                    })
+                    .to("direct:transform.siri")
+                    .bean(ExternalDataHandler.class, "processIncomingSiriET")
+            ;
+        }
 
-                    String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
-                    e.getIn().setHeader(URL_HEADER_NAME, url);
+        if (configuration.processSM()) {
+            from(internalGtfsrtSMQueue)
+                    .routeId("gtfsrt.sm.queue")
+                    .threads(100)
+                    .maxPoolSize(100)
+                    .process(e -> {
+                        String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
+                        e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
 
-                })
-                .to("direct:transform.siri")
-                .bean(StopMonitoringIngester.class, "processIncomingSMFromGTFSRT")
-        ;
+                        String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
+                        e.getIn().setHeader(URL_HEADER_NAME, url);
 
-        from(messageQueueCamelRoutePrefix + GTFSRT_SX_QUEUE)
-                .routeId("gtfsrt.sx.queue")
-                .threads(2)
-                .process(e -> {
-                    String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
-                    e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
+                    })
+                    .to("direct:transform.siri")
+                    .bean(StopMonitoringIngester.class, "processIncomingSMFromGTFSRT")
+            ;
 
-                    String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
-                    e.getIn().setHeader(URL_HEADER_NAME, url);
+            from(externalSiriSMQueue)
+                    .routeId("external.siri.sm.queue")
+                    .threads(200)
+                    .maxPoolSize(200)
+                    .process(e -> {
+                        String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
+                        e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
 
-                })
-                .to("direct:transform.siri")
-                .bean(SituationExchangeIngester.class, "processIncomingSXFromGTFSRT")
-        ;
+                        String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
+                        e.getIn().setHeader(URL_HEADER_NAME, url);
+                    })
+                    .to("direct:transform.siri")
+                    .bean(ExternalDataHandler.class, "processIncomingSiriSM")
+            ;
+        }
 
-        from(messageQueueCamelRoutePrefix + GTFSRT_VM_QUEUE )
-                .routeId("gtfsrt.vm.queue")
-                .threads(100)
-                .maxPoolSize(100)
-                .process(e -> {
-                    String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
-                    e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
+        if (configuration.processSX()){
+            from(messageQueueCamelRoutePrefix + GTFSRT_SX_QUEUE)
+                    .routeId("gtfsrt.sx.queue")
+                    .threads(2)
+                    .process(e -> {
+                        String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
+                        e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
 
-                    String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
-                    e.getIn().setHeader(URL_HEADER_NAME, url);
+                        String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
+                        e.getIn().setHeader(URL_HEADER_NAME, url);
 
-                })
-                .to("direct:transform.siri")
-                .bean(VehicleMonitoringIngester.class, "processIncomingVMFromGTFSRT")
-        ;
+                    })
+                    .to("direct:transform.siri")
+                    .bean(SituationExchangeIngester.class, "processIncomingSXFromGTFSRT")
+            ;
 
-        from(externalSiriSMQueue)
-                .routeId("external.siri.sm.queue")
-                .threads(200)
-                .maxPoolSize(200)
-                .process(e -> {
-                    String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
-                    e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
+            from(externalSiriSXQueue)
+                    .routeId("external.siri.sx.queue")
+                    .process(e -> {
+                        String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
+                        e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
 
-                    String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
-                    e.getIn().setHeader(URL_HEADER_NAME, url);
-                })
-                .to("direct:transform.siri")
-                .bean(ExternalDataHandler.class, "processIncomingSiriSM")
-        ;
+                        String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
+                        e.getIn().setHeader(URL_HEADER_NAME, url);
+                    })
+                    .to("direct:transform.siri")
+                    .bean(ExternalDataHandler.class, "processIncomingSiriSX")
+            ;
 
-        from(externalSiriETQueue)
-                .routeId("external.siri.et.queue")
-                .process(e -> {
-                    String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
-                    e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
+        }
 
-                    String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
-                    e.getIn().setHeader(URL_HEADER_NAME, url);
-                })
-                .to("direct:transform.siri")
-                .bean(ExternalDataHandler.class, "processIncomingSiriET")
-        ;
+        if (configuration.processVM()) {
+            from(messageQueueCamelRoutePrefix + GTFSRT_VM_QUEUE )
+                    .routeId("gtfsrt.vm.queue")
+                    .threads(100)
+                    .maxPoolSize(100)
+                    .process(e -> {
+                        String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
+                        e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
 
-        from(externalSiriSXQueue)
-                .routeId("external.siri.sx.queue")
-                .process(e -> {
-                    String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
-                    e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
+                        String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
+                        e.getIn().setHeader(URL_HEADER_NAME, url);
 
-                    String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
-                    e.getIn().setHeader(URL_HEADER_NAME, url);
-                })
-                .to("direct:transform.siri")
-                .bean(ExternalDataHandler.class, "processIncomingSiriSX")
-        ;
+                    })
+                    .to("direct:transform.siri")
+                    .bean(VehicleMonitoringIngester.class, "processIncomingVMFromGTFSRT")
+            ;
 
-        from(externalSiriVMQueue)
-                .routeId("external.siri.vm.queue")
-                .process(e -> {
-                    String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
-                    e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
 
-                    String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
-                    e.getIn().setHeader(URL_HEADER_NAME, url);
-                })
-                .to("direct:transform.siri")
-                .bean(ExternalDataHandler.class, "processIncomingSiriVM")
-        ;
+            from(externalSiriVMQueue)
+                    .routeId("external.siri.vm.queue")
+                    .process(e -> {
+                        String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
+                        e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
+
+                        String url = e.getMessage().getHeader(URL_HEADER_NAME, String.class);
+                        e.getIn().setHeader(URL_HEADER_NAME, url);
+                    })
+                    .to("direct:transform.siri")
+                    .bean(ExternalDataHandler.class, "processIncomingSiriVM")
+            ;
+        }
 
 
         from("direct:process.message.synchronous")
