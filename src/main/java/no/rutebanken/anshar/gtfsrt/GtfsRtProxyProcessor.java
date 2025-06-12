@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.transit.realtime.GtfsRealtime;
+import no.rutebanken.anshar.api.FlowStatus;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.gtfsrt.model.GtfsRtInboundEt;
@@ -13,6 +14,8 @@ import no.rutebanken.anshar.gtfsrt.model.GtfsRtInboundVm;
 import no.rutebanken.anshar.gtfsrt.readers.AlertReader;
 import no.rutebanken.anshar.gtfsrt.readers.TripUpdateReader;
 import no.rutebanken.anshar.gtfsrt.readers.VehiclePositionReader;
+import no.rutebanken.anshar.metrics.PrometheusMetricsService;
+import no.rutebanken.anshar.routes.health.IncomingDataHealthService;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
@@ -32,6 +35,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static no.rutebanken.anshar.gtfsrt.GtfsRTDataRetriever.GTFS_RT_TAG;
 import static no.rutebanken.anshar.gtfsrt.GtfsRtConstants.*;
 
 public class GtfsRtProxyProcessor implements Processor {
@@ -56,13 +60,17 @@ public class GtfsRtProxyProcessor implements Processor {
 
     private final ObjectMapper objectMapper;
 
+    private final IncomingDataHealthService incomingDataHealthService;
+
+    private final PrometheusMetricsService metrics;
+
     public GtfsRtProxyProcessor(ProducerTemplate producerTemplate,
                                 SubscriptionConfig subscriptionConfig,
                                 ExtendedHazelcastService hazelcastService,
                                 TripUpdateReader tripUpdateReader,
                                 VehiclePositionReader vehiclePositionReader,
                                 AlertReader alertReader,
-                                GtfsRtHelper gtfsRTHelper) {
+                                GtfsRtHelper gtfsRTHelper, IncomingDataHealthService incomingDataHealthService, PrometheusMetricsService metrics) {
         this.producerTemplate = producerTemplate;
         this.tripUpdateReader = tripUpdateReader;
         this.vehiclePositionReader = vehiclePositionReader;
@@ -70,6 +78,8 @@ public class GtfsRtProxyProcessor implements Processor {
         this.subscriptionConfig = subscriptionConfig;
         this.hazelcastService = hazelcastService;
         this.gtfsRTHelper = gtfsRTHelper;
+        this.incomingDataHealthService = incomingDataHealthService;
+        this.metrics = metrics;
         objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
     }
@@ -98,9 +108,14 @@ public class GtfsRtProxyProcessor implements Processor {
             try {
                 recoverDataForApi(gtfsRTApi);
             } catch (Exception e) {
+
                 logger.error("Error on GTFSRT feed: {} - {}", gtfsRTApi.getDatasetId(), gtfsRTApi.getUrl());
                 logger.error("Error detail", e);
+                gtfsRTApi.setStatus(FlowStatus.ERROR);
+                metrics.registerIncomingDataMonitoring(GTFS_RT_TAG, gtfsRTApi.getDatasetId(), "500", gtfsRTApi.getUrl());
             }
+            incomingDataHealthService.recordStatus(gtfsRTApi);
+            subscriptionConfig.updateGtfsRtStatus(gtfsRTApi);
         }
         hazelcastService.getHazelcastInstance().getMap(LOCK_MAP).put(GTFS_RT_LOCK, false);
         logger.info("Intégration des flux GTFS-RT terminée n°:{}", iterationNb);
@@ -110,6 +125,7 @@ public class GtfsRtProxyProcessor implements Processor {
     private void recoverDataForApi(GtfsRTApi gtfsRTApi) throws JsonProcessingException {
         if (gtfsRTApi.getActive() != null && !gtfsRTApi.getActive()) {
             logger.info("GTRS-RT flow disabled: {} - {}", gtfsRTApi.getDatasetId(), gtfsRTApi.getUrl());
+            gtfsRTApi.setStatus(FlowStatus.DISABLED);
             return;
         }
 
@@ -117,12 +133,14 @@ public class GtfsRtProxyProcessor implements Processor {
         Optional<GtfsRealtime.FeedMessage> completeGTFSFeedOpt = gtfsRTHelper.buildMessageFromApi(gtfsRTApi);
         if (completeGTFSFeedOpt.isEmpty()) {
             logger.info("Empty feed for datasetId: {} and URL: {}", gtfsRTApi.getDatasetId(), gtfsRTApi.getUrl());
+            gtfsRTApi.setStatus(FlowStatus.EMPTY_FEED);
             return;
         }
 
         GtfsRealtime.FeedMessage completeGTFSFeed = completeGTFSFeedOpt.get();
         if (completeGTFSFeed.getEntityList().isEmpty()) {
             logger.info("Flux vide détecté sur le datasetId : {}", gtfsRTApi.getDatasetId());
+            gtfsRTApi.setStatus(FlowStatus.EMPTY_FEED);
             return;
         }
         String url = gtfsRTApi.getUrl();

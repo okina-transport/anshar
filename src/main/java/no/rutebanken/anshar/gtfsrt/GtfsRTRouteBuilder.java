@@ -12,7 +12,9 @@ import no.rutebanken.anshar.gtfsrt.model.GtfsRtInboundVm;
 import no.rutebanken.anshar.gtfsrt.readers.AlertReader;
 import no.rutebanken.anshar.gtfsrt.readers.TripUpdateReader;
 import no.rutebanken.anshar.gtfsrt.readers.VehiclePositionReader;
+import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.BaseRouteBuilder;
+import no.rutebanken.anshar.routes.health.IncomingDataHealthService;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import org.apache.camel.ProducerTemplate;
@@ -52,7 +54,11 @@ public class GtfsRTRouteBuilder extends BaseRouteBuilder {
 
     private final ObjectMapper objectMapper;
 
-    protected GtfsRTRouteBuilder(AnsharConfiguration config, SubscriptionManager subscriptionManager, TripUpdateReader tripUpdateReader, VehiclePositionReader vehiclePositionReader, AlertReader alertReader, SubscriptionConfig subscriptionConfig, ExtendedHazelcastService hazelcastService, GtfsRtHelper gtfsRtHelper, ProducerTemplate producerTemplate) {
+    private final IncomingDataHealthService incomingDataHealthService;
+
+    private final PrometheusMetricsService metrics;
+
+    protected GtfsRTRouteBuilder(AnsharConfiguration config, SubscriptionManager subscriptionManager, TripUpdateReader tripUpdateReader, VehiclePositionReader vehiclePositionReader, AlertReader alertReader, SubscriptionConfig subscriptionConfig, ExtendedHazelcastService hazelcastService, GtfsRtHelper gtfsRtHelper, ProducerTemplate producerTemplate, IncomingDataHealthService incomingDataHealthService, PrometheusMetricsService metrics) {
         super(config, subscriptionManager);
         this.configuration = config;
         this.tripUpdateReader = tripUpdateReader;
@@ -62,6 +68,8 @@ public class GtfsRTRouteBuilder extends BaseRouteBuilder {
         this.hazelcastService = hazelcastService;
         this.gtfsRtHelper = gtfsRtHelper;
         this.producerTemplate = producerTemplate;
+        this.incomingDataHealthService = incomingDataHealthService;
+        this.metrics = metrics;
         objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
     }
@@ -74,7 +82,7 @@ public class GtfsRTRouteBuilder extends BaseRouteBuilder {
                     .end();
         } else if (configuration.getAppModes().contains(AppMode.PROXY)) {
             singletonFrom("quartz://anshar/import_GTFSRT_DATA?trigger.repeatInterval=" + gtfsIntervalInMillis, IMPORT_GTFSRT_ROUTE_ID)
-                    .process(new GtfsRtProxyProcessor(producerTemplate, subscriptionConfig, hazelcastService, tripUpdateReader, vehiclePositionReader, alertReader, gtfsRtHelper))
+                    .process(new GtfsRtProxyProcessor(producerTemplate, subscriptionConfig, hazelcastService, tripUpdateReader, vehiclePositionReader, alertReader, gtfsRtHelper, incomingDataHealthService, metrics))
                     .end();
         }
 

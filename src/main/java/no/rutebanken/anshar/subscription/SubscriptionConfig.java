@@ -290,6 +290,14 @@ public class SubscriptionConfig {
         }
     }
 
+    public void updateGtfsRtStatus(GtfsRTApi gtfsRTApi) {
+        Optional<GtfsRTApi> existingGtfsAPI = getExistingGtfsAPI(gtfsRTApi);
+        if (existingGtfsAPI.isPresent()) {
+            getGtfsRTApis().remove(existingGtfsAPI.get());
+            getGtfsRTApis().add(gtfsRTApi);
+        }
+    }
+
     private Optional<SubscriptionSetup> getExistingSubscription(SubscriptionSetup incomingSubscription) {
         for (SubscriptionSetup subscription : subscriptions) {
             if (incomingSubscription.getSubscriptionId().equals(subscription.getSubscriptionId())) {
