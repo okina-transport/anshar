@@ -8,7 +8,8 @@ import org.junit.jupiter.api.Test;
 import uk.org.siri.siri21.GeneralMessage;
 import uk.org.siri.siri21.Siri;
 
-import javax.xml.bind.JAXBException;
+import jakarta.xml.bind.JAXBException;
+
 import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 import java.nio.file.Files;

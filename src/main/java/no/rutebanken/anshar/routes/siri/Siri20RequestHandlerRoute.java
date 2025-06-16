@@ -16,6 +16,7 @@
 package no.rutebanken.anshar.routes.siri;
 
 import com.sun.xml.bind.marshaller.NamespacePrefixMapper;
+import jakarta.servlet.http.HttpServletResponse;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.data.util.CustomSiriXml;
@@ -44,7 +45,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.Siri;
 
-import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.MediaType;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -119,13 +119,13 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .description("Backwards compatible endpoint used for SIRI ServiceRequest limited to single dataprovider.")
                 .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.path).description("The id of the Codespace to limit data to").dataType("string").endParam()
 
-                .post("/anshar/subscribe").to("direct:process.subscription.request")
+                .post("/anshar/subscribe").to("direct:process.subscription.request1")
                 .description("Backwards compatible endpoint used for SIRI SubscriptionRequest.")
 
                 .post("/anshar/ws/subscribe").to("direct:process.soap.subscription.request")
                 .description("Backwards compatible endpoint used for SIRI SubscriptionRequest.")
 
-                .post("/anshar/subscribe/{" + PARAM_DATASET_ID + "}").to("direct:process.subscription.request")
+                .post("/anshar/subscribe/{" + PARAM_DATASET_ID + "}").to("direct:process.subscription.request2")
                 .description("Backwards compatible endpoint used for SIRI SubscriptionRequest limited to single dataprovider.")
                 .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.path).description("The id of the Codespace to limit data to").dataType("string").endParam()
 
@@ -149,17 +149,17 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.path).description("The id of the Codespace to limit data to").dataType("string").endParam()
 
                 // Endpoints that returned cached data
-                .post("/services-cache").to("direct:process.service.request.cache")
+                .post("/services-cache").to("direct:process.service.request.cache1")
                 .apiDocs(false)
-                .post("/services-cache/{" + PARAM_DATASET_ID + "}").to("direct:process.service.request.cache")
+                .post("/services-cache/{" + PARAM_DATASET_ID + "}").to("direct:process.service.request.cache2")
                 .apiDocs(false)
 
 
-                .post("/subscribe").to("direct:process.subscription.request")
+                .post("/subscribe").to("direct:process.subscription.request3")
                 .apiDocs(false)
                 .description("Endpoint used for SIRI SubscriptionRequest.")
 
-                .post("/subscribe/{" + PARAM_DATASET_ID + "}").to("direct:process.subscription.request")
+                .post("/subscribe/{" + PARAM_DATASET_ID + "}").to("direct:process.subscription.request4")
                 .apiDocs(false)
                 .description("Endpoint used for SIRI SubscriptionRequest limited to single dataprovider.")
                 .param().required(false).name(PARAM_DATASET_ID).type(RestParamType.path).description("The id of the Codespace to limit data to").dataType("string").endParam()
@@ -167,10 +167,10 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .to("direct:process.incoming.request")
                 .apiDocs(false)
 
-                .post("/{version}/{type}/{vendor}/{" + PARAM_SUBSCRIPTION_ID + "}/{service}").to("direct:process.incoming.request")
+                .post("/{version}/{type}/{vendor}/{" + PARAM_SUBSCRIPTION_ID + "}/{service}").to("direct:process.incoming.request1")
                 .apiDocs(false)
 
-                .post("/{version}/{type}/{vendor}/{" + PARAM_SUBSCRIPTION_ID + "}/{service}/{operation}").to("direct:process.incoming.request")
+                .post("/{version}/{type}/{vendor}/{" + PARAM_SUBSCRIPTION_ID + "}/{service}/{operation}").to("direct:process.incoming.request2")
                 .apiDocs(false)
                 .description("Generated dynamically when creating Subscription. Endpoint for incoming data")
                 .param().required(false).name("service").endParam()
@@ -189,6 +189,13 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .process(e -> e.getIn().setHeader(TRANSFORM_SOAP, TRANSFORM_SOAP))
                 .to("direct:transform.siri");
 
+        from("direct:process.incoming.request1")
+                .routeId("process.incoming.request1")
+                        .to("direct:process.incoming.request");
+
+        from("direct:process.incoming.request2")
+                .routeId("process.incoming.request2")
+                .to("direct:process.incoming.request");
 
         from("direct:process.incoming.request")
                 .threads(300)
@@ -268,6 +275,21 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .endChoice()
                 .routeId("process.soap.unique.entry.point");
 
+        from("direct:process.subscription.request1")
+                .routeId("process.subscription.request1")
+                .to("direct:process.subscription.request");
+
+        from("direct:process.subscription.request2")
+                .routeId("process.subscription.request2")
+                .to("direct:process.subscription.request");
+
+        from("direct:process.subscription.request3")
+                .routeId("process.subscription.request3")
+                .to("direct:process.subscription.request");
+
+        from("direct:process.subscription.request4")
+                .routeId("process.subscription.request4")
+                .to("direct:process.subscription.request");
 
         from("direct:process.subscription.request")
                 .to("log:subRequest:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true")
@@ -351,6 +373,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .to("log:subResponse:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
         ;
 
+
         from("direct:process.service.request")
                 .choice()
                 .when().xpath("/siri:Siri/siri:ServiceRequest/siri:VehicleMonitoringRequest", nameSpace)
@@ -377,6 +400,14 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .to("log:serRequest:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true&level=DEBUG")
                 .choice()
                 .when(e -> isTrackingHeaderAcceptable(e))
+                    .to("direct:internal.process.service.request.acceptable.header")
+                .otherwise()
+                    .to("direct:anshar.invalid.tracking.header.response")
+                .routeId("process.service")
+        ;
+
+        from("direct:internal.process.service.request.acceptable.header")
+                .routeId("nternal.process.service.request.acceptable.header")
                 .process(p -> {
                     Message msg = p.getIn();
 
@@ -426,18 +457,30 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 })
                 .choice()
                 .when(e -> TRANSFORM_SOAP.equals(e.getIn().getHeader(TRANSFORM_SOAP)))
-                    .to("xslt-saxon:xsl/siri_raw_soap.xsl")
-                    // Convert SIRI raw request to SOAP version
-                   // .to("xslt-saxon:xsl/siri_14_20.xsl") // Convert SIRI raw request to SOAP version
-                    .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
-                    .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.TEXT_XML)) // Necessary when talking to Microsoft web services
-                    .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
+                .to("xslt-saxon:xsl/siri_raw_soap.xsl")
+                // Convert SIRI raw request to SOAP version
+                // .to("xslt-saxon:xsl/siri_14_20.xsl") // Convert SIRI raw request to SOAP version
+                .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
+                .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.TEXT_XML)) // Necessary when talking to Microsoft web services
+                .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
                 .endChoice()
-                .to("log:serResponse:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true&level=DEBUG")
-                .otherwise()
-                .to("direct:anshar.invalid.tracking.header.response")
-                .routeId("process.service")
-        ;
+                .to("log:serResponse:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true&level=DEBUG");
+
+
+
+
+
+
+
+
+
+        from("direct:process.service.request.cache1")
+                .routeId("process.service.request.cache1")
+                .to("direct:process.service.request.cache");
+
+        from("direct:process.service.request.cache2")
+                .routeId("process.service.request.cache2")
+                .to("direct:process.service.request.cache");
 
         from("direct:process.service.request.cache")
                 .choice()

@@ -44,7 +44,9 @@ import uk.org.siri.siri21.Siri;
 
 import javax.annotation.PostConstruct;
 import javax.ws.rs.core.MediaType;
-import javax.xml.bind.JAXBException;
+
+import jakarta.xml.bind.JAXBException;
+
 import javax.xml.stream.XMLStreamException;
 import javax.xml.transform.TransformerException;
 import java.io.ByteArrayInputStream;

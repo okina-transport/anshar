@@ -30,7 +30,8 @@ import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.SerializationUtils;
 
-import javax.xml.bind.DatatypeConverter;
+import jakarta.xml.bind.DatatypeConverter;
+
 import java.io.Serializable;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -354,7 +355,9 @@ abstract class SiriRepository<T> {
                               String key, Set<SiriObjectStorageKey> changes, int trackingPeriodMinutes, TimeUnit timeUnit) {
         final String breadcrumbId = MDC.get("camel.breadcrumbId");
 
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
+
+
         executorService.execute(() -> {
             try {
                 MDC.put("camel.breadcrumbId", breadcrumbId);

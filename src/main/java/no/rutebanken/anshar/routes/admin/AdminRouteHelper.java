@@ -74,7 +74,7 @@ public class AdminRouteHelper {
     protected boolean shutdownTriggered;
 
     public void flushDataFromSubscription(String subscriptionId) {
-        ExecutorService executor = Executors.newSingleThreadExecutor();
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
         SubscriptionSetup subscriptionSetup = subscriptionManager.get(subscriptionId);
         if (subscriptionSetup != null) {
             executor.execute(() -> flushData(subscriptionSetup.getDatasetId(), subscriptionSetup.getSubscriptionType().name()));

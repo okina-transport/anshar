@@ -20,7 +20,7 @@ import no.rutebanken.anshar.validation.CustomValidatorTest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import javax.xml.bind.ValidationEvent;
+import jakarta.xml.bind.ValidationEvent;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -35,14 +35,14 @@ public class SummaryValidatorTest extends CustomValidatorTest {
     }
 
     @Test
-    public void testEmptySummary() throws Exception{
+    public void testEmptySummary() throws Exception {
         String xml = "<PLACEHOLDER><Summary></Summary></PLACEHOLDER>";
 
         assertNotNull(validator.isValid(createXmlNode(xml)), "Empty Summary flagged as valid");
     }
 
     @Test
-    public void testValidSummary() throws Exception{
+    public void testValidSummary() throws Exception {
         String xml = "<PLACEHOLDER><Summary>lorem ipsum</Summary></PLACEHOLDER>";
 
         final ValidationEvent valid = validator.isValid(createXmlNode(xml));
@@ -50,7 +50,7 @@ public class SummaryValidatorTest extends CustomValidatorTest {
     }
 
     @Test
-    public void testHtmlCodeInSummary() throws Exception{
+    public void testHtmlCodeInSummary() throws Exception {
         String xml = "<PLACEHOLDER><Summary>&lt;b&gt;lorem ipsum&lt;/b&gt;</Summary></PLACEHOLDER>";
 
         final ValidationEvent valid = validator.isValid(createXmlNode(xml));
@@ -58,7 +58,7 @@ public class SummaryValidatorTest extends CustomValidatorTest {
     }
 
     @Test
-    public void testTooLongSummary() throws Exception{
+    public void testTooLongSummary() throws Exception {
         StringBuilder msg = new StringBuilder();
         for (int i = 0; i < 161; i++) {
             msg.append("a");
@@ -70,7 +70,7 @@ public class SummaryValidatorTest extends CustomValidatorTest {
     }
 
     @Test
-    public void testMultipleSummariesWithLanguage() throws Exception{
+    public void testMultipleSummariesWithLanguage() throws Exception {
         String xml = "<PLACEHOLDER><Summary lang=\"NO\">lorem ipsum</Summary><Summary lang=\"EN\">lorem ipsum</Summary></PLACEHOLDER>";
 
         final ValidationEvent valid = validator.isValid(createXmlNode(xml));
@@ -78,7 +78,7 @@ public class SummaryValidatorTest extends CustomValidatorTest {
     }
 
     @Test
-    public void testMultipleSummariesWithSameLanguage() throws Exception{
+    public void testMultipleSummariesWithSameLanguage() throws Exception {
         String xml = "<PLACEHOLDER><Summary lang=\"NO\">lorem ipsum</Summary><Summary lang=\"NO\">lorem ipsum</Summary></PLACEHOLDER>";
 
         final ValidationEvent valid = validator.isValid(createXmlNode(xml));
@@ -86,7 +86,7 @@ public class SummaryValidatorTest extends CustomValidatorTest {
     }
 
     @Test
-    public void testMultipleSummariesWithoutLanguage() throws Exception{
+    public void testMultipleSummariesWithoutLanguage() throws Exception {
         String xml = "<PLACEHOLDER><Summary >lorem ipsum</Summary><Summary >lorem ipsum</Summary></PLACEHOLDER>";
 
         final ValidationEvent valid = validator.isValid(createXmlNode(xml));

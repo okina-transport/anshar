@@ -15,9 +15,9 @@
 
 package no.rutebanken.anshar.routes.validation.validators;
 
+import jakarta.xml.bind.ValidationEvent;
 import org.w3c.dom.Node;
 
-import javax.xml.bind.ValidationEvent;
 import java.util.Set;
 
 public abstract class LimitedSubsetValidator extends CustomValidator {
@@ -35,6 +35,7 @@ public abstract class LimitedSubsetValidator extends CustomValidator {
 
     /**
      * Validates that the string-value of the provided node is present, and defined in the expectedValues-set
+     *
      * @param node
      * @return
      */
@@ -43,7 +44,7 @@ public abstract class LimitedSubsetValidator extends CustomValidator {
         String nodeValue = getNodeValue(node);
 
         if (nodeValue == null || !expectedValues.contains(nodeValue)) {
-            return  createEvent(node, FIELDNAME, "one of " + expectedValues, nodeValue, ValidationEvent.ERROR);
+            return createEvent(node, FIELDNAME, "one of " + expectedValues, nodeValue, ValidationEvent.ERROR);
         }
         return null;
     }

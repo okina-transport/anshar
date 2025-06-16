@@ -56,12 +56,11 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
 
         int timeout = 15000;
 
-        onException(Exception.class)
-                .maximumRedeliveries(0)
-                .redeliveryDelay(3000) //milliseconds
-                .logRetryAttempted(true)
-                .log("Retry triggered")
-        ;
+//        onException(Exception.class)
+//                .maximumRedeliveries(0)
+//                .redeliveryDelay(3000) //milliseconds
+//                .logRetryAttempted(true)
+//        ;
 
         from("direct:send.to.external.subscription")
                 .routeId("send.to.external.subscription")

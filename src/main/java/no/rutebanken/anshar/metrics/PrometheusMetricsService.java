@@ -385,10 +385,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
 
     public void update() {
 
-        gauge(SUBS_PUSH_WAITING_THREADS, "pushWaitingThreads", value -> camelRouteManager.getPushSubscriptionWaitingQueueSize());
-        gauge(SUBS_PUSH_ACTIVE_THREADS, "pushActiveThreads", value -> camelRouteManager.getPushSubscriptionActiveCount());
-        gauge(PUSH_UPDATES_WAITING_THREADS, "pushUpdatesWaitingThreads", value -> serverSubscriptionManager.getPushUpdatesWaitingQueueSize());
-        gauge(PUSH_UPDATES_ACTIVE_THREADS, "pushUpdatesActiveThreads", value -> serverSubscriptionManager.getPushUpdatesActiveCount());
+
         gauge(OUTBOUND_SUBSCRIPTIONS_COUNT, "outboundSubscriptionsCount", value -> serverSubscriptionManager.getOutboundSubscriptionCount());
 
         gauge(ASYNC_PROCESS_SEDA_CURRENT_QUEUE_SIZE, "asyncProcessSedaQueueSize", value -> getAsyncProcessSedacurrentQueueSize());

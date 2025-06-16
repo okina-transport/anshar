@@ -23,7 +23,8 @@ import org.springframework.stereotype.Component;
 import org.w3c.dom.Node;
 import uk.org.siri.siri21.VehicleModesEnumeration;
 
-import javax.xml.bind.ValidationEvent;
+import jakarta.xml.bind.ValidationEvent;
+
 import java.util.List;
 import java.util.Set;
 

@@ -20,7 +20,7 @@ import no.rutebanken.anshar.validation.CustomValidatorTest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import javax.xml.bind.ValidationEvent;
+import jakarta.xml.bind.ValidationEvent;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -36,24 +36,24 @@ public class ProgressValidatorTest extends CustomValidatorTest {
     }
 
     @Test
-    public void testClosedProgress() throws Exception{
+    public void testClosedProgress() throws Exception {
         String xml = createXml(fieldName, "closed");
 
-        assertNull(validator.isValid(createXmlNode(xml)), "Valid "+fieldName+" flagged as invalid");
+        assertNull(validator.isValid(createXmlNode(xml)), "Valid " + fieldName + " flagged as invalid");
     }
 
     @Test
-    public void testOpenProgress() throws Exception{
+    public void testOpenProgress() throws Exception {
         String xml = createXml(fieldName, "open");
 
-        assertNull(validator.isValid(createXmlNode(xml)), "Valid "+fieldName+" flagged as invalid");
+        assertNull(validator.isValid(createXmlNode(xml)), "Valid " + fieldName + " flagged as invalid");
     }
 
     @Test
-    public void testInvalidProgress() throws Exception{
+    public void testInvalidProgress() throws Exception {
         String xml = createXml(fieldName, "published");
 
         final ValidationEvent valid = validator.isValid(createXmlNode(xml));
-        assertNotNull(valid, "Invalid "+fieldName+" flagged as valid");
+        assertNotNull(valid, "Invalid " + fieldName + " flagged as valid");
     }
 }

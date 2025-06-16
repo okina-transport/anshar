@@ -24,7 +24,7 @@ import org.w3c.dom.Node;
 import uk.org.ifopt.siri21.AccessibilityFeatureEnumeration;
 import uk.org.ifopt.siri21.StopPlaceComponentTypeEnumeration;
 
-import javax.xml.bind.ValidationEvent;
+import jakarta.xml.bind.ValidationEvent;
 
 import static org.junit.jupiter.api.Assertions.*;
 

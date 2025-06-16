@@ -20,7 +20,7 @@ import no.rutebanken.anshar.validation.CustomValidatorTest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import javax.xml.bind.ValidationEvent;
+import jakarta.xml.bind.ValidationEvent;
 
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -38,7 +38,7 @@ public class RecordedCallRequiredFieldsValidatorTest extends CustomValidatorTest
     @Test
     public void testRecordedCallBothActualTimesSet() {
         String actualTimesSet =
-                        "<RecordedCall>\n" +
+                "<RecordedCall>\n" +
                         "    <StopPointRef>NSR:Quay:968</StopPointRef>\n" +
                         "    <Order>1</Order>\n" +
                         "    <AimedArrivalTime>2019-02-27T17:48:00+01:00</AimedArrivalTime>\n" +
@@ -54,7 +54,7 @@ public class RecordedCallRequiredFieldsValidatorTest extends CustomValidatorTest
     @Test
     public void testRecordedCallExpectedArrivalActualDepartureSet() {
         String actualTimesSet =
-                        "<RecordedCall>\n" +
+                "<RecordedCall>\n" +
                         "    <StopPointRef>NSR:Quay:968</StopPointRef>\n" +
                         "    <Order>1</Order>\n" +
                         "    <AimedArrivalTime>2019-02-27T17:48:00+01:00</AimedArrivalTime>\n" +
@@ -70,7 +70,7 @@ public class RecordedCallRequiredFieldsValidatorTest extends CustomValidatorTest
     @Test
     public void testRecordedCallActualArrivalExpectedDepartureSet() {
         String actualTimesSet =
-                        "<RecordedCall>\n" +
+                "<RecordedCall>\n" +
                         "    <StopPointRef>NSR:Quay:968</StopPointRef>\n" +
                         "    <Order>1</Order>\n" +
                         "    <AimedArrivalTime>2019-02-27T17:48:00+01:00</AimedArrivalTime>\n" +
@@ -84,11 +84,10 @@ public class RecordedCallRequiredFieldsValidatorTest extends CustomValidatorTest
     }
 
 
-
     @Test
     public void testRecordedCallNoUpdatedTimesSet() {
         String actualTimesSet =
-                        "<RecordedCall>\n" +
+                "<RecordedCall>\n" +
                         "    <StopPointRef>NSR:Quay:968</StopPointRef>\n" +
                         "    <Order>1</Order>\n" +
                         "    <AimedArrivalTime>2019-02-27T17:48:00+01:00</AimedArrivalTime>\n" +
@@ -102,7 +101,7 @@ public class RecordedCallRequiredFieldsValidatorTest extends CustomValidatorTest
     @Test
     public void testRecordedCallNoUpdatedArrivalSet() {
         String actualTimesSet =
-                        "<RecordedCall>\n" +
+                "<RecordedCall>\n" +
                         "    <StopPointRef>NSR:Quay:968</StopPointRef>\n" +
                         "    <Order>1</Order>\n" +
                         "    <AimedArrivalTime>2019-02-27T17:48:00+01:00</AimedArrivalTime>\n" +
@@ -117,7 +116,7 @@ public class RecordedCallRequiredFieldsValidatorTest extends CustomValidatorTest
     @Test
     public void testRecordedCallNoUpdatedDepartureSet() {
         String actualTimesSet =
-                        "<RecordedCall>\n" +
+                "<RecordedCall>\n" +
                         "    <StopPointRef>NSR:Quay:968</StopPointRef>\n" +
                         "    <Order>1</Order>\n" +
                         "    <AimedArrivalTime>2019-02-27T17:48:00+01:00</AimedArrivalTime>\n" +

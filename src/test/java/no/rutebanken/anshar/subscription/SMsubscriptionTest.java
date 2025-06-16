@@ -14,7 +14,8 @@ import org.mockserver.integration.ClientAndServer;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri21.*;
 
-import javax.xml.bind.JAXBException;
+import jakarta.xml.bind.JAXBException;
+
 import java.time.ZonedDateTime;
 import java.util.*;
 

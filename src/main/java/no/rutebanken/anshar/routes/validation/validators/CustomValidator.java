@@ -15,15 +15,15 @@
 
 package no.rutebanken.anshar.routes.validation.validators;
 
+import jakarta.xml.bind.ValidationEvent;
+import jakarta.xml.bind.helpers.ValidationEventImpl;
+import jakarta.xml.bind.helpers.ValidationEventLocatorImpl;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import javax.xml.bind.ValidationEvent;
-import javax.xml.bind.helpers.ValidationEventImpl;
-import javax.xml.bind.helpers.ValidationEventLocatorImpl;
 import java.text.MessageFormat;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
@@ -60,10 +60,12 @@ public abstract class CustomValidator {
     }
 
     public abstract String getXpath();
+
     public abstract ValidationEvent isValid(Node node);
 
     /**
      * General, default categoryname if implementing class does not override method
+     *
      * @return
      */
     public String getCategoryName() {
@@ -86,11 +88,12 @@ public abstract class CustomValidator {
     }
 
     protected boolean isValidGenericId(String pattern, String nodeValue) {
-        return nodeValue != null && nodeValue.contains(":"+pattern+":");
+        return nodeValue != null && nodeValue.contains(":" + pattern + ":");
     }
 
     /**
      * Returns the textual content of the provided node - null if it does not exist
+     *
      * @param node
      * @return
      */
@@ -103,6 +106,7 @@ public abstract class CustomValidator {
 
     /**
      * Returns the textual content of the provided node - null if it does not exist
+     *
      * @param node
      * @return
      */
@@ -137,6 +141,7 @@ public abstract class CustomValidator {
 
     /**
      * Checks if nodename matches regardless of namespace-prefix
+     *
      * @param n
      * @param name
      * @return
@@ -146,7 +151,7 @@ public abstract class CustomValidator {
 
         boolean equals = nodeName.equals(name);
         if (!equals) {
-            equals = nodeName.matches(".*:"+name);
+            equals = nodeName.matches(".*:" + name);
         }
 
         return equals;
@@ -202,7 +207,7 @@ public abstract class CustomValidator {
 
 
     public ValidationEvent verifyNonExistingFields(Node node, String fieldName, String... invalidNodenames) {
-        List <String> invalidFields = new ArrayList<>();
+        List<String> invalidFields = new ArrayList<>();
         for (String name : invalidNodenames) {
             if (getChildNodeByName(node, name) != null) {
                 invalidFields.add(name);
@@ -215,7 +220,7 @@ public abstract class CustomValidator {
     }
 
     public ValidationEvent verifyRequiredFields(Node node, String fieldName, String... requiredNodenames) {
-        List <String> missingFields = new ArrayList<>();
+        List<String> missingFields = new ArrayList<>();
         for (String name : requiredNodenames) {
             if (getChildNodeByName(node, name) == null) {
                 missingFields.add(name);
@@ -228,11 +233,10 @@ public abstract class CustomValidator {
     }
 
     /**
-     *
-     * @param node Node that is validated
-     * @param fieldname Name of attribute that fails validation
+     * @param node           Node that is validated
+     * @param fieldname      Name of attribute that fails validation
      * @param expectedValues Expected value or description of expected value
-     * @param actualValue Actual value of node
+     * @param actualValue    Actual value of node
      * @param severity
      * @return
      */
@@ -242,9 +246,8 @@ public abstract class CustomValidator {
     }
 
     /**
-     *
-     * @param node Node that is validated
-     * @param fieldname Name of attribute that fails validation
+     * @param node          Node that is validated
+     * @param fieldname     Name of attribute that fails validation
      * @param missingFields Missing fields
      * @param severity
      * @return
@@ -259,9 +262,8 @@ public abstract class CustomValidator {
     }
 
     /**
-     *
-     * @param node Node that is validated
-     * @param fieldname Name of attribute that fails validation
+     * @param node          Node that is validated
+     * @param fieldname     Name of attribute that fails validation
      * @param missingFields Missing fields
      * @param severity
      * @return
@@ -276,9 +278,8 @@ public abstract class CustomValidator {
     }
 
     /**
-     *
-     * @param node Node that is validated
-     * @param message Validation-message
+     * @param node     Node that is validated
+     * @param message  Validation-message
      * @param severity
      * @return
      */

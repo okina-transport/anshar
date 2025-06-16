@@ -21,7 +21,7 @@
     <parent>
         <groupId>com.okina.springboot</groupId>
         <artifactId>superpom</artifactId>
-        <version>1.0.1-SNAPSHOT</version>
+        <version>2.0.0-SNAPSHOT</version>
     </parent>
 
 
@@ -37,9 +37,10 @@
         <!-- versions for use in mvn plugins as we cannot inherit them from a BOM -->
         <docker.maven.plugin.version>0.21.0</docker.maven.plugin.version>
         <spring-boot-plugin.version>2.6.6</spring-boot-plugin.version>
-        <spring-boot.version>2.6.6</spring-boot.version>
+        <spring-boot.version>3.5.0</spring-boot.version>
 
-        <camel-version>3.21.5</camel-version>
+        <camel-version>4.12.0</camel-version>
+        <camel-swagger-version>3.22.4</camel-swagger-version>
 
         <metrics.version>3.2.3</metrics.version>
         <okina.helpers.version>1.0.26</okina.helpers.version>
@@ -47,13 +48,21 @@
         <sonar.projectKey>mobi-iti:anshar</sonar.projectKey>
         <protobuf.version>3.19.3</protobuf.version>
         <gtfs.realtime-bindings.version>0.0.5</gtfs.realtime-bindings.version>
-        <version.lombok>1.18.16</version.lombok>
+        <version.lombok>1.18.38</version.lombok>
 
     </properties>
 
 
     <dependencyManagement>
+
         <dependencies>
+            <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>5.13.1</version> <!-- dernière version stable -->
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <groupId>org.apache.camel</groupId>
                 <artifactId>camel-bom</artifactId>
@@ -94,6 +103,10 @@
                         <groupId>javax.servlet</groupId>
                         <artifactId>servlet-api</artifactId>
                     </exclusion>
+                    <exclusion>
+                        <groupId>com.fasterxml.jackson.module</groupId>
+                        <artifactId>jackson-module-jaxb-annotations</artifactId>
+                    </exclusion>
                 </exclusions>
             </dependency>
             <dependency>
@@ -126,11 +139,44 @@
                 <version>2.29.0</version>
             </dependency>
 
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-web</artifactId>
+                <version>6.2.7</version>
+            </dependency>
+
+            <dependency>
+                <groupId>commons-io</groupId>
+                <artifactId>commons-io</artifactId>
+                <version>2.19.0</version>
+            </dependency>
+
 
         </dependencies>
     </dependencyManagement>
 
     <dependencies>
+        <dependency>
+            <groupId>jakarta.xml.bind</groupId>
+            <artifactId>jakarta.xml.bind-api</artifactId>
+            <version>4.0.2</version>
+        </dependency>
+        <dependency>
+            <groupId>com.sun.xml.bind</groupId>
+            <artifactId>jaxb-impl</artifactId>
+            <version>4.0.5</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-observation</artifactId>
+            <version>1.15.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-core</artifactId>
+            <version>1.15.0</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
@@ -145,7 +191,7 @@
         <dependency>
             <groupId>io.lettuce</groupId>
             <artifactId>lettuce-core</artifactId>
-            <version>6.3.1.RELEASE</version>
+            <version>6.7.1.RELEASE</version>
         </dependency>
 
         <dependency>
@@ -258,13 +304,18 @@
         <dependency>
             <groupId>org.apache.camel</groupId>
             <artifactId>camel-swagger-java</artifactId>
-            <version>${camel-version}</version>
+            <version>${camel-swagger-version}</version>
 
             <exclusions>
                 <exclusion>
                     <groupId>javax.ws.rs</groupId>
                     <artifactId>jsr311-api</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.module</groupId>
+                    <artifactId>jackson-module-jaxb-annotations</artifactId>
+                </exclusion>
+
             </exclusions>
 
         </dependency>
@@ -316,11 +367,6 @@
         </dependency>
         <dependency>
             <groupId>io.micrometer</groupId>
-            <artifactId>micrometer-core</artifactId>
-            <version>1.9.0</version>
-        </dependency>
-        <dependency>
-            <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
             <version>1.9.0</version>
         </dependency>
@@ -350,7 +396,13 @@
         <dependency>
             <groupId>org.entur</groupId>
             <artifactId>siri-java-model</artifactId>
-            <version>0.15.3-mobi-iti</version>
+            <version>1.0.0-mobi-iti</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>javax.xml.bind</groupId>
+                    <artifactId>jaxb-api</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
@@ -358,11 +410,7 @@
             <artifactId>siri-protobuf-mapper</artifactId>
             <version>1.0.2-mobi-iti-SNAPSHOT</version>
         </dependency>
-        <dependency>
-            <groupId>org.entur</groupId>
-            <artifactId>netex-java-model</artifactId>
-            <version>1.0.13</version>
-        </dependency>
+
         <!--        Geotools needed for calculating speed between stops-->
         <dependency>
             <groupId>org.geotools</groupId>
@@ -462,6 +510,7 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
+            <version>3.5.0</version>
         </dependency>
 
         <!-- Kryo zero configuration -->
@@ -483,7 +532,7 @@
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
             <scope>test</scope>
-            <version>5.8.2</version>
+            <version>5.13.1</version>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
@@ -564,18 +613,7 @@
             <artifactId>aspectjweaver</artifactId>
             <version>1.9.22</version>
         </dependency>
-        <dependency>
-            <groupId>org.awaitility</groupId>
-            <artifactId>awaitility</artifactId>
-            <version>3.0.0</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.awaitility</groupId>
-            <artifactId>awaitility-proxy</artifactId>
-            <version>3.0.0</version>
-            <scope>test</scope>
-        </dependency>
+
     </dependencies>
 
     <build>
@@ -585,14 +623,14 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.10.0</version>
                 <configuration>
-                    <source>11</source>
-                    <target>11</target>
+                    <source>21</source>
+                    <target>21</target>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.22.2</version>
+                <version>3.5.3</version>
                 <inherited>true</inherited>
                 <configuration>
                     <excludes>

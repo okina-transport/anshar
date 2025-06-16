@@ -23,6 +23,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.quartz.SchedulerFactoryBeanCustomizer;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import javax.annotation.PostConstruct;
@@ -122,6 +124,11 @@ public class AnsharConfiguration {
     private boolean automaticConsistencyReportsEnabled;
     @Value("${anshar.automaticConsistencyReports.cron:0+0+9,17+*+*+?}")
     private String automaticConsistencyReportsCron;
+
+    @Bean
+    public SchedulerFactoryBeanCustomizer schedulerDelayCustomizer() {
+        return schedulerFactoryBean -> schedulerFactoryBean.setStartupDelay(15);
+    }
 
     public boolean processET() {
         return (appModes.isEmpty() || appModes.contains(AppMode.DATA_ET));

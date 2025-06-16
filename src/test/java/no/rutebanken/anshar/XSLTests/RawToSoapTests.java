@@ -10,7 +10,8 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 import uk.org.siri.siri20.Siri;
 
-import javax.xml.bind.JAXBException;
+import jakarta.xml.bind.JAXBException;
+
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -39,7 +40,7 @@ public class RawToSoapTests extends SpringBootBaseTest {
     @Test
     public void stopPointsDiscoveryTest() throws IOException, TransformerException, JAXBException, XMLStreamException, ParserConfigurationException, SAXException {
 
-        TransformerFactory tFactory=TransformerFactory.newInstance();
+        TransformerFactory tFactory = TransformerFactory.newInstance();
 
         Source xmlDoc = new StreamSource("src/test/resources/discoveryTest/stop_points_raw_to_soap_test.xml");
         String outputFileName = "src/test/resources/discoveryTest/results/result_raw_to_soap_SP.xml";
@@ -57,7 +58,7 @@ public class RawToSoapTests extends SpringBootBaseTest {
             file.delete();
 
 
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
             throw e;
         }
@@ -66,7 +67,7 @@ public class RawToSoapTests extends SpringBootBaseTest {
     @Test
     public void linesDiscoveryTest() throws IOException, TransformerException, SAXException, XMLStreamException, ParserConfigurationException {
 
-        TransformerFactory tFactory=TransformerFactory.newInstance();
+        TransformerFactory tFactory = TransformerFactory.newInstance();
         Source xmlDoc = new StreamSource("src/test/resources/discoveryTest/lines_raw_to_soap_test.xml");
 
         String outputFileName = "src/test/resources/discoveryTest/results/result_raw_to_soap_lines.xml";
@@ -83,13 +84,13 @@ public class RawToSoapTests extends SpringBootBaseTest {
             checkXmlResult(file, Arrays.asList("N", "L2", "L1"), "LineRef");
             file.delete();
 
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
             throw e;
         }
     }
 
-    private void checkXmlResult(File file,  List<String> expectedValues, String tagName ) throws ParserConfigurationException, SAXException, IOException {
+    private void checkXmlResult(File file, List<String> expectedValues, String tagName) throws ParserConfigurationException, SAXException, IOException {
         Document document = parseXML(file);
         NodeList idLists = document.getElementsByTagName(tagName);
 
@@ -101,7 +102,7 @@ public class RawToSoapTests extends SpringBootBaseTest {
             nbOfLines++;
             assertTrue(expectedValues.contains(node.getFirstChild().getNodeValue()));
         }
-        assertEquals(nbOfLines,expectedValues.size());
+        assertEquals(nbOfLines, expectedValues.size());
     }
 
     private Document parseXML(File file) throws IOException, ParserConfigurationException, SAXException {

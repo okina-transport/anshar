@@ -33,15 +33,15 @@ public class IshtarRouteBuilder extends BaseRouteBuilder {
     private final int ishtarSynchronizeIntervalMs;
 
     private static final Predicate isDiscoverySubscription = Builder.body().method("discoverySubscription").isEqualTo(true);
-    private static final Predicate isSubscription  = Builder.body().method("subscriptionMode").isEqualTo(SUBSCRIBE);
-    private static final Predicate isLite  = Builder.body().method("subscriptionMode").in(LITE, LITE_XML);
+    private static final Predicate isSubscription = Builder.body().method("subscriptionMode").isEqualTo(SUBSCRIBE);
+    private static final Predicate isLite = Builder.body().method("subscriptionMode").in(LITE, LITE_XML);
     private static final Predicate isFetchedDelivery = Builder.body().method("subscriptionMode").in(FETCHED_DELIVERY,
             POLLING_FETCHED_DELIVERY);
     private static final Predicate isSubscriptionV1_4 = Builder.body().method("version").isEqualTo("1.4");
     private static final Predicate isSOAP = Builder.body().method("serviceType").isEqualTo("SOAP");
     private static final Predicate isREST = Builder.body().method("serviceType").isEqualTo("REST");
-    private static final Predicate isSiri20ToSiriWS14Subscription = and(isSubscriptionV1_4, isSOAP,  or(isSubscription, isFetchedDelivery));
-    private static final Predicate isSiri20ToSiriWS14RequestResponse = and(isSubscriptionV1_4, isSOAP,  not(isSubscription), not(isFetchedDelivery));
+    private static final Predicate isSiri20ToSiriWS14Subscription = and(isSubscriptionV1_4, isSOAP, or(isSubscription, isFetchedDelivery));
+    private static final Predicate isSiri20ToSiriWS14RequestResponse = and(isSubscriptionV1_4, isSOAP, not(isSubscription), not(isFetchedDelivery));
     private static final Predicate isSiri20ToSiriRS14Subscription = and(isSubscriptionV1_4, isREST);
     private static final Predicate isSiri20ToSiriWS20Subscription = and(not(isSubscriptionV1_4), isSOAP, or(isSubscription, isFetchedDelivery));
     private static final Predicate isSiri20ToSiriWS20RequestResponse = and(not(isSubscriptionV1_4), isSOAP, not(isSubscription), not(isFetchedDelivery));
@@ -54,8 +54,7 @@ public class IshtarRouteBuilder extends BaseRouteBuilder {
                                  SubscriptionManager subscriptionManager,
                                  IshtarSynchronizeProcessor ishtarSynchronizeProcessor,
                                  ClearCacheProcessor clearCacheProcessor,
-                                 @Value("${ishtar.interval.millis:180000}") int ishtarSynchronizeIntervalMs)
-    {
+                                 @Value("${ishtar.interval.millis:180000}") int ishtarSynchronizeIntervalMs) {
         super(config, subscriptionManager);
         this.ishtarSynchronizeProcessor = ishtarSynchronizeProcessor;
         this.clearCacheProcessor = clearCacheProcessor;
@@ -70,7 +69,7 @@ public class IshtarRouteBuilder extends BaseRouteBuilder {
                 .to(ISHTAR_SYNCHRONIZE_DATA_ROUTE)
                 .end();
 
-        from(ISHTAR_SYNCHRONIZE_DATA_ROUTE)
+        from("direct://isthar.synchronize.data")
                 .routeId(ISHTAR_SYNCHRONIZE_DATA_ROUTE)
                 .onException(Exception.class)
                 .handled(true)
@@ -90,66 +89,66 @@ public class IshtarRouteBuilder extends BaseRouteBuilder {
                 .end();
 
         from(ISHTAR_GET_SIRI_API_REQUEST_ROUTE)
-            .routeId(ISHTAR_GET_SIRI_API_REQUEST_ROUTE)
-            .removeHeaders("*")
-            .unmarshal().json(SiriApiDto.class)
-            .convertBodyTo(HttpRequestDto.class)
-            .marshal().json()
-            .end();
+                .routeId(ISHTAR_GET_SIRI_API_REQUEST_ROUTE)
+                .removeHeaders("*")
+                .unmarshal().json(SiriApiDto.class)
+                .convertBodyTo(HttpRequestDto.class)
+                .marshal().json()
+                .end();
 
         from(ISHTAR_GET_SUBSCRIPTION_REQUEST_ROUTE)
-            .routeId(ISHTAR_GET_SUBSCRIPTION_REQUEST_ROUTE)
-            .removeHeaders("*")
-            .unmarshal().json(SubscriptionDto.class)
-            .choice()
+                .routeId(ISHTAR_GET_SUBSCRIPTION_REQUEST_ROUTE)
+                .removeHeaders("*")
+                .unmarshal().json(SubscriptionDto.class)
+                .choice()
                 .when(not(isDiscoverySubscription))
-                    .convertBodyTo(SubscriptionSetup.class)
-                    .choice()
-                        .when(isSiri20ToSiriWS14Subscription)
-                            .log(LoggingLevel.INFO, "20 to WS 14 Subscription")
-                            .to("direct:siri.20.to.siri.ws.14.subscription.preprocess")
-                        .when(isSiri20ToSiriWS14RequestResponse)
-                            .log(LoggingLevel.INFO, "20 to WS 14 Request Response")
-                            .to("direct:siri.20.to.siri.ws.14.request-response.preprocess")
-                        .when(isSiri20ToSiriRS14Subscription)
-                            .log(LoggingLevel.INFO, "20 to RS 14 Subscription")
-                            .to("direct:siri.20.to.siri.rs.14.subscription.preprocess")
-                        .when(isSiri20ToSiriWS20Subscription)
-                            .log(LoggingLevel.INFO, "20 to WS 20 Subscription")
-                            .to("direct:siri.20.to.siri.ws.20.subscription.preprocess")
-                        .when(isSiri20ToSiriWS20RequestResponse)
-                            .log(LoggingLevel.INFO, "20 to WS 20 Request Response")
-                            .to("direct:siri.20.to.siri.ws.20.request-response.preprocess")
-                        .when(isSiri20ToSiriRS20Subscription)
-                            .log(LoggingLevel.INFO, "20 to RS 20 Subscription")
-                            .to("direct:siri.20.to.siri.rs.20.subscription.preprocess")
-                        .when(isSiriLiteToSiriRS20RequestResponse)
-                            .log(LoggingLevel.INFO, "Lite to RS 20 Request Response")
-                            .to("direct:siri.lite.to.siri.rs.20.request-response.preprocess")
-                        .when(isSiri20ToSiriRS20RequestResponse)
-                            .log(LoggingLevel.INFO, "20 to RS 20 Request Response")
-                            .to("direct:siri.20.to.siri.rs.20.request-response.preprocess")
-                    .endChoice()
+                .convertBodyTo(SubscriptionSetup.class)
+                .choice()
+                .when(isSiri20ToSiriWS14Subscription)
+                .log(LoggingLevel.INFO, "20 to WS 14 Subscription")
+                .to("direct:siri.20.to.siri.ws.14.subscription.preprocess")
+                .when(isSiri20ToSiriWS14RequestResponse)
+                .log(LoggingLevel.INFO, "20 to WS 14 Request Response")
+                .to("direct:siri.20.to.siri.ws.14.request-response.preprocess")
+                .when(isSiri20ToSiriRS14Subscription)
+                .log(LoggingLevel.INFO, "20 to RS 14 Subscription")
+                .to("direct:siri.20.to.siri.rs.14.subscription.preprocess")
+                .when(isSiri20ToSiriWS20Subscription)
+                .log(LoggingLevel.INFO, "20 to WS 20 Subscription")
+                .to("direct:siri.20.to.siri.ws.20.subscription.preprocess")
+                .when(isSiri20ToSiriWS20RequestResponse)
+                .log(LoggingLevel.INFO, "20 to WS 20 Request Response")
+                .to("direct:siri.20.to.siri.ws.20.request-response.preprocess")
+                .when(isSiri20ToSiriRS20Subscription)
+                .log(LoggingLevel.INFO, "20 to RS 20 Subscription")
+                .to("direct:siri.20.to.siri.rs.20.subscription.preprocess")
+                .when(isSiriLiteToSiriRS20RequestResponse)
+                .log(LoggingLevel.INFO, "Lite to RS 20 Request Response")
+                .to("direct:siri.lite.to.siri.rs.20.request-response.preprocess")
+                .when(isSiri20ToSiriRS20RequestResponse)
+                .log(LoggingLevel.INFO, "20 to RS 20 Request Response")
+                .to("direct:siri.20.to.siri.rs.20.request-response.preprocess")
+                .endChoice()
                 .otherwise()
-                    .log(LoggingLevel.INFO, "Discovery Subscription")
-                    .convertBodyTo(DiscoverySubscription.class)
-                    .to(SEND_DISCOVERY_REQUEST_PREPROCESS_ROUTE)
-            .end()
-            .process(e -> {
-                HttpRequestDto out = new HttpRequestDto();
-                out.setUrl(e.getIn().getHeader(SUBSCRIPTION_URL_HEADER, String.class));
-                out.setHeaders(e.getIn().getHeaders());
-                out.setBody(e.getIn().getBody(String.class));
-                out.setMethod(e.getIn().getHeader(Exchange.HTTP_METHOD).toString());
-                e.getIn().setBody(out);
-            })
-            .marshal().json()
-            .end();
+                .log(LoggingLevel.INFO, "Discovery Subscription")
+                .convertBodyTo(DiscoverySubscription.class)
+                .to(SEND_DISCOVERY_REQUEST_PREPROCESS_ROUTE)
+                .end()
+                .process(e -> {
+                    HttpRequestDto out = new HttpRequestDto();
+                    out.setUrl(e.getIn().getHeader(SUBSCRIPTION_URL_HEADER, String.class));
+                    out.setHeaders(e.getIn().getHeaders());
+                    out.setBody(e.getIn().getBody(String.class));
+                    out.setMethod(e.getIn().getHeader(Exchange.HTTP_METHOD).toString());
+                    e.getIn().setBody(out);
+                })
+                .marshal().json()
+                .end();
 
         from(ISHTAR_CLEAR_CACHE_BY_DATASET_ID)
-            .routeId(ISHTAR_CLEAR_CACHE_BY_DATASET_ID)
-            .process(clearCacheProcessor)
-            .end();
+                .routeId(ISHTAR_CLEAR_CACHE_BY_DATASET_ID)
+                .process(clearCacheProcessor)
+                .end();
 
     }
 

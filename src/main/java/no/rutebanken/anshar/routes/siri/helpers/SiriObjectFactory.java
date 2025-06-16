@@ -38,7 +38,9 @@ import uk.org.siri.siri21.*;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.xml.bind.JAXBException;
+
+import jakarta.xml.bind.JAXBException;
+
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import java.time.Duration;

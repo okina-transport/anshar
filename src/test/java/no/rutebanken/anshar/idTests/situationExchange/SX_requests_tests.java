@@ -20,7 +20,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri21.PtSituationElement;
 import uk.org.siri.siri21.Siri;
 
-import javax.xml.bind.JAXBException;
+import jakarta.xml.bind.JAXBException;
+
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;

@@ -24,7 +24,8 @@ import org.springframework.stereotype.Component;
 import org.w3c.dom.Node;
 import uk.org.acbs.siri21.AccessibilityEnumeration;
 
-import javax.xml.bind.ValidationEvent;
+import jakarta.xml.bind.ValidationEvent;
+
 import java.util.Set;
 
 import static no.rutebanken.anshar.routes.validation.validators.Constants.ACCESSIBILITY_ASSESSMENT;

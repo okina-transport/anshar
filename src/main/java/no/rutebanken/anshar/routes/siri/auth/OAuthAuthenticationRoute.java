@@ -13,25 +13,32 @@ public class OAuthAuthenticationRoute extends RouteBuilder {
     public void configure() throws Exception {
 
         from("direct:oauth2.authorize")
-                .choice() .when(header("oauth-server").isNotNull())
-                    .setHeader("CamelHttpMethod").simple("POST")
-                    .setHeader(Exchange.CONTENT_TYPE).simple(MediaType.APPLICATION_JSON)
-                    .setBody()
-                    .simple("{\"grant_type\": \"${header.oauth-grant-type}\", \"client_id\": \"${header.oauth-client-id}\", \"client_secret\": \"${header.oauth-client-secret}\", \"audience\": \"${header.oauth-audience}\"}")
-                    .toD("${header.oauth-server}")
-                    .unmarshal().json(JsonLibrary.Jackson, ResponseToken.class)
-                    .choice()
-                    .when().simple("${header.CamelHttpResponseCode} == 200")
-                        .setHeader("Authorization").simple("${body.token_type} ${body.access_token}")
-                        .log("Authenticated!!!")
-                    .otherwise()
-                        .log("Not Authenticated!!!")
-                    .endChoice()
+                .choice().when(header("oauth-server").isNotNull())
+                .to("direct:oauth2.authorize.server.not.null")
                 .otherwise()
-                    .log("No OAuth configured - skipping")
+                .log("No OAuth configured - skipping")
                 .end()
                 .removeHeaders("oauth*") //Always clean up to avoid secrets being exposed
                 .routeId("anshar.oauth2.authorize")
         ;
+
+        from("direct:oauth2.authorize.server.not.null")
+                .routeId("oauth2.authorize.server.not.null")
+                .setHeader("CamelHttpMethod").simple("POST")
+                .setHeader(Exchange.CONTENT_TYPE).simple(MediaType.APPLICATION_JSON)
+                .setBody()
+                .simple("{\"grant_type\": \"${header.oauth-grant-type}\", \"client_id\": \"${header.oauth-client-id}\", \"client_secret\": \"${header.oauth-client-secret}\", \"audience\": \"${header.oauth-audience}\"}")
+                .toD("${header.oauth-server}")
+                .unmarshal().json(JsonLibrary.Jackson, ResponseToken.class)
+                .choice()
+                .when().simple("${header.CamelHttpResponseCode} == 200")
+                .setHeader("Authorization").simple("${body.token_type} ${body.access_token}")
+                .log("Authenticated!!!")
+                .otherwise()
+                .log("Not Authenticated!!!")
+                .endChoice()
+                .end();
     }
+
+
 }

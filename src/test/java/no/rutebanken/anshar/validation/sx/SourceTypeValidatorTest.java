@@ -20,7 +20,7 @@ import no.rutebanken.anshar.validation.CustomValidatorTest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import javax.xml.bind.ValidationEvent;
+import jakarta.xml.bind.ValidationEvent;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -36,24 +36,24 @@ public class SourceTypeValidatorTest extends CustomValidatorTest {
     }
 
     @Test
-    public void testDirectReportType() throws Exception{
+    public void testDirectReportType() throws Exception {
         String xml = createXml(fieldName, "directReport");
 
-        assertNull(validator.isValid(createXmlNode(xml)), "Valid "+fieldName+" flagged as invalid");
+        assertNull(validator.isValid(createXmlNode(xml)), "Valid " + fieldName + " flagged as invalid");
     }
 
     @Test
-    public void testFaxReportType() throws Exception{
+    public void testFaxReportType() throws Exception {
         String xml = createXml(fieldName, "fax");
 
-        assertNotNull(validator.isValid(createXmlNode(xml)), "Invalid "+fieldName+" flagged as valid");
+        assertNotNull(validator.isValid(createXmlNode(xml)), "Invalid " + fieldName + " flagged as valid");
     }
 
     @Test
-    public void testEmptySourceType() throws Exception{
+    public void testEmptySourceType() throws Exception {
         String xml = createXml(fieldName, "");
 
         final ValidationEvent valid = validator.isValid(createXmlNode(xml));
-        assertNotNull(valid, "Invalid "+fieldName+" flagged as valid");
+        assertNotNull(valid, "Invalid " + fieldName + " flagged as valid");
     }
 }

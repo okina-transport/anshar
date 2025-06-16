@@ -27,7 +27,8 @@ import org.mockserver.integration.ClientAndServer;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri21.GeneralMessage;
 
-import javax.xml.bind.JAXBException;
+import jakarta.xml.bind.JAXBException;
+
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;

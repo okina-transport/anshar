@@ -6,14 +6,15 @@ import lombok.Getter;
 import lombok.Setter;
 import no.rutebanken.anshar.okinaDisruptions.model.enums.OrganisationTypeEnum;
 
-import javax.xml.bind.annotation.XmlTransient;
+import jakarta.xml.bind.annotation.XmlTransient;
+
 import java.sql.Date;
 import java.util.ArrayList;
 import java.util.List;
 
 @Getter
 @Setter
-public class OkinaCompany extends NeptuneIdentifiedObject{
+public class OkinaCompany extends NeptuneIdentifiedObject {
 
     private String name;
     private String shortName;
@@ -59,7 +60,7 @@ public class OkinaCompany extends NeptuneIdentifiedObject{
      * Organisation type
      *
      * @param organisationType
-     *            New value
+     * New value
      * @return The actual value
      */
     @Getter

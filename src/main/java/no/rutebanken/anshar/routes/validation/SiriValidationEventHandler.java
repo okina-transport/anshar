@@ -15,11 +15,11 @@
 
 package no.rutebanken.anshar.routes.validation;
 
+import jakarta.xml.bind.ValidationEvent;
+import jakarta.xml.bind.ValidationEventHandler;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
-import javax.xml.bind.ValidationEvent;
-import javax.xml.bind.ValidationEventHandler;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -65,10 +65,10 @@ class SiriValidationEventHandler implements ValidationEventHandler {
 
             categorizedEvents.get(this.getClass().getSimpleName())
                     .values().forEach(e -> {
-                JSONObject event = createJsonValidationEvent(e);
-                counter.addAndGet(getOccurrenceCount(e));
-                eventList.add(event);
-            });
+                        JSONObject event = createJsonValidationEvent(e);
+                        counter.addAndGet(getOccurrenceCount(e));
+                        eventList.add(event);
+                    });
 
             obj.put("events", eventList);
         } else {
@@ -135,7 +135,7 @@ class SiriValidationEventHandler implements ValidationEventHandler {
 
     private Object wrapAsString(Object o) {
         if (o != null) {
-            if (! (o instanceof Integer)) {
+            if (!(o instanceof Integer)) {
                 return "" + o;
             }
             return o;

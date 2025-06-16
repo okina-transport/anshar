@@ -21,7 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import javax.xml.bind.ValidationEvent;
+import jakarta.xml.bind.ValidationEvent;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -39,45 +39,45 @@ public class AffectedStopPlaceValidatorTest extends CustomValidatorTest {
     }
 
     @Test
-    public void testEmptyStopPointRef() throws Exception{
+    public void testEmptyStopPointRef() throws Exception {
         String xml = createXml(fieldName, "");
 
         assertNotNull(
-            validator.isValid(createXmlNode(xml)),
-            "Empty "+fieldName+ " flagged as valid"
+                validator.isValid(createXmlNode(xml)),
+                "Empty " + fieldName + " flagged as valid"
         );
     }
 
     @Test
-    public void testQuayStopPointRef() throws Exception{
+    public void testQuayStopPointRef() throws Exception {
         String xml = createXml(fieldName, "NSR:Quay:1234");
 
         final ValidationEvent valid = validator.isValid(createXmlNode(xml));
         assertNull(
-            valid,
-            "Valid "+fieldName+" flagged as invalid"
+                valid,
+                "Valid " + fieldName + " flagged as invalid"
         );
     }
 
     @Test
-    public void testStopPlaceStopPointRef() throws Exception{
+    public void testStopPlaceStopPointRef() throws Exception {
         String xml = createXml(fieldName, "NSR:StopPlace:1234");
 
         final ValidationEvent valid = validator.isValid(createXmlNode(xml));
         assertNull(
-            valid,
-            fieldName+" with StopPlace flagged as invalid"
+                valid,
+                fieldName + " with StopPlace flagged as invalid"
         );
     }
 
     @Test
-    public void testRandomStopPointRef() throws Exception{
+    public void testRandomStopPointRef() throws Exception {
         String xml = createXml(fieldName, "001234111");
 
         final ValidationEvent valid = validator.isValid(createXmlNode(xml));
         assertNotNull(
-            valid,
-            fieldName+" with StopPlace flagged as invalid"
+                valid,
+                fieldName + " with StopPlace flagged as invalid"
         );
     }
 }

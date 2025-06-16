@@ -15,12 +15,11 @@
 
 package no.rutebanken.anshar.validation.et;
 
+import jakarta.xml.bind.ValidationEvent;
 import no.rutebanken.anshar.routes.validation.validators.et.EstimatedAimedArrivalTimeValidator;
 import no.rutebanken.anshar.validation.CustomValidatorTest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-
-import javax.xml.bind.ValidationEvent;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -37,46 +36,46 @@ public class EstimatedAimedArrivalTimeValidatorTest extends CustomValidatorTest 
     }
 
     @Test
-    public void testAimedArrivalOnly() throws Exception{
+    public void testAimedArrivalOnly() {
         String xml = createXml(fieldName, "2018-04-16T10:00:00+02:00");
 
-        assertNull(validator.isValid(createXmlNode(xml).getFirstChild()), "Valid "+fieldName+" flagged as invalid");
+        assertNull(validator.isValid(createXmlNode(xml).getFirstChild()), "Valid " + fieldName + " flagged as invalid");
     }
 
 
     @Test
-    public void testAimedArrivalAndAimedDepartureEqual() throws Exception{
+    public void testAimedArrivalAndAimedDepartureEqual() {
         String arrival = createXml(fieldName, "2018-04-16T10:00:00+02:00");
         String departure = createXml(comparisonField, "2018-04-16T10:00:00+02:00");
 
         String xml = "<PLACEHOLDER>" + arrival + departure + "</PLACEHOLDER>";
 
-        assertNull(validator.isValid(createXmlNode(xml).getFirstChild()), "Valid "+fieldName+" flagged as invalid");
+        assertNull(validator.isValid(createXmlNode(xml).getFirstChild()), "Valid " + fieldName + " flagged as invalid");
     }
 
     @Test
-    public void testAimedArrivalBeforeAimedDeparture() throws Exception{
+    public void testAimedArrivalBeforeAimedDeparture() {
         String arrival = createXml(fieldName, "2018-04-16T10:00:00+02:00");
         String departure = createXml(comparisonField, "2018-04-16T10:02:00+02:00");
 
         String xml = "<PLACEHOLDER>" + arrival + departure + "</PLACEHOLDER>";
 
-        assertNull(validator.isValid(createXmlNode(xml).getFirstChild()), "Valid "+fieldName+" flagged as invalid");
+        assertNull(validator.isValid(createXmlNode(xml).getFirstChild()), "Valid " + fieldName + " flagged as invalid");
     }
 
     @Test
-    public void testAimedArrivalAfterAimedDeparture() throws Exception{
+    public void testAimedArrivalAfterAimedDeparture() {
         String arrival = createXml(fieldName, "2018-04-16T10:02:00+02:00");
         String departure = createXml(comparisonField, "2018-04-16T10:00:00+02:00");
 
         String xml = "<dummy>" + arrival + departure + "</dummy>";
 
         final ValidationEvent valid = validator.isValid(createXmlNode(xml).getFirstChild());
-        assertNotNull(valid, "Invalid "+fieldName+" flagged as valid");
+        assertNotNull(valid, "Invalid " + fieldName + " flagged as valid");
     }
 
     @Test
-    public void testAimedArrivalAfterAimedDepartureWithCancellation() throws Exception{
+    public void testAimedArrivalAfterAimedDepartureWithCancellation() {
         String arrival = createXml(fieldName, "2018-04-16T10:02:00+02:00");
         String departure = createXml(comparisonField, "2018-04-16T10:00:00+02:00");
         String departureStatus = createXml("DepartureStatus", "cancelled");

@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
 public class SOAPSplitProcessor implements Processor {
 
 
-    @Produce(uri = "direct:enqueue.message")
+    @Produce(value = "direct:enqueue.message")
     protected ProducerTemplate enqueueMessageProducer;
 
 

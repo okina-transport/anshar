@@ -43,8 +43,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.xml.sax.SAXException;
 import uk.org.siri.siri21.*;
 
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.UnmarshalException;
+import jakarta.xml.bind.JAXBException;
+import jakarta.xml.bind.UnmarshalException;
+
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.stream.XMLStreamException;
 import java.io.ByteArrayInputStream;

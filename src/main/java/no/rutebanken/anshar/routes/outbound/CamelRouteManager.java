@@ -15,7 +15,6 @@
 
 package no.rutebanken.anshar.routes.outbound;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
@@ -40,8 +39,6 @@ import java.net.SocketException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
 
 import static no.rutebanken.anshar.routes.HttpParameter.SIRI_VERSION_HEADER_NAME;
 import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_SOAP;
@@ -64,15 +61,13 @@ public class CamelRouteManager {
     private SiriHelper siriHelper;
     @Value("${anshar.default.max.elements.per.delivery:1000}")
     private int maximumSizePerDelivery;
-    @Value("${anshar.default.max.threads.per.outbound.subscription:20}")
-    private int maximumThreadsPerOutboundSubscription;
     @Autowired
     private VehicleActivities vehicleActivities;
     @Autowired
     private SituationExchangeOutbound situationExchangeOutbound;
     @Autowired
     private PrometheusMetricsService prometheusMetricsService;
-    private ThreadPoolExecutor executors;
+    private ExecutorService executors;
 
     /**
      * Splits SIRI-data if applicable, and pushes data to external subscription
@@ -329,8 +324,7 @@ public class CamelRouteManager {
     private ExecutorService getOrCreateExecutorService(OutboundSubscriptionSetup subscriptionRequest) {
 
         if (executors == null) {
-            ThreadFactory factory = new ThreadFactoryBuilder().setNameFormat("outbound").build();
-            executors = (ThreadPoolExecutor) Executors.newFixedThreadPool(maximumThreadsPerOutboundSubscription, factory);
+            executors = Executors.newVirtualThreadPerTaskExecutor();
         }
 
         return executors;
@@ -360,13 +354,6 @@ public class CamelRouteManager {
         }
     }
 
-    public int getPushSubscriptionWaitingQueueSize() {
-        return executors == null ? 0 : executors.getQueue().size();
-    }
-
-    public int getPushSubscriptionActiveCount() {
-        return executors == null ? 0 : executors.getActiveCount();
-    }
 
     public void postDataToSubscription(String datasetId, Siri payload, OutboundSubscriptionSetup subscription, boolean showBody) {
         Map<String, Object> headers = new HashMap<>();

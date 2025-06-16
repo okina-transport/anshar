@@ -4,6 +4,8 @@ import no.rutebanken.anshar.data.*;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.handlers.outbound.SituationExchangeOutbound;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
+import no.rutebanken.anshar.subscription.SiriDataType;
+import no.rutebanken.anshar.util.SiriUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,7 +78,9 @@ public class InitialDeliveryGenerator {
             Set<String> datasetIds = vehicleActivities.getAllDatasetIds();
             for (String datasetId : datasetIds) {
                 Siri delivery = getVMinitialDeliveryForDataset(subscriptionRequest, datasetId);
-                results.put(subscriptionRequest.getDatasetId(), delivery);
+                if (SiriUtils.hasDataOfType(delivery, SiriDataType.VEHICLE_MONITORING)) {
+                    results.put(subscriptionRequest.getDatasetId(), delivery);
+                }
             }
         }
 
@@ -98,7 +102,9 @@ public class InitialDeliveryGenerator {
             Set<String> datasetList = monitoredStopVisits.getAllDatasetIds();
             for (String datasetId : datasetList) {
                 Siri delivery = monitoredStopVisits.createServiceDelivery(subscriptionRequest.getRequestorRef(), datasetId, "initialDelivery", Integer.MAX_VALUE, searchedStopIds);
-                results.put(datasetId, delivery);
+                if (SiriUtils.hasDataOfType(delivery, SiriDataType.STOP_MONITORING)) {
+                    results.put(datasetId, delivery);
+                }
             }
         }
         return results;
@@ -115,7 +121,9 @@ public class InitialDeliveryGenerator {
             Set<String> datasetIds = estimatedTimetables.getAllDatasetIds();
             for (String datasetId : datasetIds) {
                 Siri delivery = getETinitialDeliveryForDataset(subscriptionRequest, datasetId);
-                results.put(subscriptionRequest.getDatasetId(), delivery);
+                if (SiriUtils.hasDataOfType(delivery, SiriDataType.ESTIMATED_TIMETABLE)) {
+                    results.put(subscriptionRequest.getDatasetId(), delivery);
+                }
             }
         }
 

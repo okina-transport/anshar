@@ -37,7 +37,8 @@ import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri21.*;
 
-import javax.xml.bind.UnmarshalException;
+import jakarta.xml.bind.UnmarshalException;
+
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
@@ -69,7 +70,7 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest implements Camel
     private LineUpdaterService lineupdaterService;
 
 
-    @Produce(uri = "direct:send.to.external.subscription")
+    @Produce(value = "direct:send.to.external.subscription")
     protected ProducerTemplate sendExternalSubscription;
 
     @BeforeEach
@@ -80,7 +81,7 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest implements Camel
     private CamelContext camelContext;
 
 
-    @Produce(uri = "direct:enqueue.message")
+    @Produce(value = "direct:enqueue.message")
     protected ProducerTemplate enqueueMessageProducer;
 
 

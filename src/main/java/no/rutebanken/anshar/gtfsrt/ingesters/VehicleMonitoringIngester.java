@@ -14,7 +14,8 @@ import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.Siri;
 import uk.org.siri.siri21.VehicleActivityStructure;
 
-import javax.xml.bind.JAXBException;
+import jakarta.xml.bind.JAXBException;
+
 import javax.xml.stream.XMLStreamException;
 import java.io.InputStream;
 import java.util.Collection;

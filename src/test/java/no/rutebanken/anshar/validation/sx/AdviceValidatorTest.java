@@ -5,7 +5,7 @@ import no.rutebanken.anshar.validation.CustomValidatorTest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import javax.xml.bind.ValidationEvent;
+import jakarta.xml.bind.ValidationEvent;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -20,7 +20,7 @@ public class AdviceValidatorTest extends CustomValidatorTest {
     }
 
     @Test
-    public void testHtmlCodeInAdvice() throws Exception{
+    public void testHtmlCodeInAdvice() throws Exception {
         String xml = "<PLACEHOLDER><Advice>&lt;b&gt;lorem ipsum&lt;/b&gt;</Advice></PLACEHOLDER>";
 
         final ValidationEvent valid = validator.isValid(createXmlNode(xml));

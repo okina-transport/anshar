@@ -15,6 +15,9 @@
 
 package no.rutebanken.anshar.routes;
 
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.xml.bind.JAXBException;
+import jakarta.xml.bind.UnmarshalException;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import no.rutebanken.anshar.data.util.CustomSiriXml;
@@ -37,10 +40,7 @@ import uk.org.siri.siri21.GeneralMessage;
 import uk.org.siri.siri21.GeneralMessageDeliveryStructure;
 import uk.org.siri.siri21.Siri;
 
-import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.MediaType;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.UnmarshalException;
 import javax.xml.stream.XMLStreamException;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -86,6 +86,7 @@ public class RestRouteBuilder extends RouteBuilder {
     public void configure() throws Exception {
 
         restConfiguration()
+                .inlineRoutes(false)
                 .component("jetty")
                 .port(configuration.getInboundPort())
                 .apiContextPath("anshar/swagger.json")

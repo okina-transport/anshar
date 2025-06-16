@@ -25,7 +25,7 @@ public class ThreadSafeDataFormat extends JaxbDataFormat {
     }
 
     @Override
-    public Object unmarshal(Exchange exchange, InputStream stream) throws IOException {
+    public Object unmarshal(Exchange exchange, InputStream stream) throws Exception {
         synchronized (LOCK) {
             return super.unmarshal(exchange, stream);
         }

@@ -2,13 +2,11 @@ package no.rutebanken.anshar.util;
 
 
 import no.rutebanken.anshar.routes.outbound.OutboundSubscriptionSetup;
+import no.rutebanken.anshar.subscription.SiriDataType;
 import org.entur.siri.validator.SiriValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri21.MonitoredStopVisit;
-import uk.org.siri.siri21.MonitoredVehicleJourneyStructure;
-import uk.org.siri.siri21.Siri;
-import uk.org.siri.siri21.StopMonitoringDeliveryStructure;
+import uk.org.siri.siri21.*;
 
 import javax.xml.datatype.Duration;
 import java.time.ZonedDateTime;
@@ -36,6 +34,74 @@ public class SiriUtils {
         }
         logger.error("Unsupported version: {}", version);
         throw new IllegalArgumentException("Unsupported version: " + version);
+    }
+
+    public static boolean hasDataOfType(Siri siri, SiriDataType type) {
+
+        if (siri == null || siri.getServiceDelivery() == null) {
+            return false;
+        }
+
+        ServiceDelivery delivery = siri.getServiceDelivery();
+
+        switch (type) {
+            case STOP_MONITORING:
+                if (delivery.getStopMonitoringDeliveries() != null) {
+                    for (StopMonitoringDeliveryStructure stopMonitoringDelivery : delivery.getStopMonitoringDeliveries()) {
+                        if (!stopMonitoringDelivery.getMonitoredStopVisits().isEmpty()) {
+                            return true;
+                        }
+                    }
+                }
+                break;
+            case ESTIMATED_TIMETABLE:
+                if (delivery.getEstimatedTimetableDeliveries() != null) {
+                    for (EstimatedTimetableDeliveryStructure estimatedTimetableDelivery : delivery.getEstimatedTimetableDeliveries()) {
+                        if (!estimatedTimetableDelivery.getEstimatedJourneyVersionFrames().isEmpty()) {
+                            return true;
+                        }
+                    }
+                }
+                break;
+            case SITUATION_EXCHANGE:
+                if (delivery.getSituationExchangeDeliveries() != null) {
+                    for (SituationExchangeDeliveryStructure situationExchangeDelivery : delivery.getSituationExchangeDeliveries()) {
+                        if (!situationExchangeDelivery.getSituations().getPtSituationElements().isEmpty()) {
+                            return true;
+                        }
+                    }
+                }
+                break;
+            case VEHICLE_MONITORING:
+                if (delivery.getVehicleMonitoringDeliveries() != null) {
+                    for (VehicleMonitoringDeliveryStructure vehicleMonitoringDelivery : delivery.getVehicleMonitoringDeliveries()) {
+                        if (!vehicleMonitoringDelivery.getVehicleActivities().isEmpty()) {
+                            return true;
+                        }
+                    }
+                }
+                break;
+            case GENERAL_MESSAGE:
+                if (delivery.getGeneralMessageDeliveries() != null) {
+                    for (GeneralMessageDeliveryStructure generalMessageDelivery : delivery.getGeneralMessageDeliveries()) {
+                        if (!generalMessageDelivery.getGeneralMessages().isEmpty()) {
+                            return true;
+                        }
+                    }
+                }
+                break;
+            case FACILITY_MONITORING:
+                if (delivery.getFacilityMonitoringDeliveries() != null) {
+                    for (FacilityMonitoringDeliveryStructure facilityMonitoringDelivery : delivery.getFacilityMonitoringDeliveries()) {
+                        if (!facilityMonitoringDelivery.getFacilityConditions().isEmpty()) {
+                            return true;
+                        }
+                    }
+                }
+                break;
+        }
+        return false;
+
     }
 
     public static List<MonitoredStopVisit> extractStopVisits(Siri siri) {

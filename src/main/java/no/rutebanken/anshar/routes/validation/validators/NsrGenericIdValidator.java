@@ -17,7 +17,7 @@ package no.rutebanken.anshar.routes.validation.validators;
 
 import org.w3c.dom.Node;
 
-import javax.xml.bind.ValidationEvent;
+import jakarta.xml.bind.ValidationEvent;
 
 public abstract class NsrGenericIdValidator extends CustomValidator {
 
@@ -33,6 +33,7 @@ public abstract class NsrGenericIdValidator extends CustomValidator {
 
     /**
      * Verifies that the string-value of the provided node is built up using the pattern defined
+     *
      * @param node
      * @return
      */
@@ -41,7 +42,7 @@ public abstract class NsrGenericIdValidator extends CustomValidator {
         String nodeValue = getNodeValue(node);
 
         if (!isValidGenericId(ID_PATTERN, nodeValue)) {
-            return  createEvent(node, FIELDNAME, "valid NeTEx-id formatted like CODESPACE:" + ID_PATTERN + ":ID", nodeValue, ValidationEvent.FATAL_ERROR);
+            return createEvent(node, FIELDNAME, "valid NeTEx-id formatted like CODESPACE:" + ID_PATTERN + ":ID", nodeValue, ValidationEvent.FATAL_ERROR);
         }
 
         return null;

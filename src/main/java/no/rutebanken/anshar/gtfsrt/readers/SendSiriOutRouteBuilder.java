@@ -19,6 +19,7 @@ public class SendSiriOutRouteBuilder extends RouteBuilder {
     @Value("${siri.sm.kafka.queue}")
     private String siriSMKafkaQueue;
 
+
     @Override
     public void configure() {
 
@@ -39,6 +40,7 @@ public class SendSiriOutRouteBuilder extends RouteBuilder {
                 .setExchangePattern(ExchangePattern.InOnly)
                 .to(ACTIVEMQ_PREFIX + GTFSRT_VM_QUEUE)
         ;
+
 
         from("direct:send.et.to.realtime.server")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())

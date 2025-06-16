@@ -24,7 +24,8 @@ import org.w3c.dom.Node;
 import uk.org.ifopt.siri21.AccessibilityFeatureEnumeration;
 import uk.org.ifopt.siri21.StopPlaceComponentTypeEnumeration;
 
-import javax.xml.bind.ValidationEvent;
+import jakarta.xml.bind.ValidationEvent;
+
 import java.util.Set;
 
 import static no.rutebanken.anshar.routes.validation.validators.Constants.AFFECTED_COMPONENTS;

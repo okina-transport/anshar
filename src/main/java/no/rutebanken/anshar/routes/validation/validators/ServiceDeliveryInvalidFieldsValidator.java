@@ -2,7 +2,8 @@ package no.rutebanken.anshar.routes.validation.validators;
 
 import org.w3c.dom.Node;
 
-import javax.xml.bind.ValidationEvent;
+import jakarta.xml.bind.ValidationEvent;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -39,6 +40,7 @@ public abstract class ServiceDeliveryInvalidFieldsValidator extends CustomValida
 
     /**
      * Verifies that the string-value of the provided node is built up using the pattern defined
+     *
      * @param node
      * @return
      */

@@ -12,15 +12,16 @@ import no.rutebanken.anshar.okinaDisruptions.model.enums.TransportSubModeNameEnu
 import no.rutebanken.anshar.okinaDisruptions.model.enums.WheelchairAccessEnum;
 
 import javax.ws.rs.DefaultValue;
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlRootElement;
+
+import jakarta.xml.bind.annotation.XmlAccessType;
+import jakarta.xml.bind.annotation.XmlAccessorType;
+import jakarta.xml.bind.annotation.XmlRootElement;
 
 
 /**
  * res
  * The persistent class for the line database table.
-**/
+ **/
 @XmlRootElement
 @Getter
 @Setter

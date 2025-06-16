@@ -45,8 +45,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.*;
 
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.UnmarshalException;
+import jakarta.xml.bind.JAXBException;
+import jakarta.xml.bind.UnmarshalException;
+
 import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -239,7 +240,7 @@ public class SiriHandler {
     /**
      * Handling incoming requests from external clients
      *
-     * @param incoming              incoming message
+     * @param incoming               incoming message
      * @param incomingSiriParameters received parameters
      */
     private Siri outboundProcessSiriServerRequest(Siri incoming, IncomingSiriParameters incomingSiriParameters) {
@@ -490,7 +491,7 @@ public class SiriHandler {
             } else if (incoming.getTerminateSubscriptionResponse() != null) {
                 TerminateSubscriptionResponseStructure terminateSubscriptionResponse = incoming.getTerminateSubscriptionResponse();
                 terminateSubscriptionResponse.getTerminationResponseStatuses().forEach(sub -> {
-                    if(sub.isStatus()) {
+                    if (sub.isStatus()) {
                         subscriptionManager.terminateSubscription(subscriptionId);
                     }
                 });

@@ -29,9 +29,11 @@ import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.rutebanken.siri20.util.SiriJson;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri21.*;
 
+import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.UUID;
@@ -168,9 +170,9 @@ public class SiriLiteTest extends BaseHttpTest {
     }
 
 
-    ////////////////////////////////////////////////
-    /////// CHECK GENERAL PARAMETERS
-    ////////////////////////////////////////////////
+    /// /////////////////////////////////////////////
+    /// //// CHECK GENERAL PARAMETERS
+    /// /////////////////////////////////////////////
     @Test
     public void testNoPointInServiceFormat() {
 
@@ -214,9 +216,9 @@ public class SiriLiteTest extends BaseHttpTest {
     }
 
 
-    ////////////////////////////////////////////////
-    /////// STOP POINT DISCOVERY
-    ////////////////////////////////////////////////
+    /// /////////////////////////////////////////////
+    /// //// STOP POINT DISCOVERY
+    /// /////////////////////////////////////////////
 
     @Test
     public void testStopDiscoveryJSON() {
@@ -261,9 +263,9 @@ public class SiriLiteTest extends BaseHttpTest {
     }
 
 
-    ////////////////////////////////////////////////
-    /////// LINES DISCOVERY
-    ////////////////////////////////////////////////
+    /// /////////////////////////////////////////////
+    /// //// LINES DISCOVERY
+    /// /////////////////////////////////////////////
 
     @Test
     public void testLinesDiscoveryJSON() {
@@ -304,9 +306,9 @@ public class SiriLiteTest extends BaseHttpTest {
     }
 
 
-    ////////////////////////////////////////////////
-    /////// VEHICLE MONITORING
-    ////////////////////////////////////////////////
+    /// /////////////////////////////////////////////
+    /// //// VEHICLE MONITORING
+    /// /////////////////////////////////////////////
 
     @Test
     public void testVMJSON() {
@@ -365,9 +367,9 @@ public class SiriLiteTest extends BaseHttpTest {
     }
 
 
-    ////////////////////////////////////////////////
-    /////// SITUATION EXCHANGE
-    ////////////////////////////////////////////////
+    /// /////////////////////////////////////////////
+    /// //// SITUATION EXCHANGE
+    /// /////////////////////////////////////////////
     @Test
     public void testSXJSONFilterOnDatasetId() {
         given()
@@ -400,9 +402,9 @@ public class SiriLiteTest extends BaseHttpTest {
                 .body("PtSituationElement[0].SituationNumber.value", equalTo("1234"));
     }
 
-    ////////////////////////////////////////////////
-    /////// GENERAL MESSAGE
-    ////////////////////////////////////////////////
+    /// /////////////////////////////////////////////
+    /// //// GENERAL MESSAGE
+    /// /////////////////////////////////////////////
 
     @Test
     public void testGMJSONFilterOnDatasetId() {
@@ -436,9 +438,9 @@ public class SiriLiteTest extends BaseHttpTest {
                 .body("GeneralMessage[0].Content.StopPointRef[0]", equalTo("stop1"));
     }
 
-    ////////////////////////////////////////////////
-    /////// FACILITY MONITORING
-    ////////////////////////////////////////////////
+    /// /////////////////////////////////////////////
+    /// //// FACILITY MONITORING
+    /// /////////////////////////////////////////////
 
     @Test
     public void testFMJSONFilterOnDatasetId() {
@@ -472,9 +474,9 @@ public class SiriLiteTest extends BaseHttpTest {
     }
 
 
-    ////////////////////////////////////////////////
-    /////// ESTIMATED TIMETABLES
-    ////////////////////////////////////////////////
+    /// /////////////////////////////////////////////
+    /// //// ESTIMATED TIMETABLES
+    /// /////////////////////////////////////////////
 
     @Test
     public void testETJSONFilterOnDatasetId() {
@@ -520,9 +522,9 @@ public class SiriLiteTest extends BaseHttpTest {
     }
 
 
-    ////////////////////////////////////////////////
-    /////// STOP MONITORING
-    ////////////////////////////////////////////////
+    /// /////////////////////////////////////////////
+    /// //// STOP MONITORING
+    /// /////////////////////////////////////////////
 
     @Test
     public void testStopMonitoring() {
@@ -581,6 +583,19 @@ public class SiriLiteTest extends BaseHttpTest {
                 .body("MonitoredStopVisit[0].MonitoringRef.value", Matchers.equalTo(stopReference1));
 
     }
+
+    @Test
+    public void testJsonconv() throws IOException {
+        uk.org.siri.siri20.Siri siri = new uk.org.siri.siri20.Siri();
+        uk.org.siri.siri20.ServiceDelivery serviceDelivery = new uk.org.siri.siri20.ServiceDelivery();
+        uk.org.siri.siri20.StopMonitoringDeliveryStructure stopMonitoringDeliveryStructure = new uk.org.siri.siri20.StopMonitoringDeliveryStructure();
+        serviceDelivery.getStopMonitoringDeliveries().add(stopMonitoringDeliveryStructure);
+        siri.setServiceDelivery(serviceDelivery);
+        String res = SiriJson.toJson(siri);
+        System.out.println(res);
+
+    }
+
 
     @Test
     public void testSMJSONFilterOnDatasetId() {

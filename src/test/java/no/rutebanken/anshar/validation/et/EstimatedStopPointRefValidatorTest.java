@@ -20,7 +20,7 @@ import no.rutebanken.anshar.validation.CustomValidatorTest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import javax.xml.bind.ValidationEvent;
+import jakarta.xml.bind.ValidationEvent;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -37,25 +37,25 @@ public class EstimatedStopPointRefValidatorTest extends CustomValidatorTest {
     }
 
     @Test
-    public void testEmptyStopPointRef() throws Exception{
+    public void testEmptyStopPointRef() throws Exception {
         String xml = createXml(fieldName, "");
 
-        assertNotNull(validator.isValid(createXmlNode(xml)), "Empty "+ fieldName +" flagged as valid");
+        assertNotNull(validator.isValid(createXmlNode(xml)), "Empty " + fieldName + " flagged as valid");
     }
 
     @Test
-    public void testQuayStopPointRef() throws Exception{
+    public void testQuayStopPointRef() throws Exception {
         String xml = createXml(fieldName, "NSR:Quay:1234");
 
         final ValidationEvent valid = validator.isValid(createXmlNode(xml));
-        assertNull(valid, "Valid "+ fieldName +" flagged as invalid");
+        assertNull(valid, "Valid " + fieldName + " flagged as invalid");
     }
 
     @Test
-    public void testStopPlaceStopPointRef() throws Exception{
+    public void testStopPlaceStopPointRef() throws Exception {
         String xml = createXml(fieldName, "NSR:StopPlace:1234");
 
         final ValidationEvent valid = validator.isValid(createXmlNode(xml));
-        assertNotNull(valid, fieldName +" with StopPlace flagged as valid");
+        assertNotNull(valid, fieldName + " with StopPlace flagged as valid");
     }
 }

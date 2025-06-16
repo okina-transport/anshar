@@ -6,7 +6,8 @@ import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.Test;
 import uk.org.siri.siri21.Siri;
 
-import javax.xml.bind.JAXBException;
+import jakarta.xml.bind.JAXBException;
+
 import javax.xml.stream.XMLStreamException;
 import javax.xml.transform.Source;
 import javax.xml.transform.Transformer;

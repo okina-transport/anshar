@@ -24,7 +24,8 @@ import org.mockserver.integration.ClientAndServer;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri21.PtSituationElement;
 
-import javax.xml.bind.JAXBException;
+import jakarta.xml.bind.JAXBException;
+
 import java.util.*;
 
 import static org.mockserver.integration.ClientAndServer.startClientAndServer;

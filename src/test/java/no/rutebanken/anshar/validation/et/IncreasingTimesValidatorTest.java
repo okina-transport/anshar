@@ -19,7 +19,7 @@ import no.rutebanken.anshar.routes.validation.validators.et.IncreasingTimesValid
 import no.rutebanken.anshar.validation.CustomValidatorTest;
 import org.junit.jupiter.api.Test;
 
-import javax.xml.bind.ValidationEvent;
+import jakarta.xml.bind.ValidationEvent;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -74,56 +74,56 @@ public class IncreasingTimesValidatorTest extends CustomValidatorTest {
 
     private static final String increasingEstimatedCalls =
             "<EstimatedVehicleJourney>\n" +
-            "    <LineRef>NSB:Line:-</LineRef>\n" +
-            "    <DirectionRef>Kristiansand</DirectionRef>\n" +
-            "    <DatedVehicleJourneyRef>734:2019-02-27</DatedVehicleJourneyRef>\n" +
-            "    <VehicleMode>rail</VehicleMode>\n" +
-            "    <OperatorRef>NSB</OperatorRef>\n" +
-            "    <ServiceFeatureRef>passengerTrain</ServiceFeatureRef>\n" +
-            "    <DataSource>BNR</DataSource>\n" +
-            "    <VehicleRef>734</VehicleRef>\n" +
-            "    <EstimatedCalls>\n" +
-            "        <EstimatedCall>\n" +
-            "            <StopPointRef>NSR:Quay:968</StopPointRef>\n" +
-            "            <Order>1</Order>\n" +
-            "            <StopPointName>Stavanger</StopPointName>\n" +
-            "            <RequestStop>false</RequestStop>\n" +
-            "            <AimedDepartureTime>2019-02-27T17:48:00+01:00</AimedDepartureTime>\n" +
-            "            <ExpectedDepartureTime>2019-02-27T17:48:00+01:00</ExpectedDepartureTime>\n" +
-            "            <DepartureStatus>onTime</DepartureStatus>\n" +
-            "            <DeparturePlatformName>1</DeparturePlatformName>\n" +
-            "            <DepartureBoardingActivity>boarding</DepartureBoardingActivity>\n" +
-            "        </EstimatedCall>\n" +
-            "        <EstimatedCall>\n" +
-            "            <StopPointRef>NSR:Quay:609</StopPointRef>\n" +
-            "            <Order>2</Order>\n" +
-            "            <StopPointName>Jåttåvågen</StopPointName>\n" +
-            "            <RequestStop>false</RequestStop>\n" +
-            "            <AimedArrivalTime>2019-02-27T17:54:01+01:00</AimedArrivalTime>\n" +
-            "            <ExpectedArrivalTime>2019-02-27T17:54:01+01:00</ExpectedArrivalTime>\n" +
-            "            <ArrivalStatus>onTime</ArrivalStatus>\n" +
-            "            <ArrivalPlatformName>2</ArrivalPlatformName>\n" +
-            "            <ArrivalBoardingActivity>noAlighting</ArrivalBoardingActivity>\n" +
-            "            <AimedDepartureTime>2019-02-27T17:55:00+01:00</AimedDepartureTime>\n" +
-            "            <ExpectedDepartureTime>2019-02-27T17:55:00+01:00</ExpectedDepartureTime>\n" +
-            "            <DepartureStatus>onTime</DepartureStatus>\n" +
-            "            <DeparturePlatformName>2</DeparturePlatformName>\n" +
-            "            <DepartureBoardingActivity>boarding</DepartureBoardingActivity>\n" +
-            "        </EstimatedCall>\n" +
-            "        <EstimatedCall>\n" +
-            "            <StopPointRef>NSR:Quay:1146</StopPointRef>\n" +
-            "            <Order>3</Order>\n" +
-            "            <StopPointName>Sandnes Sentrum</StopPointName>\n" +
-            "            <RequestStop>false</RequestStop>\n" +
-            "            <AimedArrivalTime>2019-02-27T18:01:00+01:00</AimedArrivalTime>\n" +
-            "            <ExpectedArrivalTime>2019-02-27T18:01:00+01:00</ExpectedArrivalTime>\n" +
-            "            <ArrivalStatus>onTime</ArrivalStatus>\n" +
-            "            <ArrivalPlatformName>6</ArrivalPlatformName>\n" +
-            "            <ArrivalBoardingActivity>noAlighting</ArrivalBoardingActivity>\n" +
-            "        </EstimatedCall>\n" +
-            "    </EstimatedCalls>\n" +
-            "    <IsCompleteStopSequence>true</IsCompleteStopSequence>\n" +
-            "</EstimatedVehicleJourney>";
+                    "    <LineRef>NSB:Line:-</LineRef>\n" +
+                    "    <DirectionRef>Kristiansand</DirectionRef>\n" +
+                    "    <DatedVehicleJourneyRef>734:2019-02-27</DatedVehicleJourneyRef>\n" +
+                    "    <VehicleMode>rail</VehicleMode>\n" +
+                    "    <OperatorRef>NSB</OperatorRef>\n" +
+                    "    <ServiceFeatureRef>passengerTrain</ServiceFeatureRef>\n" +
+                    "    <DataSource>BNR</DataSource>\n" +
+                    "    <VehicleRef>734</VehicleRef>\n" +
+                    "    <EstimatedCalls>\n" +
+                    "        <EstimatedCall>\n" +
+                    "            <StopPointRef>NSR:Quay:968</StopPointRef>\n" +
+                    "            <Order>1</Order>\n" +
+                    "            <StopPointName>Stavanger</StopPointName>\n" +
+                    "            <RequestStop>false</RequestStop>\n" +
+                    "            <AimedDepartureTime>2019-02-27T17:48:00+01:00</AimedDepartureTime>\n" +
+                    "            <ExpectedDepartureTime>2019-02-27T17:48:00+01:00</ExpectedDepartureTime>\n" +
+                    "            <DepartureStatus>onTime</DepartureStatus>\n" +
+                    "            <DeparturePlatformName>1</DeparturePlatformName>\n" +
+                    "            <DepartureBoardingActivity>boarding</DepartureBoardingActivity>\n" +
+                    "        </EstimatedCall>\n" +
+                    "        <EstimatedCall>\n" +
+                    "            <StopPointRef>NSR:Quay:609</StopPointRef>\n" +
+                    "            <Order>2</Order>\n" +
+                    "            <StopPointName>Jåttåvågen</StopPointName>\n" +
+                    "            <RequestStop>false</RequestStop>\n" +
+                    "            <AimedArrivalTime>2019-02-27T17:54:01+01:00</AimedArrivalTime>\n" +
+                    "            <ExpectedArrivalTime>2019-02-27T17:54:01+01:00</ExpectedArrivalTime>\n" +
+                    "            <ArrivalStatus>onTime</ArrivalStatus>\n" +
+                    "            <ArrivalPlatformName>2</ArrivalPlatformName>\n" +
+                    "            <ArrivalBoardingActivity>noAlighting</ArrivalBoardingActivity>\n" +
+                    "            <AimedDepartureTime>2019-02-27T17:55:00+01:00</AimedDepartureTime>\n" +
+                    "            <ExpectedDepartureTime>2019-02-27T17:55:00+01:00</ExpectedDepartureTime>\n" +
+                    "            <DepartureStatus>onTime</DepartureStatus>\n" +
+                    "            <DeparturePlatformName>2</DeparturePlatformName>\n" +
+                    "            <DepartureBoardingActivity>boarding</DepartureBoardingActivity>\n" +
+                    "        </EstimatedCall>\n" +
+                    "        <EstimatedCall>\n" +
+                    "            <StopPointRef>NSR:Quay:1146</StopPointRef>\n" +
+                    "            <Order>3</Order>\n" +
+                    "            <StopPointName>Sandnes Sentrum</StopPointName>\n" +
+                    "            <RequestStop>false</RequestStop>\n" +
+                    "            <AimedArrivalTime>2019-02-27T18:01:00+01:00</AimedArrivalTime>\n" +
+                    "            <ExpectedArrivalTime>2019-02-27T18:01:00+01:00</ExpectedArrivalTime>\n" +
+                    "            <ArrivalStatus>onTime</ArrivalStatus>\n" +
+                    "            <ArrivalPlatformName>6</ArrivalPlatformName>\n" +
+                    "            <ArrivalBoardingActivity>noAlighting</ArrivalBoardingActivity>\n" +
+                    "        </EstimatedCall>\n" +
+                    "    </EstimatedCalls>\n" +
+                    "    <IsCompleteStopSequence>true</IsCompleteStopSequence>\n" +
+                    "</EstimatedVehicleJourney>";
 
     private static final String increasingRecordedEstimatedCalls =
             "<EstimatedVehicleJourney>\n" +

@@ -15,7 +15,8 @@ import uk.org.siri.siri21.MonitoredStopVisit;
 import uk.org.siri.siri21.MonitoredStopVisitCancellation;
 import uk.org.siri.siri21.Siri;
 
-import javax.xml.bind.JAXBException;
+import jakarta.xml.bind.JAXBException;
+
 import javax.xml.stream.XMLStreamException;
 import java.io.InputStream;
 import java.util.Collection;

@@ -23,7 +23,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Node;
 
-import javax.xml.bind.ValidationEvent;
+import jakarta.xml.bind.ValidationEvent;
+
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -54,56 +55,56 @@ public class EstimatedVehicleJourneyValidatorTest extends CustomValidatorTest {
 
     @BeforeEach
     public void initTestValues() {
-        lineRef =                   createXml("LineRef", "1234");
-        directionRef =              createXml("DirectionRef", "1234");
-        framedVehicleJourneyRef =   "<FramedVehicleJourneyRef><DataFrameRef>2022-01-01</DataFrameRef><DatedVehicleJourneyRef>1234</DatedVehicleJourneyRef></FramedVehicleJourneyRef>";
-        dataSource =                createXml("DataSource", "1234");
-        isCompleteStopSequence =    createXml("IsCompleteStopSequence", "1234");
+        lineRef = createXml("LineRef", "1234");
+        directionRef = createXml("DirectionRef", "1234");
+        framedVehicleJourneyRef = "<FramedVehicleJourneyRef><DataFrameRef>2022-01-01</DataFrameRef><DatedVehicleJourneyRef>1234</DatedVehicleJourneyRef></FramedVehicleJourneyRef>";
+        dataSource = createXml("DataSource", "1234");
+        isCompleteStopSequence = createXml("IsCompleteStopSequence", "1234");
 
-        extraJourney =              createXml("ExtraJourney", "true");
-        groupOfLinesRef =           createXml("GroupOfLinesRef", "1234");
-        externalLineRef =           createXml("ExternalLineRef", "1234");
-        estimatedVehicleJourneyCode=createXml("EstimatedVehicleJourneyCode", "1234");
-        routeRef =                  createXml("RouteRef", "1234");
+        extraJourney = createXml("ExtraJourney", "true");
+        groupOfLinesRef = createXml("GroupOfLinesRef", "1234");
+        externalLineRef = createXml("ExternalLineRef", "1234");
+        estimatedVehicleJourneyCode = createXml("EstimatedVehicleJourneyCode", "1234");
+        routeRef = createXml("RouteRef", "1234");
     }
 
     @Test
-    public void testCompleteEstimatedVehicleJourney() throws Exception{
+    public void testCompleteEstimatedVehicleJourney() throws Exception {
         Node node = createEstimatedVehicleJourney(lineRef, directionRef, framedVehicleJourneyRef, dataSource, isCompleteStopSequence);
 
-        assertNull(validator.isValid(node), "Valid "+fieldName+" flagged as invalid");
+        assertNull(validator.isValid(node), "Valid " + fieldName + " flagged as invalid");
     }
 
     @Test
-    public void testMissingLineRef() throws Exception{
+    public void testMissingLineRef() throws Exception {
         Node node = createEstimatedVehicleJourney(null, directionRef, framedVehicleJourneyRef, dataSource, isCompleteStopSequence);
 
         assertNotNull(validator.isValid(node), "Missing LineRef flagged as valid");
     }
 
     @Test
-    public void testMissingDirectionRef() throws Exception{
+    public void testMissingDirectionRef() throws Exception {
         Node node = createEstimatedVehicleJourney(lineRef, null, framedVehicleJourneyRef, dataSource, isCompleteStopSequence);
 
         assertNotNull(validator.isValid(node), "Missing DirectionRef flagged as valid");
     }
 
     @Test
-    public void testMissingFramedVehicleJourneyRef() throws Exception{
+    public void testMissingFramedVehicleJourneyRef() throws Exception {
         Node node = createEstimatedVehicleJourney(lineRef, directionRef, null, dataSource, isCompleteStopSequence);
 
         assertNotNull(validator.isValid(node), "Missing FramedVehicleJourneyRef flagged as valid");
     }
 
     @Test
-    public void testMissingDataSource() throws Exception{
+    public void testMissingDataSource() throws Exception {
         Node node = createEstimatedVehicleJourney(lineRef, directionRef, framedVehicleJourneyRef, null, isCompleteStopSequence);
 
         assertNotNull(validator.isValid(node), "Missing DataSource flagged as valid");
     }
 
     @Test
-    public void testMissingIsCompleteStopSequence() throws Exception{
+    public void testMissingIsCompleteStopSequence() throws Exception {
         Node node = createEstimatedVehicleJourney(lineRef, directionRef, framedVehicleJourneyRef, dataSource, null);
 
         assertNotNull(validator.isValid(node), "Missing IsCompleteStopSequence flagged as valid");
@@ -127,24 +128,24 @@ public class EstimatedVehicleJourneyValidatorTest extends CustomValidatorTest {
     }
 
     @Test
-    public void testCompleteExtraJourney() throws Exception{
+    public void testCompleteExtraJourney() throws Exception {
         Node node = createEstimatedVehicleJourney(lineRef, directionRef, extraJourney, groupOfLinesRef, externalLineRef, estimatedVehicleJourneyCode, routeRef, dataSource, isCompleteStopSequence);
 
-        assertNull(validator.isValid(node), "Valid "+fieldName+" flagged as invalid");
+        assertNull(validator.isValid(node), "Valid " + fieldName + " flagged as invalid");
     }
 
     @Test
-    public void testCompleteEstimatedVehicleJourneyWithFalseExtraJourney() throws Exception{
-        extraJourney =              createXml("ExtraJourney", "false");
+    public void testCompleteEstimatedVehicleJourneyWithFalseExtraJourney() throws Exception {
+        extraJourney = createXml("ExtraJourney", "false");
 
         Node node = createEstimatedVehicleJourney(extraJourney, lineRef, directionRef, framedVehicleJourneyRef, dataSource, isCompleteStopSequence);
 
-        assertNull(validator.isValid(node), "Valid "+fieldName+" flagged as invalid");
+        assertNull(validator.isValid(node), "Valid " + fieldName + " flagged as invalid");
     }
 
     @Test
-    public void testExtraJourneyMissingGroupOfLinesRef() throws Exception{
-        Node node = createEstimatedVehicleJourney(lineRef, directionRef, extraJourney , externalLineRef, estimatedVehicleJourneyCode, routeRef, dataSource, isCompleteStopSequence);
+    public void testExtraJourneyMissingGroupOfLinesRef() throws Exception {
+        Node node = createEstimatedVehicleJourney(lineRef, directionRef, extraJourney, externalLineRef, estimatedVehicleJourneyCode, routeRef, dataSource, isCompleteStopSequence);
 
         ValidationEvent validation = validator.isValid(node);
         assertNotNull(validation, "Missing GroupOfLinesRef flagged as valid");
@@ -153,8 +154,8 @@ public class EstimatedVehicleJourneyValidatorTest extends CustomValidatorTest {
     }
 
     @Test
-    public void testExtraJourneyMissingExternalLineRef() throws Exception{
-        Node node = createEstimatedVehicleJourney(lineRef, directionRef, extraJourney , groupOfLinesRef, estimatedVehicleJourneyCode, routeRef, dataSource, isCompleteStopSequence);
+    public void testExtraJourneyMissingExternalLineRef() throws Exception {
+        Node node = createEstimatedVehicleJourney(lineRef, directionRef, extraJourney, groupOfLinesRef, estimatedVehicleJourneyCode, routeRef, dataSource, isCompleteStopSequence);
 
         ValidationEvent validation = validator.isValid(node);
         assertNotNull(validation, "Missing ExternalLineRef flagged as valid");
@@ -163,8 +164,8 @@ public class EstimatedVehicleJourneyValidatorTest extends CustomValidatorTest {
     }
 
     @Test
-    public void testExtraJourneyMissingEstimatedVehicleJourneyCode() throws Exception{
-        Node node = createEstimatedVehicleJourney(lineRef, directionRef, extraJourney , groupOfLinesRef, externalLineRef, routeRef, dataSource, isCompleteStopSequence);
+    public void testExtraJourneyMissingEstimatedVehicleJourneyCode() throws Exception {
+        Node node = createEstimatedVehicleJourney(lineRef, directionRef, extraJourney, groupOfLinesRef, externalLineRef, routeRef, dataSource, isCompleteStopSequence);
 
         ValidationEvent validation = validator.isValid(node);
         assertNotNull(validation, "Missing EstimatedVehicleJourneyCode flagged as valid");
@@ -173,7 +174,7 @@ public class EstimatedVehicleJourneyValidatorTest extends CustomValidatorTest {
     }
 
     @Test
-    public void testExtraJourneyMissingRouteRef() throws Exception{
+    public void testExtraJourneyMissingRouteRef() throws Exception {
         Node node = createEstimatedVehicleJourney(lineRef, directionRef, extraJourney, groupOfLinesRef, externalLineRef, estimatedVehicleJourneyCode, dataSource, isCompleteStopSequence);
 
         ValidationEvent validation = validator.isValid(node);

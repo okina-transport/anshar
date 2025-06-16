@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
 import org.w3c.dom.Node;
 import uk.org.siri.siri21.WorkflowStatusEnumeration;
 
-import javax.xml.bind.ValidationEvent;
+import jakarta.xml.bind.ValidationEvent;
 
 import static no.rutebanken.anshar.routes.validation.validators.Constants.PT_SITUATION_ELEMENT;
 

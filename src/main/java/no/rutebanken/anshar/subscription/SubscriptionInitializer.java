@@ -176,7 +176,7 @@ public class SubscriptionInitializer implements CamelContextAware {
                 valueAdapters.add(new AddOrderToAllCallsPostProcessor(subscriptionSetup.getDatasetId()));
 
                 valueAdapters.add(new EnsureNonNullVehicleModePostProcessor());
-                valueAdapters.add(new ExtraJourneyPostProcessor(subscriptionSetup.getDatasetId()));
+
 
                 subscriptionSetup.getMappingAdapters().addAll(valueAdapters);
 

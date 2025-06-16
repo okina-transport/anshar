@@ -20,7 +20,7 @@ import no.rutebanken.anshar.validation.CustomValidatorTest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import javax.xml.bind.ValidationEvent;
+import jakarta.xml.bind.ValidationEvent;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -36,24 +36,24 @@ public class AffectedVehicleJourneyRefValidatorTest extends CustomValidatorTest 
     }
 
     @Test
-    public void testNumberedSituationNumber() throws Exception{
+    public void testNumberedSituationNumber() throws Exception {
         String xml = createXml(fieldName, "1234");
 
-        assertNotNull(validator.isValid(createXmlNode(xml)), "Valid "+fieldName+" flagged as invalid");
+        assertNotNull(validator.isValid(createXmlNode(xml)), "Valid " + fieldName + " flagged as invalid");
     }
 
     @Test
-    public void testCombinedSituationNumber() throws Exception{
+    public void testCombinedSituationNumber() throws Exception {
         String xml = createXml(fieldName, "4443333222");
 
-        assertNotNull(validator.isValid(createXmlNode(xml)), "Valid "+fieldName+" flagged as invalid");
+        assertNotNull(validator.isValid(createXmlNode(xml)), "Valid " + fieldName + " flagged as invalid");
     }
 
     @Test
-    public void testValieSituationNumber() throws Exception{
+    public void testValieSituationNumber() throws Exception {
         String xml = createXml(fieldName, "ENT:ServiceJourney:1234");
 
         final ValidationEvent valid = validator.isValid(createXmlNode(xml));
-        assertNull(valid, "Invalid "+fieldName+" flagged as valid");
+        assertNull(valid, "Invalid " + fieldName + " flagged as valid");
     }
 }

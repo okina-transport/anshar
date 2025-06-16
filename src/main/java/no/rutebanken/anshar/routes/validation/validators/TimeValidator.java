@@ -17,7 +17,8 @@ package no.rutebanken.anshar.routes.validation.validators;
 
 import org.w3c.dom.Node;
 
-import javax.xml.bind.ValidationEvent;
+import jakarta.xml.bind.ValidationEvent;
+
 import java.time.ZonedDateTime;
 
 public abstract class TimeValidator extends CustomValidator {
@@ -26,9 +27,9 @@ public abstract class TimeValidator extends CustomValidator {
 
     /**
      * Checks validity of field named @fieldName from @node
-     *
+     * <p>
      * if @comparisonFieldName-sibling is found, values are compared according to @mode
-     *
+     * <p>
      * E.g.: Could be used to verify that arrival is valid, and is before departure
      *
      * @param node
@@ -45,7 +46,7 @@ public abstract class TimeValidator extends CustomValidator {
         }
 
 
-        String field =  getSiblingNodeValue(node, fieldname);
+        String field = getSiblingNodeValue(node, fieldname);
 
         if (field != null) {
             final ZonedDateTime time = parseDate(field);
@@ -59,7 +60,7 @@ public abstract class TimeValidator extends CustomValidator {
                 //Check that arrival is before or equal to departure
                 final ZonedDateTime comparisonTime = parseDate(comparisonField);
                 if (!isValid(time, comparisonTime, mode)) {
-                    return createEvent(node, fieldname,  "" + mode  + " " + comparisonFieldName + " [" + comparisonTime + "]", field, ValidationEvent.FATAL_ERROR);
+                    return createEvent(node, fieldname, "" + mode + " " + comparisonFieldName + " [" + comparisonTime + "]", field, ValidationEvent.FATAL_ERROR);
                 }
             }
 
@@ -70,6 +71,7 @@ public abstract class TimeValidator extends CustomValidator {
 
     /**
      * Checks if time-objects are equal or before/after according to mode
+     *
      * @param time_1
      * @param time_2
      * @param mode

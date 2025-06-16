@@ -32,7 +32,7 @@ public class CompressionProcessor implements Processor {
                     exchange.getIn().setBody(Encoder.compress(bodyAsBytes));
                     break;
                 default:
-                    log.error("Unable to find valid Content-Encoding");
+                    log.debug("Unable to find valid Content-Encoding");
                     exchange.getIn().removeHeader(CONTENT_ENCODING);
                     break;
             }

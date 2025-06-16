@@ -17,7 +17,7 @@ package no.rutebanken.anshar.routes.validation.validators;
 
 import org.w3c.dom.Node;
 
-import javax.xml.bind.ValidationEvent;
+import jakarta.xml.bind.ValidationEvent;
 
 public abstract class NsrStopPlaceValidator extends CustomValidator {
 
@@ -31,6 +31,7 @@ public abstract class NsrStopPlaceValidator extends CustomValidator {
 
     /**
      * Verifies that the value of the provided node is a valid StopPlace-reference
+     *
      * @param node
      * @return
      */
@@ -39,7 +40,7 @@ public abstract class NsrStopPlaceValidator extends CustomValidator {
         String nodeValue = getNodeValue(node);
 
         if (!isValidNsrId("NSR:StopPlace:", nodeValue)) {
-            return  createEvent(node, FIELDNAME, "valid ID from NSR - formatted like NSR:StopPlace:ID", nodeValue, ValidationEvent.FATAL_ERROR);
+            return createEvent(node, FIELDNAME, "valid ID from NSR - formatted like NSR:StopPlace:ID", nodeValue, ValidationEvent.FATAL_ERROR);
         }
 
         if (!idExists(nodeValue)) {

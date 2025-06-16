@@ -23,7 +23,7 @@ public class CountOutgoingDataPerformanceTest extends SpringBootBaseTest {
 
     public static final int NB_OF_SIRI_TO_SEND = 100000;
 
-    @Produce(uri = "direct:send.to.external.subscription.part1.1")
+    @Produce(value = "direct:send.to.external.subscription.part1.1")
     protected ProducerTemplate countOutgoingData;
 
     @Autowired
@@ -35,7 +35,7 @@ public class CountOutgoingDataPerformanceTest extends SpringBootBaseTest {
         Siri siriToSend = TestObjectFactory.createRandomSMDelivery(4);
         Endpoint defaultEndPoint = countOutgoingData.getDefaultEndpoint();
 
-        ThreadPoolExecutor executorService = (ThreadPoolExecutor) Executors.newFixedThreadPool(1000);
+        ThreadPoolExecutor executorService = (ThreadPoolExecutor) Executors.newVirtualThreadPerTaskExecutor();
 
         for (int i = 0; i < NB_OF_SIRI_TO_SEND; i++) {
 

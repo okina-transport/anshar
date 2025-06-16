@@ -47,6 +47,7 @@ public class CSVUtils {
     public static Iterable<CSVRecord> getRecordsWithBomHandling(File file) throws IOException {
         try (BOMInputStream bomInputStream = BOMInputStream.builder().setFile(file).get()) {
 
+
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             byte[] buffer = new byte[1024];
             int len;

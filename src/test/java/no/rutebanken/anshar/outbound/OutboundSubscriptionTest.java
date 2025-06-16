@@ -18,7 +18,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import uk.org.siri.siri21.*;
 
-import javax.xml.bind.JAXBException;
+import jakarta.xml.bind.JAXBException;
+
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.stream.XMLStreamException;
@@ -189,7 +190,7 @@ class OutboundSubscriptionTest extends SpringBootBaseTest {
                 .atLeast(Duration.TWO_SECONDS)
                 .pollInterval(Duration.ONE_SECOND)
                 .pollDelay(Duration.TWO_SECONDS)
-            .until(() -> serverSubscriptionManager.getAllSubscriptions(SiriDataType.GENERAL_MESSAGE).size() == 1);
+                .until(() -> serverSubscriptionManager.getAllSubscriptions(SiriDataType.GENERAL_MESSAGE).size() == 1);
 
         situationExchangeInbound.ingestSituations("DAT1", inputSituations, true);
 

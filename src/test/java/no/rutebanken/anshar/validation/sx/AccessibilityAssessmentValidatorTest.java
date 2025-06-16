@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.w3c.dom.Node;
 import uk.org.acbs.siri21.AccessibilityEnumeration;
 
-import javax.xml.bind.ValidationEvent;
+import jakarta.xml.bind.ValidationEvent;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static uk.org.acbs.siri21.AccessibilityEnumeration.*;

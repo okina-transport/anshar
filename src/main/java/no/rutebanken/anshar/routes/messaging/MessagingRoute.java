@@ -8,12 +8,12 @@ import no.rutebanken.anshar.gtfsrt.ingesters.EstimatedTimetableIngester;
 import no.rutebanken.anshar.gtfsrt.ingesters.SituationExchangeIngester;
 import no.rutebanken.anshar.gtfsrt.ingesters.StopMonitoringIngester;
 import no.rutebanken.anshar.gtfsrt.ingesters.VehicleMonitoringIngester;
-import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.CamelRouteNames;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.admin.AdminRouteHelper;
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
 import no.rutebanken.anshar.routes.external.ExternalDataHandler;
+import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.transformer.SiriJsonTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
@@ -52,7 +52,7 @@ public class MessagingRoute extends RestRouteBuilder {
     private SubscriptionManager subscriptionManager;
 
     @Autowired
-    private PrometheusMetricsService metrics;
+    private ServerSubscriptionManager outboundSubscriptionManager;
 
     @Autowired
     private SiriXmlValidator siriXmlValidator;
@@ -75,6 +75,25 @@ public class MessagingRoute extends RestRouteBuilder {
 
     @Value("${anshar.internal.gtfsrt.stop.monitoring}")
     private String internalGtfsrtSMQueue;
+
+
+    @Value("${anshar.initial.delivery.estimated.timetables.queue.name}")
+    private String initialDeliveryETQueueName;
+
+    @Value("${anshar.initial.delivery.stop.monitoring.queue.name}")
+    private String initialDeliverySMQueueName;
+
+    @Value("${anshar.initial.delivery.general.message.queue.name}")
+    private String initialDeliveryGMQueueName;
+
+    @Value("${anshar.initial.delivery.facility.monitoring.queue.name}")
+    private String initialDeliveryFMQueueName;
+
+    @Value("${anshar.initial.delivery.situation.exchange.queue.name}")
+    private String initialDeliverySXQueueName;
+
+    @Value("${anshar.initial.delivery.vehicle.monitoring.queue.name}")
+    private String initialDeliveryVMQueueName;
 
 
     @Override
@@ -242,37 +261,38 @@ public class MessagingRoute extends RestRouteBuilder {
                 .convertBodyTo(String.class)
                 .to("direct:transform.siri")
                 .choice()
-                .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.ESTIMATED_TIMETABLE.name()))
-                .setHeader("target_topic", simple(pubsubQueueET))
-                .endChoice()
-                .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.VEHICLE_MONITORING.name()))
-                .setHeader("target_topic", simple(pubsubQueueVM))
-                .endChoice()
-                .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.SITUATION_EXCHANGE.name()))
-                .setHeader("target_topic", simple(pubsubQueueSX))
-                .endChoice()
-                .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.STOP_MONITORING.name()))
-                .setHeader("target_topic", simple(pubsubQueueSM))
-                .endChoice()
-                .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.GENERAL_MESSAGE.name()))
-                .setHeader("target_topic", simple(pubsubQueueGM))
-                .endChoice()
-                .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.FACILITY_MONITORING.name()))
-                .setHeader("target_topic", simple(pubsubQueueFM))
-                .endChoice()
-                .otherwise()
-                // DataReadyNotification is processed immediately
-                .when().xpath("/siri:Siri/siri:DataReadyNotification", nameSpace)
-                .setHeader("target_topic", simple("direct:" + CamelRouteNames.FETCHED_DELIVERY_QUEUE))
+                    .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.ESTIMATED_TIMETABLE.name()))
+                        .setHeader("target_topic", simple(pubsubQueueET))
+                    .endChoice()
+                    .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.VEHICLE_MONITORING.name()))
+                        .setHeader("target_topic", simple(pubsubQueueVM))
+                    .endChoice()
+                    .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.SITUATION_EXCHANGE.name()))
+                        .setHeader("target_topic", simple(pubsubQueueSX))
+                    .endChoice()
+                    .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.STOP_MONITORING.name()))
+                        .setHeader("target_topic", simple(pubsubQueueSM))
+                    .endChoice()
+                    .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.GENERAL_MESSAGE.name()))
+                        .setHeader("target_topic", simple(pubsubQueueGM))
+                    .endChoice()
+                    .when(header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.FACILITY_MONITORING.name()))
+                        .setHeader("target_topic", simple(pubsubQueueFM))
                 .endChoice()
                 .otherwise()
-                .to("log:not_processed:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
-                .end()
-                .end()
-                .end()
-                .removeHeaders("*", "subscriptionId", "breadcrumbId", "target_topic")
-                .to("direct:compress.jaxb")
-                .toD("${header.target_topic}?deliveryMode=1")
+                    .choice()
+                        // DataReadyNotification is processed immediately
+                        .when().xpath("/siri:Siri/siri:DataReadyNotification", nameSpace)
+                            .setHeader("target_topic", simple("direct:" + CamelRouteNames.FETCHED_DELIVERY_QUEUE))
+                        .endChoice()
+                        .otherwise()
+                            .to("log:not_processed:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                            .end()
+                            .end()
+                            .end()
+                            .removeHeaders("*", "subscriptionId", "breadcrumbId", "target_topic")
+                            .to("direct:compress.jaxb")
+                            .toD("${header.target_topic}?deliveryMode=1")
                 .end()
         ;
 
@@ -382,6 +402,12 @@ public class MessagingRoute extends RestRouteBuilder {
                     .startupOrder(100004)
                     .routeId("incoming.transform.sx")
             ;
+
+            from(initialDeliverySXQueueName)
+                    .threads(5)
+                    .maxPoolSize(5)
+                    .bean(outboundSubscriptionManager, "generateAndSendInitialDelivery(${header.subscriptionId}, ${header.outboundIdMappingPolicy})")
+                    .routeId("initial.delivery.situation.exchange");
         }
 
         if (configuration.processVM()) {
@@ -394,6 +420,12 @@ public class MessagingRoute extends RestRouteBuilder {
                     .startupOrder(100003)
                     .routeId("incoming.transform.vm")
             ;
+
+            from(initialDeliveryVMQueueName )
+                    .threads(5)
+                    .maxPoolSize(5)
+                    .bean(outboundSubscriptionManager, "generateAndSendInitialDelivery(${header.subscriptionId}, ${header.outboundIdMappingPolicy})")
+                    .routeId("initial.delivery.vehicle.monitoring");
         }
 
         if (configuration.processET()) {
@@ -406,6 +438,12 @@ public class MessagingRoute extends RestRouteBuilder {
                     .startupOrder(100002)
                     .routeId("incoming.transform.et")
             ;
+
+            from(initialDeliveryETQueueName )
+                    .threads(5)
+                    .maxPoolSize(5)
+                    .bean(outboundSubscriptionManager, "generateAndSendInitialDelivery(${header.subscriptionId}, ${header.outboundIdMappingPolicy})")
+                    .routeId("initial.delivery.estimated.timetables");
         }
 
         if (configuration.processSM()) {
@@ -420,6 +458,13 @@ public class MessagingRoute extends RestRouteBuilder {
                     .startupOrder(100001)
                     .routeId("incoming.transform.sm")
             ;
+
+            from(initialDeliverySMQueueName )
+                    .threads(5)
+                    .maxPoolSize(5)
+                    .bean(outboundSubscriptionManager, "generateAndSendInitialDelivery(${header.subscriptionId}, ${header.outboundIdMappingPolicy})")
+                    .routeId("initial.delivery.stop.monitoring");
+
         }
 
 
@@ -432,6 +477,12 @@ public class MessagingRoute extends RestRouteBuilder {
                     .startupOrder(100005)
                     .routeId("incoming.transform.gm")
             ;
+
+            from(initialDeliveryGMQueueName)
+                    .threads(5)
+                    .maxPoolSize(5)
+                    .bean(outboundSubscriptionManager, "generateAndSendInitialDelivery(${header.subscriptionId}, ${header.outboundIdMappingPolicy})")
+                    .routeId("initial.delivery.general.message");
         }
 
         if (configuration.processFM()) {
@@ -443,6 +494,12 @@ public class MessagingRoute extends RestRouteBuilder {
                     .startupOrder(100006)
                     .routeId("incoming.transform.fm")
             ;
+
+            from(initialDeliveryFMQueueName)
+                    .threads(5)
+                    .maxPoolSize(5)
+                    .bean(outboundSubscriptionManager, "generateAndSendInitialDelivery(${header.subscriptionId}, ${header.outboundIdMappingPolicy})")
+                    .routeId("initial.delivery.facility.monitoring");
         }
 
         from("direct:process.queue.default.async")

@@ -16,8 +16,8 @@ import uk.org.siri.siri21.*;
 
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 
 import static no.rutebanken.anshar.routes.HttpParameter.SIRI_VERSION_HEADER_NAME;
 import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_SOAP;
@@ -44,7 +44,7 @@ public class FakeDataSender extends BaseRouteBuilder {
     private int nbOfMessage;
 
 
-    @Produce(uri = "direct:send.to.external.subscription")
+    @Produce(value = "direct:send.to.external.subscription")
     protected ProducerTemplate sendToExternalConsumer;
 
 
@@ -71,7 +71,7 @@ public class FakeDataSender extends BaseRouteBuilder {
     private void sendFakeSMData() throws InterruptedException {
         List<OutboundSubscriptionSetup> smSubscriptions = subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING);
 
-        ThreadPoolExecutor executorService = (ThreadPoolExecutor) Executors.newCachedThreadPool();
+        ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
 
         logger.info("Nb of subscriptions:" + smSubscriptions.size());
 
@@ -81,10 +81,10 @@ public class FakeDataSender extends BaseRouteBuilder {
             });
         }
 
-        while (executorService.getActiveCount() > 0) {
-            logger.info("Waiting for subscriptions to finish:" + executorService.getActiveCount());
-            Thread.sleep(2000);
-        }
+//        while (executorService.getActiveCount() > 0) {
+//            logger.info("Waiting for subscriptions to finish:" + executorService.getActiveCount());
+//            Thread.sleep(2000);
+//        }
     }
 
     private void launchFakeDataToClient(OutboundSubscriptionSetup smSubscription) {

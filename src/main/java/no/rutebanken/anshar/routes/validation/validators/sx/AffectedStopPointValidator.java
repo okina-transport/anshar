@@ -21,7 +21,7 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Node;
 
-import javax.xml.bind.ValidationEvent;
+import jakarta.xml.bind.ValidationEvent;
 
 import static no.rutebanken.anshar.routes.validation.validators.Constants.AFFECTED_STOP_POINT;
 

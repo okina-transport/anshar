@@ -27,7 +27,8 @@ import uk.org.siri.siri21.MonitoredStopVisit;
 import uk.org.siri.siri21.MonitoringRefStructure;
 import uk.org.siri.siri21.Siri;
 
-import javax.xml.bind.UnmarshalException;
+import jakarta.xml.bind.UnmarshalException;
+
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;

@@ -57,7 +57,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -98,7 +97,7 @@ public class ServerSubscriptionManager {
     @Autowired
     IMap<String, OutboundSubscriptionSetup> subscriptions;
     Map<String, List<OutboundSubscriptionSetup>> outboundSubscriptionsByMonitoringRef = new HashMap<>();
-    ThreadPoolExecutor outboundSenderExecutorService;
+    ExecutorService outboundSenderExecutorService;
     @Autowired
     @Qualifier("getFailTrackerMap")
     private IMap<String, Instant> failTrackerMap;
@@ -138,10 +137,32 @@ public class ServerSubscriptionManager {
     @Value("${anshar.outbound.subscription.grace.period:30000}")
     private long outboundSubscriptionGracePeriod = 30000;
 
+    @Value("${anshar.initial.delivery.estimated.timetables.queue.name}")
+    private String initialDeliveryETQueueName;
+
+    @Value("${anshar.initial.delivery.stop.monitoring.queue.name}")
+    private String initialDeliverySMQueueName;
+
+    @Value("${anshar.initial.delivery.general.message.queue.name}")
+    private String initialDeliveryGMQueueName;
+
+    @Value("${anshar.initial.delivery.facility.monitoring.queue.name}")
+    private String initialDeliveryFMQueueName;
+
+    @Value("${anshar.initial.delivery.situation.exchange.queue.name}")
+    private String initialDeliverySXQueueName;
+
+    @Value("${anshar.initial.delivery.vehicle.monitoring.queue.name}")
+    private String initialDeliveryVMQueueName;
+
     public static String DEFAULT_DATASET = "ALL";
 
     @Autowired
     private InitialDeliveryGenerator initialDeliveryGenerator;
+
+    @Produce
+    protected ProducerTemplate initialDeliveryRequestProducer;
+
 
     private static boolean checkMissingMonitoringRef(SubscriptionRequest subscriptionRequest) {
         boolean missingMonitoringRef = false;
@@ -325,7 +346,7 @@ public class ServerSubscriptionManager {
     /**
      * Handle subscription request that can contain one or multiple subcriptions
      *
-     * @param incomingSiri raw Siri
+     * @param incomingSiri           raw Siri
      * @param incomingSiriParameters incoming parameters
      * @return
      */
@@ -410,7 +431,7 @@ public class ServerSubscriptionManager {
     /**
      * Handle a subcription request that contains only one subscription
      *
-     * @param incomingSiri raw Siri
+     * @param incomingSiri           raw Siri
      * @param incomingSiriParameters received parameters
      * @return
      */
@@ -458,7 +479,7 @@ public class ServerSubscriptionManager {
             Siri subscriptionResponse = siriObjectFactory.createSubscriptionResponse(subscription.getSubscriptionId(), true, null, incomingSiri.getVersion());
 
 
-            sendInitialDelivery(subscription, outboundIdMappingPolicy);
+            requestInitialDeliverySending(subscription, outboundIdMappingPolicy);
 
             return subscriptionResponse;
         }
@@ -488,46 +509,67 @@ public class ServerSubscriptionManager {
         return false;
     }
 
-    private void sendInitialDelivery(OutboundSubscriptionSetup subscription, OutboundIdMappingPolicy outboundIdMappingPolicy) {
-        final String breadcrumbId = MDC.get("camel.breadcrumbId");
-        Executors.newSingleThreadScheduledExecutor().execute(() -> {
-            try {
-                MDC.put("camel.breadcrumbId", breadcrumbId);
 
-                //Send initial ServiceDelivery
-                logger.debug("Find initial delivery for {}", subscription);
-                List<SiriDataType> multipleDatasetDeliveryTypes = Arrays.asList(SiriDataType.STOP_MONITORING, SiriDataType.ESTIMATED_TIMETABLE, SiriDataType.VEHICLE_MONITORING);
-                if (multipleDatasetDeliveryTypes.contains(subscription.getSubscriptionType())) {
-                    Map<String, Siri> deliveriesByDataset = initialDeliveryGenerator.findInitialDeliveriesByDataset(subscription);
-                    for (Map.Entry<String, Siri> datasetAndDelivery : deliveriesByDataset.entrySet()) {
-                        sendInitialDelivery(datasetAndDelivery.getKey(), datasetAndDelivery.getValue(), subscription);
-                    }
+    public void generateAndSendInitialDelivery(String subscriptionId, String mappingPolicy) {
 
-                } else {
-                    Siri delivery = initialDeliveryGenerator.findInitialDeliveryData(subscription, outboundIdMappingPolicy);
-                    sendInitialDelivery(subscription.getDatasetId(), delivery, subscription);
-                }
+        OutboundSubscriptionSetup subscription = subscriptions.get(subscriptionId);
+        if (subscription == null) {
+            return;
+        }
+        OutboundIdMappingPolicy outboundIdMappingPolicy = OutboundIdMappingPolicy.valueOf(mappingPolicy);
 
-            } catch (Exception e) {
-                logger.error("Error while sending initial delivery", e);
-            } finally {
-                MDC.remove("camel.breadcrumbId");
+        //Send initial ServiceDelivery
+        logger.debug("Find initial delivery for {}", subscription.getSubscriptionId());
+        List<SiriDataType> multipleDatasetDeliveryTypes = Arrays.asList(SiriDataType.STOP_MONITORING, SiriDataType.ESTIMATED_TIMETABLE, SiriDataType.VEHICLE_MONITORING);
+        if (multipleDatasetDeliveryTypes.contains(subscription.getSubscriptionType())) {
+            Map<String, Siri> deliveriesByDataset = initialDeliveryGenerator.findInitialDeliveriesByDataset(subscription);
+            for (Map.Entry<String, Siri> datasetAndDelivery : deliveriesByDataset.entrySet()) {
+                sendInitialDeliveryToClient(datasetAndDelivery.getKey(), datasetAndDelivery.getValue(), subscription);
             }
-        });
+
+        } else {
+            Siri delivery = initialDeliveryGenerator.findInitialDeliveryData(subscription, outboundIdMappingPolicy);
+            sendInitialDeliveryToClient(subscription.getDatasetId(), delivery, subscription);
+        }
     }
 
-    private void sendInitialDelivery(String datasetId, Siri delivery, OutboundSubscriptionSetup subscription) {
+    private void requestInitialDeliverySending(OutboundSubscriptionSetup subscription, OutboundIdMappingPolicy outboundIdMappingPolicy) {
+        Map<String, Object> headers = new HashMap<>();
+        if (outboundIdMappingPolicy == null) {
+            outboundIdMappingPolicy = OutboundIdMappingPolicy.DEFAULT;
+        }
+        headers.put("subscriptionId", subscription.getSubscriptionId());
+        headers.put("outboundIdMappingPolicy", outboundIdMappingPolicy.toString());
+
+
+        switch (subscription.getSubscriptionType()) {
+            case STOP_MONITORING ->
+                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliverySMQueueName, null, headers);
+            case VEHICLE_MONITORING ->
+                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryVMQueueName, null, headers);
+            case SITUATION_EXCHANGE ->
+                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliverySXQueueName, null, headers);
+            case ESTIMATED_TIMETABLE ->
+                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryETQueueName, null, headers);
+            case GENERAL_MESSAGE ->
+                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryGMQueueName, null, headers);
+            case FACILITY_MONITORING ->
+                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryFMQueueName, null, headers);
+        }
+    }
+
+    private void sendInitialDeliveryToClient(String datasetId, Siri delivery, OutboundSubscriptionSetup subscription) {
         if (delivery != null) {
-            logger.info("Sending initial delivery to {}", subscription.getSubscriptionId());
+            logger.info("Sending initial delivery to {}, dataset:{}", subscription.getSubscriptionId(), datasetId);
             camelRouteManager.pushSiriData(datasetId, delivery, subscription, false);
         } else {
-            logger.info("No initial delivery found for {}", subscription);
+            logger.info("No initial delivery found for {}, dataset:{}", subscription, datasetId);
         }
     }
 
 
     private OutboundSubscriptionSetup createSubscription(Siri incomingSiri, IncomingSiriParameters incomingSiriParameters) {
-        String datasetId =  incomingSiriParameters.getDatasetId();
+        String datasetId = incomingSiriParameters.getDatasetId();
         OutboundIdMappingPolicy outboundIdMappingPolicy = incomingSiriParameters.getOutboundIdMappingPolicy();
         String clientTrackingName = incomingSiriParameters.getClientTrackingName();
         boolean useOrignalId = incomingSiriParameters.isUseOriginalId();
@@ -930,23 +972,13 @@ public class ServerSubscriptionManager {
         return siriObjectFactory.createCheckStatusResponse(checkStatusRequest);
     }
 
-    public int getPushUpdatesWaitingQueueSize() {
-        return outboundSenderExecutorService == null ? 0 : outboundSenderExecutorService.getQueue().size();
-    }
-
-    public int getPushUpdatesActiveCount() {
-        return outboundSenderExecutorService == null ? 0 : outboundSenderExecutorService.getActiveCount();
-    }
-
-
     public void pushUpdatesAsync(SiriDataType datatype, List updates, String datasetId) {
         final String breadcrumbId = MDC.get("camel.breadcrumbId");
 
         if (outboundSenderExecutorService == null) {
-            outboundSenderExecutorService = (ThreadPoolExecutor) Executors.newFixedThreadPool(pushUpdatedThreadPool);
+            outboundSenderExecutorService = Executors.newVirtualThreadPerTaskExecutor();
         }
 
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
         switch (datatype) {
             case ESTIMATED_TIMETABLE:
                 outboundSenderExecutorService.execute(() -> pushUpdatedEstimatedTimetables(updates, datasetId, breadcrumbId));

@@ -80,7 +80,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
     }
 
 
-    @Produce(uri = "direct:sendVMToRedis")
+    @Produce(value = "direct:sendVMToRedis")
     private ProducerTemplate redisProducer;
 
     public void sendMessageToRedis(Map<SiriObjectStorageKey, VehicleActivityStructure> message) {

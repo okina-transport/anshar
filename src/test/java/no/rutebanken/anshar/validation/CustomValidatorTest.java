@@ -28,8 +28,9 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import uk.org.siri.siri21.Siri;
 
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.ValidationEvent;
+import jakarta.xml.bind.JAXBException;
+import jakarta.xml.bind.ValidationEvent;
+
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.stream.XMLStreamException;

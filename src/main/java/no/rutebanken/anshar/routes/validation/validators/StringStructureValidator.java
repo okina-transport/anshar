@@ -17,7 +17,8 @@ package no.rutebanken.anshar.routes.validation.validators;
 
 import org.w3c.dom.Node;
 
-import javax.xml.bind.ValidationEvent;
+import jakarta.xml.bind.ValidationEvent;
+
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -40,6 +41,7 @@ public abstract class StringStructureValidator extends CustomValidator {
     /**
      * Verifies the values of string-attributes that may appear more than once. If more than one is provided, a
      * language-attribute is required
+     *
      * @param node
      * @return
      */
@@ -66,8 +68,8 @@ public abstract class StringStructureValidator extends CustomValidator {
                 if (containsHtmlTags(nodeValue)) {
                     // HTML-encoding characters for report
                     nodeValue = nodeValue.replaceAll(">", "&gt;")
-                                         .replaceAll("<", "&lt;");
-                    return createEvent(textNode,FIELDNAME,"it to not contain HTML-tags",nodeValue, ValidationEvent.WARNING);
+                            .replaceAll("<", "&lt;");
+                    return createEvent(textNode, FIELDNAME, "it to not contain HTML-tags", nodeValue, ValidationEvent.WARNING);
                 }
             }
 

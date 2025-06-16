@@ -5,7 +5,7 @@ import no.rutebanken.anshar.validation.CustomValidatorTest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import javax.xml.bind.ValidationEvent;
+import jakarta.xml.bind.ValidationEvent;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -20,13 +20,13 @@ public class DescriptionValidatorTest extends CustomValidatorTest {
     }
 
     @Test
-    public void testHtmlCodeInDescription() throws Exception{
+    public void testHtmlCodeInDescription() throws Exception {
         String xml = "<PLACEHOLDER><Description>&lt;b&gt;lorem ipsum&lt;/b&gt;</Description></PLACEHOLDER>";
 
         final ValidationEvent valid = validator.isValid(createXmlNode(xml));
         assertNotNull(
-            valid,
-            "Description with HTML-code flagged as valid"
+                valid,
+                "Description with HTML-code flagged as valid"
         );
     }
 }
