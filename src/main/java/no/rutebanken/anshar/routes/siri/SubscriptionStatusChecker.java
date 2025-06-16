@@ -50,7 +50,11 @@ public class SubscriptionStatusChecker extends RouteBuilder {
     }
 
     private void checkSubscriptionStatuses() {
-        Map<Collection<String>, SubscriptionSetup> uniqueUrls = subscriptions.values().stream()
+        Map<String, SubscriptionSetup> filteredSubscriptions = subscriptions.entrySet().stream()
+                .filter(entry -> !"GTFS-RT".equals(entry.getValue().getContentType()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        
+        Map<Collection<String>, SubscriptionSetup> uniqueUrls = filteredSubscriptions.values().stream()
                 .filter(sub -> sub.getUrlMap() != null && !sub.getUrlMap().isEmpty())
                 .collect(Collectors.toMap(
                         sub -> new HashSet<>(sub.getUrlMap().values()),
@@ -67,7 +71,7 @@ public class SubscriptionStatusChecker extends RouteBuilder {
             });
         });
 
-        subscriptions.entrySet().forEach(entry -> {
+        filteredSubscriptions.entrySet().forEach(entry -> {
             String subscriptionId = entry.getKey();
             SubscriptionSetup subscription = entry.getValue();
             ZonedDateTime subscriptionStartDate = subscription.getStartedAt();
