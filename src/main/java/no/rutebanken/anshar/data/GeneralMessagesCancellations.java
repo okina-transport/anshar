@@ -192,7 +192,6 @@ public class GeneralMessagesCancellations extends SiriRepository<GeneralMessageC
 
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientName, int maxSize, List<InfoChannelRefStructure> requestedChannels) {
 
-        requestorRefRepository.touchRequestorRef(requestorId, datasetId, clientName, SiriDataType.GENERAL_MESSAGE);
 
         int trackingPeriodMinutes = configuration.getTrackingPeriodMinutes();
 

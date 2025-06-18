@@ -208,7 +208,6 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
 
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientTrackingName, List<String> excludedDatasetIds, int maxSize, long previewInterval, Set<String> requestedLines) {
 
-        requestorRefRepository.touchRequestorRef(requestorId, datasetId, clientTrackingName, SiriDataType.ESTIMATED_TIMETABLE);
 
         int trackingPeriodMinutes = configuration.getTrackingPeriodMinutes();
 
