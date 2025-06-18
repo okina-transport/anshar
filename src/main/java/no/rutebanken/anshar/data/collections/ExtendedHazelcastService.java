@@ -101,9 +101,6 @@ public class ExtendedHazelcastService extends HazelCastService {
 
         return Arrays.asList(
                 new SerializerConfig()
-                        .setTypeClass(SiriObjectStorageKey.class)
-                        .setImplementation(new KryoSerializer()),
-                new SerializerConfig()
                         .setTypeClass(EstimatedVehicleJourney.class)
                         .setImplementation(new KryoSerializer()),
                 new SerializerConfig()

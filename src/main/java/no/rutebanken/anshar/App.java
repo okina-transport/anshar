@@ -28,7 +28,6 @@ public class App {
 
     // must have a main method spring-boot can run
     public static void main(String[] args) {
-        System.setProperty("javax.xml.transform.TransformerFactory", "net.sf.saxon.TransformerFactoryImpl");
         Brotli4jLoader.ensureAvailability();
         SpringApplication.run(App.class, args);
     }
