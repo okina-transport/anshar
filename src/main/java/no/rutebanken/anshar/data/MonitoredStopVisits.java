@@ -83,8 +83,6 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     @Autowired
     private AnsharConfiguration configuration;
 
-    @Autowired
-    private RequestorRefRepository requestorRefRepository;
 
     @Autowired
     private SiriObjectFactory siriObjectFactory;
@@ -207,12 +205,6 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     }
 
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientTrackingName, List<String> excludedDatasetIds, int maxSize, long previewInterval, Set<String> searchedStopIds) {
-
-        if (StringUtils.isNotEmpty(datasetId)) {
-            requestorRefRepository.touchRequestorRef(requestorId, datasetId, clientTrackingName, SiriDataType.STOP_MONITORING);
-        } else {
-            requestorRefRepository.touchRequestorRef(requestorId, null, clientTrackingName, SiriDataType.STOP_MONITORING);
-        }
 
         int trackingPeriodMinutes = configuration.getTrackingPeriodMinutes();
 
