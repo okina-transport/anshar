@@ -70,7 +70,7 @@ public class VehicleJourneyService {
 
             String lineId = record.isSet("lineId") ? record.get("lineId") : null;
             LocalDate date = record.isSet("dateyyyyMMdd") ? LocalDate.parse(record.get("dateyyyyMMdd"), DateTimeFormatter.ofPattern("yyyyMMdd")) : null;
-            String vehicleJourneyId = record.isSet("vehicleJourneyId") ? record.get("vehicleJourneyId") : null;
+            String vehicleJourneyId = record.isSet("vehicleJourneyId") ? record.get("vehicleJourneyId").replace("VehicleJourney", "ServiceJourney") : null;
             FirstOrLastJourneyEnumeration servicePosition = record.isSet("servicePosition") ? FirstOrLastJourneyEnumeration.fromValue(record.get("servicePosition")) : null;
 
             if (lineId == null || vehicleJourneyId == null || servicePosition == null || date == null) {
