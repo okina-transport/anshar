@@ -38,20 +38,20 @@ public class FirstOrLastJourneyTests extends SpringBootBaseTest {
     public void test_Vj_cache() throws JAXBException {
 
         LocalDate date = LocalDate.of(2052, 4, 2);
-        FirstOrLastJourneyEnumeration servPos1 = vehicleJourneyService.getServicePosition(date, "LA_ROCHE_SUR_YON:VehicleJourney:20944514-LRY_28-LRY_PS-Mercredi-03");
+        FirstOrLastJourneyEnumeration servPos1 = vehicleJourneyService.getServicePosition(date, "LA_ROCHE_SUR_YON:ServiceJourney:20944514-LRY_28-LRY_PS-Mercredi-03");
         assertEquals(FirstOrLastJourneyEnumeration.OTHER_SERVICE, servPos1);
 
-        FirstOrLastJourneyEnumeration servPos2 = vehicleJourneyService.getServicePosition(date, "LA_ROCHE_SUR_YON:VehicleJourney:20945011-LRY_28-LRY_PS-Mercredi-03");
+        FirstOrLastJourneyEnumeration servPos2 = vehicleJourneyService.getServicePosition(date, "LA_ROCHE_SUR_YON:ServiceJourney:20945011-LRY_28-LRY_PS-Mercredi-03");
         assertEquals(FirstOrLastJourneyEnumeration.LAST_SERVICE_OF_DAY, servPos2);
 
-        FirstOrLastJourneyEnumeration servPos3 = vehicleJourneyService.getServicePosition(date, "LA_ROCHE_SUR_YON:VehicleJourney:20944501-LRY_28-LRY_PS-Mercredi-03");
+        FirstOrLastJourneyEnumeration servPos3 = vehicleJourneyService.getServicePosition(date, "LA_ROCHE_SUR_YON:ServiceJourney:20944501-LRY_28-LRY_PS-Mercredi-03");
         assertEquals(FirstOrLastJourneyEnumeration.FIRST_SERVICE_OF_DAY, servPos3);
 
-        FirstOrLastJourneyEnumeration servPos4 = vehicleJourneyService.getServicePosition(date, "fakeVehicleJourneyId");
+        FirstOrLastJourneyEnumeration servPos4 = vehicleJourneyService.getServicePosition(date, "fakeServiceJourneyId");
         assertEquals(FirstOrLastJourneyEnumeration.UNSPECIFIED, servPos4);
 
         LocalDate date2 = LocalDate.of(2022, 4, 2);
-        FirstOrLastJourneyEnumeration servPos5 = vehicleJourneyService.getServicePosition(date2, "LA_ROCHE_SUR_YON:VehicleJourney:20944514-LRY_28-LRY_PS-Mercredi-03");
+        FirstOrLastJourneyEnumeration servPos5 = vehicleJourneyService.getServicePosition(date2, "LA_ROCHE_SUR_YON:ServiceJourney:20944514-LRY_28-LRY_PS-Mercredi-03");
         assertEquals(FirstOrLastJourneyEnumeration.UNSPECIFIED, servPos5);
     }
 
@@ -76,7 +76,7 @@ public class FirstOrLastJourneyTests extends SpringBootBaseTest {
         monitoredStopVisits.clearAll();
 
         ZonedDateTime aimedDepartureTime = ZonedDateTime.of(2052, 4, 2, 13, 15, 00, 00, ZoneId.systemDefault());
-        createAndIngestStopVisit("DAT1", aimedDepartureTime, "LA_ROCHE_SUR_YON:VehicleJourney:20944501-LRY_28-LRY_PS-Mercredi-03", null);
+        createAndIngestStopVisit("DAT1", aimedDepartureTime, "LA_ROCHE_SUR_YON:ServiceJourney:20944501-LRY_28-LRY_PS-Mercredi-03", null);
 
         Siri siriResult = getStopDataFromCache("DAT1");
         FirstOrLastJourneyEnumeration outputFirstOrLastJourney = getFirstOrLastJourneyEnumeration(siriResult);
@@ -124,7 +124,7 @@ public class FirstOrLastJourneyTests extends SpringBootBaseTest {
         IdProcessingParameters dat2VJ = new IdProcessingParameters();
         dat2VJ.setObjectType(ObjectType.VEHICLE_JOURNEY);
         dat2VJ.setDatasetId("DAT2");
-        dat2VJ.setOutputPrefixToAdd("LA_ROCHE_SUR_YON:VehicleJourney:");
+        dat2VJ.setOutputPrefixToAdd("LA_ROCHE_SUR_YON:ServiceJourney:");
 
         subscriptionConfig.getIdProcessingParameters().add(dat2VJ);
 
