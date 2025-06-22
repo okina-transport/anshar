@@ -30,6 +30,7 @@ import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import uk.org.siri.siri21.*;
 
 import java.time.ZonedDateTime;
@@ -65,6 +66,9 @@ public class SiriLiteTest extends BaseHttpTest {
 
     @Autowired
     private DiscoveryCache discoveryCache;
+
+    @Autowired
+    private ApplicationContext appContext;
 
     @Autowired
     private SubscriptionConfig subscriptionConfig;
@@ -406,6 +410,19 @@ public class SiriLiteTest extends BaseHttpTest {
 
     @Test
     public void testGMJSONFilterOnDatasetId() {
+
+        GeneralMessages service = appContext.getBean(GeneralMessages.class);
+        service.clearAll();
+        GeneralMessage msg = TestObjectFactory.createGeneralMessage();
+        Content content1 = new Content();
+        content1.setStopPointRefs(Arrays.asList("stop1"));
+        msg.setContent(content1);
+
+        //adding gm with 1 stopRef
+        service.add("test", msg);
+
+
+
         given()
                 .when()
                 .get("/siri/2.0/general-message.json?datasetId=test")
@@ -420,6 +437,17 @@ public class SiriLiteTest extends BaseHttpTest {
 
     @Test
     public void testGMJSONFilterOnDatasetIdSiri2_1() {
+        GeneralMessages service = appContext.getBean(GeneralMessages.class);
+        service.clearAll();
+        GeneralMessage msg = TestObjectFactory.createGeneralMessage();
+        Content content1 = new Content();
+        content1.setStopPointRefs(Arrays.asList("stop1"));
+        msg.setContent(content1);
+
+        //adding gm with 1 stopRef
+        service.add("test", msg);
+
+
         given()
                 .when()
                 .get("/siri/2.1/general-message.json?datasetId=test")
