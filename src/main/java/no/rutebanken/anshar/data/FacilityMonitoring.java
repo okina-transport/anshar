@@ -197,7 +197,7 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientTrackingName, List<String> excludedDatasetIds, int maxSize,
                                       Set<String> requestedLineRef, Set<String> requestedFacilities, Set<String> requestedVehicleRef, Set<String> stopPointRef) {
 
-        requestorRefRepository.touchRequestorRef(requestorId, datasetId, clientTrackingName, SiriDataType.FACILITY_MONITORING);
+
 
         int trackingPeriodMinutes = configuration.getTrackingPeriodMinutes();
 

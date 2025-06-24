@@ -157,7 +157,6 @@ public class Situations extends SiriRepository<PtSituationElement> {
 
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientName, int maxSize) {
 
-        requestorRefRepository.touchRequestorRef(requestorId, datasetId, clientName, SiriDataType.SITUATION_EXCHANGE);
 
         boolean isAdHocRequest = false;
 

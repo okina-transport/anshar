@@ -57,6 +57,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -346,7 +347,7 @@ public class ServerSubscriptionManager {
     /**
      * Handle subscription request that can contain one or multiple subcriptions
      *
-     * @param incomingSiri           raw Siri
+     * @param incomingSiri raw Siri
      * @param incomingSiriParameters incoming parameters
      * @return
      */
@@ -431,7 +432,7 @@ public class ServerSubscriptionManager {
     /**
      * Handle a subcription request that contains only one subscription
      *
-     * @param incomingSiri           raw Siri
+     * @param incomingSiri raw Siri
      * @param incomingSiriParameters received parameters
      * @return
      */
@@ -560,6 +561,9 @@ public class ServerSubscriptionManager {
 
     private void sendInitialDeliveryToClient(String datasetId, Siri delivery, OutboundSubscriptionSetup subscription) {
         if (delivery != null) {
+            if (SiriDataType.GENERAL_MESSAGE.equals(subscription.getSubscriptionType())) {
+                delivery = convertIdsGeneralMessage(delivery, subscription.getDatasetId(), subscription.getOutboundIdMappingPolicy());
+            }
             logger.info("Sending initial delivery to {}, dataset:{}", subscription.getSubscriptionId(), datasetId);
             camelRouteManager.pushSiriData(datasetId, delivery, subscription, false);
         } else {
@@ -569,7 +573,7 @@ public class ServerSubscriptionManager {
 
 
     private OutboundSubscriptionSetup createSubscription(Siri incomingSiri, IncomingSiriParameters incomingSiriParameters) {
-        String datasetId = incomingSiriParameters.getDatasetId();
+        String datasetId =  incomingSiriParameters.getDatasetId();
         OutboundIdMappingPolicy outboundIdMappingPolicy = incomingSiriParameters.getOutboundIdMappingPolicy();
         String clientTrackingName = incomingSiriParameters.getClientTrackingName();
         boolean useOrignalId = incomingSiriParameters.isUseOriginalId();
@@ -972,13 +976,23 @@ public class ServerSubscriptionManager {
         return siriObjectFactory.createCheckStatusResponse(checkStatusRequest);
     }
 
+    public int getPushUpdatesWaitingQueueSize() {
+        return outboundSenderExecutorService == null ? 0 : outboundSenderExecutorService.getQueue().size();
+    }
+
+    public int getPushUpdatesActiveCount() {
+        return outboundSenderExecutorService == null ? 0 : outboundSenderExecutorService.getActiveCount();
+    }
+
+
     public void pushUpdatesAsync(SiriDataType datatype, List updates, String datasetId) {
         final String breadcrumbId = MDC.get("camel.breadcrumbId");
 
         if (outboundSenderExecutorService == null) {
-            outboundSenderExecutorService = Executors.newVirtualThreadPerTaskExecutor();
+            outboundSenderExecutorService = (ThreadPoolExecutor) Executors.newFixedThreadPool(pushUpdatedThreadPool);
         }
 
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
         switch (datatype) {
             case ESTIMATED_TIMETABLE:
                 outboundSenderExecutorService.execute(() -> pushUpdatedEstimatedTimetables(updates, datasetId, breadcrumbId));

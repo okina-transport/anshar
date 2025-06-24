@@ -54,7 +54,6 @@ public class InitialDeliveryGenerator {
     public Map<String, Siri> findInitialDeliveriesByDataset(OutboundSubscriptionSetup subscriptionRequest) {
         Map<String, Siri> results = new HashMap<>();
         switch (subscriptionRequest.getSubscriptionType()) {
-
             case STOP_MONITORING:
                 Set<String> searchedStopIds = siriHelper.getSeachedStopIds(subscriptionRequest);
                 return getSMinitialDeliveries(subscriptionRequest, searchedStopIds);
@@ -62,8 +61,23 @@ public class InitialDeliveryGenerator {
                 return getETinitialDeliveries(subscriptionRequest);
             case VEHICLE_MONITORING:
                 return getVMinitialDeliveries(subscriptionRequest);
+            case GENERAL_MESSAGE:
+                return getGMinitialDeliveries(subscriptionRequest);
         }
 
+        return results;
+    }
+
+    private Map<String, Siri> getGMinitialDeliveries(OutboundSubscriptionSetup subscriptionRequest) {
+
+        Set<String> datasetList = generalMessages.getAllDatasetIds();
+        Map<String, Siri> results = new HashMap<>();
+
+        for (String dataset : datasetList) {
+            Collection<GeneralMessage> messages = generalMessages.getAll(dataset);
+            Siri delivery = siriObjectFactory.createGMServiceDelivery(messages);
+            results.put(dataset, delivery);
+        }
         return results;
     }
 
@@ -143,12 +157,6 @@ public class InitialDeliveryGenerator {
             case SITUATION_EXCHANGE:
                 delivery = situationExchangeOutbound.createServiceDelivery(subscriptionRequest.getRequestorRef(), subscriptionRequest.getDatasetId(), subscriptionRequest.getClientTrackingName(), policy, 1000);
                 logger.info("Initial SX-delivery: {} elements", delivery.getServiceDelivery().getSituationExchangeDeliveries().size());
-                break;
-
-            case GENERAL_MESSAGE:
-                Collection<GeneralMessage> messages = generalMessages.getAll(subscriptionRequest.getDatasetId());
-                logger.info("Initial GM-delivery: {} elements", messages.size());
-                delivery = siriObjectFactory.createGMServiceDelivery(messages);
                 break;
 
             case FACILITY_MONITORING:

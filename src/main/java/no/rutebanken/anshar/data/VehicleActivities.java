@@ -229,7 +229,7 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
     }
 
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientName, List<String> excludedDatasetIds, int maxSize, Set<String> linerefSet, Set<String> vehicleRefSet) {
-        requestorRefRepository.touchRequestorRef(requestorId, datasetId, clientName, SiriDataType.VEHICLE_MONITORING);
+
 
         int trackingPeriodMinutes = configuration.getTrackingPeriodMinutes();
 

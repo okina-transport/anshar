@@ -183,7 +183,7 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
                         currentChecksum = getChecksum(generalMessage);
                         timingTracer.mark("getChecksum");
                     } catch (Exception e) {
-                       logger.warn("Unable to get checksum for {}", generalMessage.getInfoMessageIdentifier(), e);
+                        logger.warn("Unable to get checksum for {}", generalMessage.getInfoMessageIdentifier(), e);
                     }
                     String existingChecksum = checksumCache.get(key);
 
@@ -247,7 +247,6 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
 
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientName, int maxSize, List<InfoChannelRefStructure> requestedChannels) {
 
-        requestorRefRepository.touchRequestorRef(requestorId, datasetId, clientName, SiriDataType.GENERAL_MESSAGE);
 
         int trackingPeriodMinutes = configuration.getTrackingPeriodMinutes();
 
@@ -317,6 +316,12 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
         // Get all relevant ids
         Predicate<SiriObjectStorageKey, GeneralMessage> predicate = SiriObjectStorageKeyUtil.getGeneralMessagePredicate(datasetId, requestedChannels);
         return new HashSet<>(generalMessages.keySet(predicate));
+    }
+
+    public Set<String> getAllDatasetIds() {
+        return generalMessages.keySet().stream()
+                .map(SiriObjectStorageKey::getCodespaceId)
+                .collect(Collectors.toSet());
     }
 
     public void clearAll() {

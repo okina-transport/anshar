@@ -54,6 +54,9 @@ public class ExternalIdsService extends BaseRouteBuilder {
     @Value("${anshar.mapping.external.ids.root.directory}")
     private String mappingExternalIdsRootDir;
 
+    @Value("${download.mapping.files.enabled}")
+    private boolean downloadMappingFilesEnabled;
+
     @Autowired
     SubscriptionConfig subscriptionConfig;
 
@@ -104,6 +107,11 @@ public class ExternalIdsService extends BaseRouteBuilder {
      * Download and refresh the cache containing data from mapping stops and lines files
      */
     public void downloadFilesAndRefreshCache() {
+        if (!downloadMappingFilesEnabled) {
+            log.info("Download mapping files is disabled");
+            return;
+        }
+
         Flux<String> stopsMappingUrls = Flux.fromArray(urlsStopsMappingFile.split(","));
         Flux<String> linesMappingUrls = Flux.fromArray(urlsLinesMappingFile.split(","));
 
