@@ -347,7 +347,7 @@ public class ServerSubscriptionManager {
     /**
      * Handle subscription request that can contain one or multiple subcriptions
      *
-     * @param incomingSiri raw Siri
+     * @param incomingSiri           raw Siri
      * @param incomingSiriParameters incoming parameters
      * @return
      */
@@ -432,7 +432,7 @@ public class ServerSubscriptionManager {
     /**
      * Handle a subcription request that contains only one subscription
      *
-     * @param incomingSiri raw Siri
+     * @param incomingSiri           raw Siri
      * @param incomingSiriParameters received parameters
      * @return
      */
@@ -573,7 +573,7 @@ public class ServerSubscriptionManager {
 
 
     private OutboundSubscriptionSetup createSubscription(Siri incomingSiri, IncomingSiriParameters incomingSiriParameters) {
-        String datasetId =  incomingSiriParameters.getDatasetId();
+        String datasetId = incomingSiriParameters.getDatasetId();
         OutboundIdMappingPolicy outboundIdMappingPolicy = incomingSiriParameters.getOutboundIdMappingPolicy();
         String clientTrackingName = incomingSiriParameters.getClientTrackingName();
         boolean useOrignalId = incomingSiriParameters.isUseOriginalId();
@@ -974,14 +974,6 @@ public class ServerSubscriptionManager {
 
     public Siri handleCheckStatusRequest(CheckStatusRequestStructure checkStatusRequest) {
         return siriObjectFactory.createCheckStatusResponse(checkStatusRequest);
-    }
-
-    public int getPushUpdatesWaitingQueueSize() {
-        return outboundSenderExecutorService == null ? 0 : outboundSenderExecutorService.getQueue().size();
-    }
-
-    public int getPushUpdatesActiveCount() {
-        return outboundSenderExecutorService == null ? 0 : outboundSenderExecutorService.getActiveCount();
     }
 
 
