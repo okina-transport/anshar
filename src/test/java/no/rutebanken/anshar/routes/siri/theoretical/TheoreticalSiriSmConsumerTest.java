@@ -7,7 +7,7 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import org.apache.camel.CamelContext;
-import org.awaitility.Duration;
+import org.awaitility.Durations;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,10 +56,10 @@ class TheoreticalSiriSmConsumerTest extends SpringBootBaseTest {
         consumer.ingestSiriSmData();
 
         await()
-            .atMost(Duration.TEN_SECONDS)
-            .with()
-            .pollInterval(Duration.ONE_SECOND)
-            .until(() -> subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING).size() == 20);
+                .atMost(Durations.TEN_SECONDS)
+                .with()
+                .pollInterval(Durations.ONE_SECOND)
+                .until(() -> subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING).size() == 20);
 
         assertThat(subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING))
                 .extracting("datasetId").containsOnly("TEST");

@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.outbound;
 
+import jakarta.xml.bind.JAXBException;
 import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.idTests.TestUtils;
@@ -7,7 +8,7 @@ import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.SituationExchangeInbound;
 import no.rutebanken.anshar.subscription.SiriDataType;
-import org.awaitility.Duration;
+import org.awaitility.Durations;
 import org.entur.siri21.util.SiriXml;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -17,8 +18,6 @@ import org.mockserver.verify.VerificationTimes;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import uk.org.siri.siri21.*;
-
-import jakarta.xml.bind.JAXBException;
 
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
@@ -186,19 +185,19 @@ class OutboundSubscriptionTest extends SpringBootBaseTest {
         situationExchangeInbound.ingestSituations("DAT1", inputSituations, true);
 
         await()
-                .atMost(Duration.TEN_SECONDS)
-                .atLeast(Duration.TWO_SECONDS)
-                .pollInterval(Duration.ONE_SECOND)
-                .pollDelay(Duration.TWO_SECONDS)
+                .atMost(Durations.TEN_SECONDS)
+                .atLeast(Durations.TWO_SECONDS)
+                .pollInterval(Durations.ONE_SECOND)
+                .pollDelay(Durations.TWO_SECONDS)
                 .until(() -> serverSubscriptionManager.getAllSubscriptions(SiriDataType.GENERAL_MESSAGE).size() == 1);
 
         situationExchangeInbound.ingestSituations("DAT1", inputSituations, true);
 
         await()
-                .atMost(Duration.TEN_SECONDS)
-                .atLeast(Duration.TWO_SECONDS)
-                .pollInterval(Duration.ONE_SECOND)
-                .pollDelay(Duration.TWO_SECONDS)
+                .atMost(Durations.TEN_SECONDS)
+                .atLeast(Durations.TWO_SECONDS)
+                .pollInterval(Durations.ONE_SECOND)
+                .pollDelay(Durations.TWO_SECONDS)
                 .until(() -> serverSubscriptionManager.getAllSubscriptions(SiriDataType.GENERAL_MESSAGE).size() == 1);
 
         mockServer.verify(

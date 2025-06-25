@@ -1,7 +1,6 @@
 package no.rutebanken.anshar.gtfsrt.readers;
 
 import com.google.transit.realtime.GtfsRealtime;
-import net.logstash.logback.encoder.org.apache.commons.lang3.StringUtils;
 import no.rutebanken.anshar.data.DiscoveryCache;
 import no.rutebanken.anshar.gtfsrt.mappers.VehiclePositionMapper;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -10,6 +9,7 @@ import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -59,8 +59,8 @@ public class VehiclePositionReader extends AbstractSwallower {
      * Processes and ingests GTFS-Realtime vehicle position data, converting it into structured SIRI data.
      * This method builds vehicle activity records, manages subscriptions, and sends the structured data.
      *
-     * @param datasetId The identifier of the dataset associated with the GTFS-Realtime feed.
-     * @param routeIdList A list of route IDs used to filter relevant vehicle positions.
+     * @param datasetId             The identifier of the dataset associated with the GTFS-Realtime feed.
+     * @param routeIdList           A list of route IDs used to filter relevant vehicle positions.
      * @param completeGTFSRTMessage The complete GTFS-Realtime {@link GtfsRealtime.FeedMessage} containing vehicle position data.
      */
     public void ingestVehiclePositionData(String datasetId, List<String> routeIdList, GtfsRealtime.FeedMessage completeGTFSRTMessage) {

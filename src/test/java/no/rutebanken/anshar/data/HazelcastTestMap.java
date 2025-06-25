@@ -162,6 +162,11 @@ public class HazelcastTestMap<T> implements IMap {
     }
 
     @Override
+    public CompletionStage<Boolean> deleteAsync(@Nonnull Object o) {
+        return null;
+    }
+
+    @Override
     public boolean tryRemove(@Nonnull Object key, long timeout, @Nonnull TimeUnit timeunit) {
         return false;
     }
@@ -393,6 +398,16 @@ public class HazelcastTestMap<T> implements IMap {
     @Override
     public Collection values(@Nonnull Predicate predicate) {
         return null;
+    }
+
+    @Override
+    public Collection localValues() {
+        return List.of();
+    }
+
+    @Override
+    public Collection localValues(@Nonnull Predicate predicate) {
+        return List.of();
     }
 
     @Override
