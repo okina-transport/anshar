@@ -46,8 +46,8 @@
         <okina.helpers.version>1.0.26</okina.helpers.version>
         <geotools.version>33.1</geotools.version>
         <sonar.projectKey>mobi-iti:anshar</sonar.projectKey>
-        <protobuf.version>3.19.3</protobuf.version>
-        <gtfs.realtime-bindings.version>0.0.8</gtfs.realtime-bindings.version>
+        <protobuf.version>4.31.1</protobuf.version>
+        <gtfs.realtime-bindings.version>1.0.0-mobi-iti</gtfs.realtime-bindings.version>
         <version.lombok>1.18.38</version.lombok>
 
     </properties>
@@ -501,7 +501,7 @@
 
 
         <dependency>
-            <groupId>org.mobilitydata</groupId>
+            <groupId>com.okina</groupId>
             <artifactId>gtfs-realtime-bindings</artifactId>
             <version>${gtfs.realtime-bindings.version}</version>
         </dependency>
