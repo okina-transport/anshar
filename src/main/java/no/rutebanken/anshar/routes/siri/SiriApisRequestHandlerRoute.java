@@ -1,9 +1,13 @@
 package no.rutebanken.anshar.routes.siri;
 
+import no.rutebanken.anshar.api.FlowStatus;
 import no.rutebanken.anshar.api.SiriApi;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.DiscoveryCache;
+import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.BaseRouteBuilder;
+import no.rutebanken.anshar.routes.health.IncomingDataHealthService;
+import no.rutebanken.anshar.routes.health.IncomingFlowType;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
@@ -29,11 +33,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 import static no.rutebanken.anshar.subscription.SubscriptionSetup.ServiceType.SOAP;
 
@@ -54,7 +54,13 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
     private SubscriptionConfig subscriptionConfig;
 
     @Autowired
+    private PrometheusMetricsService metrics;
+
+    @Autowired
     private AnsharConfiguration configuration;
+
+    @Autowired
+    private IncomingDataHealthService incomingDataHealthService;
 
     public SiriApisRequestHandlerRoute(AnsharConfiguration config, SubscriptionManager subscriptionManager) {
         super(config, subscriptionManager);
@@ -81,21 +87,31 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
 
         for (SiriApi siriApi : siriApis) {
 
-            if (!shouldSiriApiBeRecovered(siriApi.getType())) {
-                continue;
+            try {
+                if (!shouldSiriApiBeRecovered(siriApi.getType())) {
+                    continue;
+                }
+
+                File file = new File("/tmp/" + siriApi.getDatasetId() + "_" + siriApi.getType() + ".zip");
+                log.info("Get Siri file for siriApis : " + siriApi.getDatasetId() + " in data format : " + siriApi.getType());
+                String url = siriApi.getUrl();
+                log.info("URL : " + url);
+                FileUtils.copyURLToFile(new URL(url), file);
+
+                if (file.length() > 0) {
+                    createSubscriptionsFromFile(siriApi.getType(), file, url, siriApi.getDatasetId());
+                } else {
+                    log.error("No file returned for the provider " + siriApi.getDatasetId());
+                }
+
+                metrics.registerIncomingDataMonitoring("SIRI", siriApi.getDatasetId(), "200", siriApi.getUrl());
+                incomingDataHealthService.recordStatus(String.valueOf(siriApi.getId()), siriApi.getDatasetId(), siriApi.getUrl(), IncomingFlowType.SIRI, FlowStatus.OK);
+            } catch (Exception e) {
+                metrics.registerIncomingDataMonitoring("SIRI", siriApi.getDatasetId(), "500", siriApi.getUrl());
+                incomingDataHealthService.recordStatus(String.valueOf(siriApi.getId()), siriApi.getDatasetId(), siriApi.getUrl(), IncomingFlowType.SIRI, FlowStatus.ERROR);
+
             }
 
-            File file = new File("/tmp/" + siriApi.getDatasetId() + "_" + siriApi.getType() + ".zip");
-            log.info("Get Siri file for siriApis : " + siriApi.getDatasetId() + " in data format : " + siriApi.getType());
-            String url = siriApi.getUrl();
-            log.info("URL : " + url);
-            FileUtils.copyURLToFile(new URL(url), file);
-
-            if (file.length() > 0) {
-                createSubscriptionsFromFile(siriApi.getType(), file, url, siriApi.getDatasetId());
-            } else {
-                log.error("No file returned for the provider " + siriApi.getDatasetId());
-            }
         }
 
         long endTime = DateTime.now().toInstant().getMillis();

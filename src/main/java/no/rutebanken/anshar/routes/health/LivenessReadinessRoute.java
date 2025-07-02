@@ -18,6 +18,7 @@ package no.rutebanken.anshar.routes.health;
 import com.hazelcast.collection.ISet;
 import io.prometheus.jmx.JmxCollector;
 import io.prometheus.metrics.model.snapshots.MetricSnapshots;
+import jakarta.xml.bind.JAXBException;
 import no.rutebanken.anshar.api.FlowStatus;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.data.util.CustomSiriXml;
@@ -39,14 +40,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.Siri;
 
 import javax.annotation.PostConstruct;
 import javax.ws.rs.core.MediaType;
-
-import jakarta.xml.bind.JAXBException;
-
 import javax.xml.stream.XMLStreamException;
 import javax.xml.transform.TransformerException;
 import java.io.ByteArrayInputStream;
@@ -65,6 +65,7 @@ import java.util.stream.Collectors;
 
 @Service
 @Configuration
+@EnableScheduling
 public class LivenessReadinessRoute extends RestRouteBuilder {
     private static final Logger logger = LoggerFactory.getLogger(LivenessReadinessRoute.class);
     public static boolean triggerRestart;
@@ -107,6 +108,9 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
     private SubscriptionConfig subscriptionConfig;
     private JmxCollector jmxCollector;
 
+    @Autowired
+    private IncomingDataHealthService incomingDataHealthService;
+
     @PostConstruct
     private void init() {
         startMonitorTime = LocalTime.parse(startMonitorTimeStr);
@@ -131,9 +135,20 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
                 .get("/ready").to("direct:ready")
                 .get("/up").to("direct:up")
                 .get("/incomingdatahealth").to("direct:incoming.data.health")
+                .get("/dailyStatuses").to("direct:incoming.data.daily.statuses")
                 .get("/healthy").to("direct:healthy")
                 .get("/anshardata").to("direct:anshardata")
                 .get("/favicon.ico").to("direct:notfound")
+        ;
+
+        from("direct:incoming.data.daily.statuses")
+                .process(p -> {
+                    p.getIn().setBody(getDailyStatuses());
+                })
+                .marshal().json()
+                .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.APPLICATION_JSON))
+                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("200"))
+                .routeId("incoming.data.daily.statuses")
         ;
 
         from("direct:incoming.data.health")
@@ -277,6 +292,21 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
 
     }
 
+    private List<IncomingFlowDailyStatus> getDailyStatuses() {
+        List<IncomingFlowDailyStatus> dailyStatuses = new ArrayList<>();
+        for (Map.Entry<IncomingFlowParameters, DailyStatus> incomingFlowParametersDailyStatusEntry : incomingDataHealthService.getDailyStatuses().entrySet()) {
+            IncomingFlowDailyStatus newDailyStatus = new IncomingFlowDailyStatus();
+            newDailyStatus.setUrl(incomingFlowParametersDailyStatusEntry.getKey().getUrl());
+            newDailyStatus.setId(incomingFlowParametersDailyStatusEntry.getKey().getId());
+            newDailyStatus.setType(incomingFlowParametersDailyStatusEntry.getKey().getType());
+            newDailyStatus.setDataset(incomingFlowParametersDailyStatusEntry.getKey().getDataset());
+            newDailyStatus.setDailyStatus(incomingFlowParametersDailyStatusEntry.getValue());
+            dailyStatuses.add(newDailyStatus);
+        }
+
+        return dailyStatuses;
+    }
+
     private List<IncomingFlowStatus> getIncomingDataHealth() {
         List<IncomingFlowStatus> flowStatuses = new ArrayList<>();
         if (CollectionUtils.isNotEmpty(subscriptionConfig.getGtfsRTApis())) {
@@ -315,7 +345,7 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
         siriStatus.setLastUpdate(System.currentTimeMillis());
         siriStatus.setUrl(url);
         siriStatus.setDataset(subscriptionsByUrl.get(0).getDatasetId());
-        siriStatus.setType(IncomingFlowStatus.IncomingFlowType.SIRI);
+        siriStatus.setType(IncomingFlowType.SIRI);
 
         try {
             FlowStatus status = launchCheckStatus(subscriptionsByUrl.get(0));
@@ -374,7 +404,7 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
             incomingFlowStatus.setLastUpdate(gtfsRtApi.getLastUpdate());
             incomingFlowStatus.setDataset(gtfsRtApi.getDatasetId());
             incomingFlowStatus.setUrl(gtfsRtApi.getUrl());
-            incomingFlowStatus.setType(IncomingFlowStatus.IncomingFlowType.GTFS);
+            incomingFlowStatus.setType(IncomingFlowType.GTFS);
             result.add(incomingFlowStatus);
         }
 
@@ -388,4 +418,14 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
     private boolean isJmxMetricsScrapingActive() {
         return jmxCollector != null && jmxMetricsScrapingEnabled;
     }
+
+    @Scheduled(fixedRate = 60000)
+    public void checkIncomingData() {
+        List<IncomingFlowStatus> currentStatuses = getSiriStatus(subscriptionConfig.getSubscriptions());
+        for (IncomingFlowStatus currentStatus : currentStatuses) {
+            incomingDataHealthService.recordStatus(currentStatus);
+        }
+    }
+
+
 }

@@ -54,6 +54,10 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
     private static final Logger logger = LoggerFactory.getLogger(PrometheusMetricsService.class);
 
     private static final String DATATYPE_TAG_NAME = "dataType";
+    private static final String TYPE_TAG_NAME = "type";
+    private static final String DATASET_TAG_NAME = "dataset";
+    private static final String HTTP_STATUS_TAG_NAME = "http_status";
+    private static final String PRODUCER_URL_TAG_NAME = "producer_url";
 
     private static final String REQUESTOR_REF_TAG_NAME = "requestorRef";
     private static final String AGENCY_TAG_NAME = "agency";
@@ -93,6 +97,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
     private static final String OUTBOUND_PUSH_ERRORS = METRICS_PREFIX + "outbound.push.errors";
     private static final String OUTBOUND_SUBSCRIPTIONS_COUNT = METRICS_PREFIX + "outbound.subscriptions.count";
     private static final String ASYNC_PROCESS_SEDA_CURRENT_QUEUE_SIZE = METRICS_PREFIX + "async.process.seda.current.queue.size";
+    private static final String INCOMING_DATA_MONITORING = METRICS_PREFIX + "incoming.data.monitoring";
     final Map<String, Integer> nbOfOutboundPushByRequestor = new HashMap<>();
     final Map<String, Long> totalPushTimeByRequestor = new HashMap<>();
     final Map<String, Set<Long>> smDeltaTimesTmp = new ConcurrentHashMap<>();
@@ -198,6 +203,33 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
         List<Tag> counterTags = new ArrayList<>();
         counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType.name()));
         counter(EMPTY_RECORDED_AT_TIME, counterTags).increment(1);
+    }
+
+    public void registerIncomingDataMonitoring(String type, String datasetId, String httpStatus, String producerUrl) {
+        if (StringUtils.isEmpty(type)) {
+            type = "emptyType";
+        }
+
+        if (StringUtils.isEmpty(datasetId)) {
+            datasetId = "emptyDatasetId";
+        }
+
+        if (StringUtils.isEmpty(httpStatus)) {
+            httpStatus = "emptyHttpStatus";
+        }
+
+        if (StringUtils.isEmpty(producerUrl)) {
+            producerUrl = "emptyProducerUrl";
+        }
+
+
+        List<Tag> counterTags = new ArrayList<>();
+        counterTags.add(new ImmutableTag(TYPE_TAG_NAME, type));
+        counterTags.add(new ImmutableTag(DATASET_TAG_NAME, datasetId));
+        counterTags.add(new ImmutableTag(HTTP_STATUS_TAG_NAME, httpStatus));
+        counterTags.add(new ImmutableTag(PRODUCER_URL_TAG_NAME, producerUrl));
+        counter(INCOMING_DATA_MONITORING, counterTags).increment(1);
+
     }
 
     public void registerIncomingData(SiriDataType dataType, String agencyId, long total, long updated, long expired, long ignored) {

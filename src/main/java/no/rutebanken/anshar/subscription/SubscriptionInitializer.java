@@ -18,7 +18,9 @@ package no.rutebanken.anshar.subscription;
 import com.google.common.base.Preconditions;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.DiscoveryCache;
+import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.admin.AdminRouteHelper;
+import no.rutebanken.anshar.routes.health.IncomingDataHealthService;
 import no.rutebanken.anshar.routes.siri.*;
 import no.rutebanken.anshar.routes.siri.adapters.Mapping;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
@@ -69,6 +71,12 @@ public class SubscriptionInitializer implements CamelContextAware {
 
     @Autowired
     private AdminRouteHelper helper;
+
+    @Autowired
+    private PrometheusMetricsService metrics;
+
+    @Autowired
+    private IncomingDataHealthService incomingDataHealthService;
 
     private CamelContext camelContext;
 
@@ -317,10 +325,10 @@ public class SubscriptionInitializer implements CamelContextAware {
                     routeBuilders.add(new Siri20ToSiriWS20Subscription(configuration, handler, subscriptionSetup, subscriptionManager));
 
                     if (isFetchedDelivery || subscriptionSetup.isDataSupplyRequestForInitialDelivery()) {
-                        routeBuilders.add(new Siri20ToSiriWS20RequestResponse(configuration, subscriptionSetup, subscriptionManager));
+                        routeBuilders.add(new Siri20ToSiriWS20RequestResponse(configuration, subscriptionSetup, subscriptionManager, incomingDataHealthService, metrics));
                     }
                 } else {
-                    routeBuilders.add(new Siri20ToSiriWS20RequestResponse(configuration, subscriptionSetup, subscriptionManager));
+                    routeBuilders.add(new Siri20ToSiriWS20RequestResponse(configuration, subscriptionSetup, subscriptionManager, incomingDataHealthService, metrics));
                 }
             } else {
                 if (isSubscription || isFetchedDelivery) {

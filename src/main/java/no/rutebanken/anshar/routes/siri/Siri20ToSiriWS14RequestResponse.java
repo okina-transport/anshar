@@ -15,13 +15,19 @@
 
 package no.rutebanken.anshar.routes.siri;
 
+import no.rutebanken.anshar.api.FlowStatus;
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.metrics.PrometheusMetricsService;
+import no.rutebanken.anshar.routes.health.IncomingDataHealthService;
+import no.rutebanken.anshar.routes.health.IncomingFlowType;
 import no.rutebanken.anshar.routes.siri.helpers.SiriRequestFactory;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.MessageHistory;
+import org.apache.camel.http.base.HttpOperationFailedException;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 
@@ -31,6 +37,12 @@ import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFO
 import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_VERSION;
 
 public class Siri20ToSiriWS14RequestResponse extends SiriSubscriptionRouteBuilder {
+
+    @Autowired
+    private IncomingDataHealthService incomingDataHealthService;
+
+    @Autowired
+    private PrometheusMetricsService metrics;
 
     public Siri20ToSiriWS14RequestResponse(AnsharConfiguration config, SubscriptionSetup subscriptionSetup, SubscriptionManager subscriptionManager) {
         super(config, subscriptionManager);
@@ -74,39 +86,52 @@ public class Siri20ToSiriWS14RequestResponse extends SiriSubscriptionRouteBuilde
                 .log("Retrieving data " + subscriptionSetup.toString())
                 .to("log:request:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .doTry()
-                    .to(getCamelRequestUrl(subscriptionSetup, httpOptions))
-                    .setHeader("CamelHttpPath", constant("/appContext" + subscriptionSetup.buildUrl(false)))
-                    .log("Got response " + subscriptionSetup.toString())
-                    .setHeader(TRANSFORM_VERSION, constant(TRANSFORM_VERSION))
-                    .setHeader(TRANSFORM_SOAP, constant(TRANSFORM_SOAP))
-                    .setHeader(PARAM_SUBSCRIPTION_ID, simple(subscriptionSetup.getSubscriptionId()))
-                    .setHeader(INTERNAL_SIRI_DATA_TYPE, simple(subscriptionSetup.getSubscriptionType().name()))
-                    .to("direct:process.message.synchronous")
+                .to(getCamelRequestUrl(subscriptionSetup, httpOptions))
+                .setHeader("CamelHttpPath", constant("/appContext" + subscriptionSetup.buildUrl(false)))
+                .log("Got response " + subscriptionSetup.toString())
+                .setHeader(TRANSFORM_VERSION, constant(TRANSFORM_VERSION))
+                .setHeader(TRANSFORM_SOAP, constant(TRANSFORM_SOAP))
+                .setHeader(PARAM_SUBSCRIPTION_ID, simple(subscriptionSetup.getSubscriptionId()))
+                .setHeader(INTERNAL_SIRI_DATA_TYPE, simple(subscriptionSetup.getSubscriptionType().name()))
+                .process(p -> {
+                    String url = getCamelRequestUrl(subscriptionSetup, httpOptions);
+                    metrics.registerIncomingDataMonitoring("SIRI", subscriptionSetup.getDatasetId(), "200", url);
+                    incomingDataHealthService.recordStatus(subscriptionSetup.getSubscriptionId(), subscriptionSetup.getDatasetId(), getRequestUrl(subscriptionSetup), IncomingFlowType.SIRI, FlowStatus.OK);
+                })
+                .to("direct:process.message.synchronous")
                 .doCatch(Exception.class)
-                    .log("Caught exception - releasing leadership: " + subscriptionSetup.toString())
-                    .to("log:response:" + getClass().getSimpleName() + "?showCaughtException=true&showAll=true&multiline=true")
-                    .process(p -> {
+                .log("Caught exception - releasing leadership: " + subscriptionSetup.toString())
+                .to("log:response:" + getClass().getSimpleName() + "?showCaughtException=true&showAll=true&multiline=true")
+                .process(p -> {
+                    int statusCode = 500;
+                    final Throwable ex = p.getProperty(Exchange.EXCEPTION_CAUGHT, Throwable.class);
+                    String url = getCamelRequestUrl(subscriptionSetup, httpOptions);
+                    if (ex instanceof HttpOperationFailedException httpEx) {
+                        statusCode = httpEx.getStatusCode();
+                    }
+                    metrics.registerIncomingDataMonitoring("SIRI", subscriptionSetup.getDatasetId(), String.valueOf(statusCode), url);
+                    incomingDataHealthService.recordStatus(subscriptionSetup.getSubscriptionId(), subscriptionSetup.getDatasetId(), getRequestUrl(subscriptionSetup), IncomingFlowType.SIRI, FlowStatus.ERROR);
+                    if (releaseLeadershipOnError) {
+                        releaseLeadership(monitoringRouteId);
+                    }
+                })
+                .doFinally()
+                .process(p -> {
+                    requestFinished();
+                    List<MessageHistory> list = p.getProperty(Exchange.MESSAGE_HISTORY, List.class);
+                    long elapsed = 0;
+                    for (MessageHistory history : list) {
+                        if (history.getRouteId().equals(routeId)) {
+                            elapsed += history.getElapsed();
+                        }
+                    }
+                    if (elapsed > heartbeatIntervalMillis) {
+                        log.info("Processing took longer than {} ms - releasing leadership", heartbeatIntervalMillis);
                         if (releaseLeadershipOnError) {
                             releaseLeadership(monitoringRouteId);
                         }
-                    })
-                .doFinally()
-                    .process(p -> {
-                        requestFinished();
-                        List<MessageHistory> list = p.getProperty(Exchange.MESSAGE_HISTORY, List.class);
-                        long elapsed = 0;
-                        for (MessageHistory history : list) {
-                            if (history.getRouteId().equals(routeId)) {
-                                elapsed += history.getElapsed();
-                            }
-                        }
-                        if (elapsed > heartbeatIntervalMillis) {
-                            log.info("Processing took longer than {} ms - releasing leadership", heartbeatIntervalMillis);
-                            if (releaseLeadershipOnError) {
-                                releaseLeadership(monitoringRouteId);
-                            }
-                        }
-                    })
+                    }
+                })
                 .endDoTry()
                 .routeId(routeId)
         ;

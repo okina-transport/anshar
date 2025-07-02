@@ -37,5 +37,6 @@ public class SubscriptionDto {
     private List<CustomHeaderDto> customHeaders;
     private List<IdMappingPrefixDto> idMappingPrefixes;
     private Boolean validated;
+    private String currentStatus;
 
 }
