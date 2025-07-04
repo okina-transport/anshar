@@ -273,25 +273,25 @@ public class SiriHelper {
         String requestedId = stopMonitoringSubscription.getStopMonitoringRequest().getMonitoringRef().getValue();
         List<String> originalRequestedIds = Collections.singletonList(requestedId);
         if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)) {
-            originalRequestedIds = stopPlaceUpdaterService.canBeReverted(requestedId, datasetId) ? stopPlaceUpdaterService.getReverse(requestedId, datasetId) : Arrays.asList(requestedId);
+            originalRequestedIds = stopPlaceUpdaterService.getReverseWithoutDatasetId(requestedId);
         } else if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy)) {
             originalRequestedIds = externalIdsService.getReverseAltIdStop(datasetId, requestedId);
         }
 
-        HashSet<String> requestedIds = new HashSet<>(originalRequestedIds);
+        for (String originalRequestedId : originalRequestedIds) {
+            Optional<String> guessedDataset = subscriptionConfig.findDatasetFromSearch(originalRequestedId, ObjectType.STOP);
+            if (guessedDataset.isEmpty()) {
+                stopPointRefValues.add(originalRequestedId);
+                continue;
+            }
 
-        Map<ObjectType, Optional<IdProcessingParameters>> idProcessingParams = subscriptionConfig.buildIdProcessingParams(datasetId, requestedIds, ObjectType.STOP);
-
-        Set<String> revertedMonitoringRefs = IDUtils.revertMonitoringRefs(requestedIds, idProcessingParams.get(ObjectType.STOP));
-
-        if (!revertedMonitoringRefs.isEmpty()) {
-            revertedMonitoringRefs = revertedMonitoringRefs.stream()
-                    .map(CustomStringUtils::revertChouetteIdTransformation)
-                    .collect(Collectors.toSet());
-
-            stopPointRefValues.add(revertedMonitoringRefs.iterator().next());
-            filterMap.put(MonitoringRefStructure.class, stopPointRefValues);
+            Optional<IdProcessingParameters> idProcessingParams = subscriptionConfig.getIdParametersForDataset(guessedDataset.get(), ObjectType.STOP);
+            String revertedMonitoringRef = IDUtils.revertMonitoringRef(originalRequestedId, idProcessingParams);
+            revertedMonitoringRef = CustomStringUtils.revertChouetteIdTransformation(revertedMonitoringRef);
+            stopPointRefValues.add(revertedMonitoringRef);
         }
+
+        filterMap.put(MonitoringRefStructure.class, stopPointRefValues);
 
         return filterMap;
     }
@@ -308,6 +308,24 @@ public class SiriHelper {
         HashSet<String> requestedIds = new HashSet<>(originalRequestedIds);
 
         return subscriptionConfig.buildIdProcessingParams(datasetId, requestedIds, ObjectType.STOP);
+    }
+
+
+    public Set<String> getDatasetsFromSubscription(StopMonitoringSubscriptionStructure stopMonitoringSubscription, OutboundIdMappingPolicy outboundIdMappingPolicy) {
+        Set<String> datasets = new HashSet<>();
+
+        String requestedId = stopMonitoringSubscription.getStopMonitoringRequest().getMonitoringRef().getValue();
+        if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)) {
+            // ids with format : MOBIITI:Quay:xxx . We need to get provider ids with format : PROV1:Quay:xxx to get the datasetId
+            List<String> providerIds = stopPlaceUpdaterService.getReverseWithoutDatasetId(requestedId);
+            for (String providerId : providerIds) {
+                datasets.add(providerId.split(":")[0]);
+            }
+        } else {
+            // id with format : PROV1:Quay:xxx. We wan recover the datasetId
+            datasets.add(requestedId.split(":")[0]);
+        }
+        return datasets;
     }
 
     public Map<ObjectType, Optional<IdProcessingParameters>> getIdProcessingParamsFromSubscription(VehicleMonitoringSubscriptionStructure vehMonitoringSubscription, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
@@ -802,7 +820,7 @@ public class SiriHelper {
 
     private static List<StopMonitoringDeliveryStructure> getFilteredMonitoringRef(Siri siri, Set<String> monitoringRef) {
         if (monitoringRef == null || monitoringRef.isEmpty()) {
-            return null;
+            return Collections.emptyList() ;
         }
         List<StopMonitoringDeliveryStructure> results = new ArrayList<>();
 

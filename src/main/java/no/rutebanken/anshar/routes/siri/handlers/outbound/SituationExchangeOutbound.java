@@ -39,8 +39,17 @@ public class SituationExchangeOutbound {
 
     public Siri createServiceDelivery(String requestorRef, String datasetId, String clientTrackingName, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize) {
         Set<String> datasetToRequest = StringUtils.isEmpty(datasetId) ? situations.getAllDatasetIds() : new HashSet<>(Arrays.asList(datasetId));
+        return createServiceDelivery(requestorRef, datasetToRequest.stream().toList(), clientTrackingName, outboundIdMappingPolicy, maxSize);
+    }
+
+    public Siri createServiceDelivery(String requestorRef, List<String> datasetToRequest, String clientTrackingName, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize) {
+
         List<Siri> results = new ArrayList<>();
         Siri serviceResponse;
+
+        if (datasetToRequest.isEmpty()) {
+            datasetToRequest = situations.getAllDatasetIds().stream().toList();
+        }
 
         for (String datasetIdToRequest : datasetToRequest) {
             Siri datasetResults = getTransformedSiriForDataset(datasetIdToRequest, outboundIdMappingPolicy, requestorRef, clientTrackingName, maxSize);
@@ -59,6 +68,7 @@ public class SituationExchangeOutbound {
 
 
         return serviceResponse;
+
     }
 
     /**

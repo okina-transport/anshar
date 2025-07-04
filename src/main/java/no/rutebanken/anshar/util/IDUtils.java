@@ -25,35 +25,43 @@ public class IDUtils {
         if (!idParametersOpt.isPresent()) {
             return originalMonitoringRefs;
         }
-
-        IdProcessingParameters idParams = idParametersOpt.get();
         Set<String> revertedIds = new HashSet<>();
-
         for (String originalMonitoringRef : originalMonitoringRefs) {
-
-            String outputPrefixToAdd = idParams.getOutputPrefixToAdd();
-            if (ObjectType.STOP.equals(idParams.getObjectType()) && idParams.getOutputPrefixToAdd().contains(":Quay:") && originalMonitoringRef.contains(":StopPlace:")) {
-                outputPrefixToAdd = outputPrefixToAdd.replace(":Quay:", ":StopPlace:");
-            }
-
-            if (StringUtils.isNotEmpty(outputPrefixToAdd) && originalMonitoringRef.startsWith(outputPrefixToAdd)) {
-                originalMonitoringRef = originalMonitoringRef.substring(outputPrefixToAdd.length());
-            }
-
-            if (StringUtils.isNotEmpty(idParams.getOutputSuffixToAdd()) && originalMonitoringRef.endsWith(idParams.getOutputSuffixToAdd())) {
-                originalMonitoringRef = originalMonitoringRef.substring(0, originalMonitoringRef.length() - idParams.getOutputSuffixToAdd().length());
-            }
-
-            if (StringUtils.isNotEmpty(idParams.getInputPrefixToRemove())) {
-                originalMonitoringRef = idParams.getInputPrefixToRemove() + originalMonitoringRef;
-            }
-
-            if (StringUtils.isNotEmpty(idParams.getInputSuffixToRemove())) {
-                originalMonitoringRef = originalMonitoringRef + idParams.getInputSuffixToRemove();
-            }
-            revertedIds.add(originalMonitoringRef);
+            revertedIds.add(revertMonitoringRef(originalMonitoringRef, idParametersOpt));
         }
         return revertedIds;
+    }
+
+    public static String revertMonitoringRef(String originalMonitoringRef, Optional<IdProcessingParameters> idParametersOpt) {
+        if (!idParametersOpt.isPresent()) {
+            return originalMonitoringRef;
+        }
+
+        IdProcessingParameters idParams = idParametersOpt.get();
+
+
+        String outputPrefixToAdd = idParams.getOutputPrefixToAdd();
+        if (ObjectType.STOP.equals(idParams.getObjectType()) && idParams.getOutputPrefixToAdd().contains(":Quay:") && originalMonitoringRef.contains(":StopPlace:")) {
+            outputPrefixToAdd = outputPrefixToAdd.replace(":Quay:", ":StopPlace:");
+        }
+
+        if (StringUtils.isNotEmpty(outputPrefixToAdd) && originalMonitoringRef.startsWith(outputPrefixToAdd)) {
+            originalMonitoringRef = originalMonitoringRef.substring(outputPrefixToAdd.length());
+        }
+
+        if (StringUtils.isNotEmpty(idParams.getOutputSuffixToAdd()) && originalMonitoringRef.endsWith(idParams.getOutputSuffixToAdd())) {
+            originalMonitoringRef = originalMonitoringRef.substring(0, originalMonitoringRef.length() - idParams.getOutputSuffixToAdd().length());
+        }
+
+        if (StringUtils.isNotEmpty(idParams.getInputPrefixToRemove())) {
+            originalMonitoringRef = idParams.getInputPrefixToRemove() + originalMonitoringRef;
+        }
+
+        if (StringUtils.isNotEmpty(idParams.getInputSuffixToRemove())) {
+            originalMonitoringRef = originalMonitoringRef + idParams.getInputSuffixToRemove();
+        }
+
+        return originalMonitoringRef;
     }
 
     public static long getUniqueInternalIdForGTFSRT() {

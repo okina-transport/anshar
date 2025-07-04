@@ -15,10 +15,13 @@
 
 package no.rutebanken.anshar.outbound;
 
+import no.rutebanken.anshar.config.IdProcessingParameters;
+import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.outbound.SiriHelper;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
+import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri21.*;
@@ -35,6 +38,9 @@ public class SiriHelperTest extends SpringBootBaseTest {
 
     @Autowired
     private SiriObjectFactory siriObjectFactory;
+
+    @Autowired
+    private SubscriptionConfig subscriptionConfig;
 
 
     @Test
@@ -237,8 +243,14 @@ public class SiriHelperTest extends SpringBootBaseTest {
         StopMonitoringSubscriptionStructure smSubscription = new StopMonitoringSubscriptionStructure();
         StopMonitoringRequestStructure sMRequest = new StopMonitoringRequestStructure();
 
+        IdProcessingParameters idProcessingParameter = new IdProcessingParameters();
+        idProcessingParameter.setDatasetId("TEST4");
+        idProcessingParameter.setOutputPrefixToAdd("TEST4:Quay:");
+        idProcessingParameter.setObjectType(ObjectType.STOP);
+        subscriptionConfig.getIdProcessingParameters().add(idProcessingParameter);
+
         MonitoringRefStructure monitoringRef = new MonitoringRefStructure();
-        monitoringRef.setValue("TESTPOINT1");
+        monitoringRef.setValue("TEST4:Quay:TESTPOINT1");
         sMRequest.setMonitoringRef(monitoringRef);
         smSubscription.setStopMonitoringRequest(sMRequest);
         subscriptionRequest.getStopMonitoringSubscriptionRequests().add(smSubscription);
@@ -261,7 +273,7 @@ public class SiriHelperTest extends SpringBootBaseTest {
         assertNotNull(filtered.getServiceDelivery());
         assertNotNull(filtered.getServiceDelivery().getStopMonitoringDeliveries());
         List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = filtered.getServiceDelivery().getStopMonitoringDeliveries();
-        assertEquals(stopMonitoringDeliveries.size(), 1);
+        assertEquals(1, stopMonitoringDeliveries.size());
         assertEquals(stopMonitoringDeliveries.get(0).getMonitoredStopVisits().size(), 1, "Only 1 of 4 points must be returned after filter");
         assertEquals(stopMonitoringDeliveries.get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue(), "TESTPOINT1", "Only TESTPOINT1 must pass the filtering");
     }

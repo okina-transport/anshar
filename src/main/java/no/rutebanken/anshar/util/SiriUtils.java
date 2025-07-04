@@ -10,13 +10,42 @@ import uk.org.siri.siri21.*;
 
 import javax.xml.datatype.Duration;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.GregorianCalendar;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class SiriUtils {
 
     private static final Logger logger = LoggerFactory.getLogger(SiriUtils.class);
+
+
+    /**
+     * Builds a set of dataset using datasetId header received in the request
+     * (datasetId header can contain single dataset (PROV1) or multiple datasets (PROV1,PROV2) )
+     *
+     * @param datasetHeader header that contains, 0,1 or many datasets
+     * @return a set of datasetId
+     */
+    public static Set<String> generateDatasetListFromHeader(String datasetHeader) {
+        Set<String> datasets = new HashSet<>();
+        if (datasetHeader != null && datasetHeader.contains(",")) {
+            datasets = Arrays.stream(datasetHeader.split(",")).collect(Collectors.toSet());
+        } else if (datasetHeader != null) {
+            datasets = new HashSet<>(List.of(datasetHeader));
+        }
+        return datasets;
+    }
+
+    public static boolean hasETRequest(SubscriptionRequest subscriptionRequest) {
+        return subscriptionRequest.getEstimatedTimetableSubscriptionRequests() != null && !subscriptionRequest.getEstimatedTimetableSubscriptionRequests().isEmpty();
+    }
+
+    public static boolean hasVMRequest(SubscriptionRequest subscriptionRequest) {
+        return subscriptionRequest.getVehicleMonitoringSubscriptionRequests() != null && !subscriptionRequest.getVehicleMonitoringSubscriptionRequests().isEmpty();
+    }
+
+    public static boolean hasSMRequest(SubscriptionRequest subscriptionRequest) {
+        return subscriptionRequest.getStopMonitoringSubscriptionRequests() != null && !subscriptionRequest.getStopMonitoringSubscriptionRequests().isEmpty();
+    }
 
     public static SiriValidator.Version getVersionEnum(String version) {
         if ("1.0".equals(version)) {
@@ -180,4 +209,128 @@ public class SiriUtils {
     }
 
 
+    public static Siri mergeSiris(Siri completeSiri, Siri dataToAdd) {
+        if (completeSiri == null) {
+            return dataToAdd;
+        }
+
+        mergeStopMonitoring(completeSiri, dataToAdd);
+        mergeVehicleMonitoring(completeSiri, dataToAdd);
+        mergeSituationExchange(completeSiri, dataToAdd);
+        mergeEstimatedTimetables(completeSiri, dataToAdd);
+        mergeGeneralMessages(completeSiri, dataToAdd);
+        mergeFacilityMonitoring(completeSiri, dataToAdd);
+        mergeCheckStatus(completeSiri, dataToAdd);
+        mergeStopPoints(completeSiri, dataToAdd);
+        mergeLines(completeSiri, dataToAdd);
+        return completeSiri;
+    }
+
+    private static void mergeLines(Siri completeSiri, Siri dataToAdd) {
+        if (dataToAdd.getLinesDelivery() == null) {
+            return;
+        }
+
+        if (completeSiri.getLinesDelivery() == null) {
+            completeSiri.setLinesDelivery(dataToAdd.getLinesDelivery());
+            return;
+        }
+
+        completeSiri.getLinesDelivery().getAnnotatedLineReves().addAll(dataToAdd.getLinesDelivery().getAnnotatedLineReves());
+    }
+
+    private static void mergeStopPoints(Siri completeSiri, Siri dataToAdd) {
+        if (dataToAdd.getStopPointsDelivery() == null) {
+            return;
+        }
+
+        if (completeSiri.getStopPointsDelivery() == null) {
+            completeSiri.setStopPointsDelivery(dataToAdd.getStopPointsDelivery());
+            return;
+        }
+
+        completeSiri.getStopPointsDelivery().getAnnotatedStopPointReves().addAll(dataToAdd.getStopPointsDelivery().getAnnotatedStopPointReves());
+    }
+
+
+    private static void mergeCheckStatus(Siri completeSiri, Siri dataToAdd) {
+        if (completeSiri.getCheckStatusResponse() == null) {
+            completeSiri.setCheckStatusResponse(dataToAdd.getCheckStatusResponse());
+        }
+    }
+
+    private static void mergeFacilityMonitoring(Siri completeSiri, Siri dataToAdd) {
+        if (dataToAdd.getServiceDelivery() == null || dataToAdd.getServiceDelivery().getFacilityMonitoringDeliveries().isEmpty()) {
+            return;
+        }
+
+        if (completeSiri.getServiceDelivery() == null) {
+            completeSiri.setServiceDelivery(dataToAdd.getServiceDelivery());
+        } else {
+            completeSiri.getServiceDelivery().getFacilityMonitoringDeliveries().addAll(dataToAdd.getServiceDelivery().getFacilityMonitoringDeliveries());
+        }
+    }
+
+    private static void mergeGeneralMessages(Siri completeSiri, Siri dataToAdd) {
+        if (dataToAdd.getServiceDelivery() == null || dataToAdd.getServiceDelivery().getGeneralMessageDeliveries().isEmpty()) {
+            return;
+        }
+
+        if (completeSiri.getServiceDelivery() == null) {
+            completeSiri.setServiceDelivery(dataToAdd.getServiceDelivery());
+        } else {
+            completeSiri.getServiceDelivery().getGeneralMessageDeliveries().addAll(dataToAdd.getServiceDelivery().getGeneralMessageDeliveries());
+        }
+    }
+
+    private static void mergeEstimatedTimetables(Siri completeSiri, Siri dataToAdd) {
+        if (dataToAdd.getServiceDelivery() == null || dataToAdd.getServiceDelivery().getEstimatedTimetableDeliveries().isEmpty()) {
+            return;
+        }
+
+        if (completeSiri.getServiceDelivery() == null) {
+            completeSiri.setServiceDelivery(dataToAdd.getServiceDelivery());
+        } else {
+            completeSiri.getServiceDelivery().getEstimatedTimetableDeliveries().addAll(dataToAdd.getServiceDelivery().getEstimatedTimetableDeliveries());
+        }
+
+    }
+
+
+    private static void mergeSituationExchange(Siri completeSiri, Siri dataToAdd) {
+        if (dataToAdd.getServiceDelivery() == null || dataToAdd.getServiceDelivery().getSituationExchangeDeliveries().isEmpty()) {
+            return;
+        }
+
+        if (completeSiri.getServiceDelivery() == null) {
+            completeSiri.setServiceDelivery(dataToAdd.getServiceDelivery());
+        } else {
+            completeSiri.getServiceDelivery().getSituationExchangeDeliveries().addAll(dataToAdd.getServiceDelivery().getSituationExchangeDeliveries());
+        }
+    }
+
+    private static void mergeVehicleMonitoring(Siri completeSiri, Siri dataToAdd) {
+        if (dataToAdd.getServiceDelivery() == null || dataToAdd.getServiceDelivery().getVehicleMonitoringDeliveries().isEmpty()) {
+            return;
+        }
+
+        if (completeSiri.getServiceDelivery() == null) {
+            completeSiri.setServiceDelivery(dataToAdd.getServiceDelivery());
+        } else {
+            completeSiri.getServiceDelivery().getVehicleMonitoringDeliveries().addAll(dataToAdd.getServiceDelivery().getVehicleMonitoringDeliveries());
+        }
+    }
+
+
+    private static void mergeStopMonitoring(Siri completeSiri, Siri dataToAdd) {
+        if (dataToAdd.getServiceDelivery() == null || dataToAdd.getServiceDelivery().getStopMonitoringDeliveries().isEmpty()) {
+            return;
+        }
+
+        if (completeSiri.getServiceDelivery() == null) {
+            completeSiri.setServiceDelivery(dataToAdd.getServiceDelivery());
+        } else {
+            completeSiri.getServiceDelivery().getStopMonitoringDeliveries().addAll(dataToAdd.getServiceDelivery().getStopMonitoringDeliveries());
+        }
+    }
 }

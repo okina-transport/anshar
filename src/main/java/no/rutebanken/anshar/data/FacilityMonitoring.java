@@ -159,6 +159,20 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
         return getValuesByDatasetId(facilityMonitoring, datasetId);
     }
 
+    public Collection<FacilityConditionStructure> getAll(List<String> datasetsToRequest) {
+
+        if (datasetsToRequest == null || datasetsToRequest.isEmpty()) {
+            return getAll();
+        }
+
+
+        List<FacilityConditionStructure> results = new ArrayList<>();
+        for (String dataset : datasetsToRequest) {
+            results.addAll(getAll(dataset));
+        }
+        return results;
+    }
+
 
     @Override
     public FacilityConditionStructure add(String datasetId, FacilityConditionStructure facilityCondition) {
@@ -196,7 +210,6 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
 
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientTrackingName, List<String> excludedDatasetIds, int maxSize,
                                       Set<String> requestedLineRef, Set<String> requestedFacilities, Set<String> requestedVehicleRef, Set<String> stopPointRef) {
-
 
 
         int trackingPeriodMinutes = configuration.getTrackingPeriodMinutes();
@@ -272,6 +285,11 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
                 requestedLineRef, requestedVehicleRef, stopPointRef, excludedDatasetIds);
         return new HashSet<>(facilityMonitoring.keySet(predicate));
     }
+
+    public Set<String> getAllDatasetIds() {
+        return facilityMonitoring.keySet().stream().map(SiriObjectStorageKey::getCodespaceId).collect(Collectors.toSet());
+    }
+
 
     public void clearAll() {
         logger.error("Deleting all data - should only be used in test!!!");

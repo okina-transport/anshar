@@ -22,6 +22,7 @@ import lombok.Setter;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import org.apache.commons.lang3.StringUtils;
 import org.entur.siri.validator.SiriValidator;
 
 import javax.xml.datatype.Duration;
@@ -44,7 +45,7 @@ public class OutboundSubscriptionSetup implements Serializable {
     private final String subscriptionId;
     private String requestorRef;
     private ZonedDateTime initialTerminationTime;
-    private String datasetId;
+    private List<String> datasetList;
     private String clientTrackingName;
     private long changeBeforeUpdates;
     private boolean incrementalUpdates;
@@ -87,7 +88,12 @@ public class OutboundSubscriptionSetup implements Serializable {
         this.subscriptionId = subscriptionId;
         this.requestorRef = requestorRef;
         this.initialTerminationTime = initialTerminationTime;
-        this.datasetId = datasetId;
+        this.datasetList = new ArrayList<>();
+        if (StringUtils.isNotEmpty(datasetId)) {
+            String[] datasets = datasetId.split(",");
+            this.datasetList.addAll(Arrays.asList(datasets));
+        }
+
         this.clientTrackingName = clientTrackingName;
         this.useOriginalId = useOriginalId;
         this.siriVersion = siriVersion;
@@ -168,8 +174,8 @@ public class OutboundSubscriptionSetup implements Serializable {
         return initialTerminationTime;
     }
 
-    public String getDatasetId() {
-        return datasetId;
+    public List<String> getDatasetList() {
+        return datasetList;
     }
 
     public List<ValueAdapter> getValueAdapters() {

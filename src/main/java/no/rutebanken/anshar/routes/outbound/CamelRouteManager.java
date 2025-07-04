@@ -17,7 +17,6 @@ package no.rutebanken.anshar.routes.outbound;
 
 import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
-import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.handlers.outbound.SituationExchangeOutbound;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -69,6 +68,9 @@ public class CamelRouteManager {
     private PrometheusMetricsService prometheusMetricsService;
     private ExecutorService executors;
 
+    @Autowired
+    InitialDeliveryGenerator initialDeliveryGenerator;
+
     /**
      * Splits SIRI-data if applicable, and pushes data to external subscription
      *
@@ -105,7 +107,7 @@ public class CamelRouteManager {
                 Siri filteredPayload = SiriHelper.filterSiriPayload(payload, filterMap);
 
                 int deliverySize = this.maximumSizePerDelivery;
-                if (subscriptionRequest.getDatasetId() != null) {
+                if (subscriptionRequest.getDatasetList() != null && !subscriptionRequest.getDatasetList().isEmpty()) {
                     deliverySize = Integer.MAX_VALUE;
                 }
 
@@ -124,14 +126,8 @@ public class CamelRouteManager {
 
                 // On remplace les données partielles reçues par l'intégralité de la donnée si incrementalUpdate de l'abonnement est à false
                 if (!subscriptionRequest.getIncrementalUpdates()) {
-
-                    if (SiriDataType.VEHICLE_MONITORING.equals(subscriptionRequest.getSubscriptionType())) {
-                        splitSiri = replaceByCompleteVMData(subscriptionRequest);
-                    } else if (SiriDataType.SITUATION_EXCHANGE.equals(subscriptionRequest.getSubscriptionType())) {
-                        splitSiri = replaceByCompleteSXData(subscriptionRequest);
-                    }
-
-
+                    handleFullUpdateDelivery(subscriptionRequest);
+                    return;
                 }
 
                 for (Siri siri : splitSiri) {
@@ -174,6 +170,20 @@ public class CamelRouteManager {
                 MDC.remove("camel.breadcrumbId");
             }
         });
+    }
+
+
+    /**
+     * The current payload must be replaced by the whole data contained in cache because user does nor request for "incrementalUpdate"
+     *
+     * @param subscriptionRequest parameters of the outbound subscriptions
+     */
+    private void handleFullUpdateDelivery(OutboundSubscriptionSetup subscriptionRequest) {
+        Map<String, Siri> completeDelivery = initialDeliveryGenerator.findInitialDeliveriesByDataset(subscriptionRequest);
+
+        for (Map.Entry<String, Siri> deliveryWithDataset : completeDelivery.entrySet()) {
+            postDataToSubscription(deliveryWithDataset.getKey(), deliveryWithDataset.getValue(), subscriptionRequest, false);
+        }
     }
 
     private Map<Class, Set<String>> getfilterMap(OutboundSubscriptionSetup subscriptionRequest, String datasetId) {
@@ -290,26 +300,6 @@ public class CamelRouteManager {
 
     }
 
-    private List<Siri> replaceByCompleteSXData(OutboundSubscriptionSetup subscriptionRequest) {
-        OutboundIdMappingPolicy mappingPolicy;
-        List<Siri> results = new ArrayList<>();
-
-        if (subscriptionRequest != null && subscriptionRequest.isUseOriginalId()) {
-            mappingPolicy = OutboundIdMappingPolicy.ORIGINAL_ID;
-        } else {
-            mappingPolicy = OutboundIdMappingPolicy.DEFAULT;
-        }
-
-
-        Siri completeSx = situationExchangeOutbound.createServiceDelivery(subscriptionRequest.getRequestorRef(), subscriptionRequest.getDatasetId(), subscriptionRequest.getClientTrackingName(), mappingPolicy, 10000);
-        results.add(completeSx);
-        return results;
-    }
-
-    private List<Siri> replaceByCompleteVMData(OutboundSubscriptionSetup subscriptionRequest) {
-        return Collections.singletonList(vehicleActivities.createServiceDelivery(subscriptionRequest.getRequestorRef(), subscriptionRequest.getDatasetId(), subscriptionRequest.getClientTrackingName(),
-                null, Integer.MAX_VALUE, subscriptionRequest.getFilterMap().get(LineRef.class), subscriptionRequest.getFilterMap().get(VehicleRef.class)));
-    }
 
     private void removeVehicleMonitoringIfChangeBeforeUpdates(List<Siri> splitSiri, OutboundSubscriptionSetup subscriptionRequest) {
         splitSiri.stream()

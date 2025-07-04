@@ -17,6 +17,7 @@ package no.rutebanken.anshar.routes.siri;
 
 import com.sun.xml.bind.marshaller.NamespacePrefixMapper;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.xml.bind.UnmarshalException;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.data.util.CustomSiriXml;
@@ -32,11 +33,13 @@ import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import no.rutebanken.anshar.util.CompressionUtil;
+import no.rutebanken.anshar.util.SiriUtils;
 import org.apache.camel.*;
 import org.apache.camel.http.common.HttpMethods;
 import org.apache.camel.model.rest.RestParamType;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,9 +49,12 @@ import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.Siri;
 
 import javax.ws.rs.core.MediaType;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import java.util.Set;
 
 import static no.rutebanken.anshar.routes.BaseRouteBuilder.getRequestUrl;
 import static no.rutebanken.anshar.routes.HttpParameter.*;
@@ -430,24 +436,20 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                         useOriginalId = Boolean.toString(defaultUseOriginalId);
                     }
 
-                    IncomingSiriParameters incomingSiriParameters = new IncomingSiriParameters();
-                    incomingSiriParameters.setIncomingSiriStream(msg.getBody(InputStream.class));
-                    incomingSiriParameters.setDatasetId(datasetId);
-                    incomingSiriParameters.setExcludedDatasetIdList(excludedIdList);
-                    incomingSiriParameters.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy(useOriginalId, useAltId));
-                    incomingSiriParameters.setMaxSize(maxSize);
-                    incomingSiriParameters.setClientTrackingName(clientTrackingName);
-                    incomingSiriParameters.setSoapTransformation(false);
-                    incomingSiriParameters.setUseOriginalId(Boolean.valueOf(useOriginalId));
+                    Set<String> datasets = SiriUtils.generateDatasetListFromHeader(datasetId);
+                    Pair<Siri, String> siriWithVersion = handleIncomingSiriWithMultipleDatasets(msg,datasets, excludedIdList, useOriginalId, useAltId, maxSize, clientTrackingName);
 
-                    Siri response = handler.handleIncomingSiri(incomingSiriParameters);
+                    Siri response = siriWithVersion.getLeft();
+                    String version = siriWithVersion.getRight();
+
+
                     if (response != null) {
                         logger.debug("Found ServiceRequest-response, streaming response");
 
                         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
-                        if (!"2.1".equals(incomingSiriParameters.getVersion())){
-                            uk.org.siri.siri20.Siri siri20response = downgradeSiriVersion(response, incomingSiriParameters.getVersion());
+                        if (!"2.1".equals(version)){
+                            uk.org.siri.siri20.Siri siri20response = downgradeSiriVersion(response, version);
                             CustomSiriXml.toXml(siri20response, null, byteArrayOutputStream);
                         }else{
                             CustomSiriXml.toXml(response, null, byteArrayOutputStream);
@@ -639,6 +641,48 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
             .process(addCustomHeaders)
             .setBody(constant(""))
             .end();
+    }
+
+    private Pair<Siri,String> handleIncomingSiriWithMultipleDatasets(Message msg, Set<String> datasets, List<String> excludedIdList, String useOriginalId, String useAltId, int maxSize, String clientTrackingName)throws UnmarshalException, IOException {
+        InputStream originalStream = msg.getBody(InputStream.class);
+        if (datasets.isEmpty()) {
+            return handleIncomingSiriForSingleDataset(originalStream, null, excludedIdList, useOriginalId, useAltId, maxSize, clientTrackingName);
+        }
+
+        Pair<Siri,String> globalResults = null;
+
+
+        byte[] data = originalStream.readAllBytes();
+        for (String dataset : datasets) {
+            Pair<Siri,String> datasetResult = handleIncomingSiriForSingleDataset(new ByteArrayInputStream(data), dataset, excludedIdList, useOriginalId, useAltId, maxSize, clientTrackingName);
+            globalResults = mergeDatasetResult(globalResults, datasetResult);
+        }
+        return globalResults;
+    }
+
+    private Pair<Siri,String> mergeDatasetResult(Pair<Siri,String> globalResults, Pair<Siri,String> datasetResult) {
+        if (globalResults == null){
+            return datasetResult;
+        }
+
+        Siri siri = SiriUtils.mergeSiris(globalResults.getLeft(), datasetResult.getLeft());
+        return Pair.of(siri, datasetResult.getRight());
+
+    }
+
+
+    private Pair<Siri, String> handleIncomingSiriForSingleDataset(InputStream incomingSiriStream, String datasetId, List<String> excludedIdList, String useOriginalId, String useAltId, int maxSize, String clientTrackingName)throws UnmarshalException{
+        IncomingSiriParameters incomingSiriParameters = new IncomingSiriParameters();
+        incomingSiriParameters.setIncomingSiriStream(incomingSiriStream);
+        incomingSiriParameters.setDatasetId(datasetId);
+        incomingSiriParameters.setExcludedDatasetIdList(excludedIdList);
+        incomingSiriParameters.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy(useOriginalId, useAltId));
+        incomingSiriParameters.setMaxSize(maxSize);
+        incomingSiriParameters.setClientTrackingName(clientTrackingName);
+        incomingSiriParameters.setSoapTransformation(false);
+        incomingSiriParameters.setUseOriginalId(Boolean.valueOf(useOriginalId));
+        Siri siriResponse = handler.handleIncomingSiri(incomingSiriParameters);
+        return Pair.of(siriResponse,incomingSiriParameters.getVersion());
     }
 
     private String getSoapAction(SubscriptionSetup subscriptionSetup) throws ServiceNotSupportedException {
