@@ -143,6 +143,7 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .apiDocs(false)
                 .get("/stats").produces(TEXT_HTML).to(STATS_ROUTE)
                 .get("/internalstats").produces(APPLICATION_JSON).to(INTERNAL_STATS_ROUTE)
+                .get("/dailyStatuses").produces(APPLICATION_JSON).to("direct:incoming.data.daily.statuses")
                 .get("/outbound/stats").produces(APPLICATION_JSON).to(OUTBOUND_STATS_ROUTE)
                 .get("/outbound").produces(APPLICATION_JSON).to(OUTBOUND_DATA_ROUTE)
                 .delete("/outbound/{siriDataType}").produces(APPLICATION_JSON).to(OUTBOUND_UNSUBSCRIBE_BY_SIRI_DATA_TYPE_ROUTE)

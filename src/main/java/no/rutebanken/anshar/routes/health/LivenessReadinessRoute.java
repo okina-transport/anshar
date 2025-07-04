@@ -135,7 +135,6 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
                 .get("/ready").to("direct:ready")
                 .get("/up").to("direct:up")
                 .get("/incomingdatahealth").to("direct:incoming.data.health")
-                .get("/dailyStatuses").to("direct:incoming.data.daily.statuses")
                 .get("/healthy").to("direct:healthy")
                 .get("/anshardata").to("direct:anshardata")
                 .get("/favicon.ico").to("direct:notfound")
