@@ -22,9 +22,14 @@ import lombok.Setter;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.data.util.TimingTracer;
+import no.rutebanken.anshar.routes.health.InputSubscriptionData;
+import no.rutebanken.anshar.routes.kafka.KafkaConfig;
+import no.rutebanken.anshar.routes.kafka.KafkaRouteBuilder;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import org.apache.camel.Produce;
+import org.apache.camel.ProducerTemplate;
 import org.apache.commons.collections4.CollectionUtils;
 import org.quartz.utils.counter.Counter;
 import org.quartz.utils.counter.CounterImpl;
@@ -81,8 +86,14 @@ public class Situations extends SiriRepository<PtSituationElement> {
     @Autowired
     private StopPlaceUpdaterService stopPlaceService;
 
+    @Produce(KafkaRouteBuilder.SEND_TR_IN_SUBSCRIPTION_DATA_TO_KAFKA)
+    private ProducerTemplate sendTrInSubscriptionDataToKafka;
+
     @Setter
     private Clock clock;
+
+    @Autowired
+    private KafkaConfig kafkaConfig;
 
     protected Situations() {
         super(SiriDataType.SITUATION_EXCHANGE);
@@ -385,6 +396,15 @@ public class Situations extends SiriRepository<PtSituationElement> {
 
 
         markDataReceived(SiriDataType.SITUATION_EXCHANGE, datasetId, sxList.size(), changes.size(), alreadyExpiredCounter.getValue(), ignoredCounter.getValue());
+
+        if (kafkaConfig.isKafkaEnabled() && kafkaConfig.isSendTrInSubscriptionDataToKafka()) {
+            InputSubscriptionData isd = new InputSubscriptionData();
+            isd.setDataset(datasetId);
+            isd.setDataType(SiriDataType.SITUATION_EXCHANGE);
+            isd.setNbElements(sxList.size());
+            sendTrInSubscriptionDataToKafka.asyncRequestBody(sendTrInSubscriptionDataToKafka.getDefaultEndpoint(), isd);
+        }
+
         timingTracer.mark("markDataReceived");
 
         //markIdsAsUpdated(changes.keySet());
