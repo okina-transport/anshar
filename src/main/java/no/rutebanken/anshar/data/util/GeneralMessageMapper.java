@@ -3,7 +3,7 @@ package no.rutebanken.anshar.data.util;
 
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Message;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.jsoup.Jsoup;
 import uk.org.siri.siri21.*;
 
