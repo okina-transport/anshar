@@ -2,6 +2,8 @@ package no.rutebanken.anshar.gtfsrt.mappers;
 
 
 import com.google.transit.realtime.GtfsRealtime;
+import com.hazelcast.map.IMap;
+import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.gtfsrt.readers.AlertFilterHelper;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.mapping.StopTimesService;
@@ -10,6 +12,8 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import uk.org.ifopt.siri20.StopPlaceRef;
 import uk.org.siri.siri20.*;
@@ -40,6 +44,14 @@ public class AlertMapper {
 
     private final StopTimesService stopTimesService;
 
+    @Autowired
+    @Qualifier("getSxStartActivePeriodMap")
+    private IMap<String, Long> sxStartActivePeriodMap;
+
+    @Autowired
+    @Qualifier("getSxEndActivePeriodMap")
+    private IMap<String, Long> sxEndActivePeriodMap;
+
     public AlertMapper(StopTimesService stopTimesService) {
         this.stopTimesService = stopTimesService;
     }
@@ -47,19 +59,26 @@ public class AlertMapper {
     /**
      * Maps a GTFS-RT Alert to a PtSituationElement, converting relevant alert data into a structured format.
      *
-     * @param alert      The GTFS-Realtime Alert to be mapped.
-     * @param datasetId  The identifier of the dataset associated with the alert.
+     * @param feedEntity  The GTFS-Realtime entity that contains alert
+     * @param gtfsrtApi   paramters of the API
      * @param routeIdList A list of route IDs to filter the alert’s applicability.
      * @return A {@link PtSituationElement} object containing the structured data from the alert.
      */
-    public PtSituationElement mapSituationFromAlert(GtfsRealtime.Alert alert, String datasetId, List<String> routeIdList) {
+    public PtSituationElement mapSituationFromAlert(GtfsRealtime.FeedEntity feedEntity, GtfsRTApi gtfsrtApi, List<String> routeIdList) {
+        String datasetId = gtfsrtApi.getDatasetId();
 
+
+        GtfsRealtime.Alert alert = feedEntity.getAlert();
         PtSituationElement ptSituationElement = new PtSituationElement();
         if (shouldFilterAlert(alert, datasetId, routeIdList)) {
             return null;
         }
+
+        SituationNumber situationNumber = new SituationNumber();
+        situationNumber.setValue(feedEntity.getId());
+        ptSituationElement.setSituationNumber(situationNumber);
         mapDescription(ptSituationElement, alert);
-        mapPeriod(ptSituationElement, alert);
+        mapPeriod(ptSituationElement, alert, gtfsrtApi.getActivePeriodDays());
         mapReasons(ptSituationElement, alert);
         mapAffects(ptSituationElement, alert, datasetId);
         mapEffect(ptSituationElement, alert);
@@ -170,8 +189,8 @@ public class AlertMapper {
      * Maps the affected entities from a GTFS-Realtime Alert to a {@link PtSituationElement}.
      *
      * @param ptSituationElement The {@link PtSituationElement} to which the affected entities will be mapped.
-     * @param alert The GTFS-Realtime {@link GtfsRealtime.Alert} containing the affected entities.
-     * @param datasetId The identifier of the dataset associated with the alert.
+     * @param alert              The GTFS-Realtime {@link GtfsRealtime.Alert} containing the affected entities.
+     * @param datasetId          The identifier of the dataset associated with the alert.
      */
     private static void mapAffects(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert, String datasetId) {
         List<GtfsRealtime.EntitySelector> informedEntities = alert.getInformedEntityList();
@@ -194,9 +213,9 @@ public class AlertMapper {
      * Records the affected entities from a GTFS-Realtime {@link GtfsRealtime.EntitySelector} into an {@link AffectsScopeStructure}.
      * This method determines whether the affected entity is related to an agency, route, or stop and updates the structure accordingly.
      *
-     * @param affects The {@link AffectsScopeStructure} that stores the affected elements.
+     * @param affects        The {@link AffectsScopeStructure} that stores the affected elements.
      * @param informedEntity The GTFS-Realtime {@link GtfsRealtime.EntitySelector} representing the affected entity.
-     * @param datasetId The identifier of the dataset associated with the affected entity.
+     * @param datasetId      The identifier of the dataset associated with the affected entity.
      */
     private static void recordAffect(AffectsScopeStructure affects, GtfsRealtime.EntitySelector informedEntity, String datasetId) {
 
@@ -346,7 +365,7 @@ public class AlertMapper {
      * based on the route ID of the informed entity. If the route is not found, a new {@link AffectedLineStructure} is created and added.
      *
      * @param affectedNetwork The {@link AffectsScopeStructure.Networks.AffectedNetwork} containing affected lines.
-     * @param informedEntity The GTFS-Realtime {@link GtfsRealtime.EntitySelector} providing the route ID.
+     * @param informedEntity  The GTFS-Realtime {@link GtfsRealtime.EntitySelector} providing the route ID.
      * @return The existing or newly created {@link AffectedLineStructure}, or {@code null} if the route ID is not in the provided list.
      */
     private static AffectedLineStructure getOrCreateLine(AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork, GtfsRealtime.EntitySelector informedEntity) {
@@ -491,13 +510,33 @@ public class AlertMapper {
         }
     }
 
-    private static void mapPeriod(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert) {
+    private void mapPeriod(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert, Integer activePeriodDays) {
         ZoneId zoneId = ZoneId.systemDefault();
 
-        if (alert.getActivePeriodList().isEmpty()) {
+        if (alert.getActivePeriodList().isEmpty() && activePeriodDays != null) {
+            String situationNumber = ptSituationElement.getSituationNumber().getValue();
+            long startSeconds = 0;
+
+            if (sxStartActivePeriodMap.containsKey(situationNumber)) {
+                startSeconds = sxStartActivePeriodMap.get(situationNumber);
+            } else {
+                startSeconds = Instant.now().getEpochSecond();
+                sxStartActivePeriodMap.put(situationNumber, startSeconds);
+            }
+            ZonedDateTime startTime = Instant.ofEpochSecond(startSeconds).atZone(ZoneId.systemDefault());
+
+            long endSeconds = 0;
+            if (sxEndActivePeriodMap.containsKey(situationNumber)) {
+                endSeconds = sxEndActivePeriodMap.get(situationNumber);
+            } else {
+                endSeconds = startSeconds + (86400 * activePeriodDays);
+                sxEndActivePeriodMap.put(situationNumber, endSeconds);
+            }
+            ZonedDateTime endTime = Instant.ofEpochSecond(endSeconds).atZone(ZoneId.systemDefault());
+
             HalfOpenTimestampOutputRangeStructure validityPeriod = new HalfOpenTimestampOutputRangeStructure();
-            ZonedDateTime timestamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(Long.MIN_VALUE), zoneId);
-            validityPeriod.setStartTime(timestamp);
+            validityPeriod.setStartTime(startTime);
+            validityPeriod.setEndTime(endTime);
             ptSituationElement.getValidityPeriods().add(validityPeriod);
         }
 

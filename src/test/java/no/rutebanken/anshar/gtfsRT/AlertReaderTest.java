@@ -2,6 +2,7 @@ package no.rutebanken.anshar.gtfsRT;
 
 import com.google.protobuf.util.JsonFormat;
 import com.google.transit.realtime.GtfsRealtime;
+import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.data.Situations;
 import no.rutebanken.anshar.gtfsrt.readers.AlertReader;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
@@ -55,7 +56,10 @@ public class AlertReaderTest extends SpringBootBaseTest {
         assertNotNull(stopPlaceService);
         List<String> routeIdList = Arrays.asList("12,13".split(","));
 
-        List<PtSituationElement> situations = alertReader.buildSituationList(feedMessageBuilder.build(),"ALEOP", routeIdList);
+        GtfsRTApi gtfsRTApi = new GtfsRTApi();
+        gtfsRTApi.setDatasetId("");
+
+        List<PtSituationElement> situations = alertReader.buildSituationList(feedMessageBuilder.build(), gtfsRTApi, routeIdList);
 
         assertFalse(situations.isEmpty());
 
@@ -75,10 +79,10 @@ public class AlertReaderTest extends SpringBootBaseTest {
         assertNull(situations.get(2).getAffects().getStopPoints());
     }
 
-    private void feedStopPlaceMappingsCache(){
+    private void feedStopPlaceMappingsCache() {
         Map<String, Pair<String, String>> stopPlaceMap = new HashMap<>();
-        try(FileReader fileReader = new FileReader("src/test/resources/stop_place_mapping.csv");
-            CSVParser csvParser = CSVFormat.DEFAULT.parse(fileReader)) {
+        try (FileReader fileReader = new FileReader("src/test/resources/stop_place_mapping.csv");
+             CSVParser csvParser = CSVFormat.DEFAULT.parse(fileReader)) {
             for (CSVRecord record : csvParser) {
                 if (record.size() >= 3) {
                     stopPlaceMap.put(record.get(0), Pair.of(record.get(1), record.get(2)));

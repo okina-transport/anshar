@@ -121,6 +121,16 @@ public class ExtendedHazelcastService extends HazelCastService {
     }
 
     @Bean
+    public IMap<String, Long> getSxStartActivePeriodMap() {
+        return hazelcast.getMap("anshar.sx.start.active.period.map");
+    }
+
+    @Bean
+    public IMap<String, Long> getSxEndActivePeriodMap() {
+        return hazelcast.getMap("anshar.sx.end.active.period.map");
+    }
+
+    @Bean
     public IMap<SiriObjectStorageKey, PtSituationElement> getSituationsMap() {
         return hazelcast.getMap("anshar.sx");
     }

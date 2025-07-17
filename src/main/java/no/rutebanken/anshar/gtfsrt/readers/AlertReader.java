@@ -1,6 +1,7 @@
 package no.rutebanken.anshar.gtfsrt.readers;
 
 import com.google.transit.realtime.GtfsRealtime;
+import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.gtfsrt.mappers.AlertMapper;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
@@ -50,12 +51,13 @@ public class AlertReader extends AbstractSwallower {
      * Processes and ingests GTFS-Realtime alert data, converting it into a structured format
      * and handling updates, subscriptions, and message dispatching.
      *
-     * @param datasetId The identifier of the dataset associated with the GTFS-Realtime feed.
-     * @param routeIdList A list of route IDs used to filter relevant alerts.
+     * @param gtfsRTApi             parameters of the gtfs rt
+     * @param routeIdList           A list of route IDs used to filter relevant alerts.
      * @param completeGTFSRTMessage The complete GTFS-Realtime {@link GtfsRealtime.FeedMessage} containing alert data.
      */
-    public void ingestAlertData(String datasetId, List<String> routeIdList, GtfsRealtime.FeedMessage completeGTFSRTMessage) {
-        List<PtSituationElement> situations = buildSituationList(completeGTFSRTMessage, datasetId, routeIdList);
+    public void ingestAlertData(GtfsRTApi gtfsRTApi, List<String> routeIdList, GtfsRealtime.FeedMessage completeGTFSRTMessage) {
+        String datasetId = gtfsRTApi.getDatasetId();
+        List<PtSituationElement> situations = buildSituationList(completeGTFSRTMessage, gtfsRTApi, routeIdList);
         updateParticipantRef(datasetId, situations);
         List<String> subscriptionList = getSubscriptions(situations);
         checkAndCreateSubscriptions(subscriptionList, datasetId);
@@ -102,24 +104,20 @@ public class AlertReader extends AbstractSwallower {
      * Each alert in the feed is transformed into a structured situation element.
      *
      * @param feedMessage The GTFS-Realtime {@link GtfsRealtime.FeedMessage} containing alert data.
-     * @param datasetId The identifier of the dataset associated with the alerts.
+     * @param gtfsRTApi   parameters of the gtfsrtAPI
      * @param routeIdList A list of route IDs used to filter relevant alerts.
      * @return A list of {@link PtSituationElement} objects representing the structured alert data.
      */
-    public List<PtSituationElement> buildSituationList(GtfsRealtime.FeedMessage feedMessage, String datasetId, List<String> routeIdList) {
+    public List<PtSituationElement> buildSituationList(GtfsRealtime.FeedMessage feedMessage, GtfsRTApi gtfsRTApi, List<String> routeIdList) {
         List<PtSituationElement> situtations = new ArrayList<>();
 
-
         for (GtfsRealtime.FeedEntity feedEntity : feedMessage.getEntityList()) {
-            if (isEmptyAlert(feedEntity.getAlert()))
+            if (isEmptyAlert(feedEntity.getAlert()) || (hasNoStartAndNoEndDate(feedEntity.getAlert()) && !gtfsRTApi.getGenerateActivePeriod()))
                 continue;
 
-            PtSituationElement situation = alertMapper.mapSituationFromAlert(feedEntity.getAlert(), datasetId, routeIdList);
+            PtSituationElement situation = alertMapper.mapSituationFromAlert(feedEntity, gtfsRTApi, routeIdList);
 
             if (situation != null) {
-                SituationNumber situationNumber = new SituationNumber();
-                situationNumber.setValue(feedEntity.getId());
-                situation.setSituationNumber(situationNumber);
                 situtations.add(situation);
             }
 
@@ -132,8 +130,7 @@ public class AlertReader extends AbstractSwallower {
 
         return alert == null || alert.getInformedEntityCount() == 0 ||
                 alert.getHeaderText() == null || alert.getHeaderText().getTranslationList().isEmpty() ||
-                alert.getDescriptionText() == null || alert.getDescriptionText().getTranslationList().isEmpty() ||
-                hasNoStartAndNoEndDate(alert);
+                alert.getDescriptionText() == null || alert.getDescriptionText().getTranslationList().isEmpty();
 
     }
 

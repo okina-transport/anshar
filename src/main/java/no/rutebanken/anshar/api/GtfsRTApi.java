@@ -14,5 +14,6 @@ public class GtfsRTApi {
     private String routeIdList;
     private FlowStatus status;
     private long lastUpdate;
-
+    private Boolean generateActivePeriod;
+    private Integer activePeriodDays;
 }

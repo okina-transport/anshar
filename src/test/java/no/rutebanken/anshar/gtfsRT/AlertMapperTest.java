@@ -1,26 +1,31 @@
 package no.rutebanken.anshar.gtfsRT;
 
 import com.google.transit.realtime.GtfsRealtime;
+import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.gtfsrt.mappers.AlertMapper;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri20.*;
 
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.List;
 
+import static java.time.temporal.ChronoUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 
 class AlertMapperTest extends SpringBootBaseTest {
 
+    @Autowired
     private AlertMapper alertMapper;
 
-    @BeforeEach
-    public void setup() {
-        alertMapper = new AlertMapper(null);
-    }
+//    @BeforeEach
+//    public void setup() {
+//        alertMapper = new AlertMapper(null);
+//    }
 
     @Test
     void testGTFSRTAlertMapperTest() {
@@ -42,7 +47,15 @@ class AlertMapperTest extends SpringBootBaseTest {
 
         List<String> routeIdList = Arrays.asList("12,13".split(","));
 
-        PtSituationElement situation = alertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
+
+        GtfsRTApi gtfsRTApi = new GtfsRTApi();
+        gtfsRTApi.setDatasetId("");
+
+        GtfsRealtime.FeedEntity.Builder feedEntity = GtfsRealtime.FeedEntity.newBuilder();
+        feedEntity.setAlert(alertBuilder.build());
+        feedEntity.setId("id2");
+
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(feedEntity.build(), gtfsRTApi, routeIdList);
 
         assertThat(situation.getSummaries().get(0).getValue()).isEqualTo("headerText");
         assertThat(situation.getDescriptions().get(0).getValue()).isEqualTo("desc");
@@ -76,8 +89,14 @@ class AlertMapperTest extends SpringBootBaseTest {
 
         alertBuilder.addInformedEntity(newEnt.build());
         List<String> routeIdList = Arrays.asList("12,13".split(","));
+        GtfsRTApi gtfsRTApi = new GtfsRTApi();
+        gtfsRTApi.setDatasetId("");
 
-        PtSituationElement situation = alertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
+        GtfsRealtime.FeedEntity.Builder feedEntity = GtfsRealtime.FeedEntity.newBuilder();
+        feedEntity.setAlert(alertBuilder.build());
+        feedEntity.setId("id1");
+
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(feedEntity.build(), gtfsRTApi, routeIdList);
 
         assertThat(situation.getAffects()).isNotNull();
         assertThat(situation.getAffects().getNetworks()).isNotNull();
@@ -116,7 +135,14 @@ class AlertMapperTest extends SpringBootBaseTest {
 
         List<String> routeIdList = List.of(lineId);
 
-        PtSituationElement situation = alertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
+        GtfsRealtime.FeedEntity.Builder feedEntity = GtfsRealtime.FeedEntity.newBuilder();
+        feedEntity.setAlert(alertBuilder.build());
+        feedEntity.setId("id2");
+
+        GtfsRTApi gtfsRTApi = new GtfsRTApi();
+        gtfsRTApi.setDatasetId("");
+
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(feedEntity.build(), gtfsRTApi, routeIdList);
 
         assertThat(situation.getAffects()).isNotNull();
         assertThat(situation.getAffects().getNetworks()).isNotNull();
@@ -159,7 +185,14 @@ class AlertMapperTest extends SpringBootBaseTest {
 
         List<String> routeIdList = List.of(lineId);
 
-        PtSituationElement situation = alertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
+        GtfsRealtime.FeedEntity.Builder feedEntity = GtfsRealtime.FeedEntity.newBuilder();
+        feedEntity.setAlert(alertBuilder.build());
+        feedEntity.setId("id2");
+
+        GtfsRTApi gtfsRTApi = new GtfsRTApi();
+        gtfsRTApi.setDatasetId("");
+
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(feedEntity.build(), gtfsRTApi, routeIdList);
 
         assertThat(situation.getAffects()).isNotNull();
         assertThat(situation.getAffects().getNetworks()).isNotNull();
@@ -215,7 +248,13 @@ class AlertMapperTest extends SpringBootBaseTest {
 
         List<String> routeIdList = List.of(lineId);
 
-        PtSituationElement situation = alertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
+        GtfsRealtime.FeedEntity.Builder feedEntity = GtfsRealtime.FeedEntity.newBuilder();
+        feedEntity.setAlert(alertBuilder.build());
+        feedEntity.setId("id2");
+
+        GtfsRTApi gtfsrtApi = new GtfsRTApi();
+        gtfsrtApi.setDatasetId("");
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(feedEntity.build(), gtfsrtApi, routeIdList);
 
         assertThat(situation.getAffects()).isNotNull();
         assertThat(situation.getAffects().getNetworks()).isNotNull();
@@ -243,6 +282,68 @@ class AlertMapperTest extends SpringBootBaseTest {
 
         assertThat(firstNetwork.getNetworkRef()).isNotNull();
         assertThat(firstNetwork.getNetworkRef().getValue()).isEqualTo(agencyId);
+    }
+
+    @Test
+    void testEmptyValidityPeriod() {
+
+        String agencyId = "agencyIdTest";
+        String lineId = "lineIdTest";
+        String stopId = "stopIdTest";
+
+        GtfsRealtime.Alert.Builder alertBuilder = GtfsRealtime.Alert.newBuilder();
+
+        GtfsRealtime.TranslatedString.Translation.Builder translation = GtfsRealtime.TranslatedString.Translation.newBuilder();
+        translation.setText("headerText");
+        translation.setLanguage("FR");
+
+        GtfsRealtime.TranslatedString.Builder headerTextBuilder = GtfsRealtime.TranslatedString.newBuilder().addTranslation(translation);
+        alertBuilder.setHeaderText(headerTextBuilder);
+
+        GtfsRealtime.TranslatedString.Translation.Builder descTextTrans = GtfsRealtime.TranslatedString.Translation.newBuilder();
+        descTextTrans.setText("desc");
+        descTextTrans.setLanguage("FR");
+
+        GtfsRealtime.TranslatedString.Builder descTextBuilder = GtfsRealtime.TranslatedString.newBuilder().addTranslation(descTextTrans);
+        alertBuilder.setDescriptionText(descTextBuilder);
+
+        GtfsRealtime.EntitySelector.Builder newEnt = GtfsRealtime.EntitySelector.newBuilder();
+        newEnt.setRouteId(lineId);
+        newEnt.setStopId(stopId);
+        newEnt.setAgencyId(agencyId);
+
+        alertBuilder.addInformedEntity(newEnt.build());
+
+        List<String> routeIdList = List.of(lineId);
+
+        GtfsRealtime.FeedEntity.Builder feedEntity = GtfsRealtime.FeedEntity.newBuilder();
+        feedEntity.setAlert(alertBuilder.build());
+        feedEntity.setId("id2");
+
+        GtfsRTApi gtfsrtApi = new GtfsRTApi();
+        gtfsrtApi.setDatasetId("");
+        gtfsrtApi.setGenerateActivePeriod(true);
+        gtfsrtApi.setActivePeriodDays(3);
+        ZonedDateTime now = ZonedDateTime.now();
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(feedEntity.build(), gtfsrtApi, routeIdList);
+
+        assertThat(situation.getValidityPeriods()).isNotNull();
+        assertThat(situation.getValidityPeriods().size()).isEqualTo(1);
+        ZonedDateTime firstSituationStart = situation.getValidityPeriods().getFirst().getStartTime();
+        ZonedDateTime firstSituationEnd = situation.getValidityPeriods().getFirst().getEndTime();
+        assertThat(firstSituationStart).isCloseTo(now, within(5, SECONDS));
+        assertThat(firstSituationEnd).isCloseTo(now.plusDays(3), within(5, SECONDS));
+
+
+        // Ingesting again the same alert with empty validity period. ValidityStart and end must be recovered from hazelcast cache
+        PtSituationElement situation2 = alertMapper.mapSituationFromAlert(feedEntity.build(), gtfsrtApi, routeIdList);
+        assertThat(situation2.getValidityPeriods()).isNotNull();
+        assertThat(situation2.getValidityPeriods().size()).isEqualTo(1);
+        ZonedDateTime secondSituationStart = situation2.getValidityPeriods().getFirst().getStartTime();
+        ZonedDateTime secondSituationEnd = situation2.getValidityPeriods().getFirst().getEndTime();
+        assertThat(secondSituationStart).isEqualTo(firstSituationStart);
+        assertThat(secondSituationEnd).isEqualTo(firstSituationEnd);
+
     }
 
     @Test
@@ -278,7 +379,14 @@ class AlertMapperTest extends SpringBootBaseTest {
         alertBuilder.addInformedEntity(newEnt2.build());
         List<String> routeIdList = Arrays.asList("12,13".split(","));
 
-        PtSituationElement situation = alertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
+
+        GtfsRealtime.FeedEntity.Builder feedEntity = GtfsRealtime.FeedEntity.newBuilder();
+        feedEntity.setAlert(alertBuilder.build());
+        feedEntity.setId("id2");
+
+        GtfsRTApi gtfsrtApi = new GtfsRTApi();
+        gtfsrtApi.setDatasetId("");
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(feedEntity.build(), gtfsrtApi, routeIdList);
 
         assertThat(situation.getAffects()).isNotNull();
         assertThat(situation.getAffects().getStopPoints()).isNotNull();
@@ -304,8 +412,14 @@ class AlertMapperTest extends SpringBootBaseTest {
         GtfsRealtime.Alert alert = buildAlertWithSeverity(inputSeverityLevel);
         List<String> routeIdList = Arrays.asList("12,13".split(","));
 
-        PtSituationElement situation = alertMapper.mapSituationFromAlert(alert, "", routeIdList);
-        assertThat(situation.getSeverity()).isEqualTo( outputSeverity);
+        GtfsRealtime.FeedEntity.Builder feedEntity = GtfsRealtime.FeedEntity.newBuilder();
+        feedEntity.setAlert(alert);
+        feedEntity.setId("id2");
+
+        GtfsRTApi gtfsrtApi = new GtfsRTApi();
+        gtfsrtApi.setDatasetId("");
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(feedEntity.build(), gtfsrtApi, routeIdList);
+        assertThat(situation.getSeverity()).isEqualTo(outputSeverity);
     }
 
     private GtfsRealtime.Alert buildAlertWithSeverity(GtfsRealtime.Alert.SeverityLevel severityLevel) {
@@ -332,7 +446,15 @@ class AlertMapperTest extends SpringBootBaseTest {
         GtfsRealtime.Alert alert = buildAlertWithEffect(inputEffect);
         List<String> routeIdList = Arrays.asList("12,13".split(","));
 
-        PtSituationElement situation = alertMapper.mapSituationFromAlert(alert, "", routeIdList);
+
+        GtfsRealtime.FeedEntity.Builder feedEntity = GtfsRealtime.FeedEntity.newBuilder();
+        feedEntity.setAlert(alert);
+        feedEntity.setId("id2");
+
+        GtfsRTApi gtfsrtApi = new GtfsRTApi();
+        gtfsrtApi.setDatasetId("");
+
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(feedEntity.build(), gtfsrtApi, routeIdList);
         assertThat(situation.getConsequences()).isNotNull();
         assertThat(situation.getConsequences().getConsequences()).isNotEmpty();
         assertThat(situation.getConsequences().getConsequences().get(0)).isNotNull();
