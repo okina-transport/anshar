@@ -5,7 +5,7 @@ import no.rutebanken.anshar.ishtar.model.SiriApiDto;
 import no.rutebanken.anshar.ishtar.requestlogging.model.HttpRequestDto;
 import org.apache.camel.Converter;
 import org.apache.camel.TypeConverters;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 

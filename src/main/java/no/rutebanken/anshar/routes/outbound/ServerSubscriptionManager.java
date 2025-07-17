@@ -521,7 +521,7 @@ public class ServerSubscriptionManager {
 
         //Send initial ServiceDelivery
         logger.debug("Find initial delivery for {}", subscription.getSubscriptionId());
-        List<SiriDataType> multipleDatasetDeliveryTypes = Arrays.asList(SiriDataType.STOP_MONITORING, SiriDataType.ESTIMATED_TIMETABLE, SiriDataType.VEHICLE_MONITORING);
+        List<SiriDataType> multipleDatasetDeliveryTypes = Arrays.asList(SiriDataType.STOP_MONITORING, SiriDataType.ESTIMATED_TIMETABLE, SiriDataType.VEHICLE_MONITORING, SiriDataType.GENERAL_MESSAGE);
         if (multipleDatasetDeliveryTypes.contains(subscription.getSubscriptionType())) {
             Map<String, Siri> deliveriesByDataset = initialDeliveryGenerator.findInitialDeliveriesByDataset(subscription);
             for (Map.Entry<String, Siri> datasetAndDelivery : deliveriesByDataset.entrySet()) {
