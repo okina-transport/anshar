@@ -105,9 +105,11 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
                 }
 
                 metrics.registerIncomingDataMonitoring("SIRI", siriApi.getDatasetId(), "200", siriApi.getUrl());
+                incomingDataHealthService.sendSubscriptionMonitoringData("SIRI", siriApi.getDatasetId(), "200", siriApi.getUrl());
                 incomingDataHealthService.recordStatus(String.valueOf(siriApi.getId()), siriApi.getDatasetId(), siriApi.getUrl(), IncomingFlowType.SIRI, FlowStatus.OK);
             } catch (Exception e) {
                 metrics.registerIncomingDataMonitoring("SIRI", siriApi.getDatasetId(), "500", siriApi.getUrl());
+                incomingDataHealthService.sendSubscriptionMonitoringData("SIRI", siriApi.getDatasetId(), "500", siriApi.getUrl());
                 incomingDataHealthService.recordStatus(String.valueOf(siriApi.getId()), siriApi.getDatasetId(), siriApi.getUrl(), IncomingFlowType.SIRI, FlowStatus.ERROR);
 
             }
@@ -142,11 +144,7 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
             return true;
         }
 
-        if ("siri-vm".equals(subscriptionType) && configuration.processVM()) {
-            return true;
-        }
-
-        return false;
+        return "siri-vm".equals(subscriptionType) && configuration.processVM();
     }
 
 

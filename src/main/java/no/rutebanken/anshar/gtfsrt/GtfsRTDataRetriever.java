@@ -22,7 +22,7 @@ import org.springframework.stereotype.Service;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.net.URL;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -35,6 +35,7 @@ import java.util.stream.Collectors;
 @Service
 public class GtfsRTDataRetriever {
     private static final Logger logger = LoggerFactory.getLogger(GtfsRTDataRetriever.class);
+    public static final String GTFS_RT = "GTFS-RT";
 
 
     @Autowired
@@ -57,6 +58,7 @@ public class GtfsRTDataRetriever {
 
     @Autowired
     private PrometheusMetricsService metrics;
+
 
     private final String lockMap = "ansharRouteLockMap";
     private final String gtfsRtLock = "isGtfsRtRunning";
@@ -106,7 +108,8 @@ public class GtfsRTDataRetriever {
                     logger.error("Error on GTFSRT feed:" + gtfsRTApi.getDatasetId() + " - " + gtfsRTApi.getUrl());
                     logger.error("Error detail", e);
                     gtfsRTApi.setStatus(FlowStatus.ERROR);
-                    metrics.registerIncomingDataMonitoring("GTFS-RT", gtfsRTApi.getDatasetId(), "500", gtfsRTApi.getUrl());
+                    metrics.registerIncomingDataMonitoring(GTFS_RT, gtfsRTApi.getDatasetId(), "500", gtfsRTApi.getUrl());
+                    incomingDataHealthService.sendSubscriptionMonitoringData(GTFS_RT, gtfsRTApi.getDatasetId(), "500", gtfsRTApi.getUrl());
                 }
                 incomingDataHealthService.recordStatus(gtfsRTApi);
             }
@@ -179,16 +182,19 @@ public class GtfsRTDataRetriever {
             URL url1 = new URL(gtfsRTApi.getUrl());
             if (gtfsRTApi.getType() == null || GTFSRTType.PROTOBUF.equals(gtfsRTApi.getType())) {
                 BufferedInputStream in = new BufferedInputStream(url1.openStream());
-                metrics.registerIncomingDataMonitoring("GTFS-RT", gtfsRTApi.getDatasetId(), "200", gtfsRTApi.getUrl());
+                metrics.registerIncomingDataMonitoring(GTFS_RT, gtfsRTApi.getDatasetId(), "200", gtfsRTApi.getUrl());
+                incomingDataHealthService.sendSubscriptionMonitoringData(GTFS_RT, gtfsRTApi.getDatasetId(), "200", gtfsRTApi.getUrl());
                 return Optional.of(GtfsRealtime.FeedMessage.newBuilder().mergeFrom(in).build());
             }
             GtfsRealtime.FeedMessage.Builder structBuilder = GtfsRealtime.FeedMessage.newBuilder();
-            String json = IOUtils.toString(url1, Charset.forName("UTF-8"));
+            String json = IOUtils.toString(url1, StandardCharsets.UTF_8);
             JsonFormat.parser().ignoringUnknownFields().merge(json, structBuilder);
-            metrics.registerIncomingDataMonitoring("GTFS-RT", gtfsRTApi.getDatasetId(), "200", gtfsRTApi.getUrl());
+            metrics.registerIncomingDataMonitoring(GTFS_RT, gtfsRTApi.getDatasetId(), "200", gtfsRTApi.getUrl());
+            incomingDataHealthService.sendSubscriptionMonitoringData(GTFS_RT, gtfsRTApi.getDatasetId(), "200", gtfsRTApi.getUrl());
             return Optional.of(structBuilder.build());
         } catch (IOException ex) {
-            metrics.registerIncomingDataMonitoring("GTFS-RT", gtfsRTApi.getDatasetId(), getErrorCode(ex.getMessage()), gtfsRTApi.getUrl());
+            metrics.registerIncomingDataMonitoring(GTFS_RT, gtfsRTApi.getDatasetId(), getErrorCode(ex.getMessage()), gtfsRTApi.getUrl());
+            incomingDataHealthService.sendSubscriptionMonitoringData(GTFS_RT, gtfsRTApi.getDatasetId(), getErrorCode(ex.getMessage()), gtfsRTApi.getUrl());
             logger.error("Error while creating feedMessage", ex);
             return Optional.empty();
         }

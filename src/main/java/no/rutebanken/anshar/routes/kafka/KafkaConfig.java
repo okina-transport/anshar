@@ -20,6 +20,7 @@ public class KafkaConfig {
     private final String sxTopic;
     private final String thTrConsistencyTopic;
     private final String trInSubscriptionDataTopic;
+    private final String trInSubscriptionMonitoringTopic;
 
     public KafkaConfig(@Value("${anshar.kafka.enabled:false}") boolean kafkaEnabled,
                        @Value("${anshar.send.siri.to.kafka:false}") boolean sendSiriToKafka,
@@ -29,7 +30,8 @@ public class KafkaConfig {
                        @Value("${anshar.kafka.groupId:}") String groupId,
                        @Value("${anshar.kafka.topic.sx:}") String sxTopic,
                        @Value("${anshar.kafka.topic.th.tr.consistency:th_tr_consistency}") String thTrConsistencyTopic,
-                       @Value("${anshar.kafka.topic.tr.in.subscription.data:tr_in_subscription_data}") String trInSubscriptionDataTopic) {
+                       @Value("${anshar.kafka.topic.tr.in.subscription.data:tr_in_subscription_data}") String trInSubscriptionDataTopic,
+                       @Value("${anshar.kafka.topic.tr.in.subscription.monitoring:tr_in_subscription_monitoring}") String trInSubscriptionMonitoringTopic) {
         this.kafkaEnabled = kafkaEnabled;
         this.sendSiriToKafka = sendSiriToKafka;
         this.sendTrInSubscriptionDataToKafka = sendTrInSubscriptionDataToKafka;
@@ -39,6 +41,7 @@ public class KafkaConfig {
         this.sxTopic = sxTopic;
         this.thTrConsistencyTopic = thTrConsistencyTopic;
         this.trInSubscriptionDataTopic = trInSubscriptionDataTopic;
+        this.trInSubscriptionMonitoringTopic = trInSubscriptionMonitoringTopic;
     }
 
     public String createCamelConsumerConfig(String topicName) {

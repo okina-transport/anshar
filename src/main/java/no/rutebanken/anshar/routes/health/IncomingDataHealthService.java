@@ -2,6 +2,9 @@ package no.rutebanken.anshar.routes.health;
 
 import no.rutebanken.anshar.api.FlowStatus;
 import no.rutebanken.anshar.api.GtfsRTApi;
+import no.rutebanken.anshar.subscription.SubscriptionMonitoring;
+import org.apache.camel.Produce;
+import org.apache.camel.ProducerTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -10,6 +13,8 @@ import org.springframework.stereotype.Service;
 import java.util.HashMap;
 import java.util.Map;
 
+import static no.rutebanken.anshar.routes.kafka.KafkaRouteBuilder.SEND_TR_IN_SUBSCRIPTION_MONITORING_TO_KAFKA;
+
 @Service
 public class IncomingDataHealthService {
 
@@ -17,6 +22,17 @@ public class IncomingDataHealthService {
 
     Map<IncomingFlowParameters, DailyStatus> dailyStatuses = new HashMap<>();
 
+    @Produce(SEND_TR_IN_SUBSCRIPTION_MONITORING_TO_KAFKA)
+    private ProducerTemplate template;
+
+    public void sendSubscriptionMonitoringData(String type, String datasetId, String httpStatus, String producerUrl) {
+        SubscriptionMonitoring sm = new SubscriptionMonitoring();
+        sm.setDataset(datasetId);
+        sm.setDataType(type);
+        sm.setHttpStatus(httpStatus);
+        sm.setProducerUrl(producerUrl);
+        template.asyncSendBody(template.getDefaultEndpoint(), sm);
+    }
 
     public void recordStatus(GtfsRTApi gtfsrtApi) {
         IncomingFlowParameters incomingFlowParameters = new IncomingFlowParameters();

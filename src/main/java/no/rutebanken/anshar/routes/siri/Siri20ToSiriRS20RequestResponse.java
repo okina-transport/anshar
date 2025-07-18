@@ -89,6 +89,7 @@ public class Siri20ToSiriRS20RequestResponse extends SiriSubscriptionRouteBuilde
                 .process(p -> {
                     String url = getRequestUrl(subscriptionSetup);
                     metrics.registerIncomingDataMonitoring("SIRI", subscriptionSetup.getDatasetId(), "200", url);
+                    incomingDataHealthService.sendSubscriptionMonitoringData("SIRI", subscriptionSetup.getDatasetId(), "200", url);
                     incomingDataHealthService.recordStatus(subscriptionSetup.getSubscriptionId(), subscriptionSetup.getDatasetId(), url, IncomingFlowType.SIRI, FlowStatus.OK);
                 })
                 .to("direct:enqueue.message")
@@ -103,6 +104,7 @@ public class Siri20ToSiriRS20RequestResponse extends SiriSubscriptionRouteBuilde
                         statusCode = httpEx.getStatusCode();
                     }
                     metrics.registerIncomingDataMonitoring("SIRI", subscriptionSetup.getDatasetId(), String.valueOf(statusCode), url);
+                    incomingDataHealthService.sendSubscriptionMonitoringData("SIRI", subscriptionSetup.getDatasetId(), String.valueOf(statusCode), url);
                     incomingDataHealthService.recordStatus(subscriptionSetup.getSubscriptionId(), subscriptionSetup.getDatasetId(), getRequestUrl(subscriptionSetup), IncomingFlowType.SIRI, FlowStatus.ERROR);
                     if (releaseLeadershipOnError) {
                         releaseLeadership(monitoringRouteId);

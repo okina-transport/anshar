@@ -15,6 +15,7 @@ public class KafkaRouteBuilder extends RouteBuilder {
     public static final String SEND_SX_TO_KAFKA = "direct:send.sx.to.kafka";
     public static final String SEND_TH_TR_CONSISTENCY_REPORT_TO_KAFKA = "direct:send.th.tr.consistency.report.to.kafka";
     public static final String SEND_TR_IN_SUBSCRIPTION_DATA_TO_KAFKA = "direct:send.tr.in.subscription.data.to.kafka";
+    public static final String SEND_TR_IN_SUBSCRIPTION_MONITORING_TO_KAFKA = "direct:send.tr.in.subscription.monitoring.to.kafka";
 
     private final KafkaConfig kafkaConfig;
     private final AnsharConfiguration config;
@@ -62,8 +63,19 @@ public class KafkaRouteBuilder extends RouteBuilder {
                     .setHeader(KafkaHeaders.ENV_HEADER, constant(config.getEnvironment().getBytes(StandardCharsets.UTF_8)))
                     .setHeader(KafkaHeaders.CLIENT_HEADER, constant(config.getClientName().getBytes(StandardCharsets.UTF_8)))
                     .wireTap(kafkaConfig.createCamelProducerConfig(kafkaConfig.getThTrConsistencyTopic()));
+            from(SEND_TR_IN_SUBSCRIPTION_MONITORING_TO_KAFKA)
+                    .log(LoggingLevel.INFO, "Sending TR in subscription monitoring to KAFKA")
+                    .marshal()
+                    .json()
+                    .removeHeaders("*")
+                    .setHeader(KafkaHeaders.ENV_HEADER, constant(config.getEnvironment().getBytes(StandardCharsets.UTF_8)))
+                    .setHeader(KafkaHeaders.CLIENT_HEADER, constant(config.getClientName().getBytes(StandardCharsets.UTF_8)))
+                    .wireTap(kafkaConfig.createCamelProducerConfig(kafkaConfig.getTrInSubscriptionMonitoringTopic()));
         } else {
             from(SEND_TH_TR_CONSISTENCY_REPORT_TO_KAFKA)
+                    .log(LoggingLevel.WARN, "Sending messages to KAFKA is disabled")
+                    .end();
+            from(SEND_TR_IN_SUBSCRIPTION_MONITORING_TO_KAFKA)
                     .log(LoggingLevel.WARN, "Sending messages to KAFKA is disabled")
                     .end();
         }

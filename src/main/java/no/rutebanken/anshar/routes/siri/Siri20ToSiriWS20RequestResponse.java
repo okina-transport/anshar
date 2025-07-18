@@ -37,8 +37,8 @@ import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFO
 public class Siri20ToSiriWS20RequestResponse extends SiriSubscriptionRouteBuilder {
 
 
-    private IncomingDataHealthService incomingDataHealthService;
-    private PrometheusMetricsService metrics;
+    private final IncomingDataHealthService incomingDataHealthService;
+    private final PrometheusMetricsService metrics;
 
     public Siri20ToSiriWS20RequestResponse(AnsharConfiguration config, SubscriptionSetup subscriptionSetup, SubscriptionManager subscriptionManager,
                                            IncomingDataHealthService incomingDataHealthService, PrometheusMetricsService metrics) {
@@ -95,6 +95,7 @@ public class Siri20ToSiriWS20RequestResponse extends SiriSubscriptionRouteBuilde
                 .process(p -> {
                     String url = getCamelRequestUrl(subscriptionSetup, httpOptions);
                     metrics.registerIncomingDataMonitoring("SIRI", subscriptionSetup.getDatasetId(), "200", url);
+                    incomingDataHealthService.sendSubscriptionMonitoringData("SIRI", subscriptionSetup.getDatasetId(), "200", url);
                     incomingDataHealthService.recordStatus(subscriptionSetup.getSubscriptionId(), subscriptionSetup.getDatasetId(), getRequestUrl(subscriptionSetup), IncomingFlowType.SIRI, FlowStatus.OK);
                 })
                 .to("direct:process.message.synchronous")
@@ -109,6 +110,7 @@ public class Siri20ToSiriWS20RequestResponse extends SiriSubscriptionRouteBuilde
                         statusCode = httpEx.getStatusCode();
                     }
                     metrics.registerIncomingDataMonitoring("SIRI", subscriptionSetup.getDatasetId(), String.valueOf(statusCode), url);
+                    incomingDataHealthService.sendSubscriptionMonitoringData("SIRI", subscriptionSetup.getDatasetId(), String.valueOf(statusCode), url);
                     incomingDataHealthService.recordStatus(subscriptionSetup.getSubscriptionId(), subscriptionSetup.getDatasetId(), getRequestUrl(subscriptionSetup), IncomingFlowType.SIRI, FlowStatus.ERROR);
                     if (releaseLeadershipOnError) {
                         releaseLeadership(monitoringRouteId);
