@@ -15,7 +15,6 @@
 
 package no.rutebanken.anshar.routes.siri;
 
-import io.micrometer.core.instrument.util.StringUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import no.rutebanken.anshar.config.AnsharConfiguration;
@@ -41,6 +40,7 @@ import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import no.rutebanken.anshar.util.IDUtils;
 import org.apache.camel.Exchange;
 import org.apache.camel.model.rest.RestParamType;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -277,7 +277,8 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
                     List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.SITUATION_EXCHANGE,
-                            SiriHandler.getIdMappingPolicy(originalId, altId)
+                            SiriHandler.getIdMappingPolicy(originalId, altId),
+                            subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId)
                     );
                     if ("test".equals(originalId)) {
                         outboundAdapters = null;
@@ -331,7 +332,8 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
                     List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.VEHICLE_MONITORING,
-                            SiriHandler.getIdMappingPolicy(originalId, altId)
+                            SiriHandler.getIdMappingPolicy(originalId, altId),
+                            subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId)
                     );
                     if ("test".equals(originalId)) {
                         outboundAdapters = null;
@@ -390,10 +392,11 @@ public class SiriLiteRoute extends RestRouteBuilder {
                         requestedLines.add(lineRef);
                     }
                     response = estimatedTimetables.createServiceDelivery(requestorId, datasetId, etClientName, excludedIdList, maxSize, previewIntervalMillis, requestedLines);
-
+                    Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);
                     List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.ESTIMATED_TIMETABLE,
-                            SiriHandler.getIdMappingPolicy(originalId, altId)
+                            SiriHandler.getIdMappingPolicy(originalId, altId),
+                            idMap
                     );
                     if ("test".equals(originalId)) {
                         outboundAdapters = null;
@@ -547,7 +550,8 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
                     List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.GENERAL_MESSAGE,
-                            SiriHandler.getIdMappingPolicy(originalId, null)
+                            SiriHandler.getIdMappingPolicy(originalId, null),
+                            subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId)
                     );
                     if ("test".equals(originalId)) {
                         outboundAdapters = null;
@@ -589,7 +593,8 @@ public class SiriLiteRoute extends RestRouteBuilder {
 
                     List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.FACILITY_MONITORING,
-                            SiriHandler.getIdMappingPolicy(originalId, null)
+                            SiriHandler.getIdMappingPolicy(originalId, null),
+                            subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId)
                     );
                     if ("test".equals(originalId)) {
                         outboundAdapters = null;
