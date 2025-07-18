@@ -22,6 +22,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import static no.rutebanken.anshar.data.util.CustomStringUtils.COLON_REPLACEMENT_CODE;
+
 /**
  * Service to handle first or last VJ of the day
  */
@@ -78,7 +80,7 @@ public class VehicleJourneyService {
                 continue;
             }
 
-            vehicleJourneyMobiitiIds.add(vehicleJourneyId);
+            vehicleJourneyMobiitiIds.add(vehicleJourneyId.replace(COLON_REPLACEMENT_CODE, "-").replace("|", "_"));
             Map<String, FirstOrLastJourneyEnumeration> dayMap;
 
             if (servicePositionMap.containsKey(date)) {
