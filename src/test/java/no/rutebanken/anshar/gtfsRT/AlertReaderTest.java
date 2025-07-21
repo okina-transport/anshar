@@ -57,7 +57,7 @@ public class AlertReaderTest extends SpringBootBaseTest {
         List<String> routeIdList = Arrays.asList("12,13".split(","));
 
         GtfsRTApi gtfsRTApi = new GtfsRTApi();
-        gtfsRTApi.setDatasetId("");
+        gtfsRTApi.setDatasetId("ALEOP");
 
         List<PtSituationElement> situations = alertReader.buildSituationList(feedMessageBuilder.build(), gtfsRTApi, routeIdList);
 
