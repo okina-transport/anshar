@@ -39,12 +39,12 @@
         <spring-boot-plugin.version>2.6.6</spring-boot-plugin.version>
 
 
-        <camel-version>4.12.0</camel-version>
+        <camel-version>4.13.0</camel-version>
         <camel-swagger-version>3.22.4</camel-swagger-version>
 
         <metrics.version>3.2.3</metrics.version>
         <okina.helpers.version>1.0.31</okina.helpers.version>
-        <geotools.version>33.1</geotools.version>
+        <geotools.version>33.2</geotools.version>
         <sonar.projectKey>mobi-iti:anshar</sonar.projectKey>
         <protobuf.version>4.31.1</protobuf.version>
         <gtfs.realtime-bindings.version>1.0.0-mobi-iti</gtfs.realtime-bindings.version>
@@ -170,12 +170,12 @@
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-observation</artifactId>
-            <version>1.15.1</version>
+            <version>1.15.2</version>
         </dependency>
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-core</artifactId>
-            <version>1.15.1</version>
+            <version>1.15.2</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -433,7 +433,7 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.17.0</version>
+            <version>3.18.0</version>
         </dependency>
 
         <dependency>
@@ -595,7 +595,7 @@
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>
-            <version>2.19.1</version>
+            <version>2.19.2</version>
         </dependency>
         <dependency>
             <groupId>org.jsoup</groupId>
