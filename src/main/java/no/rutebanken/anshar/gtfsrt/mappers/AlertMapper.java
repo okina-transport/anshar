@@ -11,8 +11,12 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import uk.org.ifopt.siri20.StopPlaceRef;
-import uk.org.siri.siri20.*;
+import uk.org.ifopt.siri21.StopPlaceRef;
+import uk.org.siri.siri20.EnvironmentReasonEnumeration;
+import uk.org.siri.siri20.EquipmentReasonEnumeration;
+import uk.org.siri.siri20.MiscellaneousReasonEnumeration;
+import uk.org.siri.siri20.PersonnelReasonEnumeration;
+import uk.org.siri.siri21.*;
 
 import java.io.Serializable;
 import java.text.ParseException;
@@ -47,8 +51,8 @@ public class AlertMapper {
     /**
      * Maps a GTFS-RT Alert to a PtSituationElement, converting relevant alert data into a structured format.
      *
-     * @param alert      The GTFS-Realtime Alert to be mapped.
-     * @param datasetId  The identifier of the dataset associated with the alert.
+     * @param alert       The GTFS-Realtime Alert to be mapped.
+     * @param datasetId   The identifier of the dataset associated with the alert.
      * @param routeIdList A list of route IDs to filter the alert’s applicability.
      * @return A {@link PtSituationElement} object containing the structured data from the alert.
      */
@@ -170,8 +174,8 @@ public class AlertMapper {
      * Maps the affected entities from a GTFS-Realtime Alert to a {@link PtSituationElement}.
      *
      * @param ptSituationElement The {@link PtSituationElement} to which the affected entities will be mapped.
-     * @param alert The GTFS-Realtime {@link GtfsRealtime.Alert} containing the affected entities.
-     * @param datasetId The identifier of the dataset associated with the alert.
+     * @param alert              The GTFS-Realtime {@link GtfsRealtime.Alert} containing the affected entities.
+     * @param datasetId          The identifier of the dataset associated with the alert.
      */
     private static void mapAffects(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert, String datasetId) {
         List<GtfsRealtime.EntitySelector> informedEntities = alert.getInformedEntityList();
@@ -194,9 +198,9 @@ public class AlertMapper {
      * Records the affected entities from a GTFS-Realtime {@link GtfsRealtime.EntitySelector} into an {@link AffectsScopeStructure}.
      * This method determines whether the affected entity is related to an agency, route, or stop and updates the structure accordingly.
      *
-     * @param affects The {@link AffectsScopeStructure} that stores the affected elements.
+     * @param affects        The {@link AffectsScopeStructure} that stores the affected elements.
      * @param informedEntity The GTFS-Realtime {@link GtfsRealtime.EntitySelector} representing the affected entity.
-     * @param datasetId The identifier of the dataset associated with the affected entity.
+     * @param datasetId      The identifier of the dataset associated with the affected entity.
      */
     private static void recordAffect(AffectsScopeStructure affects, GtfsRealtime.EntitySelector informedEntity, String datasetId) {
 
@@ -264,7 +268,7 @@ public class AlertMapper {
         }
 
         AffectedStopPointStructure newStopPoints = new AffectedStopPointStructure();
-        StopPointRef newStopRef = new StopPointRef();
+        StopPointRefStructure newStopRef = new StopPointRefStructure();
         newStopRef.setValue(stopId);
         newStopPoints.setStopPointRef(newStopRef);
         affects.getStopPoints().getAffectedStopPoints().add(newStopPoints);
@@ -304,7 +308,7 @@ public class AlertMapper {
         }
 
         AffectedStopPointStructure newStop = new AffectedStopPointStructure();
-        StopPointRef newStopRef = new StopPointRef();
+        StopPointRefStructure newStopRef = new StopPointRefStructure();
         newStopRef.setValue(stopId);
         newStop.setStopPointRef(newStopRef);
         affectedLine.getRoutes().getAffectedRoutes().get(0).getStopPoints().getAffectedStopPointsAndLinkProjectionToNextStopPoints().add(newStop);
@@ -346,7 +350,7 @@ public class AlertMapper {
      * based on the route ID of the informed entity. If the route is not found, a new {@link AffectedLineStructure} is created and added.
      *
      * @param affectedNetwork The {@link AffectsScopeStructure.Networks.AffectedNetwork} containing affected lines.
-     * @param informedEntity The GTFS-Realtime {@link GtfsRealtime.EntitySelector} providing the route ID.
+     * @param informedEntity  The GTFS-Realtime {@link GtfsRealtime.EntitySelector} providing the route ID.
      * @return The existing or newly created {@link AffectedLineStructure}, or {@code null} if the route ID is not in the provided list.
      */
     private static AffectedLineStructure getOrCreateLine(AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork, GtfsRealtime.EntitySelector informedEntity) {
@@ -453,40 +457,40 @@ public class AlertMapper {
 
         switch (alert.getCause()) {
             case WEATHER:
-                ptSituationElement.setEnvironmentReason(EnvironmentReasonEnumeration.UNDEFINED_ENVIRONMENTAL_PROBLEM);
+                ptSituationElement.setEnvironmentReason(EnvironmentReasonEnumeration.UNDEFINED_ENVIRONMENTAL_PROBLEM.value());
                 break;
             case CONSTRUCTION:
-                ptSituationElement.setEquipmentReason(EquipmentReasonEnumeration.CONSTRUCTION_WORK);
+                ptSituationElement.setEquipmentReason(EquipmentReasonEnumeration.CONSTRUCTION_WORK.value());
                 break;
             case MAINTENANCE:
-                ptSituationElement.setEquipmentReason(EquipmentReasonEnumeration.MAINTENANCE_WORK);
+                ptSituationElement.setEquipmentReason(EquipmentReasonEnumeration.MAINTENANCE_WORK.value());
                 break;
             case STRIKE:
-                ptSituationElement.setPersonnelReason(PersonnelReasonEnumeration.INDUSTRIAL_ACTION);
+                ptSituationElement.setPersonnelReason(PersonnelReasonEnumeration.INDUSTRIAL_ACTION.value());
                 break;
             case OTHER_CAUSE:
-                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.UNDEFINED_PROBLEM);
+                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.UNDEFINED_PROBLEM.value());
                 break;
             case UNKNOWN_CAUSE:
-                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.UNKNOWN);
+                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.UNKNOWN.value());
                 break;
             case ACCIDENT:
-                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.ACCIDENT);
+                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.ACCIDENT.value());
                 break;
             case DEMONSTRATION:
-                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.DEMONSTRATION);
+                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.DEMONSTRATION.value());
                 break;
             case MEDICAL_EMERGENCY:
-                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.INCIDENT);
+                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.INCIDENT.value());
                 break;
             case POLICE_ACTIVITY:
-                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.POLICE_ACTIVITY);
+                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.POLICE_ACTIVITY.value());
                 break;
             case TECHNICAL_PROBLEM:
-                ptSituationElement.setEquipmentReason(EquipmentReasonEnumeration.TECHNICAL_PROBLEM);
+                ptSituationElement.setEquipmentReason(EquipmentReasonEnumeration.TECHNICAL_PROBLEM.value());
                 break;
             case HOLIDAY:
-                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.HOLIDAY);
+                ptSituationElement.setMiscellaneousReason(MiscellaneousReasonEnumeration.HOLIDAY.value());
                 break;
         }
     }

@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.data;
 
+import jakarta.xml.bind.UnmarshalException;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
@@ -22,6 +23,7 @@ import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
+import no.rutebanken.anshar.routes.siri.handlers.inbound.SituationExchangeInbound;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,8 +32,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri21.*;
-
-import jakarta.xml.bind.UnmarshalException;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -61,12 +61,37 @@ public class SituationsTest extends SpringBootBaseTest {
     private LineUpdaterService lineupdaterService;
 
     @Autowired
+    private SituationExchangeInbound situationExchangeInbound;
+
+    @Autowired
     private SiriHandler handler;
 
     @BeforeEach
     public void init() {
         situations.clearAll();
         situations.setClock(Clock.systemUTC());
+    }
+
+    @Test
+    public void testMissingAlertClosure() throws InterruptedException {
+
+        configuration.setSxGraceperiodMinutes(1);
+        String testDatasetId = "test-dataset";
+        ZonedDateTime startTime = ZonedDateTime.now().minusDays(1);
+        ZonedDateTime endTime = ZonedDateTime.now().plusHours(4);
+        PtSituationElement initialSituation = TestObjectFactory.createPtSituationElement("atb", "1234", startTime, endTime);
+        initialSituation.setProgress(WorkflowStatusEnumeration.PUBLISHED);
+        situations.add(testDatasetId, initialSituation);
+        assertEquals(1, situations.getAll().size());
+
+        situationExchangeInbound.closeMissingAlerts(testDatasetId, new ArrayList<>());
+        assertEquals(1, situations.getAll().size());
+        Thread.sleep(10000);
+        situationExchangeInbound.closeMissingAlerts(testDatasetId, new ArrayList<>());
+        situationExchangeInbound.closeMissingAlerts(testDatasetId, new ArrayList<>());
+
+        Thread.sleep(61000);
+        assertEquals(0, situations.getAll().size());
     }
 
     @Test

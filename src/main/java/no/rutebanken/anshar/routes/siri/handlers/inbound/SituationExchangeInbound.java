@@ -131,6 +131,41 @@ public class SituationExchangeInbound {
         return !addedOrUpdated.isEmpty();
     }
 
+    /**
+     * Close situations that are no more existing, in the the GTFSRT-api
+     *
+     * @param datasetId               the datasetId for which situations must be closed
+     * @param currentOpenedSituations situations that are currently available in the flow
+     */
+    public void closeMissingAlerts(String datasetId, List<PtSituationElement> currentOpenedSituations) {
+
+        Collection<PtSituationElement> storedSituations = situations.getAll(datasetId);
+        if (storedSituations == null || storedSituations.isEmpty()) {
+            return;
+        }
+
+        List<PtSituationElement> situationsToClose = new ArrayList<>();
+        for (PtSituationElement storedSituation : storedSituations) {
+            String situationNumber = storedSituation.getSituationNumber().getValue();
+            if (isSituationInList(situationNumber, currentOpenedSituations)) {
+                // situation is still existing in the flow, no need to close it
+                continue;
+            }
+
+            storedSituation.setProgress(WorkflowStatusEnumeration.CLOSED);
+
+            situationsToClose.add(storedSituation);
+        }
+
+        if (!situationsToClose.isEmpty()) {
+            ingestSituations(datasetId, situationsToClose, true);
+        }
+
+    }
+
+    private boolean isSituationInList(String situationNumber, List<PtSituationElement> situationList) {
+        return situationList.stream().anyMatch(situation -> situation.getSituationNumber() != null && situation.getSituationNumber().getValue().equals(situationNumber));
+    }
 
     public Map<String, List<PtSituationElement>> splitSituationsByCodespace(List<PtSituationElement> ptSituationElements) {
         Map<String, List<PtSituationElement>> result = new HashMap<>();

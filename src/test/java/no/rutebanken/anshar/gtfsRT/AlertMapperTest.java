@@ -5,7 +5,7 @@ import no.rutebanken.anshar.gtfsrt.mappers.AlertMapper;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import java.util.Arrays;
 import java.util.List;
@@ -305,7 +305,7 @@ class AlertMapperTest extends SpringBootBaseTest {
         List<String> routeIdList = Arrays.asList("12,13".split(","));
 
         PtSituationElement situation = alertMapper.mapSituationFromAlert(alert, "", routeIdList);
-        assertThat(situation.getSeverity()).isEqualTo( outputSeverity);
+        assertThat(situation.getSeverity()).isEqualTo(outputSeverity);
     }
 
     private GtfsRealtime.Alert buildAlertWithSeverity(GtfsRealtime.Alert.SeverityLevel severityLevel) {

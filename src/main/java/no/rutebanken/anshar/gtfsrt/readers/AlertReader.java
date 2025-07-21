@@ -1,7 +1,9 @@
 package no.rutebanken.anshar.gtfsrt.readers;
 
 import com.google.transit.realtime.GtfsRealtime;
+import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.gtfsrt.mappers.AlertMapper;
+import no.rutebanken.anshar.routes.siri.handlers.inbound.SituationExchangeInbound;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
@@ -10,8 +12,9 @@ import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri21.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,6 +36,9 @@ public class AlertReader extends AbstractSwallower {
 
     private final AlertMapper alertMapper;
 
+    @Autowired
+    private SituationExchangeInbound situationExchangeInbound;
+
     @Produce("direct:send.sx.to.realtime.server")
     protected ProducerTemplate gtfsrtSxProducer;
 
@@ -50,16 +56,21 @@ public class AlertReader extends AbstractSwallower {
      * Processes and ingests GTFS-Realtime alert data, converting it into a structured format
      * and handling updates, subscriptions, and message dispatching.
      *
-     * @param datasetId The identifier of the dataset associated with the GTFS-Realtime feed.
-     * @param routeIdList A list of route IDs used to filter relevant alerts.
+     * @param gtfsrtApi             The identifier of the dataset associated with the GTFS-Realtime feed.
+     * @param routeIdList           A list of route IDs used to filter relevant alerts.
      * @param completeGTFSRTMessage The complete GTFS-Realtime {@link GtfsRealtime.FeedMessage} containing alert data.
      */
-    public void ingestAlertData(String datasetId, List<String> routeIdList, GtfsRealtime.FeedMessage completeGTFSRTMessage) {
+    public void ingestAlertData(GtfsRTApi gtfsrtApi, List<String> routeIdList, GtfsRealtime.FeedMessage completeGTFSRTMessage) {
+        String datasetId = gtfsrtApi.getDatasetId();
         List<PtSituationElement> situations = buildSituationList(completeGTFSRTMessage, datasetId, routeIdList);
         updateParticipantRef(datasetId, situations);
         List<String> subscriptionList = getSubscriptions(situations);
         checkAndCreateSubscriptions(subscriptionList, datasetId);
         buildSiriAndSend(situations, datasetId);
+        if (gtfsrtApi.getCloseMissingAlerts()) {
+            situationExchangeInbound.closeMissingAlerts(gtfsrtApi.getDatasetId(), situations);
+        }
+
     }
 
     private void buildSiriAndSend(List<PtSituationElement> situations, String datasetId) {
@@ -102,7 +113,7 @@ public class AlertReader extends AbstractSwallower {
      * Each alert in the feed is transformed into a structured situation element.
      *
      * @param feedMessage The GTFS-Realtime {@link GtfsRealtime.FeedMessage} containing alert data.
-     * @param datasetId The identifier of the dataset associated with the alerts.
+     * @param datasetId   The identifier of the dataset associated with the alerts.
      * @param routeIdList A list of route IDs used to filter relevant alerts.
      * @return A list of {@link PtSituationElement} objects representing the structured alert data.
      */
