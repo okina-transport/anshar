@@ -47,16 +47,14 @@ public class AlertMapper {
 
     private final StopTimesService stopTimesService;
     private final IMap<String, Long> sxStartActivePeriodMap;
-    private final IMap<String, Long> sxEndActivePeriodMap;
+
     private final SimpleDateFormat yyyyMMddFormatter;
 
     public AlertMapper(StopTimesService stopTimesService,
-                       @Qualifier("getSxStartActivePeriodMap") IMap<String, Long> sxStartActivePeriodMap,
-                       @Qualifier("getSxEndActivePeriodMap")
-                       IMap<String, Long> sxEndActivePeriodMap) {
+                       @Qualifier("getSxStartActivePeriodMap") IMap<String, Long> sxStartActivePeriodMap
+    ) {
         this.stopTimesService = stopTimesService;
         this.sxStartActivePeriodMap = sxStartActivePeriodMap;
-        this.sxEndActivePeriodMap = sxEndActivePeriodMap;
         this.yyyyMMddFormatter = new SimpleDateFormat("yyyyMMdd");
     }
 
@@ -510,14 +508,9 @@ public class AlertMapper {
             }
             ZonedDateTime startTime = Instant.ofEpochSecond(startSeconds).atZone(ZoneId.systemDefault());
 
-            long endSeconds;
-            if (sxEndActivePeriodMap.containsKey(situationNumber)) {
-                endSeconds = sxEndActivePeriodMap.get(situationNumber);
-            } else {
-                endSeconds = startSeconds + (86400L * activePeriodDays);
-                sxEndActivePeriodMap.put(situationNumber, endSeconds);
-            }
+            long endSeconds = startSeconds + (86400L * activePeriodDays);
             ZonedDateTime endTime = Instant.ofEpochSecond(endSeconds).atZone(ZoneId.systemDefault());
+
 
             HalfOpenTimestampOutputRangeStructure validityPeriod = new HalfOpenTimestampOutputRangeStructure();
             validityPeriod.setStartTime(startTime);
