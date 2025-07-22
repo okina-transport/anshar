@@ -338,7 +338,7 @@ public class AlertMapper {
         for (Serializable affectedStopPointsAndLinkProjectionToNextStopPoint : firstRoute.getStopPoints().getAffectedStopPointsAndLinkProjectionToNextStopPoints()) {
 
             if (affectedStopPointsAndLinkProjectionToNextStopPoint instanceof AffectedStopPointStructure currentAffectedStopPoint
-                && currentAffectedStopPoint.getStopPointRef().getValue().equals(stopId)) {
+                    && currentAffectedStopPoint.getStopPointRef().getValue().equals(stopId)) {
                 return true;
             }
         }
@@ -463,7 +463,7 @@ public class AlertMapper {
                 ptSituationElement.setEquipmentReason(EquipmentReasonEnumeration.CONSTRUCTION_WORK.value());
                 break;
             case MAINTENANCE:
-                ptSituationElement.setEquipmentReason(EquipmentReasonEnumeration.MAINTENANCE_WORK);
+                ptSituationElement.setEquipmentReason(EquipmentReasonEnumeration.MAINTENANCE_WORK.value());
                 break;
             case STRIKE:
                 ptSituationElement.setPersonnelReason(PersonnelReasonEnumeration.INDUSTRIAL_ACTION.value());
@@ -567,12 +567,12 @@ public class AlertMapper {
                         .map(GtfsRealtime.TranslatedString.Translation::getText)
                         .distinct()
                         .map(
-                    t -> {
-                        InfoLinkStructure ils = new InfoLinkStructure();
-                        ils.setUri(t);
-                        return ils;
-                    }
-                ).distinct().toList()
+                                t -> {
+                                    InfoLinkStructure ils = new InfoLinkStructure();
+                                    ils.setUri(t);
+                                    return ils;
+                                }
+                        ).distinct().toList()
         );
         ptSituationElement.setInfoLinks(infoLinks);
     }

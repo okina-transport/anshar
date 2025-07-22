@@ -162,6 +162,8 @@ public class SubscriptionConfig {
                 existingOpt.get().setActive(incomingAPI.getActive());
                 existingOpt.get().setRouteIdList(incomingAPI.getRouteIdList());
                 existingOpt.get().setActivePeriodDays(incomingAPI.getActivePeriodDays());
+                existingOpt.get().setCloseMissingAlerts(incomingAPI.getCloseMissingAlerts());
+                existingOpt.get().setGenerateActivePeriod(incomingAPI.getGenerateActivePeriod());
                 logger.info("gtfsrt already existing.updating. " + incomingAPI.getDatasetId() + "-" + incomingAPI.getUrl());
             } else {
                 gtfsRTApis.add(incomingAPI);
