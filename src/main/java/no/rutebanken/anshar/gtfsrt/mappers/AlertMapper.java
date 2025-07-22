@@ -4,10 +4,8 @@ package no.rutebanken.anshar.gtfsrt.mappers;
 import com.google.transit.realtime.GtfsRealtime;
 import com.hazelcast.map.IMap;
 import no.rutebanken.anshar.api.GtfsRTApi;
-import no.rutebanken.anshar.gtfsrt.readers.AlertFilterHelper;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.mapping.StopTimesService;
-import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -30,6 +28,7 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 
 /***
@@ -39,102 +38,31 @@ import java.util.List;
 @Component
 public class AlertMapper {
 
-    private static final SimpleDateFormat DATE_FORMATTER = new SimpleDateFormat("yyyyMMdd");
 
     private static final Logger logger = LoggerFactory.getLogger(AlertMapper.class);
 
-    private static StopPlaceUpdaterService stopPlaceService;
-
+    private final StopPlaceUpdaterService stopPlaceService;
     private final StopTimesService stopTimesService;
     private final IMap<String, Long> sxStartActivePeriodMap;
-
     private final SimpleDateFormat yyyyMMddFormatter;
 
-    public AlertMapper(StopTimesService stopTimesService,
+    public AlertMapper(StopPlaceUpdaterService stopPlaceService, StopTimesService stopTimesService,
                        @Qualifier("getSxStartActivePeriodMap") IMap<String, Long> sxStartActivePeriodMap
     ) {
+        this.stopPlaceService = stopPlaceService;
         this.stopTimesService = stopTimesService;
         this.sxStartActivePeriodMap = sxStartActivePeriodMap;
         this.yyyyMMddFormatter = new SimpleDateFormat("yyyyMMdd");
-    }
-
-    /**
-     * Maps a GTFS-RT Alert to a PtSituationElement, converting relevant alert data into a structured format.
-     *
-     * @param feedEntity  The GTFS-Realtime entity that contains alert
-     * @param gtfsrtApi   paramters of the API
-     * @param routeIdList A list of route IDs to filter the alert’s applicability.
-     * @return A {@link PtSituationElement} object containing the structured data from the alert.
-     */
-    public PtSituationElement mapSituationFromAlert(GtfsRealtime.FeedEntity feedEntity, GtfsRTApi gtfsrtApi, List<String> routeIdList) {
-        String datasetId = gtfsrtApi.getDatasetId();
-
-
-        GtfsRealtime.Alert alert = feedEntity.getAlert();
-        PtSituationElement ptSituationElement = new PtSituationElement();
-        if (shouldFilterAlert(alert, datasetId, routeIdList)) {
-            return null;
-        }
-
-        SituationNumber situationNumber = new SituationNumber();
-        situationNumber.setValue(feedEntity.getId());
-        ptSituationElement.setSituationNumber(situationNumber);
-        mapDescription(ptSituationElement, alert);
-        mapUrl(ptSituationElement, alert);
-        mapPeriod(ptSituationElement, alert, gtfsrtApi.getActivePeriodDays());
-        mapReasons(ptSituationElement, alert);
-        mapAffects(ptSituationElement, alert, datasetId);
-        mapEffect(ptSituationElement, alert);
-        mapSeverity(ptSituationElement, alert);
-
-        return ptSituationElement;
-    }
-
-    private boolean shouldFilterAlert(GtfsRealtime.Alert alert, String datasetId, List<String> routeIdList) {
-        if (CollectionUtils.isNotEmpty(routeIdList)) {
-            List<GtfsRealtime.EntitySelector> informedEntityList = alert.getInformedEntityList();
-            if (CollectionUtils.isNotEmpty(informedEntityList)) {
-                AlertFilterHelper alertFilterHelper = new AlertFilterHelper(stopTimesService, datasetId, routeIdList);
-                for (GtfsRealtime.EntitySelector entitySelector : informedEntityList) {
-                    if (alertFilterHelper.isShouldKeepAlert()) {
-                        return false;
-                    }
-                    updateAlertFilterHelper(entitySelector, alertFilterHelper);
-                }
-                return !alertFilterHelper.checkAllEntity();
-            }
-        }
-        return false;
-    }
-
-    private static void updateAlertFilterHelper(GtfsRealtime.EntitySelector entitySelector, AlertFilterHelper alertFilterHelper) {
-        if (entitySelector.hasAgencyId()) {
-            alertFilterHelper.addAgencyId(entitySelector.getAgencyId());
-        }
-        if (entitySelector.hasRouteId()) {
-            alertFilterHelper.addRoute(entitySelector.getRouteId());
-        }
-        if (entitySelector.hasTrip()) {
-            alertFilterHelper.addTrip(entitySelector.getTrip().getTripId());
-        }
-        if (entitySelector.hasStopId()) {
-            alertFilterHelper.addAffectedStops(entitySelector.getStopId());
-        }
-        if (entitySelector.hasRouteType()) {
-            alertFilterHelper.addRouteType(entitySelector.getRouteType());
-        }
     }
 
     private static void mapSeverity(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert) {
         if (!alert.hasSeverityLevel()) {
             return;
         }
-
         ptSituationElement.setSeverity(convertSeverity(alert.getSeverityLevel()));
     }
 
     private static SeverityEnumeration convertSeverity(GtfsRealtime.Alert.SeverityLevel severityLevel) {
-
         return switch (severityLevel) {
             case UNKNOWN_SEVERITY -> SeverityEnumeration.UNKNOWN;
             case INFO -> SeverityEnumeration.VERY_SLIGHT;
@@ -157,7 +85,6 @@ public class AlertMapper {
     }
 
     private static ServiceConditionEnumeration convertEffectToCondition(GtfsRealtime.Alert.Effect effect) {
-
         return switch (effect) {
             case NO_SERVICE -> ServiceConditionEnumeration.NO_SERVICE;
             case REDUCED_SERVICE -> ServiceConditionEnumeration.SHORT_FORMED_SERVICE;
@@ -172,84 +99,12 @@ public class AlertMapper {
 
     }
 
-    /**
-     * Maps the affected entities from a GTFS-Realtime Alert to a {@link PtSituationElement}.
-     *
-     * @param ptSituationElement The {@link PtSituationElement} to which the affected entities will be mapped.
-     * @param alert              The GTFS-Realtime {@link GtfsRealtime.Alert} containing the affected entities.
-     * @param datasetId          The identifier of the dataset associated with the alert.
-     */
-    private void mapAffects(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert, String datasetId) {
-        List<GtfsRealtime.EntitySelector> informedEntities = alert.getInformedEntityList();
-        if (informedEntities == null || informedEntities.isEmpty())
-            return;
-
-        AffectsScopeStructure affectStruct = new AffectsScopeStructure();
-        AffectsScopeStructure.VehicleJourneys vehicleJourneys = new AffectsScopeStructure.VehicleJourneys();
-
-        for (GtfsRealtime.EntitySelector informedEntity : informedEntities) {
-            vehicleJourneys.getAffectedVehicleJourneies().addAll(getVehicleJourneys(informedEntity));
-            recordAffect(affectStruct, informedEntity, datasetId);
-        }
-        affectStruct.setVehicleJourneys(vehicleJourneys);
-        ptSituationElement.setAffects(affectStruct);
-    }
-
-
-    /**
-     * Records the affected entities from a GTFS-Realtime {@link GtfsRealtime.EntitySelector} into an {@link AffectsScopeStructure}.
-     * This method determines whether the affected entity is related to an agency, route, or stop and updates the structure accordingly.
-     *
-     * @param affects        The {@link AffectsScopeStructure} that stores the affected elements.
-     * @param informedEntity The GTFS-Realtime {@link GtfsRealtime.EntitySelector} representing the affected entity.
-     * @param datasetId      The identifier of the dataset associated with the affected entity.
-     */
-    private static void recordAffect(AffectsScopeStructure affects, GtfsRealtime.EntitySelector informedEntity, String datasetId) {
-
-        if (informedEntity.hasAgencyId() || informedEntity.hasRouteId()) {
-            AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork = getOrCreateNetwork(affects, informedEntity);
-
-            if (informedEntity.hasRouteId()) {
-                AffectedLineStructure affectedLine = getOrCreateLine(affectedNetwork, informedEntity);
-                addAffectedStopInAffectedLine(affectedLine, informedEntity);
-            }
-        } else if (informedEntity.hasStopId()) {
-            addAffectedStop(affects, informedEntity, datasetId);
-        }
-    }
-
-    /**
-     * Records affected stops to the general affect structure
-     * (case for stops without line and without network specified)
-     *
-     * @param affects        all currently processed affects
-     * @param informedEntity the current entity for which affect must be recorded
-     */
-    private static void addAffectedStop(AffectsScopeStructure affects, GtfsRealtime.EntitySelector informedEntity, String datasetId) {
-
-        if (stopPlaceService == null) {
-            stopPlaceService = ApplicationContextHolder.getContext().getBean(StopPlaceUpdaterService.class);
-        }
-        String stopId = informedEntity.getStopId();
-        if (stopPlaceService.isKnownId(datasetId + ":StopPlace:" + stopId)) {
-            addStopPlace(affects, stopId);
-        } else {
-            addStopPoint(affects, stopId);
-        }
-    }
-
     private static void addStopPlace(AffectsScopeStructure affects, String stopId) {
         if (affects.getStopPlaces() == null) {
-            AffectsScopeStructure.StopPlaces newStopPlaces = new AffectsScopeStructure.StopPlaces();
-            affects.setStopPlaces(newStopPlaces);
-        } else {
-            for (AffectedStopPlaceStructure affectedStopPlace : affects.getStopPlaces().getAffectedStopPlaces()) {
-                if (affectedStopPlace.getStopPlaceRef().getValue().equals(stopId)) {
-                    return;
-                }
-            }
+            affects.setStopPlaces(new AffectsScopeStructure.StopPlaces());
+        } else if (affects.getStopPlaces().getAffectedStopPlaces().stream().anyMatch(sp -> sp.getStopPlaceRef().getValue().equals(stopId))) {
+            return;
         }
-
         AffectedStopPlaceStructure newStopPlaces = new AffectedStopPlaceStructure();
         StopPlaceRef newStopRef = new StopPlaceRef();
         newStopRef.setValue(stopId);
@@ -313,7 +168,7 @@ public class AlertMapper {
         StopPointRefStructure newStopRef = new StopPointRefStructure();
         newStopRef.setValue(stopId);
         newStop.setStopPointRef(newStopRef);
-        affectedLine.getRoutes().getAffectedRoutes().get(0).getStopPoints().getAffectedStopPointsAndLinkProjectionToNextStopPoints().add(newStop);
+        affectedLine.getRoutes().getAffectedRoutes().getFirst().getStopPoints().getAffectedStopPointsAndLinkProjectionToNextStopPoints().add(newStop);
 
     }
 
@@ -351,9 +206,7 @@ public class AlertMapper {
      * @param informedEntity  The GTFS-Realtime {@link GtfsRealtime.EntitySelector} providing the route ID.
      * @return The existing or newly created {@link AffectedLineStructure}, or {@code null} if the route ID is not in the provided list.
      */
-    private static AffectedLineStructure getOrCreateLine(AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork, GtfsRealtime.EntitySelector informedEntity) {
-        String routeId = informedEntity.getRouteId();
-
+    private static AffectedLineStructure getOrCreateLine(AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork, GtfsRealtime.EntitySelector informedEntity, String routeId) {
         for (AffectedLineStructure affectedLine : affectedNetwork.getAffectedLines()) {
 
             if (affectedLine.getLineRef().getValue().equals(routeId)) {
@@ -412,42 +265,6 @@ public class AlertMapper {
         return newNetwork;
     }
 
-
-    private List<AffectedVehicleJourneyStructure> getVehicleJourneys(GtfsRealtime.EntitySelector informedEntity) {
-        AffectsScopeStructure.VehicleJourneys vehicleJourneys = new AffectsScopeStructure.VehicleJourneys();
-
-        if (informedEntity.hasTrip()) {
-            AffectedVehicleJourneyStructure vehicleJourney = new AffectedVehicleJourneyStructure();
-
-            GtfsRealtime.TripDescriptor tripDescriptor = informedEntity.getTrip();
-            if (tripDescriptor != null)
-                mapTripDescriptor(tripDescriptor, vehicleJourney);
-
-            vehicleJourneys.getAffectedVehicleJourneies().add(vehicleJourney);
-        }
-        return vehicleJourneys.getAffectedVehicleJourneies();
-
-    }
-
-
-    private void mapTripDescriptor(GtfsRealtime.TripDescriptor tripDescriptor, AffectedVehicleJourneyStructure vehicleJourney) {
-        if (StringUtils.isNotEmpty(tripDescriptor.getStartDate())) {
-            try {
-                Date startDate = yyyyMMddFormatter.parse(tripDescriptor.getStartDate());
-                ZonedDateTime departureTime = ZonedDateTime.ofInstant(startDate.toInstant(), ZoneId.systemDefault());
-                vehicleJourney.setOriginAimedDepartureTime(departureTime);
-            } catch (ParseException e) {
-                logger.error("Unable to parse start date : {}", tripDescriptor.getStartDate());
-            }
-        }
-
-        if (StringUtils.isNotEmpty(tripDescriptor.getRouteId())) {
-            LineRef lineRef = new LineRef();
-            lineRef.setValue(tripDescriptor.getRouteId());
-            vehicleJourney.setLineRef(lineRef);
-        }
-    }
-
     private static void mapReasons(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert) {
 
         if (alert.getCause() == null)
@@ -493,54 +310,7 @@ public class AlertMapper {
         }
     }
 
-    private void mapPeriod(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert, Integer activePeriodDays) {
-        ZoneId zoneId = ZoneId.systemDefault();
-
-        if (alert.getActivePeriodList().isEmpty() && activePeriodDays != null) {
-            String situationNumber = ptSituationElement.getSituationNumber().getValue();
-            long startSeconds;
-
-            if (sxStartActivePeriodMap.containsKey(situationNumber)) {
-                startSeconds = sxStartActivePeriodMap.get(situationNumber);
-            } else {
-                startSeconds = Instant.now().getEpochSecond();
-                sxStartActivePeriodMap.put(situationNumber, startSeconds);
-            }
-            ZonedDateTime startTime = Instant.ofEpochSecond(startSeconds).atZone(ZoneId.systemDefault());
-
-            long endSeconds = startSeconds + (86400L * activePeriodDays);
-            ZonedDateTime endTime = Instant.ofEpochSecond(endSeconds).atZone(ZoneId.systemDefault());
-
-
-            HalfOpenTimestampOutputRangeStructure validityPeriod = new HalfOpenTimestampOutputRangeStructure();
-            validityPeriod.setStartTime(startTime);
-            validityPeriod.setEndTime(endTime);
-            ptSituationElement.getValidityPeriods().add(validityPeriod);
-        }
-
-        for (GtfsRealtime.TimeRange timeRange : alert.getActivePeriodList()) {
-
-            HalfOpenTimestampOutputRangeStructure validityPeriod = new HalfOpenTimestampOutputRangeStructure();
-
-            if (timeRange.hasStart()) {
-                ZonedDateTime timestamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timeRange.getStart() * 1000), zoneId);
-                validityPeriod.setStartTime(timestamp);
-            } else {
-                ZonedDateTime timestamp = ZonedDateTime.now();
-                validityPeriod.setStartTime(timestamp);
-            }
-
-            if (timeRange.hasEnd()) {
-                ZonedDateTime timestamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timeRange.getEnd() * 1000), zoneId);
-                validityPeriod.setEndTime(timestamp);
-            }
-
-            ptSituationElement.getValidityPeriods().add(validityPeriod);
-        }
-    }
-
     private static void mapDescription(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert) {
-
         if (alert.getHeaderText() != null) {
             ptSituationElement.getSummaries().addAll(translate(alert.getHeaderText()));
         }
@@ -595,6 +365,228 @@ public class AlertMapper {
         }
 
         return siriTextStructures;
+    }
+
+    /**
+     * Maps a GTFS-RT Alert to a PtSituationElement, converting relevant alert data into a structured format.
+     *
+     * @param feedEntity  The GTFS-Realtime entity that contains alert
+     * @param gtfsrtApi   paramters of the API
+     * @param routeIdList A list of route IDs to filter the alert’s applicability.
+     * @return A {@link PtSituationElement} object containing the structured data from the alert.
+     */
+    public Optional<PtSituationElement> mapSituationFromAlert(GtfsRealtime.FeedEntity feedEntity, GtfsRTApi gtfsrtApi, List<String> routeIdList) {
+        String datasetId = gtfsrtApi.getDatasetId();
+
+
+        GtfsRealtime.Alert alert = feedEntity.getAlert();
+        PtSituationElement ptSituationElement = new PtSituationElement();
+        mapInformedEntities(ptSituationElement, alert, datasetId, routeIdList);
+        if (ptSituationElement.getAffects() == null) {
+            // no affected entities for this situation, discard it
+            return Optional.empty();
+        }
+        SituationNumber situationNumber = new SituationNumber();
+        situationNumber.setValue(feedEntity.getId());
+        ptSituationElement.setSituationNumber(situationNumber);
+        mapDescription(ptSituationElement, alert);
+        mapUrl(ptSituationElement, alert);
+        mapPeriod(ptSituationElement, alert, gtfsrtApi.getActivePeriodDays());
+        mapReasons(ptSituationElement, alert);
+        mapEffect(ptSituationElement, alert);
+        mapSeverity(ptSituationElement, alert);
+
+        return Optional.of(ptSituationElement);
+    }
+
+    /**
+     * Maps the affected entities from a GTFS-Realtime Alert to a {@link PtSituationElement}.
+     *
+     * @param ptSituationElement The {@link PtSituationElement} to which the affected entities will be mapped.
+     * @param alert              The GTFS-Realtime {@link GtfsRealtime.Alert} containing the affected entities.
+     * @param datasetId          The identifier of the dataset associated with the alert.
+     * @param routeIdList        Allowed routeIds (may be null or empty), discard Alert.informedEntities linked to
+     *                           routeIds not in this list (ignored if list is null/empty)
+     */
+    private void mapInformedEntities(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert, String datasetId, List<String> routeIdList) {
+        List<GtfsRealtime.EntitySelector> informedEntities = alert.getInformedEntityList();
+        if (CollectionUtils.isEmpty(informedEntities)) {
+            logger.warn("No informed entity found for alert");
+            return;
+        }
+        AffectsScopeStructure affects = new AffectsScopeStructure();
+        AffectsScopeStructure.VehicleJourneys vehicleJourneys = new AffectsScopeStructure.VehicleJourneys();
+        boolean hasMappedEntitiy = false;
+        for (GtfsRealtime.EntitySelector informedEntity : informedEntities) {
+            String routeId = null;
+            boolean discardEntity = false;
+            if (informedEntity.hasTrip()) {
+                if (informedEntity.getTrip().hasTripId()) {
+                    Optional<String> optRouteId = stopTimesService.getRouteId(datasetId, informedEntity.getTrip().getTripId());
+                    if (optRouteId.isEmpty()) {
+                        logger.warn("Trip id {} not found in dataset {}, discard entity",
+                                informedEntity.getTrip().getTripId(),
+                                datasetId);
+                        discardEntity = true;
+                    } else {
+                        routeId = optRouteId.get();
+                    }
+                } else {
+                    routeId = informedEntity.getTrip().getRouteId();
+                }
+            } else if (informedEntity.hasRouteId()) {
+                routeId = informedEntity.getRouteId();
+            }
+            if (routeId != null && !stopTimesService.checkIfKnownRouteId(datasetId, routeId)) {
+                logger.warn("Route id {} not found in dataset {}, discard entity", routeId, datasetId);
+                discardEntity = true;
+            } else if (routeId != null && CollectionUtils.isNotEmpty(routeIdList) && !routeIdList.contains(routeId)) {
+                logger.debug("Route id {} not in accepted route ids {}, discard entity", routeId, routeIdList);
+                discardEntity = true;
+            }
+            if (discardEntity) {
+                continue;
+            }
+            hasMappedEntitiy = true;
+            vehicleJourneys.getAffectedVehicleJourneies().addAll(getVehicleJourneys(informedEntity, datasetId));
+            mapInformedEntity(affects, informedEntity, datasetId, routeId);
+        }
+        if (!hasMappedEntitiy) {
+            return;
+        }
+        if (CollectionUtils.isNotEmpty(vehicleJourneys.getAffectedVehicleJourneies())) {
+            affects.setVehicleJourneys(vehicleJourneys);
+        }
+        ptSituationElement.setAffects(affects);
+    }
+
+    /**
+     * Records the affected entities from a GTFS-Realtime {@link GtfsRealtime.EntitySelector} into an {@link AffectsScopeStructure}.
+     * This method determines whether the affected entity is related to an agency, route, or stop and updates the structure accordingly.
+     *
+     * @param affects        The {@link AffectsScopeStructure} that stores the affected elements.
+     * @param informedEntity The GTFS-Realtime {@link GtfsRealtime.EntitySelector} representing the affected entity.
+     * @param datasetId      The identifier of the dataset associated with the affected entity.
+     */
+    private void mapInformedEntity(AffectsScopeStructure affects, GtfsRealtime.EntitySelector informedEntity,
+                                   String datasetId, String routeId) {
+
+
+        if (informedEntity.hasAgencyId() || StringUtils.isNotEmpty(routeId)) {
+            AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork = getOrCreateNetwork(affects, informedEntity);
+
+            if (informedEntity.hasRouteId()) {
+                AffectedLineStructure affectedLine = getOrCreateLine(affectedNetwork, informedEntity, routeId);
+                addAffectedStopInAffectedLine(affectedLine, informedEntity);
+            }
+        } else if (informedEntity.hasStopId()) {
+            addAffectedStop(affects, informedEntity, datasetId);
+        }
+    }
+
+    /**
+     * Records affected stops to the general affect structure
+     * (case for stops without line and without network specified)
+     *
+     * @param affects        all currently processed affects
+     * @param informedEntity the current entity for which affect must be recorded
+     */
+    private void addAffectedStop(AffectsScopeStructure affects, GtfsRealtime.EntitySelector informedEntity, String datasetId) {
+        String stopId = informedEntity.getStopId();
+        if (stopPlaceService.isKnownId(datasetId + ":StopPlace:" + stopId)) {
+            addStopPlace(affects, stopId);
+        } else {
+            addStopPoint(affects, stopId);
+        }
+    }
+
+    private List<AffectedVehicleJourneyStructure> getVehicleJourneys(GtfsRealtime.EntitySelector informedEntity, String datasetId) {
+        AffectsScopeStructure.VehicleJourneys vehicleJourneys = new AffectsScopeStructure.VehicleJourneys();
+
+        if (informedEntity.hasTrip()) {
+            AffectedVehicleJourneyStructure vehicleJourney = new AffectedVehicleJourneyStructure();
+
+            GtfsRealtime.TripDescriptor tripDescriptor = informedEntity.getTrip();
+            if (tripDescriptor != null)
+                mapTripDescriptor(tripDescriptor, vehicleJourney, datasetId);
+
+            vehicleJourneys.getAffectedVehicleJourneies().add(vehicleJourney);
+        }
+        return vehicleJourneys.getAffectedVehicleJourneies();
+
+    }
+
+    private void mapTripDescriptor(GtfsRealtime.TripDescriptor tripDescriptor, AffectedVehicleJourneyStructure vehicleJourney, String datasetId) {
+        if (tripDescriptor.hasStartDate()) {
+            try {
+                Date startDate = yyyyMMddFormatter.parse(tripDescriptor.getStartDate());
+                ZonedDateTime departureTime = ZonedDateTime.ofInstant(startDate.toInstant(), ZoneId.systemDefault());
+                vehicleJourney.setOriginAimedDepartureTime(departureTime);
+            } catch (ParseException e) {
+                logger.error("Unable to parse start date : {}", tripDescriptor.getStartDate());
+            }
+        }
+        if (tripDescriptor.hasTripId()) {
+            FramedVehicleJourneyRefStructure fvjrs = new FramedVehicleJourneyRefStructure();
+            fvjrs.setDatedVehicleJourneyRef(tripDescriptor.getTripId());
+            vehicleJourney.setFramedVehicleJourneyRef(fvjrs);
+            stopTimesService.getRouteId(datasetId, tripDescriptor.getTripId()).ifPresent(routeId -> {
+                LineRef lineRef = new LineRef();
+                lineRef.setValue(routeId);
+                vehicleJourney.setLineRef(lineRef);
+            });
+        } else if (tripDescriptor.hasRouteId()) {
+            LineRef lineRef = new LineRef();
+            lineRef.setValue(tripDescriptor.getRouteId());
+            vehicleJourney.setLineRef(lineRef);
+        }
+
+    }
+
+    private void mapPeriod(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert, Integer activePeriodDays) {
+        ZoneId zoneId = ZoneId.systemDefault();
+
+        if (alert.getActivePeriodList().isEmpty() && activePeriodDays != null) {
+            String situationNumber = ptSituationElement.getSituationNumber().getValue();
+            long startSeconds;
+
+            if (sxStartActivePeriodMap.containsKey(situationNumber)) {
+                startSeconds = sxStartActivePeriodMap.get(situationNumber);
+            } else {
+                startSeconds = Instant.now().getEpochSecond();
+                sxStartActivePeriodMap.put(situationNumber, startSeconds);
+            }
+            ZonedDateTime startTime = Instant.ofEpochSecond(startSeconds).atZone(ZoneId.systemDefault());
+
+            long endSeconds = startSeconds + (86400L * activePeriodDays);
+            ZonedDateTime endTime = Instant.ofEpochSecond(endSeconds).atZone(ZoneId.systemDefault());
+
+
+            HalfOpenTimestampOutputRangeStructure validityPeriod = new HalfOpenTimestampOutputRangeStructure();
+            validityPeriod.setStartTime(startTime);
+            validityPeriod.setEndTime(endTime);
+            ptSituationElement.getValidityPeriods().add(validityPeriod);
+        }
+
+        for (GtfsRealtime.TimeRange timeRange : alert.getActivePeriodList()) {
+
+            HalfOpenTimestampOutputRangeStructure validityPeriod = new HalfOpenTimestampOutputRangeStructure();
+
+            if (timeRange.hasStart()) {
+                ZonedDateTime timestamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timeRange.getStart() * 1000), zoneId);
+                validityPeriod.setStartTime(timestamp);
+            } else {
+                ZonedDateTime timestamp = ZonedDateTime.now();
+                validityPeriod.setStartTime(timestamp);
+            }
+
+            if (timeRange.hasEnd()) {
+                ZonedDateTime timestamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timeRange.getEnd() * 1000), zoneId);
+                validityPeriod.setEndTime(timestamp);
+            }
+
+            ptSituationElement.getValidityPeriods().add(validityPeriod);
+        }
     }
 
 }

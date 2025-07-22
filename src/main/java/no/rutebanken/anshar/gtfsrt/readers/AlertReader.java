@@ -10,15 +10,14 @@ import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
+import org.apache.commons.lang3.BooleanUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.org.siri.siri21.*;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static no.rutebanken.anshar.routes.validation.validators.Constants.GTFSRT_SX_PREFIX;
 
@@ -35,17 +34,15 @@ public class AlertReader extends AbstractSwallower {
     private final SubscriptionManager subscriptionManager;
 
     private final AlertMapper alertMapper;
-
-    @Autowired
-    private SituationExchangeInbound situationExchangeInbound;
-
+    private final SituationExchangeInbound situationExchangeInbound;
     @Produce("direct:send.sx.to.realtime.server")
     protected ProducerTemplate gtfsrtSxProducer;
 
 
-    public AlertReader(SubscriptionManager subscriptionManager, AlertMapper alertMapper) {
+    public AlertReader(SubscriptionManager subscriptionManager, AlertMapper alertMapper, SituationExchangeInbound situationExchangeInbound) {
         this.subscriptionManager = subscriptionManager;
         this.alertMapper = alertMapper;
+        this.situationExchangeInbound = situationExchangeInbound;
         prefix = GTFSRT_SX_PREFIX;
         dataType = SiriDataType.SITUATION_EXCHANGE;
         requestType = RequestType.GET_SITUATION_EXCHANGE;
@@ -67,7 +64,7 @@ public class AlertReader extends AbstractSwallower {
         List<String> subscriptionList = getSubscriptions(situations);
         checkAndCreateSubscriptions(subscriptionList, datasetId);
         buildSiriAndSend(situations, datasetId);
-        if (gtfsRTApi.getCloseMissingAlerts()) {
+        if (BooleanUtils.isTrue(gtfsRTApi.getCloseMissingAlerts())) {
             situationExchangeInbound.closeMissingAlerts(gtfsRTApi.getDatasetId(), situations);
         }
 
@@ -125,11 +122,7 @@ public class AlertReader extends AbstractSwallower {
             if (isEmptyAlert(feedEntity.getAlert()) || (hasNoStartAndNoEndDate(feedEntity.getAlert()) && !gtfsRTApi.getGenerateActivePeriod()))
                 continue;
 
-            PtSituationElement situation = alertMapper.mapSituationFromAlert(feedEntity, gtfsRTApi, routeIdList);
-
-            if (situation != null) {
-                situtations.add(situation);
-            }
+            alertMapper.mapSituationFromAlert(feedEntity, gtfsRTApi, routeIdList).ifPresent(situtations::add);
 
         }
         return situtations;
@@ -147,7 +140,7 @@ public class AlertReader extends AbstractSwallower {
     /**
      * Checks if an alert has no start and no end defined
      *
-     * @param alert
+     * @param alert alter to check from
      * @return true : no start date and no end end is defined at all
      * false : at least one start or one end is defined in the alert
      */
@@ -174,7 +167,7 @@ public class AlertReader extends AbstractSwallower {
     private List<String> getSubscriptions(List<PtSituationElement> situations) {
         return situations.stream()
                 .map(this::getSituationSubscriptionId)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     private String getSituationSubscriptionId(PtSituationElement situation) {
@@ -189,7 +182,7 @@ public class AlertReader extends AbstractSwallower {
             key.append(situation.getParticipantRef().getValue());
         }
 
-        return key.length() > 0 ? key.toString() : "GeneralSubsCriptionId";
+        return key.isEmpty() ? key.toString() : "GeneralSubsCriptionId";
     }
 
 
