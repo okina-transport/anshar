@@ -512,6 +512,7 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
     public Collection<EstimatedVehicleJourney> addAll(String datasetId, List<EstimatedVehicleJourney> etList) {
 
         Map<SiriObjectStorageKey, EstimatedVehicleJourney> changes = new HashMap();
+        Map<SiriObjectStorageKey, String> checksumCacheTmp = new HashMap<>();
 
         Counter outdatedCounter = new CounterImpl(0);
         Counter notUpdatedCounter = new CounterImpl(0);
@@ -522,17 +523,12 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
             timingTracer.mark("createKey");
 
             String currentChecksum = null;
-            ZonedDateTime recordedAtTime = et.getRecordedAtTime();
+
             try {
-                // Calculate checksum without "RecordedTime" - thus ignoring "fake" updates
-                et.setRecordedAtTime(null);
                 currentChecksum = getChecksum(et);
                 timingTracer.mark("getChecksum");
             } catch (Exception e) {
                 //Ignore - data will be updated
-            } finally {
-                //Set original RecordedTime back
-                et.setRecordedAtTime(recordedAtTime);
             }
 
             String existingChecksum = checksumCache.get(key);
@@ -596,7 +592,7 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
                     }
                     timetableDeliveries.set(key, et, expiration, TimeUnit.MILLISECONDS);
                     changes.put(key, et);
-
+                    checksumCacheTmp.put(key, currentChecksum);
                 } else {
                     outdatedCounter.increment();
                     timingTracer.mark("outdatedCounter.increment");
@@ -609,6 +605,7 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
 
         });
 
+        checksumCache.setAll(checksumCacheTmp);
         logger.debug("Updated {} (of {}), {} expired, {} without changes", changes.size(), etList.size(), outdatedCounter.getValue(), notUpdatedCounter.getValue());
 
         markDataReceived(SiriDataType.ESTIMATED_TIMETABLE, datasetId, etList.size(), changes.size(), outdatedCounter.getValue(), notUpdatedCounter.getValue());

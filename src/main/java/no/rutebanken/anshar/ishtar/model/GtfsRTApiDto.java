@@ -16,5 +16,7 @@ public class GtfsRTApiDto {
     private Boolean validated;
     private String routeIdList;
     private Boolean closeMissingAlerts;
+    private Boolean generateActivePeriod;
+    private Integer activePeriodDays;
 
 }

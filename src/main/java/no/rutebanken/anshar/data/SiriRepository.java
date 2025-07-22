@@ -20,6 +20,7 @@ import com.hazelcast.core.EntryEvent;
 import com.hazelcast.map.IMap;
 import com.hazelcast.map.listener.*;
 import com.hazelcast.query.Predicate;
+import jakarta.xml.bind.DatatypeConverter;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
@@ -29,8 +30,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.SerializationUtils;
-
-import jakarta.xml.bind.DatatypeConverter;
+import uk.org.siri.siri21.AbstractItemStructure;
 
 import java.io.Serializable;
 import java.net.URLDecoder;
@@ -38,6 +38,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -485,9 +486,23 @@ abstract class SiriRepository<T> {
     }
 
     static String getChecksum(Serializable object) throws NoSuchAlgorithmException {
-        byte[] bytes = SerializationUtils.serialize(object);
-        MessageDigest md = MessageDigest.getInstance("MD5");
-        return DatatypeConverter.printHexBinary(md.digest(bytes));
+        String checksum = null;
+
+        if (object instanceof AbstractItemStructure item) {
+            ZonedDateTime savedRecordedAtTime = item.getRecordedAtTime();
+            item.setRecordedAtTime(null);
+            byte[] bytes = SerializationUtils.serialize(object);
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            checksum = DatatypeConverter.printHexBinary(md.digest(bytes));
+            item.setRecordedAtTime(savedRecordedAtTime);
+
+        } else {
+            byte[] bytes = SerializationUtils.serialize(object);
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            checksum = DatatypeConverter.printHexBinary(md.digest(bytes));
+        }
+
+        return checksum;
 
     }
 

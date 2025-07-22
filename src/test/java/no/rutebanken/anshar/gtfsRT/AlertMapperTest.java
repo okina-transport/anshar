@@ -1,26 +1,28 @@
 package no.rutebanken.anshar.gtfsRT;
 
 import com.google.transit.realtime.GtfsRealtime;
+import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.gtfsrt.mappers.AlertMapper;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri21.*;
 
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.List;
 
+import static java.time.temporal.ChronoUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 
 class AlertMapperTest extends SpringBootBaseTest {
 
+    @Autowired
     private AlertMapper alertMapper;
 
-    @BeforeEach
-    public void setup() {
-        alertMapper = new AlertMapper(null);
-    }
 
     @Test
     void testGTFSRTAlertMapperTest() {
@@ -42,10 +44,18 @@ class AlertMapperTest extends SpringBootBaseTest {
 
         List<String> routeIdList = Arrays.asList("12,13".split(","));
 
-        PtSituationElement situation = alertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
 
-        assertThat(situation.getSummaries().get(0).getValue()).isEqualTo("headerText");
-        assertThat(situation.getDescriptions().get(0).getValue()).isEqualTo("desc");
+        GtfsRTApi gtfsRTApi = new GtfsRTApi();
+        gtfsRTApi.setDatasetId("");
+
+        GtfsRealtime.FeedEntity.Builder feedEntity = GtfsRealtime.FeedEntity.newBuilder();
+        feedEntity.setAlert(alertBuilder.build());
+        feedEntity.setId("id2");
+
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(feedEntity.build(), gtfsRTApi, routeIdList);
+
+        assertThat(situation.getSummaries().getFirst().getValue()).isEqualTo("headerText");
+        assertThat(situation.getDescriptions().getFirst().getValue()).isEqualTo("desc");
 
 
     }
@@ -76,14 +86,20 @@ class AlertMapperTest extends SpringBootBaseTest {
 
         alertBuilder.addInformedEntity(newEnt.build());
         List<String> routeIdList = Arrays.asList("12,13".split(","));
+        GtfsRTApi gtfsRTApi = new GtfsRTApi();
+        gtfsRTApi.setDatasetId("");
 
-        PtSituationElement situation = alertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
+        GtfsRealtime.FeedEntity.Builder feedEntity = GtfsRealtime.FeedEntity.newBuilder();
+        feedEntity.setAlert(alertBuilder.build());
+        feedEntity.setId("id1");
+
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(feedEntity.build(), gtfsRTApi, routeIdList);
 
         assertThat(situation.getAffects()).isNotNull();
         assertThat(situation.getAffects().getNetworks()).isNotNull();
         assertThat(situation.getAffects().getNetworks().getAffectedNetworks()).isNotEmpty();
 
-        AffectsScopeStructure.Networks.AffectedNetwork firstNetwork = situation.getAffects().getNetworks().getAffectedNetworks().get(0);
+        AffectsScopeStructure.Networks.AffectedNetwork firstNetwork = situation.getAffects().getNetworks().getAffectedNetworks().getFirst();
         assertThat(firstNetwork.getNetworkRef()).isNotNull();
         assertThat(firstNetwork.getNetworkRef().getValue()).isEqualTo(agencyId);
     }
@@ -116,15 +132,22 @@ class AlertMapperTest extends SpringBootBaseTest {
 
         List<String> routeIdList = List.of(lineId);
 
-        PtSituationElement situation = alertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
+        GtfsRealtime.FeedEntity.Builder feedEntity = GtfsRealtime.FeedEntity.newBuilder();
+        feedEntity.setAlert(alertBuilder.build());
+        feedEntity.setId("id2");
+
+        GtfsRTApi gtfsRTApi = new GtfsRTApi();
+        gtfsRTApi.setDatasetId("");
+
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(feedEntity.build(), gtfsRTApi, routeIdList);
 
         assertThat(situation.getAffects()).isNotNull();
         assertThat(situation.getAffects().getNetworks()).isNotNull();
         assertThat(situation.getAffects().getNetworks().getAffectedNetworks()).isNotEmpty();
 
-        AffectsScopeStructure.Networks.AffectedNetwork firstNetwork = situation.getAffects().getNetworks().getAffectedNetworks().get(0);
+        AffectsScopeStructure.Networks.AffectedNetwork firstNetwork = situation.getAffects().getNetworks().getAffectedNetworks().getFirst();
         assertThat(firstNetwork.getAffectedLines()).isNotEmpty();
-        AffectedLineStructure affectedLine = firstNetwork.getAffectedLines().get(0);
+        AffectedLineStructure affectedLine = firstNetwork.getAffectedLines().getFirst();
         assertThat(affectedLine.getLineRef()).isNotNull();
         assertThat(affectedLine.getLineRef().getValue()).isEqualTo(lineId);
     }
@@ -159,15 +182,22 @@ class AlertMapperTest extends SpringBootBaseTest {
 
         List<String> routeIdList = List.of(lineId);
 
-        PtSituationElement situation = alertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
+        GtfsRealtime.FeedEntity.Builder feedEntity = GtfsRealtime.FeedEntity.newBuilder();
+        feedEntity.setAlert(alertBuilder.build());
+        feedEntity.setId("id2");
+
+        GtfsRTApi gtfsRTApi = new GtfsRTApi();
+        gtfsRTApi.setDatasetId("");
+
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(feedEntity.build(), gtfsRTApi, routeIdList);
 
         assertThat(situation.getAffects()).isNotNull();
         assertThat(situation.getAffects().getNetworks()).isNotNull();
         assertThat(situation.getAffects().getNetworks().getAffectedNetworks()).isNotEmpty();
 
-        AffectsScopeStructure.Networks.AffectedNetwork firstNetwork = situation.getAffects().getNetworks().getAffectedNetworks().get(0);
+        AffectsScopeStructure.Networks.AffectedNetwork firstNetwork = situation.getAffects().getNetworks().getAffectedNetworks().getFirst();
         assertThat(firstNetwork.getAffectedLines()).isNotEmpty();
-        AffectedLineStructure affectedLine = firstNetwork.getAffectedLines().get(0);
+        AffectedLineStructure affectedLine = firstNetwork.getAffectedLines().getFirst();
         assertThat(affectedLine.getLineRef()).isNotNull();
         assertThat(affectedLine.getLineRef().getValue()).isEqualTo(lineId);
 
@@ -175,11 +205,11 @@ class AlertMapperTest extends SpringBootBaseTest {
         assertThat(affectedLine.getRoutes()).isNotNull();
         assertThat(affectedLine.getRoutes().getAffectedRoutes()).isNotEmpty();
         assertThat(affectedLine.getRoutes().getAffectedRoutes()).isNotEmpty();
-        AffectedRouteStructure firstAffectedRoute = affectedLine.getRoutes().getAffectedRoutes().get(0);
+        AffectedRouteStructure firstAffectedRoute = affectedLine.getRoutes().getAffectedRoutes().getFirst();
         assertThat(firstAffectedRoute.getStopPoints()).isNotNull();
         assertThat(firstAffectedRoute.getStopPoints().getAffectedStopPointsAndLinkProjectionToNextStopPoints()).isNotEmpty();
 
-        AffectedStopPointStructure affStopPoint = (AffectedStopPointStructure) firstAffectedRoute.getStopPoints().getAffectedStopPointsAndLinkProjectionToNextStopPoints().get(0);
+        AffectedStopPointStructure affStopPoint = (AffectedStopPointStructure) firstAffectedRoute.getStopPoints().getAffectedStopPointsAndLinkProjectionToNextStopPoints().getFirst();
         assertThat(affStopPoint.getStopPointRef().getValue()).isEqualTo(stopId);
     }
 
@@ -215,25 +245,31 @@ class AlertMapperTest extends SpringBootBaseTest {
 
         List<String> routeIdList = List.of(lineId);
 
-        PtSituationElement situation = alertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
+        GtfsRealtime.FeedEntity.Builder feedEntity = GtfsRealtime.FeedEntity.newBuilder();
+        feedEntity.setAlert(alertBuilder.build());
+        feedEntity.setId("id2");
+
+        GtfsRTApi gtfsrtApi = new GtfsRTApi();
+        gtfsrtApi.setDatasetId("");
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(feedEntity.build(), gtfsrtApi, routeIdList);
 
         assertThat(situation.getAffects()).isNotNull();
         assertThat(situation.getAffects().getNetworks()).isNotNull();
         assertThat(situation.getAffects().getNetworks().getAffectedNetworks()).isNotEmpty();
 
-        AffectsScopeStructure.Networks.AffectedNetwork firstNetwork = situation.getAffects().getNetworks().getAffectedNetworks().get(0);
+        AffectsScopeStructure.Networks.AffectedNetwork firstNetwork = situation.getAffects().getNetworks().getAffectedNetworks().getFirst();
         assertThat(firstNetwork.getAffectedLines()).isNotEmpty();
-        AffectedLineStructure affectedLine = firstNetwork.getAffectedLines().get(0);
+        AffectedLineStructure affectedLine = firstNetwork.getAffectedLines().getFirst();
         assertThat(affectedLine.getLineRef()).isNotNull();
         assertThat(affectedLine.getLineRef().getValue()).isEqualTo(lineId);
 
 
         assertThat(affectedLine.getRoutes()).isNotNull();
-        AffectedRouteStructure.StopPoints stopPointsFromFirstAffectedRoute = affectedLine.getRoutes().getAffectedRoutes().get(0).getStopPoints();
+        AffectedRouteStructure.StopPoints stopPointsFromFirstAffectedRoute = affectedLine.getRoutes().getAffectedRoutes().getFirst().getStopPoints();
         assertThat(stopPointsFromFirstAffectedRoute).isNotNull();
         assertThat(stopPointsFromFirstAffectedRoute.getAffectedStopPointsAndLinkProjectionToNextStopPoints()).isNotEmpty();
 
-        AffectedStopPointStructure affStopPoint = (AffectedStopPointStructure) stopPointsFromFirstAffectedRoute.getAffectedStopPointsAndLinkProjectionToNextStopPoints().get(0);
+        AffectedStopPointStructure affStopPoint = (AffectedStopPointStructure) stopPointsFromFirstAffectedRoute.getAffectedStopPointsAndLinkProjectionToNextStopPoints().getFirst();
         assertThat(affStopPoint.getStopPointRef().getValue()).isEqualTo(stopId);
 
 
@@ -243,6 +279,68 @@ class AlertMapperTest extends SpringBootBaseTest {
 
         assertThat(firstNetwork.getNetworkRef()).isNotNull();
         assertThat(firstNetwork.getNetworkRef().getValue()).isEqualTo(agencyId);
+    }
+
+    @Test
+    void testEmptyValidityPeriod() {
+
+        String agencyId = "agencyIdTest";
+        String lineId = "lineIdTest";
+        String stopId = "stopIdTest";
+
+        GtfsRealtime.Alert.Builder alertBuilder = GtfsRealtime.Alert.newBuilder();
+
+        GtfsRealtime.TranslatedString.Translation.Builder translation = GtfsRealtime.TranslatedString.Translation.newBuilder();
+        translation.setText("headerText");
+        translation.setLanguage("FR");
+
+        GtfsRealtime.TranslatedString.Builder headerTextBuilder = GtfsRealtime.TranslatedString.newBuilder().addTranslation(translation);
+        alertBuilder.setHeaderText(headerTextBuilder);
+
+        GtfsRealtime.TranslatedString.Translation.Builder descTextTrans = GtfsRealtime.TranslatedString.Translation.newBuilder();
+        descTextTrans.setText("desc");
+        descTextTrans.setLanguage("FR");
+
+        GtfsRealtime.TranslatedString.Builder descTextBuilder = GtfsRealtime.TranslatedString.newBuilder().addTranslation(descTextTrans);
+        alertBuilder.setDescriptionText(descTextBuilder);
+
+        GtfsRealtime.EntitySelector.Builder newEnt = GtfsRealtime.EntitySelector.newBuilder();
+        newEnt.setRouteId(lineId);
+        newEnt.setStopId(stopId);
+        newEnt.setAgencyId(agencyId);
+
+        alertBuilder.addInformedEntity(newEnt.build());
+
+        List<String> routeIdList = List.of(lineId);
+
+        GtfsRealtime.FeedEntity.Builder feedEntity = GtfsRealtime.FeedEntity.newBuilder();
+        feedEntity.setAlert(alertBuilder.build());
+        feedEntity.setId("id2");
+
+        GtfsRTApi gtfsrtApi = new GtfsRTApi();
+        gtfsrtApi.setDatasetId("");
+        gtfsrtApi.setGenerateActivePeriod(true);
+        gtfsrtApi.setActivePeriodDays(3);
+        ZonedDateTime now = ZonedDateTime.now();
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(feedEntity.build(), gtfsrtApi, routeIdList);
+
+        assertThat(situation.getValidityPeriods()).isNotNull();
+        assertThat(situation.getValidityPeriods()).hasSize(1);
+        ZonedDateTime firstSituationStart = situation.getValidityPeriods().getFirst().getStartTime();
+        ZonedDateTime firstSituationEnd = situation.getValidityPeriods().getFirst().getEndTime();
+        assertThat(firstSituationStart).isCloseTo(now, within(5, SECONDS));
+        assertThat(firstSituationEnd).isCloseTo(now.plusDays(3), within(5, SECONDS));
+
+
+        // Ingesting again the same alert with empty validity period. ValidityStart and end must be recovered from hazelcast cache
+        PtSituationElement situation2 = alertMapper.mapSituationFromAlert(feedEntity.build(), gtfsrtApi, routeIdList);
+        assertThat(situation2.getValidityPeriods()).isNotNull();
+        assertThat(situation2.getValidityPeriods()).hasSize(1);
+        ZonedDateTime secondSituationStart = situation2.getValidityPeriods().getFirst().getStartTime();
+        ZonedDateTime secondSituationEnd = situation2.getValidityPeriods().getFirst().getEndTime();
+        assertThat(secondSituationStart).isEqualTo(firstSituationStart);
+        assertThat(secondSituationEnd).isEqualTo(firstSituationEnd);
+
     }
 
     @Test
@@ -278,12 +376,19 @@ class AlertMapperTest extends SpringBootBaseTest {
         alertBuilder.addInformedEntity(newEnt2.build());
         List<String> routeIdList = Arrays.asList("12,13".split(","));
 
-        PtSituationElement situation = alertMapper.mapSituationFromAlert(alertBuilder.build(), "", routeIdList);
+
+        GtfsRealtime.FeedEntity.Builder feedEntity = GtfsRealtime.FeedEntity.newBuilder();
+        feedEntity.setAlert(alertBuilder.build());
+        feedEntity.setId("id2");
+
+        GtfsRTApi gtfsrtApi = new GtfsRTApi();
+        gtfsrtApi.setDatasetId("");
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(feedEntity.build(), gtfsrtApi, routeIdList);
 
         assertThat(situation.getAffects()).isNotNull();
         assertThat(situation.getAffects().getStopPoints()).isNotNull();
         assertThat(situation.getAffects().getStopPoints().getAffectedStopPoints()).isNotEmpty().hasSize(2);
-        AffectedStopPointStructure firstPoint = situation.getAffects().getStopPoints().getAffectedStopPoints().get(0);
+        AffectedStopPointStructure firstPoint = situation.getAffects().getStopPoints().getAffectedStopPoints().getFirst();
         assertThat(firstPoint).isNotNull();
         assertThat(firstPoint.getStopPointRef().getValue()).isEqualTo(stopId);
 
@@ -304,7 +409,13 @@ class AlertMapperTest extends SpringBootBaseTest {
         GtfsRealtime.Alert alert = buildAlertWithSeverity(inputSeverityLevel);
         List<String> routeIdList = Arrays.asList("12,13".split(","));
 
-        PtSituationElement situation = alertMapper.mapSituationFromAlert(alert, "", routeIdList);
+        GtfsRealtime.FeedEntity.Builder feedEntity = GtfsRealtime.FeedEntity.newBuilder();
+        feedEntity.setAlert(alert);
+        feedEntity.setId("id2");
+
+        GtfsRTApi gtfsrtApi = new GtfsRTApi();
+        gtfsrtApi.setDatasetId("");
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(feedEntity.build(), gtfsrtApi, routeIdList);
         assertThat(situation.getSeverity()).isEqualTo(outputSeverity);
     }
 
@@ -332,12 +443,20 @@ class AlertMapperTest extends SpringBootBaseTest {
         GtfsRealtime.Alert alert = buildAlertWithEffect(inputEffect);
         List<String> routeIdList = Arrays.asList("12,13".split(","));
 
-        PtSituationElement situation = alertMapper.mapSituationFromAlert(alert, "", routeIdList);
+
+        GtfsRealtime.FeedEntity.Builder feedEntity = GtfsRealtime.FeedEntity.newBuilder();
+        feedEntity.setAlert(alert);
+        feedEntity.setId("id2");
+
+        GtfsRTApi gtfsrtApi = new GtfsRTApi();
+        gtfsrtApi.setDatasetId("");
+
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(feedEntity.build(), gtfsrtApi, routeIdList);
         assertThat(situation.getConsequences()).isNotNull();
         assertThat(situation.getConsequences().getConsequences()).isNotEmpty();
-        assertThat(situation.getConsequences().getConsequences().get(0)).isNotNull();
-        assertThat(situation.getConsequences().getConsequences().get(0).getConditions()).isNotNull();
-        assertThat(situation.getConsequences().getConsequences().get(0).getConditions().get(0)).isEqualTo(outputServiceCondition);
+        assertThat(situation.getConsequences().getConsequences().getFirst()).isNotNull();
+        assertThat(situation.getConsequences().getConsequences().getFirst().getConditions()).isNotNull();
+        assertThat(situation.getConsequences().getConsequences().getFirst().getConditions().getFirst()).isEqualTo(outputServiceCondition);
     }
 
     private GtfsRealtime.Alert buildAlertWithEffect(GtfsRealtime.Alert.Effect effect) {
@@ -346,5 +465,29 @@ class AlertMapperTest extends SpringBootBaseTest {
         return alertBuilder.build();
     }
 
+
+    @Test
+    void testUrlConversions() {
+        // Arrange
+        GtfsRealtime.Alert alert = GtfsRealtime.Alert.newBuilder()
+                .setUrl(GtfsRealtime.TranslatedString.newBuilder()
+                        .addTranslation(GtfsRealtime.TranslatedString.Translation.newBuilder().setText("https://www.google.fr"))
+                        .addTranslation(GtfsRealtime.TranslatedString.Translation.newBuilder().setText("https://www.google.fr"))
+                        .addTranslation(GtfsRealtime.TranslatedString.Translation.newBuilder().setText("https://www.microsoft.fr"))
+                        .addTranslation(GtfsRealtime.TranslatedString.Translation.newBuilder().setText("https://www.microsoft.fr")))
+                .build();
+        GtfsRealtime.FeedEntity feedEntity = GtfsRealtime.FeedEntity.newBuilder()
+                .setAlert(alert)
+                .setId("id2")
+                .build();
+
+        // Act
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(feedEntity, new GtfsRTApi(), null);
+
+        // Assert
+        assertThat(situation.getInfoLinks().getInfoLinks()).hasSize(2); // should discard duplicate URLs
+        assertThat(situation.getInfoLinks().getInfoLinks().getFirst().getUri()).isEqualTo("https://www.google.fr");
+        assertThat(situation.getInfoLinks().getInfoLinks().get(1).getUri()).isEqualTo("https://www.microsoft.fr");
+    }
 
 }

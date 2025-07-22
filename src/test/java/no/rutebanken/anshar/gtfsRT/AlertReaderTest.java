@@ -2,6 +2,7 @@ package no.rutebanken.anshar.gtfsRT;
 
 import com.google.protobuf.util.JsonFormat;
 import com.google.transit.realtime.GtfsRealtime;
+import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.data.Situations;
 import no.rutebanken.anshar.gtfsrt.readers.AlertReader;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
@@ -55,7 +56,10 @@ public class AlertReaderTest extends SpringBootBaseTest {
         assertNotNull(stopPlaceService);
         List<String> routeIdList = Arrays.asList("12,13".split(","));
 
-        List<PtSituationElement> situations = alertReader.buildSituationList(feedMessageBuilder.build(), "ALEOP", routeIdList);
+        GtfsRTApi gtfsRTApi = new GtfsRTApi();
+        gtfsRTApi.setDatasetId("ALEOP");
+
+        List<PtSituationElement> situations = alertReader.buildSituationList(feedMessageBuilder.build(), gtfsRTApi, routeIdList);
 
         assertFalse(situations.isEmpty());
 
