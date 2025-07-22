@@ -67,8 +67,8 @@ public class AlertReader extends AbstractSwallower {
         List<String> subscriptionList = getSubscriptions(situations);
         checkAndCreateSubscriptions(subscriptionList, datasetId);
         buildSiriAndSend(situations, datasetId);
-        if (gtfsrtApi.getCloseMissingAlerts()) {
-            situationExchangeInbound.closeMissingAlerts(gtfsrtApi.getDatasetId(), situations);
+        if (gtfsRTApi.getCloseMissingAlerts()) {
+            situationExchangeInbound.closeMissingAlerts(gtfsRTApi.getDatasetId(), situations);
         }
 
     }
