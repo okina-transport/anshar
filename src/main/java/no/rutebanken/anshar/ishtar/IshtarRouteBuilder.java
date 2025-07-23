@@ -61,6 +61,15 @@ public class IshtarRouteBuilder extends BaseRouteBuilder {
         this.ishtarSynchronizeIntervalMs = ishtarSynchronizeIntervalMs;
     }
 
+    private static void process(Exchange e) {
+        HttpRequestDto out = new HttpRequestDto();
+        out.setUrl(e.getIn().getHeader(SUBSCRIPTION_URL_HEADER, String.class));
+        out.setHeaders(e.getIn().getHeaders());
+        out.setBody(e.getIn().getBody(String.class));
+        out.setMethod(e.getIn().getHeader(Exchange.HTTP_METHOD).toString());
+        e.getIn().setBody(out);
+    }
+
     @Override
     public void configure() throws Exception {
 
@@ -102,6 +111,13 @@ public class IshtarRouteBuilder extends BaseRouteBuilder {
                 .unmarshal().json(SubscriptionDto.class)
                 .choice()
                 .when(not(isDiscoverySubscription))
+                .to("direct:is.not.discovery.subscription")
+                .otherwise()
+                .to("direct:discovery.subscription")
+                .end();
+
+        from("direct:is.not.discovery.subscription")
+                .routeId("is.not.discovery.subscription")
                 .convertBodyTo(SubscriptionSetup.class)
                 .choice()
                 .when(isSiri20ToSiriWS14Subscription)
@@ -128,22 +144,17 @@ public class IshtarRouteBuilder extends BaseRouteBuilder {
                 .when(isSiri20ToSiriRS20RequestResponse)
                 .log(LoggingLevel.INFO, "20 to RS 20 Request Response")
                 .to("direct:siri.20.to.siri.rs.20.request-response.preprocess")
-                .endChoice()
-                .otherwise()
+                .end()
+                .process(IshtarRouteBuilder::process)
+                .marshal().json();
+
+        from("direct:discovery.subscription")
+                .routeId("discovery.subscription")
                 .log(LoggingLevel.INFO, "Discovery Subscription")
                 .convertBodyTo(DiscoverySubscription.class)
                 .to(SEND_DISCOVERY_REQUEST_PREPROCESS_ROUTE)
-                .end()
-                .process(e -> {
-                    HttpRequestDto out = new HttpRequestDto();
-                    out.setUrl(e.getIn().getHeader(SUBSCRIPTION_URL_HEADER, String.class));
-                    out.setHeaders(e.getIn().getHeaders());
-                    out.setBody(e.getIn().getBody(String.class));
-                    out.setMethod(e.getIn().getHeader(Exchange.HTTP_METHOD).toString());
-                    e.getIn().setBody(out);
-                })
-                .marshal().json()
-                .end();
+                .process(IshtarRouteBuilder::process)
+                .marshal().json();
 
         from(ISHTAR_CLEAR_CACHE_BY_DATASET_ID)
                 .routeId(ISHTAR_CLEAR_CACHE_BY_DATASET_ID)
