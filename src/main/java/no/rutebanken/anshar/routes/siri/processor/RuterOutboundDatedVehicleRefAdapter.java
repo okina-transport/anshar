@@ -133,11 +133,15 @@ public class RuterOutboundDatedVehicleRefAdapter extends ValueAdapter implements
     private void appyTransformationsInAffectedVehicleJourneies(List<AffectedVehicleJourneyStructure> affectedVehicleJourneies) {
         for (AffectedVehicleJourneyStructure affectedVJStruct : affectedVehicleJourneies) {
             if (!CollectionUtils.isEmpty(affectedVJStruct.getDatedVehicleJourneyReves())) {
-                applyTransformationsInVehicleJourneyReves(affectedVJStruct.getDatedVehicleJourneyReves());
+                applyTransformationsInDatedVehicleJourneyReves(affectedVJStruct.getDatedVehicleJourneyReves());
             }
 
             if (affectedVJStruct.getFramedVehicleJourneyRef() != null) {
                 applyTransformationInFramedVehicleJourneyRef(affectedVJStruct.getFramedVehicleJourneyRef());
+            }
+
+            if (!CollectionUtils.isEmpty(affectedVJStruct.getVehicleJourneyReves())) {
+                applyTransformationInVehicleJourneyReves(affectedVJStruct.getVehicleJourneyReves());
             }
         }
     }
@@ -149,7 +153,15 @@ public class RuterOutboundDatedVehicleRefAdapter extends ValueAdapter implements
         }
     }
 
-    private void applyTransformationsInVehicleJourneyReves(List<DatedVehicleJourneyRef> datedVehicleJourneyReves) {
+    private void applyTransformationInVehicleJourneyReves(List<VehicleJourneyRef> vehicleJourneyReves) {
+        for (VehicleJourneyRef vehicleJourneyRef : vehicleJourneyReves) {
+            if (vehicleJourneyRef.getValue() != null) {
+                vehicleJourneyRef.setValue(apply(vehicleJourneyRef.getValue()));
+            }
+        }
+    }
+
+    private void applyTransformationsInDatedVehicleJourneyReves(List<DatedVehicleJourneyRef> datedVehicleJourneyReves) {
         for (DatedVehicleJourneyRef datedVehicleJourneyRef : datedVehicleJourneyReves) {
             if (datedVehicleJourneyRef.getValue() != null) {
                 datedVehicleJourneyRef.setValue(apply(datedVehicleJourneyRef.getValue()));
