@@ -9,6 +9,7 @@ import no.rutebanken.anshar.data.GeneralMessages;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
+import no.rutebanken.anshar.routes.siri.processor.GmSIVSicAQuayPostProcessor;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -60,6 +61,7 @@ public class SiriLiteGeneralMessageRoute extends RestRouteBuilder {
                     String originalId = p.getIn().getHeader(PARAM_USE_ORIGINAL_ID, String.class);
                     Integer maxSizeStr = p.getIn().getHeader(PARAM_MAX_SIZE, Integer.class);
                     String etClientName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
+                    boolean isGmSIVSicAQuay = Boolean.parseBoolean(p.getIn().getHeader(PARAM_SIV_GM_SIC_A_QUAY, String.class));
                     int maxSize = datasetId != null ? Integer.MAX_VALUE : configuration.getDefaultMaxSize();
 
                     if (maxSizeStr != null) {
@@ -67,7 +69,7 @@ public class SiriLiteGeneralMessageRoute extends RestRouteBuilder {
                     }
 
                     Set<String> datasets = SiriUtils.generateDatasetListFromHeader(datasetId);
-                    Siri response = handleGeneralMessageMultipleDatasetRequest(requestorId, datasets, etClientName, maxSize, originalId);
+                    Siri response = handleGeneralMessageMultipleDatasetRequest(requestorId, datasets, etClientName, maxSize, originalId, isGmSIVSicAQuay);
 
                     metrics.countOutgoingData(response, SubscriptionSetup.SubscriptionMode.LITE);
 
@@ -82,13 +84,13 @@ public class SiriLiteGeneralMessageRoute extends RestRouteBuilder {
     }
 
 
-    private Siri handleGeneralMessageMultipleDatasetRequest(String requestorId, Set<String> datasets, String etClientName, int maxSize, String originalId) {
+    private Siri handleGeneralMessageMultipleDatasetRequest(String requestorId, Set<String> datasets, String etClientName, int maxSize, String originalId, boolean isGmSIVSicAQuay) {
         if (datasets.isEmpty()) {
-            return handleGeneralMessageSingleDatasetRequest(requestorId, null, etClientName, maxSize, originalId);
+            return handleGeneralMessageSingleDatasetRequest(requestorId, null, etClientName, maxSize, originalId, isGmSIVSicAQuay);
         }
         Siri globalResults = null;
         for (String dataset : datasets) {
-            Siri datasetResult = handleGeneralMessageSingleDatasetRequest(requestorId, dataset, etClientName, maxSize, originalId);
+            Siri datasetResult = handleGeneralMessageSingleDatasetRequest(requestorId, dataset, etClientName, maxSize, originalId, isGmSIVSicAQuay);
             globalResults = SiriUtils.mergeSiris(globalResults, datasetResult);
 
         }
@@ -96,11 +98,11 @@ public class SiriLiteGeneralMessageRoute extends RestRouteBuilder {
     }
 
 
-    private Siri handleGeneralMessageSingleDatasetRequest(String requestorId, String datasetId, String etClientName, int maxSize, String originalId) {
+    private Siri handleGeneralMessageSingleDatasetRequest(String requestorId, String datasetId, String etClientName, int maxSize, String originalId, boolean isGmSIVSicAQuay) {
         Siri response = generalMessages.createServiceDelivery(requestorId, datasetId, etClientName, maxSize, null);
 
 
-        List<ValueAdapter> outboundAdapters = new ArrayList<>();
+        List<ValueAdapter> outboundAdapters;
         if (datasetId != null) {
             Map<ObjectType, Optional<IdProcessingParameters>> idParams = subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);
             outboundAdapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.GENERAL_MESSAGE, SiriHandler.getIdMappingPolicy(originalId, null), idParams);
@@ -109,9 +111,17 @@ public class SiriLiteGeneralMessageRoute extends RestRouteBuilder {
             outboundAdapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.GENERAL_MESSAGE, SiriHandler.getIdMappingPolicy(originalId, null));
         }
 
+        if (isGmSIVSicAQuay) {
+            // value adapters are cached
+            // create a new list, otherwise it will keep adding GmSIVSicAQuayPostProcessor to cached value adapters
+            outboundAdapters = new ArrayList<>(outboundAdapters);
+            outboundAdapters.add(new GmSIVSicAQuayPostProcessor());
+        }
+
         if ("test".equals(originalId)) {
             outboundAdapters = null;
         }
+
         response = SiriValueTransformer.transform(response, outboundAdapters, false, false);
         return response;
     }

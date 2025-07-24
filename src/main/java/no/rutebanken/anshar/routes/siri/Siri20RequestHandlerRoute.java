@@ -67,24 +67,51 @@ import static org.springframework.http.HttpHeaders.ACCEPT_ENCODING;
 @Configuration
 public class Siri20RequestHandlerRoute extends RestRouteBuilder implements CamelContextAware {
 
-    private static final Logger logger = LoggerFactory.getLogger(Siri20RequestHandlerRoute.class);
-
-    @Autowired
-    private SubscriptionManager subscriptionManager;
-
-    @Autowired
-    private SiriHandler handler;
-
-    @Autowired
-    private AnsharConfiguration configuration;
-
-    @Value("${default.use.original.id:false}")
-    private boolean defaultUseOriginalId;
-
-
     public static final String TRANSFORM_VERSION = "TRANSFORM_VERSION";
     public static final String TRANSFORM_SOAP = "TRANSFORM_SOAP";
-
+    private static final Logger logger = LoggerFactory.getLogger(Siri20RequestHandlerRoute.class);
+    private final NamespacePrefixMapper customNamespacePrefixMapper = new NamespacePrefixMapper() {
+        @Override
+        public String getPreferredPrefix(String arg0, String arg1, boolean arg2) {
+            return "siri";
+        }
+    };
+    private final Processor removeXsiType = (e) -> {
+        String originalxml = e.getIn().getBody(String.class);
+        String xmlWithoutXsiType = originalxml.replaceAll("xsi:type=\"SubscriptionRefStructure\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"", "");
+        logger.debug("xmlWithoutXsiType:" + xmlWithoutXsiType);
+        e.getIn().setBody(xmlWithoutXsiType);
+    };
+    private final Processor addSubscriptionUrlHeader = (e) -> {
+        e.getIn().setHeader(SUBSCRIPTION_URL_HEADER, e.getIn().getBody(SubscriptionSetup.class).getUrlMap().get(RequestType.SUBSCRIBE));
+    };
+    private final Processor addRequestResponseSubscriptionUrlHeader = (e) -> {
+        e.getIn().setHeader(SUBSCRIPTION_URL_HEADER, getRequestUrl(e.getIn().getBody(SubscriptionSetup.class)));
+    };
+    private final Processor addCustomHeaders = (e) -> {
+        SubscriptionSetup sub = e.getIn().getBody(SubscriptionSetup.class);
+        if (MapUtils.isNotEmpty(sub.getCustomHeaders())) {
+            e.getIn().getHeaders().putAll(sub.getCustomHeaders());
+        }
+    };
+    private final Processor oauthHeadersProcess = (e) -> {
+        SubscriptionSetup subscriptionSetup = e.getIn().getBody(SubscriptionSetup.class);
+        if (subscriptionSetup.getOauth2Config() != null) {
+            e.getMessage().setHeader("oauth-client-id", subscriptionSetup.getOauth2Config().get(OAuthConfigElement.CLIENT_ID));
+            e.getMessage().setHeader("oauth-client-secret", subscriptionSetup.getOauth2Config().get(OAuthConfigElement.CLIENT_SECRET));
+            e.getMessage().setHeader("oauth-grant-type", subscriptionSetup.getOauth2Config().get(OAuthConfigElement.GRANT_TYPE));
+            e.getMessage().setHeader("oauth-server", subscriptionSetup.getOauth2Config().get(OAuthConfigElement.SERVER));
+            e.getMessage().setHeader("oauth-audience", subscriptionSetup.getOauth2Config().get(OAuthConfigElement.AUDIENCE));
+        }
+    };
+    @Autowired
+    private SubscriptionManager subscriptionManager;
+    @Autowired
+    private SiriHandler handler;
+    @Autowired
+    private AnsharConfiguration configuration;
+    @Value("${default.use.original.id:false}")
+    private boolean defaultUseOriginalId;
 
     // @formatter:off
     @Override
@@ -352,6 +379,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                     incomingSiriParameters.setSoapTransformation(soapTransformation);
                     incomingSiriParameters.setUseOriginalId(Boolean.parseBoolean(useOriginalId));
                     incomingSiriParameters.setCompressionFormat(acceptedEncoding);
+                    incomingSiriParameters.setGmSIVSicAQuay(Boolean.parseBoolean(p.getIn().getHeader(PARAM_SIV_GM_SIC_A_QUAY, String.class)));
 
                     Siri response = handler.handleIncomingSiri(incomingSiriParameters);
                     if (response != null) {
@@ -391,7 +419,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .when().xpath("/siri:Siri/siri:ServiceRequest/siri:StopMonitoringRequest", nameSpace)
                 .to("direct:process.sm.service.request")
                 .when().xpath("/siri:Siri/siri:ServiceRequest/siri:GeneralMessageRequest", nameSpace)
-                .to("direct:process.sm.service.request")
+                .to("direct:process.gm.service.request")
                 .when().xpath("/siri:Siri/siri:ServiceRequest/siri:FacilityMonitoringRequest", nameSpace)
                 .to("direct:process.fm.service.request")
                 .when().xpath("/siri:Siri/siri:StopPointsRequest", nameSpace)
@@ -413,7 +441,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
         ;
 
         from("direct:internal.process.service.request.acceptable.header")
-                .routeId("nternal.process.service.request.acceptable.header")
+                .routeId("internal.process.service.request.acceptable.header")
                 .process(p -> {
                     Message msg = p.getIn();
 
@@ -436,8 +464,10 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                         useOriginalId = Boolean.toString(defaultUseOriginalId);
                     }
 
+                    boolean isGmSIVSicAQuay = Boolean.parseBoolean(p.getIn().getHeader(PARAM_SIV_GM_SIC_A_QUAY, String.class));
+
                     Set<String> datasets = SiriUtils.generateDatasetListFromHeader(datasetId);
-                    Pair<Siri, String> siriWithVersion = handleIncomingSiriWithMultipleDatasets(msg,datasets, excludedIdList, useOriginalId, useAltId, maxSize, clientTrackingName);
+                    Pair<Siri, String> siriWithVersion = handleIncomingSiriWithMultipleDatasets(msg,datasets, excludedIdList, useOriginalId, useAltId, maxSize, clientTrackingName, isGmSIVSicAQuay);
 
                     Siri response = siriWithVersion.getLeft();
                     String version = siriWithVersion.getRight();
@@ -643,10 +673,10 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
             .end();
     }
 
-    private Pair<Siri,String> handleIncomingSiriWithMultipleDatasets(Message msg, Set<String> datasets, List<String> excludedIdList, String useOriginalId, String useAltId, int maxSize, String clientTrackingName)throws UnmarshalException, IOException {
+    private Pair<Siri,String> handleIncomingSiriWithMultipleDatasets(Message msg, Set<String> datasets, List<String> excludedIdList, String useOriginalId, String useAltId, int maxSize, String clientTrackingName, boolean isGmSIVSicAQuay) throws UnmarshalException, IOException {
         InputStream originalStream = msg.getBody(InputStream.class);
         if (datasets.isEmpty()) {
-            return handleIncomingSiriForSingleDataset(originalStream, null, excludedIdList, useOriginalId, useAltId, maxSize, clientTrackingName);
+            return handleIncomingSiriForSingleDataset(originalStream, null, excludedIdList, useOriginalId, useAltId, maxSize, clientTrackingName, isGmSIVSicAQuay);
         }
 
         Pair<Siri,String> globalResults = null;
@@ -654,7 +684,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
 
         byte[] data = originalStream.readAllBytes();
         for (String dataset : datasets) {
-            Pair<Siri,String> datasetResult = handleIncomingSiriForSingleDataset(new ByteArrayInputStream(data), dataset, excludedIdList, useOriginalId, useAltId, maxSize, clientTrackingName);
+            Pair<Siri,String> datasetResult = handleIncomingSiriForSingleDataset(new ByteArrayInputStream(data), dataset, excludedIdList, useOriginalId, useAltId, maxSize, clientTrackingName, isGmSIVSicAQuay);
             globalResults = mergeDatasetResult(globalResults, datasetResult);
         }
         return globalResults;
@@ -670,8 +700,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
 
     }
 
-
-    private Pair<Siri, String> handleIncomingSiriForSingleDataset(InputStream incomingSiriStream, String datasetId, List<String> excludedIdList, String useOriginalId, String useAltId, int maxSize, String clientTrackingName)throws UnmarshalException{
+    private Pair<Siri, String> handleIncomingSiriForSingleDataset(InputStream incomingSiriStream, String datasetId, List<String> excludedIdList, String useOriginalId, String useAltId, int maxSize, String clientTrackingName, boolean isGmSIVSicAQuay)throws UnmarshalException{
         IncomingSiriParameters incomingSiriParameters = new IncomingSiriParameters();
         incomingSiriParameters.setIncomingSiriStream(incomingSiriStream);
         incomingSiriParameters.setDatasetId(datasetId);
@@ -681,6 +710,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
         incomingSiriParameters.setClientTrackingName(clientTrackingName);
         incomingSiriParameters.setSoapTransformation(false);
         incomingSiriParameters.setUseOriginalId(Boolean.valueOf(useOriginalId));
+        incomingSiriParameters.setGmSIVSicAQuay(isGmSIVSicAQuay);
         Siri siriResponse = handler.handleIncomingSiri(incomingSiriParameters);
         return Pair.of(siriResponse,incomingSiriParameters.getVersion());
     }
@@ -702,46 +732,6 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
             throw new ServiceNotSupportedException();
         }
     }
-
-    private final NamespacePrefixMapper customNamespacePrefixMapper = new NamespacePrefixMapper() {
-        @Override
-        public String getPreferredPrefix(String arg0, String arg1, boolean arg2) {
-            return "siri";
-        }
-    };
-
-    private final Processor removeXsiType = (e) -> {
-        String originalxml = e.getIn().getBody(String.class);
-        String xmlWithoutXsiType = originalxml.replaceAll("xsi:type=\"SubscriptionRefStructure\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"", "");
-        logger.debug("xmlWithoutXsiType:" + xmlWithoutXsiType);
-        e.getIn().setBody(xmlWithoutXsiType);
-    };
-
-    private final Processor addSubscriptionUrlHeader = (e) -> {
-        e.getIn().setHeader(SUBSCRIPTION_URL_HEADER, e.getIn().getBody(SubscriptionSetup.class).getUrlMap().get(RequestType.SUBSCRIBE));
-    };
-
-    private final Processor addRequestResponseSubscriptionUrlHeader = (e) -> {
-        e.getIn().setHeader(SUBSCRIPTION_URL_HEADER, getRequestUrl(e.getIn().getBody(SubscriptionSetup.class)));
-    };
-
-    private final Processor addCustomHeaders = (e) -> {
-        SubscriptionSetup sub = e.getIn().getBody(SubscriptionSetup.class);
-        if (MapUtils.isNotEmpty(sub.getCustomHeaders())) {
-            e.getIn().getHeaders().putAll(sub.getCustomHeaders());
-        }
-    };
-
-    private final Processor oauthHeadersProcess = (e) -> {
-        SubscriptionSetup subscriptionSetup = e.getIn().getBody(SubscriptionSetup.class);
-        if (subscriptionSetup.getOauth2Config() != null) {
-            e.getMessage().setHeader("oauth-client-id", subscriptionSetup.getOauth2Config().get(OAuthConfigElement.CLIENT_ID));
-            e.getMessage().setHeader("oauth-client-secret", subscriptionSetup.getOauth2Config().get(OAuthConfigElement.CLIENT_SECRET));
-            e.getMessage().setHeader("oauth-grant-type", subscriptionSetup.getOauth2Config().get(OAuthConfigElement.GRANT_TYPE));
-            e.getMessage().setHeader("oauth-server", subscriptionSetup.getOauth2Config().get(OAuthConfigElement.SERVER));
-            e.getMessage().setHeader("oauth-audience",subscriptionSetup.getOauth2Config().get(OAuthConfigElement.AUDIENCE));
-        }
-    };
 
     private String getSubscriptionDataType(Exchange e) {
         String subscriptionId = e.getIn().getHeader(PARAM_SUBSCRIPTION_ID, String.class);

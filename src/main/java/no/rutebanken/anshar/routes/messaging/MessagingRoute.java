@@ -520,7 +520,7 @@ public class MessagingRoute extends RestRouteBuilder {
                     if (StringUtils.isEmpty(useOriginalId)){
                         useOriginalId = Boolean.toString(defaultUseOriginalId);
                     }
-
+                    boolean isGmSIVSicAQuay = Boolean.parseBoolean(p.getIn().getHeader(PARAM_SIV_GM_SIC_A_QUAY, String.class));
                     String clientTrackingName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
 
                     IncomingSiriParameters incomingSiriParameters = new IncomingSiriParameters();
@@ -530,6 +530,7 @@ public class MessagingRoute extends RestRouteBuilder {
                     incomingSiriParameters.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy(useOriginalId, useAltId));
                     incomingSiriParameters.setMaxSize(-1);
                     incomingSiriParameters.setClientTrackingName(clientTrackingName);
+                    incomingSiriParameters.setGmSIVSicAQuay(isGmSIVSicAQuay);
 
                     processorTT.mark("preparation");
 

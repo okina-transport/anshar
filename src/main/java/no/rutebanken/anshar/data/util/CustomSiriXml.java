@@ -1,6 +1,10 @@
 package no.rutebanken.anshar.data.util;
 
 import com.sun.xml.bind.marshaller.NamespacePrefixMapper;
+import jakarta.xml.bind.JAXBContext;
+import jakarta.xml.bind.JAXBException;
+import jakarta.xml.bind.Marshaller;
+import jakarta.xml.bind.Unmarshaller;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import no.rutebanken.anshar.routes.health.LivenessReadinessRoute;
 import org.slf4j.Logger;
@@ -9,12 +13,8 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.xml.sax.InputSource;
+import uk.org.siri.siri21.GeneralMessage;
 import uk.org.siri.siri21.Siri;
-
-import jakarta.xml.bind.JAXBContext;
-import jakarta.xml.bind.JAXBException;
-import jakarta.xml.bind.Marshaller;
-import jakarta.xml.bind.Unmarshaller;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -39,12 +39,20 @@ public class CustomSiriXml {
 
     private static JAXBContext siri20JaxbContext;
 
+    static {
+        try {
+            init();
+        } catch (JAXBException var1) {
+            throw new InstantiationError();
+        }
+    }
+
     public CustomSiriXml() {
     }
 
     private static void init() throws JAXBException {
         if (jaxbContext == null) {
-            jaxbContext = JAXBContext.newInstance(new Class[]{Siri.class, Content.class});
+            jaxbContext = JAXBContext.newInstance(Siri.class, Content.class);
         }
 
         if (siri20JaxbContext == null) {
@@ -75,7 +83,7 @@ public class CustomSiriXml {
     }
 
     public static String toXml(Siri siri) throws JAXBException {
-        return toXml(siri, (NamespacePrefixMapper) null);
+        return toXml(siri, null);
     }
 
     public static String toXml(Siri siri, NamespacePrefixMapper customNamespacePrefixMapper) throws JAXBException {
@@ -146,11 +154,7 @@ public class CustomSiriXml {
 
     private static void doLastModifications(OutputStream outputStreamOut, OutputStream byteArrayOutputIn) {
         String s = null;
-        try {
-            s = new String(((ByteArrayOutputStream) byteArrayOutputIn).toByteArray(), "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        }
+        s = ((ByteArrayOutputStream) byteArrayOutputIn).toString(StandardCharsets.UTF_8);
         s = s.replace("Content xmlns=\"http://www.w3.org/2001/XMLSchema-instance\"", "Content ");
 
         s = s.replace("<ns6:", "<");
@@ -164,9 +168,9 @@ public class CustomSiriXml {
             if (item != null) {
                 Element element = (Element) item;
                 element.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
-                outputStreamOut.write(documentToString(document).getBytes("UTF-8"));
+                outputStreamOut.write(documentToString(document).getBytes(StandardCharsets.UTF_8));
             } else {
-                outputStreamOut.write(s.getBytes("UTF-8"));
+                outputStreamOut.write(s.getBytes(StandardCharsets.UTF_8));
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -182,7 +186,7 @@ public class CustomSiriXml {
             DocumentBuilder builder = factory.newDocumentBuilder();
             StringReader strReader = new StringReader(strXml);
             InputSource is = new InputSource(strReader);
-            doc = (Document) builder.parse(is);
+            doc = builder.parse(is);
             doc.setXmlStandalone(false);
         } catch (Exception e) {
             return null;
@@ -207,11 +211,19 @@ public class CustomSiriXml {
         return output;
     }
 
-    static {
-        try {
-            init();
-        } catch (JAXBException var1) {
-            throw new InstantiationError();
+    public static Content getGeneralMessageContent(GeneralMessage gm) throws JAXBException {
+        switch (gm.getContent()) {
+            case null -> {
+                return null;
+            }
+            case Content content -> {
+                return content;
+            }
+            case Element element -> {
+                return jaxbContext.createUnmarshaller().unmarshal(element, Content.class).getValue();
+            }
+            default ->
+                    throw new IllegalArgumentException("Unhandled class for GM content: " + gm.getContent().getClass().getSimpleName());
         }
     }
 }

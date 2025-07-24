@@ -46,6 +46,28 @@ public abstract class BaseRouteBuilder extends SpringRouteBuilder {
         this.config = config;
     }
 
+    public static String getRequestUrl(SubscriptionSetup subscriptionSetup) throws ServiceNotSupportedException {
+        Map<RequestType, String> urlMap = subscriptionSetup.getUrlMap();
+        if (subscriptionSetup.getSubscriptionType() == SiriDataType.ESTIMATED_TIMETABLE) {
+            return urlMap.get(RequestType.GET_ESTIMATED_TIMETABLE);
+        } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.VEHICLE_MONITORING) {
+            return urlMap.get(RequestType.GET_VEHICLE_MONITORING);
+        } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.SITUATION_EXCHANGE) {
+            return urlMap.get(RequestType.GET_SITUATION_EXCHANGE);
+        } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.STOP_MONITORING) {
+            return urlMap.get(RequestType.GET_STOP_MONITORING);
+        } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.GENERAL_MESSAGE) {
+            return urlMap.get(RequestType.GET_GENERAL_MESSAGE);
+        } else {
+            throw new ServiceNotSupportedException();
+        }
+    }
+
+    public static String getCamelRequestUrl(SubscriptionSetup subscriptionSetup, String parameters) throws ServiceNotSupportedException {
+        String url = getRequestUrl(subscriptionSetup);
+        return getCamelUrl(url, parameters);
+    }
+
     @Override
     public void configure() throws Exception {
 //        getContext().addRoutePolicyFactory(new MicrometerRoutePolicyFactory());
@@ -66,7 +88,6 @@ public abstract class BaseRouteBuilder extends SpringRouteBuilder {
                 .routeId(routeId)
                 .autoStartup(true);
     }
-
 
     protected void requestFinished() {
         this.isRunning = false;
@@ -119,26 +140,6 @@ public abstract class BaseRouteBuilder extends SpringRouteBuilder {
                 }
             }
         }
-    }
-
-    public static String getRequestUrl(SubscriptionSetup subscriptionSetup) throws ServiceNotSupportedException {
-        Map<RequestType, String> urlMap = subscriptionSetup.getUrlMap();
-        if (subscriptionSetup.getSubscriptionType() == SiriDataType.ESTIMATED_TIMETABLE) {
-            return urlMap.get(RequestType.GET_ESTIMATED_TIMETABLE);
-        } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.VEHICLE_MONITORING) {
-            return urlMap.get(RequestType.GET_VEHICLE_MONITORING);
-        } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.SITUATION_EXCHANGE) {
-            return urlMap.get(RequestType.GET_SITUATION_EXCHANGE);
-        } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.STOP_MONITORING) {
-            return urlMap.get(RequestType.GET_STOP_MONITORING);
-        } else {
-            throw new ServiceNotSupportedException();
-        }
-    }
-
-    public static String getCamelRequestUrl(SubscriptionSetup subscriptionSetup, String parameters) throws ServiceNotSupportedException {
-        String url = getRequestUrl(subscriptionSetup);
-        return getCamelUrl(url, parameters);
     }
 
 }

@@ -25,6 +25,7 @@ import no.rutebanken.anshar.routes.kafka.KafkaRouteBuilder;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
+import no.rutebanken.anshar.routes.siri.processor.GmSIVSicAQuayPostProcessor;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -57,7 +58,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -72,6 +72,7 @@ public class ServerSubscriptionManager {
 
     public static final String CODESPACE_ID_KAFKA_HEADER_NAME = "codespaceId";
     private static final Logger logger = LoggerFactory.getLogger(ServerSubscriptionManager.class);
+    public static String DEFAULT_DATASET = "ALL";
     private final int pushIteration = 0;
     @Produce("direct:send.to.pubsub.topic.estimated_timetable")
     protected ProducerTemplate siriEtTopicProducer;
@@ -95,6 +96,8 @@ public class ServerSubscriptionManager {
     protected ProducerTemplate sendGMToKafka;
     @Produce("direct:send.fm.to.kafka")
     protected ProducerTemplate sendFMToKafka;
+    @Produce
+    protected ProducerTemplate initialDeliveryRequestProducer;
     @Autowired
     IMap<String, OutboundSubscriptionSetup> subscriptions;
     Map<String, List<OutboundSubscriptionSetup>> outboundSubscriptionsByMonitoringRef = new HashMap<>();
@@ -137,33 +140,20 @@ public class ServerSubscriptionManager {
     private int pushUpdatedThreadPool;
     @Value("${anshar.outbound.subscription.grace.period:30000}")
     private long outboundSubscriptionGracePeriod = 30000;
-
     @Value("${anshar.initial.delivery.estimated.timetables.queue.name}")
     private String initialDeliveryETQueueName;
-
     @Value("${anshar.initial.delivery.stop.monitoring.queue.name}")
     private String initialDeliverySMQueueName;
-
     @Value("${anshar.initial.delivery.general.message.queue.name}")
     private String initialDeliveryGMQueueName;
-
     @Value("${anshar.initial.delivery.facility.monitoring.queue.name}")
     private String initialDeliveryFMQueueName;
-
     @Value("${anshar.initial.delivery.situation.exchange.queue.name}")
     private String initialDeliverySXQueueName;
-
     @Value("${anshar.initial.delivery.vehicle.monitoring.queue.name}")
     private String initialDeliveryVMQueueName;
-
-    public static String DEFAULT_DATASET = "ALL";
-
     @Autowired
     private InitialDeliveryGenerator initialDeliveryGenerator;
-
-    @Produce
-    protected ProducerTemplate initialDeliveryRequestProducer;
-
 
     private static boolean checkMissingMonitoringRef(SubscriptionRequest subscriptionRequest) {
         boolean missingMonitoringRef = false;
@@ -538,12 +528,18 @@ public class ServerSubscriptionManager {
 
 
         switch (subscription.getSubscriptionType()) {
-            case STOP_MONITORING -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliverySMQueueName, null, headers);
-            case VEHICLE_MONITORING -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryVMQueueName, null, headers);
-            case SITUATION_EXCHANGE -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliverySXQueueName, null, headers);
-            case ESTIMATED_TIMETABLE -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryETQueueName, null, headers);
-            case GENERAL_MESSAGE -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryGMQueueName, null, headers);
-            case FACILITY_MONITORING -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryFMQueueName, null, headers);
+            case STOP_MONITORING ->
+                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliverySMQueueName, null, headers);
+            case VEHICLE_MONITORING ->
+                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryVMQueueName, null, headers);
+            case SITUATION_EXCHANGE ->
+                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliverySXQueueName, null, headers);
+            case ESTIMATED_TIMETABLE ->
+                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryETQueueName, null, headers);
+            case GENERAL_MESSAGE ->
+                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryGMQueueName, null, headers);
+            case FACILITY_MONITORING ->
+                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryFMQueueName, null, headers);
         }
     }
 
@@ -581,6 +577,12 @@ public class ServerSubscriptionManager {
         Map<String, List<ValueAdapter>> valueAdaptersByDataset = getValueAdaptersByDataset(subscriptionRequest, outboundIdMappingPolicy, datasetId);
         Map<String, Map<Class, Set<String>>> filterMapByDataset = siriHelper.getFiltersByDataset(subscriptionRequest, outboundIdMappingPolicy, datasetId);
 
+        if (incomingSiriParameters.isGmSIVSicAQuay()) {
+            // value adapters are cached
+            // create a new list, otherwise it will keep adding GmSIVSicAQuayPostProcessor to cached value adapters
+            mappers = new ArrayList<>(mappers);
+            mappers.add(new GmSIVSicAQuayPostProcessor());
+        }
 
         OutboundSubscriptionSetup newOutboundSubscription = new OutboundSubscriptionSetup(
                 ZonedDateTime.now(),
@@ -1016,7 +1018,7 @@ public class ServerSubscriptionManager {
         final String breadcrumbId = MDC.get("camel.breadcrumbId");
 
         if (outboundSenderExecutorService == null) {
-            outboundSenderExecutorService = (ThreadPoolExecutor) Executors.newFixedThreadPool(pushUpdatedThreadPool);
+            outboundSenderExecutorService = Executors.newFixedThreadPool(pushUpdatedThreadPool);
         }
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();

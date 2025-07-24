@@ -15,6 +15,8 @@
 
 package no.rutebanken.anshar.routes.siri.handlers;
 
+import jakarta.xml.bind.JAXBException;
+import jakarta.xml.bind.UnmarshalException;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
@@ -28,6 +30,7 @@ import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.*;
 import no.rutebanken.anshar.routes.siri.handlers.outbound.*;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
+import no.rutebanken.anshar.routes.siri.processor.GmSIVSicAQuayPostProcessor;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.routes.validation.SiriXmlValidator;
@@ -44,9 +47,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.*;
-
-import jakarta.xml.bind.JAXBException;
-import jakarta.xml.bind.UnmarshalException;
 
 import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
@@ -147,6 +147,21 @@ public class SiriHandler {
     @Autowired
     private GeneralMessageInbound generalMessageInbound;
 
+    public static OutboundIdMappingPolicy getIdMappingPolicy(String useOriginalId, String altId) {
+        OutboundIdMappingPolicy outboundIdMappingPolicy = OutboundIdMappingPolicy.DEFAULT;
+        if (altId != null) {
+            if (Boolean.parseBoolean(altId)) {
+                outboundIdMappingPolicy = OutboundIdMappingPolicy.ALT_ID;
+            }
+        }
+
+        if (useOriginalId != null) {
+            if (Boolean.parseBoolean(useOriginalId)) {
+                outboundIdMappingPolicy = OutboundIdMappingPolicy.ORIGINAL_ID;
+            }
+        }
+        return outboundIdMappingPolicy;
+    }
 
     public Siri handleIncomingSiri(IncomingSiriParameters incomingSiriParameters) throws UnmarshalException {
         try {
@@ -235,7 +250,6 @@ public class SiriHandler {
         }
         return null;
     }
-
 
     /**
      * Handling incoming requests from external clients
@@ -340,6 +354,12 @@ public class SiriHandler {
                 GeneralMessageRequestStructure request = serviceRequest.getGeneralMessageRequests().get(0);
                 List<InfoChannelRefStructure> requestedChannels = request.getInfoChannelReves();
                 valueAdapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.GENERAL_MESSAGE, outboundIdMappingPolicy, idMap);
+                if (incomingSiriParameters.isGmSIVSicAQuay()) {
+                    // value adapters are cached
+                    // create a new list, otherwise it will keep adding GmSIVSicAQuayPostProcessor to cached value adapters
+                    valueAdapters = new ArrayList<>(valueAdapters);
+                    valueAdapters.add(new GmSIVSicAQuayPostProcessor());
+                }
                 serviceResponse = generalMessages.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, requestedChannels);
 
                 //Ask for general message cancellations at the same time
@@ -423,7 +443,6 @@ public class SiriHandler {
         return null;
     }
 
-
     /**
      * Defines if ids should be transformed at the end of the process.
      * For stop monitoring and situation exchange : requests are done dataset by dataset and are already transformed
@@ -436,7 +455,6 @@ public class SiriHandler {
     private boolean shouldExecuteLastIdTransformation(ServiceRequest serviceRequest) {
         return !hasValues(serviceRequest.getStopMonitoringRequests()) && !hasValues(serviceRequest.getSituationExchangeRequests());
     }
-
 
     private boolean hasValues(List list) {
         return (list != null && !list.isEmpty());
@@ -550,7 +568,6 @@ public class SiriHandler {
         }
     }
 
-
     /**
      * Handling incoming requests from external servers
      *
@@ -627,21 +644,5 @@ public class SiriHandler {
                 }
             }
         }
-    }
-
-    public static OutboundIdMappingPolicy getIdMappingPolicy(String useOriginalId, String altId) {
-        OutboundIdMappingPolicy outboundIdMappingPolicy = OutboundIdMappingPolicy.DEFAULT;
-        if (altId != null) {
-            if (Boolean.parseBoolean(altId)) {
-                outboundIdMappingPolicy = OutboundIdMappingPolicy.ALT_ID;
-            }
-        }
-
-        if (useOriginalId != null) {
-            if (Boolean.parseBoolean(useOriginalId)) {
-                outboundIdMappingPolicy = OutboundIdMappingPolicy.ORIGINAL_ID;
-            }
-        }
-        return outboundIdMappingPolicy;
     }
 }

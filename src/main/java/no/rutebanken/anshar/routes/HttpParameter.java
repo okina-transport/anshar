@@ -34,7 +34,7 @@ public class HttpParameter {
     public static final String PARAM_LINE_REF = "LineRef";
     public static final String PARAM_STOP_REF = "MonitoringRef";
     public static final String PARAM_PREVIEW_INTERVAL = "previewIntervalMinutes";
-
+    public static final String PARAM_SIV_GM_SIC_A_QUAY = "gmSIVSicAQuay";
 
     public static final String PARAM_VERSION = "version";
 
