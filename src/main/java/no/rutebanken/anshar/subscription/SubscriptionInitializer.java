@@ -186,7 +186,7 @@ public class SubscriptionInitializer implements CamelContextAware {
                 valueAdapters.add(new EnsureNonNullVehicleModePostProcessor());
 
 
-                subscriptionSetup.getMappingAdapters().addAll(valueAdapters);
+                subscriptionSetup.setMappingAdapters(valueAdapters);
 
                 if (subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.FETCHED_DELIVERY ||
                         subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.POLLING_FETCHED_DELIVERY) {
@@ -204,7 +204,7 @@ public class SubscriptionInitializer implements CamelContextAware {
 
                 if (existingSubscription != null && !existingSubscription.equals(subscriptionSetup)) {
                     logger.info("Subscription with internalId={} is updated - reinitializing. {}", subscriptionSetup.getInternalId(), subscriptionSetup);
-                    disableSubscriptions(Arrays.asList(existingSubscription));
+                    disableSubscriptions(List.of(existingSubscription));
                 }
 
                 actualSubscriptionSetups.add(subscriptionSetup);

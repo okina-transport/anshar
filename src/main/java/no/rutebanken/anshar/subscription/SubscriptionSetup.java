@@ -37,6 +37,7 @@ public class SubscriptionSetup implements Serializable {
     @Setter
     @Getter
     private long internalId;
+    @Setter
     @Getter
     private List<ValueAdapter> mappingAdapters = new ArrayList<>();
     @Setter
@@ -447,11 +448,9 @@ public class SubscriptionSetup implements Serializable {
         if (this == o) {
             return true;
         }
-        if (!(o instanceof SubscriptionSetup)) {
+        if (!(o instanceof SubscriptionSetup that)) {
             return false;
         }
-
-        SubscriptionSetup that = (SubscriptionSetup) o;
 
         if (getInternalId() != that.getInternalId()) {
             log.info("getInternalId() does not match [{}] vs [{}]", getInternalId(), that.getInternalId());
