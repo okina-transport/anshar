@@ -43,7 +43,7 @@
         <camel-swagger-version>3.22.4</camel-swagger-version>
 
         <metrics.version>3.2.3</metrics.version>
-        <okina.helpers.version>1.0.31</okina.helpers.version>
+        <okina.helpers.version>1.0.32</okina.helpers.version>
         <geotools.version>33.2</geotools.version>
         <sonar.projectKey>mobi-iti:anshar</sonar.projectKey>
         <protobuf.version>4.31.1</protobuf.version>
@@ -368,7 +368,7 @@
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
-            <version>1.15.1</version>
+            <version>1.15.2</version>
         </dependency>
 
         <dependency>
@@ -531,11 +531,12 @@
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
-            <version>5.13.3</version>
+            <version>5.13.4</version>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-test</artifactId>
+            <version>6.2.9</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -585,7 +586,7 @@
         <dependency>
             <groupId>org.keycloak</groupId>
             <artifactId>keycloak-admin-client</artifactId>
-            <version>17.0.0</version>
+            <version>26.0.6</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.resteasy</groupId>
