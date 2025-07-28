@@ -19,7 +19,6 @@ import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.processor.CodespaceOutboundProcessor;
-import no.rutebanken.anshar.routes.siri.processor.RemoveEmojiPostProcessor;
 import no.rutebanken.anshar.routes.siri.processor.RuterOutboundDatedVehicleRefAdapter;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
@@ -121,7 +120,6 @@ public class MappingAdapterPresets {
                 case SITUATION_EXCHANGE:
                     adapters.add(new OutboundIdAdapter(RequestorRef.class, outboundIdMappingPolicy));
                     adapters.add(new OutboundIdAdapter(StopPlaceRef.class, outboundIdMappingPolicy));
-                    adapters.add(new RemoveEmojiPostProcessor(outboundIdMappingPolicy));
                     break;
                 case STOP_MONITORING:
                 case GENERAL_MESSAGE:
@@ -152,8 +150,6 @@ public class MappingAdapterPresets {
         //Adding postprocessor for Ruter DatedVehicleRef
         adapters.add(new RuterOutboundDatedVehicleRefAdapter(MappingAdapterPresets.class, outboundIdMappingPolicy));
 
-        // Adding postprocessor for removing emojis etc. from SX-messages
-        adapters.add(new RemoveEmojiPostProcessor(outboundIdMappingPolicy));
 
         // Postprocessor to set "correct" datasource/codespaceId
         adapters.add(new CodespaceOutboundProcessor(outboundIdMappingPolicy));
