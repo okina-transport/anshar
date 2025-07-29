@@ -136,7 +136,7 @@ public class ConsistencyService {
 
         if (!ids.getVehicleJourneyIds().isEmpty()) {
             ConsistencyReport.MatchResult vehicleJourneys = new ConsistencyReport.MatchResult();
-            List<String> unmatchedIds = ids.getVehicleJourneyIds().stream().filter(id -> !vehicleJourneyService.exists(id)).collect(Collectors.toList());
+            List<String> unmatchedIds = ids.getVehicleJourneyIds().stream().filter(id -> !vehicleJourneyService.exists(id.replace("VehicleJourney", "ServiceJourney"))).collect(Collectors.toList());
             vehicleJourneys.setUnmatchedIds(unmatchedIds);
             vehicleJourneys.setNbMatch(ids.getVehicleJourneyIds().size() - unmatchedIds.size());
             consistency.setVehicleJourneys(vehicleJourneys);
