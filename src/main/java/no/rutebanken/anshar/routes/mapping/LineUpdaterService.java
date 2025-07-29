@@ -115,6 +115,7 @@ public class LineUpdaterService {
         if (lineOriginalId.endsWith(":LOC")) {
             lineOriginalId = lineOriginalId.substring(0, lineOriginalId.length() - 4);
         }
-        return lineNameMap.containsKey(lineOriginalId);
+
+        return lineNameMap.containsKey(lineOriginalId) || areLineFlexible.containsKey(lineOriginalId.replace("Flexible",""));
     }
 }
