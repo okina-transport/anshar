@@ -219,7 +219,7 @@ public class ConsistencyServiceTest {
         );
         Mockito.when(stopPlaceUpdaterService.exists(any())).thenAnswer(
                 i -> List.of("FR_NAOLIB:Quay:29", "FR_NAOLIB:Quay:30").contains(i.getArgument(0).toString()));
-        Mockito.when(vehicleJourneyService.exists(any())).thenAnswer(i -> i.getArgument(0).toString().equals("NAOLIBORG:VehicleJourney:44542228-CR_24_25-HD25P1J1-L-Ma-Me-J-20:LOC"));
+        Mockito.when(vehicleJourneyService.exists(any())).thenAnswer(i -> i.getArgument(0).toString().equals("NAOLIBORG:ServiceJourney:44542228-CR_24_25-HD25P1J1-L-Ma-Me-J-20:LOC"));
 
         // Act
         var report = tested.buildReportForDataset(DATASET_ID);
