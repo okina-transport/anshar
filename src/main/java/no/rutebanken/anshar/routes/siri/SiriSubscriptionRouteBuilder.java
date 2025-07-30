@@ -50,6 +50,7 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
     public static final String START_ROUTE_PREFIX = "start.";
     public static final String CHECK_STATUS_ROUTE_PREFIX = "check.status.";
     public static final String CANCEL_ROUTE_PREFIX = "cancel.";
+    public static final String MONITOR_ROUTE_PREFIX = "monitor.subscription.";
 
     @Autowired
     EstimatedTimetables estimatedTimetables;
@@ -102,24 +103,24 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
         }
 
         singletonFrom("quartz://anshar/monitor_" + subscriptionSetup.getSubscriptionId() + "?trigger.repeatInterval=" + 60000,
-                "monitor.subscription." + subscriptionSetup.getVendor())
+                MONITOR_ROUTE_PREFIX + subscriptionSetup.getSubscriptionId())
                 .choice()
-                .when(p -> shouldPerformDataNotReceivedAction(p.getFromRouteId()))
+                .when(p -> shouldPerformDataNotReceivedAction(MONITOR_ROUTE_PREFIX + subscriptionSetup.getSubscriptionId()))
                 .log("Performing DataNotReceivedAction: " + subscriptionSetup)
                 .setBody(simple(subscriptionSetup.getDataNotReceivedAction() != null ? subscriptionSetup.getDataNotReceivedAction().getJsonPostContent() : ""))
                 .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.APPLICATION_JSON))
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
                 .to("log:datanotreceived:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .toD(subscriptionSetup.getDataNotReceivedAction() != null ? subscriptionSetup.getDataNotReceivedAction().getEndpoint() : "empty", true)
-                .when(p -> shouldBeStarted(p.getFromRouteId()))
+                .when(p -> shouldBeStarted(MONITOR_ROUTE_PREFIX + subscriptionSetup.getSubscriptionId()))
                 .log("Triggering start subscription: " + subscriptionSetup)
                 .process(p -> hasBeenStarted = true)
                 .to("direct:" + subscriptionSetup.getStartSubscriptionRouteName()) // Start subscription
-                .when(p -> shouldBeCancelled(p.getFromRouteId()))
+                .when(p -> shouldBeCancelled(MONITOR_ROUTE_PREFIX + subscriptionSetup.getSubscriptionId()))
                 .log("Triggering cancel subscription: " + subscriptionSetup)
                 .process(p -> hasBeenStarted = false)
                 .to("direct:" + subscriptionSetup.getCancelSubscriptionRouteName())// Cancel subscription
-                .when(p -> shouldCheckStatus(p.getFromRouteId()))
+                .when(p -> shouldCheckStatus(MONITOR_ROUTE_PREFIX + subscriptionSetup.getSubscriptionId()))
                 .log("Check status: " + subscriptionSetup)
                 .process(p -> lastCheckStatus = Instant.now())
                 .to("direct:" + subscriptionSetup.getCheckStatusRouteName()) // Check status
