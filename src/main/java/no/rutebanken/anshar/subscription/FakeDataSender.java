@@ -90,7 +90,10 @@ public class FakeDataSender extends BaseRouteBuilder {
     private void launchFakeDataToClient(OutboundSubscriptionSetup smSubscription) {
         for (int i = 0; i < nbOfMessage; i++) {
 
-            Set<String> stopRefFilter = smSubscription.getFilterMap().get(MonitoringRefStructure.class);
+            Set<String> stopRefFilter = getStopRefFilter(smSubscription);
+
+            logger.info("nb of stop in filters:" + stopRefFilter.size());
+
 
             for (String stopRef : stopRefFilter) {
                 Siri siriToSend = createFakeSiriMessage(stopRef);
@@ -106,6 +109,17 @@ public class FakeDataSender extends BaseRouteBuilder {
                 sendToExternalConsumer.asyncRequestBodyAndHeaders(sendToExternalConsumer.getDefaultEndpoint(), siriToSend, headers);
             }
         }
+    }
+
+    private Set<String> getStopRefFilter(OutboundSubscriptionSetup smSubscription) {
+        Set<String> stopRefs = smSubscription.getFilterMap().get(MonitoringRefStructure.class);
+
+        for (Map.Entry<String, Map<Class, Set<String>>> stringMapEntry : smSubscription.getFilterMapByDataset().entrySet()) {
+            if (stringMapEntry.getValue().containsKey(MonitoringRefStructure.class)) {
+                stopRefs.addAll(stringMapEntry.getValue().get(MonitoringRefStructure.class));
+            }
+        }
+        return stopRefs;
     }
 
     private Siri createFakeSiriMessage(String stopRef) {
