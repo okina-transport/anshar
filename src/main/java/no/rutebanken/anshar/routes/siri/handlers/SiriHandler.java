@@ -330,15 +330,6 @@ public class SiriHandler {
                 Siri siri = vehicleActivities.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize, revertedLineRefs, vehicleRefList);
                 serviceResponse = siri;
 
-                if (!revertedLineRefs.isEmpty()) {
-                    List<String> invalidDataReferences = revertedLineRefs.stream()
-                            .filter(lineRef -> !subscriptionManager.isLineRefExistingInSubscriptions(lineRef))
-                            .collect(Collectors.toList());
-
-
-                    utils.handleInvalidDataReferences(serviceResponse, invalidDataReferences);
-                }
-
 
                 String requestMsgRef = siri.getServiceDelivery().getRequestMessageRef().getValue();
                 logger.info("Filtering done. Returning :  {} for requestorRef {}", utils.countVehicleActivityResults(serviceResponse), requestMsgRef);

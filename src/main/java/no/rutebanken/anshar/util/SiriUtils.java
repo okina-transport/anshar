@@ -150,6 +150,23 @@ public class SiriUtils {
         return stopVisits;
     }
 
+    public static List<VehicleActivityStructure> extractVehicleActivities(Siri siri) {
+        List<VehicleActivityStructure> vehicleActivities = new ArrayList<>();
+
+        if (siri.getServiceDelivery() == null || siri.getServiceDelivery().getVehicleMonitoringDeliveries() == null
+                || siri.getServiceDelivery().getVehicleMonitoringDeliveries().isEmpty()) {
+            return vehicleActivities;
+        }
+
+        for (VehicleMonitoringDeliveryStructure vehicleDeliveryStruct : siri.getServiceDelivery().getVehicleMonitoringDeliveries()) {
+            if (vehicleDeliveryStruct.getVehicleActivities() == null || vehicleDeliveryStruct.getVehicleActivities().isEmpty()) {
+                continue;
+            }
+            vehicleActivities.addAll(vehicleDeliveryStruct.getVehicleActivities());
+        }
+        return vehicleActivities;
+    }
+
     public static Siri filterStopMonitoringOnPreviewInterval(Siri delivery, OutboundSubscriptionSetup outboundSubscriptionSetup) {
         if (delivery.getServiceDelivery().getStopMonitoringDeliveries() == null) {
             return delivery;
@@ -314,10 +331,21 @@ public class SiriUtils {
             return;
         }
 
+        List<VehicleActivityStructure> activities = extractVehicleActivities(completeSiri);
+        activities.addAll(extractVehicleActivities(dataToAdd));
+
         if (completeSiri.getServiceDelivery() == null) {
-            completeSiri.setServiceDelivery(dataToAdd.getServiceDelivery());
+            ServiceDelivery servDelivery = new ServiceDelivery();
+            completeSiri.setServiceDelivery(servDelivery);
+        }
+
+        if (completeSiri.getServiceDelivery().getVehicleMonitoringDeliveries().isEmpty()) {
+            VehicleMonitoringDeliveryStructure vehicleMonitoringDeliveryStructure = new VehicleMonitoringDeliveryStructure();
+            vehicleMonitoringDeliveryStructure.getVehicleActivities().addAll(activities);
+            completeSiri.getServiceDelivery().getVehicleMonitoringDeliveries().add(vehicleMonitoringDeliveryStructure);
         } else {
-            completeSiri.getServiceDelivery().getVehicleMonitoringDeliveries().addAll(dataToAdd.getServiceDelivery().getVehicleMonitoringDeliveries());
+            completeSiri.getServiceDelivery().getVehicleMonitoringDeliveries().getFirst().getVehicleActivities().clear();
+            completeSiri.getServiceDelivery().getVehicleMonitoringDeliveries().getFirst().getVehicleActivities().addAll(activities);
         }
     }
 
