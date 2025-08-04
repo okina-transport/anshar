@@ -60,6 +60,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.text.MessageFormat;
 import java.time.LocalTime;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -379,6 +380,42 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
             return FlowStatus.OK;
         }
         return FlowStatus.ERROR;
+    }
+
+    public ZonedDateTime getServerStartDate(SubscriptionSetup subscription) throws IOException, InterruptedException, XMLStreamException, JAXBException, TransformerException {
+        Siri checkStatusRequest = SiriObjectFactory.createCheckStatusRequest(subscription);
+        String body = CustomSiriXml.toXml(checkStatusRequest);
+        if (subscription.getServiceType().equals(SubscriptionSetup.ServiceType.SOAP)) {
+            body = CustomSiriXml.rawToSoap(body);
+        }
+
+        HttpClient client = HttpClient.newHttpClient();
+
+        HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                .uri(URI.create(subscription.getUrlMap().get(RequestType.SUBSCRIBE)))
+                .header("Content-Type", subscription.getContentType())
+                .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8));
+
+        if (MapUtils.isNotEmpty(subscription.getCustomHeaders()))
+            subscription.getCustomHeaders().forEach((key, value) -> requestBuilder.headers(key, value.toString()));
+
+        HttpResponse<String> response = client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 200) {
+            return extractStartDate(response.body());
+        }
+        return null;
+    }
+
+    private ZonedDateTime extractStartDate(String body) throws FileNotFoundException, TransformerException, XMLStreamException, JAXBException {
+        if (body.contains("<soapenv:Body>")) {
+            body = CustomSiriXml.soapToRaw(body);
+        }
+        InputStream inputStream = new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8));
+        Siri siriResponse = SiriValueTransformer.parseXml(inputStream);
+        return siriResponse.getCheckStatusResponse().getServiceStartedTime();
+
+
     }
 
     private boolean isStatusOk(String body) throws XMLStreamException, JAXBException, FileNotFoundException, TransformerException {

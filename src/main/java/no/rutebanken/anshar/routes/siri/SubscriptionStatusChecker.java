@@ -1,7 +1,6 @@
 package no.rutebanken.anshar.routes.siri;
 
 import com.hazelcast.replicatedmap.ReplicatedMap;
-import no.rutebanken.anshar.routes.health.IncomingFlowStatus;
 import no.rutebanken.anshar.routes.health.LivenessReadinessRoute;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
@@ -13,10 +12,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
 
-import java.time.Instant;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -41,7 +41,7 @@ public class SubscriptionStatusChecker extends RouteBuilder {
 
     @Override
     public void configure() throws Exception {
-        from("quartz://anshar/statusChecker?trigger.repeatInterval="+ interval)
+        from("quartz://anshar/statusChecker?trigger.repeatInterval=" + interval)
                 .routeId("subscription-status-checker")
                 .process(exchange -> {
                     urlRestartDates.clear();
@@ -53,7 +53,7 @@ public class SubscriptionStatusChecker extends RouteBuilder {
         Map<String, SubscriptionSetup> filteredSubscriptions = subscriptions.entrySet().stream()
                 .filter(entry -> !"GTFS-RT".equals(entry.getValue().getContentType()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-        
+
         Map<Collection<String>, SubscriptionSetup> uniqueUrls = filteredSubscriptions.values().stream()
                 .filter(sub -> sub.getUrlMap() != null && !sub.getUrlMap().isEmpty())
                 .collect(Collectors.toMap(
@@ -98,11 +98,8 @@ public class SubscriptionStatusChecker extends RouteBuilder {
 
     private ZonedDateTime performStatusCheck(String url, List<SubscriptionSetup> subscriptions) {
         try {
-            IncomingFlowStatus result = livenessReadinessRoute.getFlowStatusFromSubscription(url, subscriptions);
-            if (result != null && result.getStatus() != "OK") {
-                return Instant.ofEpochMilli(result.getLastUpdate()).atZone(ZoneId.systemDefault());
-            }
-            return null;
+
+            return livenessReadinessRoute.getServerStartDate(subscriptions.getFirst());
         } catch (Exception e) {
             log.warn("Status check failed for {}: {}", url, e.getMessage());
             return null;
