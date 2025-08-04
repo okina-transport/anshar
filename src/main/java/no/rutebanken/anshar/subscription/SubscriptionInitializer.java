@@ -242,17 +242,18 @@ public class SubscriptionInitializer implements CamelContextAware {
 
 
     private void startSubscription(SubscriptionSetup subscriptionSetup) {
-        Exchange exchange = ExchangeBuilder.anExchange(camelContext).withBody(subscriptionSetup).build();
-        if (!subscriptionManager.isActiveSubscription(subscriptionSetup.getSubscriptionId()) && subscriptionSetup.isActive()) {
-            producerTemplate.send("direct:" + subscriptionSetup.getStartSubscriptionRouteName(), exchange);
-        }
+
 
         try {
-
             List<RouteBuilder> routeBuilder = getRouteBuilders(subscriptionSetup);
             //Adding all routes to current context
             for (RouteBuilder builder : routeBuilder) {
                 camelContext.addRoutes(builder);
+            }
+
+            Exchange exchange = ExchangeBuilder.anExchange(camelContext).withBody(subscriptionSetup).build();
+            if (!subscriptionManager.isActiveSubscription(subscriptionSetup.getSubscriptionId()) && subscriptionSetup.isActive()) {
+                producerTemplate.send("direct:" + subscriptionSetup.getStartSubscriptionRouteName(), exchange);
             }
 
         } catch (Exception e) {
