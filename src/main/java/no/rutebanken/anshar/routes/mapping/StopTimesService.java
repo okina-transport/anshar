@@ -39,8 +39,8 @@ public class StopTimesService {
 
     // datasetId -> tripId -> StopTimeCacheEntry
     private final Map<String, Map<String, List<StopTimeCacheEntry>>> stopTimesCache = new ConcurrentHashMap<>();
-    //datasetId -> 0tripId -> routeId
-    private final Map<String, Map<String, String>> tripsCache = new ConcurrentHashMap<>();
+    //datasetId -> tripId -> TripCacheEntry
+    private final Map<String, Map<String, TripCacheEntry>> tripsCache = new ConcurrentHashMap<>();
     private final Map<String, Set<String>> knownRoutesCache = new ConcurrentHashMap<>();
     private final Predicate<File> stopTimesFilter =
             (f) -> f.getName().startsWith("stop_times_") && f.getName().endsWith(".txt");
@@ -179,7 +179,7 @@ public class StopTimesService {
         try {
             Iterable<CSVRecord> records = CSVUtils.getRecords(fileToRead);
 
-            Map<String, String> currentDatasetCache;
+            Map<String, TripCacheEntry> currentDatasetCache;
             Set<String> knownRoutes = new HashSet<>();
 
             if (tripsCache.containsKey(datasetId)) {
@@ -193,8 +193,10 @@ public class StopTimesService {
 
                 String routeId = csvRecord.get("route_id");
                 String tripId = csvRecord.get("trip_id");
+                Integer directionId = csvRecord.isSet("direction_id") ? Integer.parseInt(csvRecord.get("direction_id")) : null;
 
-                currentDatasetCache.put(tripId, routeId);
+                TripCacheEntry tripCacheEntry = new TripCacheEntry(routeId, directionId);
+                currentDatasetCache.put(tripId, tripCacheEntry);
                 knownRoutes.add(routeId);
 
             }
@@ -270,12 +272,27 @@ public class StopTimesService {
     public Optional<String> getRouteId(String datasetId, String tripId) {
         refreshCacheIfEmpty();
 
-        Map<String, String> datasetMap = tripsCache.get(datasetId);
+        Map<String, TripCacheEntry> datasetMap = tripsCache.get(datasetId);
         if (MapUtils.isEmpty(datasetMap)) {
             return Optional.empty();
         }
 
-        return Optional.ofNullable(datasetMap.get(tripId));
+        return Optional.ofNullable(datasetMap.get(tripId).getRouteId());
+    }
+
+    public Optional<String> getDirectionId(String datasetId, String tripId) {
+        refreshCacheIfEmpty();
+
+        Map<String, TripCacheEntry> datasetMap = tripsCache.get(datasetId);
+        if (MapUtils.isEmpty(datasetMap)) {
+            return Optional.empty();
+        }
+
+        Integer directionId = datasetMap.get(tripId).getDirectionId();
+        if (directionId == null) {
+            return Optional.empty();
+        }
+        return Optional.of(directionId == 0 ? "A" : "R");
     }
 
     /**
@@ -328,6 +345,12 @@ public class StopTimesService {
         private final String departureTime;
         private final String stopId;
         private final int stopSequence;
+    }
+
+    @Data
+    public static class TripCacheEntry {
+        private final String routeId;
+        private final Integer directionId;
     }
 
 }

@@ -38,7 +38,7 @@ public class TripUpdateMapper {
         this.stopTimesService = stopTimesService;
         this.stopPlaceService = stopPlaceService;
     }
-    
+
     /**
      * Read the tripUpdate and map arrival times (aimed and expected) to siri object
      *
@@ -166,6 +166,18 @@ public class TripUpdateMapper {
             monitoredVehicleStruct.getDestinationNames().add(destinationName);
             monitoredVehicleStruct.setFramedVehicleJourneyRef(vehicleJourneyRef);
             monitoredVehicleStruct.setMonitored(true);
+            if (tripUpdate.getTrip() != null && tripUpdate.getTrip().hasDirectionId()) {
+                NaturalLanguageStringStructure directionName = new NaturalLanguageStringStructure();
+                directionName.setValue(tripUpdate.getTrip().getDirectionId() == 0 ? "A" : "R");
+                monitoredVehicleStruct.getDirectionNames().add(directionName);
+            } else {
+                stopTimesService.getDirectionId(datasetId, tripId).ifPresent(directionId -> {
+                    NaturalLanguageStringStructure directionName = new NaturalLanguageStringStructure();
+                    directionName.setValue(directionId);
+                    monitoredVehicleStruct.getDirectionNames().add(directionName);
+                });
+            }
+
             MonitoredCallStructure monitoredCallStructure = new MonitoredCallStructure();
             aimedArrivalTime.ifPresent(monitoredCallStructure::setAimedArrivalTime);
             aimedDepartureTime.ifPresent(monitoredCallStructure::setAimedDepartureTime);
