@@ -39,7 +39,7 @@
         <spring-boot-plugin.version>2.6.6</spring-boot-plugin.version>
 
 
-        <camel-version>4.12.0</camel-version>
+        <camel-version>4.13.0</camel-version>
         <camel-swagger-version>3.22.4</camel-swagger-version>
 
         <metrics.version>3.2.3</metrics.version>

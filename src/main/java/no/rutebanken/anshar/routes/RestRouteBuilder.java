@@ -138,26 +138,6 @@ public class RestRouteBuilder extends RouteBuilder {
             createClientRequestRoutes();
         }
 
-        from("direct:anshar.invalid.tracking.header.response")
-                .log("invalid")
-                .removeHeaders("*")
-                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("400")) //400 Bad request
-                .setBody(constant("Missing required header (" + configuration.getTrackingHeaderName() + ")"))
-                .routeId("reject.request.missing.header")
-        ;
-
-        from("direct:anshar.blocked.tracking.header.response")
-                .removeHeaders("*")
-                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("400")) //400 Bad request
-                .setBody(constant(""))
-                .routeId("reject.request.blocked.header")
-        ;
-
-        from("direct:send.to.expired.data.queue")
-                .to("activemq:queue:sm.expired.data?timeToLive=600000")
-                .routeId("send.to.expired.data.queue")
-        ;
-
 
     }
 
