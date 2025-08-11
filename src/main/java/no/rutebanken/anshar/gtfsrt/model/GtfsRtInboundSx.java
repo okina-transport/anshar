@@ -4,7 +4,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
-import uk.org.siri.siri20.PtSituationElement;
+import uk.org.siri.siri21.PtSituationElement;
 
 import java.util.List;
 

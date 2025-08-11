@@ -15,7 +15,6 @@
 
 package no.rutebanken.anshar.data;
 
-import com.hazelcast.collection.ISet;
 import jakarta.xml.bind.UnmarshalException;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.config.AnsharConfiguration;
@@ -25,7 +24,6 @@ import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.SituationExchangeInbound;
-import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,6 +38,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;

@@ -23,11 +23,11 @@ import org.apache.camel.ProducerTemplate;
 import org.apache.commons.collections4.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri20.PtSituationElement;
 import uk.org.siri.siri20.VehicleActivityStructure;
 import uk.org.siri.siri21.EstimatedVehicleJourney;
 import uk.org.siri.siri21.MonitoredStopVisit;
 import uk.org.siri.siri21.MonitoredStopVisitCancellation;
+import uk.org.siri.siri21.PtSituationElement;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -70,7 +70,9 @@ public class GtfsRtProxyProcessor implements Processor {
                                 TripUpdateReader tripUpdateReader,
                                 VehiclePositionReader vehiclePositionReader,
                                 AlertReader alertReader,
-                                GtfsRtHelper gtfsRTHelper, IncomingDataHealthService incomingDataHealthService, PrometheusMetricsService metrics) {
+                                GtfsRtHelper gtfsRTHelper,
+                                IncomingDataHealthService incomingDataHealthService,
+                                PrometheusMetricsService metrics) {
         this.producerTemplate = producerTemplate;
         this.tripUpdateReader = tripUpdateReader;
         this.vehiclePositionReader = vehiclePositionReader;
@@ -186,7 +188,7 @@ public class GtfsRtProxyProcessor implements Processor {
             producerTemplate.sendBody(GTFS_RT_VM_PROXY_QUEUE, objectMapper.writeValueAsString(vmData));
         }
 
-        List<PtSituationElement> situations = alertReader.buildSituationList(completeGTFSFeed, datasetId, routeIdList);
+        List<PtSituationElement> situations = alertReader.buildSituationList(completeGTFSFeed, gtfsRTApi, routeIdList);
         alertReader.updateParticipantRef(datasetId, situations);
         if (CollectionUtils.isNotEmpty(situations)) {
             GtfsRtInboundSx sxData = GtfsRtInboundSx.builder()
