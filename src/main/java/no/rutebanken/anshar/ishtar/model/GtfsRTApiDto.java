@@ -18,6 +18,7 @@ public class GtfsRTApiDto {
     private Boolean closeMissingAlerts;
     private Boolean generateActivePeriod;
     private Integer activePeriodDays;
+    private String publishedLineNameMapping;
     private String currentStatus;
 
 }

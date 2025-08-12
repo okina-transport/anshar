@@ -1,9 +1,14 @@
 package no.rutebanken.anshar.gtfsrt.mappers;
 
 import com.google.transit.realtime.GtfsRealtime;
+import no.rutebanken.anshar.api.PublishedLineNameMapping;
+import no.rutebanken.anshar.config.IdProcessingParameters;
+import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.util.CustomStringUtils;
+import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.mapping.StopTimesService;
+import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.util.DateUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -31,12 +36,15 @@ public class TripUpdateMapper {
     private static final Logger logger = LoggerFactory.getLogger(TripUpdateMapper.class);
 
     private final StopTimesService stopTimesService;
-
     private final StopPlaceUpdaterService stopPlaceService;
+    private final LineUpdaterService lineUpdaterService;
+    private final SubscriptionConfig subscriptionConfig;
 
-    public TripUpdateMapper(StopTimesService stopTimesService, StopPlaceUpdaterService stopPlaceService) {
+    public TripUpdateMapper(StopTimesService stopTimesService, StopPlaceUpdaterService stopPlaceService, LineUpdaterService lineUpdaterService, SubscriptionConfig subscriptionConfig) {
         this.stopTimesService = stopTimesService;
         this.stopPlaceService = stopPlaceService;
+        this.lineUpdaterService = lineUpdaterService;
+        this.subscriptionConfig = subscriptionConfig;
     }
 
     /**
@@ -125,12 +133,13 @@ public class TripUpdateMapper {
      * Maps a GTFS-Realtime {@link GtfsRealtime.TripUpdate} into a list of {@link MonitoredStopVisit} instances.
      * This method extracts relevant stop visit information and structures it for monitoring purposes.
      *
-     * @param tripUpdate  The GTFS-Realtime {@link GtfsRealtime.TripUpdate} containing trip update data.
-     * @param datasetId   The identifier of the dataset associated with the trip update.
-     * @param routeIdList A list of route IDs used to filter relevant stop visits.
+     * @param tripUpdate               The GTFS-Realtime {@link GtfsRealtime.TripUpdate} containing trip update data.
+     * @param datasetId                The identifier of the dataset associated with the trip update.
+     * @param routeIdList              A list of route IDs used to filter relevant stop visits.
+     * @param publishedLineNameMapping The way to map PublishedLineName from GTFS-RT TripUpdate to Siri StopMonitoring
      * @return A list of {@link MonitoredStopVisit} objects representing structured stop visit data.
      */
-    public List<MonitoredStopVisit> mapStopVisitFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate, String datasetId, List<String> routeIdList) {
+    public List<MonitoredStopVisit> mapStopVisitFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate, String datasetId, List<String> routeIdList, PublishedLineNameMapping publishedLineNameMapping) {
         List<MonitoredStopVisit> stopVisitList = new ArrayList<>();
         FramedVehicleJourneyRefStructure vehicleJourneyRef = createVehicleJourneyRef(tripUpdate);
 
@@ -165,6 +174,20 @@ public class TripUpdateMapper {
             monitoredVehicleStruct.setDestinationRef(destinationRef);
             monitoredVehicleStruct.getDestinationNames().add(destinationName);
             monitoredVehicleStruct.setFramedVehicleJourneyRef(vehicleJourneyRef);
+            // publishedLineNames is filled by line name in MonitoredStopVisits
+            // we only fill it with line number when mapping is by line number
+            if (PublishedLineNameMapping.LINE_NUMBER.equals(publishedLineNameMapping)) {
+                String lineId = lineRef.getValue();
+                Optional<IdProcessingParameters> ipp = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.LINE);
+                if (ipp.isPresent()) {
+                    lineId = ipp.get().applyTransformationToString(lineId);
+                }
+                lineUpdaterService.getLineNumber(lineId).ifPresent(lineNumber -> {
+                    NaturalLanguageStringStructure nlss = new NaturalLanguageStringStructure();
+                    nlss.setValue(lineNumber);
+                    monitoredVehicleStruct.getPublishedLineNames().add(nlss);
+                });
+            }
             monitoredVehicleStruct.setMonitored(true);
             if (tripUpdate.getTrip() != null && tripUpdate.getTrip().hasDirectionId()) {
                 NaturalLanguageStringStructure directionName = new NaturalLanguageStringStructure();

@@ -25,6 +25,7 @@ public class LineUpdaterService {
     private static final Object LOCK = new Object();
     private transient final ConcurrentMap<String, Boolean> areLineFlexible = new ConcurrentHashMap<>();
     private final Map<String, String> lineNameMap = new HashMap<>();
+    private final Map<String, String> lineNumberMap = new HashMap<>();
     @Autowired
     BlobStoreService blobStoreService;
     @Value("${anshar.lineIds.file}")
@@ -35,9 +36,9 @@ public class LineUpdaterService {
     @PostConstruct
     private void initialize() {
 
-        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
-
-        executor.scheduleAtFixedRate(this::updateLineIds, 0, updateFrequency, TimeUnit.HOURS);
+        try (ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor()) {
+            executor.scheduleAtFixedRate(this::updateLineIds, 0, updateFrequency, TimeUnit.HOURS);
+        }
 
         logger.info("Initialized line-ids-updater with urls:{}, updateFrequency:{} hours", new String[]{lineIdsPath}, updateFrequency);
     }
@@ -65,6 +66,10 @@ public class LineUpdaterService {
                 if (tokenizer.hasMoreTokens()) {
                     String lineName = tokenizer.nextToken();
                     lineNameMap.put(lineId, lineName);
+                }
+                if (tokenizer.hasMoreTokens()) {
+                    String lineNumber = tokenizer.nextToken();
+                    lineNumberMap.put(lineId, lineNumber);
                 }
                 areLineFlexible.put(lineId, Boolean.valueOf(isFlexible));
             });
@@ -107,6 +112,19 @@ public class LineUpdaterService {
         return Optional.ofNullable(lineName);
     }
 
+    public Optional<String> getLineNumber(String lineId) {
+        String lineNumber = lineNumberMap.get(lineId);
+        if (lineNumber == null) {
+            if (lineId.endsWith(":LOC")) {
+                lineId = lineId.replace(":LOC", "");
+            } else {
+                lineId = lineId + ":LOC";
+            }
+            lineNumber = lineNumberMap.get(lineId);
+        }
+        return Optional.ofNullable(lineNumber);
+    }
+
     public void addLineName(String lineId, String lineName) {
         lineNameMap.put(lineId, lineName);
     }
@@ -116,6 +134,6 @@ public class LineUpdaterService {
             lineOriginalId = lineOriginalId.substring(0, lineOriginalId.length() - 4);
         }
 
-        return lineNameMap.containsKey(lineOriginalId) || areLineFlexible.containsKey(lineOriginalId.replace("Flexible",""));
+        return lineNameMap.containsKey(lineOriginalId) || areLineFlexible.containsKey(lineOriginalId.replace("Flexible", ""));
     }
 }

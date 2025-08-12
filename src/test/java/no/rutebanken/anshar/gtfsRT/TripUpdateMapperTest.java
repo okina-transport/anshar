@@ -2,9 +2,15 @@ package no.rutebanken.anshar.gtfsRT;
 
 
 import com.google.transit.realtime.GtfsRealtime;
+import no.rutebanken.anshar.api.PublishedLineNameMapping;
+import no.rutebanken.anshar.config.IdProcessingParameters;
+import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.gtfsrt.mappers.TripUpdateMapper;
+import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.mapping.StopTimesService;
+import no.rutebanken.anshar.subscription.SubscriptionConfig;
+import org.apache.commons.collections4.CollectionUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,6 +39,12 @@ class TripUpdateMapperTest {
 
     @Mock
     private StopPlaceUpdaterService stopPlaceService;
+
+    @Mock
+    private LineUpdaterService lineUpdaterService;
+
+    @Mock
+    private SubscriptionConfig subscriptionConfig;
 
     @Test
     void testGTFSRTTripUpdateMapperTest() {
@@ -75,7 +87,7 @@ class TripUpdateMapperTest {
         tripBuilder.addStopTimeUpdate(stopTimeUpd);
 
         List<String> routeIdList = Arrays.asList("".split(","));
-        List<MonitoredStopVisit> stopMonitorings = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), dataset, routeIdList);
+        List<MonitoredStopVisit> stopMonitorings = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), dataset, routeIdList, PublishedLineNameMapping.LINE_NAME);
         Assertions.assertEquals(1, stopMonitorings.size());
         MonitoredStopVisit sm = stopMonitorings.getFirst();
         Assertions.assertEquals(1, sm.getMonitoredVehicleJourney().getDirectionNames().size());
@@ -98,7 +110,7 @@ class TripUpdateMapperTest {
         tripBuilder.addStopTimeUpdate(stopTimeUpd);
 
         List<String> routeIdList = Arrays.asList("".split(","));
-        List<MonitoredStopVisit> stopMonitorings = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), "", routeIdList);
+        List<MonitoredStopVisit> stopMonitorings = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), "", routeIdList, PublishedLineNameMapping.LINE_NAME);
         Assertions.assertEquals(1, stopMonitorings.size());
         MonitoredStopVisit sm = stopMonitorings.getFirst();
         Assertions.assertEquals(1, sm.getMonitoredVehicleJourney().getDirectionNames().size());
@@ -121,7 +133,7 @@ class TripUpdateMapperTest {
         tripBuilder.addStopTimeUpdate(stopTimeUpd);
 
         List<String> routeIdList = Arrays.asList("".split(","));
-        List<MonitoredStopVisit> stopMonitorings = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), "", routeIdList);
+        List<MonitoredStopVisit> stopMonitorings = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), "", routeIdList, PublishedLineNameMapping.LINE_NAME);
         Assertions.assertEquals(1, stopMonitorings.size());
         MonitoredStopVisit sm = stopMonitorings.getFirst();
         Assertions.assertEquals(1, sm.getMonitoredVehicleJourney().getDirectionNames().size());
@@ -148,10 +160,10 @@ class TripUpdateMapperTest {
 
         List<MonitoredStopVisitCancellation> monitoredStopVisitCancellations = tripUpdateMapper.mapStopCancellationFromTripUpdate(tripBuilder.build(), "test", routeIdList);
         Assertions.assertFalse(monitoredStopVisitCancellations.isEmpty());
-        Assertions.assertEquals("test-tripId-stopId-routeId", monitoredStopVisitCancellations.get(0).getItemRef().getValue());
-        Assertions.assertEquals("routeId", monitoredStopVisitCancellations.get(0).getLineRef().getValue());
-        Assertions.assertEquals("tripId", monitoredStopVisitCancellations.get(0).getVehicleJourneyRef().getDatedVehicleJourneyRef());
-        Assertions.assertEquals("stopId", monitoredStopVisitCancellations.get(0).getMonitoringRef().getValue());
+        Assertions.assertEquals("test-tripId-stopId-routeId", monitoredStopVisitCancellations.getFirst().getItemRef().getValue());
+        Assertions.assertEquals("routeId", monitoredStopVisitCancellations.getFirst().getLineRef().getValue());
+        Assertions.assertEquals("tripId", monitoredStopVisitCancellations.getFirst().getVehicleJourneyRef().getDatedVehicleJourneyRef());
+        Assertions.assertEquals("stopId", monitoredStopVisitCancellations.getFirst().getMonitoringRef().getValue());
 
         GtfsRealtime.TripUpdate.Builder tripBuilder2 = GtfsRealtime.TripUpdate.newBuilder();
         GtfsRealtime.TripDescriptor.Builder tripDescBuild2 = GtfsRealtime.TripDescriptor.newBuilder();
@@ -170,4 +182,67 @@ class TripUpdateMapperTest {
         List<MonitoredStopVisitCancellation> monitoredStopVisitCancellations2 = tripUpdateMapper.mapStopCancellationFromTripUpdate(tripBuilder2.build(), "test2", routeIdList);
         assertThat(monitoredStopVisitCancellations2).isEmpty();
     }
+
+    @Test
+    void test_mapStopVisitFromTripUpdate_whenShouldMapPublishedLineNameByLineNumberAndLineNumberIsInCache_thenAddLineNumberInPublishedLineNames() {
+        // Arrange
+        GtfsRealtime.TripUpdate.Builder tripBuilder = GtfsRealtime.TripUpdate.newBuilder();
+        GtfsRealtime.TripDescriptor.Builder tripDescBuild = GtfsRealtime.TripDescriptor.newBuilder();
+        tripDescBuild.setTripId("tripId");
+        tripDescBuild.setRouteId("routeId");
+        tripBuilder.setTrip(tripDescBuild);
+        GtfsRealtime.TripUpdate.StopTimeUpdate.Builder stopTimeUpd = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder();
+        stopTimeUpd.setStopId("stopId");
+        stopTimeUpd.setStopSequence(0);
+        GtfsRealtime.TripUpdate.StopTimeEvent.Builder ste = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder();
+        ste.setDelay(50);
+        stopTimeUpd.setDeparture(ste.build());
+        tripBuilder.addStopTimeUpdate(stopTimeUpd);
+
+        List<String> routeIdList = Arrays.asList("stopId".split(","));
+
+        IdProcessingParameters ipp = new IdProcessingParameters();
+        ipp.setDatasetId("test");
+        ipp.setOutputPrefixToAdd("TEST:Line:");
+        ipp.setOutputSuffixToAdd(":LOC");
+
+
+        when(lineUpdaterService.getLineNumber("TEST:Line:routeId:LOC")).thenReturn(Optional.of("1"));
+        when(subscriptionConfig.getIdParametersForDataset("test", ObjectType.LINE)).thenReturn(Optional.of(ipp));
+
+        // Act
+        List<MonitoredStopVisit> output = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), "test", routeIdList, PublishedLineNameMapping.LINE_NUMBER);
+
+        // Assert
+        Assertions.assertEquals("1", output.getFirst().getMonitoredVehicleJourney().getPublishedLineNames().getFirst().getValue());
+    }
+
+    @Test
+    void test_mapStopVisitFromTripUpdate_whenShouldMapPublishedLineNameByLineNumberAndLineNumberIsNotInCache_thenDoesNotAddLineNumberInPublishedLineNames() {
+        // Arrange
+        GtfsRealtime.TripUpdate.Builder tripBuilder = GtfsRealtime.TripUpdate.newBuilder();
+        GtfsRealtime.TripDescriptor.Builder tripDescBuild = GtfsRealtime.TripDescriptor.newBuilder();
+        tripDescBuild.setTripId("tripId");
+        tripDescBuild.setRouteId("routeId");
+        tripBuilder.setTrip(tripDescBuild);
+        GtfsRealtime.TripUpdate.StopTimeUpdate.Builder stopTimeUpd = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder();
+        stopTimeUpd.setStopId("stopId");
+        stopTimeUpd.setStopSequence(0);
+        GtfsRealtime.TripUpdate.StopTimeEvent.Builder ste = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder();
+        ste.setDelay(50);
+        stopTimeUpd.setDeparture(ste.build());
+        tripBuilder.addStopTimeUpdate(stopTimeUpd);
+
+        List<String> routeIdList = Arrays.asList("stopId".split(","));
+
+        when(lineUpdaterService.getLineNumber("routeId")).thenReturn(Optional.empty());
+        when(subscriptionConfig.getIdParametersForDataset("test", ObjectType.LINE)).thenReturn(Optional.empty());
+
+        // Act
+        List<MonitoredStopVisit> output = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), "test", routeIdList, PublishedLineNameMapping.LINE_NUMBER);
+
+        // Assert
+        Assertions.assertTrue(CollectionUtils.isEmpty(output.getFirst().getMonitoredVehicleJourney().getPublishedLineNames()));
+    }
+
 }
