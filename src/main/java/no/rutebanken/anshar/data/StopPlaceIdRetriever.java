@@ -6,6 +6,7 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -109,7 +110,7 @@ public class StopPlaceIdRetriever {
      */
     private String extractId(String rawId) {
         if (rawId.contains(":")) {
-            String idWithoutLoc = rawId.replace(":LOC", "");
+            String idWithoutLoc = Strings.CS.removeEnd(rawId, ":LOC");
             String[] idTab = idWithoutLoc.split(":");
             return idTab[idTab.length - 1];
         } else {

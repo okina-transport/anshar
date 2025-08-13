@@ -1,6 +1,7 @@
 package no.rutebanken.anshar.routes.mapping;
 
 import no.rutebanken.anshar.routes.export.file.BlobStoreService;
+import org.apache.commons.lang3.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -103,7 +104,7 @@ public class LineUpdaterService {
         if (lineName == null) {
             // trying 2nd time with/without LOC suffix
             if (lineId.endsWith(":LOC")) {
-                lineId = lineId.replace(":LOC", "");
+                lineId = Strings.CS.removeEnd(lineId, ":LOC");
             } else {
                 lineId = lineId + ":LOC";
             }
@@ -116,7 +117,7 @@ public class LineUpdaterService {
         String lineNumber = lineNumberMap.get(lineId);
         if (lineNumber == null) {
             if (lineId.endsWith(":LOC")) {
-                lineId = lineId.replace(":LOC", "");
+                lineId = Strings.CS.removeEnd(lineId, ":LOC");
             } else {
                 lineId = lineId + ":LOC";
             }
