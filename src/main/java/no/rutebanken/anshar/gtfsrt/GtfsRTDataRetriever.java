@@ -34,39 +34,27 @@ import java.util.stream.Collectors;
 
 @Service
 public class GtfsRTDataRetriever {
-    private static final Logger logger = LoggerFactory.getLogger(GtfsRTDataRetriever.class);
     public static final String GTFS_RT = "GTFS-RT";
-
-
-    @Autowired
-    private TripUpdateReader tripUpdateReader;
-
-    @Autowired
-    private VehiclePositionReader vehiclePositionReader;
-
-    @Autowired
-    private AlertReader alertReader;
-
-    @Autowired
-    private SubscriptionConfig subscriptionConfig;
-
-    @Autowired
-    private AnsharConfiguration configuration;
-
-    @Autowired
-    private ExtendedHazelcastService hazelcastService;
-
-    @Autowired
-    private PrometheusMetricsService metrics;
-
-
+    private static final Logger logger = LoggerFactory.getLogger(GtfsRTDataRetriever.class);
     private final String lockMap = "ansharRouteLockMap";
     private final String gtfsRtLock = "isGtfsRtRunning";
     private final String gtfsRtLastExecutionTime = "gtfsRTLastExecutionTime";
     private final String DEFAULT_ERROR_CODE = "500";
     private final Pattern pattern = Pattern.compile("HTTP response code: (\\d+)");
-
-
+    @Autowired
+    private TripUpdateReader tripUpdateReader;
+    @Autowired
+    private VehiclePositionReader vehiclePositionReader;
+    @Autowired
+    private AlertReader alertReader;
+    @Autowired
+    private SubscriptionConfig subscriptionConfig;
+    @Autowired
+    private AnsharConfiguration configuration;
+    @Autowired
+    private ExtendedHazelcastService hazelcastService;
+    @Autowired
+    private PrometheusMetricsService metrics;
     private long iterationNb = 0;
     @Autowired
     private IncomingDataHealthService incomingDataHealthService;
@@ -154,7 +142,7 @@ public class GtfsRTDataRetriever {
                 : new ArrayList<>();
 
         tripUpdateReader.setUrl(gtfsRTApi.getUrl());
-        tripUpdateReader.ingestTripUpdateData(gtfsRTApi.getDatasetId(), routeIdList, completeGTFSFeed);
+        tripUpdateReader.ingestTripUpdateData(gtfsRTApi.getDatasetId(), routeIdList, completeGTFSFeed, gtfsRTApi.getPublishedLineNameMapping());
 
         if (configuration.processVM()) {
             vehiclePositionReader.setUrl(gtfsRTApi.getUrl());

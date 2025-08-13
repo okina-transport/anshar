@@ -6,6 +6,7 @@ import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
+import org.apache.commons.lang3.Strings;
 import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,8 +14,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.*;
 
-import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -32,6 +33,9 @@ public class Utils {
     @Autowired
     private LineUpdaterService lineUpdaterService;
 
+    public static String encodeOrReturnRaw(String rawURL) {
+        return URLEncoder.encode(rawURL, StandardCharsets.UTF_8);
+    }
 
     /**
      * Read a siri and checks all line references : if a reference to a flexibleLine is found, replaces ":Line:" by "FlexibleLine"
@@ -124,13 +128,12 @@ public class Utils {
 
             for (GeneralMessage generalMessage : generalMessageDelivery.getGeneralMessages()) {
                 Object contentObj = generalMessage.getContent();
-                if (contentObj instanceof Content) {
-                    Content content = (Content) contentObj;
+                if (contentObj instanceof Content content) {
                     if (content.getLineRefs() != null && !content.getLineRefs().isEmpty()) {
                         List<String> convertedLineRfs = new ArrayList<>();
 
                         for (String lineRef : content.getLineRefs()) {
-                            if (lineUpdaterService.isLineFlexible(lineRef.replace(":LOC", ""))) {
+                            if (lineUpdaterService.isLineFlexible(Strings.CS.removeEnd(lineRef, ":LOC"))) {
                                 convertedLineRfs.add(lineRef.replace(":Line", ":FlexibleLine"));
                             } else {
                                 convertedLineRfs.add(lineRef);
@@ -181,7 +184,7 @@ public class Utils {
 
     private void handleFlexibleLineInLineRef(LineRef lineRef) {
         String originalLineId = lineRef.getValue();
-        if (lineUpdaterService.isLineFlexible(originalLineId.replace(":LOC", ""))) {
+        if (lineUpdaterService.isLineFlexible(Strings.CS.removeEnd(originalLineId, ":LOC"))) {
             lineRef.setValue(originalLineId.replace(":Line", ":FlexibleLine"));
         }
     }
@@ -375,15 +378,6 @@ public class Utils {
         return stopRefs.stream()
                 .distinct()
                 .collect(Collectors.joining(","));
-    }
-
-    public static String encodeOrReturnRaw(String rawURL) {
-        try {
-            return URLEncoder.encode(rawURL, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            logger.error("Unable to encode URL:" + rawURL);
-            return rawURL;
-        }
     }
 
 }

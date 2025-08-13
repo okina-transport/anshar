@@ -34,6 +34,7 @@ import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.util.StopMonitoringUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.quartz.utils.counter.Counter;
 import org.quartz.utils.counter.CounterImpl;
 import org.slf4j.Logger;
@@ -56,53 +57,38 @@ import java.util.stream.Collectors;
 @Repository
 public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
-    private static final Logger logger = LoggerFactory.getLogger(MonitoredStopVisits.class);
     public static final String EMPTY_DESTINATION = "EmptyDestination";
-
-
+    private static final Logger logger = LoggerFactory.getLogger(MonitoredStopVisits.class);
+    private final Set<String> localSMDatasetList = new HashSet<>();
+    @Autowired
+    ExtendedHazelcastService hazelcastService;
+    @Autowired
+    StopPlaceUpdaterService stopPlaceUpdaterService;
     @Autowired
     @Qualifier("getSmChecksumMap")
     private ReplicatedMap<SiriObjectStorageKey, String> checksumCache;
-
     @Autowired
     @Qualifier("getIdForPatternChangesMap")
     private IMap<SiriObjectStorageKey, String> idForPatternChanges;
-
     @Autowired
     @Qualifier("getIdStartTimeMap")
     private IMap<SiriObjectStorageKey, ZonedDateTime> idStartTimeMap;
-
     @Autowired
     @Qualifier("getMonitoredStopVisitChangesMap")
     private IMap<String, Set<SiriObjectStorageKey>> changesMap;
-
     @Autowired
     @Qualifier("getLastSmUpdateRequest")
     private IMap<String, Instant> lastUpdateRequested;
-
     @Autowired
     private AnsharConfiguration configuration;
-
-
     @Autowired
     private SiriObjectFactory siriObjectFactory;
-
-    @Autowired
-    ExtendedHazelcastService hazelcastService;
-
-    @Autowired
-    StopPlaceUpdaterService stopPlaceUpdaterService;
-
     @Autowired
     private SubscriptionConfig subscriptionConfig;
-
     @Autowired
     private VehicleJourneyService vehicleJourneyService;
-
     @Autowired
     private LineUpdaterService lineUpdaterService;
-
-    private final Set<String> localSMDatasetList = new HashSet<>();
 
     protected MonitoredStopVisits() {
         super(SiriDataType.STOP_MONITORING);
@@ -782,7 +768,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
      */
     private String extractId(String rawId) {
         if (rawId.contains(":")) {
-            String idWithoutLoc = rawId.replace(":LOC", "");
+            String idWithoutLoc = Strings.CS.removeEnd(rawId, ":LOC");
             String[] idTab = idWithoutLoc.split(":");
             return idTab[idTab.length - 1];
         } else {

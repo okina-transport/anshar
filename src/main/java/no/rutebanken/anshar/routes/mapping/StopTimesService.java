@@ -277,7 +277,14 @@ public class StopTimesService {
             return Optional.empty();
         }
 
-        return Optional.ofNullable(datasetMap.get(tripId).getRouteId());
+        TripCacheEntry trip = datasetMap.get(tripId);
+
+        if (trip == null) {
+            logger.warn("Trip {} not in dataset {}", tripId, datasetId);
+            return Optional.empty();
+        }
+
+        return Optional.ofNullable(trip.getRouteId());
     }
 
     public Optional<String> getDirectionId(String datasetId, String tripId) {
@@ -288,7 +295,14 @@ public class StopTimesService {
             return Optional.empty();
         }
 
-        Integer directionId = datasetMap.get(tripId).getDirectionId();
+        TripCacheEntry trip = datasetMap.get(tripId);
+
+        if (trip == null) {
+            logger.warn("Trip {} not in dataset {}", tripId, datasetId);
+            return Optional.empty();
+        }
+
+        Integer directionId = trip.getDirectionId();
         if (directionId == null) {
             return Optional.empty();
         }

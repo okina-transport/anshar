@@ -48,16 +48,14 @@ public class SubscriptionConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(SubscriptionConfig.class);
     private final List<IdProcessingParameters> idProcessingParameters = new CopyOnWriteArrayList<>();
+    @Produce(AdministrationRoute.TERMINATE_SUBSCRIPTION_ROUTE)
+    protected ProducerTemplate terminateSubscriptionRoute;
     @Value("${anshar.subscriptions.datatypes.filter:}")
     List<SiriDataType> dataTypes;
     private List<SubscriptionSetup> subscriptions = new CopyOnWriteArrayList();
     private List<GtfsRTApi> gtfsRTApis = new CopyOnWriteArrayList<>();
     private List<SiriApi> siriApis = new CopyOnWriteArrayList<>();
     private List<DiscoverySubscription> discoverySubscriptions = new ArrayList<>();
-
-    @Produce(AdministrationRoute.TERMINATE_SUBSCRIPTION_ROUTE)
-    protected ProducerTemplate terminateSubscriptionRoute;
-
 
     public List<SubscriptionSetup> getSubscriptions() {
         if (dataTypes != null && !dataTypes.isEmpty()) {
@@ -164,6 +162,7 @@ public class SubscriptionConfig {
                 existingOpt.get().setActivePeriodDays(incomingAPI.getActivePeriodDays());
                 existingOpt.get().setCloseMissingAlerts(incomingAPI.getCloseMissingAlerts());
                 existingOpt.get().setGenerateActivePeriod(incomingAPI.getGenerateActivePeriod());
+                existingOpt.get().setPublishedLineNameMapping(incomingAPI.getPublishedLineNameMapping());
                 logger.info("gtfsrt already existing.updating. " + incomingAPI.getDatasetId() + "-" + incomingAPI.getUrl());
             } else {
                 gtfsRTApis.add(incomingAPI);

@@ -17,4 +17,5 @@ public class GtfsRTApi {
     private Boolean closeMissingAlerts;
     private Boolean generateActivePeriod;
     private Integer activePeriodDays;
+    private PublishedLineNameMapping publishedLineNameMapping;
 }
