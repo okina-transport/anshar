@@ -12,10 +12,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import uk.org.siri.siri10.ErrorConditionStructure;
 import uk.org.siri.siri21.*;
 
+import javax.xml.bind.JAXBElement;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -337,6 +340,35 @@ public class Utils {
         String requestMsgRef = siri.getServiceDelivery().getRequestMessageRef().getValue();
         siri.getServiceDelivery().getVehicleMonitoringDeliveries().forEach(vm -> logger.info("requestorRef:" + requestMsgRef + " - " + getErrorContents(vm.getErrorCondition())));
 
+    }
+
+    public Siri createInvalidDataReferencesSubscriptionResponse(String monitoringRef) {
+        Siri siri = new Siri();
+        SubscriptionResponseStructure response = new SubscriptionResponseStructure();
+        response.setResponseTimestamp(ZonedDateTime.now());
+
+        MessageRefStructure ref = new MessageRefStructure();
+        ref.setValue(UUID.randomUUID().toString());
+        response.setRequestMessageRef(ref);
+
+        ResponseStatus status = new ResponseStatus();
+        status.setResponseTimestamp(ZonedDateTime.now());
+        status.setStatus(false);
+        status.setRequestMessageRef(ref);
+
+        ServiceDeliveryErrorConditionElement errorCondition = new ServiceDeliveryErrorConditionElement();
+        InvalidDataReferencesErrorStructure invalidDataStruct = new InvalidDataReferencesErrorStructure();
+        invalidDataStruct.setErrorText("InvalidDataReferencesError");
+        errorCondition.setInvalidDataReferencesError(invalidDataStruct);
+        ErrorDescriptionStructure errorDesc = new ErrorDescriptionStructure();
+        errorDesc.setValue(String.join(",", monitoringRef));
+        errorCondition.setDescription(errorDesc);
+
+        status.setErrorCondition(errorCondition);
+
+        response.getResponseStatuses().add(status);
+        siri.setSubscriptionResponse(response);
+        return siri;
     }
 
     /**

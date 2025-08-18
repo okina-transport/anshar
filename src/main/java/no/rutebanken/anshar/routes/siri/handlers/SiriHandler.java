@@ -26,6 +26,7 @@ import no.rutebanken.anshar.data.util.CustomStringUtils;
 import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.health.HealthManager;
+import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.*;
 import no.rutebanken.anshar.routes.siri.handlers.outbound.*;
@@ -51,6 +52,7 @@ import uk.org.siri.siri21.*;
 import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -146,6 +148,9 @@ public class SiriHandler {
 
     @Autowired
     private GeneralMessageInbound generalMessageInbound;
+
+    @Autowired
+    StopPlaceUpdaterService stopPlaceUpdaterService;
 
     public static OutboundIdMappingPolicy getIdMappingPolicy(String useOriginalId, String altId) {
         OutboundIdMappingPolicy outboundIdMappingPolicy = OutboundIdMappingPolicy.DEFAULT;
@@ -276,8 +281,16 @@ public class SiriHandler {
         Siri results;
         if (incoming.getSubscriptionRequest() != null) {
             logger.info("Handling subscriptionrequest with ID-policy {}.", outboundIdMappingPolicy);
-            return serverSubscriptionManager.handleMultipleSubscriptionsRequest(incoming, incomingSiriParameters);
+            if (!incoming.getSubscriptionRequest().getStopMonitoringSubscriptionRequests().isEmpty()) {
+                String monitoringRef = incoming.getSubscriptionRequest().getStopMonitoringSubscriptionRequests().get(0).getStopMonitoringRequest().getMonitoringRef().getValue();
+                boolean knownStop = validateStopReferences(monitoringRef, datasetId);
 
+                if (!knownStop) {
+                    return utils.createInvalidDataReferencesSubscriptionResponse(monitoringRef);
+                }
+            }
+
+            return serverSubscriptionManager.handleMultipleSubscriptionsRequest(incoming, incomingSiriParameters);
         } else if (incoming.getTerminateSubscriptionRequest() != null) {
             logger.info("Handling terminateSubscriptionrequest...");
             TerminateSubscriptionRequestStructure terminateSubscriptionRequest = incoming.getTerminateSubscriptionRequest();
@@ -338,7 +351,17 @@ public class SiriHandler {
                 valueAdapters = estimatedTimetableOutbound.getValueAdapters(datasetId, outboundIdMappingPolicy);
                 serviceResponse = estimatedTimetableOutbound.getEstimatedTimetableServiceDelivery(serviceRequest, datasetId, excludedDatasetIdList, maxSize, clientTrackingName, requestorRef);
             } else if (hasValues(serviceRequest.getStopMonitoringRequests())) {
-                serviceResponse = stopMonitoringOutbound.getStopMonitoringServiceDelivery(serviceRequest, outboundIdMappingPolicy, datasetId, requestorRef, clientTrackingName, maxSize);
+                String monitoringRef = serviceRequest.getStopMonitoringRequests().get(0).getMonitoringRef().getValue();
+                boolean knownStop = validateStopReferences(monitoringRef, datasetId);
+
+                if (!knownStop) {
+                    return utils.createInvalidDataReferencesSubscriptionResponse(monitoringRef);
+                }
+
+                serviceResponse = stopMonitoringOutbound.getStopMonitoringServiceDelivery(
+                        serviceRequest, outboundIdMappingPolicy, datasetId, requestorRef, clientTrackingName, maxSize
+                );
+
             } else if (hasValues(serviceRequest.getGeneralMessageRequests())) {
                 Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);
 
@@ -432,6 +455,22 @@ public class SiriHandler {
             return results;
         }
         return null;
+    }
+
+    private boolean validateStopReferences(String stopRef, String datasetId) {
+        if (stopRef == null) {
+            return false;
+        }
+
+        if (!stopPlaceUpdaterService.isKnownId(stopRef)) {
+            return false;
+        }
+
+        if (datasetId != null && stopPlaceUpdaterService.getReverse(stopRef, datasetId).isEmpty()) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
