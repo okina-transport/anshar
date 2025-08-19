@@ -351,11 +351,14 @@ public class SiriHandler {
                 valueAdapters = estimatedTimetableOutbound.getValueAdapters(datasetId, outboundIdMappingPolicy);
                 serviceResponse = estimatedTimetableOutbound.getEstimatedTimetableServiceDelivery(serviceRequest, datasetId, excludedDatasetIdList, maxSize, clientTrackingName, requestorRef);
             } else if (hasValues(serviceRequest.getStopMonitoringRequests())) {
-                String monitoringRef = serviceRequest.getStopMonitoringRequests().get(0).getMonitoringRef().getValue();
-                boolean knownStop = validateStopReferences(monitoringRef, datasetId);
+                MonitoringRefStructure monitoringRef = serviceRequest.getStopMonitoringRequests().get(0).getMonitoringRef();
+                if (monitoringRef != null) {
+                    String monitoringRefValue = monitoringRef.getValue();
+                    boolean knownStop = validateStopReferences(monitoringRefValue, datasetId);
 
-                if (!knownStop) {
-                    return utils.createInvalidDataReferencesSubscriptionResponse(monitoringRef);
+                    if (!knownStop) {
+                        return utils.createInvalidDataReferencesSubscriptionResponse(monitoringRefValue);
+                    }
                 }
 
                 serviceResponse = stopMonitoringOutbound.getStopMonitoringServiceDelivery(

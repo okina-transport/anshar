@@ -803,14 +803,10 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         Siri response = handler.handleIncomingSiri(params);
         assertNotNull(response);
-        assertNotNull(response.getServiceDelivery());
-        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
-        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty());
-        assertEquals(1, response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().size());
-        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
-        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
-        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
-        assertEquals("TEST1:Quay:121", response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
+        assertNotNull(response.getSubscriptionResponse());
+        assertFalse(response.getSubscriptionResponse().getResponseStatuses().get(0).isStatus());
+        assertNotNull(response.getSubscriptionResponse().getResponseStatuses().get(0).getErrorCondition().getInvalidDataReferencesError());
+        assertEquals("121", response.getSubscriptionResponse().getResponseStatuses().get(0).getErrorCondition().getDescription().getValue());
     }
 
     /**
@@ -858,9 +854,10 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         Siri response = handler.handleIncomingSiri(params);
         assertNotNull(response);
-        assertNotNull(response.getServiceDelivery());
-        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
-        assertTrue(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty());
+        assertNotNull(response.getSubscriptionResponse());
+        assertFalse(response.getSubscriptionResponse().getResponseStatuses().get(0).isStatus());
+        assertNotNull(response.getSubscriptionResponse().getResponseStatuses().get(0).getErrorCondition().getInvalidDataReferencesError());
+        assertEquals("TEST1:StopPoint:SP:121:LOC", response.getSubscriptionResponse().getResponseStatuses().get(0).getErrorCondition().getDescription().getValue());
     }
 
     /**
@@ -908,9 +905,10 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         Siri response = handler.handleIncomingSiri(params);
         assertNotNull(response);
-        assertNotNull(response.getServiceDelivery());
-        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
-        assertTrue(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty());
+        assertNotNull(response.getSubscriptionResponse());
+        assertFalse(response.getSubscriptionResponse().getResponseStatuses().get(0).isStatus());
+        assertNotNull(response.getSubscriptionResponse().getResponseStatuses().get(0).getErrorCondition().getInvalidDataReferencesError());
+        assertEquals("TEST1:StopPoint:SP:121:LOC", response.getSubscriptionResponse().getResponseStatuses().get(0).getErrorCondition().getDescription().getValue());
     }
 
     /**
@@ -960,9 +958,10 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         Siri response = handler.handleIncomingSiri(params);
         assertNotNull(response);
-        assertNotNull(response.getServiceDelivery());
-        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
-        assertTrue(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty());
+        assertNotNull(response.getSubscriptionResponse());
+        assertFalse(response.getSubscriptionResponse().getResponseStatuses().get(0).isStatus());
+        assertNotNull(response.getSubscriptionResponse().getResponseStatuses().get(0).getErrorCondition().getInvalidDataReferencesError());
+        assertEquals("TEST1:StopPoint:SP:121:LOC", response.getSubscriptionResponse().getResponseStatuses().get(0).getErrorCondition().getDescription().getValue());
     }
 
     /**
@@ -1928,14 +1927,10 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         Siri response = handler.handleIncomingSiri(parameters);
         assertNotNull(response);
-        assertNotNull(response.getServiceDelivery());
-        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
-        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty());
-        assertEquals(1, response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().size());
-        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
-        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
-        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
-        assertEquals("MOBIITI:Quay:a", response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
+        assertNotNull(response.getSubscriptionResponse());
+        assertFalse(response.getSubscriptionResponse().getResponseStatuses().get(0).isStatus());
+        assertNotNull(response.getSubscriptionResponse().getResponseStatuses().get(0).getErrorCondition().getInvalidDataReferencesError());
+        assertEquals("MOBIITI:Quay:a", response.getSubscriptionResponse().getResponseStatuses().get(0).getErrorCondition().getDescription().getValue());
     }
 
     /**
@@ -1977,14 +1972,10 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         Siri response = handler.handleIncomingSiri(createDefaultParameters(xml));
         assertNotNull(response);
-        assertNotNull(response.getServiceDelivery());
-        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
-        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty());
-        assertEquals(2, response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().size());
-        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
-        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
-        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
-        assertEquals("MOBIITI:Quay:a", response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
+        assertNotNull(response.getSubscriptionResponse());
+        assertFalse(response.getSubscriptionResponse().getResponseStatuses().get(0).isStatus());
+        assertNotNull(response.getSubscriptionResponse().getResponseStatuses().get(0).getErrorCondition().getInvalidDataReferencesError());
+        assertEquals("MOBIITI:Quay:a", response.getSubscriptionResponse().getResponseStatuses().get(0).getErrorCondition().getDescription().getValue());
     }
 
 
@@ -2022,13 +2013,10 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         Siri response = handler.handleIncomingSiri(parameters);
         assertNotNull(response);
-        assertNotNull(response.getServiceDelivery());
-        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
-        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty());
-        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
-        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
-        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
-        assertEquals("30", response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
+        assertNotNull(response.getSubscriptionResponse());
+        assertFalse(response.getSubscriptionResponse().getResponseStatuses().get(0).isStatus());
+        assertNotNull(response.getSubscriptionResponse().getResponseStatuses().get(0).getErrorCondition().getInvalidDataReferencesError());
+        assertEquals("30", response.getSubscriptionResponse().getResponseStatuses().get(0).getErrorCondition().getDescription().getValue());
     }
 
     @Test
@@ -2063,9 +2051,10 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         Siri response = handler.handleIncomingSiri(parameters);
         assertNotNull(response);
-        assertNotNull(response.getServiceDelivery());
-        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
-        assertTrue(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty());
+        assertNotNull(response.getSubscriptionResponse());
+        assertFalse(response.getSubscriptionResponse().getResponseStatuses().get(0).isStatus());
+        assertNotNull(response.getSubscriptionResponse().getResponseStatuses().get(0).getErrorCondition().getInvalidDataReferencesError());
+        assertEquals("30", response.getSubscriptionResponse().getResponseStatuses().get(0).getErrorCondition().getDescription().getValue());
     }
 
 
