@@ -205,6 +205,7 @@ public class SubscriptionConfig {
                 existingSubscription.setChangeBeforeUpdatesSeconds(incomingSubscription.getChangeBeforeUpdates().toSeconds());
                 existingSubscription.setCustomHeaders(incomingSubscription.getCustomHeaders());
                 existingSubscription.setLineRefValues(incomingSubscription.getLineRefValues());
+                existingSubscription.setSiteRefValues(incomingSubscription.getSiteRefValues());
                 existingSubscription.setMappingAdapterId(incomingSubscription.getMappingAdapterId());
                 existingSubscription.setVehicleMonitoringRefValue(incomingSubscription.getVehicleMonitoringRefValue());
                 existingSubscription.setUpdateIntervalSeconds(incomingSubscription.getUpdateInterval().toSeconds());

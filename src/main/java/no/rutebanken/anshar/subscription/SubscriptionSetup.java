@@ -120,6 +120,8 @@ public class SubscriptionSetup implements Serializable {
     @Setter
     private List<String> lineRefValues;
     private List<String> stopMonitoringRefValues;
+    @Setter
+    private List<String> siteRefValues;
     @Getter
     private boolean validation;
     @Setter
@@ -362,6 +364,13 @@ public class SubscriptionSetup implements Serializable {
             stopMonitoringRefValues = new ArrayList<>();
         }
         return stopMonitoringRefValues;
+    }
+
+    public List<String> getSiteRefValues() {
+        if (siteRefValues == null) {
+            siteRefValues = new ArrayList<>();
+        }
+        return siteRefValues;
     }
 
     public void setStopMonitoringRefValue(List<String> stopMonitoringRefValues) {

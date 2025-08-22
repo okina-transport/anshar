@@ -36,6 +36,7 @@ import no.rutebanken.anshar.util.SiriUtils;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -299,16 +300,14 @@ public class ServerSubscriptionManager {
     private String getFilteredRefs(OutboundSubscriptionSetup outboundSubscription) {
         StringBuilder filteredRefs = new StringBuilder();
         Map<Class, Set<String>> filterMap = outboundSubscription.getFilterMap();
-        boolean hasStopsFiltered = false;
 
         if (filterMap != null && filterMap.containsKey(MonitoringRefStructure.class)) {
             String stopRefs = String.join(",", filterMap.get(MonitoringRefStructure.class));
-            filteredRefs.append("stops:" + stopRefs);
-            hasStopsFiltered = true;
+            filteredRefs.append("stops:").append(stopRefs);
         }
 
-        if (outboundSubscription.getFilterMapByDataset() != null && outboundSubscription.getFilterMapByDataset().size() > 0) {
-            if (hasStopsFiltered) {
+        if (MapUtils.isNotEmpty(outboundSubscription.getFilterMapByDataset())) {
+            if (!filteredRefs.isEmpty()) {
                 filteredRefs.append("/");
             }
             filteredRefs.append("linesByDataset:");
@@ -317,20 +316,31 @@ public class ServerSubscriptionManager {
                 if (!isFirstEntry) {
                     filteredRefs.append("/");
                 }
-                filteredRefs.append(filterMapEntry.getKey() + ":" + String.join(",", filterMapEntry.getValue().get(LineRef.class)));
+                filteredRefs.append(filterMapEntry.getKey()).append(":").append(String.join(",", filterMapEntry.getValue().get(LineRef.class)));
                 isFirstEntry = false;
             }
         }
 
         if (filterMap != null && filterMap.containsKey(LineRef.class)) {
 
-            if (hasStopsFiltered) {
+            if (!filteredRefs.isEmpty()) {
                 filteredRefs.append("/");
             }
 
             String lineRefs = String.join(",", filterMap.get(LineRef.class));
-            filteredRefs.append("lines:" + lineRefs);
+            filteredRefs.append("lines:").append(lineRefs);
         }
+
+        if (filterMap != null && filterMap.containsKey(SiteRef.class)) {
+
+            if (!filteredRefs.isEmpty()) {
+                filteredRefs.append("/");
+            }
+
+            String siteRefs = String.join(",", filterMap.get(SiteRef.class));
+            filteredRefs.append("sites:").append(siteRefs);
+        }
+
         return filteredRefs.toString();
     }
 
@@ -347,6 +357,8 @@ public class ServerSubscriptionManager {
             return handleMultipleStopMonitoringRequest(incomingSiri, incomingSiriParameters);
         } else if (subscriptionRequest.getVehicleMonitoringSubscriptionRequests() != null && subscriptionRequest.getVehicleMonitoringSubscriptionRequests().size() > 1) {
             return handleMultipleVehicleMonitoringRequest(incomingSiri, incomingSiriParameters);
+        } else if (subscriptionRequest.getFacilityMonitoringSubscriptionRequests() != null && subscriptionRequest.getFacilityMonitoringSubscriptionRequests().size() > 1) {
+            return handleMultipleFacilityMonitoringRequest(incomingSiri, incomingSiriParameters);
         } else {
             return handleSingleSubscriptionRequest(incomingSiri, incomingSiriParameters);
         }
@@ -392,6 +404,33 @@ public class ServerSubscriptionManager {
             Siri singleSiriRequest = new Siri();
             SubscriptionRequest singleRequest = new SubscriptionRequest();
             singleRequest.getStopMonitoringSubscriptionRequests().add(stopMonitoringSubscriptionRequest);
+            singleRequest.setRequestorRef(requestorRef);
+            singleRequest.setConsumerAddress(consumerAddress);
+            singleRequest.setSubscriptionContext(subscriptionContext);
+            singleRequest.setMessageIdentifier(messageIdentifier);
+            singleSiriRequest.setSubscriptionRequest(singleRequest);
+            singleSiriRequest.setVersion(incomingSiri.getVersion());
+
+            Siri currentResult = handleSingleSubscriptionRequest(singleSiriRequest, incomingSiriParameters);
+            resultList.add(currentResult);
+        }
+
+        return aggregateResults(resultList);
+    }
+
+    private Siri handleMultipleFacilityMonitoringRequest(Siri incomingSiri, IncomingSiriParameters incomingSiriParameters) {
+
+        SubscriptionRequest subscriptionRequest = incomingSiri.getSubscriptionRequest();
+        List<Siri> resultList = new ArrayList<>();
+        RequestorRef requestorRef = subscriptionRequest.getRequestorRef();
+        String consumerAddress = subscriptionRequest.getConsumerAddress();
+        SubscriptionContextStructure subscriptionContext = subscriptionRequest.getSubscriptionContext();
+        MessageQualifierStructure messageIdentifier = subscriptionRequest.getMessageIdentifier();
+
+        for (FacilityMonitoringSubscriptionStructure fmss : subscriptionRequest.getFacilityMonitoringSubscriptionRequests()) {
+            Siri singleSiriRequest = new Siri();
+            SubscriptionRequest singleRequest = new SubscriptionRequest();
+            singleRequest.getFacilityMonitoringSubscriptionRequests().add(fmss);
             singleRequest.setRequestorRef(requestorRef);
             singleRequest.setConsumerAddress(consumerAddress);
             singleRequest.setSubscriptionContext(subscriptionContext);

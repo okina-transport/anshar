@@ -21,6 +21,7 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.esotericsoftware.kryo.pool.KryoFactory;
 import com.esotericsoftware.kryo.pool.KryoPool;
+import jakarta.xml.bind.JAXBException;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.routes.outbound.SiriHelper;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -38,9 +39,6 @@ import uk.org.siri.siri21.*;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-
-import jakarta.xml.bind.JAXBException;
-
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import java.time.Duration;
@@ -181,6 +179,7 @@ public class SiriObjectFactory {
                     subscriptionSetup.buildUrl(),
                     subscriptionSetup.getDurationOfSubscription(),
                     subscriptionSetup.getAddressFieldName(),
+                    subscriptionSetup.getSiteRefValues(),
                     subscriptionSetup.getVersion());
         }
 
@@ -455,22 +454,43 @@ public class SiriObjectFactory {
     }
 
     private static SubscriptionRequest createFacilityMonitoringSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address,
-                                                                                   Duration subscriptionDuration, String addressFieldName, String version) {
+                                                                                   Duration subscriptionDuration, String addressFieldName, List<String> siteRefValues, String version) {
 
         SubscriptionRequest request = createSubscriptionRequest(requestorRef, heartbeatInterval, address, addressFieldName);
+        int requestNb = 0;
+
+        if (CollectionUtils.isNotEmpty(siteRefValues)) {
+            for (String siteRefValue : siteRefValues) {
+                String subIdentifier = subscriptionId + "-" + requestNb;
+                FacilityMonitoringSubscriptionStructure fmSubscriptionReq = createFMSubsRequestStructure(subIdentifier, subscriptionDuration, version, siteRefValue, request);
+                request.getFacilityMonitoringSubscriptionRequests().add(fmSubscriptionReq);
+                requestNb++;
+            }
+        } else {
+            FacilityMonitoringSubscriptionStructure fmSubscriptionReq = createFMSubsRequestStructure(subscriptionId, subscriptionDuration, version, null, request);
+            request.getFacilityMonitoringSubscriptionRequests().add(fmSubscriptionReq);
+        }
+
+        return request;
+    }
+
+    private static FacilityMonitoringSubscriptionStructure createFMSubsRequestStructure(String subscriptionId, Duration subscriptionDuration, String version, String siteRefValue, SubscriptionRequest request) {
         FacilityMonitoringRequestStructure fmRequest = new FacilityMonitoringRequestStructure();
 
         fmRequest.setRequestTimestamp(ZonedDateTime.now());
         fmRequest.setVersion(version);
-
+        if (StringUtils.isNotBlank(siteRefValue)) {
+            SiteRef siteRef = new SiteRef();
+            siteRef.setValue(siteRefValue);
+            fmRequest.setSiteRef(siteRef);
+        }
         FacilityMonitoringSubscriptionStructure fmSubscriptionReq = new FacilityMonitoringSubscriptionStructure();
         fmSubscriptionReq.setFacilityMonitoringRequest(fmRequest);
 
         fmSubscriptionReq.setSubscriptionIdentifier(createSubscriptionIdentifier(subscriptionId));
         fmSubscriptionReq.setInitialTerminationTime(ZonedDateTime.now().plusSeconds(subscriptionDuration.getSeconds()));
         fmSubscriptionReq.setSubscriberRef(request.getRequestorRef());
-        request.getFacilityMonitoringSubscriptionRequests().add(fmSubscriptionReq);
-        return request;
+        return fmSubscriptionReq;
     }
 
     private static SubscriptionRequest createStopMonitoringSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap, String addressFieldName, Boolean incrementalUpdates, Duration previewInterval, Duration changeBeforeUpdates, List<String> stopMonitoringRefValues, String version) {

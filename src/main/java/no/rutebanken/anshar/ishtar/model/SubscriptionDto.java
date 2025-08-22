@@ -33,6 +33,7 @@ public class SubscriptionDto {
     private Boolean discoverySubscription;
     private List<SubscriptionStopDto> subscriptionStops;
     private List<SubscriptionLineDto> subscriptionLines;
+    private List<SubscriptionSiteDto> subscriptionSites;
     private List<UrlMapDto> urlMaps;
     private List<CustomHeaderDto> customHeaders;
     private List<IdMappingPrefixDto> idMappingPrefixes;
