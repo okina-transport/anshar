@@ -342,19 +342,27 @@ public class Utils {
 
     }
 
-    public Siri createInvalidDataReferencesSubscriptionResponse(String monitoringRef) {
-        Siri siri = new Siri();
+    public Siri createInvalidDataReferencesSubscriptionResponse(String monitoringRef, Siri siri) {
         SubscriptionResponseStructure response = new SubscriptionResponseStructure();
-        response.setResponseTimestamp(ZonedDateTime.now());
-
-        MessageRefStructure ref = new MessageRefStructure();
-        ref.setValue(UUID.randomUUID().toString());
-        response.setRequestMessageRef(ref);
-
         ResponseStatus status = new ResponseStatus();
-        status.setResponseTimestamp(ZonedDateTime.now());
-        status.setStatus(false);
-        status.setRequestMessageRef(ref);
+
+        if (siri.getSubscriptionResponse() != null) {
+            response = siri.getSubscriptionResponse();
+        } else {
+            response.setResponseTimestamp(ZonedDateTime.now());
+
+            MessageRefStructure ref = new MessageRefStructure();
+            ref.setValue(UUID.randomUUID().toString());
+            response.setRequestMessageRef(ref);
+        }
+
+        if (siri.getSubscriptionResponse() != null && siri.getSubscriptionResponse().getResponseStatuses() != null) {
+            status = siri.getSubscriptionResponse().getResponseStatuses().get(0);
+        } else {
+            status.setResponseTimestamp(ZonedDateTime.now());
+            status.setStatus(false);
+            status.setRequestMessageRef(response.getRequestMessageRef());
+        }
 
         ServiceDeliveryErrorConditionElement errorCondition = new ServiceDeliveryErrorConditionElement();
         InvalidDataReferencesErrorStructure invalidDataStruct = new InvalidDataReferencesErrorStructure();
@@ -366,7 +374,9 @@ public class Utils {
 
         status.setErrorCondition(errorCondition);
 
+        response.getResponseStatuses().clear();
         response.getResponseStatuses().add(status);
+
         siri.setSubscriptionResponse(response);
         return siri;
     }

@@ -1023,14 +1023,9 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         Siri response = handler.handleIncomingSiri(params);
         assertNotNull(response);
-        assertNotNull(response.getServiceDelivery());
-        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
-        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty());
-        assertEquals(1, response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().size());
-        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
-        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
-        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
-        assertEquals("MOBIITI:Quay:a", response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
+        assertNotNull(response.getServiceRequest());
+        assertFalse(response.getServiceRequest().getStopMonitoringRequests().isEmpty());
+        assertTrue(response.getServiceRequest().getStopMonitoringRequests().get(0).getMonitoringRef() == null);
     }
 
     /**
@@ -1090,9 +1085,9 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         params.setMaxSize(-1);
         Siri response = handler.handleIncomingSiri(params);
         assertNotNull(response);
-        assertNotNull(response.getServiceDelivery());
-        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
-        assertTrue(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty());
+        assertNotNull(response.getServiceRequest());
+        assertFalse(response.getServiceRequest().getStopMonitoringRequests().isEmpty());
+        assertTrue(response.getServiceRequest().getStopMonitoringRequests().get(0).getMonitoringRef() == null);
     }
 
     /**

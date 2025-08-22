@@ -284,13 +284,12 @@ public class SiriHandler {
             if (!incoming.getSubscriptionRequest().getStopMonitoringSubscriptionRequests().isEmpty()) {
                 String monitoringRef = incoming.getSubscriptionRequest().getStopMonitoringSubscriptionRequests().get(0).getStopMonitoringRequest().getMonitoringRef().getValue();
                 boolean knownStop = validateStopReferences(monitoringRef, datasetId);
-
+                incoming = serverSubscriptionManager.handleMultipleSubscriptionsRequest(incoming, incomingSiriParameters);
                 if (!knownStop) {
-                    return utils.createInvalidDataReferencesSubscriptionResponse(monitoringRef);
+                    incoming = utils.createInvalidDataReferencesSubscriptionResponse(monitoringRef, incoming);
                 }
             }
-
-            return serverSubscriptionManager.handleMultipleSubscriptionsRequest(incoming, incomingSiriParameters);
+            return incoming;
         } else if (incoming.getTerminateSubscriptionRequest() != null) {
             logger.info("Handling terminateSubscriptionrequest...");
             TerminateSubscriptionRequestStructure terminateSubscriptionRequest = incoming.getTerminateSubscriptionRequest();
@@ -355,15 +354,12 @@ public class SiriHandler {
                 if (monitoringRef != null) {
                     String monitoringRefValue = monitoringRef.getValue();
                     boolean knownStop = validateStopReferences(monitoringRefValue, datasetId);
-
+                    incoming = stopMonitoringOutbound.getStopMonitoringServiceDelivery(serviceRequest, outboundIdMappingPolicy, datasetId, requestorRef, clientTrackingName, maxSize);
                     if (!knownStop) {
-                        return utils.createInvalidDataReferencesSubscriptionResponse(monitoringRefValue);
+                        incoming = utils.createInvalidDataReferencesSubscriptionResponse(monitoringRefValue, incoming);
                     }
                 }
-
-                serviceResponse = stopMonitoringOutbound.getStopMonitoringServiceDelivery(
-                        serviceRequest, outboundIdMappingPolicy, datasetId, requestorRef, clientTrackingName, maxSize
-                );
+                serviceResponse = incoming;
 
             } else if (hasValues(serviceRequest.getGeneralMessageRequests())) {
                 Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);
