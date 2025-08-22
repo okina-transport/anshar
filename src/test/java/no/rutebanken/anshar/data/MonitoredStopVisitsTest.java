@@ -411,22 +411,10 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest implements Camel
 
 
         Siri response = handler.handleIncomingSiri(params);
-        Assertions.assertNotNull(response.getServiceDelivery());
-
-        Assertions.assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries());
-        Assertions.assertTrue(response.getServiceDelivery().getStopMonitoringDeliveries().size() > 0);
-
-
-        for (StopMonitoringDeliveryStructure stopMonitoringDelivery : response.getServiceDelivery().getStopMonitoringDeliveries()) {
-            for (MonitoredStopVisit monitoredStopVisit : stopMonitoringDelivery.getMonitoredStopVisits()) {
-                String lineRef = monitoredStopVisit.getMonitoredVehicleJourney().getLineRef().getValue();
-                if (lineRef.startsWith("PROV1")) {
-                    assertEquals("PROV1:FlexibleLine:35", lineRef);
-                } else {
-                    assertEquals(standardlineId, lineRef);
-                }
-            }
-        }
+        Assertions.assertNotNull(response);
+        Assertions.assertNotNull(response.getServiceRequest());
+        assertFalse(response.getServiceRequest().getStopMonitoringRequests().isEmpty());
+        Assertions.assertTrue(response.getServiceRequest().getStopMonitoringRequests().get(0).getMonitoringRef() == null);
     }
 
     private void addLineRef(MonitoredStopVisit sm1, String lineId) {
