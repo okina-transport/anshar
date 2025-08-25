@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
@@ -52,12 +53,18 @@ public class StopTimesService {
     private String stopTimesRootDir;
     @Value("${anshar.trips.root.directory}")
     private String tripsRootDir;
+    private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
     @PostConstruct
     private void initialize() {
-        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
         executor.scheduleAtFixedRate(this::refreshCache, 0, updateFrequency, TimeUnit.MINUTES);
         logger.info("Initialized stopTimesService, updateFrequency:{} min", updateFrequency);
+    }
+
+    @PreDestroy
+    private void destroy() {
+        logger.info("Destroy StopTimesService");
+        executor.shutdown();
     }
 
     /**

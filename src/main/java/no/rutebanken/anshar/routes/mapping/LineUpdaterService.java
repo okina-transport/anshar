@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -27,6 +28,7 @@ public class LineUpdaterService {
     private transient final ConcurrentMap<String, Boolean> areLineFlexible = new ConcurrentHashMap<>();
     private final Map<String, String> lineNameMap = new HashMap<>();
     private final Map<String, String> lineNumberMap = new HashMap<>();
+    private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
     @Autowired
     BlobStoreService blobStoreService;
     @Value("${anshar.lineIds.file}")
@@ -36,12 +38,14 @@ public class LineUpdaterService {
 
     @PostConstruct
     private void initialize() {
-
-        try (ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor()) {
-            executor.scheduleAtFixedRate(this::updateLineIds, 0, updateFrequency, TimeUnit.HOURS);
-        }
-
+        executor.scheduleAtFixedRate(this::updateLineIds, 0, updateFrequency, TimeUnit.HOURS);
         logger.info("Initialized line-ids-updater with urls:{}, updateFrequency:{} hours", new String[]{lineIdsPath}, updateFrequency);
+    }
+
+    @PreDestroy
+    private void destroy() {
+        logger.info("Destroy LineUpdaterService");
+        executor.shutdown();
     }
 
     private void updateLineIds() {
@@ -77,7 +81,7 @@ public class LineUpdaterService {
 
             long t2 = System.currentTimeMillis();
 
-            logger.info("Fetched mapping data - {} mappings, found {} duplicates. [fetched:{}ms]", areLineFlexible.size(), (t2 - t1));
+            logger.info("Fetched mapping data - {} mappings. [fetched: {}ms]", areLineFlexible.size(), (t2 - t1));
         } else {
             logger.error("Blob is null. Can't update line mapping");
         }

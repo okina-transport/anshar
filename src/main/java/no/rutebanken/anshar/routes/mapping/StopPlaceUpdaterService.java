@@ -25,6 +25,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -56,6 +57,8 @@ public class StopPlaceUpdaterService {
 
     @Value("${anshar.mapping.stopplaces.update.frequency.min:60}")
     private int updateFrequency = 60;
+
+    private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
     public String get(String id) {
         if (stopPlaceMappings.isEmpty()) {
@@ -118,20 +121,17 @@ public class StopPlaceUpdaterService {
     }
 
     /**
-     * Returns true if provided id is included in the latest dataset from NSR
-     *
-     * @param id
-     * @return
+     * @param id stop identifier
+     * @return true if provided id is included in the latest dataset from NSR
      */
     public boolean isKnownId(String id) {
         return validNsrIds.contains(id);
     }
 
     /**
-     * Returns true if provided id can be reverted to producer id
-     *
-     * @param id
-     * @return
+     * @param id stop identifier
+     * @param datasetId stop dataset id
+     * @return true, if provided id can be reverted to producer id
      */
     public boolean canBeReverted(String id, String datasetId) {
         if (!reverseStopPlaceMappings.containsKey(id)) {
@@ -140,7 +140,7 @@ public class StopPlaceUpdaterService {
 
         List<String> mappings = reverseStopPlaceMappings.get(id);
 
-        if (datasetId == null && mappings != null && !mappings.isEmpty()) {
+        if (datasetId == null || CollectionUtils.isEmpty(mappings)) {
             return true;
         }
 
@@ -159,12 +159,15 @@ public class StopPlaceUpdaterService {
 
     @PostConstruct
     private void initialize() {
-
-        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
-
         executor.scheduleAtFixedRate(this::updateIdMapping, 0, updateFrequency, TimeUnit.MINUTES);
 
         logger.info("Initialized id_mapping-updater with urls:{}, updateFrequency:{} min", new String[]{quayMappingPath, stopPlaceMappingPath}, updateFrequency);
+    }
+
+    @PreDestroy
+    private void destroy() {
+        logger.info("Destroy StopPlaceUpdaterService");
+        executor.shutdown();
     }
 
     private void updateIdMapping() {

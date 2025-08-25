@@ -24,6 +24,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.*;
@@ -46,6 +47,8 @@ public class BaneNorIdPlatformUpdaterService {
     @Autowired
     private StopPlaceRegisterMappingFetcher stopPlaceRegisterMappingFetcher;
 
+    private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+
     public String get(String id) {
         if (jbvCodeStopPlaceMappings.isEmpty()) {
             // Avoid multiple calls at the same time.
@@ -63,13 +66,17 @@ public class BaneNorIdPlatformUpdaterService {
     @PostConstruct
     private void initialize() {
         updateIdMapping();
-        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
-
         int initialDelay = updateFrequency + new Random().nextInt(10);
         executor.scheduleAtFixedRate(this::updateIdMapping, initialDelay, updateFrequency, TimeUnit.MINUTES);
 
 
         logger.info("Initialized jbvCode_mapping-updater with url:{}, updateFrequency:{} min, initialDelay:{} min", jbvCodeStopPlaceMappingPath, updateFrequency, initialDelay);
+    }
+
+    @PreDestroy
+    private void destroy() {
+        logger.info("Destroy BaneNorIdPlatformUpdaterService");
+        executor.shutdown();
     }
 
     private void updateIdMapping() {

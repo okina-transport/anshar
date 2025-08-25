@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import uk.org.siri.siri21.FirstOrLastJourneyEnumeration;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -39,15 +40,18 @@ public class VehicleJourneyService {
     private String firstOrLastVehicleJourneyFile;
     @Value("${anshar.line.ids.update.frequency.hours:10}")
     private int updateFrequency = 10;
+    private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
     @PostConstruct
     private void initialize() {
-
-        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
-
         executor.scheduleAtFixedRate(this::updateFirstOrLastVJ, 0, updateFrequency, TimeUnit.HOURS);
-
         logger.info("Initialized first-or-last-VJ-updater with urls:{}, updateFrequency:{} hours", new String[]{firstOrLastVehicleJourneyFile}, updateFrequency);
+    }
+
+    @PreDestroy
+    private void destroy() {
+        logger.info("Destroy VehicleJourneyService");
+        executor.shutdown();
     }
 
     private void updateFirstOrLastVJ() {
@@ -63,7 +67,6 @@ public class VehicleJourneyService {
 
     private void updateLineIdMapping(String firstOrLastVehicleJourneyFile) throws IOException {
         logger.info("Fetching VJ data - start. Fetching VJ from {}", firstOrLastVehicleJourneyFile);
-        long t1 = System.currentTimeMillis();
         File fileToRead = new File(firstOrLastVehicleJourneyFile);
         Iterable<CSVRecord> records = CSVUtils.getRecords(fileToRead);
         servicePositionMap.clear();
@@ -100,14 +103,11 @@ public class VehicleJourneyService {
     }
 
     /**
-     * Return the service position of the vehicle journey
-     * - firstServiceOfDay : first vehicle journey of the day, for a specific line
-     * - lastServiceOfDay : last service journey of the day, for a specific line
-     * -
-     *
-     * @param date
-     * @param vehicleJourneyId
-     * @return
+     * @param date date to retrieve server position from
+     * @param vehicleJourneyId id of a vehicle journey
+     * @return the service position of the vehicle journey:
+     *         firstServiceOfDay: first vehicle journey of the day, for a specific line
+     *         lastServiceOfDay: last service journey of the day, for a specific line
      */
     public FirstOrLastJourneyEnumeration getServicePosition(LocalDate date, String vehicleJourneyId) {
         if (!servicePositionMap.containsKey(date) || !servicePositionMap.get(date).containsKey(vehicleJourneyId)) {
