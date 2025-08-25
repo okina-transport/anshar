@@ -42,6 +42,7 @@ import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import no.rutebanken.anshar.util.GeneralMessageHelper;
 import no.rutebanken.anshar.util.IDUtils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.entur.siri21.util.SiriXml;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +53,6 @@ import uk.org.siri.siri21.*;
 import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -281,10 +281,10 @@ public class SiriHandler {
         Siri results;
         if (incoming.getSubscriptionRequest() != null) {
             logger.info("Handling subscriptionrequest with ID-policy {}.", outboundIdMappingPolicy);
-            if (!incoming.getSubscriptionRequest().getStopMonitoringSubscriptionRequests().isEmpty()) {
-                String monitoringRef = incoming.getSubscriptionRequest().getStopMonitoringSubscriptionRequests().get(0).getStopMonitoringRequest().getMonitoringRef().getValue();
+            incoming = serverSubscriptionManager.handleMultipleSubscriptionsRequest(incoming, incomingSiriParameters);
+            if (CollectionUtils.isEmpty(incoming.getSubscriptionRequest().getStopMonitoringSubscriptionRequests())) {
+                String monitoringRef = incoming.getSubscriptionRequest().getStopMonitoringSubscriptionRequests().getFirst().getStopMonitoringRequest().getMonitoringRef().getValue();
                 boolean knownStop = validateStopReferences(monitoringRef, datasetId);
-                incoming = serverSubscriptionManager.handleMultipleSubscriptionsRequest(incoming, incomingSiriParameters);
                 if (!knownStop) {
                     incoming = utils.createInvalidDataReferencesSubscriptionResponse(monitoringRef, incoming);
                 }
