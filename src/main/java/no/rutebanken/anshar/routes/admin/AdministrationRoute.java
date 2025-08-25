@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.routes.admin;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.net.HttpHeaders;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.consistency.ConsistencyForAllDatasetsProcessor;
@@ -76,6 +77,7 @@ public class AdministrationRoute extends RestRouteBuilder {
     private static final String OUTBOUND_STATS_ROUTE = "direct:outbound.stats";
     private static final String OUTBOUND_DATA_ROUTE = "direct:outbound.data";
     private static final String OUTBOUND_UNSUBSCRIBE_BY_SIRI_DATA_TYPE_ROUTE = "direct:outbound.siri.unsubscribe";
+    private static final String OUTBOUND_GET_REQUESTOR_REF_LIST_ROUTE_BY_TYPE = "direct:outbound.siri.requestor.list.by.type";
     private static final String OUTBOUND_UNSUBSCRIBE_BY_SIRI_DATA_TYPE_AND_REQUESTOR_ROUTE = "direct:outbound.siri.unsubscribe.by.requestor";
     private static final String OPERATION_ROUTE = "direct:operation";
     private static final String CLUSTERSTATS_ROUTE = "direct:clusterstats";
@@ -146,6 +148,7 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .get("/dailyStatuses").produces(APPLICATION_JSON).to("direct:incoming.data.daily.statuses")
                 .get("/outbound/stats").produces(APPLICATION_JSON).to(OUTBOUND_STATS_ROUTE)
                 .get("/outbound").produces(APPLICATION_JSON).to(OUTBOUND_DATA_ROUTE)
+                .get("/outbound/{siriDataType}").produces(APPLICATION_JSON).to(OUTBOUND_GET_REQUESTOR_REF_LIST_ROUTE_BY_TYPE)
                 .delete("/outbound/{siriDataType}").produces(APPLICATION_JSON).to(OUTBOUND_UNSUBSCRIBE_BY_SIRI_DATA_TYPE_ROUTE)
                 .delete("/outbound/{siriDataType}/{requestorRef}").produces(APPLICATION_JSON).to(OUTBOUND_UNSUBSCRIBE_BY_SIRI_DATA_TYPE_AND_REQUESTOR_ROUTE)
                 .get("/clusterstats").produces(APPLICATION_JSON).to(CLUSTERSTATS_ROUTE)
@@ -359,6 +362,30 @@ public class AdministrationRoute extends RestRouteBuilder {
                     try {
                         SiriDataType siriDataType = SiriDataType.valueOf(siriDataTypeInput);
                         serverSubscriptionManager.terminateAllSubscriptionsByType(siriDataType, false);
+                    } catch (IllegalArgumentException e) {
+                        p.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 400);
+                    }
+                })
+        ;
+
+        from(OUTBOUND_GET_REQUESTOR_REF_LIST_ROUTE_BY_TYPE)
+                .process(p -> {
+                    try {
+                        String siriDataTypeInput = p.getIn().getHeader("siriDataType", String.class);
+                        SiriDataType siriDataType = SiriDataType.valueOf(siriDataTypeInput.toUpperCase());
+
+                        List<String> requestorRefs = serverSubscriptionManager.getSubscriptionRequestorRefs(siriDataType);
+
+                        JSONArray requestorRefsArray = new JSONArray();
+                        requestorRefsArray.addAll(requestorRefs);
+
+                        if (APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE, String.class))) {
+                            p.getMessage().setBody(requestorRefs);
+                        } else {
+                            ObjectMapper mapper = new ObjectMapper();
+                            String json = mapper.writeValueAsString(requestorRefs);
+                            p.getMessage().setBody(json);
+                        }
                     } catch (IllegalArgumentException e) {
                         p.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 400);
                     }

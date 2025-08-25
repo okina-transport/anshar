@@ -61,6 +61,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.time.temporal.ChronoUnit.MILLIS;
 import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASET_ID_HEADER_NAME;
@@ -198,6 +199,28 @@ public class ServerSubscriptionManager {
         }
 
         return stats;
+    }
+
+    /**
+     * Récupère la liste des 'requestorRef' uniques, potentiellement filtrée par SiriDataType.
+     *
+     * @param siriDataType Le type de données SIRI pour filtrer les abonnements.
+     * Si la valeur est null, aucun filtre n'est appliqué.
+     * @return Une liste de string contenant les chaînes de caractères des requestorRef uniques.
+     */
+    public List<String> getSubscriptionRequestorRefs(SiriDataType siriDataType) {
+        Stream<OutboundSubscriptionSetup> subscriptionStream = subscriptions.values().stream();
+
+        if (siriDataType != null) {
+            subscriptionStream = subscriptionStream.filter(
+                    subscription -> siriDataType.equals(subscription.getSubscriptionType())
+            );
+        }
+
+        return subscriptionStream
+                .map(OutboundSubscriptionSetup::getRequestorRef)
+                .distinct()
+                .collect(Collectors.toList());
     }
 
     private JSONObject mapSubscriptionToJsonObject(String key, OutboundSubscriptionSetup subscription, DateTimeFormatter formatter) {
