@@ -1922,10 +1922,14 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         Siri response = handler.handleIncomingSiri(parameters);
         assertNotNull(response);
-        assertNotNull(response.getSubscriptionResponse());
-        assertFalse(response.getSubscriptionResponse().getResponseStatuses().get(0).isStatus());
-        assertNotNull(response.getSubscriptionResponse().getResponseStatuses().get(0).getErrorCondition().getInvalidDataReferencesError());
-        assertEquals("MOBIITI:Quay:a", response.getSubscriptionResponse().getResponseStatuses().get(0).getErrorCondition().getDescription().getValue());
+        assertNotNull(response.getServiceDelivery());
+        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
+        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty());
+        assertEquals(1, response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().size());
+        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
+        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
+        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
+        assertEquals("MOBIITI:Quay:a", response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
     }
 
     /**
@@ -1967,12 +1971,15 @@ public class SiriHandlerTest extends SpringBootBaseTest {
 
         Siri response = handler.handleIncomingSiri(createDefaultParameters(xml));
         assertNotNull(response);
-        assertNotNull(response.getSubscriptionResponse());
-        assertFalse(response.getSubscriptionResponse().getResponseStatuses().get(0).isStatus());
-        assertNotNull(response.getSubscriptionResponse().getResponseStatuses().get(0).getErrorCondition().getInvalidDataReferencesError());
-        assertEquals("MOBIITI:Quay:a", response.getSubscriptionResponse().getResponseStatuses().get(0).getErrorCondition().getDescription().getValue());
+        assertNotNull(response.getServiceDelivery());
+        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
+        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty());
+        assertEquals(2, response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().size());
+        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
+        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef());
+        assertNotNull(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
+        assertEquals("MOBIITI:Quay:a", response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue());
     }
-
 
     @Test
     public void SM_AltID_DatasetId() throws JAXBException {

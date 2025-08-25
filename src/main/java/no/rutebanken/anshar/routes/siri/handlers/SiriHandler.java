@@ -461,11 +461,7 @@ public class SiriHandler {
             return false;
         }
 
-        if (!stopPlaceUpdaterService.isKnownId(stopRef)) {
-            return false;
-        }
-
-        if (datasetId != null && stopPlaceUpdaterService.getReverse(stopRef, datasetId).isEmpty()) {
+        if (!stopPlaceUpdaterService.isKnownId(stopRef) && stopPlaceUpdaterService.getReverse(stopRef, datasetId).isEmpty()) {
             return false;
         }
 
