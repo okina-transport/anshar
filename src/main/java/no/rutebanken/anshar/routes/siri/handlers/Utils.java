@@ -6,6 +6,7 @@ import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.Strings;
 import org.json.simple.JSONObject;
 import org.slf4j.Logger;
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.*;
 
+import javax.annotation.Nullable;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
@@ -340,13 +342,15 @@ public class Utils {
 
     }
 
-    public Siri createInvalidDataReferencesSubscriptionResponse(String monitoringRef, Siri siri) {
-        SubscriptionResponseStructure response = new SubscriptionResponseStructure();
-        ResponseStatus status = new ResponseStatus();
+    public Siri createInvalidDataReferencesSubscriptionResponse(List<String> unKnownStopMonitoring, Siri siri) {
+        Siri result = (siri != null) ? siri : new Siri();
+        SubscriptionResponseStructure response;
+        ResponseStatus status;
 
-        if (siri.getSubscriptionResponse() != null) {
-            response = siri.getSubscriptionResponse();
+        if (result.getSubscriptionResponse() != null) {
+            response = result.getSubscriptionResponse();
         } else {
+            response = new SubscriptionResponseStructure();
             response.setResponseTimestamp(ZonedDateTime.now());
 
             MessageRefStructure ref = new MessageRefStructure();
@@ -354,9 +358,11 @@ public class Utils {
             response.setRequestMessageRef(ref);
         }
 
-        if (siri.getSubscriptionResponse() != null && siri.getSubscriptionResponse().getResponseStatuses() != null) {
-            status = siri.getSubscriptionResponse().getResponseStatuses().getFirst();
+        if (response.getResponseStatuses() != null && !CollectionUtils.isEmpty(response.getResponseStatuses())) {
+            status = response.getResponseStatuses().getFirst();
+            status.setStatus(false);
         } else {
+            status = new ResponseStatus();
             status.setResponseTimestamp(ZonedDateTime.now());
             status.setStatus(false);
             status.setRequestMessageRef(response.getRequestMessageRef());
@@ -366,8 +372,9 @@ public class Utils {
         InvalidDataReferencesErrorStructure invalidDataStruct = new InvalidDataReferencesErrorStructure();
         invalidDataStruct.setErrorText("InvalidDataReferencesError");
         errorCondition.setInvalidDataReferencesError(invalidDataStruct);
+
         ErrorDescriptionStructure errorDesc = new ErrorDescriptionStructure();
-        errorDesc.setValue(String.join(",", monitoringRef));
+        errorDesc.setValue(String.join(", ", unKnownStopMonitoring));
         errorCondition.setDescription(errorDesc);
 
         status.setErrorCondition(errorCondition);
@@ -375,8 +382,8 @@ public class Utils {
         response.getResponseStatuses().clear();
         response.getResponseStatuses().add(status);
 
-        siri.setSubscriptionResponse(response);
-        return siri;
+        result.setSubscriptionResponse(response);
+        return result;
     }
 
     /**

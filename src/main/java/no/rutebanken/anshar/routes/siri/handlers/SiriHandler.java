@@ -35,10 +35,7 @@ import no.rutebanken.anshar.routes.siri.processor.GmSIVSicAQuayPostProcessor;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.routes.validation.SiriXmlValidator;
-import no.rutebanken.anshar.subscription.SiriDataType;
-import no.rutebanken.anshar.subscription.SubscriptionConfig;
-import no.rutebanken.anshar.subscription.SubscriptionManager;
-import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import no.rutebanken.anshar.subscription.*;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import no.rutebanken.anshar.util.GeneralMessageHelper;
 import no.rutebanken.anshar.util.IDUtils;
@@ -47,7 +44,9 @@ import org.entur.siri21.util.SiriXml;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import uk.org.siri.siri21.*;
 
 import javax.xml.stream.XMLStreamException;
@@ -61,6 +60,9 @@ import java.util.stream.Collectors;
 public class SiriHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(SiriHandler.class);
+
+    @Value("${anshar.super.identifier}")
+    private String superIdentifier;
 
     @Autowired
     private ServerSubscriptionManager serverSubscriptionManager;
@@ -281,12 +283,20 @@ public class SiriHandler {
         Siri results;
         if (incoming.getSubscriptionRequest() != null) {
             logger.info("Handling subscriptionrequest with ID-policy {}.", outboundIdMappingPolicy);
+
             results = serverSubscriptionManager.handleMultipleSubscriptionsRequest(incoming, incomingSiriParameters);
+
             if (CollectionUtils.isNotEmpty(incoming.getSubscriptionRequest().getStopMonitoringSubscriptionRequests())) {
-                String monitoringRef = incoming.getSubscriptionRequest().getStopMonitoringSubscriptionRequests().getFirst().getStopMonitoringRequest().getMonitoringRef().getValue();
-                boolean knownStop = validateStopReferences(monitoringRef, datasetId);
-                if (!knownStop) {
-                    results = utils.createInvalidDataReferencesSubscriptionResponse(monitoringRef, results);
+                List<String> unKnownStopMonitoring = new ArrayList<>();
+                for (StopMonitoringSubscriptionStructure stopMonitoringSubcriptionRequest : incoming.getSubscriptionRequest().getStopMonitoringSubscriptionRequests()) {
+                    String monitoringRef = stopMonitoringSubcriptionRequest.getStopMonitoringRequest().getMonitoringRef().getValue();
+
+                    if (!validateStopReferences(monitoringRef, datasetId)) {
+                        unKnownStopMonitoring.add("MonitoringRef: " + monitoringRef + ", datasetId: " + datasetId);
+                    }
+                }
+                if (CollectionUtils.isNotEmpty(unKnownStopMonitoring)) {
+                    results = utils.createInvalidDataReferencesSubscriptionResponse(unKnownStopMonitoring, results);
                 }
             }
             return results;
@@ -350,17 +360,7 @@ public class SiriHandler {
                 valueAdapters = estimatedTimetableOutbound.getValueAdapters(datasetId, outboundIdMappingPolicy);
                 serviceResponse = estimatedTimetableOutbound.getEstimatedTimetableServiceDelivery(serviceRequest, datasetId, excludedDatasetIdList, maxSize, clientTrackingName, requestorRef);
             } else if (hasValues(serviceRequest.getStopMonitoringRequests())) {
-                MonitoringRefStructure monitoringRef = serviceRequest.getStopMonitoringRequests().get(0).getMonitoringRef();
-                if (monitoringRef != null) {
-                    String monitoringRefValue = monitoringRef.getValue();
-                    boolean knownStop = validateStopReferences(monitoringRefValue, datasetId);
-                    incoming = stopMonitoringOutbound.getStopMonitoringServiceDelivery(serviceRequest, outboundIdMappingPolicy, datasetId, requestorRef, clientTrackingName, maxSize);
-                    if (!knownStop) {
-                        incoming = utils.createInvalidDataReferencesSubscriptionResponse(monitoringRefValue, incoming);
-                    }
-                }
-                serviceResponse = incoming;
-
+                serviceResponse = stopMonitoringOutbound.getStopMonitoringServiceDelivery(serviceRequest, outboundIdMappingPolicy, datasetId, requestorRef, clientTrackingName, maxSize);
             } else if (hasValues(serviceRequest.getGeneralMessageRequests())) {
                 Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);
 
@@ -456,16 +456,56 @@ public class SiriHandler {
         return null;
     }
 
+    /**
+     * Valide les références d'arrêt (stopRef) en fonction d'un nouvel algorithme.
+     *
+     * @param stopRef   L'identifiant de l'arrêt à valider.
+     * @param datasetId Le ou les dataset(s) provenant du header, sous forme de chaîne de caractères séparés par des virgules.
+     * @return true si la référence est valide, false sinon.
+     */
     private boolean validateStopReferences(String stopRef, String datasetId) {
         if (stopRef == null) {
             return false;
         }
 
-        if (!stopPlaceUpdaterService.isKnownId(stopRef) && stopPlaceUpdaterService.getReverse(stopRef, datasetId).isEmpty()) {
-            return false;
-        }
+        if (stopRef.startsWith(superIdentifier)) {
+            // cas 1: le datasetId n'est pas précisé dans le header.
+            if (!StringUtils.hasText(datasetId)) {
+                return !stopPlaceUpdaterService.getReverse(stopRef, null).isEmpty();
+            }
 
-        return true;
+            // cas 2: le datasetId est précisé dans le header.
+            List<String> partialHeaderDatasets = Arrays.asList(datasetId.split(","));
+            Set<String> datasetsToActuallyCheck = new HashSet<>();
+
+            for (String partialId : partialHeaderDatasets) {
+                String trimmedPartialId = partialId.trim();
+                if (stopPlaceUpdaterService.isDatasetKnown(trimmedPartialId)) {
+                    datasetsToActuallyCheck.add(trimmedPartialId);
+                }
+            }
+
+            if (datasetsToActuallyCheck.isEmpty()) {
+                return false;
+            }
+
+            return datasetsToActuallyCheck.stream()
+                    .anyMatch(knownDataset -> !stopPlaceUpdaterService.getReverse(stopRef, knownDataset).isEmpty());
+
+        } else {
+            // --- ID PRODUCTEUR ---
+            String[] parts = stopRef.split(":", 2);
+            if (parts.length < 2) {
+                return false;
+            }
+            String producerDatasetId = parts[0];
+
+            if (!stopPlaceUpdaterService.isDatasetKnown(producerDatasetId)) {
+                return true;
+            }
+
+            return stopPlaceUpdaterService.isKnownId(stopRef);
+        }
     }
 
     /**

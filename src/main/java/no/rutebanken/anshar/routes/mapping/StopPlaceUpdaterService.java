@@ -45,6 +45,9 @@ public class StopPlaceUpdaterService {
 
     private transient final Set<String> validNsrIds = new HashSet<>();
 
+    private transient final Set<String> knownDatasetIds = ConcurrentHashMap.newKeySet();
+
+
     @Autowired
     private StopPlaceRegisterMappingFetcher stopPlaceRegisterMappingFetcher;
 
@@ -123,6 +126,17 @@ public class StopPlaceUpdaterService {
     }
 
     /**
+     * @param datasetId L'identifiant du dataset à vérifier.
+     * @return true si le datasetId est présent dans les fichiers de mapping chargés.
+     */
+    public boolean isDatasetKnown(String datasetId) {
+        if (datasetId == null) {
+            return false;
+        }
+        return knownDatasetIds.contains(datasetId);
+    }
+
+    /**
      * @param id stop identifier
      * @return true if provided id is included in the latest dataset from NSR
      */
@@ -178,6 +192,16 @@ public class StopPlaceUpdaterService {
             updateStopPlaceMapping(quayMappingPath);
             updateStopPlaceMapping(stopPlaceMappingPath);
             updateStopPlacesAndQuays(stopPlaceQuayJsonPath);
+
+            knownDatasetIds.clear();
+            // Pour chaque ID producteur (ex: "DATASET1:StopPlace:123"),
+            // on extrait la première partie ("DATASET1") et on l'ajoute à notre ensemble.
+            for (String producerId : validNsrIds) {
+                if (producerId != null && producerId.contains(":")) {
+                    knownDatasetIds.add(producerId.split(":")[0]);
+                }
+            }
+            logger.info("Updated known datasets. Found {} unique dataset IDs.", knownDatasetIds.size());
         }
     }
 
