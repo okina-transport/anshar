@@ -281,15 +281,15 @@ public class SiriHandler {
         Siri results;
         if (incoming.getSubscriptionRequest() != null) {
             logger.info("Handling subscriptionrequest with ID-policy {}.", outboundIdMappingPolicy);
-            incoming = serverSubscriptionManager.handleMultipleSubscriptionsRequest(incoming, incomingSiriParameters);
-            if (CollectionUtils.isEmpty(incoming.getSubscriptionRequest().getStopMonitoringSubscriptionRequests())) {
+            results = serverSubscriptionManager.handleMultipleSubscriptionsRequest(incoming, incomingSiriParameters);
+            if (CollectionUtils.isNotEmpty(incoming.getSubscriptionRequest().getStopMonitoringSubscriptionRequests())) {
                 String monitoringRef = incoming.getSubscriptionRequest().getStopMonitoringSubscriptionRequests().getFirst().getStopMonitoringRequest().getMonitoringRef().getValue();
                 boolean knownStop = validateStopReferences(monitoringRef, datasetId);
                 if (!knownStop) {
-                    incoming = utils.createInvalidDataReferencesSubscriptionResponse(monitoringRef, incoming);
+                    results = utils.createInvalidDataReferencesSubscriptionResponse(monitoringRef, results);
                 }
             }
-            return incoming;
+            return results;
         } else if (incoming.getTerminateSubscriptionRequest() != null) {
             logger.info("Handling terminateSubscriptionrequest...");
             TerminateSubscriptionRequestStructure terminateSubscriptionRequest = incoming.getTerminateSubscriptionRequest();
