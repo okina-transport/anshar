@@ -273,7 +273,7 @@ public class SiriHelper {
 
 
         String requestedId = stopMonitoringSubscription.getStopMonitoringRequest().getMonitoringRef().getValue();
-        List<String> originalRequestedIds = Collections.singletonList(requestedId);
+        Collection<String> originalRequestedIds = Collections.singletonList(requestedId);
         if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)) {
             originalRequestedIds = stopPlaceUpdaterService.getReverseWithoutDatasetId(requestedId);
         } else if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy)) {
@@ -319,7 +319,7 @@ public class SiriHelper {
         String requestedId = stopMonitoringSubscription.getStopMonitoringRequest().getMonitoringRef().getValue();
         if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)) {
             // ids with format : MOBIITI:Quay:xxx . We need to get provider ids with format : PROV1:Quay:xxx to get the datasetId
-            List<String> providerIds = stopPlaceUpdaterService.getReverseWithoutDatasetId(requestedId);
+            Collection<String> providerIds = stopPlaceUpdaterService.getReverseWithoutDatasetId(requestedId);
             for (String providerId : providerIds) {
                 datasets.add(providerId.split(":")[0]);
             }

@@ -16,6 +16,8 @@
 package no.rutebanken.anshar.siri.handler;
 
 import com.hazelcast.map.IMap;
+import jakarta.xml.bind.JAXBException;
+import jakarta.xml.bind.UnmarshalException;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
@@ -42,9 +44,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.xml.sax.SAXException;
 import uk.org.siri.siri21.*;
-
-import jakarta.xml.bind.JAXBException;
-import jakarta.xml.bind.UnmarshalException;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.stream.XMLStreamException;
@@ -633,13 +632,13 @@ public class SiriHandlerTest extends SpringBootBaseTest {
         Set<String> stopQuays = new HashSet<>(stopPlaceMap.keySet());
         stopPlaceService.addStopQuays(stopQuays);
 
-        Map<String, List<String>> stopPlaceReverseMap = new HashMap<>();
-        List<String> originalIds = new ArrayList<>();
+        Map<String, Set<String>> stopPlaceReverseMap = new HashMap<>();
+        Set<String> originalIds = new HashSet<>();
         originalIds.add("TEST1:Quay:121");
         originalIds.add("TEST2:Quay:122");
         stopPlaceReverseMap.put("MOBIITI:Quay:a", originalIds);
 
-        List<String> originalIds2 = new ArrayList<>();
+        Set<String> originalIds2 = new HashSet<>();
         originalIds2.add("TEST1:StopPoint:SP:123:LOC");
         originalIds2.add("TEST2:StopPoint:SP:124:LOC");
         stopPlaceReverseMap.put("MOBIITI:Quay:b", originalIds2);

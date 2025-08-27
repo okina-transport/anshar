@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.routes.mapping;
 
+import lombok.Getter;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +40,8 @@ public class StopPlaceUpdaterService {
 
     private transient final ConcurrentMap<String, Pair<String, String>> stopPlaceMappings = new ConcurrentHashMap<>();
 
-    private transient final ConcurrentMap<String, List<String>> reverseStopPlaceMappings = new ConcurrentHashMap<>();
+    @Getter
+    private transient final ConcurrentMap<String, Set<String>> reverseStopPlaceMappings = new ConcurrentHashMap<>();
 
     private transient final Set<String> validNsrIds = new HashSet<>();
 
@@ -86,7 +88,7 @@ public class StopPlaceUpdaterService {
             }
         }
 
-        List<String> stopPlaces = reverseStopPlaceMappings.get(id);
+        Set<String> stopPlaces = reverseStopPlaceMappings.get(id);
 
         if (CollectionUtils.isEmpty(stopPlaces)) {
             return List.of();
@@ -100,7 +102,7 @@ public class StopPlaceUpdaterService {
 
     }
 
-    public List<String> getReverseWithoutDatasetId(String id) {
+    public Collection<String> getReverseWithoutDatasetId(String id) {
         if (reverseStopPlaceMappings.isEmpty()) {
             // Avoid multiple calls at the same time.
             // Could have used a timed lock here.
@@ -138,7 +140,7 @@ public class StopPlaceUpdaterService {
             return false;
         }
 
-        List<String> mappings = reverseStopPlaceMappings.get(id);
+        Set<String> mappings = reverseStopPlaceMappings.get(id);
 
         if (datasetId == null || CollectionUtils.isEmpty(mappings)) {
             return true;
@@ -170,7 +172,7 @@ public class StopPlaceUpdaterService {
         executor.shutdown();
     }
 
-    private void updateIdMapping() {
+    public void updateIdMapping() {
         // re-entrant
         synchronized (LOCK) {
             updateStopPlaceMapping(quayMappingPath);
@@ -189,11 +191,11 @@ public class StopPlaceUpdaterService {
 
         for (Map.Entry<String, Pair<String, String>> mappingEntry : foundMappings.entrySet()) {
 
-            List<String> providerIds;
+            Set<String> providerIds;
             if (reverseStopPlaceMappings.containsKey(mappingEntry.getValue().getLeft())) {
                 providerIds = reverseStopPlaceMappings.get(mappingEntry.getValue().getLeft());
             } else {
-                providerIds = new ArrayList<>();
+                providerIds = new HashSet<>();
                 reverseStopPlaceMappings.put(mappingEntry.getValue().getLeft(), providerIds);
             }
 
@@ -234,7 +236,7 @@ public class StopPlaceUpdaterService {
     }
 
     //Called from tests
-    public void addStopPlaceReverseMappings(Map<String, List<String>> stopPlaceReverseMap) {
+    public void addStopPlaceReverseMappings(Map<String, Set<String>> stopPlaceReverseMap) {
         this.reverseStopPlaceMappings.putAll(stopPlaceReverseMap);
     }
 

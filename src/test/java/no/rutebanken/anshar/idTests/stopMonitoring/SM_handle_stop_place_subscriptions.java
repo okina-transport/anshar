@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.idTests.stopMonitoring;
 
+import jakarta.xml.bind.UnmarshalException;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.config.ObjectType;
@@ -26,8 +27,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri21.MonitoredStopVisit;
 import uk.org.siri.siri21.MonitoringRefStructure;
 import uk.org.siri.siri21.Siri;
-
-import jakarta.xml.bind.UnmarshalException;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -305,10 +304,10 @@ public class SM_handle_stop_place_subscriptions extends SpringBootBaseTest {
 
         //Manually adding custom mapping to Spring context
         stopPlaceService.addStopPlaceMappings(stopPlaceMap);
-        Map<String, List<String>> stopPlaceReverseMap = new HashMap<>();
+        Map<String, Set<String>> stopPlaceReverseMap = new HashMap<>();
 
         for (Map.Entry<String, Pair<String, String>> mappingEntry : stopPlaceMap.entrySet()) {
-            List<String> providerIds = new ArrayList<>();
+            Set<String> providerIds = new HashSet<>();
             providerIds.add(mappingEntry.getKey());
             stopPlaceReverseMap.put(mappingEntry.getValue().getLeft(), providerIds);
         }

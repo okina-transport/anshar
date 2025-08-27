@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.idTests.stopMonitoring;
 
+import jakarta.xml.bind.JAXBException;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.config.ObjectType;
@@ -20,8 +21,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri21.*;
-
-import jakarta.xml.bind.JAXBException;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -328,10 +327,10 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
 
         //Manually adding custom mapping to Spring context
         stopPlaceService.addStopPlaceMappings(stopPlaceMap);
-        Map<String, List<String>> stopPlaceReverseMap = new HashMap<>();
+        Map<String, Set<String>> stopPlaceReverseMap = new HashMap<>();
 
         for (Map.Entry<String, Pair<String, String>> mappingEntry : stopPlaceMap.entrySet()) {
-            List<String> providerIds = new ArrayList<>();
+            Set<String> providerIds = new HashSet<>();
             providerIds.add(mappingEntry.getKey());
             stopPlaceReverseMap.put(mappingEntry.getValue().getLeft(), providerIds);
         }
