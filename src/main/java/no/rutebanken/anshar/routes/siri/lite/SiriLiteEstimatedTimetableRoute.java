@@ -71,6 +71,7 @@ public class SiriLiteEstimatedTimetableRoute extends RestRouteBuilder {
                     List<String> excludedIdList = getParameterValuesAsList(p.getIn(), PARAM_EXCLUDED_DATASET_ID);
 
                     String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
+                    String messageId = p.getIn().getMessageId();
 
                     int maxSize = datasetId != null ? Integer.MAX_VALUE : configuration.getDefaultMaxSize();
                     if (maxSizeStr != null) {
@@ -93,7 +94,7 @@ public class SiriLiteEstimatedTimetableRoute extends RestRouteBuilder {
                     }
 
                     Set<String> datasets = SiriUtils.generateDatasetListFromHeader(datasetId);
-                    response = handleEstimatedTimetableMultipleDatasetRequest(requestorId, datasets, etClientName, excludedIdList, maxSize, previewIntervalMillis, requestedLines, originalId, altId);
+                    response = handleEstimatedTimetableMultipleDatasetRequest(requestorId, datasets, etClientName, excludedIdList, maxSize, previewIntervalMillis, requestedLines, originalId, altId, messageId);
 
                     metrics.countOutgoingData(response, SubscriptionSetup.SubscriptionMode.LITE);
 
@@ -113,10 +114,10 @@ public class SiriLiteEstimatedTimetableRoute extends RestRouteBuilder {
                 .choice()
                 .when(e -> isTrackingHeaderAcceptable(e))
                 .process(p -> {
-
-
+                    String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
+                    String messageId = p.getIn().getMessageId();
                     logger.info("Fetching monitored ET-data");
-                    Siri response = siriObjectFactory.createETServiceDelivery(estimatedTimetables.getAllMonitored());
+                    Siri response = siriObjectFactory.createETServiceDelivery(estimatedTimetables.getAllMonitored(), requestorId, messageId);
 
                     List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.ESTIMATED_TIMETABLE,
@@ -149,11 +150,10 @@ public class SiriLiteEstimatedTimetableRoute extends RestRouteBuilder {
                     String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
                     Integer maxSize = p.getIn().getHeader(PARAM_MAX_SIZE, Integer.class);
                     String clientTrackingName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
+                    String messageId = p.getIn().getMessageId();
 
                     logger.info("Fetching cached ET-data");
-                    Siri response = siriObjectFactory.createETServiceDelivery(estimatedTimetables.getAllCachedUpdates(requestorId,
-                            datasetId, clientTrackingName, maxSize
-                    ));
+                    Siri response = siriObjectFactory.createETServiceDelivery(estimatedTimetables.getAllCachedUpdates(requestorId, datasetId, clientTrackingName, maxSize), requestorId, messageId);
 
                     List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.ESTIMATED_TIMETABLE,
@@ -184,12 +184,13 @@ public class SiriLiteEstimatedTimetableRoute extends RestRouteBuilder {
                 .choice()
                 .when(e -> isTrackingHeaderAcceptable(e))
                 .process(p -> {
-
+                    String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
+                    String messageId = p.getIn().getMessageId();
                     logger.info("Fetching cached ET-data");
 
                     String clientTrackingName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
 
-                    Siri response = siriObjectFactory.createETServiceDelivery(estimatedTimetables.getAllCachedUpdates(null, null, clientTrackingName));
+                    Siri response = siriObjectFactory.createETServiceDelivery(estimatedTimetables.getAllCachedUpdates(null, null, clientTrackingName), requestorId, messageId);
 
                     List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.ESTIMATED_TIMETABLE,
@@ -221,22 +222,22 @@ public class SiriLiteEstimatedTimetableRoute extends RestRouteBuilder {
     }
 
 
-    private Siri handleEstimatedTimetableMultipleDatasetRequest(String requestorId, Set<String> datasets, String etClientName, List<String> excludedIdList, int maxSize, long previewIntervalMillis, Set<String> requestedLines, String originalId, String altId) {
+    private Siri handleEstimatedTimetableMultipleDatasetRequest(String requestorId, Set<String> datasets, String etClientName, List<String> excludedIdList, int maxSize, long previewIntervalMillis, Set<String> requestedLines, String originalId, String altId, String requestMessageRef) {
         if (datasets.isEmpty()) {
-            return handleEstimatedTimetableSingleDatasetRequest(requestorId, null, etClientName, excludedIdList, maxSize, previewIntervalMillis, requestedLines, originalId, altId);
+            return handleEstimatedTimetableSingleDatasetRequest(requestorId, null, etClientName, excludedIdList, maxSize, previewIntervalMillis, requestedLines, originalId, altId, requestMessageRef);
         }
 
         Siri globalResults = null;
         for (String dataset : datasets) {
-            Siri datasetResult = handleEstimatedTimetableSingleDatasetRequest(requestorId, dataset, etClientName, excludedIdList, maxSize, previewIntervalMillis, requestedLines, originalId, altId);
+            Siri datasetResult = handleEstimatedTimetableSingleDatasetRequest(requestorId, dataset, etClientName, excludedIdList, maxSize, previewIntervalMillis, requestedLines, originalId, altId, requestMessageRef);
             globalResults = SiriUtils.mergeSiris(globalResults, datasetResult);
         }
         return globalResults;
     }
 
-    private Siri handleEstimatedTimetableSingleDatasetRequest(String requestorId, String datasetId, String etClientName, List<String> excludedIdList, int maxSize, long previewIntervalMillis, Set<String> requestedLines, String originalId, String altId) {
+    private Siri handleEstimatedTimetableSingleDatasetRequest(String requestorId, String datasetId, String etClientName, List<String> excludedIdList, int maxSize, long previewIntervalMillis, Set<String> requestedLines, String originalId, String altId, String requestMessageRef) {
         Siri response;
-        response = estimatedTimetables.createServiceDelivery(requestorId, datasetId, etClientName, excludedIdList, maxSize, previewIntervalMillis, requestedLines);
+        response = estimatedTimetables.createServiceDelivery(requestorId, datasetId, etClientName, excludedIdList, maxSize, previewIntervalMillis, requestedLines, requestMessageRef);
         List<ValueAdapter> outboundAdapters = new ArrayList<>();
         if (datasetId != null) {
             Map<ObjectType, Optional<IdProcessingParameters>> idParams = subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);

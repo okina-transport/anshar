@@ -429,7 +429,7 @@ public class SiriHelper {
             List<List> sxList = splitList(situationElementList, maximumSizePerDelivery);
 
             for (List<PtSituationElement> list : sxList) {
-                siriList.add(siriObjectFactory.createSXServiceDelivery(list));
+                siriList.add(siriObjectFactory.createSXServiceDelivery(list, payload.getServiceDelivery().getProducerRef().getValue(), payload.getServiceDelivery().getRequestMessageRef().getValue()));
             }
 
         } else if (containsValues(payload.getServiceDelivery().getVehicleMonitoringDeliveries())) {
@@ -441,7 +441,7 @@ public class SiriHelper {
             List<List> vmList = splitList(vehicleActivities, maximumSizePerDelivery);
 
             for (List<VehicleActivityStructure> list : vmList) {
-                siriList.add(siriObjectFactory.createVMServiceDelivery(list));
+                siriList.add(siriObjectFactory.createVMServiceDelivery(list, payload.getServiceDelivery().getProducerRef().getValue(), payload.getServiceDelivery().getRequestMessageRef().getValue()));
             }
 
         } else if (containsValues(payload.getServiceDelivery().getEstimatedTimetableDeliveries())) {
@@ -454,7 +454,7 @@ public class SiriHelper {
             List<List> etList = splitList(timetables, maximumSizePerDelivery);
 
             for (List<EstimatedVehicleJourney> list : etList) {
-                siriList.add(siriObjectFactory.createETServiceDelivery(list));
+                siriList.add(siriObjectFactory.createETServiceDelivery(list, payload.getServiceDelivery().getProducerRef().getValue(), payload.getServiceDelivery().getRequestMessageRef().getValue()));
             }
 
         } else if (containsValues(payload.getServiceDelivery().getStopMonitoringDeliveries())) {
@@ -467,7 +467,7 @@ public class SiriHelper {
                 List<List> etList = splitList(monitoredStopVisits, maximumSizePerDelivery);
 
                 for (List<MonitoredStopVisit> list : etList) {
-                    siriList.add(siriObjectFactory.createSMServiceDelivery(list));
+                    siriList.add(siriObjectFactory.createSMServiceDelivery(list, payload.getServiceDelivery().getProducerRef().getValue(), payload.getServiceDelivery().getRequestMessageRef().getValue()));
                 }
             }
 
@@ -479,7 +479,7 @@ public class SiriHelper {
             if (!cancellations.isEmpty()) {
                 List<List> cancellationList = splitList(cancellations, maximumSizePerDelivery);
                 for (List<MonitoredStopVisit> list : cancellationList) {
-                    siriList.add(siriObjectFactory.createSMServiceDelivery(list));
+                    siriList.add(siriObjectFactory.createSMServiceDelivery(list, payload.getServiceDelivery().getProducerRef().getValue(), payload.getServiceDelivery().getRequestMessageRef().getValue()));
                 }
             }
 
@@ -492,7 +492,7 @@ public class SiriHelper {
             List<List> gmList = splitList(generalMsgList, maximumSizePerDelivery);
 
             for (List<GeneralMessage> list : gmList) {
-                siriList.add(siriObjectFactory.createGMServiceDelivery(list));
+                siriList.add(siriObjectFactory.createGMServiceDelivery(list, payload.getServiceDelivery().getProducerRef().getValue(), payload.getServiceDelivery().getRequestMessageRef().getValue()));
             }
 
         } else if (containsValues(payload.getServiceDelivery().getFacilityMonitoringDeliveries())) {
@@ -504,7 +504,7 @@ public class SiriHelper {
             List<List> fmList = splitList(facilityConditionsList, maximumSizePerDelivery);
 
             for (List<FacilityConditionStructure> list : fmList) {
-                siriList.add(siriObjectFactory.createFMServiceDelivery(list));
+                siriList.add(siriObjectFactory.createFMServiceDelivery(list, payload.getServiceDelivery().getProducerRef().getValue(), payload.getServiceDelivery().getProducerRef().getValue()));
             }
 
         }
@@ -940,18 +940,18 @@ public class SiriHelper {
 
 
     public Siri getAllVM() {
-        return siriObjectFactory.createVMServiceDelivery(vehicleActivities.getAll());
+        return siriObjectFactory.createVMServiceDelivery(vehicleActivities.getAll(), null, null);
     }
 
     public Siri getAllSX() {
-        return siriObjectFactory.createSXServiceDelivery(situations.getAll());
+        return siriObjectFactory.createSXServiceDelivery(situations.getAll(), null, null);
     }
 
     public Siri getAllET() {
-        return siriObjectFactory.createETServiceDelivery(estimatedTimetables.getAll());
+        return siriObjectFactory.createETServiceDelivery(estimatedTimetables.getAll(), null, null);
     }
 
     public Siri getAllSM() {
-        return siriObjectFactory.createSMServiceDelivery(monitoredStopVisits.getAll());
+        return siriObjectFactory.createSMServiceDelivery(monitoredStopVisits.getAll(), null, null);
     }
 }

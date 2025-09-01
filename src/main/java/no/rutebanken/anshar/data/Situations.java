@@ -166,7 +166,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
         cache.clear();
     }
 
-    public Siri createServiceDelivery(String requestorId, String datasetId, String clientName, int maxSize) {
+    public Siri createServiceDelivery(String requestorId, String datasetId, String clientName, int maxSize, String messageId) {
 
 
         boolean isAdHocRequest = false;
@@ -196,26 +196,15 @@ public class Situations extends SiriRepository<PtSituationElement> {
         logger.info("Fetching data: {} ms", (System.currentTimeMillis() - t1));
         t1 = System.currentTimeMillis();
 
-        Siri siri = siriObjectFactory.createSXServiceDelivery(values);
+        Siri siri = siriObjectFactory.createSXServiceDelivery(values, requestorId, messageId);
         siri.getServiceDelivery().setMoreData(isMoreData);
         logger.info("Creating SIRI-delivery: {} ms", (System.currentTimeMillis() - t1));
 
-        if (isAdHocRequest) {
-            logger.info("Returning {}, no requestorRef is set", sizeLimitedIds.size());
-        } else {
-
-
-            MessageRefStructure msgRef = new MessageRefStructure();
-            msgRef.setValue(requestorId);
-            siri.getServiceDelivery().setRequestMessageRef(msgRef);
-
-
+        if (!isAdHocRequest) {
             if (requestedIds.size() > situationElements.size()) {
                 //Remove outdated ids
                 requestedIds.removeIf(id -> !situationElements.containsKey(id));
             }
-
-
             logger.info("Returning {}, {} left for requestorRef {}", sizeLimitedIds.size(), requestedIds.size(), requestorId);
         }
 

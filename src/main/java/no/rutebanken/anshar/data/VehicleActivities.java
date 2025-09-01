@@ -213,22 +213,26 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
     }
 
 
-    public Siri createServiceDelivery(final String lineRef) {
+    public Siri createServiceDelivery(final String lineRef, String messageId) {
         SortedSet<VehicleActivityStructure> vehicleActivityStructures = new TreeSet<>(Comparator.comparing(AbstractItemStructure::getRecordedAtTime));
 
         final Set<SiriObjectStorageKey> lineRefKeys = monitoredVehicles.keySet(createLineRefPredicate(lineRef));
 
         vehicleActivityStructures.addAll(monitoredVehicles.getAll(lineRefKeys).values());
 
-        return siriObjectFactory.createVMServiceDelivery(vehicleActivityStructures);
+        return siriObjectFactory.createVMServiceDelivery(vehicleActivityStructures, null, messageId);
     }
 
 
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientName, List<String> excludedDatasetIds, int maxSize) {
-        return createServiceDelivery(requestorId, datasetId, clientName, excludedDatasetIds, maxSize, null, null);
+        return createServiceDelivery(requestorId, datasetId, clientName, excludedDatasetIds, maxSize, null, null, null);
     }
 
-    public Siri createServiceDelivery(String requestorId, String datasetId, String clientName, List<String> excludedDatasetIds, int maxSize, Set<String> linerefSet, Set<String> vehicleRefSet) {
+    public Siri createServiceDelivery(String requestorId, String datasetId, String clientName, List<String> excludedDatasetIds, int maxSize, String messageId) {
+        return createServiceDelivery(requestorId, datasetId, clientName, excludedDatasetIds, maxSize, null, null, messageId);
+    }
+
+    public Siri createServiceDelivery(String requestorId, String datasetId, String clientName, List<String> excludedDatasetIds, int maxSize, Set<String> linerefSet, Set<String> vehicleRefSet, String messageId) {
 
 
         int trackingPeriodMinutes = configuration.getTrackingPeriodMinutes();
@@ -253,23 +257,13 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
 
         Collection<VehicleActivityStructure> values = monitoredVehicles.getAll(sizeLimitedIds).values();
 
-        Siri siri = siriObjectFactory.createVMServiceDelivery(values);
+        Siri siri = siriObjectFactory.createVMServiceDelivery(values, requestorId, messageId);
 
         siri.getServiceDelivery().setMoreData(isMoreData);
 
-        if (isAdHocRequest) {
-            logger.info("Returning {}, no requestorRef is set", sizeLimitedIds.size());
-        } else {
-
-
+        if (!isAdHocRequest) {
             //Remove outdated ids
             requestedIds.removeIf(id -> !monitoredVehicles.containsKey(id));
-
-
-            MessageRefStructure msgRef = new MessageRefStructure();
-            msgRef.setValue(requestorId);
-            siri.getServiceDelivery().setRequestMessageRef(msgRef);
-
             logger.debug("Results found before filtering {}, {} left for requestorRef {}", sizeLimitedIds.size(), requestedIds.size(), requestorId);
         }
 

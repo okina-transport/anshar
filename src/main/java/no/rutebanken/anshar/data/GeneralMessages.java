@@ -246,6 +246,10 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
     }
 
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientName, int maxSize, List<InfoChannelRefStructure> requestedChannels) {
+        return createServiceDelivery(requestorId, datasetId, clientName, maxSize, requestedChannels, null);
+    }
+
+    public Siri createServiceDelivery(String requestorId, String datasetId, String clientName, int maxSize, List<InfoChannelRefStructure> requestedChannels, String messageId) {
 
 
         int trackingPeriodMinutes = configuration.getTrackingPeriodMinutes();
@@ -277,28 +281,17 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
         logger.info("Fetching data: {} ms", (System.currentTimeMillis() - t1));
         t1 = System.currentTimeMillis();
 
-        Siri siri = siriObjectFactory.createGMServiceDelivery(values);
+        Siri siri = siriObjectFactory.createGMServiceDelivery(values, requestorId, messageId);
         siri.getServiceDelivery().setMoreData(isMoreData);
         logger.info("Creating SIRI-delivery: {} ms", (System.currentTimeMillis() - t1));
 
-        if (isAdHocRequest) {
-            logger.info("Returning {}, no requestorRef is set", sizeLimitedIds.size());
-        } else {
-
-
-            MessageRefStructure msgRef = new MessageRefStructure();
-            msgRef.setValue(requestorId);
-            siri.getServiceDelivery().setRequestMessageRef(msgRef);
-
-
+        if (!isAdHocRequest) {
             if (requestedIds.size() > generalMessages.size()) {
                 //Remove outdated ids
                 requestedIds.removeIf(id -> !generalMessages.containsKey(id));
             }
-
             //Update change-tracker
             updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, requestedIds, trackingPeriodMinutes, TimeUnit.MINUTES);
-
             logger.info("Returning {}, {} left for requestorRef {}", sizeLimitedIds.size(), requestedIds.size(), requestorId);
         }
 

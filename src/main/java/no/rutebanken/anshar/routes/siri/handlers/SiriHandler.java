@@ -219,7 +219,7 @@ public class SiriHandler {
                         clientTrackingName
                 );
                 logger.info("Returning {} elements from cache", elements.size());
-                serviceResponse = siriObjectFactory.createSXServiceDelivery(elements);
+                serviceResponse = siriObjectFactory.createSXServiceDelivery(elements, requestorRef, serviceRequest.getMessageIdentifier().getValue());
 
             } else if (hasValues(serviceRequest.getVehicleMonitoringRequests())) {
                 dataType = SiriDataType.VEHICLE_MONITORING;
@@ -230,7 +230,7 @@ public class SiriHandler {
                         clientTrackingName
                 );
                 logger.info("Returning {} elements from cache", elements.size());
-                serviceResponse = siriObjectFactory.createVMServiceDelivery(elements);
+                serviceResponse = siriObjectFactory.createVMServiceDelivery(elements, requestorRef, serviceRequest.getMessageIdentifier().getValue());
 
             } else if (hasValues(serviceRequest.getEstimatedTimetableRequests())) {
                 dataType = SiriDataType.ESTIMATED_TIMETABLE;
@@ -238,7 +238,7 @@ public class SiriHandler {
                 final Collection<EstimatedVehicleJourney> elements = estimatedTimetables.getAllCachedUpdates(requestorRef, datasetId, clientTrackingName);
 
                 logger.info("Returning {} elements from cache", elements.size());
-                serviceResponse = siriObjectFactory.createETServiceDelivery(elements);
+                serviceResponse = siriObjectFactory.createETServiceDelivery(elements, requestorRef, serviceRequest.getMessageIdentifier().getValue());
 
             }
 
@@ -327,6 +327,7 @@ public class SiriHandler {
         } else if (incoming.getServiceRequest() != null) {
             logger.debug("Handling serviceRequest with ID-policy {}.", outboundIdMappingPolicy);
             ServiceRequest serviceRequest = incoming.getServiceRequest();
+            String messageId =  serviceRequest.getMessageIdentifier() != null ? serviceRequest.getMessageIdentifier().getValue() : null;
             String requestorRef = null;
 
             Siri serviceResponse = null;
@@ -336,7 +337,7 @@ public class SiriHandler {
             }
 
             if (hasValues(serviceRequest.getSituationExchangeRequests())) {
-                serviceResponse = situationExchangeOutbound.createServiceDelivery(requestorRef, datasetId, clientTrackingName, outboundIdMappingPolicy, maxSize);
+                serviceResponse = situationExchangeOutbound.createServiceDelivery(requestorRef, datasetId, clientTrackingName, outboundIdMappingPolicy, maxSize, messageId);
             } else if (hasValues(serviceRequest.getVehicleMonitoringRequests())) {
                 Set<String> lineRefOriginalList = vehicleMonitoringOutbound.getLineRefOriginalList(serviceRequest, outboundIdMappingPolicy, datasetId);
                 Set<String> vehicleRefList = vehicleMonitoringOutbound.getVehicleRefList(serviceRequest);
@@ -349,7 +350,7 @@ public class SiriHandler {
                         .collect(Collectors.toSet());
 
                 valueAdapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.VEHICLE_MONITORING, outboundIdMappingPolicy, idMap);
-                Siri siri = vehicleActivities.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize, revertedLineRefs, vehicleRefList);
+                Siri siri = vehicleActivities.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize, revertedLineRefs, vehicleRefList, messageId);
                 serviceResponse = siri;
 
 
@@ -373,7 +374,7 @@ public class SiriHandler {
                     valueAdapters = new ArrayList<>(valueAdapters);
                     valueAdapters.add(new GmSIVSicAQuayPostProcessor());
                 }
-                serviceResponse = generalMessages.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, requestedChannels);
+                serviceResponse = generalMessages.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, requestedChannels, messageId);
 
                 //Ask for general message cancellations at the same time
                 Siri cancellationResponses = generalMessageCancellations.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, requestedChannels);
@@ -418,7 +419,7 @@ public class SiriHandler {
                 }
 
                 Siri siri = facilityMonitoring.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize,
-                        revertedLineRefs, facilityRefList, vehicleRefList, stopPointRefList);
+                        revertedLineRefs, facilityRefList, vehicleRefList, stopPointRefList, messageId);
                 serviceResponse = siri;
                 String requestMsgRef = siri.getServiceDelivery().getRequestMessageRef().getValue();
                 logger.info("Filtering done. Returning :  {} for requestorRef {}", utils.countVehicleActivityResults(serviceResponse), requestMsgRef);

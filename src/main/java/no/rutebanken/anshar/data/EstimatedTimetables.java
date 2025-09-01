@@ -195,7 +195,7 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
 
         matchingEstimatedVehicleJourneys.addAll(timetableDeliveries.getAll(lineRefKeys).values());
 
-        return siriObjectFactory.createETServiceDelivery(matchingEstimatedVehicleJourneys);
+        return siriObjectFactory.createETServiceDelivery(matchingEstimatedVehicleJourneys, null, null);
     }
 
     public Siri createServiceDelivery(String requestorId, String datasetId, int maxSize) {
@@ -203,10 +203,14 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
     }
 
     public Siri createServiceDelivery(String requestorId, String datasetId, int maxSize, long previewInterval) {
-        return createServiceDelivery(requestorId, datasetId, null, null, maxSize, previewInterval, new HashSet<>());
+        return createServiceDelivery(requestorId, datasetId, null, null, maxSize, previewInterval, new HashSet<>(), null);
     }
 
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientTrackingName, List<String> excludedDatasetIds, int maxSize, long previewInterval, Set<String> requestedLines) {
+        return createServiceDelivery(requestorId, datasetId, clientTrackingName, excludedDatasetIds, maxSize, previewInterval, requestedLines, null);
+    }
+
+    public Siri createServiceDelivery(String requestorId, String datasetId, String clientTrackingName, List<String> excludedDatasetIds, int maxSize, long previewInterval, Set<String> requestedLines, String requestMessageRef) {
 
 
         int trackingPeriodMinutes = configuration.getTrackingPeriodMinutes();
@@ -274,25 +278,16 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
         logger.info("Fetching data: {} ms", (System.currentTimeMillis() - t1));
         t1 = System.currentTimeMillis();
 
-        Siri siri = siriObjectFactory.createETServiceDelivery(values);
+        Siri siri = siriObjectFactory.createETServiceDelivery(values, requestorId, requestMessageRef);
         logger.info("Creating SIRI-delivery: {} ms", (System.currentTimeMillis() - t1));
 
         siri.getServiceDelivery().setMoreData(isMoreData);
 
-        if (isAdHocRequest) {
-            logger.info("Returning {}, no requestorRef is set", sizeLimitedIds.size());
-        } else {
-
-            MessageRefStructure msgRef = new MessageRefStructure();
-            msgRef.setValue(requestorId);
-            siri.getServiceDelivery().setRequestMessageRef(msgRef);
-
+        if (!isAdHocRequest) {
             if (requestedIds.size() > timetableDeliveries.size()) {
                 //Remove outdated ids
                 requestedIds.removeIf(id -> !timetableDeliveries.containsKey(id));
             }
-
-
             logger.info("Returning {}, {} left for requestorRef {}", sizeLimitedIds.size(), requestedIds.size(), requestorId);
         }
 

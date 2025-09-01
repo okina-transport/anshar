@@ -107,11 +107,9 @@ public class StopMonitoringOutbound {
     }
 
     public Siri getStopMonitoringServiceDelivery(ServiceRequest serviceRequest, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId, String requestorRef, String clientTrackingName, int maxSize) {
-
-
         Set<String> originalMonitoringRefs = getMonitoringRefs(serviceRequest);
         Set<String> importedIds = getImportedIds(outboundIdMappingPolicy, originalMonitoringRefs, datasetId);
-
+        String requestMessageRef = serviceRequest.getMessageIdentifier().getValue();
 
         List<Siri> siriList = new ArrayList<>();
         Siri serviceResponse;
@@ -119,7 +117,7 @@ public class StopMonitoringOutbound {
             Set<String> datasetIds = monitoredStopVisits.getAllDatasetIds();
 
             for (String datasetIdFromList : datasetIds) {
-                serviceResponse = getServiceResponseStopVisits(outboundIdMappingPolicy, requestorRef, clientTrackingName, maxSize, datasetIdFromList, importedIds);
+                serviceResponse = getServiceResponseStopVisits(outboundIdMappingPolicy, requestorRef, clientTrackingName, maxSize, datasetIdFromList, importedIds, serviceRequest.getMessageIdentifier().getValue());
                 if (!serviceResponse.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty()) {
                     siriList.add(serviceResponse);
                 }
@@ -130,16 +128,16 @@ public class StopMonitoringOutbound {
                 for (Siri siri : siriList) {
                     stopVisits.addAll(siri.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits());
                 }
-                serviceResponse = siriObjectFactory.createSMServiceDelivery(stopVisits);
+                serviceResponse = siriObjectFactory.createSMServiceDelivery(stopVisits, requestorRef, requestMessageRef);
 
             } else {
-                serviceResponse = siriObjectFactory.createSMServiceDelivery(new ArrayList<>());
+                serviceResponse = siriObjectFactory.createSMServiceDelivery(new ArrayList<>(), requestorRef, requestMessageRef);
             }
 
         } else if (StringUtils.isNotEmpty(datasetId) && outboundIdMappingPolicy.equals(OutboundIdMappingPolicy.DEFAULT) && importedIds.isEmpty() && !originalMonitoringRefs.isEmpty()) {
-            serviceResponse = siriObjectFactory.createSMServiceDelivery(new ArrayList<>());
+            serviceResponse = siriObjectFactory.createSMServiceDelivery(new ArrayList<>(), requestorRef, requestMessageRef);
         } else {
-            serviceResponse = getServiceResponseStopVisits(outboundIdMappingPolicy, requestorRef, clientTrackingName, maxSize, datasetId, importedIds);
+            serviceResponse = getServiceResponseStopVisits(outboundIdMappingPolicy, requestorRef, clientTrackingName, maxSize, datasetId, importedIds, serviceRequest.getMessageIdentifier().getValue());
         }
 
         logger.debug("Asking for service delivery for requestorId={}, monitoringRef={}, clientTrackingName={}, datasetId={}", requestorRef, String.join("|", originalMonitoringRefs), clientTrackingName, datasetId);
@@ -147,7 +145,7 @@ public class StopMonitoringOutbound {
         return serviceResponse;
     }
 
-    public Siri getServiceResponseStopVisits(OutboundIdMappingPolicy outboundIdMappingPolicy, String requestorRef, String clientTrackingName, int maxSize, String datasetId, Set<String> importedIds) {
+    public Siri getServiceResponseStopVisits(OutboundIdMappingPolicy outboundIdMappingPolicy, String requestorRef, String clientTrackingName, int maxSize, String datasetId, Set<String> importedIds, String messageId) {
         Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParams(datasetId, importedIds, ObjectType.STOP);
         Set<String> revertedMonitoringRefs = IDUtils.revertMonitoringRefs(importedIds, idMap.get(ObjectType.STOP));
         revertedMonitoringRefs = revertedMonitoringRefs.stream()
@@ -156,7 +154,7 @@ public class StopMonitoringOutbound {
 
 
         List<ValueAdapter> valueAdapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.STOP_MONITORING, outboundIdMappingPolicy, idMap);
-        Siri serviceResponse = monitoredStopVisits.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, revertedMonitoringRefs);
+        Siri serviceResponse = monitoredStopVisits.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, revertedMonitoringRefs, messageId);
         return SiriValueTransformer.transform(serviceResponse, valueAdapters, false, false);
     }
 
@@ -172,7 +170,7 @@ public class StopMonitoringOutbound {
         Set<String> datasetIds = monitoredStopVisits.getAllDatasetIds();
 
         for (String datasetId : datasetIds) {
-            Siri datasetResults = monitoredStopVisits.createServiceDelivery("SCHEDULED_DELIVERY", datasetId, null, Integer.MAX_VALUE, stopsToSearch);
+            Siri datasetResults = monitoredStopVisits.createServiceDelivery("SCHEDULED_DELIVERY", datasetId, null, Integer.MAX_VALUE, stopsToSearch, null);
             if (datasetResults.getServiceDelivery() != null && datasetResults.getServiceDelivery().getStopMonitoringDeliveries() != null
                     && !datasetResults.getServiceDelivery().getStopMonitoringDeliveries().isEmpty()) {
                 results.put(datasetId, datasetResults);

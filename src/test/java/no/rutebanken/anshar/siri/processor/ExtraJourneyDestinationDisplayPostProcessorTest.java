@@ -105,7 +105,7 @@ public class ExtraJourneyDestinationDisplayPostProcessorTest extends SpringBootB
         estimatedCalls.getEstimatedCalls().add(call);
         et.setEstimatedCalls(estimatedCalls);
         etList.add(et);
-        return new SiriObjectFactory(Instant.now()).createETServiceDelivery(etList);
+        return new SiriObjectFactory(Instant.now()).createETServiceDelivery(etList, null, null);
     }
 
 }

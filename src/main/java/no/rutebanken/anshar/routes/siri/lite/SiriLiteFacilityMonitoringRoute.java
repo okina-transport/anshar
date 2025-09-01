@@ -54,6 +54,7 @@ public class SiriLiteFacilityMonitoringRoute extends RestRouteBuilder {
                     p.getOut().setHeaders(p.getIn().getHeaders());
 
                     String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
+                    String messageId = p.getIn().getMessageId();
 
                     String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
                     String originalId = p.getIn().getHeader(PARAM_USE_ORIGINAL_ID, String.class);
@@ -66,7 +67,7 @@ public class SiriLiteFacilityMonitoringRoute extends RestRouteBuilder {
                     }
 
                     Set<String> datasets = SiriUtils.generateDatasetListFromHeader(datasetId);
-                    Siri response = handleFacilityMonitoringMultipleDatasetRequest(requestorId, datasets, etClientName, maxSize, originalId);
+                    Siri response = handleFacilityMonitoringMultipleDatasetRequest(requestorId, datasets, etClientName, maxSize, originalId, messageId);
 
                     metrics.countOutgoingData(response, SubscriptionSetup.SubscriptionMode.LITE);
 
@@ -85,13 +86,13 @@ public class SiriLiteFacilityMonitoringRoute extends RestRouteBuilder {
     }
 
 
-    private Siri handleFacilityMonitoringMultipleDatasetRequest(String requestorId, Set<String> datasets, String etClientName, int maxSize, String originalId) {
+    private Siri handleFacilityMonitoringMultipleDatasetRequest(String requestorId, Set<String> datasets, String etClientName, int maxSize, String originalId, String messageId) {
         if (datasets.isEmpty()) {
-            return handleFacilityMonitoringSingleDatasetRequest(requestorId, null, etClientName, maxSize, originalId);
+            return handleFacilityMonitoringSingleDatasetRequest(requestorId, null, etClientName, maxSize, originalId, messageId);
         }
         Siri globalResults = null;
         for (String dataset : datasets) {
-            Siri datasetResult = handleFacilityMonitoringSingleDatasetRequest(requestorId, dataset, etClientName, maxSize, originalId);
+            Siri datasetResult = handleFacilityMonitoringSingleDatasetRequest(requestorId, dataset, etClientName, maxSize, originalId, messageId);
             globalResults = SiriUtils.mergeSiris(globalResults, datasetResult);
 
         }
@@ -99,8 +100,8 @@ public class SiriLiteFacilityMonitoringRoute extends RestRouteBuilder {
     }
 
 
-    private Siri handleFacilityMonitoringSingleDatasetRequest(String requestorId, String datasetId, String etClientName, int maxSize, String originalId) {
-        Siri response = facilityMonitoring.createServiceDelivery(requestorId, datasetId, etClientName, null, maxSize, null, null, null, null);
+    private Siri handleFacilityMonitoringSingleDatasetRequest(String requestorId, String datasetId, String etClientName, int maxSize, String originalId, String messageId) {
+        Siri response = facilityMonitoring.createServiceDelivery(requestorId, datasetId, etClientName, null, maxSize, null, null, null, null, messageId);
 
         List<ValueAdapter> outboundAdapters = new ArrayList<>();
         if (datasetId != null) {

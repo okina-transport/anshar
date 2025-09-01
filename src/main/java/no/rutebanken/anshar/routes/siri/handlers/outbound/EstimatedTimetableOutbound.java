@@ -43,7 +43,7 @@ public class EstimatedTimetableOutbound {
         Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParams(datasetId, requestedLines, ObjectType.LINE);
         Set<String> revertedMonitoringRefs = IDUtils.revertMonitoringRefs(requestedLines, idMap.get(ObjectType.LINE));
 
-        return estimatedTimetables.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize, previewIntervalInMillis, revertedMonitoringRefs);
+        return estimatedTimetables.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize, previewIntervalInMillis, revertedMonitoringRefs, serviceRequest.getMessageIdentifier().getValue());
     }
 
 

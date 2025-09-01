@@ -39,7 +39,7 @@ public class BaneNorRemoveExpiredJourneysPostProcessorTest extends SpringBootBas
         List et = new ArrayList();
         et.add(createEstimatedVehicleJourney(3, ZonedDateTime.now().plusMinutes(30)));
 
-        Siri siri = objFactory.createETServiceDelivery(et);
+        Siri siri = objFactory.createETServiceDelivery(et, null, null);
         processor.process(siri);
         assertEquals(1, siri.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size());
     }
@@ -49,7 +49,7 @@ public class BaneNorRemoveExpiredJourneysPostProcessorTest extends SpringBootBas
         List et = new ArrayList();
         et.add(createEstimatedVehicleJourney(10, ZonedDateTime.now().minusMinutes(30)));
 
-        Siri siri = objFactory.createETServiceDelivery(et);
+        Siri siri = objFactory.createETServiceDelivery(et, null, null);
         processor.process(siri);
         assertEquals(0, siri.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size());
     }

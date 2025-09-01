@@ -85,7 +85,7 @@ public class SX_revert_incoming_id_tests extends SpringBootBaseTest {
         subscriptionManager.addSubscription(subscriptionSetup.getSubscriptionId(), subscriptionSetup);
 
 
-        Siri siri = factory.createSXServiceDelivery(situationsToAdd);
+        Siri siri = factory.createSXServiceDelivery(situationsToAdd, "#RequestorREF#12EFS1aaa-2", null);
         String incomingXml = SiriXml.toXml(siri);
 
         handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), new ByteArrayInputStream(incomingXml.getBytes())));
@@ -152,7 +152,7 @@ public class SX_revert_incoming_id_tests extends SpringBootBaseTest {
         subscriptionManager.addSubscription(subscriptionSetup.getSubscriptionId(), subscriptionSetup);
 
 
-        Siri siri = factory.createSXServiceDelivery(situationsToAdd);
+        Siri siri = factory.createSXServiceDelivery(situationsToAdd, "TST:revert-SX", null);
         String incomingXml = SiriXml.toXml(siri);
 
         handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), new ByteArrayInputStream(incomingXml.getBytes())));
@@ -220,7 +220,7 @@ public class SX_revert_incoming_id_tests extends SpringBootBaseTest {
         subscriptionManager.addSubscription(subscriptionSetup.getSubscriptionId(), subscriptionSetup);
 
 
-        Siri siri = factory.createSXServiceDelivery(situationsToAdd);
+        Siri siri = factory.createSXServiceDelivery(situationsToAdd, "TST:revert-SX", null);
         String incomingXml = SiriXml.toXml(siri);
 
         handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), new ByteArrayInputStream(incomingXml.getBytes())));

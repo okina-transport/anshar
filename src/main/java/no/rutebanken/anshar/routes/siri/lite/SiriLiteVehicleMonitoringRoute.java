@@ -68,6 +68,7 @@ public class SiriLiteVehicleMonitoringRoute extends RestRouteBuilder {
                     String maxSizeStr = p.getIn().getHeader(PARAM_MAX_SIZE, String.class);
                     String lineRef = p.getIn().getHeader(PARAM_LINE_REF, String.class);
                     String etClientName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
+                    String messageId = p.getIn().getMessageId();
                     List<String> excludedIdList = getParameterValuesAsList(p.getIn(), PARAM_EXCLUDED_DATASET_ID);
 
                     String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
@@ -83,7 +84,7 @@ public class SiriLiteVehicleMonitoringRoute extends RestRouteBuilder {
 
 
                     Set<String> datasets = SiriUtils.generateDatasetListFromHeader(datasetId);
-                    Siri response = handleVehicleMonitoringMultipleDatasetRequest(lineRef, requestorId, datasets, etClientName, excludedIdList, maxSize, originalId, altId);
+                    Siri response = handleVehicleMonitoringMultipleDatasetRequest(lineRef, requestorId, datasets, etClientName, excludedIdList, maxSize, originalId, altId, messageId);
 
                     metrics.countOutgoingData(response, SubscriptionSetup.SubscriptionMode.LITE);
 
@@ -106,6 +107,7 @@ public class SiriLiteVehicleMonitoringRoute extends RestRouteBuilder {
                     String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
                     String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
                     String clientTrackingName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
+                    String messageId = p.getIn().getMessageId();
 
                     logger.info("Fetching cached VM-data");
                     final Collection<VehicleActivityStructure> cachedUpdates = vehicleActivities
@@ -123,7 +125,7 @@ public class SiriLiteVehicleMonitoringRoute extends RestRouteBuilder {
                         });
                     }
 
-                    Siri response = siriObjectFactory.createVMServiceDelivery(cachedUpdates);
+                    Siri response = siriObjectFactory.createVMServiceDelivery(cachedUpdates, requestorId, messageId);
 
                     List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.VEHICLE_MONITORING,
@@ -154,13 +156,13 @@ public class SiriLiteVehicleMonitoringRoute extends RestRouteBuilder {
     }
 
 
-    private Siri handleVehicleMonitoringMultipleDatasetRequest(String lineRef, String requestorId, Set<String> datasets, String etClientName, List<String> excludedIdList, int maxSize, String originalId, String altId) {
+    private Siri handleVehicleMonitoringMultipleDatasetRequest(String lineRef, String requestorId, Set<String> datasets, String etClientName, List<String> excludedIdList, int maxSize, String originalId, String altId, String messageId) {
         if (datasets.isEmpty()) {
-            return handleVehicleMonitoringSingleDatasetRequest(lineRef, requestorId, null, etClientName, excludedIdList, maxSize, originalId, altId);
+            return handleVehicleMonitoringSingleDatasetRequest(lineRef, requestorId, null, etClientName, excludedIdList, maxSize, originalId, altId, messageId);
         }
         Siri globalResults = null;
         for (String dataset : datasets) {
-            Siri datasetResult = handleVehicleMonitoringSingleDatasetRequest(lineRef, requestorId, dataset, etClientName, excludedIdList, maxSize, originalId, altId);
+            Siri datasetResult = handleVehicleMonitoringSingleDatasetRequest(lineRef, requestorId, dataset, etClientName, excludedIdList, maxSize, originalId, altId, messageId);
             globalResults = SiriUtils.mergeSiris(globalResults, datasetResult);
 
         }
@@ -168,13 +170,13 @@ public class SiriLiteVehicleMonitoringRoute extends RestRouteBuilder {
     }
 
 
-    private Siri handleVehicleMonitoringSingleDatasetRequest(String lineRef, String requestorId, String datasetId, String etClientName, List<String> excludedIdList, int maxSize, String originalId, String altId) {
+    private Siri handleVehicleMonitoringSingleDatasetRequest(String lineRef, String requestorId, String datasetId, String etClientName, List<String> excludedIdList, int maxSize, String originalId, String altId, String messageId) {
         Siri response;
 
         if (lineRef != null) {
-            response = vehicleActivities.createServiceDelivery(lineRef);
+            response = vehicleActivities.createServiceDelivery(lineRef, messageId);
         } else {
-            response = vehicleActivities.createServiceDelivery(requestorId, datasetId, etClientName, excludedIdList, maxSize);
+            response = vehicleActivities.createServiceDelivery(requestorId, datasetId, etClientName, excludedIdList, maxSize, messageId);
         }
 
         List<ValueAdapter> outboundAdapters = new ArrayList<>();

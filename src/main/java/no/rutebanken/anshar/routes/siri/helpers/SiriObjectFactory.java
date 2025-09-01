@@ -682,7 +682,7 @@ public class SiriObjectFactory {
         return requestorRef;
     }
 
-    private static SubscriptionRefStructure createSubscriptionIdentifier(String subscriptionId) {
+    public static SubscriptionRefStructure createSubscriptionIdentifier(String subscriptionId) {
         SubscriptionRefStructure subscriptionRef = new SubscriptionRefStructure();
         subscriptionRef.setValue(subscriptionId);
         return subscriptionRef;
@@ -754,64 +754,64 @@ public class SiriObjectFactory {
         }
     }
 
-    public Siri createSXServiceDelivery(Collection<PtSituationElement> elements) {
+    public Siri createSXServiceDelivery(Collection<PtSituationElement> elements, String subscriptionRef, String requestMessageRef) {
         Siri siri = createSiriObject(SiriHelper.FALLBACK_SIRI_VERSION);
-        ServiceDelivery delivery = createServiceDelivery();
+        ServiceDelivery delivery = createServiceDelivery(requestMessageRef);
         SituationExchangeDeliveryStructure deliveryStructure = new SituationExchangeDeliveryStructure();
+        createServiceDeliveryStructure(deliveryStructure, subscriptionRef, delivery.getRequestMessageRef(), delivery.isStatus());
+        deliveryStructure.setVersion(SiriHelper.FALLBACK_SIRI_VERSION);
         SituationExchangeDeliveryStructure.Situations situations = new SituationExchangeDeliveryStructure.Situations();
         situations.getPtSituationElements().addAll(elements);
         deliveryStructure.setSituations(situations);
-        deliveryStructure.setResponseTimestamp(ZonedDateTime.now());
-        deliveryStructure.setVersion(SiriHelper.FALLBACK_SIRI_VERSION);
         delivery.getSituationExchangeDeliveries().add(deliveryStructure);
         siri.setServiceDelivery(delivery);
         return siri;
     }
 
-    public Siri createVMServiceDelivery(Collection<VehicleActivityStructure> elements) {
+    public Siri createVMServiceDelivery(Collection<VehicleActivityStructure> elements, String subscriptionRef, String requestMessageRef) {
         Siri siri = createSiriObject(SiriHelper.FALLBACK_SIRI_VERSION);
-        ServiceDelivery delivery = createServiceDelivery();
+        ServiceDelivery delivery = createServiceDelivery(requestMessageRef);
         VehicleMonitoringDeliveryStructure deliveryStructure = new VehicleMonitoringDeliveryStructure();
+        createServiceDeliveryStructure(deliveryStructure, subscriptionRef, delivery.getRequestMessageRef(), delivery.isStatus());
         deliveryStructure.setVersion(SiriHelper.FALLBACK_SIRI_VERSION);
         deliveryStructure.getVehicleActivities().addAll(elements);
-        deliveryStructure.setResponseTimestamp(ZonedDateTime.now());
         delivery.getVehicleMonitoringDeliveries().add(deliveryStructure);
         siri.setServiceDelivery(delivery);
         return siri;
     }
 
-    public Siri createFMServiceDelivery(Collection<FacilityConditionStructure> elements) {
+    public Siri createFMServiceDelivery(Collection<FacilityConditionStructure> elements, String subscriptionRef, String requestMessageRef) {
         Siri siri = createSiriObject(SiriHelper.FALLBACK_SIRI_VERSION);
-        ServiceDelivery delivery = createServiceDelivery();
+        ServiceDelivery delivery = createServiceDelivery(requestMessageRef);
         FacilityMonitoringDeliveryStructure deliveryStructure = new FacilityMonitoringDeliveryStructure();
+        createServiceDeliveryStructure(deliveryStructure, subscriptionRef, delivery.getRequestMessageRef(), delivery.isStatus());
         deliveryStructure.setVersion(SiriHelper.FALLBACK_SIRI_VERSION);
         deliveryStructure.getFacilityConditions().addAll(elements);
-        deliveryStructure.setResponseTimestamp(ZonedDateTime.now());
         delivery.getFacilityMonitoringDeliveries().add(deliveryStructure);
         siri.setServiceDelivery(delivery);
         return siri;
     }
 
-    public Siri createETServiceDelivery(Collection<EstimatedVehicleJourney> elements) {
+    public Siri createETServiceDelivery(Collection<EstimatedVehicleJourney> elements, String subscriptionRef, String requestMessageRef) {
         Siri siri = createSiriObject(SiriHelper.FALLBACK_SIRI_VERSION);
-        ServiceDelivery delivery = createServiceDelivery();
+        ServiceDelivery delivery = createServiceDelivery(requestMessageRef);
         EstimatedTimetableDeliveryStructure deliveryStructure = new EstimatedTimetableDeliveryStructure();
+        createServiceDeliveryStructure(deliveryStructure, subscriptionRef, delivery.getRequestMessageRef(), delivery.isStatus());
         deliveryStructure.setVersion(SiriHelper.FALLBACK_SIRI_VERSION);
         EstimatedVersionFrameStructure estimatedVersionFrameStructure = new EstimatedVersionFrameStructure();
         estimatedVersionFrameStructure.setRecordedAtTime(ZonedDateTime.now());
         estimatedVersionFrameStructure.getEstimatedVehicleJourneies().addAll(elements);
         deliveryStructure.getEstimatedJourneyVersionFrames().add(estimatedVersionFrameStructure);
-        deliveryStructure.setResponseTimestamp(ZonedDateTime.now());
-
         delivery.getEstimatedTimetableDeliveries().add(deliveryStructure);
         siri.setServiceDelivery(delivery);
         return siri;
     }
 
-    public <T extends AbstractItemStructure> Siri createSMServiceDelivery(Collection<T> collections) {
+    public <T extends AbstractItemStructure> Siri createSMServiceDelivery(Collection<T> collections, String subscriptionRef, String requestMessageRef) {
         Siri siri = createSiriObject(SiriHelper.FALLBACK_SIRI_VERSION);
-        ServiceDelivery delivery = createServiceDelivery();
+        ServiceDelivery delivery = createServiceDelivery(requestMessageRef);
         StopMonitoringDeliveryStructure deliveryStructure = new StopMonitoringDeliveryStructure();
+        createServiceDeliveryStructure(deliveryStructure, subscriptionRef, delivery.getRequestMessageRef(), delivery.isStatus());
         deliveryStructure.setVersion(SiriHelper.FALLBACK_SIRI_VERSION);
 
         Stream.of(collections)
@@ -824,19 +824,18 @@ public class SiriObjectFactory {
                     }
                 });
 
-        deliveryStructure.setResponseTimestamp(ZonedDateTime.now());
         delivery.getStopMonitoringDeliveries().add(deliveryStructure);
         siri.setServiceDelivery(delivery);
         return siri;
     }
 
-    public Siri createGMServiceDelivery(Collection<GeneralMessage> elements) {
+    public Siri createGMServiceDelivery(Collection<GeneralMessage> elements, String subscriptionRef, String requestMessageRef) {
         Siri siri = createSiriObject(SiriHelper.FALLBACK_SIRI_VERSION);
-        ServiceDelivery delivery = createServiceDelivery();
+        ServiceDelivery delivery = createServiceDelivery(requestMessageRef);
         GeneralMessageDeliveryStructure deliveryStructure = new GeneralMessageDeliveryStructure();
+        createServiceDeliveryStructure(deliveryStructure, subscriptionRef, delivery.getRequestMessageRef(), delivery.isStatus());
         deliveryStructure.setVersion(SiriHelper.FALLBACK_SIRI_VERSION);
         deliveryStructure.getGeneralMessages().addAll(elements);
-        deliveryStructure.setResponseTimestamp(ZonedDateTime.now());
         delivery.getGeneralMessageDeliveries().add(deliveryStructure);
         siri.setServiceDelivery(delivery);
         return siri;
@@ -887,11 +886,31 @@ public class SiriObjectFactory {
     }
 
     private ServiceDelivery createServiceDelivery() {
+        return createServiceDelivery(null);
+    }
+
+    private <T extends AbstractServiceDeliveryStructure> void createServiceDeliveryStructure(AbstractServiceDeliveryStructure deliveryStructure, String subscriptionRef, MessageRefStructure requestMessageRef, boolean status) {
+        deliveryStructure.setResponseTimestamp(ZonedDateTime.now());
+
+        if (subscriptionRef != null) {
+            deliveryStructure.setSubscriptionRef(createSubscriptionIdentifier(subscriptionRef));
+        }
+        deliveryStructure.setRequestMessageRef(requestMessageRef);
+
+        deliveryStructure.setStatus(status);
+
+    }
+
+    private ServiceDelivery createServiceDelivery(String requestMessageRef) {
         ServiceDelivery delivery = new ServiceDelivery();
         delivery.setResponseTimestamp(ZonedDateTime.now());
         if (configuration != null && configuration.getProducerRef() != null) {
             delivery.setProducerRef(createRequestorRef(configuration.getProducerRef()));
         }
+        // AJOUTS CONFORMÉMENT À LA NORME
+        delivery.setResponseMessageIdentifier(createMessageIdentifier());
+        delivery.setRequestMessageRef(requestMessageRef != null ? createMessageRefStruct(requestMessageRef) : createMessageRefStruct());
+
         delivery.setStatus(true);
         return delivery;
     }
@@ -947,7 +966,7 @@ public class SiriObjectFactory {
 
         ResponseStatus responseStatus = new ResponseStatus();
         responseStatus.setResponseTimestamp(ZonedDateTime.now());
-        responseStatus.setRequestMessageRef(createMessageRefStruct());
+        responseStatus.setRequestMessageRef(response.getRequestMessageRef());
         responseStatus.setSubscriptionRef(createSubscriptionIdentifier(subscriptionRef.replace(" ", ";")));
         responseStatus.setStatus(status);
 

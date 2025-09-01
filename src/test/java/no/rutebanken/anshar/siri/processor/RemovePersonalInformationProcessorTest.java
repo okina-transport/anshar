@@ -32,7 +32,7 @@ public class RemovePersonalInformationProcessorTest {
         sxElements.add(sx);
 
 
-        Siri siri = objectFactory.createSXServiceDelivery(sxElements);
+        Siri siri = objectFactory.createSXServiceDelivery(sxElements, null, null);
 
         final List<PtSituationElement> ptSituationElements = siri.getServiceDelivery().getSituationExchangeDeliveries().get(0).getSituations().getPtSituationElements();
 

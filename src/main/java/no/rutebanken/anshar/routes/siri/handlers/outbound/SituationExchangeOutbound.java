@@ -37,13 +37,12 @@ public class SituationExchangeOutbound {
         return valueAdapters;
     }
 
-    public Siri createServiceDelivery(String requestorRef, String datasetId, String clientTrackingName, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize) {
+    public Siri createServiceDelivery(String requestorRef, String datasetId, String clientTrackingName, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String messageId) {
         Set<String> datasetToRequest = StringUtils.isEmpty(datasetId) ? situations.getAllDatasetIds() : new HashSet<>(Arrays.asList(datasetId));
-        return createServiceDelivery(requestorRef, datasetToRequest.stream().toList(), clientTrackingName, outboundIdMappingPolicy, maxSize);
+        return createServiceDelivery(requestorRef, datasetToRequest.stream().toList(), clientTrackingName, outboundIdMappingPolicy, maxSize, messageId);
     }
 
-    public Siri createServiceDelivery(String requestorRef, List<String> datasetToRequest, String clientTrackingName, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize) {
-
+    public Siri createServiceDelivery(String requestorRef, List<String> datasetToRequest, String clientTrackingName, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String messageId) {
         List<Siri> results = new ArrayList<>();
         Siri serviceResponse;
 
@@ -52,7 +51,7 @@ public class SituationExchangeOutbound {
         }
 
         for (String datasetIdToRequest : datasetToRequest) {
-            Siri datasetResults = getTransformedSiriForDataset(datasetIdToRequest, outboundIdMappingPolicy, requestorRef, clientTrackingName, maxSize);
+            Siri datasetResults = getTransformedSiriForDataset(datasetIdToRequest, outboundIdMappingPolicy, requestorRef, clientTrackingName, maxSize, messageId);
             results.add(datasetResults);
         }
 
@@ -61,9 +60,9 @@ public class SituationExchangeOutbound {
             for (Siri siri : results) {
                 situations.addAll(siri.getServiceDelivery().getSituationExchangeDeliveries().get(0).getSituations().getPtSituationElements());
             }
-            serviceResponse = siriObjectFactory.createSXServiceDelivery(situations);
+            serviceResponse = siriObjectFactory.createSXServiceDelivery(situations, requestorRef, null);
         } else {
-            serviceResponse = siriObjectFactory.createSXServiceDelivery(new ArrayList<>());
+            serviceResponse = siriObjectFactory.createSXServiceDelivery(new ArrayList<>(), requestorRef, null);
         }
 
 
@@ -81,9 +80,9 @@ public class SituationExchangeOutbound {
      * @param maxSize                 max size of the delivery
      * @return a siri with transformed ids
      */
-    private Siri getTransformedSiriForDataset(String datasetIdToRequest, OutboundIdMappingPolicy outboundIdMappingPolicy, String requestorRef, String clientTrackingName, int maxSize) {
+    private Siri getTransformedSiriForDataset(String datasetIdToRequest, OutboundIdMappingPolicy outboundIdMappingPolicy, String requestorRef, String clientTrackingName, int maxSize, String messageId) {
         List<ValueAdapter> valueAdapters = getValueAdapters(datasetIdToRequest, outboundIdMappingPolicy);
-        Siri serviceResponse = situations.createServiceDelivery(requestorRef, datasetIdToRequest, clientTrackingName, maxSize);
+        Siri serviceResponse = situations.createServiceDelivery(requestorRef, datasetIdToRequest, clientTrackingName, maxSize, messageId);
         return SiriValueTransformer.transform(serviceResponse, valueAdapters, false, false);
     }
 

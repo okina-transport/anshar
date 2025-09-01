@@ -62,12 +62,12 @@ public class SiriLiteSituationExchangeRoute extends RestRouteBuilder {
                     p.getOut().setHeaders(p.getIn().getHeaders());
 
                     String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
-
                     String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
                     String originalId = p.getIn().getHeader(PARAM_USE_ORIGINAL_ID, String.class);
                     String altId = p.getIn().getHeader(PARAM_USE_ALT_ID, String.class);
                     Integer maxSizeStr = p.getIn().getHeader(PARAM_MAX_SIZE, Integer.class);
                     String etClientName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
+                    String messageId = p.getIn().getMessageId();
                     int maxSize = datasetId != null ? Integer.MAX_VALUE : configuration.getDefaultMaxSize();
 
                     if (maxSizeStr != null) {
@@ -77,7 +77,7 @@ public class SiriLiteSituationExchangeRoute extends RestRouteBuilder {
 
                     Set<String> datasets = SiriUtils.generateDatasetListFromHeader(datasetId);
 
-                    Siri response = handleSituationExchangeMultipleDatasetRequest(requestorId, datasets, etClientName, maxSize, originalId, altId);
+                    Siri response = handleSituationExchangeMultipleDatasetRequest(requestorId, datasets, etClientName, maxSize, originalId, altId, messageId);
 
                     metrics.countOutgoingData(response, SubscriptionSetup.SubscriptionMode.LITE);
 
@@ -99,11 +99,10 @@ public class SiriLiteSituationExchangeRoute extends RestRouteBuilder {
                     String requestorId = resolveRequestorId(p.getIn().getBody(HttpServletRequest.class));
                     String datasetId = p.getIn().getHeader(PARAM_DATASET_ID, String.class);
                     String clientTrackingName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
+                    String messageId = p.getIn().getMessageId();
 
                     logger.info("Fetching cached SX-data");
-                    Siri response = siriObjectFactory.createSXServiceDelivery(situations.getAllCachedUpdates(requestorId,
-                            datasetId, clientTrackingName
-                    ));
+                    Siri response = siriObjectFactory.createSXServiceDelivery(situations.getAllCachedUpdates(requestorId, datasetId, clientTrackingName), requestorId, messageId);
 
                     List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(
                             SiriDataType.SITUATION_EXCHANGE,
@@ -135,14 +134,14 @@ public class SiriLiteSituationExchangeRoute extends RestRouteBuilder {
     }
 
 
-    private Siri handleSituationExchangeMultipleDatasetRequest(String requestorId, Set<String> datasets, String etClientName, int maxSize, String originalId, String altId) {
+    private Siri handleSituationExchangeMultipleDatasetRequest(String requestorId, Set<String> datasets, String etClientName, int maxSize, String originalId, String altId, String messageId) {
         if (datasets.isEmpty()) {
-            return handleSituationExchangeSimpleDatasetRequest(requestorId, null, etClientName, maxSize, originalId, altId);
+            return handleSituationExchangeSimpleDatasetRequest(requestorId, null, etClientName, maxSize, originalId, altId, messageId);
         }
 
         Siri globalResults = null;
         for (String dataset : datasets) {
-            Siri datasetResult = handleSituationExchangeSimpleDatasetRequest(requestorId, dataset, etClientName, maxSize, originalId, altId);
+            Siri datasetResult = handleSituationExchangeSimpleDatasetRequest(requestorId, dataset, etClientName, maxSize, originalId, altId, messageId);
             globalResults = SiriUtils.mergeSiris(globalResults, datasetResult);
 
         }
@@ -150,8 +149,8 @@ public class SiriLiteSituationExchangeRoute extends RestRouteBuilder {
 
     }
 
-    private Siri handleSituationExchangeSimpleDatasetRequest(String requestorId, String datasetId, String etClientName, int maxSize, String originalId, String altId) {
-        Siri response = situations.createServiceDelivery(requestorId, datasetId, etClientName, maxSize);
+    private Siri handleSituationExchangeSimpleDatasetRequest(String requestorId, String datasetId, String etClientName, int maxSize, String originalId, String altId, String messageId) {
+        Siri response = situations.createServiceDelivery(requestorId, datasetId, etClientName, maxSize, messageId);
 
         List<ValueAdapter> outboundAdapters = new ArrayList<>();
         if (datasetId != null) {

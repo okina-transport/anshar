@@ -531,7 +531,6 @@ public class ServerSubscriptionManager {
 
             Siri subscriptionResponse = siriObjectFactory.createSubscriptionResponse(subscription.getSubscriptionId(), true, null, incomingSiri.getVersion());
 
-
             requestInitialDeliverySending(subscription, outboundIdMappingPolicy);
 
             return subscriptionResponse;
@@ -1115,7 +1114,7 @@ public class ServerSubscriptionManager {
         if (addedOrUpdated == null || addedOrUpdated.isEmpty()) {
             return;
         }
-        Siri delivery = siriObjectFactory.createVMServiceDelivery(addedOrUpdated);
+        Siri delivery = siriObjectFactory.createVMServiceDelivery(addedOrUpdated, null, null);
 
         if (pushToTopicEnabled) {
             siriVmTopicProducer.asyncRequestBodyAndHeader(siriVmTopicProducer.getDefaultEndpoint(), delivery, CODESPACE_ID_KAFKA_HEADER_NAME, datasetId);
@@ -1146,6 +1145,9 @@ public class ServerSubscriptionManager {
 
         boolean logFullContents = true;
         for (OutboundSubscriptionSetup recipient : recipients) {
+            if (!delivery.getServiceDelivery().getVehicleMonitoringDeliveries().isEmpty()) {
+                delivery.getServiceDelivery().getVehicleMonitoringDeliveries().forEach(vmd -> vmd.setSubscriptionRef(SiriObjectFactory.createSubscriptionIdentifier(recipient.getSubscriptionId())));
+            }
             camelRouteManager.pushSiriData(datasetId, delivery, recipient, logFullContents);
             logFullContents = false;
         }
@@ -1162,7 +1164,7 @@ public class ServerSubscriptionManager {
         if (addedOrUpdated == null || addedOrUpdated.isEmpty()) {
             return;
         }
-        Siri delivery = siriObjectFactory.createSXServiceDelivery(addedOrUpdated);
+        Siri delivery = siriObjectFactory.createSXServiceDelivery(addedOrUpdated, null, null);
 
         if (pushToTopicEnabled) {
             siriSxTopicProducer.asyncRequestBodyAndHeader(siriSxTopicProducer.getDefaultEndpoint(), delivery, CODESPACE_ID_KAFKA_HEADER_NAME, datasetId);
@@ -1196,6 +1198,9 @@ public class ServerSubscriptionManager {
 
         boolean logFullContents = true;
         for (OutboundSubscriptionSetup recipient : recipients) {
+            if (!delivery.getServiceDelivery().getSituationExchangeDeliveries().isEmpty()) {
+                delivery.getServiceDelivery().getSituationExchangeDeliveries().forEach(sed -> sed.setSubscriptionRef(SiriObjectFactory.createSubscriptionIdentifier(recipient.getSubscriptionId())));
+            }
             Siri modifiedIdDelivery = convertIdsSituationExchange(delivery, datasetId, recipient.getOutboundIdMappingPolicy());
             camelRouteManager.pushSiriData(datasetId, modifiedIdDelivery, recipient, logFullContents);
             logFullContents = false;
@@ -1265,15 +1270,13 @@ public class ServerSubscriptionManager {
         );
     }
 
-    private void pushUpdatedGeneralMessages(
-            List<GeneralMessage> addedOrUpdated, String datasetId, String breadcrumbId
-    ) {
+    private void pushUpdatedGeneralMessages(List<GeneralMessage> addedOrUpdated, String datasetId, String breadcrumbId) {
         MDC.put("camel.breadcrumbId", breadcrumbId);
 
         if (addedOrUpdated == null || addedOrUpdated.isEmpty()) {
             return;
         }
-        Siri delivery = siriObjectFactory.createGMServiceDelivery(addedOrUpdated);
+        Siri delivery = siriObjectFactory.createGMServiceDelivery(addedOrUpdated, null, null);
 
 //        if (sendActivemqKafka) {
 //            Map<String, Object> headers = new HashMap<>();
@@ -1301,6 +1304,9 @@ public class ServerSubscriptionManager {
 
         boolean logFullContents = true;
         for (OutboundSubscriptionSetup recipient : recipients) {
+            if (!delivery.getServiceDelivery().getGeneralMessageDeliveries().isEmpty()) {
+                delivery.getServiceDelivery().getGeneralMessageDeliveries().forEach(gmd -> gmd.setSubscriptionRef(SiriObjectFactory.createSubscriptionIdentifier(recipient.getSubscriptionId())));
+            }
             Siri modifiedIdDelivery = convertIdsGeneralMessage(delivery, datasetId, recipient.getOutboundIdMappingPolicy());
             camelRouteManager.pushSiriData(datasetId, modifiedIdDelivery, recipient, logFullContents);
             logFullContents = false;
@@ -1316,7 +1322,7 @@ public class ServerSubscriptionManager {
         if (updates == null || updates.isEmpty()) {
             return;
         }
-        Siri delivery = siriObjectFactory.createFMServiceDelivery(updates);
+        Siri delivery = siriObjectFactory.createFMServiceDelivery(updates, null, null);
 
 
 //        if (sendActivemqKafka) {
@@ -1345,6 +1351,9 @@ public class ServerSubscriptionManager {
 
         boolean logFullContents = true;
         for (OutboundSubscriptionSetup recipient : recipients) {
+            if (!delivery.getServiceDelivery().getFacilityMonitoringDeliveries().isEmpty()) {
+                delivery.getServiceDelivery().getFacilityMonitoringDeliveries().forEach(fmd -> fmd.setSubscriptionRef(SiriObjectFactory.createSubscriptionIdentifier(recipient.getSubscriptionId())));
+            }
             camelRouteManager.pushSiriData(datasetId, delivery, recipient, logFullContents);
             logFullContents = false;
         }
@@ -1360,7 +1369,7 @@ public class ServerSubscriptionManager {
 
         MDC.put("camel.breadcrumbId", breadcrumbId);
 
-        Siri delivery = siriObjectFactory.createETServiceDelivery(addedOrUpdated);
+        Siri delivery = siriObjectFactory.createETServiceDelivery(addedOrUpdated, null, null);
 
         if (pushToTopicEnabled) {
             siriEtTopicProducer.asyncRequestBodyAndHeader(siriEtTopicProducer.getDefaultEndpoint(), delivery, CODESPACE_ID_KAFKA_HEADER_NAME, datasetId);
@@ -1396,6 +1405,9 @@ public class ServerSubscriptionManager {
             if (!recipient.getSubscriptionType().equals(SiriDataType.ESTIMATED_TIMETABLE)) {
                 continue;
             }
+            if (!delivery.getServiceDelivery().getEstimatedTimetableDeliveries().isEmpty()) {
+                delivery.getServiceDelivery().getEstimatedTimetableDeliveries().forEach(etd -> etd.setSubscriptionRef(SiriObjectFactory.createSubscriptionIdentifier(recipient.getSubscriptionId())));
+            }
             camelRouteManager.pushSiriData(datasetId, delivery, recipient, logFullContents);
             logFullContents = false;
         }
@@ -1411,7 +1423,7 @@ public class ServerSubscriptionManager {
             return;
         }
 
-        Siri delivery = siriObjectFactory.createSMServiceDelivery(addedOrUpdated);
+        Siri delivery = siriObjectFactory.createSMServiceDelivery(addedOrUpdated, null, null);
 
 
         if (pushToTopicEnabled) {
@@ -1427,7 +1439,12 @@ public class ServerSubscriptionManager {
         Set<String> monitoredRefs = SiriHelper.extractMonitoringRefs(addedOrUpdated);
         List<OutboundSubscriptionSetup> impactedOutboundSubscriptions = getSubscriptionsRelatedToMonitoringRefs(datasetId, monitoredRefs);
 
-        impactedOutboundSubscriptions.forEach(subscription -> camelRouteManager.pushSiriData(datasetId, delivery, subscription, true));
+        impactedOutboundSubscriptions.forEach(subscription -> {
+            if (!delivery.getServiceDelivery().getStopMonitoringDeliveries().isEmpty()) {
+                delivery.getServiceDelivery().getStopMonitoringDeliveries().forEach(smd -> smd.setSubscriptionRef(SiriObjectFactory.createSubscriptionIdentifier(subscription.getSubscriptionId())));
+            }
+            camelRouteManager.pushSiriData(datasetId, delivery, subscription, true);
+        });
         MDC.remove("camel.breadcrumbId");
     }
 

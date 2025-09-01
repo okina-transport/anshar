@@ -104,6 +104,6 @@ public class ReportTypeProcessorTest extends SpringBootBaseTest {
         PtSituationElement sx = new PtSituationElement();
         sx.setReportType(reportType);
         sxElements.add(sx);
-        return objectFactory.createSXServiceDelivery(sxElements);
+        return objectFactory.createSXServiceDelivery(sxElements, null, null);
     }
 }

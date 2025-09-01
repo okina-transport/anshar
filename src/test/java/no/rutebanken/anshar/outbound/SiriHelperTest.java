@@ -63,7 +63,7 @@ public class SiriHelperTest extends SpringBootBaseTest {
                 "Filters are not unique"
         );
 
-        Siri serviceDelivery = siriObjectFactory.createVMServiceDelivery(vmElements);
+        Siri serviceDelivery = siriObjectFactory.createVMServiceDelivery(vmElements, null, null);
 
         assertNotNull(serviceDelivery);
         assertNotNull(serviceDelivery.getServiceDelivery());
@@ -142,7 +142,7 @@ public class SiriHelperTest extends SpringBootBaseTest {
         vmElements.add(createVehicleActivity(filterMatchingLineRef_2, "3333"));
         vmElements.add(createVehicleActivity("342435", "33"));
 
-        Siri siri = siriObjectFactory.createVMServiceDelivery(vmElements);
+        Siri siri = siriObjectFactory.createVMServiceDelivery(vmElements, null, null);
         int sizeBefore = siri.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().size();
 
         Map<Class, Set<String>> filter = new HashMap<>();
@@ -187,7 +187,7 @@ public class SiriHelperTest extends SpringBootBaseTest {
             vmElements.add(createVehicleActivity("" + i, "3333"));
         }
 
-        Siri siri = siriObjectFactory.createVMServiceDelivery(vmElements);
+        Siri siri = siriObjectFactory.createVMServiceDelivery(vmElements, null, null);
 
         assertEquals(elementCount, siri.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities().size());
 
@@ -266,7 +266,7 @@ public class SiriHelperTest extends SpringBootBaseTest {
         vmElements.add(createStopMonitoringActivity("TESTPOINT4"));
 
 
-        Siri serviceDelivery = siriObjectFactory.createSMServiceDelivery(vmElements);
+        Siri serviceDelivery = siriObjectFactory.createSMServiceDelivery(vmElements, null, null);
 
         Siri filtered = SiriHelper.filterSiriPayload(serviceDelivery, filter);
         assertNotNull(filtered);

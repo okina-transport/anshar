@@ -54,7 +54,7 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
 
     @Test
     public void testMultipleProvidersFromSingleVMDelivery() throws JAXBException {
-        Siri siri = factory.createVMServiceDelivery(List.of(createVM("RUT"), createVM("RUT"), createVM("TST")));
+        Siri siri = factory.createVMServiceDelivery(List.of(createVM("RUT"), createVM("RUT"), createVM("TST")), null, null);
 
         for (VehicleMonitoringDeliveryStructure vehicleDelivery : siri.getServiceDelivery().getVehicleMonitoringDeliveries()) {
             for (VehicleActivityStructure vehicleActivity : vehicleDelivery.getVehicleActivities()) {
@@ -115,7 +115,7 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
 
     @Test
     public void testMultipleProvidersFromSingleETDelivery() throws JAXBException {
-        Siri siri = factory.createETServiceDelivery(List.of(createET("RUT"), createET("RUT"), createET("TST")));
+        Siri siri = factory.createETServiceDelivery(List.of(createET("RUT"), createET("RUT"), createET("TST")), null, null);
         String xml = SiriXml.toXml(siri);
 
         SubscriptionSetup subscriptionSetup = new SubscriptionSetup();
@@ -160,7 +160,7 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
 
     @Test
     public void testMultipleProvidersFromSingleSXDelivery() throws JAXBException {
-        Siri siri = factory.createSXServiceDelivery(List.of(createSX("RUT"), createSX("RUT"), createSX("TST")));
+        Siri siri = factory.createSXServiceDelivery(List.of(createSX("RUT"), createSX("RUT"), createSX("TST")), null, null);
         String xml = SiriXml.toXml(siri);
 
         SubscriptionSetup subscriptionSetup = new SubscriptionSetup();

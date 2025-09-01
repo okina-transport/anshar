@@ -64,6 +64,6 @@ public class PredictionInaccurateDisablerPostProcessorTest {
         EstimatedVehicleJourney et = new EstimatedVehicleJourney();
         et.setPredictionInaccurate(predictionInaccurate);
         etList.add(et);
-        return new SiriObjectFactory(Instant.now()).createETServiceDelivery(etList);
+        return new SiriObjectFactory(Instant.now()).createETServiceDelivery(etList, null, null);
     }
 }

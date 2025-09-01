@@ -186,20 +186,18 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     }
 
 
-    public Siri createServiceDelivery(String requestorRef, String datasetId, String clientTrackingName, int maxSize, Set<String> searchedStopIds) {
-        return createServiceDelivery(requestorRef, datasetId, clientTrackingName, null, maxSize, -1, searchedStopIds);
+    public Siri createServiceDelivery(String requestorRef, String datasetId, String clientTrackingName, int maxSize, Set<String> searchedStopIds, String messageId) {
+        return createServiceDelivery(requestorRef, datasetId, clientTrackingName, null, maxSize, -1, searchedStopIds, messageId);
     }
 
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientTrackingName, List<String> excludedDatasetIds, int maxSize, long previewInterval, Set<String> searchedStopIds) {
+        return createServiceDelivery(requestorId, datasetId, clientTrackingName, excludedDatasetIds, maxSize, previewInterval, searchedStopIds, null);
+    }
 
-        int trackingPeriodMinutes = configuration.getTrackingPeriodMinutes();
-
-        boolean isAdHocRequest = false;
+    public Siri createServiceDelivery(String requestorId, String datasetId, String clientTrackingName, List<String> excludedDatasetIds, int maxSize, long previewInterval, Set<String> searchedStopIds, String messageId) {
 
         if (requestorId == null) {
             requestorId = UUID.randomUUID().toString();
-            trackingPeriodMinutes = configuration.getAdHocTrackingPeriodMinutes();
-            isAdHocRequest = true;
         }
 
 
@@ -267,19 +265,11 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         logger.debug("Fetching data: {} ms", (System.currentTimeMillis() - t1));
         t1 = System.currentTimeMillis();
 
-        Siri siri = siriObjectFactory.createSMServiceDelivery(values);
+        Siri siri = siriObjectFactory.createSMServiceDelivery(values, requestorId, messageId);
 
         logger.debug("Creating SIRI-delivery: {} sm", (System.currentTimeMillis() - t1));
 
         siri.getServiceDelivery().setMoreData(isMoreData);
-
-        if (!isAdHocRequest) {
-
-            MessageRefStructure msgRef = new MessageRefStructure();
-            msgRef.setValue(requestorId);
-            siri.getServiceDelivery().setRequestMessageRef(msgRef);
-
-        }
 
         return siri;
     }

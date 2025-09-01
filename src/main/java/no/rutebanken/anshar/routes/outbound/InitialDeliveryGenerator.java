@@ -93,7 +93,7 @@ public class InitialDeliveryGenerator {
 
         for (String dataset : datasetsToRequest) {
             Collection<FacilityConditionStructure> fmData = facilityMonitoring.getAll(dataset);
-            Siri delivery = siriObjectFactory.createFMServiceDelivery(fmData);
+            Siri delivery = siriObjectFactory.createFMServiceDelivery(fmData, subscriptionRequest.getSubscriptionId(), null);
             results.put(dataset, delivery);
         }
         return results;
@@ -113,7 +113,7 @@ public class InitialDeliveryGenerator {
 
         for (String dataset : datasetsToRequest) {
             Collection<PtSituationElement> sxData = situations.getAll(dataset);
-            Siri delivery = siriObjectFactory.createSXServiceDelivery(sxData);
+            Siri delivery = siriObjectFactory.createSXServiceDelivery(sxData, subscriptionRequest.getSubscriptionId(), null);
             Map<ObjectType, Optional<IdProcessingParameters>> idProcessingParams = incomingSubscriptionConfig.buildIdProcessingParamsFromDataset(dataset);
             List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.SITUATION_EXCHANGE, policy, idProcessingParams);
             Siri idProcessedDelivery = SiriValueTransformer.transform(delivery, outboundAdapters, true, false);
@@ -135,7 +135,7 @@ public class InitialDeliveryGenerator {
 
         for (String dataset : datasetsToRequest) {
             Collection<GeneralMessage> messages = generalMessages.getAll(dataset);
-            Siri delivery = siriObjectFactory.createGMServiceDelivery(messages);
+            Siri delivery = siriObjectFactory.createGMServiceDelivery(messages, subscriptionRequest.getSubscriptionId(), null);
             results.put(dataset, delivery);
         }
         return results;
@@ -165,7 +165,7 @@ public class InitialDeliveryGenerator {
 
     private Siri getVMinitialDeliveryForDataset(OutboundSubscriptionSetup subscriptionRequest, String datasetId) {
         Set<String> filteredLines = siriHelper.getLineFiltersForDatasetId(subscriptionRequest, datasetId);
-        return vehicleActivities.createServiceDelivery(subscriptionRequest.getRequestorRef(), datasetId, "initialDelivery", new ArrayList<>(), Integer.MAX_VALUE, filteredLines, new HashSet<>());
+        return vehicleActivities.createServiceDelivery(subscriptionRequest.getRequestorRef(), datasetId, "initialDelivery", new ArrayList<>(), Integer.MAX_VALUE, filteredLines, new HashSet<>(), null);
     }
 
     private Map<String, Siri> getSMinitialDeliveries(OutboundSubscriptionSetup subscriptionRequest, Set<String> searchedStopIds) {
@@ -179,7 +179,7 @@ public class InitialDeliveryGenerator {
         }
 
         for (String datasetId : datasetsToRequest) {
-            Siri delivery = monitoredStopVisits.createServiceDelivery(subscriptionRequest.getRequestorRef(), datasetId, "initialDelivery", Integer.MAX_VALUE, searchedStopIds);
+            Siri delivery = monitoredStopVisits.createServiceDelivery(subscriptionRequest.getRequestorRef(), datasetId, "initialDelivery", Integer.MAX_VALUE, searchedStopIds, null);
             if (SiriUtils.hasDataOfType(delivery, SiriDataType.STOP_MONITORING)) {
                 results.put(datasetId, delivery);
             }
@@ -209,7 +209,7 @@ public class InitialDeliveryGenerator {
 
     private Siri getETinitialDeliveryForDataset(OutboundSubscriptionSetup subscriptionRequest, String datasetId) {
         Set<String> filteredLines = siriHelper.getLineFiltersForDatasetId(subscriptionRequest, datasetId);
-        return estimatedTimetables.createServiceDelivery(subscriptionRequest.getRequestorRef(), datasetId, "initialDelivery", new ArrayList<>(), Integer.MAX_VALUE, -1, filteredLines);
+        return estimatedTimetables.createServiceDelivery(subscriptionRequest.getRequestorRef(), datasetId, "initialDelivery", new ArrayList<>(), Integer.MAX_VALUE, -1, filteredLines, null);
     }
 
 }

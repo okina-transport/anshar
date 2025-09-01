@@ -61,6 +61,7 @@ public class SiriLiteGeneralMessageRoute extends RestRouteBuilder {
                     String originalId = p.getIn().getHeader(PARAM_USE_ORIGINAL_ID, String.class);
                     Integer maxSizeStr = p.getIn().getHeader(PARAM_MAX_SIZE, Integer.class);
                     String etClientName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
+                    String messageId = p.getIn().getMessageId();
                     boolean isGmSIVSicAQuay = Boolean.parseBoolean(p.getIn().getHeader(PARAM_SIV_GM_SIC_A_QUAY, String.class));
                     int maxSize = datasetId != null ? Integer.MAX_VALUE : configuration.getDefaultMaxSize();
 
@@ -69,7 +70,7 @@ public class SiriLiteGeneralMessageRoute extends RestRouteBuilder {
                     }
 
                     Set<String> datasets = SiriUtils.generateDatasetListFromHeader(datasetId);
-                    Siri response = handleGeneralMessageMultipleDatasetRequest(requestorId, datasets, etClientName, maxSize, originalId, isGmSIVSicAQuay);
+                    Siri response = handleGeneralMessageMultipleDatasetRequest(requestorId, datasets, etClientName, maxSize, originalId, isGmSIVSicAQuay, messageId);
 
                     metrics.countOutgoingData(response, SubscriptionSetup.SubscriptionMode.LITE);
 
@@ -84,13 +85,13 @@ public class SiriLiteGeneralMessageRoute extends RestRouteBuilder {
     }
 
 
-    private Siri handleGeneralMessageMultipleDatasetRequest(String requestorId, Set<String> datasets, String etClientName, int maxSize, String originalId, boolean isGmSIVSicAQuay) {
+    private Siri handleGeneralMessageMultipleDatasetRequest(String requestorId, Set<String> datasets, String etClientName, int maxSize, String originalId, boolean isGmSIVSicAQuay, String messageId) {
         if (datasets.isEmpty()) {
-            return handleGeneralMessageSingleDatasetRequest(requestorId, null, etClientName, maxSize, originalId, isGmSIVSicAQuay);
+            return handleGeneralMessageSingleDatasetRequest(requestorId, null, etClientName, maxSize, originalId, isGmSIVSicAQuay, messageId);
         }
         Siri globalResults = null;
         for (String dataset : datasets) {
-            Siri datasetResult = handleGeneralMessageSingleDatasetRequest(requestorId, dataset, etClientName, maxSize, originalId, isGmSIVSicAQuay);
+            Siri datasetResult = handleGeneralMessageSingleDatasetRequest(requestorId, dataset, etClientName, maxSize, originalId, isGmSIVSicAQuay, messageId);
             globalResults = SiriUtils.mergeSiris(globalResults, datasetResult);
 
         }
@@ -98,8 +99,8 @@ public class SiriLiteGeneralMessageRoute extends RestRouteBuilder {
     }
 
 
-    private Siri handleGeneralMessageSingleDatasetRequest(String requestorId, String datasetId, String etClientName, int maxSize, String originalId, boolean isGmSIVSicAQuay) {
-        Siri response = generalMessages.createServiceDelivery(requestorId, datasetId, etClientName, maxSize, null);
+    private Siri handleGeneralMessageSingleDatasetRequest(String requestorId, String datasetId, String etClientName, int maxSize, String originalId, boolean isGmSIVSicAQuay, String messageId) {
+        Siri response = generalMessages.createServiceDelivery(requestorId, datasetId, etClientName, maxSize, null, messageId);
 
 
         List<ValueAdapter> outboundAdapters;
