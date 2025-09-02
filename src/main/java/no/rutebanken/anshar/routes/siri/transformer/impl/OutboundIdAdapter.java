@@ -35,16 +35,16 @@ public class OutboundIdAdapter extends ValueAdapter {
 
     private static final Logger logger = LoggerFactory.getLogger(OutboundIdAdapter.class);
 
-    private final OutboundIdMappingPolicy outboundIdMappingPolicy;
+    protected final OutboundIdMappingPolicy outboundIdMappingPolicy;
 
-    private IdProcessingParameters idProcessingParameters;
+    protected IdProcessingParameters idProcessingParameters;
 
-    private boolean shouldConvertToNetexId = false;
+    protected boolean shouldConvertToNetexId = false;
 
 
-    private transient StopPlaceUpdaterService stopPlaceService;
+    protected transient StopPlaceUpdaterService stopPlaceService;
 
-    private transient ExternalIdsService externalIdsService;
+    protected transient ExternalIdsService externalIdsService;
 
     public OutboundIdAdapter(Class clazz, OutboundIdMappingPolicy outboundIdMappingPolicy) {
         super(clazz);
@@ -103,7 +103,7 @@ public class OutboundIdAdapter extends ValueAdapter {
         return text;
     }
 
-    private String convertToNetexId(String text) {
+    protected String convertToNetexId(String text) {
 
         if (stopPlaceService == null) {
             stopPlaceService = ApplicationContextHolder.getContext().getBean(StopPlaceUpdaterService.class);
@@ -117,7 +117,7 @@ public class OutboundIdAdapter extends ValueAdapter {
         return text;
     }
 
-    private String convertToAltId(String datasetId, String text, ObjectType objectType) {
+    protected String convertToAltId(String datasetId, String text, ObjectType objectType) {
         if (externalIdsService == null) {
             externalIdsService = ApplicationContextHolder.getContext().getBean(ExternalIdsService.class);
         }

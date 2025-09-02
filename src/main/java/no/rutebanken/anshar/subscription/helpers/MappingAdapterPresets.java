@@ -21,6 +21,7 @@ import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.processor.CodespaceOutboundProcessor;
 import no.rutebanken.anshar.routes.siri.processor.RuterOutboundDatedVehicleRefAdapter;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
+import no.rutebanken.anshar.routes.siri.transformer.impl.FacilityRefOutboundIdAdapter;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.slf4j.Logger;
@@ -120,6 +121,9 @@ public class MappingAdapterPresets {
                 case SITUATION_EXCHANGE:
                     adapters.add(new OutboundIdAdapter(RequestorRef.class, outboundIdMappingPolicy));
                     adapters.add(new OutboundIdAdapter(StopPlaceRef.class, outboundIdMappingPolicy));
+                    break;
+                case FACILITY_MONITORING:
+                    adapters.add(new FacilityRefOutboundIdAdapter(outboundIdMappingPolicy));
                     break;
                 case STOP_MONITORING:
                 case GENERAL_MESSAGE:

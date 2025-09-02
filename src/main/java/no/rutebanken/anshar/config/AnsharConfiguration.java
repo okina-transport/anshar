@@ -16,6 +16,7 @@
 package no.rutebanken.anshar.config;
 
 import com.hazelcast.map.IMap;
+import com.okina.gbfs.to.siri.StationStatusToSiriFmMapper;
 import lombok.Getter;
 import lombok.Setter;
 import org.slf4j.Logger;
@@ -29,6 +30,7 @@ import org.springframework.context.annotation.Configuration;
 
 import javax.annotation.PostConstruct;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.TimeZone;
 
@@ -128,6 +130,11 @@ public class AnsharConfiguration {
     @Bean
     public SchedulerFactoryBeanCustomizer schedulerDelayCustomizer() {
         return schedulerFactoryBean -> schedulerFactoryBean.setStartupDelay(15);
+    }
+
+    @Bean
+    public StationStatusToSiriFmMapper mapper() {
+        return new StationStatusToSiriFmMapper(ZoneId.systemDefault());
     }
 
     public boolean processET() {
