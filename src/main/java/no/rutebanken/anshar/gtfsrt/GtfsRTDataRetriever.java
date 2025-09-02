@@ -28,9 +28,8 @@ import static no.rutebanken.anshar.gtfsrt.GtfsRtConstants.LOCK_MAP;
 @Service
 public class GtfsRTDataRetriever {
     public static final String GTFS_RT_TAG = "GTFS-RT";
-
     private static final Logger logger = LoggerFactory.getLogger(GtfsRTDataRetriever.class);
-    public static final String GTFS_RT = "GTFS-RT";
+
     private final TripUpdateReader tripUpdateReader;
 
     private final VehiclePositionReader vehiclePositionReader;
@@ -91,8 +90,8 @@ public class GtfsRTDataRetriever {
                     logger.error("Error on GTFSRT feed: {} - {}", gtfsRTApi.getDatasetId(), gtfsRTApi.getUrl());
                     logger.error("Error detail", e);
                     gtfsRTApi.setStatus(FlowStatus.ERROR);
-                    metrics.registerIncomingDataMonitoring(GTFS_RT, gtfsRTApi.getDatasetId(), "500", gtfsRTApi.getUrl());
-                    incomingDataHealthService.sendSubscriptionMonitoringData(GTFS_RT, gtfsRTApi.getDatasetId(), "500", gtfsRTApi.getUrl());
+                    metrics.registerIncomingDataMonitoring(GTFS_RT_TAG, gtfsRTApi.getDatasetId(), "500", gtfsRTApi.getUrl());
+                    incomingDataHealthService.sendSubscriptionMonitoringData(GTFS_RT_TAG, gtfsRTApi.getDatasetId(), "500", gtfsRTApi.getUrl());
                 }
                 incomingDataHealthService.recordStatus(gtfsRTApi);
                 subscriptionConfig.updateGtfsRtStatus(gtfsRTApi);

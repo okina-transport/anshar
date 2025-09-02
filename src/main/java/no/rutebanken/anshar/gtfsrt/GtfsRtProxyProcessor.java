@@ -166,7 +166,7 @@ public class GtfsRtProxyProcessor implements Processor {
         }
 
 
-        List<MonitoredStopVisit> stopVisits = tripUpdateReader.buildStopVisitList(completeGTFSFeed, datasetId, routeIdList);
+        List<MonitoredStopVisit> stopVisits = tripUpdateReader.buildStopVisitList(completeGTFSFeed, datasetId, routeIdList, gtfsRTApi.getPublishedLineNameMapping());
         List<MonitoredStopVisitCancellation> stopCancellations = tripUpdateReader.buildStopCancellationList(completeGTFSFeed, datasetId, routeIdList);
         if (CollectionUtils.isNotEmpty(stopVisits) || CollectionUtils.isNotEmpty(stopCancellations)) {
             GtfsRtInboundSm smData = GtfsRtInboundSm.builder()
