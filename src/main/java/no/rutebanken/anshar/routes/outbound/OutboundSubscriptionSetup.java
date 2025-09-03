@@ -26,10 +26,14 @@ import org.apache.commons.lang3.StringUtils;
 import org.entur.siri.validator.SiriValidator;
 
 import javax.xml.datatype.Duration;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.text.MessageFormat;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
 public class OutboundSubscriptionSetup implements Serializable {
@@ -54,6 +58,8 @@ public class OutboundSubscriptionSetup implements Serializable {
     private Map<String, List<ValueAdapter>> valueAdaptersByDataset = new HashMap<>();
     private Map<String, Map<Class, Set<String>>> filterMapByDataset = new HashMap<>();
     private Cache<String, String> alreadySentNotifications;
+    private Map<String, String> serializableAlreadySentNotifications;
+    private Integer cacheTtl;
     private OutboundIdMappingPolicy outboundIdMappingPolicy;
     private Duration previewInterval;
     @Getter
@@ -106,7 +112,7 @@ public class OutboundSubscriptionSetup implements Serializable {
             this.filterMap.clear();
             this.filterMapByDataset = filterMapByDataset;
         }
-
+        cacheTtl = cacheTTL;
         alreadySentNotifications = CacheBuilder.newBuilder()
                 .expireAfterWrite(cacheTTL, TimeUnit.HOURS)  // by default, already sent notifications are deleted after 5 hours to avoid huge data in memory
                 .build();
@@ -253,5 +259,20 @@ public class OutboundSubscriptionSetup implements Serializable {
 
     public void recordNotification(String notificationId) {
         alreadySentNotifications.put(notificationId, "1");
+    }
+
+    private void writeObject(ObjectOutputStream out) throws IOException {
+        ConcurrentMap<String, String> alreadySentNotificationsMap = this.alreadySentNotifications.asMap();
+        serializableAlreadySentNotifications = new HashMap<>();
+        serializableAlreadySentNotifications.putAll(alreadySentNotificationsMap);
+        out.defaultWriteObject();
+    }
+
+    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+        in.defaultReadObject();
+        alreadySentNotifications =  CacheBuilder.newBuilder()
+                .expireAfterWrite(cacheTtl, TimeUnit.HOURS)
+                .build();
+        alreadySentNotifications.putAll(serializableAlreadySentNotifications);
     }
 }

@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.data;
 
+import com.hazelcast.collection.ISet;
 import jakarta.xml.bind.UnmarshalException;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
@@ -22,7 +23,6 @@ import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
-import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,7 +39,7 @@ import static no.rutebanken.anshar.helpers.SleepUtil.sleep;
 import static org.junit.jupiter.api.Assertions.*;
 
 
-public class EstimatedTimetablesTest extends SpringBootBaseTest {
+class EstimatedTimetablesTest extends SpringBootBaseTest {
 
     @Autowired
     private EstimatedTimetables estimatedTimetables;
@@ -48,18 +48,18 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
     private SiriHandler handler;
 
     @Autowired
-    private SubscriptionConfig subscriptionConfig;
+    private Collection<GtfsRTApi> gtfsRTApiSet;
 
     @Autowired
     private LineUpdaterService lineupdaterService;
 
     @BeforeEach
-    public void init() {
+    void init() {
         estimatedTimetables.clearAll();
     }
 
     @Test
-    public void testAddNull() {
+    void testAddNull() {
         int previousSize = estimatedTimetables.getAll().size();
         estimatedTimetables.add("test", null);
 
@@ -67,7 +67,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testAddJourney() {
+    void testAddJourney() {
         int previousSize = estimatedTimetables.getAll().size();
         EstimatedVehicleJourney element = TestObjectFactory.createEstimatedVehicleJourney("1234-added", "4321", 0, 30, ZonedDateTime.now().plusMinutes(1), true);
 
@@ -81,15 +81,12 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         String flexibleLineId = "PROV1:Line:35";
         String standardlineId = "PROV2:Line:AAA";
 
-        List<GtfsRTApi> gtfsApis = new ArrayList<>();
         GtfsRTApi api1 = new GtfsRTApi();
         api1.setDatasetId("PROV1");
         GtfsRTApi api2 = new GtfsRTApi();
         api2.setDatasetId("PROV2");
-        gtfsApis.add(api1);
-        gtfsApis.add(api2);
-
-        subscriptionConfig.setGtfsRTApis(gtfsApis);
+        gtfsRTApiSet.add(api1);
+        gtfsRTApiSet.add(api2);
 
         Map<String, Boolean> flexibleLineMap = new HashMap<>();
         flexibleLineMap.put(flexibleLineId, true);
@@ -184,7 +181,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testGetPartialUpdatesOnly() {
+    void testGetPartialUpdatesOnly() {
         int previousSize = estimatedTimetables.getAll().size();
         estimatedTimetables.commitChanges();
 
@@ -247,7 +244,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testUpdatedJourney() {
+    void testUpdatedJourney() {
         int previousSize = estimatedTimetables.getAll().size();
 
         ZonedDateTime departure = ZonedDateTime.now().plusHours(1);
@@ -281,7 +278,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testUpdatedJourneyWrongOrder() {
+    void testUpdatedJourneyWrongOrder() {
         int previousSize = estimatedTimetables.getAll().size();
 
         ZonedDateTime departure = ZonedDateTime.now().plusHours(1);
@@ -318,7 +315,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testMapEstimatedToRecordedCall() {
+    void testMapEstimatedToRecordedCall() {
 
         StopPointRefStructure stopPoint = new StopPointRefStructure();
         stopPoint.setValue("NSR:Stop:1234");
@@ -423,7 +420,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
 
 
     @Test
-    public void testCreateServiceDelivery() {
+    void testCreateServiceDelivery() {
         String datasetId = "ServiceDeliveryTest";
         estimatedTimetables.add(datasetId, TestObjectFactory.createEstimatedVehicleJourney("1234", "1", 0, 30, ZonedDateTime.now().plusHours(1), true));
         estimatedTimetables.add(datasetId, TestObjectFactory.createEstimatedVehicleJourney("2345", "2", 0, 30, ZonedDateTime.now().plusHours(1), true));
@@ -547,7 +544,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testExcludeDatasetIds() {
+    void testExcludeDatasetIds() {
 
         String prefix = "excludedOnly-";
 
@@ -569,7 +566,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testGetAllMonitored() {
+    void testGetAllMonitored() {
         String lineRefValue = "GetAll:Line:1";
 
         EstimatedVehicleJourney monitoredTarget = null;

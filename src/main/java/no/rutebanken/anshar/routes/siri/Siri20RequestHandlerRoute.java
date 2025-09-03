@@ -285,7 +285,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
         from("direct:process.soap.subscription.request")
                 .process(e -> e.getIn().setHeader(TRANSFORM_SOAP, TRANSFORM_SOAP))
                 .to("direct:transform.siri")
-                .process(e -> log.debug(" transformé:" + e.getIn().getBody(String.class)))
+                .process(e -> log.debug(" transformé: {}", e.getIn().getBody(String.class)))
                 .to("direct:process.subscription.request");
 
 
@@ -351,7 +351,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .to("direct:internal.handle.subscription") //Build response
                 .endChoice()
                 .otherwise()
-                .to("direct:anshar.invalid.tracking.header.response")
+                .to("direct:anshar.invalid.input.request")
                 .routeId("process.subscription")
         ;
 
@@ -385,24 +385,20 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                     if (response != null) {
                         logger.info("Returning SubscriptionResponse");
 
-                        p.getOut().setBody(response);
+                        p.getMessage().setBody(response);
                     }
 
-                    p.getOut().setHeader(TRANSFORM_SOAP,p.getIn().getHeader(TRANSFORM_SOAP));
+                    p.getMessage().setHeader(TRANSFORM_SOAP,p.getIn().getHeader(TRANSFORM_SOAP));
 
                 })
                 .choice()
                 .when(e -> TRANSFORM_SOAP.equals(e.getIn().getHeader(TRANSFORM_SOAP)))
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
-                .process(e->{
-                    e.getIn().setHeader(Exchange.CONTENT_TYPE,MediaType.TEXT_XML);
-                })
+                .process(e->e.getIn().setHeader(Exchange.CONTENT_TYPE,MediaType.TEXT_XML))
                 .to("xslt-saxon:xsl/siri_raw_soap.xsl")
                 .otherwise()
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
-                .process(e->{
-                    e.getIn().setHeader(Exchange.CONTENT_TYPE,MediaType.TEXT_XML);
-                })
+                .process(e-> e.getIn().setHeader(Exchange.CONTENT_TYPE,MediaType.TEXT_XML))
                 .end()
                 .to("log:subResponse:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
         ;
@@ -433,7 +429,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
         from("direct:internal.process.service.request")
                 .to("log:serRequest:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true&level=DEBUG")
                 .choice()
-                .when(e -> isTrackingHeaderAcceptable(e))
+                .when(this::isTrackingHeaderAcceptable)
                     .to("direct:internal.process.service.request.acceptable.header")
                 .otherwise()
                     .to("direct:anshar.invalid.tracking.header.response")
@@ -445,7 +441,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .process(p -> {
                     Message msg = p.getIn();
 
-                    p.getOut().setHeaders(msg.getHeaders());
+                    p.getMessage().setHeaders(msg.getHeaders());
 
                     List<String> excludedIdList = getParameterValuesAsList(msg, PARAM_EXCLUDED_DATASET_ID);
                     String clientTrackingName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
@@ -484,7 +480,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                         }else{
                             CustomSiriXml.toXml(response, null, byteArrayOutputStream);
                         }
-                        p.getOut().setBody(byteArrayOutputStream.toString());
+                        p.getMessage().setBody(byteArrayOutputStream.toString());
                     }
                 })
                 .choice()
@@ -497,14 +493,6 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
                 .endChoice()
                 .to("log:serResponse:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true&level=DEBUG");
-
-
-
-
-
-
-
-
 
         from("direct:process.service.request.cache1")
                 .routeId("process.service.request.cache1")
@@ -765,17 +753,18 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
 
 
         if (existsAndIsActive) {
-            e.getOut().setHeaders(e.getIn().getHeaders());
-            e.getOut().setBody(e.getIn().getBody());
+            Message outMessage = e.getMessage();
+            outMessage.setHeaders(e.getIn().getHeaders());
+            outMessage.setBody(e.getIn().getBody());
 
 
             if (!"2.0".equals(subscriptionSetup.getVersion())) {
-                e.getOut().setHeader(TRANSFORM_VERSION, TRANSFORM_VERSION);
+                outMessage.setHeader(TRANSFORM_VERSION, TRANSFORM_VERSION);
             }
 
 
             if (subscriptionSetup.getServiceType() == SubscriptionSetup.ServiceType.SOAP) {
-                e.getOut().setHeader(TRANSFORM_SOAP, TRANSFORM_SOAP);
+                outMessage.setHeader(TRANSFORM_SOAP, TRANSFORM_SOAP);
             }
         }
 

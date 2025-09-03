@@ -16,6 +16,7 @@
 package no.rutebanken.anshar.subscription;
 
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
+import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,14 +28,15 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static org.awaitility.Awaitility.await;
+import static org.awaitility.Awaitility.with;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class SubscriptionManagerTest extends SpringBootBaseTest {
+class SubscriptionManagerTest extends SpringBootBaseTest {
 
     @Autowired
     private SubscriptionManager subscriptionManager;
@@ -48,7 +50,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void activeSubscriptionIsHealthy() {
+    void activeSubscriptionIsHealthy()  {
         long subscriptionDurationSec = 1;
         SubscriptionSetup subscriptionSoonToExpire = createSubscription(subscriptionDurationSec);
         String subscriptionId = UUID.randomUUID().toString();
@@ -60,7 +62,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void activeSubscriptionNoHeartbeat() throws InterruptedException {
+    void activeSubscriptionNoHeartbeat() {
         long subscriptionDurationSec = 180;
         SubscriptionSetup activeSubscription = createSubscription(subscriptionDurationSec, Duration.ofMillis(150));
         String subscriptionId = UUID.randomUUID().toString();
@@ -69,15 +71,15 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
         subscriptionManager.touchSubscription(subscriptionId);
 
         assertTrue(subscriptionManager.isSubscriptionHealthy(subscriptionId));
-
-        Thread.sleep(activeSubscription.getHeartbeatInterval().toMillis() * healthcheckIntervalFactor + 150);
-
-        assertFalse(subscriptionManager.isSubscriptionHealthy(subscriptionId));
+        await()
+            .atLeast(activeSubscription.getHeartbeatInterval().toMillis() * healthcheckIntervalFactor, MILLISECONDS)
+            .atMost(2, TimeUnit.SECONDS)
+        .until(() -> !subscriptionManager.isSubscriptionHealthy(subscriptionId));
     }
 
 
     @Test
-    public void notStartedSubscriptionIsHealthy() throws InterruptedException {
+    void notStartedSubscriptionIsHealthy() {
 
         long subscriptionDurationSec = 1;
         SubscriptionSetup pendingSubscription = createSubscription(subscriptionDurationSec, Duration.ofMillis(150));
@@ -86,15 +88,16 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
         subscriptionManager.addSubscription(subscriptionId, pendingSubscription);
 
         assertTrue(subscriptionManager.isSubscriptionHealthy(subscriptionId));
-
-        Thread.sleep(pendingSubscription.getHeartbeatInterval().toMillis() * healthcheckIntervalFactor + 150);
-
-        assertTrue(subscriptionManager.isSubscriptionHealthy(subscriptionId));
+        with()
+            .pollDelay(pendingSubscription.getHeartbeatInterval().toMillis() * healthcheckIntervalFactor, MILLISECONDS)
+            .await()
+                .atMost(2, TimeUnit.SECONDS)
+            .until(() -> subscriptionManager.isSubscriptionHealthy(subscriptionId));
     }
 
 
     @Test
-    public void testAutomaticRestartTrigger() throws InterruptedException {
+    void testAutomaticRestartTrigger() {
 
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
         String restartTime = ZonedDateTime.now().plusMinutes(2).format(timeFormatter);
@@ -120,7 +123,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testForceRestartTrigger() throws InterruptedException {
+    void testForceRestartTrigger() {
 
         SubscriptionSetup subscription = createSubscription(1000000L);
 
@@ -143,7 +146,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testCheckStatusResponseOK() throws InterruptedException {
+    void testCheckStatusResponseOK() {
         long subscriptionDurationSec = 180;
         SubscriptionSetup subscription = createSubscription(subscriptionDurationSec);
         subscriptionManager.addSubscription(subscription.getSubscriptionId(), subscription);
@@ -157,7 +160,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testAddSubscription() {
+    void testAddSubscription() {
         SubscriptionSetup subscription = createSubscription(1);
         assertFalse(subscriptionManager.isSubscriptionRegistered(subscription.getSubscriptionId()), "Subscription already marked as registered");
         subscriptionManager.addSubscription(subscription.getSubscriptionId(), subscription);
@@ -172,7 +175,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
 
 
     @Test
-    public void testRemoveSubscription() {
+    void testRemoveSubscription() {
         SubscriptionSetup subscription = createSubscription(1);
         assertFalse(subscriptionManager.isSubscriptionRegistered(subscription.getSubscriptionId()));
 
@@ -196,7 +199,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testForceRemoveSubscription() {
+    void testForceRemoveSubscription() {
         SubscriptionSetup subscription = createSubscription(1);
         assertFalse(subscriptionManager.isSubscriptionRegistered(subscription.getSubscriptionId()));
 
@@ -211,7 +214,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testStatsObjectCounterHugeNumber() {
+    void testStatsObjectCounterHugeNumber() {
         SubscriptionSetup subscription = createSubscription(1);
         assertFalse(subscriptionManager.isSubscriptionRegistered(subscription.getSubscriptionId()));
 
@@ -247,7 +250,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testStatByteCounter() {
+    void testStatByteCounter() {
         SubscriptionSetup subscription = createSubscription(1);
         assertFalse(subscriptionManager.isSubscriptionRegistered(subscription.getSubscriptionId()));
 
@@ -271,7 +274,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
         for (int i = 0; i < types.size(); i++) {
             subscriptions.addAll((JSONArray) ((JSONObject) types.get(i)).get("subscriptions"));
         }
-        assertTrue(subscriptions.size() > 0);
+        assertFalse(subscriptions.isEmpty());
 
         boolean verifiedCounter = false;
         for (Object object : subscriptions) {
@@ -285,7 +288,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testIsSubscriptionRegistered() {
+    void testIsSubscriptionRegistered() {
 
         assertFalse(
                 subscriptionManager.activatePendingSubscription("RandomSubscriptionId"),
@@ -310,14 +313,12 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
 
         Set<String> allUnhealthySubscriptions = subscriptionManager.getAllUnhealthySubscriptions(1);
         assertFalse(allUnhealthySubscriptions.contains(subscription.getVendor()));
-        try {
-            Thread.sleep(100);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        Set<String> allUnhealthySubscriptions_2 = subscriptionManager.getAllUnhealthySubscriptions(0);
-        assertTrue(allUnhealthySubscriptions_2.contains(subscription.getVendor()));
+        await().atLeast(100, MILLISECONDS)
+                .atMost(1, TimeUnit.SECONDS)
+                .until(() -> {
+                    Set<String> allUnhealthySubscriptions2 = subscriptionManager.getAllUnhealthySubscriptions(0);
+                    return allUnhealthySubscriptions2.contains(subscription.getVendor());
+                });
     }
 
     private SubscriptionSetup createSubscription(long initialDuration) {
@@ -332,7 +333,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
                 heartbeatInterval,
                 Duration.ofHours(1),
                 "http://www.kolumbus.no/siri",
-                new HashMap<>(),
+                new EnumMap<>(RequestType.class),
                 "1.4",
                 "SwarcoMizar",
                 "tst",

@@ -16,6 +16,7 @@
 package no.rutebanken.anshar.subscription;
 
 import com.google.common.base.Preconditions;
+import com.hazelcast.collection.ISet;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.DiscoveryCache;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
@@ -107,8 +108,8 @@ public class SubscriptionInitializer implements CamelContextAware {
             logger.info("App started with mode(s): {}", configuration.getAppModes());
         }
 
-        if (!configuration.isCurrentInstanceLeader()) {
-            logger.info("===> Current instance not leader. Not launching subscriptions");
+        if (!configuration.processAdmin()) {
+            logger.info("===> Current instance is specialized. Not launching subscriptions");
             return;
         }
 
@@ -123,7 +124,7 @@ public class SubscriptionInitializer implements CamelContextAware {
         logger.info("Initializing subscriptions for environment: {}", configuration.getEnvironment());
 
         if (subscriptionConfig != null) {
-            List<SubscriptionSetup> subscriptionSetups = subscriptionConfig.getSubscriptions();
+            Collection<SubscriptionSetup> subscriptionSetups = subscriptionConfig.getSubscriptions();
             logger.info("Initializing {} subscriptions", subscriptionSetups.size());
             Set<String> subscriptionIds = new HashSet<>();
             Set<String> subscriptionNames = new HashSet<>();

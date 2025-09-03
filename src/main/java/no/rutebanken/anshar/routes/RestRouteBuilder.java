@@ -138,6 +138,15 @@ public class RestRouteBuilder extends RouteBuilder {
             createClientRequestRoutes();
         }
 
+/*
+        from("direct:anshar.invalid.input.request")
+                .log("invalid")
+                .removeHeaders("*")
+                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("400")) //400 Bad request
+                .setBody(constant("The input request is invalid"))
+                .routeId("reject.invalid.input.request")
+        ;
+*/
 
     }
 

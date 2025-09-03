@@ -102,7 +102,8 @@ public class ServerSubscriptionManager {
     protected ProducerTemplate initialDeliveryRequestProducer;
     @Autowired
     IMap<String, OutboundSubscriptionSetup> subscriptions;
-    Map<String, List<OutboundSubscriptionSetup>> outboundSubscriptionsByMonitoringRef = new HashMap<>();
+    @Autowired
+    private IMap<String, List<OutboundSubscriptionSetup>> outboundSubscriptionsByMonitoringRef;
     ExecutorService outboundSenderExecutorService;
     @Autowired
     @Qualifier("getFailTrackerMap")
@@ -525,6 +526,7 @@ public class ServerSubscriptionManager {
         }
 
         if (hasError) {
+            logger.debug("An error occurred while trying to subscribe. SubscriptionId : {}", subscription.getSubscriptionId());
             return siriObjectFactory.createSubscriptionResponse(subscription.getSubscriptionId(), false, errorText, incomingSiri.getVersion());
         } else {
             addSubscription(subscription);
@@ -915,20 +917,27 @@ public class ServerSubscriptionManager {
         }
     }
 
-    private void addSubcriptionToReverseList(OutboundSubscriptionSetup subscription, String monitoringRef) {
+    public void addSubcriptionToReverseList(OutboundSubscriptionSetup subscription, String monitoringRef) {
         if (outboundSubscriptionsByMonitoringRef.containsKey(monitoringRef)) {
+            logger.debug("Parsing subscription for monitoring ref {}", monitoringRef);
+            List<OutboundSubscriptionSetup> outboundSubscriptions = new ArrayList<>();
 
             for (OutboundSubscriptionSetup currentOutboundSub : outboundSubscriptionsByMonitoringRef.get(monitoringRef)) {
                 if (StringUtils.isNotEmpty(subscription.getSubscriptionId()) && subscription.getSubscriptionId().equals(currentOutboundSub.getSubscriptionId())) {
-                    //subscription is already existing in reverseList. no need to add it
-                    return;
+                    //subscription is already existing in reverseList. New version of the subscription will be added
+                    logger.debug("Already existing subscription {} for monitoringRef {}", subscription.getSubscriptionId(), monitoringRef);
+                } else {
+                    outboundSubscriptions.add(currentOutboundSub);
                 }
             }
-            outboundSubscriptionsByMonitoringRef.get(monitoringRef).add(subscription);
+
+            outboundSubscriptions.add(subscription);
+            outboundSubscriptionsByMonitoringRef.set(monitoringRef, outboundSubscriptions);
         } else {
+            logger.debug("Adding subscription {} to hazelcast map for monitoringRef {}", subscription.getSubscriptionId(), monitoringRef);
             List<OutboundSubscriptionSetup> outboundSubscriptions = new ArrayList<>();
             outboundSubscriptions.add(subscription);
-            outboundSubscriptionsByMonitoringRef.put(monitoringRef, outboundSubscriptions);
+            outboundSubscriptionsByMonitoringRef.set(monitoringRef, outboundSubscriptions);
         }
     }
 
@@ -941,12 +950,12 @@ public class ServerSubscriptionManager {
     }
 
     private void removeSubscriptionFromReverseMap(String subscriptionId) {
-
+        logger.debug("Removing subscription {} from hazelcast reverse map", subscriptionId);
         for (Map.Entry<String, List<OutboundSubscriptionSetup>> stringListEntry : outboundSubscriptionsByMonitoringRef.entrySet()) {
             List<OutboundSubscriptionSetup> filteredSubscriptionList = stringListEntry.getValue().stream()
                     .filter(outboundSubscriptionSetup -> !outboundSubscriptionSetup.getSubscriptionId().equals(subscriptionId))
                     .collect(Collectors.toList());
-            stringListEntry.setValue(filteredSubscriptionList);
+            outboundSubscriptionsByMonitoringRef.set(stringListEntry.getKey(), filteredSubscriptionList);
         }
     }
 
@@ -1425,17 +1434,19 @@ public class ServerSubscriptionManager {
 //        }
 
         Set<String> monitoredRefs = SiriHelper.extractMonitoringRefs(addedOrUpdated);
-        List<OutboundSubscriptionSetup> impactedOutboundSubscriptions = getSubscriptionsRelatedToMonitoringRefs(datasetId, monitoredRefs);
+        List<OutboundSubscriptionSetup> impactedOutboundSubscriptions = getSubscriptionsRelatedToMonitoringRefs(monitoredRefs);
 
         impactedOutboundSubscriptions.forEach(subscription -> camelRouteManager.pushSiriData(datasetId, delivery, subscription, true));
         MDC.remove("camel.breadcrumbId");
     }
 
-    private List<OutboundSubscriptionSetup> getSubscriptionsRelatedToMonitoringRefs(String datasetId, Set<String> monitoredRefs) {
+    private List<OutboundSubscriptionSetup> getSubscriptionsRelatedToMonitoringRefs(Set<String> monitoredRefs) {
 
         List<OutboundSubscriptionSetup> results = new ArrayList<>();
         for (String monitoredRef : monitoredRefs) {
+            logger.debug("Looking for subscriptions related to {}", monitoredRef);
             if (outboundSubscriptionsByMonitoringRef.containsKey(monitoredRef)) {
+                logger.debug("Found subscriptions related to {} - updating hazelcast map", monitoredRef);
                 results.addAll(outboundSubscriptionsByMonitoringRef.get(monitoredRef));
             }
         }

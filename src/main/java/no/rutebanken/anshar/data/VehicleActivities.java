@@ -124,12 +124,22 @@ public class VehicleActivities extends SiriRepository<VehicleActivityStructure> 
     public Map<String, Integer> getLocalDatasetSize() {
         Map<String, Integer> sizeMap = new HashMap<>();
         long t1 = System.currentTimeMillis();
-        monitoredVehicles.localKeySet().forEach(key -> {
-            String datasetId = key.getCodespaceId();
+        if (configuration.isExternalHazelcast()) {
+            monitoredVehicles.keySet().forEach(key -> {
+                String datasetId = key.getCodespaceId();
 
-            Integer count = sizeMap.getOrDefault(datasetId, 0);
-            sizeMap.put(datasetId, count + 1);
-        });
+                Integer count = sizeMap.getOrDefault(datasetId, 0);
+                sizeMap.put(datasetId, count + 1);
+            });
+        } else {
+            monitoredVehicles.localKeySet().forEach(key -> {
+                String datasetId = key.getCodespaceId();
+
+                Integer count = sizeMap.getOrDefault(datasetId, 0);
+                sizeMap.put(datasetId, count + 1);
+            });
+        }
+
         logger.debug("Calculating data-distribution (VM) took {} ms: {}", (System.currentTimeMillis() - t1), sizeMap);
         return sizeMap;
     }

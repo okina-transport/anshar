@@ -21,7 +21,6 @@ import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
-import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -46,23 +45,22 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
     @Autowired
     private VehicleActivities vehicleActivities;
 
-
     @Autowired
     private SiriHandler handler;
 
     @Autowired
-    private SubscriptionConfig subscriptionConfig;
+    private Collection<GtfsRTApi> gtfsRTApiSet;
 
     @Autowired
     private LineUpdaterService lineupdaterService;
 
     @BeforeEach
-    public void init() {
+    void init() {
         vehicleActivities.clearAll();
     }
 
     @Test
-    public void testAddVehicle() {
+    void testAddVehicle() {
         int previousSize = vehicleActivities.getAll().size();
         VehicleActivityStructure element = TestObjectFactory.createVehicleActivityStructure(
                 ZonedDateTime.now().plusMinutes(1), UUID.randomUUID().toString(), "");
@@ -71,7 +69,7 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testNullVehicle() {
+    void testNullVehicle() {
         int previousSize = vehicleActivities.getAll().size();
 
         vehicleActivities.add("test", null);
@@ -79,19 +77,17 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testFlexibleLineConversion() throws UnmarshalException {
+    void testFlexibleLineConversion() throws UnmarshalException {
         String flexibleLineId = "PROV1:Line:35";
         String standardlineId = "PROV2:Line:AAA";
 
-        List<GtfsRTApi> gtfsApis = new ArrayList<>();
         GtfsRTApi api1 = new GtfsRTApi();
         api1.setDatasetId("PROV1");
         GtfsRTApi api2 = new GtfsRTApi();
         api2.setDatasetId("PROV2");
-        gtfsApis.add(api1);
-        gtfsApis.add(api2);
 
-        subscriptionConfig.setGtfsRTApis(gtfsApis);
+        gtfsRTApiSet.add(api1);
+        gtfsRTApiSet.add(api2);
 
         Map<String, Boolean> flexibleLineMap = new HashMap<>();
         flexibleLineMap.put(flexibleLineId, true);
@@ -152,7 +148,7 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testUpdatedVehicle() {
+    void testUpdatedVehicle() {
         int previousSize = vehicleActivities.getAll().size();
 
         //Add element
@@ -198,7 +194,7 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
 
     @Test
     @Disabled
-    public void testUpdatedVehicleWrongOrder() {
+    void testUpdatedVehicleWrongOrder() {
 
         //Add element
         String vehicleReference = UUID.randomUUID().toString();
@@ -233,7 +229,7 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
 
     @Test
     @Disabled
-    public void testUpdatedVehicleNoRecordedAtTime() {
+    void testUpdatedVehicleNoRecordedAtTime() {
 
         //Add element
         String vehicleReference = UUID.randomUUID().toString();
@@ -301,7 +297,7 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
 
 
     @Test
-    public void testExcludeDatasetIds() {
+    void testExcludeDatasetIds() {
 
         String prefix = "excludedOnly-";
 

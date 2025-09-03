@@ -21,11 +21,12 @@ import java.math.BigInteger;
 import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Random;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
+class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
 
     @Autowired
     private EstimatedTimetables estimatedTimetables;
@@ -45,6 +46,8 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
     @Autowired
     private SiriObjectFactory factory;
 
+    private final Random random = new Random();
+
     @BeforeEach
     public void init() {
         estimatedTimetables.clearAll();
@@ -53,7 +56,7 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testMultipleProvidersFromSingleVMDelivery() throws JAXBException {
+    void testMultipleProvidersFromSingleVMDelivery() throws JAXBException {
         Siri siri = factory.createVMServiceDelivery(List.of(createVM("RUT"), createVM("RUT"), createVM("TST")));
 
         for (VehicleMonitoringDeliveryStructure vehicleDelivery : siri.getServiceDelivery().getVehicleMonitoringDeliveries()) {
@@ -84,11 +87,11 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
 
         vehicleActivities.commitChanges();
 
-        Collection all = vehicleActivities.getAll("VM-TST");
+        Collection<VehicleActivityStructure> all = vehicleActivities.getAll("VM-TST");
         assertEquals(3, all.size());
-        Collection rut = vehicleActivities.getAll("RUT");
+        Collection<VehicleActivityStructure> rut = vehicleActivities.getAll("RUT");
         assertEquals(0, rut.size());
-        Collection tst = vehicleActivities.getAll("TST");
+        Collection<VehicleActivityStructure> tst = vehicleActivities.getAll("TST");
         assertEquals(0, tst.size());
 
 
@@ -114,7 +117,7 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testMultipleProvidersFromSingleETDelivery() throws JAXBException {
+    void testMultipleProvidersFromSingleETDelivery() throws JAXBException {
         Siri siri = factory.createETServiceDelivery(List.of(createET("RUT"), createET("RUT"), createET("TST")));
         String xml = SiriXml.toXml(siri);
 
@@ -126,16 +129,15 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
         subscriptionSetup.setVendor("TSTvendor");
         manager.addSubscription(subscriptionSetup.getSubscriptionId(), subscriptionSetup);
 
-
         handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), new ByteArrayInputStream(xml.getBytes())));
 
         estimatedTimetables.commitChanges();
 
-        Collection all = estimatedTimetables.getAll("ET-TST");
+        Collection<EstimatedVehicleJourney> all = estimatedTimetables.getAll("ET-TST");
         assertEquals(3, all.size());
-        Collection rut = estimatedTimetables.getAll("RUT");
+        Collection<EstimatedVehicleJourney> rut = estimatedTimetables.getAll("RUT");
         assertEquals(0, rut.size());
-        Collection tst = estimatedTimetables.getAll("TST");
+        Collection<EstimatedVehicleJourney> tst = estimatedTimetables.getAll("TST");
         assertEquals(0, tst.size());
 
         //Testing the same data with different subscription-config
@@ -159,7 +161,7 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testMultipleProvidersFromSingleSXDelivery() throws JAXBException {
+    void testMultipleProvidersFromSingleSXDelivery() throws JAXBException {
         Siri siri = factory.createSXServiceDelivery(List.of(createSX("RUT"), createSX("RUT"), createSX("TST")));
         String xml = SiriXml.toXml(siri);
 
@@ -178,9 +180,9 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
 
         Collection<PtSituationElement> all = situations.getAll(subscriptionSetup.getDatasetId());
         assertEquals(3, all.size());
-        Collection rutJourneys = situations.getAll("RUT");
+        Collection<PtSituationElement> rutJourneys = situations.getAll("RUT");
         assertEquals(0, rutJourneys.size());
-        Collection tstJourneys = situations.getAll("TST");
+        Collection<PtSituationElement> tstJourneys = situations.getAll("TST");
         assertEquals(0, tstJourneys.size());
 
         situations.clearAll();
@@ -205,7 +207,7 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
     private PtSituationElement createSX(String codespaceId) {
         PtSituationElement situation = new PtSituationElement();
         SituationNumber sitNumber = new SituationNumber();
-        sitNumber.setValue("TST:SituationNumber:" + (int) (Math.random() * 10000));
+        sitNumber.setValue("TST:SituationNumber:" + random.nextInt() * 10000);
         situation.setSituationNumber(sitNumber);
         RequestorRef participantRef = new RequestorRef();
         participantRef.setValue(codespaceId);
@@ -234,7 +236,7 @@ public class MultipleDatasetsFromSingleProviderTest extends SpringBootBaseTest {
         mvj.setVehicleLocation(location);
 
         VehicleRef vehicleRef = new VehicleRef();
-        vehicleRef.setValue("TST:Vehicle:" + (int) (Math.random() * 10000));
+        vehicleRef.setValue("TST:Vehicle:" + random.nextInt() * 10000);
         mvj.setVehicleRef(vehicleRef);
 
         element.setMonitoredVehicleJourney(mvj);

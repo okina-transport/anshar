@@ -36,13 +36,10 @@ public class DiscoverySubscriptionsRouteBuilder extends BaseRouteBuilder {
     public static final String SEND_DISCOVERY_REQUEST_PREPROCESS_ROUTE = "direct:send.discovery.request.preprocess";
     public static final String SEND_DISCOVERY_REQUEST_ROUTE = "direct:send.discovery.request";
 
-    private final AnsharConfiguration configuration;
-
     NamespacePrefixMapper customNamespacePrefixMapper;
 
-    protected DiscoverySubscriptionsRouteBuilder(AnsharConfiguration config, SubscriptionManager subscriptionManager, AnsharConfiguration configuration) {
+    protected DiscoverySubscriptionsRouteBuilder(AnsharConfiguration config, SubscriptionManager subscriptionManager) {
         super(config, subscriptionManager);
-        this.configuration = configuration;
         this.customNamespacePrefixMapper = new NamespacePrefixMapper() {
             @Override
             public String getPreferredPrefix(String arg0, String arg1, boolean arg2) {
@@ -54,8 +51,8 @@ public class DiscoverySubscriptionsRouteBuilder extends BaseRouteBuilder {
     @Override
     public void configure() throws Exception {
 
-        if ((!configuration.processSM() && !configuration.processVM()) || !configuration.isCurrentInstanceLeader()) {
-            logger.info("Application non paramétrée en SM/VM ou instance non leader. Pas de création d'abonnement à partir des url discovery");
+        if (!config.processAdmin()) {
+            logger.info("Instance non leader. Pas de création d'abonnement à partir des url discovery");
             return;
         }
 

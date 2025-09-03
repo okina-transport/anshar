@@ -3,7 +3,6 @@ package no.rutebanken.anshar.idTests.vehicleMonitoring;
 import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
-import org.junit.Assert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,18 +14,18 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class VM_SpecialCharactersReplacement extends SpringBootBaseTest {
+class VM_SpecialCharactersReplacement extends SpringBootBaseTest {
 
     @Autowired
     private VehicleActivities vehicleActivities;
 
     @BeforeEach
-    public void init() {
+    void init() {
         vehicleActivities.clearAll();
     }
 
     @Test
-    public void testReplaceOnDatedVehicleRef() {
+    void testReplaceOnDatedVehicleRef() {
         int previousSize = vehicleActivities.getAll().size();
         VehicleActivityStructure element = TestObjectFactory.createVehicleActivityStructure(
                 ZonedDateTime.now().plusMinutes(1), UUID.randomUUID().toString(), "");
@@ -39,7 +38,7 @@ public class VM_SpecialCharactersReplacement extends SpringBootBaseTest {
         assertEquals(previousSize + 1, vehicleActivities.getAll().size(), "Vehicle not added");
 
         VehicleActivityStructure vehicleAct = vehicleActivities.getAll().stream().findFirst().get();
-        Assert.assertEquals("PREF:ServiceJourney:id_with--and__end:LOC", vehicleAct.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().getDatedVehicleJourneyRef());
+        assertEquals("PREF:ServiceJourney:id_with--and__end:LOC", vehicleAct.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().getDatedVehicleJourneyRef());
     }
 
 }

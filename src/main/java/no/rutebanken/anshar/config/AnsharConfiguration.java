@@ -19,6 +19,7 @@ import com.hazelcast.map.IMap;
 import com.okina.gbfs.to.siri.StationStatusToSiriFmMapper;
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.camel.Handler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -110,12 +111,16 @@ public class AnsharConfiguration {
     private List<String> blockedEtClientNames;
     @Value("${anshar.application.mode:}")
     private List<AppMode> appModes;
+    @Value("${anshar.leader.check.interval:180000}")
+    private int leaderCheckIntervalMs;
     @Value("${anshar.client.name}")
     private String clientName;
     @Value("${anshar.generate-siri-from-th.enabled:false}")
     private boolean siriGenerationFromTheoreticalDataEnabled;
     @Value("${anshar.generate-siri-from-th.interval:86400000}")
     private long siriGenerationFromTheoreticalDataIntervalMs;
+    @Value("${hazelcast.external.service.enabled:false}")
+    private boolean isExternalHazelcast;
     @Autowired
     @Qualifier("getLockMap")
     private IMap<String, Instant> lockMap;
@@ -173,6 +178,7 @@ public class AnsharConfiguration {
         return isHealthcheckDisabled;
     }
 
+    @Handler
     public boolean isCurrentInstanceLeader() {
 
         if (isCurrentInstanceLeader == null) {
@@ -183,9 +189,13 @@ public class AnsharConfiguration {
 
     private void initCurrentInstanceLeader() {
         if (!lockMap.containsKey(CURRENT_INSTANCE_LEADER_KEY)) {
-            lockMap.set(CURRENT_INSTANCE_LEADER_KEY, Instant.now());
-            isCurrentInstanceLeader = true;
-            logger.info("=====> Current instance is leader. Will launch all GTFS-RT or SIRI Requests   <=================");
+            if (processAdmin()) {
+                lockMap.set(CURRENT_INSTANCE_LEADER_KEY, Instant.now());
+                isCurrentInstanceLeader = true;
+                logger.info("=====> Current instance is leader. Will launch all GTFS-RT or SIRI Requests   <=================");
+            } else {
+                isCurrentInstanceLeader = false;
+            }
         } else {
             isCurrentInstanceLeader = false;
             logger.info("=====> Current instance is not leader. Will not launch any GTFS-RT or SIRI Requests   <=================");

@@ -3,6 +3,7 @@ package no.rutebanken.anshar.gtfsrt.readers;
 import com.google.transit.realtime.GtfsRealtime;
 import no.rutebanken.anshar.data.DiscoveryCache;
 import no.rutebanken.anshar.gtfsrt.mappers.VehiclePositionMapper;
+import no.rutebanken.anshar.gtfsrt.model.GtfsRtInboundVm;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
@@ -55,6 +56,16 @@ public class VehiclePositionReader extends AbstractSwallower {
         requestType = RequestType.GET_VEHICLE_MONITORING;
     }
 
+
+    public void consumeVehicleMonitoring(GtfsRtInboundVm gtfsRtInboundVm) {
+        this.url = gtfsRtInboundVm.getUrl();
+        String datasetId = gtfsRtInboundVm.getDataSet();
+        List<VehicleActivityStructure> vehicleActivities = gtfsRtInboundVm.getVehicleActivities();
+        List<String> subscriptionList = getSubscriptions(vehicleActivities);
+        checkAndCreateSubscriptions(subscriptionList, datasetId);
+        buildSiriAndSend(vehicleActivities, datasetId);
+    }
+
     /**
      * Processes and ingests GTFS-Realtime vehicle position data, converting it into structured SIRI data.
      * This method builds vehicle activity records, manages subscriptions, and sends the structured data.
@@ -100,7 +111,7 @@ public class VehiclePositionReader extends AbstractSwallower {
      * @param routeIdList A list of route IDs used to filter relevant vehicle activities.
      * @return A list of {@link VehicleActivityStructure} objects representing structured vehicle activity data.
      */
-    private List<VehicleActivityStructure> buildVehicleActivityList(GtfsRealtime.FeedMessage feedMessage, String datasetId, List<String> routeIdList) {
+    public List<VehicleActivityStructure> buildVehicleActivityList(GtfsRealtime.FeedMessage feedMessage, String datasetId, List<String> routeIdList) {
         List<VehicleActivityStructure> vehicleActivities = new ArrayList<>();
 
 
