@@ -78,11 +78,11 @@ public class GtfsRTRouteBuilder extends BaseRouteBuilder {
     public void configure() throws Exception {
         if (configuration.getAppModes().isEmpty()) {
             singletonFrom("quartz://anshar/import_GTFSRT_DATA?trigger.repeatInterval=" + gtfsIntervalInMillis, IMPORT_GTFSRT_ROUTE_ID)
-                    .bean(GtfsRTDataRetriever.class, "getGTFSRTData")
+                    .process(new GtfsRTDataRetriever(tripUpdateReader, vehiclePositionReader, alertReader, subscriptionConfig, configuration, hazelcastService, gtfsRtHelper, incomingDataHealthService, metrics))
                     .end();
         } else if (configuration.getAppModes().contains(AppMode.PROXY)) {
             singletonFrom("quartz://anshar/import_GTFSRT_DATA?trigger.repeatInterval=" + gtfsIntervalInMillis, IMPORT_GTFSRT_ROUTE_ID)
-                    .process(new GtfsRtProxyProcessor(producerTemplate, subscriptionConfig, hazelcastService, tripUpdateReader, vehiclePositionReader, alertReader, gtfsRtHelper, incomingDataHealthService, metrics))
+                    .process(new GtfsRtProxyProcessor(producerTemplate, tripUpdateReader, vehiclePositionReader, alertReader, subscriptionConfig, configuration, hazelcastService, gtfsRtHelper, incomingDataHealthService, metrics))
                     .end();
         }
 

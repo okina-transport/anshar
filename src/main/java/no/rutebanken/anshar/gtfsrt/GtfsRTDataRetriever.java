@@ -21,91 +21,36 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static no.rutebanken.anshar.gtfsrt.GtfsRtConstants.GTFS_RT_LOCK;
-import static no.rutebanken.anshar.gtfsrt.GtfsRtConstants.LOCK_MAP;
-
 
 @Service
-public class GtfsRTDataRetriever {
-    public static final String GTFS_RT_TAG = "GTFS-RT";
+public class GtfsRTDataRetriever extends GtfsRtGenericRetriever {
+
     private static final Logger logger = LoggerFactory.getLogger(GtfsRTDataRetriever.class);
 
-    private final TripUpdateReader tripUpdateReader;
-
-    private final VehiclePositionReader vehiclePositionReader;
-
-    private final AlertReader alertReader;
-
-    private final SubscriptionConfig subscriptionConfig;
-
-    private final AnsharConfiguration configuration;
-
-    private final ExtendedHazelcastService hazelcastService;
-
-    private final GtfsRtHelper gtfsRtHelper;
-
-    private final IncomingDataHealthService incomingDataHealthService;
-
-    private final PrometheusMetricsService metrics;
-
-    private long iterationNb = 0;
-
-
-    public GtfsRTDataRetriever(TripUpdateReader tripUpdateReader, VehiclePositionReader vehiclePositionReader, AlertReader alertReader, SubscriptionConfig subscriptionConfig, AnsharConfiguration configuration, ExtendedHazelcastService hazelcastService, GtfsRtHelper gtfsRtHelper, PrometheusMetricsService metrics, IncomingDataHealthService incomingDataHealthService) {
-        this.tripUpdateReader = tripUpdateReader;
-        this.vehiclePositionReader = vehiclePositionReader;
-        this.alertReader = alertReader;
-        this.subscriptionConfig = subscriptionConfig;
-        this.configuration = configuration;
-        this.hazelcastService = hazelcastService;
-        this.gtfsRtHelper = gtfsRtHelper;
-        this.incomingDataHealthService = incomingDataHealthService;
-        this.metrics = metrics;
+    protected GtfsRTDataRetriever(TripUpdateReader tripUpdateReader,
+                                  VehiclePositionReader vehiclePositionReader,
+                                  AlertReader alertReader,
+                                  SubscriptionConfig subscriptionConfig,
+                                  AnsharConfiguration configuration,
+                                  ExtendedHazelcastService hazelcastService,
+                                  GtfsRtHelper gtfsRtHelper,
+                                  IncomingDataHealthService incomingDataHealthService,
+                                  PrometheusMetricsService metrics) {
+        super(
+                tripUpdateReader,
+                vehiclePositionReader,
+                alertReader,
+                subscriptionConfig,
+                configuration,
+                hazelcastService,
+                gtfsRtHelper,
+                incomingDataHealthService,
+                metrics
+        );
     }
 
-
-    public void getGTFSRTData() {
-        if (!gtfsRtHelper.isGtfsRtRunning()) {
-            startGtfsRtRecovering();
-        } else {
-            long lastExecutionTime = gtfsRtHelper.getLastExecutionTime();
-            logger.info(" GTFS-RT en cours. Pas de nouveau lancement. Dernier lancement: {}", lastExecutionTime);
-
-            if (System.currentTimeMillis() - lastExecutionTime > 120000) {
-                logger.warn("GTFS-RT : dernière exécution datant de plus de 2 minutes. Force unlock.");
-                hazelcastService.getHazelcastInstance().getMap(LOCK_MAP).put(GTFS_RT_LOCK, false);
-            }
-        }
-    }
-
-    private void startGtfsRtRecovering() {
-        try {
-            hazelcastService.getHazelcastInstance().getMap(LOCK_MAP).put(GTFS_RT_LOCK, true);
-            logger.info("Démarrage récupération des flux GTFS-RT n°:{}", iterationNb);
-
-            for (GtfsRTApi gtfsRTApi : subscriptionConfig.getGtfsRTApis()) {
-                try {
-                    recoverDataForApi(gtfsRTApi);
-                } catch (Exception e) {
-                    logger.error("Error on GTFSRT feed: {} - {}", gtfsRTApi.getDatasetId(), gtfsRTApi.getUrl());
-                    logger.error("Error detail", e);
-                    gtfsRTApi.setStatus(FlowStatus.ERROR);
-                    metrics.registerIncomingDataMonitoring(GTFS_RT_TAG, gtfsRTApi.getDatasetId(), "500", gtfsRTApi.getUrl());
-                    incomingDataHealthService.sendSubscriptionMonitoringData(GTFS_RT_TAG, gtfsRTApi.getDatasetId(), "500", gtfsRTApi.getUrl());
-                }
-                incomingDataHealthService.recordStatus(gtfsRTApi);
-                subscriptionConfig.updateGtfsRtStatus(gtfsRTApi);
-            }
-            logger.info("Intégration des flux GTFS-RT terminée n°:{}",iterationNb);
-            iterationNb++;
-        } catch (Exception e) {
-            logger.error("Error on while iterating GTFSRT feed", e);
-        } finally {
-            hazelcastService.getHazelcastInstance().getMap(LOCK_MAP).put(GTFS_RT_LOCK, false);
-        }
-    }
-
-    private void recoverDataForApi(GtfsRTApi gtfsRTApi) {
+    @Override
+    protected void recoverDataForApi(GtfsRTApi gtfsRTApi) {
 
         if (gtfsRTApi.getActive() != null && !gtfsRTApi.getActive()) {
             logger.info("GTRS-RT flow disabled:{} - {}", gtfsRTApi.getDatasetId(), gtfsRTApi.getUrl());
