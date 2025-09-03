@@ -622,16 +622,18 @@ public class SubscriptionManager {
         logger.debug("Got VM size");
         Map<String, Integer> sxDatasetSize = sx.getDatasetSize();
         logger.debug("Got SX size");
-        Map<String, Integer> smDatasetSize = sm.getDatasetSize();
+        Map<String, Integer> smMonitoredDatasetSize = sm.getMonitoredDatasetSize();
+        Map<String, Integer> smNotMonitoredDatasetSize = sm.getNotMonitoredDatasetSize();
         logger.debug("Got SM size");
 
         count.put("sx", sxDatasetSize.values().stream().mapToInt(Number::intValue).sum());
         count.put("et", etDatasetSize.values().stream().mapToInt(Number::intValue).sum());
         count.put("vm", vmDatasetSize.values().stream().mapToInt(Number::intValue).sum());
-        count.put("sm", smDatasetSize.values().stream().mapToInt(Number::intValue).sum());
+        count.put("sm-monitored", smMonitoredDatasetSize.values().stream().mapToInt(Number::intValue).sum());
+        count.put("sm-notMonitored", smNotMonitoredDatasetSize.values().stream().mapToInt(Number::intValue).sum());
 
         logger.debug("Building distribution stats");
-        count.put("distribution", getCountPerDataset(etDatasetSize, vmDatasetSize, sxDatasetSize, smDatasetSize));
+        count.put("distribution", getCountPerDataset(etDatasetSize, vmDatasetSize, sxDatasetSize, smMonitoredDatasetSize, smNotMonitoredDatasetSize));
         logger.debug("Built distribution stats");
 
         result.put("elements", count);
@@ -692,14 +694,15 @@ public class SubscriptionManager {
         return count;
     }
 
-    private JSONArray getCountPerDataset(Map<String, Integer> etDatasetSize, Map<String, Integer> vmDatasetSize, Map<String, Integer> sxDatasetSize, Map<String, Integer> smDatasetSize) {
+    private JSONArray getCountPerDataset(Map<String, Integer> etDatasetSize, Map<String, Integer> vmDatasetSize, Map<String, Integer> sxDatasetSize, Map<String, Integer> smMonitoredDatasetSize, Map<String, Integer> smNotMonitoredDatasetSize) {
         JSONArray etDatasetCount = new JSONArray();
 
         Set<String> allKeys = new HashSet<>();
         allKeys.addAll(etDatasetSize.keySet());
         allKeys.addAll(vmDatasetSize.keySet());
         allKeys.addAll(sxDatasetSize.keySet());
-        allKeys.addAll(smDatasetSize.keySet());
+        allKeys.addAll(smMonitoredDatasetSize.keySet());
+        allKeys.addAll(smNotMonitoredDatasetSize.keySet());
 
         for (String datasetId : allKeys) {
             JSONObject counter = new JSONObject();
@@ -707,7 +710,8 @@ public class SubscriptionManager {
             counter.put("etCount", etDatasetSize.getOrDefault(datasetId, 0));
             counter.put("vmCount", vmDatasetSize.getOrDefault(datasetId, 0));
             counter.put("sxCount", sxDatasetSize.getOrDefault(datasetId, 0));
-            counter.put("smCount", smDatasetSize.getOrDefault(datasetId, 0));
+            counter.put("smMonitoredCount", smMonitoredDatasetSize.getOrDefault(datasetId, 0));
+            counter.put("smNotMonitoredCount", smNotMonitoredDatasetSize.getOrDefault(datasetId, 0));
             etDatasetCount.add(counter);
         }
         return etDatasetCount;

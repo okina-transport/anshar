@@ -133,22 +133,31 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         return getAllKeySets().size();
     }
 
-    public Map<String, Integer> getDatasetSize() {
+    public Map<String, Integer> getMonitoredDatasetSize() {
         Map<String, Integer> sizeMap = new HashMap<>();
         long t1 = System.currentTimeMillis();
 
         ISet<String> datasetList = hazelcastService.getSharedSMDatasetList();
 
-
         for (String datasetId : datasetList) {
-            sizeMap.put(datasetId, hazelcastService.getMonitoredStopVisitsForDataset(datasetId).size());
+            sizeMap.put(datasetId, (int) hazelcastService.getMonitoredStopVisitsForDataset(datasetId).values().stream().filter(s-> s.getMonitoredVehicleJourney().isMonitored()).count());
         }
         logger.debug("Calculating data-distribution (SM) took {} ms: {}", (System.currentTimeMillis() - t1), sizeMap);
         return sizeMap;
     }
 
-    public Integer getDatasetSize(String datasetId) {
-        return hazelcastService.getMonitoredStopVisitsForDataset(datasetId).size();
+    public Map<String, Integer> getNotMonitoredDatasetSize() {
+        Map<String, Integer> sizeMap = new HashMap<>();
+        long t1 = System.currentTimeMillis();
+
+        ISet<String> datasetList = hazelcastService.getSharedSMDatasetList();
+
+        for (String datasetId : datasetList) {
+            sizeMap.put(datasetId, (int) hazelcastService.getMonitoredStopVisitsForDataset(datasetId).values()
+                    .stream().filter(s-> !s.getMonitoredVehicleJourney().isMonitored() || s.getMonitoredVehicleJourney().isMonitored() == null).count());
+        }
+        logger.debug("Calculating data-distribution (SM) took {} ms: {}", (System.currentTimeMillis() - t1), sizeMap);
+        return sizeMap;
     }
 
     @Override
