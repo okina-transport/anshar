@@ -251,6 +251,11 @@ public class ExtendedHazelcastService extends HazelCastService {
     }
 
     @Bean
+    public IMap<SiriObjectStorageKey, String> getFmChecksumMap() {
+        return hazelcast.getMap("anshar.fm.checksum.cache");
+    }
+
+    @Bean
     public IMap<SiriObjectStorageKey, ZonedDateTime> getIdStartTimeMap() {
         return hazelcast.getMap("anshar.et.index.startTime");
     }

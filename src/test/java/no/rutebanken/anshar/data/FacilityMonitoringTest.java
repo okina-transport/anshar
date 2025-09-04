@@ -2,17 +2,19 @@ package no.rutebanken.anshar.data;
 
 import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
+import org.apache.commons.collections4.CollectionUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri21.*;
 
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class FacilityMonitoringTest extends SpringBootBaseTest {
 
@@ -58,7 +60,7 @@ public class FacilityMonitoringTest extends SpringBootBaseTest {
                 null, setFacility, null, null);
 
 
-        FacilityStatusStructure recoveredStatus = getStatusFromFmCondition(getFacilityConditionStructureFromSiri(siri).get(0));
+        FacilityStatusStructure recoveredStatus = getStatusFromFmCondition(getFacilityConditionStructureFromSiri(siri).getFirst());
 
         assertEquals(FacilityStatusEnumeration.ADDED, recoveredStatus.getStatus());
 
@@ -73,7 +75,7 @@ public class FacilityMonitoringTest extends SpringBootBaseTest {
         siri = facilityMonitoring.createServiceDelivery("test", "test", "name", null, 10,
                 null, setFacility, null, null);
 
-        recoveredStatus = getStatusFromFmCondition(getFacilityConditionStructureFromSiri(siri).get(0));
+        recoveredStatus = getStatusFromFmCondition(getFacilityConditionStructureFromSiri(siri).getFirst());
 
         assertEquals(FacilityStatusEnumeration.AVAILABLE, recoveredStatus.getStatus());
 
@@ -127,6 +129,19 @@ public class FacilityMonitoringTest extends SpringBootBaseTest {
         assertEquals(1, getFacilityConditionStructureFromSiri(siri).size(), "Delevery should return the fm because we are asking the correct datasetId");
     }
 
+    @Test
+    public void test_addAll_whenFMIsAlreadyInCache_doNotAddItAgain() throws NoSuchAlgorithmException {
+        FacilityConditionStructure firstFM = TestObjectFactory.createFacilityMonitoring();
+        FacilityConditionStructure secondFM = TestObjectFactory.createFacilityMonitoring();
+
+        FacilityConditionStructure firstOutput = facilityMonitoring.add("test", firstFM);
+        FacilityConditionStructure secondOutput = facilityMonitoring.add("test", secondFM);
+
+        assertEquals(SiriRepository.getChecksum(firstFM), SiriRepository.getChecksum(secondFM), "checksums should be equal");
+        assertNotNull(firstOutput, "should add FM to cache");
+        assertNull(secondOutput, "should not add FM to cache");
+    }
+
 
     private FacilityStatusStructure getStatusFromFmCondition(FacilityConditionStructure fmCondition) {
         if (fmCondition == null) {
@@ -140,7 +155,7 @@ public class FacilityMonitoringTest extends SpringBootBaseTest {
 
         List<FacilityConditionStructure> resultList = new ArrayList<>();
 
-        if (siri.getServiceDelivery().getFacilityMonitoringDeliveries() == null || siri.getServiceDelivery().getFacilityMonitoringDeliveries().size() == 0) {
+        if (CollectionUtils.isEmpty(siri.getServiceDelivery().getFacilityMonitoringDeliveries())) {
             return new ArrayList<>();
         }
 

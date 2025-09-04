@@ -3,10 +3,10 @@ package no.rutebanken.anshar.data;
 import com.hazelcast.map.IMap;
 import com.hazelcast.query.Predicate;
 import no.rutebanken.anshar.config.AnsharConfiguration;
-import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import org.apache.commons.lang3.Strings;
 import org.quartz.utils.counter.Counter;
 import org.quartz.utils.counter.CounterImpl;
 import org.slf4j.Logger;
@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
 import uk.org.siri.siri21.*;
 
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.chrono.ChronoZonedDateTime;
@@ -29,8 +30,6 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
 
     private static final Logger logger = LoggerFactory.getLogger(FacilityMonitoring.class);
     @Autowired
-    ExtendedHazelcastService hazelcastService;
-    @Autowired
     @Qualifier("getFacilityMonitoring")
     private IMap<SiriObjectStorageKey, FacilityConditionStructure> facilityMonitoring;
     @Autowired
@@ -39,6 +38,9 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
     @Autowired
     @Qualifier("getLastFmUpdateRequest")
     private IMap<String, Instant> lastUpdateRequested;
+    @Autowired
+    @Qualifier("getFmChecksumMap")
+    private IMap<SiriObjectStorageKey, String> checksumCache;
     @Autowired
     private AnsharConfiguration configuration;
     @Autowired
@@ -138,10 +140,28 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
                     SiriObjectStorageKey key = createKey(datasetId, fmCondition);
 
                     long expiration = getExpiration(fmCondition);
+                    String checksum = null;
+
+                    try {
+                        checksum = getChecksum(fmCondition);
+                    } catch (NoSuchAlgorithmException e) {
+                        logger.warn("Error computing checksum, data will be updated", e);
+                    }
+
+                    if (checksum != null) {
+                        String checksumFromCache = checksumCache.get(key);
+                        if (Strings.CS.equals(checksum, checksumFromCache)) {
+                            // FM is already in cache, do not update data
+                            return;
+                        }
+                    }
 
                     if (expiration > 0) {
                         facilityMonitoring.set(key, fmCondition, expiration, TimeUnit.MILLISECONDS);
                         addedData.add(fmCondition);
+                        if (checksum != null) {
+                            checksumCache.set(key, checksum, expiration, TimeUnit.MILLISECONDS);
+                        }
                     } else {
                         outDatedCounter.increment();
                     }
@@ -274,7 +294,7 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
      * Generates a set of keys that matches with user's request
      *
      * @param datasetId           dataset id
-     * @param requestedFacilities
+     * @param requestedFacilities requested facilities
      * @return a set of keys matching with filters
      */
 
@@ -297,5 +317,6 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
         changesMap.clear();
         lastUpdateRequested.clear();
         cache.clear();
+        checksumCache.clear();
     }
 }
