@@ -192,8 +192,10 @@ public class InitialDeliveryGenerator {
 
 
         Set<String> datasetsToRequest;
-        if (subscriptionRequest.getDatasetList().isEmpty()) {
+        if (subscriptionRequest.getDatasetList().isEmpty() && subscriptionRequest.getFilterMapByDataset().isEmpty()) {
             datasetsToRequest = estimatedTimetables.getAllDatasetIds();
+        } else if (!subscriptionRequest.getFilterMapByDataset().isEmpty()) {
+            datasetsToRequest = subscriptionRequest.getFilterMapByDataset().keySet();
         } else {
             datasetsToRequest = new HashSet<>(subscriptionRequest.getDatasetList());
         }

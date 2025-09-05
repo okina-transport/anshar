@@ -205,7 +205,7 @@ public class ServerSubscriptionManager {
      * Récupère la liste des 'requestorRef' uniques, potentiellement filtrée par SiriDataType.
      *
      * @param siriDataType Le type de données SIRI pour filtrer les abonnements.
-     * Si la valeur est null, aucun filtre n'est appliqué.
+     *                     Si la valeur est null, aucun filtre n'est appliqué.
      * @return Une liste de string contenant les chaînes de caractères des requestorRef uniques.
      */
     public List<String> getSubscriptionRequestorRefs(SiriDataType siriDataType) {
@@ -589,18 +589,12 @@ public class ServerSubscriptionManager {
 
 
         switch (subscription.getSubscriptionType()) {
-            case STOP_MONITORING ->
-                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliverySMQueueName, null, headers);
-            case VEHICLE_MONITORING ->
-                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryVMQueueName, null, headers);
-            case SITUATION_EXCHANGE ->
-                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliverySXQueueName, null, headers);
-            case ESTIMATED_TIMETABLE ->
-                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryETQueueName, null, headers);
-            case GENERAL_MESSAGE ->
-                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryGMQueueName, null, headers);
-            case FACILITY_MONITORING ->
-                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryFMQueueName, null, headers);
+            case STOP_MONITORING -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliverySMQueueName, null, headers);
+            case VEHICLE_MONITORING -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryVMQueueName, null, headers);
+            case SITUATION_EXCHANGE -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliverySXQueueName, null, headers);
+            case ESTIMATED_TIMETABLE -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryETQueueName, null, headers);
+            case GENERAL_MESSAGE -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryGMQueueName, null, headers);
+            case FACILITY_MONITORING -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryFMQueueName, null, headers);
         }
     }
 
@@ -617,7 +611,7 @@ public class ServerSubscriptionManager {
     }
 
 
-    private OutboundSubscriptionSetup createSubscription(Siri incomingSiri, IncomingSiriParameters incomingSiriParameters) {
+    public OutboundSubscriptionSetup createSubscription(Siri incomingSiri, IncomingSiriParameters incomingSiriParameters) {
         String datasetId = incomingSiriParameters.getDatasetId();
         OutboundIdMappingPolicy outboundIdMappingPolicy = incomingSiriParameters.getOutboundIdMappingPolicy();
         String clientTrackingName = incomingSiriParameters.getClientTrackingName();
@@ -628,8 +622,6 @@ public class ServerSubscriptionManager {
         Duration previewInterval = null;
         if (SiriUtils.hasSMRequest(subscriptionRequest)
                 && subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0).getStopMonitoringRequest().getPreviewInterval() != null) {
-//            Map<ObjectType, Optional<IdProcessingParameters>> idProcessingParams = siriHelper.getIdProcessingParamsFromSubscription(subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0), outboundIdMappingPolicy, datasetId);
-//            mappers = MappingAdapterPresets.getOutboundAdapters(SiriDataType.STOP_MONITORING, outboundIdMappingPolicy, idProcessingParams);
             previewInterval = subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0).getStopMonitoringRequest().getPreviewInterval();
         } else {
             mappers = MappingAdapterPresets.getOutboundAdapters(outboundIdMappingPolicy);
@@ -1387,14 +1379,11 @@ public class ServerSubscriptionManager {
                 .filter(subscription -> (
                                 subscription.getSubscriptionType().equals(SiriDataType.ESTIMATED_TIMETABLE)
                                         && (
-                                        subscription.getDatasetList().isEmpty() || (
-                                                subscription
-                                                        .getDatasetList()
-                                                        .contains(datasetId)
-                                        )
+                                        subscription.getFilterMapByDataset().isEmpty() ||
+                                                subscription.getFilterMapByDataset().containsKey("ALL") ||
+                                                subscription.getFilterMapByDataset().containsKey(datasetId)
                                 )
                         )
-
                 )
                 .collect(Collectors.toList());
 

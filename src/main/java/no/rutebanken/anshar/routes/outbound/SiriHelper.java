@@ -117,21 +117,24 @@ public class SiriHelper {
             for (LineDirectionStructure lineDirection : estimatedTimetableSubscriptionRequest.getEstimatedTimetableRequest().getLines().getLineDirections()) {
                 String rawLineRef = lineDirection.getLineRef().getValue();
                 HashSet<String> searchedIds = new HashSet<>(Collections.singleton(rawLineRef));
+                String currentDataset;
                 if (datasetId == null) {
-                    datasetId = incomingSubscriptionConfig.findDatasetFromSearch(searchedIds, ObjectType.LINE).orElse(DEFAULT_DATASET);
+                    currentDataset = incomingSubscriptionConfig.findDatasetFromSearch(searchedIds, ObjectType.LINE).orElse(DEFAULT_DATASET);
+                } else {
+                    currentDataset = datasetId;
                 }
 
-                Set<String> linerefValues = revertLineIds(outboundIdMappingPolicy, searchedIds, datasetId);
+                Set<String> linerefValues = revertLineIds(outboundIdMappingPolicy, searchedIds, currentDataset);
                 if (linerefValues.isEmpty()) {
                     // unable to revert. Subscription on raw id withoutIdProcessingParameters. Need to keep the raw id
                     linerefValues = searchedIds;
                 }
                 Map<Class, Set<String>> currentFilterMapByDataset;
-                if (filterMapByDataset.containsKey(datasetId)) {
-                    currentFilterMapByDataset = filterMapByDataset.get(datasetId);
+                if (filterMapByDataset.containsKey(currentDataset)) {
+                    currentFilterMapByDataset = filterMapByDataset.get(currentDataset);
                 } else {
                     currentFilterMapByDataset = new HashMap<>();
-                    filterMapByDataset.put(datasetId, currentFilterMapByDataset);
+                    filterMapByDataset.put(currentDataset, currentFilterMapByDataset);
                 }
 
                 if (currentFilterMapByDataset.containsKey(LineRef.class)) {
@@ -822,7 +825,7 @@ public class SiriHelper {
 
     private static List<StopMonitoringDeliveryStructure> getFilteredMonitoringRef(Siri siri, Set<String> monitoringRef) {
         if (monitoringRef == null || monitoringRef.isEmpty()) {
-            return Collections.emptyList() ;
+            return Collections.emptyList();
         }
         List<StopMonitoringDeliveryStructure> results = new ArrayList<>();
 
