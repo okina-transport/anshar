@@ -30,7 +30,7 @@ public class EstimatedTimetableOutbound {
     EstimatedTimetables estimatedTimetables;
 
 
-    public Siri getEstimatedTimetableServiceDelivery(ServiceRequest serviceRequest, String datasetId, List<String> excludedDatasetIdList, int maxSize, String clientTrackingName, String requestorRef) {
+    public Siri getEstimatedTimetableServiceDelivery(ServiceRequest serviceRequest, String datasetId, List<String> excludedDatasetIdList, int maxSize, String clientTrackingName, String requestorRef, String messageId) {
         Duration previewInterval = serviceRequest.getEstimatedTimetableRequests().get(0).getPreviewInterval();
         long previewIntervalInMillis = -1;
 
@@ -43,7 +43,7 @@ public class EstimatedTimetableOutbound {
         Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParams(datasetId, requestedLines, ObjectType.LINE);
         Set<String> revertedMonitoringRefs = IDUtils.revertMonitoringRefs(requestedLines, idMap.get(ObjectType.LINE));
 
-        return estimatedTimetables.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize, previewIntervalInMillis, revertedMonitoringRefs, serviceRequest.getMessageIdentifier().getValue());
+        return estimatedTimetables.createServiceDelivery(requestorRef, datasetId, clientTrackingName, excludedDatasetIdList, maxSize, previewIntervalInMillis, revertedMonitoringRefs, messageId);
     }
 
 
