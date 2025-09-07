@@ -48,7 +48,7 @@
         <sonar.projectKey>mobi-iti:anshar</sonar.projectKey>
         <protobuf.version>4.32.0</protobuf.version>
         <gtfs.realtime-bindings.version>1.0.0-mobi-iti</gtfs.realtime-bindings.version>
-        <version.lombok>1.18.38</version.lombok>
+        <version.lombok>1.18.40</version.lombok>
         <micrometer.version>1.15.3</micrometer.version>
 
     </properties>
