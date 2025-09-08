@@ -33,6 +33,7 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.util.StopMonitoringUtils;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.quartz.utils.counter.Counter;
@@ -140,7 +141,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         ISet<String> datasetList = hazelcastService.getSharedSMDatasetList();
 
         for (String datasetId : datasetList) {
-            sizeMap.put(datasetId, (int) hazelcastService.getMonitoredStopVisitsForDataset(datasetId).values().stream().filter(s-> s.getMonitoredVehicleJourney().isMonitored()).count());
+            sizeMap.put(datasetId, (int) hazelcastService.getMonitoredStopVisitsForDataset(datasetId).values().stream().filter(s-> BooleanUtils.isTrue(s.getMonitoredVehicleJourney().isMonitored())).count());
         }
         logger.debug("Calculating data-distribution (SM) took {} ms: {}", (System.currentTimeMillis() - t1), sizeMap);
         return sizeMap;
@@ -154,7 +155,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         for (String datasetId : datasetList) {
             sizeMap.put(datasetId, (int) hazelcastService.getMonitoredStopVisitsForDataset(datasetId).values()
-                    .stream().filter(s-> !s.getMonitoredVehicleJourney().isMonitored() || s.getMonitoredVehicleJourney().isMonitored() == null).count());
+                    .stream().filter(s-> !BooleanUtils.isTrue(s.getMonitoredVehicleJourney().isMonitored())).count());
         }
         logger.debug("Calculating data-distribution (SM) took {} ms: {}", (System.currentTimeMillis() - t1), sizeMap);
         return sizeMap;
