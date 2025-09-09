@@ -287,7 +287,7 @@ public class StopTimesService {
         TripCacheEntry trip = datasetMap.get(tripId);
 
         if (trip == null) {
-            logger.warn("Trip {} not in dataset {}", tripId, datasetId);
+            logger.debug("Trip {} not in dataset {}", tripId, datasetId);
             return Optional.empty();
         }
 
@@ -305,7 +305,7 @@ public class StopTimesService {
         TripCacheEntry trip = datasetMap.get(tripId);
 
         if (trip == null) {
-            logger.warn("Trip {} not in dataset {}", tripId, datasetId);
+            logger.debug("Trip {} not in dataset {}", tripId, datasetId);
             return Optional.empty();
         }
 
