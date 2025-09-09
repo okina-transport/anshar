@@ -26,6 +26,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientException;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URL;
 import java.util.List;
@@ -157,8 +158,14 @@ public class IshtarSynchronizeProcessor implements Processor {
     private void getIdProcessingParameters() {
         try {
             log.info("--> ISHTAR : get ID Processing Parameter(s)");
+            String finalUri = UriComponentsBuilder.fromPath(GET_ALL_ID_PROCESSING_PARAMETERS_URI)
+                    .queryParam("dataType", List.of("siri"))
+                    .build()
+                    .toUriString();
+
             List<IdProcessingParameterDto> ippDtos =
-                    ListUtils.emptyIfNull(getWebClient(GET_ALL_ID_PROCESSING_PARAMETERS_URI).retrieve().bodyToFlux(IdProcessingParameterDto.class).collectList().block());
+                    ListUtils.emptyIfNull(getWebClient(finalUri).retrieve().bodyToFlux(IdProcessingParameterDto.class).collectList().block());
+
             log.info("<-- ISHTAR : retrieved {} ID Processing Parameter(s)", ippDtos.size());
             List<IdProcessingParameters> ipp = ippDtos.stream().map(idProcessingParameterDtoConverter::convert).collect(Collectors.toList());
             log.info("Before merge {} ID ProcessingParameter(s) in cache",
