@@ -424,7 +424,7 @@ public class AlertMapper {
                 if (informedEntity.getTrip().hasTripId()) {
                     Optional<String> optRouteId = stopTimesService.getRouteId(datasetId, informedEntity.getTrip().getTripId());
                     if (optRouteId.isEmpty()) {
-                        logger.warn("Trip id {} not found in dataset {}, discard entity",
+                        logger.debug("Trip id {} not found in dataset {}, discard entity",
                                 informedEntity.getTrip().getTripId(),
                                 datasetId);
                         discardEntity = true;
@@ -438,7 +438,7 @@ public class AlertMapper {
                 routeId = informedEntity.getRouteId();
             }
             if (routeId != null && !stopTimesService.checkIfKnownRouteId(datasetId, routeId)) {
-                logger.warn("Route id {} not found in dataset {}, discard entity", routeId, datasetId);
+                logger.debug("Route id {} not found in dataset {}, discard entity", routeId, datasetId);
                 discardEntity = true;
             } else if (routeId != null && CollectionUtils.isNotEmpty(routeIdList) && !routeIdList.contains(routeId)) {
                 logger.debug("Route id {} not in accepted route ids {}, discard entity", routeId, routeIdList);
