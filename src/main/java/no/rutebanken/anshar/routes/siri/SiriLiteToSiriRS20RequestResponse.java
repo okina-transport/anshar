@@ -15,14 +15,18 @@
 
 package no.rutebanken.anshar.routes.siri;
 
+import no.rutebanken.anshar.api.FlowStatus;
 import no.rutebanken.anshar.config.AnsharConfiguration;
-import no.rutebanken.anshar.routes.siri.helpers.SiriRequestFactory;
+import no.rutebanken.anshar.metrics.PrometheusMetricsService;
+import no.rutebanken.anshar.routes.health.IncomingDataHealthService;
+import no.rutebanken.anshar.routes.health.IncomingFlowType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.MessageHistory;
+import org.apache.camel.http.base.HttpOperationFailedException;
 
 import java.util.List;
 
@@ -33,17 +37,20 @@ import static no.rutebanken.anshar.routes.HttpParameter.*;
  */
 public class SiriLiteToSiriRS20RequestResponse extends SiriSubscriptionRouteBuilder {
 
-    public SiriLiteToSiriRS20RequestResponse(AnsharConfiguration config, SubscriptionSetup subscriptionSetup, SubscriptionManager subscriptionManager) {
+    private final IncomingDataHealthService incomingDataHealthService;
+    private final PrometheusMetricsService metrics;
+
+    public SiriLiteToSiriRS20RequestResponse(AnsharConfiguration config, SubscriptionSetup subscriptionSetup, SubscriptionManager subscriptionManager, IncomingDataHealthService incomingDataHealthService, PrometheusMetricsService metrics) {
         super(config, subscriptionManager);
         this.subscriptionSetup = subscriptionSetup;
+        this.incomingDataHealthService = incomingDataHealthService;
+        this.metrics = metrics;
     }
 
     @Override
     public void configure() throws Exception {
 
         long heartbeatIntervalMillis = subscriptionSetup.getHeartbeatInterval().toMillis();
-
-        SiriRequestFactory helper = new SiriRequestFactory(subscriptionSetup);
 
         String httpOptions = getTimeout();
 
@@ -64,33 +71,48 @@ public class SiriLiteToSiriRS20RequestResponse extends SiriSubscriptionRouteBuil
 
         String routeId = subscriptionSetup.getBaseRouteId();
         from("direct:" + subscriptionSetup.getServiceRequestRouteName())
-                .messageHistory()
-                .process(p -> requestStarted())
-                .log(LoggingLevel.INFO, "Retrieving data " + subscriptionSetup.toString())
+            .messageHistory()
+            .process(p -> requestStarted())
+            .log(LoggingLevel.INFO, "Retrieving data " + subscriptionSetup.toString())
                 //  .bean(helper, "createSiriDataRequest")
                 //.marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
-                .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
-                .setBody(e -> subscriptionSetup)
-                .to("direct:siri.lite.to.siri.rs.20.request-response.preprocess")
-                .to("log:request:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
-                .doTry()
+            .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
+            .setBody(e -> subscriptionSetup)
+            .to("direct:siri.lite.to.siri.rs.20.request-response.preprocess")
+            .to("log:request:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
+            .doTry()
                 .to(getCamelRequestUrl(subscriptionSetup, httpOptions))
                 .setHeader("CamelHttpPath", constant("/appContext" + subscriptionSetup.buildUrl(false)))
                 .log(LoggingLevel.DEBUG, "Got response " + subscriptionSetup.toString())
                 .to("log:response:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
+                .process(p -> {
+                    String url = getRequestUrl(subscriptionSetup);
+                    metrics.registerIncomingDataMonitoring("SIRI", subscriptionSetup.getDatasetId(), "200", url);
+                    incomingDataHealthService.sendSubscriptionMonitoringData("SIRI", subscriptionSetup.getDatasetId(), "200", url);
+                    incomingDataHealthService.recordStatus(subscriptionSetup.getSubscriptionId(), subscriptionSetup.getDatasetId(), url, IncomingFlowType.SIRI, FlowStatus.OK);
+                })
                 .setHeader(PARAM_SUBSCRIPTION_ID, simple(subscriptionSetup.getSubscriptionId()))
                 .setHeader(INTERNAL_SIRI_DATA_TYPE, simple(subscriptionSetup.getSubscriptionType().name()))
                 .setHeader(SUBSCRIPTION_MODE, simple(subscriptionSetup.getSubscriptionMode().name()))
                 .to("direct:handleSiriLiteResponse")
-                .doCatch(Exception.class)
+            .doCatch(Exception.class)
                 .log("Caught exception -" + (releaseLeadershipOnError ? "" : " NOT") + " releasing leadership: " + subscriptionSetup.toString())
                 .to("log:response:" + getClass().getSimpleName() + "?showCaughtException=true&showAll=true&multiline=true")
                 .process(p -> {
+                    int statusCode = 500;
+                    final Throwable ex = p.getProperty(Exchange.EXCEPTION_CAUGHT, Throwable.class);
+                    String url = getCamelRequestUrl(subscriptionSetup, httpOptions);
+                    if (ex instanceof HttpOperationFailedException httpEx) {
+                        statusCode = httpEx.getStatusCode();
+                    }
+                    metrics.registerIncomingDataMonitoring("SIRI", subscriptionSetup.getDatasetId(), String.valueOf(statusCode), url);
+                    incomingDataHealthService.sendSubscriptionMonitoringData("SIRI", subscriptionSetup.getDatasetId(), String.valueOf(statusCode), url);
+                    incomingDataHealthService.recordStatus(subscriptionSetup.getSubscriptionId(), subscriptionSetup.getDatasetId(), getRequestUrl(subscriptionSetup), IncomingFlowType.SIRI, FlowStatus.ERROR);
                     if (releaseLeadershipOnError) {
                         releaseLeadership(monitoringRouteId);
                     }
                 })
-                .doFinally()
+            .doFinally()
                 .process(p -> {
                     requestFinished();
                     List<MessageHistory> list = p.getProperty(Exchange.MESSAGE_HISTORY, List.class);
@@ -108,8 +130,8 @@ public class SiriLiteToSiriRS20RequestResponse extends SiriSubscriptionRouteBuil
                         }
                     }
                 })
-                .endDoTry()
-                .routeId(routeId)
+            .endDoTry()
+            .routeId(routeId)
         ;
     }
 

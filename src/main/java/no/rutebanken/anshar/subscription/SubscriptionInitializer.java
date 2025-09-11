@@ -339,7 +339,7 @@ public class SubscriptionInitializer implements CamelContextAware {
                         routeBuilders.add(new Siri20ToSiriRS20RequestResponse(configuration, subscriptionSetup, subscriptionManager));
                     }
                 } else if (isLite) {
-                    routeBuilders.add(new SiriLiteToSiriRS20RequestResponse(configuration, subscriptionSetup, subscriptionManager));
+                    routeBuilders.add(new SiriLiteToSiriRS20RequestResponse(configuration, subscriptionSetup, subscriptionManager, incomingDataHealthService, metrics));
                 } else {
                     routeBuilders.add(new Siri20ToSiriRS20RequestResponse(configuration, subscriptionSetup, subscriptionManager));
                 }
