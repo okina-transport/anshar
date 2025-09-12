@@ -45,7 +45,7 @@ public class ParkingIdsService {
 
             PARKING_ORIGINAL_ID_TO_NETEX_ID.clear();
 
-            try(CSVParser csvParser = CSVParser.builder()
+            try (CSVParser csvParser = CSVParser.builder()
                     .setFile(parkingIdMappingPath)
                     .setCharset(StandardCharsets.UTF_8)
                     .setFormat(CSVFormat.RFC4180
@@ -65,8 +65,8 @@ public class ParkingIdsService {
 
                     if (PARKING_ORIGINAL_ID_TO_NETEX_ID.containsKey(originalId)) {
                         log.info("Duplicate parking originalId in mapping file for originalId {}", originalId);
-                        log.info("Current netexId: {}",  PARKING_ORIGINAL_ID_TO_NETEX_ID.get(originalId));
-                        log.info("New netexId: {}",  netexId);
+                        log.info("Current netexId: {}", PARKING_ORIGINAL_ID_TO_NETEX_ID.get(originalId));
+                        log.info("New netexId: {}", netexId);
                     }
 
                     log.debug("originalId: {}, netexId: {}", originalId, netexId);
@@ -75,7 +75,7 @@ public class ParkingIdsService {
             } catch (Exception e) {
                 log.error("Failed to read CSV records from {}", parkingIdMappingPath, e);
             }
-            log.info("Parking id mappings map has {} elements",  PARKING_ORIGINAL_ID_TO_NETEX_ID.size());
+            log.info("Parking id mappings map has {} elements", PARKING_ORIGINAL_ID_TO_NETEX_ID.size());
         }
     }
 
@@ -86,6 +86,18 @@ public class ParkingIdsService {
         }
 
         return Optional.ofNullable(PARKING_ORIGINAL_ID_TO_NETEX_ID.get(originalId));
+    }
+
+    public Optional<String> getOriginalParkingId(String netexId) {
+
+        if (PARKING_ORIGINAL_ID_TO_NETEX_ID.isEmpty()) {
+            updateParkingIds();
+        }
+
+        return PARKING_ORIGINAL_ID_TO_NETEX_ID.entrySet().stream()
+                .filter(entry -> entry.getValue().equals(netexId))
+                .map(Map.Entry::getKey)
+                .findFirst();
     }
 
 }

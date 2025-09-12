@@ -8,6 +8,7 @@ import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.FacilityMonitoring;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
+import no.rutebanken.anshar.routes.mapping.ParkingIdsService;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
@@ -16,7 +17,7 @@ import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import no.rutebanken.anshar.util.SiriUtils;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.Siri;
 
@@ -27,19 +28,19 @@ import static no.rutebanken.anshar.routes.HttpParameter.*;
 @Service
 public class SiriLiteFacilityMonitoringRoute extends RestRouteBuilder {
 
+    private final AnsharConfiguration configuration;
+    private final PrometheusMetricsService metrics;
+    private final FacilityMonitoring facilityMonitoring;
+    private final SubscriptionConfig subscriptionConfig;
+    private final ParkingIdsService parkingIdsService;
 
-    @Autowired
-    private AnsharConfiguration configuration;
-
-    @Autowired
-    private PrometheusMetricsService metrics;
-
-    @Autowired
-    private FacilityMonitoring facilityMonitoring;
-
-    @Autowired
-    private SubscriptionConfig subscriptionConfig;
-
+    public SiriLiteFacilityMonitoringRoute(AnsharConfiguration configuration, PrometheusMetricsService metrics, FacilityMonitoring facilityMonitoring, SubscriptionConfig subscriptionConfig, ParkingIdsService parkingIdsService) {
+        this.configuration = configuration;
+        this.metrics = metrics;
+        this.facilityMonitoring = facilityMonitoring;
+        this.subscriptionConfig = subscriptionConfig;
+        this.parkingIdsService = parkingIdsService;
+    }
 
     @Override
     public void configure() throws Exception {
@@ -60,6 +61,7 @@ public class SiriLiteFacilityMonitoringRoute extends RestRouteBuilder {
                     String originalId = p.getIn().getHeader(PARAM_USE_ORIGINAL_ID, String.class);
                     Integer maxSizeStr = p.getIn().getHeader(PARAM_MAX_SIZE, Integer.class);
                     String etClientName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
+                    String facilityRef = p.getIn().getHeader(PARAM_FACILITY_REF, String.class);
                     int maxSize = datasetId != null ? Integer.MAX_VALUE : configuration.getDefaultMaxSize();
 
                     if (maxSizeStr != null) {
@@ -67,7 +69,7 @@ public class SiriLiteFacilityMonitoringRoute extends RestRouteBuilder {
                     }
 
                     Set<String> datasets = SiriUtils.generateDatasetListFromHeader(datasetId);
-                    Siri response = handleFacilityMonitoringMultipleDatasetRequest(requestorId, datasets, etClientName, maxSize, originalId, messageId);
+                    Siri response = handleFacilityMonitoringMultipleDatasetRequest(requestorId, datasets, etClientName, maxSize, originalId, messageId, facilityRef);
 
                     metrics.countOutgoingData(response, SubscriptionSetup.SubscriptionMode.LITE);
 
@@ -86,13 +88,13 @@ public class SiriLiteFacilityMonitoringRoute extends RestRouteBuilder {
     }
 
 
-    private Siri handleFacilityMonitoringMultipleDatasetRequest(String requestorId, Set<String> datasets, String etClientName, int maxSize, String originalId, String messageId) {
+    private Siri handleFacilityMonitoringMultipleDatasetRequest(String requestorId, Set<String> datasets, String etClientName, int maxSize, String originalId, String messageId, String facilityRef) {
         if (datasets.isEmpty()) {
-            return handleFacilityMonitoringSingleDatasetRequest(requestorId, null, etClientName, maxSize, originalId, messageId);
+            return handleFacilityMonitoringSingleDatasetRequest(requestorId, null, etClientName, maxSize, originalId, messageId, facilityRef);
         }
         Siri globalResults = null;
         for (String dataset : datasets) {
-            Siri datasetResult = handleFacilityMonitoringSingleDatasetRequest(requestorId, dataset, etClientName, maxSize, originalId, messageId);
+            Siri datasetResult = handleFacilityMonitoringSingleDatasetRequest(requestorId, dataset, etClientName, maxSize, originalId, messageId, facilityRef);
             globalResults = SiriUtils.mergeSiris(globalResults, datasetResult);
 
         }
@@ -100,10 +102,17 @@ public class SiriLiteFacilityMonitoringRoute extends RestRouteBuilder {
     }
 
 
-    private Siri handleFacilityMonitoringSingleDatasetRequest(String requestorId, String datasetId, String etClientName, int maxSize, String originalId, String messageId) {
-        Siri response = facilityMonitoring.createServiceDelivery(requestorId, datasetId, etClientName, null, maxSize, null, null, null, null, messageId);
+    private Siri handleFacilityMonitoringSingleDatasetRequest(String requestorId, String datasetId, String etClientName, int maxSize, String originalId, String messageId, String facilityRef) {
+        Set<String> facilityRefs = new HashSet<>();
+        if (StringUtils.isNotBlank(facilityRef)) {
+            // in case facilityRef is not a producter ID, revert it
+            parkingIdsService.getOriginalParkingId(facilityRef).ifPresentOrElse(
+                    facilityRefs::add,
+                    () -> facilityRefs.add(facilityRef));
+        }
+        Siri response = facilityMonitoring.createServiceDelivery(requestorId, datasetId, etClientName, null, maxSize, null, facilityRefs, null, null, messageId);
 
-        List<ValueAdapter> outboundAdapters = new ArrayList<>();
+        List<ValueAdapter> outboundAdapters;
         if (datasetId != null) {
             Map<ObjectType, Optional<IdProcessingParameters>> idParams = subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);
             outboundAdapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.FACILITY_MONITORING, SiriHandler.getIdMappingPolicy(originalId, null), idParams);
