@@ -2,6 +2,7 @@ package no.rutebanken.anshar.data.util;
 
 import com.hazelcast.query.Predicate;
 import no.rutebanken.anshar.data.SiriObjectStorageKey;
+import org.apache.commons.collections4.CollectionUtils;
 import uk.org.siri.siri21.*;
 
 import java.util.ArrayList;
@@ -80,35 +81,34 @@ public class SiriObjectStorageKeyUtil {
             return false;
         }
 
-        if (excludedDatasetIds != null && !excludedDatasetIds.isEmpty() && excludedDatasetIds.contains(key.getCodespaceId())) {
+        if (CollectionUtils.isNotEmpty(excludedDatasetIds) && excludedDatasetIds.contains(key.getCodespaceId())) {
             return false;
         }
 
-        if (linerefSet != null && !linerefSet.isEmpty() && !linerefSet.contains(key.getLineRef())) {
+        if (CollectionUtils.isNotEmpty(linerefSet) && !linerefSet.contains(key.getLineRef())) {
             return false;
         }
 
-        if (vehicleRefSet != null && !vehicleRefSet.isEmpty() && !vehicleRefSet.contains(key.getKey())) {
+        if (CollectionUtils.isNotEmpty(vehicleRefSet) && !vehicleRefSet.contains(key.getKey())) {
             return false;
         }
 
-        if (facilityRefSet != null && !facilityRefSet.isEmpty() && !facilityRefSet.contains(key.getFacilityRef())) {
+        if (CollectionUtils.isNotEmpty(stopRefSet) && !stopRefSet.contains(key.getStopRef())) {
             return false;
         }
 
-        if (stopRefSet != null && !stopRefSet.isEmpty() && !stopRefSet.contains(key.getStopRef())) {
+        if (CollectionUtils.isNotEmpty(types) && !types.contains(key.getType())) {
             return false;
         }
 
-        if (types != null && !types.isEmpty() && !types.contains(key.getType())) {
+        if (CollectionUtils.isNotEmpty(facilityRefSet) && !facilityRefSet.contains(key.getFacilityRef())) {
             return false;
         }
 
-        if (datasetId == null && (stopRefSet == null || stopRefSet.isEmpty()) && (excludedDatasetIds == null || excludedDatasetIds.isEmpty())) {
-            return false;
-        }
-
-        return true;
+        return datasetId != null
+                || CollectionUtils.isNotEmpty(stopRefSet)
+                || CollectionUtils.isNotEmpty(excludedDatasetIds)
+                || CollectionUtils.isNotEmpty(facilityRefSet);
     }
 
 
