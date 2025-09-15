@@ -2,19 +2,22 @@ package no.rutebanken.anshar.data;
 
 import com.hazelcast.map.IMap;
 import com.hazelcast.query.Predicate;
+import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
+import no.rutebanken.anshar.routes.mapping.ParkingIdsService;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.Strings;
 import org.quartz.utils.counter.Counter;
 import org.quartz.utils.counter.CounterImpl;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
-import uk.org.siri.siri21.*;
+import uk.org.siri.siri21.FacilityConditionStructure;
+import uk.org.siri.siri21.FacilityLocationStructure;
+import uk.org.siri.siri21.HalfOpenTimestampOutputRangeStructure;
+import uk.org.siri.siri21.Siri;
 
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
@@ -26,29 +29,33 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Repository
+@Slf4j
 public class FacilityMonitoring extends SiriRepository<FacilityConditionStructure> {
 
-    private static final Logger logger = LoggerFactory.getLogger(FacilityMonitoring.class);
-    @Autowired
-    @Qualifier("getFacilityMonitoring")
-    private IMap<SiriObjectStorageKey, FacilityConditionStructure> facilityMonitoring;
-    @Autowired
-    @Qualifier("getFacilityMonitoringChangesMap")
-    private IMap<String, Set<SiriObjectStorageKey>> changesMap;
-    @Autowired
-    @Qualifier("getLastFmUpdateRequest")
-    private IMap<String, Instant> lastUpdateRequested;
-    @Autowired
-    @Qualifier("getFmChecksumMap")
-    private IMap<SiriObjectStorageKey, String> checksumCache;
-    @Autowired
-    private AnsharConfiguration configuration;
-    @Autowired
-    private SiriObjectFactory siriObjectFactory;
+    private final IMap<SiriObjectStorageKey, FacilityConditionStructure> facilityMonitoring;
+    private final IMap<String, Set<SiriObjectStorageKey>> changesMap;
+    private final IMap<String, Instant> lastUpdateRequested;
+    private final IMap<SiriObjectStorageKey, String> checksumCache;
+    private final AnsharConfiguration configuration;
+    private final SiriObjectFactory siriObjectFactory;
+    private final ParkingIdsService parkingIdsService;
 
 
-    protected FacilityMonitoring() {
+    protected FacilityMonitoring(@Qualifier("getFacilityMonitoring") IMap<SiriObjectStorageKey, FacilityConditionStructure> facilityMonitoring,
+                                 @Qualifier("getFacilityMonitoringChangesMap") IMap<String, Set<SiriObjectStorageKey>> changesMap,
+                                 @Qualifier("getLastFmUpdateRequest") IMap<String, Instant> lastUpdateRequested,
+                                 @Qualifier("getFmChecksumMap") IMap<SiriObjectStorageKey, String> checksumCache,
+                                 AnsharConfiguration configuration,
+                                 SiriObjectFactory siriObjectFactory,
+                                 ParkingIdsService parkingIdsService) {
         super(SiriDataType.FACILITY_MONITORING);
+        this.facilityMonitoring = facilityMonitoring;
+        this.changesMap = changesMap;
+        this.lastUpdateRequested = lastUpdateRequested;
+        this.checksumCache = checksumCache;
+        this.configuration = configuration;
+        this.siriObjectFactory = siriObjectFactory;
+        this.parkingIdsService = parkingIdsService;
     }
 
 
@@ -99,11 +106,11 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
 
                 updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, existingSet, configuration.getTrackingPeriodMinutes(), TimeUnit.MINUTES);
 
-                logger.debug("Returning {} changes to requestorRef {}", changes.size(), requestorId);
+                log.debug("Returning {} changes to requestorRef {}", changes.size(), requestorId);
                 return changes;
             } else {
 
-                logger.debug("Returning all to requestorRef {}", requestorId);
+                log.debug("Returning all to requestorRef {}", requestorId);
                 updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, new HashSet<>(), configuration.getTrackingPeriodMinutes(), TimeUnit.MINUTES);
 
             }
@@ -145,7 +152,7 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
                     try {
                         checksum = getChecksum(fmCondition);
                     } catch (NoSuchAlgorithmException e) {
-                        logger.warn("Error computing checksum, data will be updated", e);
+                        log.warn("Error computing checksum, data will be updated", e);
                     }
 
                     if (checksum != null) {
@@ -219,12 +226,12 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
     @Override
     public void clearAllByDatasetId(String datasetId) {
         Set<SiriObjectStorageKey> idsToRemove = facilityMonitoring.keySet(createCodespacePredicate(datasetId));
-        logger.warn("Removing all data ({} ids) for {}", idsToRemove.size(), datasetId);
+        log.warn("Removing all data ({} ids) for {}", idsToRemove.size(), datasetId);
 
         for (SiriObjectStorageKey id : idsToRemove) {
             facilityMonitoring.delete(id);
         }
-        logger.warn("Removing all data done");
+        log.warn("Removing all data done");
     }
 
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientTrackingName, List<String> excludedDatasetIds, int maxSize,
@@ -245,6 +252,13 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
             isAdHocRequest = true;
         }
 
+        if (CollectionUtils.isNotEmpty(requestedFacilities)) {
+            // map NETEX id to ORIGINAL id
+            requestedFacilities = requestedFacilities.stream()
+                    .map(rf -> parkingIdsService.getOriginalParkingId(rf).orElse(rf))
+                    .collect(Collectors.toSet());
+        }
+
         // Filter by datasetId
         Set<SiriObjectStorageKey> requestedIds = generateIdSet(datasetId, requestedFacilities, requestedLineRef,
                 requestedVehicleRef, stopPointRef, excludedDatasetIds);
@@ -252,23 +266,23 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
         long t1 = System.currentTimeMillis();
 
         Set<SiriObjectStorageKey> sizeLimitedIds = requestedIds.stream().limit(maxSize).collect(Collectors.toSet());
-        logger.info("Limiting size: {} ms", (System.currentTimeMillis() - t1));
+        log.info("Limiting size: {} ms", (System.currentTimeMillis() - t1));
         t1 = System.currentTimeMillis();
 
         Boolean isMoreData = sizeLimitedIds.size() < requestedIds.size();
 
         //Remove collected objects
         sizeLimitedIds.forEach(requestedIds::remove);
-        logger.info("Limiting size: {} ms", (System.currentTimeMillis() - t1));
+        log.info("Limiting size: {} ms", (System.currentTimeMillis() - t1));
         t1 = System.currentTimeMillis();
 
         Collection<FacilityConditionStructure> values = facilityMonitoring.getAll(sizeLimitedIds).values();
-        logger.info("Fetching data: {} ms", (System.currentTimeMillis() - t1));
+        log.info("Fetching data: {} ms", (System.currentTimeMillis() - t1));
         t1 = System.currentTimeMillis();
 
         Siri siri = siriObjectFactory.createFMServiceDelivery(values, requestorId, messageId);
         siri.getServiceDelivery().setMoreData(isMoreData);
-        logger.info("Creating SIRI-delivery: {} ms", (System.currentTimeMillis() - t1));
+        log.info("Creating SIRI-delivery: {} ms", (System.currentTimeMillis() - t1));
 
         if (!isAdHocRequest) {
             if (requestedIds.size() > facilityMonitoring.size()) {
@@ -277,7 +291,7 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
             }
             //Update change-tracker
             updateChangeTrackers(lastUpdateRequested, changesMap, requestorId, requestedIds, trackingPeriodMinutes, TimeUnit.MINUTES);
-            logger.info("Returning {}, {} left for requestorRef {}", sizeLimitedIds.size(), requestedIds.size(), requestorId);
+            log.info("Returning {}, {} left for requestorRef {}", sizeLimitedIds.size(), requestedIds.size(), requestorId);
         }
 
         return siri;
@@ -305,7 +319,7 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
 
 
     public void clearAll() {
-        logger.error("Deleting all data - should only be used in test!!!");
+        log.error("Deleting all data - should only be used in test!!!");
         facilityMonitoring.clear();
         changesMap.clear();
         lastUpdateRequested.clear();
