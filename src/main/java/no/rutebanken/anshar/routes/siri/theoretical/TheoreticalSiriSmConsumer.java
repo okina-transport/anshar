@@ -11,9 +11,13 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri20.*;
+import uk.org.siri.siri20.MonitoredStopVisit;
+import uk.org.siri.siri20.ServiceDelivery;
+import uk.org.siri.siri20.Siri;
+import uk.org.siri.siri20.StopMonitoringDeliveryStructure;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -23,7 +27,10 @@ import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -45,6 +52,10 @@ public class TheoreticalSiriSmConsumer {
 
     @Value("${anshar.generate-siri-from-th.file-suffix}")
     private String fileSuffix;
+
+
+    @Value("${anshar.generate-siri-from-th.datasets:}")
+    private List<String> siriFromThDatasets;
 
     @Produce("direct:send.sm.from.th.to.realtime.server")
     protected ProducerTemplate smFromTheoreticalDataProducer;
@@ -70,13 +81,18 @@ public class TheoreticalSiriSmConsumer {
     }
 
     private void ingestSiriSmDataByDataset(Path path) {
+        String datasetId = StringUtils.removeEnd(path.getFileName().toString(), fileSuffix);
+        if (!isAllowedToBuildSmFromTH(datasetId)) {
+            return;
+        }
+
         try (BufferedReader reader = Files.newBufferedReader(path);
              CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.builder()
                      .setDelimiter(',')
                      .setHeader()
                      .setSkipHeaderRecord(true)
                      .build())) {
-            String datasetId = StringUtils.removeEnd(path.getFileName().toString(), fileSuffix);
+
             List<TheoreticalStopMonitoringInfo> ingestedData = new ArrayList<>();
             TheoreticalStopMonitoringInfo monitoringInfo;
             IdProcessingParameters emptyIdProcessing = new IdProcessingParameters();
@@ -115,6 +131,11 @@ public class TheoreticalSiriSmConsumer {
         } catch (IOException e) {
             log.error("Error while reading theoretical siri sm data file : {}", e.getMessage());
         }
+    }
+
+    private boolean isAllowedToBuildSmFromTH(String datasetId) {
+        return CollectionUtils.isEmpty(siriFromThDatasets) || siriFromThDatasets.stream()
+                .anyMatch(current -> Strings.CI.equals(current, datasetId));
     }
 
     private List<Siri> splitByMonitoringRef(List<MonitoredStopVisit> visitsToSort) {
