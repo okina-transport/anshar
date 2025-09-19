@@ -358,7 +358,7 @@ Request count: ${item.requestCount}">${item.id}</span></td>
                         <td class="text-right">${item.etCount}</td>
                         <td class="text-right">${item.vmCount}</td>
                         <td class="text-right">${item.sxCount}</td>
-                        <td class="text-right">${item.smCount}</td>
+                        <td class="text-right">${item.smMonitoredCount + item.smNotMonitoredCount}</td>
                     </tr>
                 </#list>
                 </tbody>
@@ -368,7 +368,7 @@ Request count: ${item.requestCount}">${item.id}</span></td>
                     <th class="text-right">${body.elements.et}</th>
                     <th class="text-right">${body.elements.vm}</th>
                     <th class="text-right">${body.elements.sx}</th>
-                    <th class="text-right">${body.elements.sm}</th>
+                    <th class="text-right">${body.elements["sm-monitored"] + body.elements["sm-notMonitored"]}</th>
                 </tr>
                 </tfoot>
             </table>
