@@ -18,7 +18,6 @@ package no.rutebanken.anshar.subscription.helpers;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
-import no.rutebanken.anshar.routes.siri.processor.CodespaceOutboundProcessor;
 import no.rutebanken.anshar.routes.siri.processor.RuterOutboundDatedVehicleRefAdapter;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.routes.siri.transformer.impl.FacilityRefOutboundIdAdapter;
@@ -104,7 +103,6 @@ public class MappingAdapterPresets {
             adapters.add(operatorRefAdapter);
             adapters.add(networkRefAdapter);
             adapters.add(routeRefAdapter);
-            adapters.add(new CodespaceOutboundProcessor(outboundIdMappingPolicy));
 
 
             switch (dataType) {
@@ -113,10 +111,7 @@ public class MappingAdapterPresets {
                     adapters.add(new OutboundIdAdapter(DestinationRef.class, outboundIdMappingPolicy));
                     break;
                 case VEHICLE_MONITORING:
-                    //  adapters.add(new OutboundIdAdapter(JourneyPlaceRefStructure.class, outboundIdMappingPolicy));
-                    //adapters.add(new OutboundIdAdapter(DestinationRef.class, outboundIdMappingPolicy));
                     adapters.add(new OutboundIdAdapter(CourseOfJourneyRefStructure.class, outboundIdMappingPolicy));
-                    //     adapters.add(new RuterOutboundDatedVehicleRefAdapter(MappingAdapterPresets.class, outboundIdMappingPolicy));
                     break;
                 case SITUATION_EXCHANGE:
                     adapters.add(new OutboundIdAdapter(RequestorRef.class, outboundIdMappingPolicy));
@@ -127,7 +122,6 @@ public class MappingAdapterPresets {
                     break;
                 case STOP_MONITORING:
                 case GENERAL_MESSAGE:
-                    // TODO MHI
                     break;
                 default:
                     return getOutboundAdapters(outboundIdMappingPolicy);
@@ -154,9 +148,6 @@ public class MappingAdapterPresets {
         //Adding postprocessor for Ruter DatedVehicleRef
         adapters.add(new RuterOutboundDatedVehicleRefAdapter(MappingAdapterPresets.class, outboundIdMappingPolicy));
 
-
-        // Postprocessor to set "correct" datasource/codespaceId
-        adapters.add(new CodespaceOutboundProcessor(outboundIdMappingPolicy));
         return adapters;
     }
 

@@ -87,7 +87,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
     private static final String DATA_VALIDATION_RESULT_COUNTER = METRICS_PREFIX + "data.validation.result";
     private static final String EMPTY_RECORDED_AT_TIME = METRICS_PREFIX + "data.empty.recoreded.at.time";
     private static final String NEW_RECORDED_AFTER_OLD = METRICS_PREFIX + "data.new.recorded.before.old.recorded";
-    private static final String NEGATIVE_EXPIRATATION = METRICS_PREFIX + "data.negative.expiration";
+    private static final String NEGATIVE_EXPIRATION = METRICS_PREFIX + "data.negative.expiration";
     private static final String SUBS_PUSH_WAITING_THREADS = METRICS_PREFIX + "subscription.push.waiting.threads";
     private static final String SUBS_PUSH_ACTIVE_THREADS = METRICS_PREFIX + "subscription.push.active.threads";
     private static final String PUSH_UPDATES_WAITING_THREADS = METRICS_PREFIX + "push.updates.waiting.threads";
@@ -98,6 +98,8 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
     private static final String OUTBOUND_SUBSCRIPTIONS_COUNT = METRICS_PREFIX + "outbound.subscriptions.count";
     private static final String ASYNC_PROCESS_SEDA_CURRENT_QUEUE_SIZE = METRICS_PREFIX + "async.process.seda.current.queue.size";
     private static final String INCOMING_DATA_MONITORING = METRICS_PREFIX + "incoming.data.monitoring";
+    private static final String ADAPT_ENSURE_INC_TIME_CANCELLED = METRICS_PREFIX + "data.adapter.ensure.increasing.times.cancelled.stops";
+    private static final String ADAPT_EXTRA_JOURNEY_DEST_DISPLAY = METRICS_PREFIX + "data.adapter.extra.journey.dest.display";
     final Map<String, Integer> nbOfOutboundPushByRequestor = new HashMap<>();
     final Map<String, Long> totalPushTimeByRequestor = new HashMap<>();
     final Map<String, Set<Long>> smDeltaTimesTmp = new ConcurrentHashMap<>();
@@ -145,18 +147,6 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
         }
     }
 
-    public void recordDeltaTimesBeforePush(SiriDataType dataType, String datasetId, Set<Long> deltaTimes) {
-        if (SiriDataType.STOP_MONITORING.equals(dataType)) {
-
-            if (smDeltaTimesTmpBeforePush.containsKey(datasetId)) {
-                smDeltaTimesTmpBeforePush.get(datasetId).addAll(deltaTimes);
-            } else {
-                Set<Long> mySet = Sets.newConcurrentHashSet();
-                mySet.addAll(deltaTimes);
-                smDeltaTimesTmpBeforePush.put(datasetId, mySet);
-            }
-        }
-    }
 
     public void recordPushTime(String requestorRef, long pushTime) {
 
@@ -182,16 +172,19 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
         List<Tag> counterTags = new ArrayList<>();
         counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType.name()));
         counterTags.add(new ImmutableTag(AGENCY_TAG_NAME, datasetId));
-        counter(NEGATIVE_EXPIRATATION, counterTags).increment(1);
+        counter(NEGATIVE_EXPIRATION, counterTags).increment(1);
     }
 
-    public void registerOutboundPushError(SiriDataType dataType, String requestorRef, String errorType) {
-        if (StringUtils.isEmpty(requestorRef)) {
-            requestorRef = "emptyRequestorRef";
-        }
-
-
+    public void registerAdaptIncreaseTime() {
+        List<Tag> counterTags = new ArrayList<>();
+        counter(ADAPT_ENSURE_INC_TIME_CANCELLED, counterTags).increment(1);
     }
+
+    public void registerExtraJourneyDestinationDisplay() {
+        List<Tag> counterTags = new ArrayList<>();
+        counter(ADAPT_EXTRA_JOURNEY_DEST_DISPLAY, counterTags).increment(1);
+    }
+
 
     public void registerNewRecordedAfterOld(SiriDataType dataType) {
         List<Tag> counterTags = new ArrayList<>();

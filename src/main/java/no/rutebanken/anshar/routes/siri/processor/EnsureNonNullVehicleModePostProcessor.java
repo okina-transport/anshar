@@ -16,6 +16,7 @@
 package no.rutebanken.anshar.routes.siri.processor;
 
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
+import no.rutebanken.anshar.subscription.SiriDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
@@ -25,7 +26,16 @@ import uk.org.siri.siri21.Siri;
 
 import java.util.List;
 
+import static no.rutebanken.anshar.routes.siri.transformer.MappingNames.ENSURE_NON_NULL_VEHICLE_MODE;
+
 public class EnsureNonNullVehicleModePostProcessor extends ValueAdapter implements PostProcessor {
+
+    private String datasetId;
+
+    public EnsureNonNullVehicleModePostProcessor(String datasetId) {
+        this.datasetId = datasetId;
+    }
+
     private static final Logger logger = LoggerFactory.getLogger(
             EnsureNonNullVehicleModePostProcessor.class);
 
@@ -50,6 +60,7 @@ public class EnsureNonNullVehicleModePostProcessor extends ValueAdapter implemen
                                         estimatedVehicleJourney.getVehicleModes().get(0) == null) {
                                     logger.warn("Clearing VehicleMode");
                                     estimatedVehicleJourney.getVehicleModes().clear();
+                                    getMetricsService().registerDataMapping(SiriDataType.ESTIMATED_TIMETABLE, datasetId, ENSURE_NON_NULL_VEHICLE_MODE, 1);
                                 }
                             }
                         }

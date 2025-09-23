@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.routes.siri.processor;
 
+import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import uk.org.siri.siri21.*;
 
@@ -22,6 +23,7 @@ import java.util.List;
 
 import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.createCombinedId;
 
+@Slf4j
 public class CodespaceProcessor extends ValueAdapter implements PostProcessor {
 
     private final String codespace;
