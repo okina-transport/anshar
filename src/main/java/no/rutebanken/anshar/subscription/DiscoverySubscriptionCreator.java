@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.subscription;
 
+import jakarta.xml.bind.JAXBException;
 import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
@@ -12,9 +13,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri21.*;
-
-import jakarta.xml.bind.JAXBException;
+import uk.org.siri.siri21.Siri;
 
 import javax.xml.stream.XMLStreamException;
 import java.io.InputStream;
@@ -137,6 +136,7 @@ public class DiscoverySubscriptionCreator {
         newSubscription.setUpdateIntervalSeconds(discoveryParams.getUpdateIntervalSeconds());
         newSubscription.setPreviewIntervalSeconds(discoveryParams.getPreviewIntervalSeconds());
         newSubscription.setOperatorNamespace("http://wsdl.siri.org.uk");
+        newSubscription.setRequestorRef(discoveryParams.getRequestorRef());
         newSubscription.setInternalId(IDUtils.getUniqueInternalIdForDiscoverySubscription());
 
         Map<RequestType, String> urlMap = new EnumMap<>(RequestType.class);

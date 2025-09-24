@@ -1,16 +1,17 @@
 package no.rutebanken.anshar.XSLTests;
 
+import jakarta.xml.bind.JAXBException;
+import no.rutebanken.anshar.data.util.CustomSiriXml;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
-import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
+import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
+import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
-import uk.org.siri.siri20.Siri;
-
-import jakarta.xml.bind.JAXBException;
+import uk.org.siri.siri21.Siri;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -22,15 +23,12 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.util.Arrays;
 import java.util.List;
 
-import static junit.framework.TestCase.*;
+import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertTrue;
 
 public class RawToSoapTests extends SpringBootBaseTest {
 
@@ -62,6 +60,19 @@ public class RawToSoapTests extends SpringBootBaseTest {
             e.printStackTrace();
             throw e;
         }
+    }
+
+    @Test
+    public void checkStatusTest() throws JAXBException, FileNotFoundException, TransformerException {
+        SubscriptionSetup subscription = new SubscriptionSetup();
+        subscription.setVersion("2.0");
+        subscription.setRequestorRef("TESTREQ");
+
+        Siri checkStatusRequest = SiriObjectFactory.createCheckStatusRequest(subscription);
+        String body = CustomSiriXml.toXml(checkStatusRequest);
+        String xslBody = CustomSiriXml.rawToSoap(body);
+        assertTrue(xslBody.contains("<siri:CheckStatus xmlns:siri=\"http://wsdl.siri.org.uk\">"));
+        assertTrue(xslBody.contains("<RequestorRef xmlns=\"http://www.siri.org.uk/siri\">TESTREQ</RequestorRef>"));
     }
 
     @Test

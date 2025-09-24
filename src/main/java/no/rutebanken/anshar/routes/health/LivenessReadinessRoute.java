@@ -352,6 +352,7 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
             siriStatus.setStatus(status.name());
         } catch (Exception e) {
             siriStatus.setStatus(FlowStatus.ERROR.name());
+            log.error("error checking flow status", e);
         }
 
         return siriStatus;
@@ -360,8 +361,9 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
     private FlowStatus launchCheckStatus(SubscriptionSetup subscription) throws IOException, InterruptedException, XMLStreamException, JAXBException, TransformerException {
         Siri checkStatusRequest = SiriObjectFactory.createCheckStatusRequest(subscription);
         String body = CustomSiriXml.toXml(checkStatusRequest);
+        String transformedBody = body;
         if (subscription.getServiceType().equals(SubscriptionSetup.ServiceType.SOAP)) {
-            body = CustomSiriXml.rawToSoap(body);
+            transformedBody = CustomSiriXml.rawToSoap(body);
         }
 
         HttpClient client = HttpClient.newHttpClient();
@@ -369,7 +371,7 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                 .uri(URI.create(subscription.getUrlMap().get(RequestType.SUBSCRIBE)))
                 .header("Content-Type", subscription.getContentType())
-                .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8));
+                .POST(HttpRequest.BodyPublishers.ofString(transformedBody, StandardCharsets.UTF_8));
 
         if (MapUtils.isNotEmpty(subscription.getCustomHeaders()))
             subscription.getCustomHeaders().forEach((key, value) -> requestBuilder.headers(key, value.toString()));
@@ -378,6 +380,10 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
 
         if (response.statusCode() == 200 && isStatusOk(response.body())) {
             return FlowStatus.OK;
+        } else {
+            log.debug("original body : " + body);
+            log.debug("transformed body : " + transformedBody);
+            log.debug("checkStatus error:" + response.statusCode() + "-" + response.body());
         }
         return FlowStatus.ERROR;
     }
@@ -419,13 +425,18 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
     }
 
     private boolean isStatusOk(String body) throws XMLStreamException, JAXBException, FileNotFoundException, TransformerException {
-        if (body.contains("<soapenv:Body>")) {
-            body = CustomSiriXml.soapToRaw(body);
-        }
-        InputStream inputStream = new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8));
-        Siri siriResponse = SiriValueTransformer.parseXml(inputStream);
-        return siriResponse.getCheckStatusResponse() != null && siriResponse.getCheckStatusResponse().isStatus();
+        try {
+            if (body.contains("<soapenv:Body>") || body.contains("<soap:")) {
+                body = CustomSiriXml.soapToRaw(body);
+            }
+            InputStream inputStream = new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8));
 
+            Siri siriResponse = SiriValueTransformer.parseXml(inputStream);
+            return siriResponse.getCheckStatusResponse() != null && siriResponse.getCheckStatusResponse().isStatus();
+        } catch (Exception e) {
+            logger.error("Error while trying to process chekStatus Response. body:" + body);
+            throw e;
+        }
     }
 
 
