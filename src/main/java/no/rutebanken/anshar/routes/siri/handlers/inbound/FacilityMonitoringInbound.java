@@ -6,6 +6,7 @@ import no.rutebanken.anshar.routes.siri.handlers.Utils;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import org.apache.commons.collections4.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,8 +61,8 @@ public class FacilityMonitoringInbound {
 
     public Collection<FacilityConditionStructure> ingestFacilities(String datasetId, List<FacilityConditionStructure> incomingFacilities) {
         Collection<FacilityConditionStructure> result = facilityMonitoring.addAll(datasetId, incomingFacilities);
-        if (!result.isEmpty()) {
-            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.FACILITY_MONITORING, incomingFacilities, datasetId);
+        if (CollectionUtils.isNotEmpty(result)) {
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.FACILITY_MONITORING, new ArrayList<>(result), datasetId);
         }
         return result;
     }

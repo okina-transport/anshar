@@ -6,6 +6,7 @@ import no.rutebanken.anshar.routes.siri.handlers.Utils;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import org.apache.commons.collections4.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -71,8 +72,8 @@ public class VehicleMonitoringInbound {
 
     public Collection<VehicleActivityStructure> ingestVehicleActivities(String datasetId, List<VehicleActivityStructure> incomingVehicleActivities) {
         Collection<VehicleActivityStructure> result = vehicleActivities.addAll(datasetId, incomingVehicleActivities);
-        if (result.size() > 0) {
-            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.VEHICLE_MONITORING, Arrays.asList(result.toArray()), datasetId);
+        if (CollectionUtils.isNotEmpty(result)) {
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.VEHICLE_MONITORING, new ArrayList<>(result), datasetId);
         }
         return result;
     }
