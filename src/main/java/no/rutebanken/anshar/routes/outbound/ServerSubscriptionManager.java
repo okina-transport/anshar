@@ -674,6 +674,8 @@ public class ServerSubscriptionManager {
             return getValueAdaptersFromVMRequest(subscriptionRequest, outboundIdMappingPolicy, datasetId);
         } else if (SiriUtils.hasSMRequest(subscriptionRequest)) {
             return getValueAdaptersFromSMRequest(subscriptionRequest, outboundIdMappingPolicy, datasetId);
+        } else if (SiriUtils.hasFMRequest(subscriptionRequest)) {
+            return getValueAdaptersFromFMRequest(subscriptionRequest, outboundIdMappingPolicy, datasetId);
         }
 
         return new HashMap<>();
@@ -729,6 +731,20 @@ public class ServerSubscriptionManager {
         }
         return valueAdaptersByDataset;
 
+    }
+
+    private Map<String, List<ValueAdapter>> getValueAdaptersFromFMRequest(SubscriptionRequest subscriptionRequest, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
+        Map<String, List<ValueAdapter>> valueAdaptersByDataset = new HashMap<>();
+
+        Set<String> datasetList = SiriUtils.generateDatasetListFromHeader(datasetId);
+
+        for (String dataset : datasetList) {
+            Map<ObjectType, Optional<IdProcessingParameters>> idProcessingParams = incomingSubscriptionConfig.buildIdProcessingParamsFromDataset(dataset);
+            List<ValueAdapter> mappers = MappingAdapterPresets.getOutboundAdapters(SiriDataType.FACILITY_MONITORING, outboundIdMappingPolicy, idProcessingParams);
+            valueAdaptersByDataset.put(dataset, mappers);
+        }
+
+        return valueAdaptersByDataset;
     }
 
     private Set<String> getDatasetListFromETRequest(SubscriptionRequest subscriptionRequest) {

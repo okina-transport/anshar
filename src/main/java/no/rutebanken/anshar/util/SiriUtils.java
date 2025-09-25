@@ -3,6 +3,7 @@ package no.rutebanken.anshar.util;
 
 import no.rutebanken.anshar.routes.outbound.OutboundSubscriptionSetup;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import org.apache.commons.collections4.CollectionUtils;
 import org.entur.siri.validator.SiriValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,15 +37,19 @@ public class SiriUtils {
     }
 
     public static boolean hasETRequest(SubscriptionRequest subscriptionRequest) {
-        return subscriptionRequest.getEstimatedTimetableSubscriptionRequests() != null && !subscriptionRequest.getEstimatedTimetableSubscriptionRequests().isEmpty();
+        return CollectionUtils.isNotEmpty(subscriptionRequest.getEstimatedTimetableSubscriptionRequests());
     }
 
     public static boolean hasVMRequest(SubscriptionRequest subscriptionRequest) {
-        return subscriptionRequest.getVehicleMonitoringSubscriptionRequests() != null && !subscriptionRequest.getVehicleMonitoringSubscriptionRequests().isEmpty();
+        return CollectionUtils.isNotEmpty(subscriptionRequest.getVehicleMonitoringSubscriptionRequests());
     }
 
     public static boolean hasSMRequest(SubscriptionRequest subscriptionRequest) {
-        return subscriptionRequest.getStopMonitoringSubscriptionRequests() != null && !subscriptionRequest.getStopMonitoringSubscriptionRequests().isEmpty();
+        return CollectionUtils.isNotEmpty(subscriptionRequest.getStopMonitoringSubscriptionRequests());
+    }
+
+    public static boolean hasFMRequest(SubscriptionRequest subscriptionRequest) {
+        return CollectionUtils.isNotEmpty(subscriptionRequest.getFacilityMonitoringSubscriptionRequests());
     }
 
     public static SiriValidator.Version getVersionEnum(String version) {
