@@ -23,6 +23,7 @@ import no.rutebanken.anshar.data.Situations;
 import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.data.util.CustomStringUtils;
 import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
+import no.rutebanken.anshar.routes.mapping.ParkingIdsService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
@@ -64,6 +65,9 @@ public class SiriHelper {
 
     @Autowired
     private StopPlaceUpdaterService stopPlaceUpdaterService;
+
+    @Autowired
+    private ParkingIdsService parkingIdsService;
 
     @Autowired
     private SubscriptionConfig subscriptionConfig;
@@ -161,6 +165,10 @@ public class SiriHelper {
             // SiteRef filtering is done by FacilityRef as well atm
             requestedFacilitiesSet.add(facilityMonitoringSubscriptionStructure.getFacilityMonitoringRequest().getSiteRef().getValue());
         }
+
+        requestedFacilitiesSet = requestedFacilitiesSet.stream()
+                .map(requestedFacility -> parkingIdsService.getOriginalParkingId(requestedFacility).orElse(requestedFacility))
+                .collect(Collectors.toSet());
 
         if (!requestedFacilitiesSet.isEmpty()) {
             filterMap.put(FacilityRef.class, requestedFacilitiesSet);
@@ -593,7 +601,7 @@ public class SiriHelper {
 
     private static List<FacilityMonitoringDeliveryStructure> getFilteredFaciliesRef(Siri siri, Set<String> facility) {
         if (facility == null || facility.isEmpty()) {
-            return null;
+            return siri.getServiceDelivery().getFacilityMonitoringDeliveries();
         }
 
         //FM-deliveries
@@ -603,14 +611,13 @@ public class SiriHelper {
         for (FacilityMonitoringDeliveryStructure delivery : facilityMonitoringDeliveries) {
             List<FacilityConditionStructure> facilityConditions = delivery.getFacilityConditions();
             List<FacilityConditionStructure> filteredFacilityCondition = new ArrayList<>();
-
             for (FacilityConditionStructure facilityCondition : facilityConditions) {
 
                 if (facility.contains(facilityCondition.getFacilityRef().getValue())) {
                     filteredFacilityCondition.add(facilityCondition);
                 }
             }
-            if (!facilityConditions.isEmpty()) {
+            if (!filteredFacilityCondition.isEmpty()) {
                 FacilityMonitoringDeliveryStructure facilityMonitoringDelStruct = new FacilityMonitoringDeliveryStructure();
                 facilityMonitoringDelStruct.setResponseTimestamp(delivery.getResponseTimestamp());
                 facilityMonitoringDelStruct.setVersion(delivery.getVersion());
