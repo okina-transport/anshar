@@ -1,8 +1,8 @@
 package no.rutebanken.anshar.gbfs;
 
 import com.okina.gbfs.to.siri.StationStatusToSiriFmMapper;
-import no.rutebanken.anshar.data.FacilityMonitoring;
 import no.rutebanken.anshar.routes.health.HealthManager;
+import no.rutebanken.anshar.routes.siri.handlers.inbound.FacilityMonitoringInbound;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mobilitydata.gbfs.v3_0.station_status.GBFSStationStatus;
@@ -20,7 +20,7 @@ import static org.mockito.Mockito.*;
 public class GbfsIngesterTest {
 
     @Mock
-    FacilityMonitoring facilityMonitoring;
+    FacilityMonitoringInbound facilityMonitoringInbound;
 
     @Mock
     HealthManager healthManager;
@@ -43,7 +43,7 @@ public class GbfsIngesterTest {
 
         verify(mapper).map(stationStatus);
         verify(healthManager, never()).dataReceived();
-        verify(facilityMonitoring, never()).addAll(any(), any());
+        verify(facilityMonitoringInbound, never()).ingestFacilities(any(), any());
     }
 
     @Test
@@ -57,7 +57,7 @@ public class GbfsIngesterTest {
 
         verify(mapper).map(stationStatus);
         verify(healthManager).dataReceived();
-        verify(facilityMonitoring).addAll(DATASET_ID, fcss);
+        verify(facilityMonitoringInbound).ingestFacilities(DATASET_ID, fcss);
     }
 
 
