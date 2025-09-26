@@ -6,6 +6,7 @@ import no.rutebanken.anshar.routes.siri.handlers.Utils;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import org.apache.commons.collections4.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -102,8 +103,8 @@ public class EstimatedTimetableInbound {
 
     public Collection<EstimatedVehicleJourney> ingestEstimatedTimeTables(String datasetId, List<EstimatedVehicleJourney> incomingEstimatedTimeTables) {
         Collection<EstimatedVehicleJourney> result = estimatedTimetables.addAll(datasetId, incomingEstimatedTimeTables);
-        if (result.size() > 0) {
-            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.ESTIMATED_TIMETABLE, Arrays.asList(result.toArray()), datasetId);
+        if (CollectionUtils.isNotEmpty(result)) {
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.ESTIMATED_TIMETABLE, new ArrayList<>(result), datasetId);
         }
         return result;
     }

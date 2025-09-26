@@ -8,6 +8,7 @@ import no.rutebanken.anshar.routes.siri.handlers.Utils;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import org.apache.commons.collections4.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -200,8 +201,8 @@ public class SituationExchangeInbound {
      */
     public Collection<PtSituationElement> ingestSituations(String datasetId, List<PtSituationElement> incomingSituations, boolean publishToOutbound) {
         Collection<PtSituationElement> result = situations.addAll(datasetId, incomingSituations);
-        if (publishToOutbound && !result.isEmpty()) {
-            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.SITUATION_EXCHANGE, incomingSituations, datasetId);
+        if (publishToOutbound && CollectionUtils.isNotEmpty(result)) {
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.SITUATION_EXCHANGE, new ArrayList<>(result), datasetId);
         }
 
         convertToGeneralMessageAndIngest(datasetId, incomingSituations);

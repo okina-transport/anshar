@@ -80,8 +80,8 @@ public class StopMonitoringInbound {
     public Collection<MonitoredStopVisit> ingestStopVisits(String datasetId, List<MonitoredStopVisit> incomingMonitoredStopVisits) {
         recordDeltaTimes(datasetId, incomingMonitoredStopVisits);
         Collection<MonitoredStopVisit> result = monitoredStopVisits.addAll(datasetId, incomingMonitoredStopVisits);
-        if (result.size() > 0) {
-            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.STOP_MONITORING, incomingMonitoredStopVisits, datasetId);
+        if (CollectionUtils.isNotEmpty(result)) {
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.STOP_MONITORING, new ArrayList<>(result), datasetId);
         }
         return result;
     }

@@ -7,6 +7,7 @@ import no.rutebanken.anshar.routes.siri.handlers.Utils;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import org.apache.commons.collections4.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -98,8 +99,8 @@ public class GeneralMessageInbound {
 
     public void ingestGeneralMessages(String datasetId, List<GeneralMessage> incomingSituations, boolean publishToOutbound) {
         Collection<GeneralMessage> result = generalMessages.addAll(datasetId, incomingSituations);
-        if (publishToOutbound && !result.isEmpty()) {
-            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.GENERAL_MESSAGE, incomingSituations, datasetId);
+        if (publishToOutbound && CollectionUtils.isNotEmpty(result)) {
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.GENERAL_MESSAGE, new ArrayList<>(result), datasetId);
         }
     }
 }

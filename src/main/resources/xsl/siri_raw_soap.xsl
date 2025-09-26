@@ -418,7 +418,7 @@
                         </xsl:element>
                     </xsl:when>
                     <xsl:when test="local-name()='CheckStatusRequest'">
-                        <xsl:element name="siri:CheckStatus" namespace="{$operatorNamespace}">
+                        <xsl:element name="siri:CheckStatus" namespace="{$siriSoapNamespace}">
                             <xsl:element name="Request">
                                 <xsl:attribute name="version">
                                     <xsl:value-of select="/siri:Siri/@version"/>
