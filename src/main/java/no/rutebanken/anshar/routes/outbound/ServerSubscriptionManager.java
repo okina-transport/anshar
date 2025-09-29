@@ -1458,7 +1458,11 @@ public class ServerSubscriptionManager {
         List<OutboundSubscriptionSetup> results = new ArrayList<>();
         for (String monitoredRef : monitoredRefs) {
             if (outboundSubscriptionsByMonitoringRef.containsKey(monitoredRef)) {
-                results.addAll(outboundSubscriptionsByMonitoringRef.get(monitoredRef));
+                for (OutboundSubscriptionSetup outboundSubscriptionSetup : outboundSubscriptionsByMonitoringRef.get(monitoredRef)) {
+                    if (CollectionUtils.isEmpty(outboundSubscriptionSetup.getDatasetList()) || outboundSubscriptionSetup.getDatasetList().contains(datasetId)) {
+                        results.add(outboundSubscriptionSetup);
+                    }
+                }
             }
         }
         return results;
