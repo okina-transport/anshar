@@ -92,6 +92,8 @@ public class SubscriptionManager {
     @Autowired
     private MonitoredStopVisits sm;
     @Autowired
+    private FacilityMonitoring fm;
+    @Autowired
     @Qualifier("getSituationChangesMap")
     private IMap<String, Set<SiriObjectStorageKey>> sxChanges;
     @Autowired
@@ -625,15 +627,18 @@ public class SubscriptionManager {
         Map<String, Integer> smMonitoredDatasetSize = sm.getMonitoredDatasetSize();
         Map<String, Integer> smNotMonitoredDatasetSize = sm.getNotMonitoredDatasetSize();
         logger.debug("Got SM size");
+        Map<String, Integer> fmDatasetSize = fm.getDatasetSize();
+        logger.debug("Got FM size");
 
         count.put("sx", sxDatasetSize.values().stream().mapToInt(Number::intValue).sum());
         count.put("et", etDatasetSize.values().stream().mapToInt(Number::intValue).sum());
         count.put("vm", vmDatasetSize.values().stream().mapToInt(Number::intValue).sum());
+        count.put("fm", fmDatasetSize.values().stream().mapToInt(Number::intValue).sum());
         count.put("sm-monitored", smMonitoredDatasetSize.values().stream().mapToInt(Number::intValue).sum());
         count.put("sm-notMonitored", smNotMonitoredDatasetSize.values().stream().mapToInt(Number::intValue).sum());
 
         logger.debug("Building distribution stats");
-        count.put("distribution", getCountPerDataset(etDatasetSize, vmDatasetSize, sxDatasetSize, smMonitoredDatasetSize, smNotMonitoredDatasetSize));
+        count.put("distribution", getCountPerDataset(etDatasetSize, vmDatasetSize, sxDatasetSize, smMonitoredDatasetSize, smNotMonitoredDatasetSize, fmDatasetSize));
         logger.debug("Built distribution stats");
 
         result.put("elements", count);
@@ -694,7 +699,7 @@ public class SubscriptionManager {
         return count;
     }
 
-    private JSONArray getCountPerDataset(Map<String, Integer> etDatasetSize, Map<String, Integer> vmDatasetSize, Map<String, Integer> sxDatasetSize, Map<String, Integer> smMonitoredDatasetSize, Map<String, Integer> smNotMonitoredDatasetSize) {
+    private JSONArray getCountPerDataset(Map<String, Integer> etDatasetSize, Map<String, Integer> vmDatasetSize, Map<String, Integer> sxDatasetSize, Map<String, Integer> smMonitoredDatasetSize, Map<String, Integer> smNotMonitoredDatasetSize, Map<String, Integer> fmDatasetSize) {
         JSONArray etDatasetCount = new JSONArray();
 
         Set<String> allKeys = new HashSet<>();
@@ -703,6 +708,7 @@ public class SubscriptionManager {
         allKeys.addAll(sxDatasetSize.keySet());
         allKeys.addAll(smMonitoredDatasetSize.keySet());
         allKeys.addAll(smNotMonitoredDatasetSize.keySet());
+        allKeys.addAll(fmDatasetSize.keySet());
 
         for (String datasetId : allKeys) {
             JSONObject counter = new JSONObject();
@@ -710,6 +716,7 @@ public class SubscriptionManager {
             counter.put("etCount", etDatasetSize.getOrDefault(datasetId, 0));
             counter.put("vmCount", vmDatasetSize.getOrDefault(datasetId, 0));
             counter.put("sxCount", sxDatasetSize.getOrDefault(datasetId, 0));
+            counter.put("fmCount", fmDatasetSize.getOrDefault(datasetId, 0));
             counter.put("smMonitoredCount", smMonitoredDatasetSize.getOrDefault(datasetId, 0));
             counter.put("smNotMonitoredCount", smNotMonitoredDatasetSize.getOrDefault(datasetId, 0));
             etDatasetCount.add(counter);

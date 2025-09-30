@@ -20,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 
 import static junit.framework.TestCase.assertNotNull;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 public class SoapToRawTests extends SpringBootBaseTest {
 
@@ -52,6 +53,199 @@ public class SoapToRawTests extends SpringBootBaseTest {
             e.printStackTrace();
             throw e;
         }
+    }
+
+    @Test
+    public void fmSOAPTest() throws JAXBException, FileNotFoundException, TransformerException, XMLStreamException {
+
+        String soapFMmsg = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+                    <soapenv:Header/>
+                    <soapenv:Body>
+                        <NotifyFacilityMonitoring xmlns="http://wsdl.siri.org.uk">
+                            <ServiceDeliveryInfo xmlns="">
+                                <ResponseTimestamp xmlns="http://www.siri.org.uk/siri">2025-09-30T09:58:25.163955921+02:00</ResponseTimestamp>
+                                <ProducerRef xmlns="http://www.siri.org.uk/siri">OKI</ProducerRef>
+                                <RequestMessageRef xmlns="http://www.siri.org.uk/siri">OKI</RequestMessageRef>
+                                <ResponseMessageIdentifier xmlns="http://www.siri.org.uk/siri">c3d12c8d-6812-40ee-9a6d-29ca0921f5ab</ResponseMessageIdentifier>
+                            </ServiceDeliveryInfo>
+                            <Notification xmlns="">
+                                <siri:FacilityMonitoringDelivery xmlns:siri="http://www.siri.org.uk/siri" version="2.1">
+                                    <siri:ResponseTimestamp>2025-09-30T09:58:25.163955921+02:00</siri:ResponseTimestamp>
+                                    <siri:RequestMessageRef>OKI</siri:RequestMessageRef>
+                                    <FacilityCondition xmlns="http://www.siri.org.uk/siri">
+                                        <FacilityRef>FR:44109:Parking:39:LOC</FacilityRef>
+                                        <FacilityStatus>
+                                            <Status>available</Status>
+                                            <Description xml:lang="en">rentingAvailable</Description>
+                                            <Description xml:lang="en">returningAvailable</Description>
+                                        </FacilityStatus>
+                                        <MonitoredCounting>
+                                            <CountingType>availabilityCount</CountingType>
+                                            <CountedFeatureUnit>vehicles</CountedFeatureUnit>
+                                            <Count>16</Count>
+                                        </MonitoredCounting>
+                                        <MonitoredCounting>
+                                            <CountingType>availabilityCount</CountingType>
+                                            <CountedFeatureUnit>vehicles</CountedFeatureUnit>
+                                            <TypeOfCountedFeature>
+                                                <TypeOfValueCode>mechanical</TypeOfValueCode>
+                                            </TypeOfCountedFeature>
+                                            <Count>16</Count>
+                                        </MonitoredCounting>
+                                        <MonitoredCounting>
+                                            <CountingType>outOfOrderCount</CountingType>
+                                            <CountedFeatureUnit>vehicles</CountedFeatureUnit>
+                                            <Count>0</Count>
+                                        </MonitoredCounting>
+                                        <MonitoredCounting>
+                                            <CountingType>availabilityCount</CountingType>
+                                            <CountedFeatureUnit>bays</CountedFeatureUnit>
+                                            <Count>8</Count>
+                                        </MonitoredCounting>
+                                        <MonitoredCounting>
+                                            <CountingType>outOfOrderCount</CountingType>
+                                            <CountedFeatureUnit>bays</CountedFeatureUnit>
+                                            <Count>0</Count>
+                                        </MonitoredCounting>
+                                        <ValidityPeriod>
+                                            <StartTime>2025-09-11T16:01:52+02:00</StartTime>
+                                        </ValidityPeriod>
+                                    </FacilityCondition>
+                                    <FacilityCondition xmlns="http://www.siri.org.uk/siri">
+                                        <FacilityRef>FR:44109:Parking:8:LOC</FacilityRef>
+                                        <FacilityStatus>
+                                            <Status>available</Status>
+                                            <Description xml:lang="en">rentingAvailable</Description>
+                                            <Description xml:lang="en">returningAvailable</Description>
+                                        </FacilityStatus>
+                                        <MonitoredCounting>
+                                            <CountingType>availabilityCount</CountingType>
+                                            <CountedFeatureUnit>vehicles</CountedFeatureUnit>
+                                            <Count>21</Count>
+                                        </MonitoredCounting>
+                                        <MonitoredCounting>
+                                            <CountingType>availabilityCount</CountingType>
+                                            <CountedFeatureUnit>vehicles</CountedFeatureUnit>
+                                            <TypeOfCountedFeature>
+                                                <TypeOfValueCode>mechanical</TypeOfValueCode>
+                                            </TypeOfCountedFeature>
+                                            <Count>21</Count>
+                                        </MonitoredCounting>
+                                        <MonitoredCounting>
+                                            <CountingType>outOfOrderCount</CountingType>
+                                            <CountedFeatureUnit>vehicles</CountedFeatureUnit>
+                                            <Count>0</Count>
+                                        </MonitoredCounting>
+                                        <MonitoredCounting>
+                                            <CountingType>availabilityCount</CountingType>
+                                            <CountedFeatureUnit>bays</CountedFeatureUnit>
+                                            <Count>3</Count>
+                                        </MonitoredCounting>
+                                        <MonitoredCounting>
+                                            <CountingType>outOfOrderCount</CountingType>
+                                            <CountedFeatureUnit>bays</CountedFeatureUnit>
+                                            <Count>0</Count>
+                                        </MonitoredCounting>
+                                        <ValidityPeriod>
+                                            <StartTime>2025-09-11T16:02:50+02:00</StartTime>
+                                        </ValidityPeriod>
+                                    </FacilityCondition>
+                                    <FacilityCondition xmlns="http://www.siri.org.uk/siri">
+                                        <FacilityRef>FR:44109:Parking:63:LOC</FacilityRef>
+                                        <FacilityStatus>
+                                            <Status>available</Status>
+                                            <Description xml:lang="en">rentingAvailable</Description>
+                                            <Description xml:lang="en">returningAvailable</Description>
+                                        </FacilityStatus>
+                                        <MonitoredCounting>
+                                            <CountingType>availabilityCount</CountingType>
+                                            <CountedFeatureUnit>vehicles</CountedFeatureUnit>
+                                            <Count>1</Count>
+                                        </MonitoredCounting>
+                                        <MonitoredCounting>
+                                            <CountingType>availabilityCount</CountingType>
+                                            <CountedFeatureUnit>vehicles</CountedFeatureUnit>
+                                            <TypeOfCountedFeature>
+                                                <TypeOfValueCode>mechanical</TypeOfValueCode>
+                                            </TypeOfCountedFeature>
+                                            <Count>1</Count>
+                                        </MonitoredCounting>
+                                        <MonitoredCounting>
+                                            <CountingType>outOfOrderCount</CountingType>
+                                            <CountedFeatureUnit>vehicles</CountedFeatureUnit>
+                                            <Count>1</Count>
+                                        </MonitoredCounting>
+                                        <MonitoredCounting>
+                                            <CountingType>availabilityCount</CountingType>
+                                            <CountedFeatureUnit>bays</CountedFeatureUnit>
+                                            <Count>13</Count>
+                                        </MonitoredCounting>
+                                        <MonitoredCounting>
+                                            <CountingType>outOfOrderCount</CountingType>
+                                            <CountedFeatureUnit>bays</CountedFeatureUnit>
+                                            <Count>0</Count>
+                                        </MonitoredCounting>
+                                        <ValidityPeriod>
+                                            <StartTime>2025-09-11T16:00:30+02:00</StartTime>
+                                        </ValidityPeriod>
+                                    </FacilityCondition>
+                                    <FacilityCondition xmlns="http://www.siri.org.uk/siri">
+                                        <FacilityRef>FR:44109:Parking:76:LOC</FacilityRef>
+                                        <FacilityStatus>
+                                            <Status>available</Status>
+                                            <Description xml:lang="en">rentingAvailable</Description>
+                                            <Description xml:lang="en">returningAvailable</Description>
+                                        </FacilityStatus>
+                                        <MonitoredCounting>
+                                            <CountingType>availabilityCount</CountingType>
+                                            <CountedFeatureUnit>vehicles</CountedFeatureUnit>
+                                            <Count>8</Count>
+                                        </MonitoredCounting>
+                                        <MonitoredCounting>
+                                            <CountingType>availabilityCount</CountingType>
+                                            <CountedFeatureUnit>vehicles</CountedFeatureUnit>
+                                            <TypeOfCountedFeature>
+                                                <TypeOfValueCode>mechanical</TypeOfValueCode>
+                                            </TypeOfCountedFeature>
+                                            <Count>8</Count>
+                                        </MonitoredCounting>
+                                        <MonitoredCounting>
+                                            <CountingType>outOfOrderCount</CountingType>
+                                            <CountedFeatureUnit>vehicles</CountedFeatureUnit>
+                                            <Count>0</Count>
+                                        </MonitoredCounting>
+                                        <MonitoredCounting>
+                                            <CountingType>availabilityCount</CountingType>
+                                            <CountedFeatureUnit>bays</CountedFeatureUnit>
+                                            <Count>7</Count>
+                                        </MonitoredCounting>
+                                        <MonitoredCounting>
+                                            <CountingType>outOfOrderCount</CountingType>
+                                            <CountedFeatureUnit>bays</CountedFeatureUnit>
+                                            <Count>0</Count>
+                                        </MonitoredCounting>
+                                        <ValidityPeriod>
+                                            <StartTime>2025-09-11T15:55:26+02:00</StartTime>
+                                        </ValidityPeriod>
+                                    </FacilityCondition>
+                                </siri:FacilityMonitoringDelivery>
+                            </Notification>
+                            <SiriExtension xmlns=""/>
+                        </NotifyFacilityMonitoring>
+                    </soapenv:Body>
+                </soapenv:Envelope>
+                """;
+
+        String raw = CustomSiriXml.soapToRaw(soapFMmsg);
+        InputStream inputStream = new ByteArrayInputStream(raw.getBytes(StandardCharsets.UTF_8));
+
+        Siri siriResponse = SiriValueTransformer.parseXml(inputStream);
+        assertNotNull(siriResponse.getServiceDelivery());
+        assertNotNull(siriResponse.getServiceDelivery().getFacilityMonitoringDeliveries());
+        assertFalse(siriResponse.getServiceDelivery().getFacilityMonitoringDeliveries().isEmpty());
+        assertEquals(4, siriResponse.getServiceDelivery().getFacilityMonitoringDeliveries().getFirst().getFacilityConditions().size());
     }
 
     @Test
