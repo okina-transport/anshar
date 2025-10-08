@@ -154,7 +154,7 @@ public class FirstOrLastJourneyTests extends SpringBootBaseTest {
     private Siri getStopDataFromCache(String datasetId) {
         Set<String> searchedStopIds = new HashSet<>();
         searchedStopIds.add("STOP1");
-        return monitoredStopVisits.createServiceDelivery("req1", datasetId, "trackName", new ArrayList<>(), 50000, -1, searchedStopIds);
+        return monitoredStopVisits.createServiceDelivery("req1", datasetId, new ArrayList<>(), 50000, -1, searchedStopIds);
     }
 
     private void createAndIngestStopVisit(String datasetId, ZonedDateTime aimedDepartureTime, String vehicleJourneyId, FirstOrLastJourneyEnumeration firstOrLastJourney) {

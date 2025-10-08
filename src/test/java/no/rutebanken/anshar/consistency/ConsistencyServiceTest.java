@@ -73,7 +73,7 @@ public class ConsistencyServiceTest {
     ConsistencyService tested;
 
     @Test
-    public void test_buildReportForDataset_whenDatasetDoesNotExist_thenThrowsException() {
+    void test_buildReportForDataset_whenDatasetDoesNotExist_thenThrowsException() {
         // Arrage
         Mockito.when(datasetService.exists(DATASET_ID)).thenReturn(false);
 
@@ -82,7 +82,7 @@ public class ConsistencyServiceTest {
     }
 
     @Test
-    public void test_buildReportForDataset_whenThereIsNoDataInCache_thenBuildEmptyReport() throws InvocationTargetException, IllegalAccessException {
+    void test_buildReportForDataset_whenThereIsNoDataInCache_thenBuildEmptyReport() throws InvocationTargetException, IllegalAccessException {
         // Arrange
         Mockito.when(datasetService.exists(DATASET_ID)).thenReturn(true);
         Mockito.when(siriHandler.buildSiriResponse(any(), any())).thenReturn(new Siri());
@@ -98,7 +98,7 @@ public class ConsistencyServiceTest {
     }
 
     @Test
-    public void test_buildReportForDataset_whenThereIsDataInCache_thenExtractAllIdsFromSiri() throws InvocationTargetException, IllegalAccessException {
+    void test_buildReportForDataset_whenThereIsDataInCache_thenExtractAllIdsFromSiri() throws InvocationTargetException, IllegalAccessException {
         // Arrange
         Mockito.when(datasetService.exists(DATASET_ID)).thenReturn(true);
         Mockito.when(siriHandler.buildSiriResponse(any(), any())).thenAnswer(
@@ -204,7 +204,7 @@ public class ConsistencyServiceTest {
     }
 
     @Test
-    public void test_buildReportForDataset_whenThereIsDataInCache_thenMatchedIdsAndUnmatchedIdsAreGeneratedProperly() throws InvocationTargetException, IllegalAccessException {
+    void test_buildReportForDataset_whenThereIsDataInCache_thenMatchedIdsAndUnmatchedIdsAreGeneratedProperly() throws InvocationTargetException, IllegalAccessException {
         // Arrange
         Mockito.when(datasetService.exists(DATASET_ID)).thenReturn(true);
         Mockito.when(siriHandler.buildSiriResponse(any(), any())).thenAnswer(invocation -> {
