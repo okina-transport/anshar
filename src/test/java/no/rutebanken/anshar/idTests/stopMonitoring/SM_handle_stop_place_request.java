@@ -12,6 +12,7 @@ import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.handlers.outbound.StopMonitoringOutbound;
+import no.rutebanken.anshar.routes.siri.helpers.StopMonitoringServiceDeliveryParameter;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.apache.commons.io.FileUtils;
@@ -30,7 +31,7 @@ import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class SM_handle_stop_place_request extends SpringBootBaseTest {
+class SM_handle_stop_place_request extends SpringBootBaseTest {
 
     @Autowired
     private MonitoredStopVisits monitoredStopVisits;
@@ -48,17 +49,17 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
     private SiriHandler handler;
 
     @BeforeEach
-    public void init() {
+    void init() {
         monitoredStopVisits.clearAll();
     }
 
-    private static String DATASET = "DAT1";
+    private static final String DATASET = "DAT1";
 
-    private static String QUAY1_REF = DATASET + ":Quay:HBLI1";
-    private static String QUAY2_REF = DATASET + ":Quay:HBLI2";
-    private static String QUAY3_REF = DATASET + ":Quay:OTHERPROVIDER##3A##Quay##3A##toto";
+    private static final String QUAY1_REF = DATASET + ":Quay:HBLI1";
+    private static final String QUAY2_REF = DATASET + ":Quay:HBLI2";
+    private static final String QUAY3_REF = DATASET + ":Quay:OTHERPROVIDER##3A##Quay##3A##toto";
 
-    private static String STOP_PLACE_REF = DATASET + ":StopPlace:HBLI";
+    private static final String STOP_PLACE_REF = DATASET + ":StopPlace:HBLI";
 
 
     /**
@@ -66,7 +67,7 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
      * Should return only one result with MOBIITI:Quay:1 monitoringRef
      */
     @Test
-    public void test_request_on_quay1_v1() {
+    void test_request_on_quay1_v1() {
         initCacheWithquaysAnd1Stop();
 
         Assertions.assertEquals(4, monitoredStopVisits.getAll().size());
@@ -75,7 +76,13 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
 
 
         // Request  : DATASET : DAT1, "MOBIITI:Quay:1", OutboundIdMappingPolicy.DEFAULT
-        Siri res = stopMonitoringOutbound.getStopMonitoringServiceDelivery(serviceRequest1, OutboundIdMappingPolicy.DEFAULT, DATASET, "req", "clientTrackingName", 1500000, null);
+        IncomingSiriParameters incomingSiriParameters = new IncomingSiriParameters();
+        incomingSiriParameters.setOutboundIdMappingPolicy(OutboundIdMappingPolicy.DEFAULT);
+        incomingSiriParameters.setDatasetId(DATASET);
+        incomingSiriParameters.setClientTrackingName("clientTrackingName");
+        incomingSiriParameters.setMaxSize(1500000);
+        StopMonitoringServiceDeliveryParameter parameter = new StopMonitoringServiceDeliveryParameter(serviceRequest1, incomingSiriParameters);
+        Siri res = stopMonitoringOutbound.getStopMonitoringServiceDelivery(parameter);
         List<MonitoredStopVisit> extractedMonitoredStopVisit = extractMonitoredStopVisits(res);
         Assertions.assertEquals(1, extractedMonitoredStopVisit.size());
         Assertions.assertEquals("MOBIITI:Quay:1", extractedMonitoredStopVisit.get(0).getMonitoringRef().getValue());
@@ -88,26 +95,38 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
      * Should return only one result with MOBIITI:Quay:1 monitoringRef
      */
     @Test
-    public void test_request_on_quay1_v2() {
+    void test_request_on_quay1_v2() {
         initCacheWithquaysAnd1Stop();
 
         ServiceRequest serviceRequest1 = createStopMonitoringRequestForRef("MOBIITI:Quay:1");
 
         // Request  : DATASET : null, "MOBIITI:Quay:1", OutboundIdMappingPolicy.DEFAULT
-        Siri res = stopMonitoringOutbound.getStopMonitoringServiceDelivery(serviceRequest1, OutboundIdMappingPolicy.DEFAULT, null, "req", "clientTrackingName", 1500000, null);
+        IncomingSiriParameters incomingSiriParameters = new IncomingSiriParameters();
+        incomingSiriParameters.setOutboundIdMappingPolicy(OutboundIdMappingPolicy.DEFAULT);
+        incomingSiriParameters.setDatasetId(DATASET);
+        incomingSiriParameters.setClientTrackingName("clientTrackingName");
+        incomingSiriParameters.setMaxSize(1500000);
+        StopMonitoringServiceDeliveryParameter parameter = new StopMonitoringServiceDeliveryParameter(serviceRequest1, incomingSiriParameters);
+        Siri res = stopMonitoringOutbound.getStopMonitoringServiceDelivery(parameter);
         List<MonitoredStopVisit> extractedMonitoredStopVisit = extractMonitoredStopVisits(res);
         Assertions.assertEquals(1, extractedMonitoredStopVisit.size());
         Assertions.assertEquals("MOBIITI:Quay:1", extractedMonitoredStopVisit.get(0).getMonitoringRef().getValue());
     }
 
     @Test
-    public void test_request_on_quay1_v3_handle_of_colons() {
+    void test_request_on_quay1_v3_handle_of_colons() {
         initCacheWithquaysAnd1Stop();
 
         ServiceRequest serviceRequest1 = createStopMonitoringRequestForRef("MOBIITI:Quay:3");
 
         // Request  : DATASET : null, "MOBIITI:Quay:3", OutboundIdMappingPolicy.DEFAULT
-        Siri res = stopMonitoringOutbound.getStopMonitoringServiceDelivery(serviceRequest1, OutboundIdMappingPolicy.DEFAULT, null, "req", "clientTrackingName", 1500000, null);
+        IncomingSiriParameters incomingSiriParameters = new IncomingSiriParameters();
+        incomingSiriParameters.setOutboundIdMappingPolicy(OutboundIdMappingPolicy.DEFAULT);
+        incomingSiriParameters.setDatasetId(DATASET);
+        incomingSiriParameters.setClientTrackingName("clientTrackingName");
+        incomingSiriParameters.setMaxSize(1500000);
+        StopMonitoringServiceDeliveryParameter parameter = new StopMonitoringServiceDeliveryParameter(serviceRequest1, incomingSiriParameters);
+        Siri res = stopMonitoringOutbound.getStopMonitoringServiceDelivery(parameter);
         List<MonitoredStopVisit> extractedMonitoredStopVisit = extractMonitoredStopVisits(res);
         Assertions.assertEquals(1, extractedMonitoredStopVisit.size());
         Assertions.assertEquals("MOBIITI:Quay:3", extractedMonitoredStopVisit.get(0).getMonitoringRef().getValue());
@@ -119,16 +138,22 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
      * Should return only one result with MOBIITI:StopPlace:3 monitoringRef
      */
     @Test
-    public void test_request_on_StopPlace_v1() {
+    void test_request_on_StopPlace_v1() {
         initCacheWithquaysAnd1Stop();
 
         ServiceRequest serviceRequest1 = createStopMonitoringRequestForRef("MOBIITI:StopPlace:3");
 
         // Request  : DATASET : DAT1, "MOBIITI:StopPlace:3", OutboundIdMappingPolicy.DEFAULT
-        Siri res = stopMonitoringOutbound.getStopMonitoringServiceDelivery(serviceRequest1, OutboundIdMappingPolicy.DEFAULT, DATASET, "req", "clientTrackingName", 1500000, null);
+        IncomingSiriParameters incomingSiriParameters = new IncomingSiriParameters();
+        incomingSiriParameters.setOutboundIdMappingPolicy(OutboundIdMappingPolicy.DEFAULT);
+        incomingSiriParameters.setDatasetId(DATASET);
+        incomingSiriParameters.setClientTrackingName("clientTrackingName");
+        incomingSiriParameters.setMaxSize(1500000);
+        StopMonitoringServiceDeliveryParameter parameter = new StopMonitoringServiceDeliveryParameter(serviceRequest1, incomingSiriParameters);
+        Siri res = stopMonitoringOutbound.getStopMonitoringServiceDelivery(parameter);
         List<MonitoredStopVisit> extractedMonitoredStopVisit = extractMonitoredStopVisits(res);
         Assertions.assertEquals(1, extractedMonitoredStopVisit.size());
-        Assertions.assertEquals("MOBIITI:StopPlace:3", extractedMonitoredStopVisit.get(0).getMonitoringRef().getValue());
+        Assertions.assertEquals("MOBIITI:StopPlace:3", extractedMonitoredStopVisit.getFirst().getMonitoringRef().getValue());
     }
 
 
@@ -137,7 +162,7 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
      * Should return only one result with MOBIITI:StopPlace:3 monitoringRef
      */
     @Test
-    public void test_request_on_StopPlace_v2() {
+    void test_request_on_StopPlace_v2() {
         initCacheWithquaysAnd1Stop();
 
         ServiceRequest serviceRequest1 = new ServiceRequest();
@@ -153,10 +178,16 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
 
 
         // Request  : DATASET : null, "MOBIITI:StopPlace:3", OutboundIdMappingPolicy.DEFAULT
-        Siri res = stopMonitoringOutbound.getStopMonitoringServiceDelivery(serviceRequest1, OutboundIdMappingPolicy.DEFAULT, null, "req", "clientTrackingName", 1500000, null);
+        IncomingSiriParameters incomingSiriParameters = new IncomingSiriParameters();
+        incomingSiriParameters.setOutboundIdMappingPolicy(OutboundIdMappingPolicy.DEFAULT);
+        incomingSiriParameters.setDatasetId(DATASET);
+        incomingSiriParameters.setClientTrackingName("clientTrackingName");
+        incomingSiriParameters.setMaxSize(1500000);
+        StopMonitoringServiceDeliveryParameter parameter = new StopMonitoringServiceDeliveryParameter(serviceRequest1, incomingSiriParameters);
+        Siri res = stopMonitoringOutbound.getStopMonitoringServiceDelivery(parameter);
         List<MonitoredStopVisit> extractedMonitoredStopVisit = extractMonitoredStopVisits(res);
         Assertions.assertEquals(1, extractedMonitoredStopVisit.size());
-        Assertions.assertEquals("MOBIITI:StopPlace:3", extractedMonitoredStopVisit.get(0).getMonitoringRef().getValue());
+        Assertions.assertEquals("MOBIITI:StopPlace:3", extractedMonitoredStopVisit.getFirst().getMonitoringRef().getValue());
     }
 
 
@@ -165,7 +196,7 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
      * Should return only one result with DAT1:StopPlace:HBLI monitoringRef
      */
     @Test
-    public void test_request_on_StopPlace_v3() {
+    void test_request_on_StopPlace_v3() {
         initCacheWithquaysAnd1Stop();
 
         ServiceRequest serviceRequest1 = new ServiceRequest();
@@ -180,15 +211,21 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
         serviceRequest1.getStopMonitoringRequests().add(stopMonReq);
 
         // Request  : DATASET : DAT1, "DAT1:StopPlace:HBLI", OutboundIdMappingPolicy.DEFAULT
-        Siri res = stopMonitoringOutbound.getStopMonitoringServiceDelivery(serviceRequest1, OutboundIdMappingPolicy.ORIGINAL_ID, DATASET, "req", "clientTrackingName", 1500000, null);
+        IncomingSiriParameters incomingSiriParameters = new IncomingSiriParameters();
+        incomingSiriParameters.setOutboundIdMappingPolicy(OutboundIdMappingPolicy.ORIGINAL_ID);
+        incomingSiriParameters.setDatasetId(DATASET);
+        incomingSiriParameters.setClientTrackingName("clientTrackingName");
+        incomingSiriParameters.setMaxSize(1500000);
+        StopMonitoringServiceDeliveryParameter parameter = new StopMonitoringServiceDeliveryParameter(serviceRequest1, incomingSiriParameters);
+        Siri res = stopMonitoringOutbound.getStopMonitoringServiceDelivery(parameter);
         List<MonitoredStopVisit> extractedMonitoredStopVisit = extractMonitoredStopVisits(res);
         Assertions.assertEquals(1, extractedMonitoredStopVisit.size());
-        Assertions.assertEquals("DAT1:StopPlace:HBLI", extractedMonitoredStopVisit.get(0).getMonitoringRef().getValue());
+        Assertions.assertEquals("DAT1:StopPlace:HBLI", extractedMonitoredStopVisit.getFirst().getMonitoringRef().getValue());
     }
 
 
     @Test
-    public void stopPointsDiscoveryTest_ORIGINAL() throws JAXBException, IOException {
+    void stopPointsDiscoveryTest_ORIGINAL() throws JAXBException, IOException {
         discoveryCache.clearDiscoveryStops();
 
         initStopPlaceMapper();
@@ -198,7 +235,6 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
         discoveryCache.addStop(DATASET, "HBLI1");
         discoveryCache.addStop(DATASET, "HBLI2");
 
-        ClassLoader classLoader = getClass().getClassLoader();
         File file = new File("src/test/resources/discoveryTest/stop_points_discovery_test.xml");
 
         try {
@@ -224,7 +260,7 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
     }
 
     @Test
-    public void stopPointsDiscoveryTest_MOBIITI() throws JAXBException, IOException {
+    void stopPointsDiscoveryTest_MOBIITI() throws JAXBException, IOException {
         discoveryCache.clearDiscoveryStops();
 
         initStopPlaceMapper();
@@ -234,7 +270,6 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
         discoveryCache.addStop(DATASET, "HBLI1");
         discoveryCache.addStop(DATASET, "HBLI2");
 
-        ClassLoader classLoader = getClass().getClassLoader();
         File file = new File("src/test/resources/discoveryTest/stop_points_discovery_test.xml");
 
         try {
@@ -297,12 +332,12 @@ public class SM_handle_stop_place_request extends SpringBootBaseTest {
             return Collections.emptyList();
         }
 
-        List<MonitoredStopVisit> monitoredStopVisits = new ArrayList<>();
+        List<MonitoredStopVisit> monitoredStopVisitsResult = new ArrayList<>();
 
         for (StopMonitoringDeliveryStructure stopMonitoringDelivery : res.getServiceDelivery().getStopMonitoringDeliveries()) {
-            monitoredStopVisits.addAll(stopMonitoringDelivery.getMonitoredStopVisits());
+            monitoredStopVisitsResult.addAll(stopMonitoringDelivery.getMonitoredStopVisits());
         }
-        return monitoredStopVisits;
+        return monitoredStopVisitsResult;
     }
 
     private void initIdProcessingParameters() {

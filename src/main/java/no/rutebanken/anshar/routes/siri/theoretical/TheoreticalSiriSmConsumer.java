@@ -72,7 +72,7 @@ public class TheoreticalSiriSmConsumer {
         }
         Path directoryPath = Paths.get(dataDirectoryPath);
         try (Stream<Path> paths = Files.list(directoryPath)) {
-            paths.filter(path -> StringUtils.endsWith(path.getFileName().toString(), fileSuffix))
+            paths.filter(path -> Strings.CS.endsWith(path.getFileName().toString(), fileSuffix))
                     .forEach(this::ingestSiriSmDataByDataset);
         } catch (IOException e) {
             log.error("Error parsing siri sm data csv files", e);
@@ -81,17 +81,18 @@ public class TheoreticalSiriSmConsumer {
     }
 
     private void ingestSiriSmDataByDataset(Path path) {
-        String datasetId = StringUtils.removeEnd(path.getFileName().toString(), fileSuffix);
+        String datasetId = Strings.CS.removeEnd(path.getFileName().toString(), fileSuffix);
         if (!isAllowedToBuildSmFromTH(datasetId)) {
             return;
         }
 
         try (BufferedReader reader = Files.newBufferedReader(path);
-             CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.builder()
-                     .setDelimiter(',')
-                     .setHeader()
-                     .setSkipHeaderRecord(true)
-                     .build())) {
+             CSVParser csvParser = CSVParser.parse(reader,
+                     CSVFormat.DEFAULT.builder()
+                             .setDelimiter(',')
+                             .setHeader()
+                             .setSkipHeaderRecord(true)
+                             .get())) {
 
             List<TheoreticalStopMonitoringInfo> ingestedData = new ArrayList<>();
             TheoreticalStopMonitoringInfo monitoringInfo;

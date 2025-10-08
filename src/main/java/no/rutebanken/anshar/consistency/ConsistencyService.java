@@ -85,6 +85,7 @@ public class ConsistencyService {
         params.setUseOriginalId(false);
         params.setExcludedDatasetIdList(List.of());
         params.setOutboundIdMappingPolicy(OutboundIdMappingPolicy.DEFAULT);
+        params.setTheoreticalDataExcluded(true);
         params.setVersion("2.1");
         Siri request = SiriObjectFactory.createServiceRequest(type, "2.1", REQUESTOR_REF,
                 null, null);
@@ -174,47 +175,43 @@ public class ConsistencyService {
                 getIdsByEntityFromSiriRecursive(oo, ids);
             }
         }
-        if (o instanceof Element) {
+        if (o instanceof Element e && e.getTagName().equals("Content")) {
             // GeneralMessage.Content unmarshalling does not work ATM, REMOVE this when this is fixed
-            Element e = (Element) o;
-            if (e.getTagName().equals("Content")) {
-                var lineRefs = e.getElementsByTagName("LineRef");
-                for (int i = 0; i < lineRefs.getLength(); i++) {
-                    ids.getLineIds().add(lineRefs.item(i).getTextContent());
-                }
-                var stopRefs = e.getElementsByTagName("StopPointRef");
-                for (int i = 0; i < stopRefs.getLength(); i++) {
-                    ids.getStopIds().add(stopRefs.item(i).getTextContent());
-                }
+            var lineRefs = e.getElementsByTagName("LineRef");
+            for (int i = 0; i < lineRefs.getLength(); i++) {
+                ids.getLineIds().add(lineRefs.item(i).getTextContent());
+            }
+            var stopRefs = e.getElementsByTagName("StopPointRef");
+            for (int i = 0; i < stopRefs.getLength(); i++) {
+                ids.getStopIds().add(stopRefs.item(i).getTextContent());
             }
         }
-        if (o instanceof Content) {
+        if (o instanceof Content c) {
             // GeneralMessage.Content unmarshalling does not work ATM, KEEP this when this is fixed
-            Content c = (Content) o;
             if (CollectionUtils.isNotEmpty(c.getLineRefs())) ids.getLineIds().addAll(c.getLineRefs());
             if (CollectionUtils.isNotEmpty(c.getStopPointRefs())) ids.getStopIds().addAll(c.getStopPointRefs());
         }
         if (!o.getClass().getName().startsWith("uk.org.siri")) {
             return;
         }
-        if (o instanceof LineRef) {
-            ids.getLineIds().add(((LineRef) o).getValue());
-        } else if (o instanceof StopPointRefStructure) {
-            ids.getStopIds().add(((StopPointRefStructure) o).getValue());
-        } else if (o instanceof StopPlaceRef) {
-            ids.getStopIds().add(((StopPlaceRef) o).getValue());
-        } else if (o instanceof MonitoringRefStructure) {
-            ids.getStopIds().add(((MonitoringRefStructure) o).getValue());
-        } else if (o instanceof DestinationRef) {
-            ids.getStopIds().add(((DestinationRef) o).getValue());
-        } else if (o instanceof JourneyPlaceRefStructure) {
-            ids.getStopIds().add(((JourneyPlaceRefStructure) o).getValue());
-        } else if (o instanceof DatedVehicleJourneyRef) {
-            ids.getVehicleJourneyIds().add(((DatedVehicleJourneyRef) o).getValue());
-        } else if (o instanceof FramedVehicleJourneyRefStructure) {
-            ids.getVehicleJourneyIds().add(((FramedVehicleJourneyRefStructure) o).getDatedVehicleJourneyRef());
-        } else if (o instanceof VehicleJourneyRef) {
-            ids.getVehicleJourneyIds().add(((VehicleJourneyRef) o).getValue());
+        if (o instanceof LineRef lineRef) {
+            ids.getLineIds().add(lineRef.getValue());
+        } else if (o instanceof StopPointRefStructure stopPointRefStructure) {
+            ids.getStopIds().add(stopPointRefStructure.getValue());
+        } else if (o instanceof StopPlaceRef stopPlaceRef) {
+            ids.getStopIds().add(stopPlaceRef.getValue());
+        } else if (o instanceof MonitoringRefStructure monitoringRefStructure) {
+            ids.getStopIds().add(monitoringRefStructure.getValue());
+        } else if (o instanceof DestinationRef destinationRef) {
+            ids.getStopIds().add(destinationRef.getValue());
+        } else if (o instanceof JourneyPlaceRefStructure journeyPlaceRefStructure) {
+            ids.getStopIds().add(journeyPlaceRefStructure.getValue());
+        } else if (o instanceof DatedVehicleJourneyRef datedVehicleJourneyRef) {
+            ids.getVehicleJourneyIds().add(datedVehicleJourneyRef.getValue());
+        } else if (o instanceof FramedVehicleJourneyRefStructure framedVehicleJourneyRefStructure) {
+            ids.getVehicleJourneyIds().add(framedVehicleJourneyRefStructure.getDatedVehicleJourneyRef());
+        } else if (o instanceof VehicleJourneyRef vehicleJourneyRef) {
+            ids.getVehicleJourneyIds().add(vehicleJourneyRef.getValue());
         }
         for (var method : o.getClass().getMethods()) {
             if (method.getParameterCount() == 0

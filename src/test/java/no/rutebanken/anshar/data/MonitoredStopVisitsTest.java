@@ -48,6 +48,7 @@ import static no.rutebanken.anshar.idTests.TestUtils.*;
 import static no.rutebanken.anshar.routes.HttpParameter.INTERNAL_SIRI_DATA_TYPE;
 import static no.rutebanken.anshar.routes.HttpParameter.SIRI_VERSION_HEADER_NAME;
 import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_SOAP;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -556,6 +557,28 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest implements Camel
 
     }
 
+    @Test
+    void testExcludeTheoreticalDataMonitoredChanges() {
+        String dataset = "test";
+        String stopReference1 = UUID.randomUUID().toString();
+        String itemIdentifier1 = UUID.randomUUID().toString();
+        ZonedDateTime arrivalTime1 = ZonedDateTime.now().plusMinutes(2);
+
+        MonitoredStopVisit element1 = createMonitoredStopVisit(arrivalTime1, stopReference1, itemIdentifier1);
+        element1.getMonitoredVehicleJourney().setMonitored(false);
+
+        MonitoredStopVisit element2 = createMonitoredStopVisit(arrivalTime1, stopReference1 + "duplicate", itemIdentifier1 + "duplicate");
+        element2.getMonitoredVehicleJourney().setMonitored(true);
+
+        monitoredStopVisits.add(dataset, element1);
+        monitoredStopVisits.add(dataset, element2);
+
+        Siri serviceDelivery = monitoredStopVisits.createServiceDelivery("test", dataset, Collections.emptyList(), 15000, -1, Set.of(), "messageId", true);
+
+        assertThat(serviceDelivery.getServiceDelivery().getStopMonitoringDeliveries().getFirst().getMonitoredStopVisits()).hasSize(1);
+        assertThat(serviceDelivery.getServiceDelivery().getStopMonitoringDeliveries().getFirst().getMonitoredStopVisits().getFirst().getItemIdentifier()).isEqualTo(itemIdentifier1 + "duplicate");
+    }
+
 
     @Test
     @Ignore
@@ -581,7 +604,7 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest implements Camel
     }
 
     private void assertExcludedId(String excludedDatasetId) {
-        Siri serviceDelivery = monitoredStopVisits.createServiceDelivery(null, null, null, Arrays.asList(excludedDatasetId), 100, -1, new HashSet<>());
+        Siri serviceDelivery = monitoredStopVisits.createServiceDelivery(null, null, Arrays.asList(excludedDatasetId), 100, -1, new HashSet<>());
 
         List<MonitoredStopVisit> monitoredStopVisits = serviceDelivery.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits();
 

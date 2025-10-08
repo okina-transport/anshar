@@ -31,6 +31,7 @@ import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.*;
 import no.rutebanken.anshar.routes.siri.handlers.outbound.*;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
+import no.rutebanken.anshar.routes.siri.helpers.StopMonitoringServiceDeliveryParameter;
 import no.rutebanken.anshar.routes.siri.processor.GmSIVSicAQuayPostProcessor;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
@@ -278,7 +279,7 @@ public class SiriHandler {
             }
         }
 
-        List<ValueAdapter> valueAdapters = new ArrayList();
+        List<ValueAdapter> valueAdapters = new ArrayList<>();
 
         Siri results;
         if (incoming.getSubscriptionRequest() != null) {
@@ -361,7 +362,10 @@ public class SiriHandler {
                 valueAdapters = estimatedTimetableOutbound.getValueAdapters(datasetId, outboundIdMappingPolicy);
                 serviceResponse = estimatedTimetableOutbound.getEstimatedTimetableServiceDelivery(serviceRequest, datasetId, excludedDatasetIdList, maxSize, clientTrackingName, requestorRef, messageId);
             } else if (hasValues(serviceRequest.getStopMonitoringRequests())) {
-                serviceResponse = stopMonitoringOutbound.getStopMonitoringServiceDelivery(serviceRequest, outboundIdMappingPolicy, datasetId, requestorRef, clientTrackingName, maxSize, messageId);
+                incomingSiriParameters.setMaxSize(maxSize);
+                StopMonitoringServiceDeliveryParameter stopMonitoringServiceDeliveryParameter =
+                        new StopMonitoringServiceDeliveryParameter(serviceRequest, incomingSiriParameters);
+                serviceResponse = stopMonitoringOutbound.getStopMonitoringServiceDelivery(stopMonitoringServiceDeliveryParameter);
             } else if (hasValues(serviceRequest.getGeneralMessageRequests())) {
                 Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);
 
