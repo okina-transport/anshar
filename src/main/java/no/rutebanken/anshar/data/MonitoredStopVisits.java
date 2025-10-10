@@ -52,7 +52,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Repository
@@ -71,9 +70,6 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     @Autowired
     @Qualifier("getIdForPatternChangesMap")
     private IMap<SiriObjectStorageKey, String> idForPatternChanges;
-    @Autowired
-    @Qualifier("getIdStartTimeMap")
-    private IMap<SiriObjectStorageKey, ZonedDateTime> idStartTimeMap;
     @Autowired
     @Qualifier("getMonitoredStopVisitChangesMap")
     private IMap<String, Set<SiriObjectStorageKey>> changesMap;
@@ -141,7 +137,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         ISet<String> datasetList = hazelcastService.getSharedSMDatasetList();
 
         for (String datasetId : datasetList) {
-            sizeMap.put(datasetId, (int) hazelcastService.getMonitoredStopVisitsForDataset(datasetId).values().stream().filter(s-> BooleanUtils.isTrue(s.getMonitoredVehicleJourney().isMonitored())).count());
+            sizeMap.put(datasetId, (int) hazelcastService.getMonitoredStopVisitsForDataset(datasetId).values().stream().filter(s -> BooleanUtils.isTrue(s.getMonitoredVehicleJourney().isMonitored())).count());
         }
         logger.debug("Calculating data-distribution (SM) took {} ms: {}", (System.currentTimeMillis() - t1), sizeMap);
         return sizeMap;
@@ -155,7 +151,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         for (String datasetId : datasetList) {
             sizeMap.put(datasetId, (int) hazelcastService.getMonitoredStopVisitsForDataset(datasetId).values()
-                    .stream().filter(s-> !BooleanUtils.isTrue(s.getMonitoredVehicleJourney().isMonitored())).count());
+                    .stream().filter(s -> !BooleanUtils.isTrue(s.getMonitoredVehicleJourney().isMonitored())).count());
         }
         logger.debug("Calculating data-distribution (SM) took {} ms: {}", (System.currentTimeMillis() - t1), sizeMap);
         return sizeMap;
@@ -172,7 +168,6 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         for (SiriObjectStorageKey id : keysToRemove) {
             checksumCache.remove(id);
-            idStartTimeMap.remove(id);
             idForPatternChanges.remove(id);
         }
         logger.warn("Removing all data done");
@@ -189,15 +184,14 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         }
         logger.error("Deleting all data - should only be used in test!!!");
         checksumCache.clear();
-        idStartTimeMap.clear();
         idForPatternChanges.clear();
         changesMap.clear();
         lastUpdateRequested.clear();
     }
 
 
-    public Siri createServiceDelivery(String requestorRef, String datasetId, int maxSize, Set<String> searchedStopIds, String messageId, boolean excludeTheoreticalData) {
-        return createServiceDelivery(requestorRef, datasetId, null, maxSize, -1, searchedStopIds, messageId, excludeTheoreticalData);
+    public Siri createServiceDelivery(String requestorRef, String datasetId, int maxSize, Set<String> searchedStopIds, String messageId, boolean excludeTheoreticalData, long previewInterval) {
+        return createServiceDelivery(requestorRef, datasetId, null, maxSize, previewInterval, searchedStopIds, messageId, excludeTheoreticalData);
     }
 
     public Siri createServiceDelivery(String requestorId, String datasetId, List<String> excludedDatasetIds, int maxSize, long previewInterval, Set<String> searchedStopIds) {
@@ -219,40 +213,10 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
             requestedIds.addAll(generateIdSet(null, searchedStopIds, excludedDatasetIds));
         }
 
-        final ZonedDateTime previewExpiry = ZonedDateTime.now().plusSeconds(previewInterval / 1000);
-
-        Set<SiriObjectStorageKey> startTimes = new HashSet<>();
-
-        if (previewInterval >= 0) {
-            long t1 = System.currentTimeMillis();
-            startTimes.addAll(idStartTimeMap
-                    .entrySet().stream()
-                    .filter(entry -> entry.getValue().isBefore(previewExpiry))
-                    .map(Map.Entry::getKey)
-                    .collect(Collectors.toSet()));
-
-            logger.info("Found {} ids starting within {} ms in {} ms", startTimes.size(), previewInterval, (System.currentTimeMillis() - t1));
-        }
-
-
-        final AtomicInteger previewIntervalInclusionCounter = new AtomicInteger();
-        final AtomicInteger previewIntervalExclusionCounter = new AtomicInteger();
-        java.util.function.Predicate<SiriObjectStorageKey> previewIntervalFilter = id -> {
-
-            if (idForPatternChanges.containsKey(id) || startTimes.contains(id)) {
-                // Is valid in requested previewInterval
-                previewIntervalInclusionCounter.incrementAndGet();
-                return true;
-            }
-
-            previewIntervalExclusionCounter.incrementAndGet();
-            return false;
-        };
 
         long t1 = System.currentTimeMillis();
         Set<SiriObjectStorageKey> sizeLimitedIds = requestedIds
                 .stream()
-                .filter(id -> previewInterval < 0 || previewIntervalFilter.test(id))
                 .limit(maxSize)
                 .collect(Collectors.toSet());
 
@@ -268,17 +232,32 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         t1 = System.currentTimeMillis();
 
-        Boolean isMoreData = (previewIntervalExclusionCounter.get() + sizeLimitedIds.size()) < requestedIds.size();
+        Boolean isMoreData = (sizeLimitedIds.size()) < requestedIds.size();
 
-        Collection<MonitoredStopVisit> values = getMonitoredStopVisitsFromHazelcast(datasetId, sizeLimitedIds);
+        Collection<MonitoredStopVisit> recoveredFromCache = getMonitoredStopVisitsFromHazelcast(datasetId, sizeLimitedIds);
+        Collection<MonitoredStopVisit> finalResults = new ArrayList<>();
+
+        if (previewInterval >= 0) {
+            for (MonitoredStopVisit currentSM : recoveredFromCache) {
+
+                long expiration = getExpiration(currentSM);
+                if (expiration < previewInterval) {
+                    finalResults.add(currentSM);
+                }
+            }
+        } else {
+            // no preview interval. returning all data recovered From cache
+            finalResults = recoveredFromCache;
+        }
+
         if (excludeTheoreticalData) {
-            values = values.stream().filter(stop -> BooleanUtils.isTrue(stop.getMonitoredVehicleJourney().isMonitored())).collect(Collectors.toList());
+            finalResults = finalResults.stream().filter(stop -> BooleanUtils.isTrue(stop.getMonitoredVehicleJourney().isMonitored())).collect(Collectors.toList());
         }
 
         logger.debug("Fetching data: {} ms", (System.currentTimeMillis() - t1));
         t1 = System.currentTimeMillis();
 
-        Siri siri = siriObjectFactory.createSMServiceDelivery(values, requestorId, messageId);
+        Siri siri = siriObjectFactory.createSMServiceDelivery(finalResults, requestorId, messageId);
 
         logger.debug("Creating SIRI-delivery: {} sm", (System.currentTimeMillis() - t1));
 
