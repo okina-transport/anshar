@@ -18,7 +18,9 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static no.rutebanken.anshar.routes.validation.validators.Constants.GTFSRT_ET_PREFIX;
@@ -152,11 +154,22 @@ public class TripUpdateReader extends AbstractSwallower {
         long recordedAtTimeLong = feedMessage.getHeader().getTimestamp();
         ZonedDateTime recordedAtTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(recordedAtTimeLong * 1000), ZoneId.systemDefault());
 
+        Map<String, GtfsRealtime.VehiclePosition> vehiclePositionsByTripId = new HashMap<>();
+
+        for (GtfsRealtime.FeedEntity entity : feedMessage.getEntityList()) {
+            if (entity.hasVehicle()) {
+                GtfsRealtime.VehiclePosition vp = entity.getVehicle();
+                if (vp.hasTrip() && vp.getTrip().hasTripId()) {
+                    vehiclePositionsByTripId.put(vp.getTrip().getTripId(), vp);
+                }
+            }
+        }
+
         for (GtfsRealtime.FeedEntity feedEntity : feedMessage.getEntityList()) {
             if (feedEntity.getTripUpdate() == null)
                 continue;
 
-            List<MonitoredStopVisit> currentStopVisitList = tripUpdateMapper.mapStopVisitFromTripUpdate(feedEntity.getTripUpdate(), datasetId, routeIdList, publishedLineNameMapping);
+            List<MonitoredStopVisit> currentStopVisitList = tripUpdateMapper.mapStopVisitFromTripUpdate(feedEntity.getTripUpdate(), datasetId, routeIdList, publishedLineNameMapping, vehiclePositionsByTripId);
             stopVisits.addAll(currentStopVisitList);
         }
 

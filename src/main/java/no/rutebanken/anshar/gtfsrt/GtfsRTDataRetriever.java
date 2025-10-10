@@ -2,6 +2,7 @@ package no.rutebanken.anshar.gtfsrt;
 
 import com.google.protobuf.util.JsonFormat;
 import com.google.transit.realtime.GtfsRealtime;
+import io.micrometer.common.util.StringUtils;
 import no.rutebanken.anshar.api.FlowStatus;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.config.AnsharConfiguration;
@@ -21,6 +22,9 @@ import org.springframework.stereotype.Service;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -167,19 +171,30 @@ public class GtfsRTDataRetriever {
     private Optional<GtfsRealtime.FeedMessage> buildMessageFromApi(GtfsRTApi gtfsRTApi) {
 
         try {
-            URL url1 = new URL(gtfsRTApi.getUrl());
-            if (gtfsRTApi.getType() == null || GTFSRTType.PROTOBUF.equals(gtfsRTApi.getType())) {
-                BufferedInputStream in = new BufferedInputStream(url1.openStream());
-                metrics.registerIncomingDataMonitoring(GTFS_RT, gtfsRTApi.getDatasetId(), "200", gtfsRTApi.getUrl());
-                incomingDataHealthService.sendSubscriptionMonitoringData(GTFS_RT, gtfsRTApi.getDatasetId(), "200", gtfsRTApi.getUrl());
-                return Optional.of(GtfsRealtime.FeedMessage.newBuilder().mergeFrom(in).build());
+            URL newUrl = URI.create(gtfsRTApi.getUrl()).toURL();
+            HttpURLConnection connection = (HttpURLConnection) newUrl.openConnection();
+            connection.setRequestMethod("GET");
+
+            if (gtfsRTApi.getApiKey() != null && StringUtils.isNotBlank(gtfsRTApi.getApiKey())) {
+                connection.setRequestProperty("Authorization", gtfsRTApi.getApiKey());
+                logger.debug("Request sent to {} with Authorization header.", gtfsRTApi.getUrl());
             }
-            GtfsRealtime.FeedMessage.Builder structBuilder = GtfsRealtime.FeedMessage.newBuilder();
-            String json = IOUtils.toString(url1, StandardCharsets.UTF_8);
-            JsonFormat.parser().ignoringUnknownFields().merge(json, structBuilder);
-            metrics.registerIncomingDataMonitoring(GTFS_RT, gtfsRTApi.getDatasetId(), "200", gtfsRTApi.getUrl());
-            incomingDataHealthService.sendSubscriptionMonitoringData(GTFS_RT, gtfsRTApi.getDatasetId(), "200", gtfsRTApi.getUrl());
-            return Optional.of(structBuilder.build());
+
+            try (InputStream inputStream = connection.getInputStream()) {
+                String responseCode = String.valueOf(connection.getResponseCode());
+                metrics.registerIncomingDataMonitoring(GTFS_RT, gtfsRTApi.getDatasetId(), responseCode, gtfsRTApi.getUrl());
+                incomingDataHealthService.sendSubscriptionMonitoringData(GTFS_RT, gtfsRTApi.getDatasetId(), responseCode, gtfsRTApi.getUrl());
+
+                if (gtfsRTApi.getType() == null || GTFSRTType.PROTOBUF.equals(gtfsRTApi.getType())) {
+                    BufferedInputStream in = new BufferedInputStream(inputStream);
+                    return Optional.of(GtfsRealtime.FeedMessage.newBuilder().mergeFrom(in).build());
+                } else {
+                    GtfsRealtime.FeedMessage.Builder structBuilder = GtfsRealtime.FeedMessage.newBuilder();
+                    String json = IOUtils.toString(inputStream, StandardCharsets.UTF_8);
+                    JsonFormat.parser().ignoringUnknownFields().merge(json, structBuilder);
+                    return Optional.of(structBuilder.build());
+                }
+            }
         } catch (IOException ex) {
             metrics.registerIncomingDataMonitoring(GTFS_RT, gtfsRTApi.getDatasetId(), getErrorCode(ex.getMessage()), gtfsRTApi.getUrl());
             incomingDataHealthService.sendSubscriptionMonitoringData(GTFS_RT, gtfsRTApi.getDatasetId(), getErrorCode(ex.getMessage()), gtfsRTApi.getUrl());

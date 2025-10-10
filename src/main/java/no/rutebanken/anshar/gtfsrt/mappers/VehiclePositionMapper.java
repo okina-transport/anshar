@@ -3,12 +3,14 @@ package no.rutebanken.anshar.gtfsrt.mappers;
 
 import com.google.protobuf.Timestamp;
 import com.google.transit.realtime.GtfsRealtime;
+import no.rutebanken.anshar.gtfsrt.mappers.utils.ElementUtils;
 import no.rutebanken.anshar.routes.mapping.StopTimesService;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.w3c.dom.Element;
 import uk.org.siri.siri20.*;
 
 import java.math.BigDecimal;
@@ -19,6 +21,7 @@ import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
@@ -92,7 +95,7 @@ public class VehiclePositionMapper {
         LocationStructure locationStructure = new LocationStructure();
         locationStructure.setLatitude(BigDecimal.valueOf(position.getLatitude()));
         locationStructure.setLongitude(BigDecimal.valueOf(position.getLongitude()));
-        monitoredVehicleJourney.setBearing(position.getSpeed());
+        monitoredVehicleJourney.setBearing(position.getBearing());
         monitoredVehicleJourney.setVelocity(BigInteger.valueOf((long) position.getSpeed()));
         monitoredVehicleJourney.setVehicleLocation(locationStructure);
     }
@@ -125,13 +128,21 @@ public class VehiclePositionMapper {
     }
 
     private static void mapVehicleRef(VehicleActivityStructure activity, VehicleActivityStructure.MonitoredVehicleJourney monitoredVehicleJourney, GtfsRealtime.VehicleDescriptor vehicleDescriptor) {
-        if (vehicleDescriptor != null && vehicleDescriptor.getId() != null) {
+        if (vehicleDescriptor.getId() != null) {
             VehicleRef vehicleRef = new VehicleRef();
             vehicleRef.setValue(vehicleDescriptor.getId());
             monitoredVehicleJourney.setVehicleRef(vehicleRef);
             VehicleMonitoringRefStructure vehicleRefStruct = new VehicleMonitoringRefStructure();
             vehicleRefStruct.setValue(vehicleDescriptor.getId());
             activity.setVehicleMonitoringRef(vehicleRefStruct);
+        }
+    }
+
+    private static void mapLicensePlate(VehicleActivityStructure.MonitoredVehicleJourney monitoredVehicleJourney, GtfsRealtime.VehicleDescriptor vehicleDescriptor) {
+        if (vehicleDescriptor.hasLicensePlate()) {
+            VehicleRef vehicleRef = new VehicleRef();
+            vehicleRef.setValue(vehicleDescriptor.getLicensePlate());
+            monitoredVehicleJourney.setVehicleRef(vehicleRef);
         }
     }
 
@@ -168,19 +179,43 @@ public class VehiclePositionMapper {
         framedVehicleJourneyRefBuilder.setDataFrameRef(dataFrameRef);
 
         VehicleActivityStructure.MonitoredVehicleJourney monitoredVehiclejourney = new VehicleActivityStructure.MonitoredVehicleJourney();
-
         monitoredVehiclejourney.setFramedVehicleJourneyRef(framedVehicleJourneyRefBuilder);
         monitoredVehiclejourney.setDataSource("MOBIITI");
 
+        activity.setValidUntilTime(ZonedDateTime.now().plusMinutes(5));
+
         mapTridData(monitoredVehiclejourney, vehiclePosition.getTrip());
-        mapVehicleRef(activity, monitoredVehiclejourney, vehiclePosition.getVehicle());
+
+        if (vehiclePosition.hasVehicle()) {
+            mapVehicleRef(activity, monitoredVehiclejourney, vehiclePosition.getVehicle());
+            mapLicensePlate(monitoredVehiclejourney, vehiclePosition.getVehicle());
+        }
+
         mapRecordedAtTime(activity, vehiclePosition);
         mapPosition(monitoredVehiclejourney, vehiclePosition.getPosition());
-        mapStatus(activity, monitoredVehiclejourney, vehiclePosition);
         mapOccupancy(monitoredVehiclejourney, vehiclePosition);
         mapCongestion(monitoredVehiclejourney, vehiclePosition);
+        mapStatus(activity, monitoredVehiclejourney, vehiclePosition);
 
         activity.setMonitoredVehicleJourney(monitoredVehiclejourney);
+
+        Extensions extensions = new Extensions();
+        List<Object> extensionElements = new java.util.ArrayList<>(Collections.singletonList(extensions.getAnies()));
+
+        if (vehiclePosition.hasPosition()) {
+            GtfsRealtime.Position position = vehiclePosition.getPosition();
+            if (position.hasOdometer()) {
+                Element odometerElement = ElementUtils.createSimpleExtensionElement("odometer", String.valueOf(position.getOdometer()));
+                if (odometerElement != null) {
+                    extensionElements.add(odometerElement);
+                }
+            }
+        }
+
+        if(!extensionElements.isEmpty()) {
+            activity.setExtensions(extensions);
+        }
+
         return activity;
     }
 

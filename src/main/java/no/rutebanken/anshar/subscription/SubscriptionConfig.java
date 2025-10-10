@@ -163,6 +163,7 @@ public class SubscriptionConfig {
                 existingOpt.get().setCloseMissingAlerts(incomingAPI.getCloseMissingAlerts());
                 existingOpt.get().setGenerateActivePeriod(incomingAPI.getGenerateActivePeriod());
                 existingOpt.get().setPublishedLineNameMapping(incomingAPI.getPublishedLineNameMapping());
+                existingOpt.get().setApiKey(incomingAPI.getApiKey());
                 logger.info("gtfsrt already existing.updating. " + incomingAPI.getDatasetId() + "-" + incomingAPI.getUrl());
             } else {
                 gtfsRTApis.add(incomingAPI);
