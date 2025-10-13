@@ -196,15 +196,15 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     }
 
 
-    public Siri createServiceDelivery(String requestorRef, String datasetId, String clientTrackingName, int maxSize, Set<String> searchedStopIds, String messageId) {
-        return createServiceDelivery(requestorRef, datasetId, clientTrackingName, null, maxSize, -1, searchedStopIds, messageId);
+    public Siri createServiceDelivery(String requestorRef, String datasetId, int maxSize, Set<String> searchedStopIds, String messageId, boolean excludeTheoreticalData) {
+        return createServiceDelivery(requestorRef, datasetId, null, maxSize, -1, searchedStopIds, messageId, excludeTheoreticalData);
     }
 
-    public Siri createServiceDelivery(String requestorId, String datasetId, String clientTrackingName, List<String> excludedDatasetIds, int maxSize, long previewInterval, Set<String> searchedStopIds) {
-        return createServiceDelivery(requestorId, datasetId, clientTrackingName, excludedDatasetIds, maxSize, previewInterval, searchedStopIds, null);
+    public Siri createServiceDelivery(String requestorId, String datasetId, List<String> excludedDatasetIds, int maxSize, long previewInterval, Set<String> searchedStopIds) {
+        return createServiceDelivery(requestorId, datasetId, excludedDatasetIds, maxSize, previewInterval, searchedStopIds, null, false);
     }
 
-    public Siri createServiceDelivery(String requestorId, String datasetId, String clientTrackingName, List<String> excludedDatasetIds, int maxSize, long previewInterval, Set<String> searchedStopIds, String messageId) {
+    public Siri createServiceDelivery(String requestorId, String datasetId, List<String> excludedDatasetIds, int maxSize, long previewInterval, Set<String> searchedStopIds, String messageId, boolean excludeTheoreticalData) {
 
         if (requestorId == null) {
             requestorId = UUID.randomUUID().toString();
@@ -271,6 +271,9 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         Boolean isMoreData = (previewIntervalExclusionCounter.get() + sizeLimitedIds.size()) < requestedIds.size();
 
         Collection<MonitoredStopVisit> values = getMonitoredStopVisitsFromHazelcast(datasetId, sizeLimitedIds);
+        if (excludeTheoreticalData) {
+            values = values.stream().filter(stop -> BooleanUtils.isTrue(stop.getMonitoredVehicleJourney().isMonitored())).collect(Collectors.toList());
+        }
 
         logger.debug("Fetching data: {} ms", (System.currentTimeMillis() - t1));
         t1 = System.currentTimeMillis();
