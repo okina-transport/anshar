@@ -5,11 +5,13 @@ import no.rutebanken.anshar.api.PublishedLineNameMapping;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.util.CustomStringUtils;
+import no.rutebanken.anshar.gtfsrt.mappers.utils.ElementUtils;
 import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.mapping.StopTimesService;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.util.DateUtils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,14 +19,12 @@ import org.springframework.stereotype.Component;
 import uk.org.siri.siri21.*;
 
 import javax.annotation.Nullable;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 
 /***
@@ -139,7 +139,7 @@ public class TripUpdateMapper {
      * @param publishedLineNameMapping The way to map PublishedLineName from GTFS-RT TripUpdate to Siri StopMonitoring
      * @return A list of {@link MonitoredStopVisit} objects representing structured stop visit data.
      */
-    public List<MonitoredStopVisit> mapStopVisitFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate, String datasetId, List<String> routeIdList, PublishedLineNameMapping publishedLineNameMapping) {
+    public List<MonitoredStopVisit> mapStopVisitFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate, String datasetId, List<String> routeIdList, PublishedLineNameMapping publishedLineNameMapping, Map<String, GtfsRealtime.VehiclePosition> vehiclePositionsByTripId) {
         List<MonitoredStopVisit> stopVisitList = new ArrayList<>();
         FramedVehicleJourneyRefStructure vehicleJourneyRef = createVehicleJourneyRef(tripUpdate);
 
@@ -151,6 +151,9 @@ public class TripUpdateMapper {
         LineRef lineRef = createLineRef(tripUpdate, datasetId, tripId);
         DestinationRef destinationRef = createDestinationRef(datasetId, tripId);
         NaturalLanguageStringStructure destinationName = createDestinationName(destinationRef, datasetId);
+
+        // NOUVEAU : Récupération du timestamp spécifique au TripUpdate s'il existe
+        long tripUpdateTimestamp = tripUpdate.hasTimestamp() ? tripUpdate.getTimestamp() : 0L;
 
         for (GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate : tripUpdate.getStopTimeUpdateList()) {
             MonitoredStopVisit stopVisit = new MonitoredStopVisit();
@@ -212,7 +215,42 @@ public class TripUpdateMapper {
             buildExpectedArrivalTime(stopTimeUpdate, aimedArrivalTime.orElse(null), tripDelay).ifPresent(monitoredCallStructure::setExpectedArrivalTime);
             buildExpectedDepartureTime(stopTimeUpdate, aimedDepartureTime.orElse(null), tripDelay).ifPresent(monitoredCallStructure::setExpectedDepartureTime);
 
+            if (stopTimeUpdate.hasScheduleRelationship() && stopTimeUpdate.getScheduleRelationship() == GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SKIPPED) {
+                monitoredCallStructure.setDepartureStatus(CallStatusEnumeration.MISSED);
+                monitoredCallStructure.setArrivalStatus(CallStatusEnumeration.MISSED);
+            }
+
+            try {
+                Extensions extensions = new Extensions();
+                List<Object> extensionElements = new ArrayList<>(extensions.getAnies());
+
+                if (tripUpdateTimestamp > 0) {
+                    extensionElements.add(ElementUtils.createSimpleExtensionElement("trip_update_timestamp", String.valueOf(tripUpdateTimestamp)));
+                }
+                if (stopTimeUpdate.hasArrival() && stopTimeUpdate.getArrival().hasUncertainty()) {
+                    extensionElements.add(ElementUtils.createSimpleExtensionElement("arrival_uncertainty", String.valueOf(stopTimeUpdate.getArrival().getUncertainty())));
+                }
+                if (stopTimeUpdate.hasDeparture() && stopTimeUpdate.getDeparture().hasUncertainty()) {
+                    extensionElements.add(ElementUtils.createSimpleExtensionElement("departure_uncertainty", String.valueOf(stopTimeUpdate.getDeparture().getUncertainty())));
+                }
+
+                if (CollectionUtils.isNotEmpty(extensionElements)) {
+                    monitoredCallStructure.setExtensions(extensions);
+                }
+            } catch (Exception e) {
+                logger.error("Erreur lors de la création des extensions SIRI pour le tripId: {}", tripId, e);
+            }
+
             monitoredVehicleStruct.setMonitoredCall(monitoredCallStructure);
+
+            GtfsRealtime.VehiclePosition vehiclePosition = vehiclePositionsByTripId.get(tripId);
+            if (vehiclePosition != null && vehiclePosition.hasPosition()) {
+                LocationStructure location = new LocationStructure();
+                location.setLongitude(BigDecimal.valueOf(vehiclePosition.getPosition().getLongitude()));
+                location.setLatitude(BigDecimal.valueOf(vehiclePosition.getPosition().getLatitude()));
+                monitoredVehicleStruct.setVehicleLocation(location);
+            }
+
             stopVisit.setMonitoredVehicleJourney(monitoredVehicleStruct);
             feedItemIdentifier(stopVisit, stopId);
             stopVisitList.add(stopVisit);
@@ -294,6 +332,7 @@ public class TripUpdateMapper {
             } else if (tripDescriptor.hasRouteId()) {
                 routeIdInCache = stopTimesService.checkIfKnownRouteId(datasetId, tripDescriptor.getRouteId()) ? tripDescriptor.getRouteId() : "";
             }
+
             if (StringUtils.isNotBlank(routeIdInCache) && !routeIdList.contains(routeIdInCache)) {
                 return null;
             }
@@ -308,8 +347,7 @@ public class TripUpdateMapper {
         journey.setFramedVehicleJourneyRef(vehicleJourneyRef);
         journey.setDataSource("MOBIITI");
 
-
-        if (tripDescriptor.getRouteId() != null) {
+        if (tripDescriptor.hasRouteId()) {
             LineRef lineRef = new LineRef();
             lineRef.setValue(tripDescriptor.getRouteId());
             journey.setLineRef(lineRef);
@@ -317,15 +355,22 @@ public class TripUpdateMapper {
 
         GtfsRealtime.VehicleDescriptor vehicleDescriptor = tripUpdate.getVehicle();
 
-        if (vehicleDescriptor.getId() != null) {
+        if (vehicleDescriptor.hasId()) {
             VehicleRef vehicleRef = new VehicleRef();
             vehicleRef.setValue(vehicleDescriptor.getId());
             journey.setVehicleRef(vehicleRef);
         }
 
+        long tripUpdateTimestamp = tripUpdate.hasTimestamp() ? tripUpdate.getTimestamp() : 0L;
+
         EstimatedVehicleJourney.EstimatedCalls estimatedCalls = new EstimatedVehicleJourney.EstimatedCalls();
 
         for (GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate : tripUpdate.getStopTimeUpdateList()) {
+
+            if (stopTimeUpdate.hasScheduleRelationship() && stopTimeUpdate.getScheduleRelationship() == GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SKIPPED) {
+                continue;
+            }
+
             String stopId = getStopId(stopTimeUpdate, datasetId, tripDescriptor.getTripId());
             Optional<StopTimesService.StopTimeCacheEntry> cacheEntry =
                     stopTimesService.findStopTimeCacheEntryByDatasetIdAndTripIdAndStopId(datasetId,
@@ -335,6 +380,28 @@ public class TripUpdateMapper {
             Optional<ZonedDateTime> aimedDepartureTime = cacheEntry.isPresent() ? DateUtils.convertGtfsTimeToZonedDateTime(cacheEntry.get().getDepartureTime()) : aimedArrivalTime;
             EstimatedCall estimatedCall = mapEstimatedCallFromTripUpdate(stopTimeUpdate, aimedArrivalTime.orElse(null),
                     aimedDepartureTime.orElse(null), tripUpdate.hasDelay() ? tripUpdate.getDelay() : null);
+
+            try {
+                Extensions extensions = new Extensions();
+                List<Object> extensionElements = new ArrayList<>(extensions.getAnies());
+
+                if (tripUpdateTimestamp > 0) {
+                    extensionElements.add(ElementUtils.createSimpleExtensionElement("GtfsRtTripUpdateTimestamp", String.valueOf(tripUpdateTimestamp)));
+                }
+                if (stopTimeUpdate.hasArrival() && stopTimeUpdate.getArrival().hasUncertainty()) {
+                    extensionElements.add(ElementUtils.createSimpleExtensionElement("ArrivalUncertainty", String.valueOf(stopTimeUpdate.getArrival().getUncertainty())));
+                }
+                if (stopTimeUpdate.hasDeparture() && stopTimeUpdate.getDeparture().hasUncertainty()) {
+                    extensionElements.add(ElementUtils.createSimpleExtensionElement("DepartureUncertainty", String.valueOf(stopTimeUpdate.getDeparture().getUncertainty())));
+                }
+
+                if (CollectionUtils.isNotEmpty(extensionElements)) {
+                    estimatedCall.setExtensions(extensions);
+                }
+            } catch (Exception e) {
+                logger.error("Erreur lors de la création des extensions SIRI pour l'EstimatedCall du tripId: {}", tripDescriptor.getTripId(), e);
+            }
+
             estimatedCalls.getEstimatedCalls().add(estimatedCall);
         }
 

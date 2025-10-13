@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.ishtar.converter;
 
+import io.micrometer.common.util.StringUtils;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.api.GtfsRTApi;
@@ -30,6 +31,9 @@ public class GtfsRTApiDtoConverter implements Converter<GtfsRTApiDto, GtfsRTApi>
         target.setGenerateActivePeriod(BooleanUtils.isTrue(source.getGenerateActivePeriod()));
         if (source.getActivePeriodDays() != null) {
             target.setActivePeriodDays(source.getActivePeriodDays());
+        }
+        if (source.getApiKey() != null && StringUtils.isNotBlank(source.getApiKey())) {
+            target.setApiKey(source.getApiKey());
         }
         try {
             target.setPublishedLineNameMapping(PublishedLineNameMapping.valueOf(source.getPublishedLineNameMapping()));

@@ -12,6 +12,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 import uk.org.ifopt.siri21.StopPlaceRef;
 import uk.org.siri.siri20.EnvironmentReasonEnumeration;
 import uk.org.siri.siri20.EquipmentReasonEnumeration;
@@ -19,16 +21,15 @@ import uk.org.siri.siri20.MiscellaneousReasonEnumeration;
 import uk.org.siri.siri20.PersonnelReasonEnumeration;
 import uk.org.siri.siri21.*;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.Serializable;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 
 /***
@@ -311,12 +312,17 @@ public class AlertMapper {
     }
 
     private static void mapDescription(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert) {
-        if (alert.getHeaderText() != null) {
+        if (alert.hasHeaderText()) {
             ptSituationElement.getSummaries().addAll(translate(alert.getHeaderText()));
         }
-
-        if (alert.getDescriptionText() != null) {
+        if (alert.hasDescriptionText()) {
             ptSituationElement.getDescriptions().addAll(translate(alert.getDescriptionText()));
+        }
+        if (alert.hasTtsHeaderText()) {
+            ptSituationElement.getSummaries().addAll(translate(alert.getTtsHeaderText()));
+        }
+        if (alert.hasTtsDescriptionText()) {
+            ptSituationElement.getDescriptions().addAll(translate(alert.getTtsDescriptionText()));
         }
     }
 

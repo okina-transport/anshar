@@ -22,6 +22,7 @@ import uk.org.siri.siri21.MonitoredStopVisit;
 import uk.org.siri.siri21.MonitoredStopVisitCancellation;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 
@@ -87,7 +88,7 @@ class TripUpdateMapperTest {
         tripBuilder.addStopTimeUpdate(stopTimeUpd);
 
         List<String> routeIdList = Arrays.asList("".split(","));
-        List<MonitoredStopVisit> stopMonitorings = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), dataset, routeIdList, PublishedLineNameMapping.LINE_NAME);
+        List<MonitoredStopVisit> stopMonitorings = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), dataset, routeIdList, PublishedLineNameMapping.LINE_NAME, new HashMap<>());
         Assertions.assertEquals(1, stopMonitorings.size());
         MonitoredStopVisit sm = stopMonitorings.getFirst();
         Assertions.assertEquals(1, sm.getMonitoredVehicleJourney().getDirectionNames().size());
@@ -110,7 +111,7 @@ class TripUpdateMapperTest {
         tripBuilder.addStopTimeUpdate(stopTimeUpd);
 
         List<String> routeIdList = Arrays.asList("".split(","));
-        List<MonitoredStopVisit> stopMonitorings = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), "", routeIdList, PublishedLineNameMapping.LINE_NAME);
+        List<MonitoredStopVisit> stopMonitorings = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), "", routeIdList, PublishedLineNameMapping.LINE_NAME, new HashMap<>());
         Assertions.assertEquals(1, stopMonitorings.size());
         MonitoredStopVisit sm = stopMonitorings.getFirst();
         Assertions.assertEquals(1, sm.getMonitoredVehicleJourney().getDirectionNames().size());
@@ -133,7 +134,7 @@ class TripUpdateMapperTest {
         tripBuilder.addStopTimeUpdate(stopTimeUpd);
 
         List<String> routeIdList = Arrays.asList("".split(","));
-        List<MonitoredStopVisit> stopMonitorings = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), "", routeIdList, PublishedLineNameMapping.LINE_NAME);
+        List<MonitoredStopVisit> stopMonitorings = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), "", routeIdList, PublishedLineNameMapping.LINE_NAME, new HashMap<>());
         Assertions.assertEquals(1, stopMonitorings.size());
         MonitoredStopVisit sm = stopMonitorings.getFirst();
         Assertions.assertEquals(1, sm.getMonitoredVehicleJourney().getDirectionNames().size());
@@ -211,7 +212,7 @@ class TripUpdateMapperTest {
         when(subscriptionConfig.getIdParametersForDataset("test", ObjectType.LINE)).thenReturn(Optional.of(ipp));
 
         // Act
-        List<MonitoredStopVisit> output = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), "test", routeIdList, PublishedLineNameMapping.LINE_NUMBER);
+        List<MonitoredStopVisit> output = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), "test", routeIdList, PublishedLineNameMapping.LINE_NUMBER, new HashMap<>());
 
         // Assert
         Assertions.assertEquals("1", output.getFirst().getMonitoredVehicleJourney().getPublishedLineNames().getFirst().getValue());
@@ -239,7 +240,7 @@ class TripUpdateMapperTest {
         when(subscriptionConfig.getIdParametersForDataset("test", ObjectType.LINE)).thenReturn(Optional.empty());
 
         // Act
-        List<MonitoredStopVisit> output = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), "test", routeIdList, PublishedLineNameMapping.LINE_NUMBER);
+        List<MonitoredStopVisit> output = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), "test", routeIdList, PublishedLineNameMapping.LINE_NUMBER, new HashMap<>());
 
         // Assert
         Assertions.assertTrue(CollectionUtils.isEmpty(output.getFirst().getMonitoredVehicleJourney().getPublishedLineNames()));

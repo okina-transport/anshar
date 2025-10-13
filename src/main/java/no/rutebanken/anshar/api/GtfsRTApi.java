@@ -18,4 +18,5 @@ public class GtfsRTApi {
     private Boolean generateActivePeriod;
     private Integer activePeriodDays;
     private PublishedLineNameMapping publishedLineNameMapping;
+    private String apiKey;
 }

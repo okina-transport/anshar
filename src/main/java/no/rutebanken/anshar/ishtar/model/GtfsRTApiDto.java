@@ -20,5 +20,5 @@ public class GtfsRTApiDto {
     private Integer activePeriodDays;
     private String publishedLineNameMapping;
     private String currentStatus;
-
+    private String apiKey;
 }
