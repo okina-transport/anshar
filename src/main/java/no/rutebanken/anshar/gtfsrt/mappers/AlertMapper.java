@@ -326,12 +326,6 @@ public class AlertMapper {
         }
     }
 
-    private static void mapCause(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert) {
-        if (alert.hasCause()) {
-            ptSituationElement.setAlertCause(AlertCauseEnumeration.fromValue(alert.getCause().toString()));
-        }
-    }
-
     private static void mapUrl(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert) {
         if (!alert.hasUrl() || CollectionUtils.isEmpty(alert.getUrl().getTranslationList())) {
             return;
@@ -402,7 +396,6 @@ public class AlertMapper {
         situationNumber.setValue(feedEntity.getId());
         ptSituationElement.setSituationNumber(situationNumber);
         mapDescription(ptSituationElement, alert);
-        mapCause(ptSituationElement, alert);
         mapUrl(ptSituationElement, alert);
         mapPeriod(ptSituationElement, alert, gtfsrtApi.getActivePeriodDays());
         mapReasons(ptSituationElement, alert);
