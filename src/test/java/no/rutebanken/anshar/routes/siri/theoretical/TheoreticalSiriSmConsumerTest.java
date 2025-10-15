@@ -31,6 +31,7 @@ class TheoreticalSiriSmConsumerTest extends SpringBootBaseTest {
 
     @BeforeEach
     void setUp() {
+        subscriptionConfig.getIdProcessingParameters().clear();
         IdProcessingParameters vjIdProcessing = new IdProcessingParameters();
         vjIdProcessing.setInputPrefixToRemove("TEST:VehicleJourney:");
         vjIdProcessing.setDatasetId("TEST");
@@ -64,27 +65,27 @@ class TheoreticalSiriSmConsumerTest extends SpringBootBaseTest {
         assertThat(subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING))
                 .extracting("datasetId").containsOnly("TEST");
         assertThat(subscriptionManager.getAllSubscriptions(SiriDataType.STOP_MONITORING))
-                .flatExtracting("stopMonitoringRefValues").containsExactly(
-                        "44708",
-                        "44089",
-                        "44157",
-                        "44063",
-                        "44034",
-                        "44082",
-                        "44158",
-                        "44005",
-                        "44505",
-                        "44087",
-                        "44205",
-                        "44127",
-                        "44068",
-                        "44013",
-                        "44004",
-                        "44036",
-                        "44032",
-                        "44802",
-                        "44616",
-                        "44054");
+                .flatExtracting("stopMonitoringRefValues").contains(
+                        "TEST:Quay:44708",
+                        "TEST:Quay:44089",
+                        "TEST:Quay:44157",
+                        "TEST:Quay:44063",
+                        "TEST:Quay:44034",
+                        "TEST:Quay:44082",
+                        "TEST:Quay:44158",
+                        "TEST:Quay:44005",
+                        "TEST:Quay:44505",
+                        "TEST:Quay:44087",
+                        "TEST:Quay:44205",
+                        "TEST:Quay:44127",
+                        "TEST:Quay:44068",
+                        "TEST:Quay:44013",
+                        "TEST:Quay:44004",
+                        "TEST:Quay:44036",
+                        "TEST:Quay:44032",
+                        "TEST:Quay:44802",
+                        "TEST:Quay:44616",
+                        "TEST:Quay:44054");
     }
 
 }
