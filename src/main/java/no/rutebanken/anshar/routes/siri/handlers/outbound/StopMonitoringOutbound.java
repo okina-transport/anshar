@@ -172,7 +172,7 @@ public class StopMonitoringOutbound {
             requestorRef = parameter.serviceRequest().getRequestorRef().getValue();
         }
         List<ValueAdapter> valueAdapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.STOP_MONITORING, incomingSiriParameters.getOutboundIdMappingPolicy(), idMap);
-        Siri serviceResponse = monitoredStopVisits.createServiceDelivery(requestorRef, datasetId, incomingSiriParameters.getMaxSize(), revertedMonitoringRefs, messageId, incomingSiriParameters.isTheoreticalDataExcluded());
+        Siri serviceResponse = monitoredStopVisits.createServiceDelivery(requestorRef, datasetId, incomingSiriParameters.getMaxSize(), revertedMonitoringRefs, messageId, incomingSiriParameters.isTheoreticalDataExcluded(), -1);
         return SiriValueTransformer.transform(serviceResponse, valueAdapters, false, false);
     }
 
@@ -188,7 +188,7 @@ public class StopMonitoringOutbound {
         Set<String> datasetIds = monitoredStopVisits.getAllDatasetIds();
 
         for (String datasetId : datasetIds) {
-            Siri datasetResults = monitoredStopVisits.createServiceDelivery("SCHEDULED_DELIVERY", datasetId, Integer.MAX_VALUE, stopsToSearch, null, false);
+            Siri datasetResults = monitoredStopVisits.createServiceDelivery("SCHEDULED_DELIVERY", datasetId, Integer.MAX_VALUE, stopsToSearch, null, false, -1);
             if (datasetResults.getServiceDelivery() != null && datasetResults.getServiceDelivery().getStopMonitoringDeliveries() != null
                     && !datasetResults.getServiceDelivery().getStopMonitoringDeliveries().isEmpty()) {
                 results.put(datasetId, datasetResults);

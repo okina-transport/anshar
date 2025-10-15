@@ -103,7 +103,7 @@ public class TheoreticalSiriSmConsumer {
             for (CSVRecord csvRecord : csvParser) {
                 monitoringInfo = TheoreticalStopMonitoringInfo.builder()
                         .date(LocalDate.parse(csvRecord.get("dateyyyyMMdd"), DATE_FORMATTER))
-                        .monitoringRef(stopIdProcessingParameters.removeOutputPrefixAndSuffix(csvRecord.get("monitoringRef")))
+                        .monitoringRef(stopIdProcessingParameters.revertTransformationToString(csvRecord.get("monitoringRef")))
                         .stopPointName(csvRecord.get("stopPointName"))
                         .monitoredVehicleJourneyRef(vehicleJourneyIdProcessingParameters.removeOutputPrefixAndSuffix(csvRecord.get("monitoredVehicleJourneyRef")))
                         .lineRef(lineIdProcessingParameters.removeOutputPrefixAndSuffix(csvRecord.get("lineRef")))

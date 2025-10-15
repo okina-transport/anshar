@@ -21,6 +21,9 @@ import uk.org.siri.siri21.GeneralMessage;
 import uk.org.siri.siri21.PtSituationElement;
 import uk.org.siri.siri21.Siri;
 
+import javax.xml.datatype.DatatypeConfigurationException;
+import javax.xml.datatype.DatatypeFactory;
+import javax.xml.datatype.XMLGregorianCalendar;
 import java.util.*;
 
 @Component
@@ -178,8 +181,21 @@ public class InitialDeliveryGenerator {
             datasetsToRequest = new HashSet<>(subscriptionRequest.getDatasetList());
         }
 
+        long previewInterval = -1;
+        if (subscriptionRequest.getPreviewInterval() != null) {
+            try {
+                DatatypeFactory factory = DatatypeFactory.newInstance();
+                GregorianCalendar now = new GregorianCalendar();
+                XMLGregorianCalendar xmlNow = factory.newXMLGregorianCalendar(now);
+                xmlNow.add(subscriptionRequest.getPreviewInterval());
+                previewInterval = xmlNow.toGregorianCalendar().getTimeInMillis() - System.currentTimeMillis();
+            } catch (DatatypeConfigurationException e) {
+                logger.error("Error while calculating preview window", e);
+            }
+        }
+
         for (String datasetId : datasetsToRequest) {
-            Siri delivery = monitoredStopVisits.createServiceDelivery(subscriptionRequest.getRequestorRef(), datasetId, Integer.MAX_VALUE, searchedStopIds, null, false);
+            Siri delivery = monitoredStopVisits.createServiceDelivery(subscriptionRequest.getRequestorRef(), datasetId, Integer.MAX_VALUE, searchedStopIds, null, false, previewInterval);
             if (SiriUtils.hasDataOfType(delivery, SiriDataType.STOP_MONITORING)) {
                 results.put(datasetId, delivery);
             }
