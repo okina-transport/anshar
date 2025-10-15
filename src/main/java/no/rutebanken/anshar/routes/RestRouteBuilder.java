@@ -618,6 +618,13 @@ public class RestRouteBuilder extends RouteBuilder {
             siri20Response = downgradeSiriVersion(response);
         }
 
+
+        String allowOrigin = p.getMessage().getHeader("Access-Control-Allow-Origin", String.class);
+        if (allowOrigin != null) {
+            out.setHeader("Access-Control-Allow-Origin", allowOrigin);
+        }
+
+
         if (MediaType.APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE)) |
                 MediaType.APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
             p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);

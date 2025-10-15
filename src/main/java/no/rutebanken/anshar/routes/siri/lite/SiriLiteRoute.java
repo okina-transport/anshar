@@ -121,6 +121,7 @@ public class SiriLiteRoute extends RestRouteBuilder {
                 .process(e -> {
                     String version = getVersion(e);
                     handleServiceAndFormat(e);
+                    e.getIn().setHeader("Access-Control-Allow-Origin", "*");
                 })
                 .choice()
                 .when(header(SIRI_LITE_SERVICE_NAME).isEqualTo(simple("stop-monitoring")))
