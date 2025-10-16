@@ -616,6 +616,8 @@ public class ServerSubscriptionManager {
         OutboundIdMappingPolicy outboundIdMappingPolicy = incomingSiriParameters.getOutboundIdMappingPolicy();
         String clientTrackingName = incomingSiriParameters.getClientTrackingName();
         boolean useOrignalId = incomingSiriParameters.isUseOriginalId();
+        boolean isSicAQuay = incomingSiriParameters.isGmSIVSicAQuay();
+
         SubscriptionRequest subscriptionRequest = incomingSiri.getSubscriptionRequest();
         List<ValueAdapter> mappers = new ArrayList<>();
         String version = getVersion(incomingSiri);
@@ -630,7 +632,7 @@ public class ServerSubscriptionManager {
         Map<String, List<ValueAdapter>> valueAdaptersByDataset = getValueAdaptersByDataset(subscriptionRequest, outboundIdMappingPolicy, datasetId);
         Map<String, Map<Class, Set<String>>> filterMapByDataset = siriHelper.getFiltersByDataset(subscriptionRequest, outboundIdMappingPolicy, datasetId);
 
-        if (incomingSiriParameters.isGmSIVSicAQuay()) {
+        if (isSicAQuay) {
             // value adapters are cached
             // create a new list, otherwise it will keep adding GmSIVSicAQuayPostProcessor to cached value adapters
             mappers = new ArrayList<>(mappers);
@@ -657,7 +659,8 @@ public class ServerSubscriptionManager {
                 valueAdaptersByDataset,
                 filterMapByDataset,
                 outboundChangeBeforeUpdateCacheTTL,
-                incomingSiriParameters.getCompressionFormat()
+                incomingSiriParameters.getCompressionFormat(),
+                isSicAQuay
         );
 
         newOutboundSubscription.setOutboundIdMappingPolicy(outboundIdMappingPolicy);
@@ -1082,7 +1085,6 @@ public class ServerSubscriptionManager {
         return siriObjectFactory.createCheckStatusResponse(checkStatusRequest);
     }
 
-
     public void pushUpdatesAsync(SiriDataType datatype, List updates, String datasetId) {
         final String breadcrumbId = MDC.get("camel.breadcrumbId");
 
@@ -1284,6 +1286,7 @@ public class ServerSubscriptionManager {
         if (addedOrUpdated == null || addedOrUpdated.isEmpty()) {
             return;
         }
+
         Siri delivery = siriObjectFactory.createGMServiceDelivery(addedOrUpdated, null, null);
 
 //        if (sendActivemqKafka) {

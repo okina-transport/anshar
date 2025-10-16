@@ -63,19 +63,33 @@ public class OutboundSubscriptionSetup implements Serializable {
 
     private boolean isSOAPSubscription;
 
+    @Getter
+    @Setter
+    private boolean isSicAQuaySubscription;
+
     public OutboundSubscriptionSetup(ZonedDateTime requestTimestamp, SiriDataType subscriptionType, String address, long heartbeatInterval,
                                      boolean incrementalUpdates, long changeBeforeUpdates, long updateInterval,
                                      Map<Class, Set<String>> filterMap, List<ValueAdapter> valueAdapters,
                                      String subscriptionId, String requestorRef, ZonedDateTime initialTerminationTime, String datasetId, String clientTrackingName, boolean useOriginalId, SiriValidator.Version siriVersion) {
         this(requestTimestamp, subscriptionType, address, heartbeatInterval, incrementalUpdates, changeBeforeUpdates, updateInterval, filterMap, valueAdapters,
-                subscriptionId, requestorRef, initialTerminationTime, datasetId, clientTrackingName, useOriginalId, siriVersion, null, null, 5, CompressionFormat.NONE);
+                subscriptionId, requestorRef, initialTerminationTime, datasetId, clientTrackingName, useOriginalId, siriVersion, null, null, 5, CompressionFormat.NONE, false);
     }
 
     public OutboundSubscriptionSetup(ZonedDateTime requestTimestamp, SiriDataType subscriptionType, String address, long heartbeatInterval,
                                      boolean incrementalUpdates, long changeBeforeUpdates, long updateInterval,
                                      Map<Class, Set<String>> filterMap, List<ValueAdapter> valueAdapters,
                                      String subscriptionId, String requestorRef, ZonedDateTime initialTerminationTime, String datasetId, String clientTrackingName,
-                                     boolean useOriginalId, SiriValidator.Version siriVersion, Map<String, List<ValueAdapter>> valueAdaptersByDataset, Map<String, Map<Class, Set<String>>> filterMapByDataset, int cacheTTL, CompressionFormat compressionFormat) {
+                                     boolean useOriginalId, SiriValidator.Version siriVersion, boolean isSicAQuay) {
+        this(requestTimestamp, subscriptionType, address, heartbeatInterval, incrementalUpdates, changeBeforeUpdates, updateInterval, filterMap, valueAdapters,
+                subscriptionId, requestorRef, initialTerminationTime, datasetId, clientTrackingName, useOriginalId, siriVersion, null, null, 5, CompressionFormat.NONE, isSicAQuay);
+    }
+
+    public OutboundSubscriptionSetup(ZonedDateTime requestTimestamp, SiriDataType subscriptionType, String address, long heartbeatInterval,
+                                     boolean incrementalUpdates, long changeBeforeUpdates, long updateInterval,
+                                     Map<Class, Set<String>> filterMap, List<ValueAdapter> valueAdapters,
+                                     String subscriptionId, String requestorRef, ZonedDateTime initialTerminationTime, String datasetId, String clientTrackingName,
+                                     boolean useOriginalId, SiriValidator.Version siriVersion, Map<String, List<ValueAdapter>> valueAdaptersByDataset, Map<String, Map<Class, Set<String>>> filterMapByDataset, int cacheTTL,
+                                     CompressionFormat compressionFormat, boolean isSicAQuaySubscription) {
         this.requestTimestamp = requestTimestamp;
         this.subscriptionType = subscriptionType;
         this.address = address;
@@ -112,6 +126,7 @@ public class OutboundSubscriptionSetup implements Serializable {
                 .build();
 
         this.compressionFormat = compressionFormat;
+        this.isSicAQuaySubscription = isSicAQuaySubscription;
     }
 
     OutboundSubscriptionSetup(SiriDataType subscriptionType, String address, int timeToLive, List<ValueAdapter> outboundAdapters, String subscriptionId) {
@@ -196,6 +211,10 @@ public class OutboundSubscriptionSetup implements Serializable {
 
     public boolean isUseOriginalId() {
         return useOriginalId;
+    }
+
+    public void setUseOriginalId(boolean useOriginalId) {
+        this.useOriginalId = useOriginalId;
     }
 
 
