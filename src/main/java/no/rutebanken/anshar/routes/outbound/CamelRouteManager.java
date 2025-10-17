@@ -18,6 +18,7 @@ package no.rutebanken.anshar.routes.outbound;
 import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.siri.handlers.outbound.SituationExchangeOutbound;
+import no.rutebanken.anshar.routes.siri.processor.GmSIVSicAQuayPostProcessor;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.util.SiriUtils;
@@ -347,6 +348,14 @@ public class CamelRouteManager {
 
     public void postDataToSubscription(String datasetId, Siri payload, OutboundSubscriptionSetup subscription, boolean showBody) {
         Map<String, Object> headers = new HashMap<>();
+        if (subscription.isSicAQuaySubscription() && CollectionUtils.isNotEmpty(payload.getServiceDelivery().getGeneralMessageDeliveries())) {
+            if (CollectionUtils.isNotEmpty(payload.getServiceDelivery().getGeneralMessageDeliveries().getFirst().getGeneralMessages())) {
+                payload.getServiceDelivery().getGeneralMessageDeliveries().getFirst().getGeneralMessages().removeIf(
+                        gm -> GmSIVSicAQuayPostProcessor.getAlertMessageSicAQuay(gm).isEmpty()
+                );
+            }
+        }
+
         if (serviceDeliveryContainsData(payload)) {
             String remoteEndPoint = subscription.getAddress();
 

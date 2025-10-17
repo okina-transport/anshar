@@ -42,6 +42,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Repository;
 import uk.org.siri.siri21.*;
 
@@ -86,6 +87,9 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     private VehicleJourneyService vehicleJourneyService;
     @Autowired
     private LineUpdaterService lineUpdaterService;
+
+    Map<String, Integer> smTheoricalCount = new HashMap<>();
+    Map<String, Integer> smRealtimeCount = new HashMap<>();
 
     protected MonitoredStopVisits() {
         super(SiriDataType.STOP_MONITORING);
@@ -137,7 +141,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         ISet<String> datasetList = hazelcastService.getSharedSMDatasetList();
 
         for (String datasetId : datasetList) {
-            sizeMap.put(datasetId, (int) hazelcastService.getMonitoredStopVisitsForDataset(datasetId).values().stream().filter(s -> BooleanUtils.isTrue(s.getMonitoredVehicleJourney().isMonitored())).count());
+            sizeMap.put(datasetId, smRealtimeCount.getOrDefault(datasetId, 0));
         }
         logger.debug("Calculating data-distribution (SM) took {} ms: {}", (System.currentTimeMillis() - t1), sizeMap);
         return sizeMap;
@@ -150,8 +154,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         ISet<String> datasetList = hazelcastService.getSharedSMDatasetList();
 
         for (String datasetId : datasetList) {
-            sizeMap.put(datasetId, (int) hazelcastService.getMonitoredStopVisitsForDataset(datasetId).values()
-                    .stream().filter(s -> !BooleanUtils.isTrue(s.getMonitoredVehicleJourney().isMonitored())).count());
+            sizeMap.put(datasetId, smTheoricalCount.getOrDefault(datasetId, 0));
         }
         logger.debug("Calculating data-distribution (SM) took {} ms: {}", (System.currentTimeMillis() - t1), sizeMap);
         return sizeMap;
@@ -740,6 +743,31 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
             hazelcastService.getMonitoredStopVisitsForDataset(datasetId).delete(key);
             //logger.debug("SM - key deleted:" + key);
         }
+    }
+
+
+    @Scheduled(fixedRate = 600000)
+    public void countSMdata() {
+
+        ISet<String> datasetList = hazelcastService.getSharedSMDatasetList();
+        long startTime = System.currentTimeMillis();
+
+        for (String datasetId : datasetList) {
+            int monitored = 0;
+            int notMonitored = 0;
+
+            for (MonitoredStopVisit currValue : hazelcastService.getMonitoredStopVisitsForDataset(datasetId).values()) {
+                if (currValue.getMonitoredVehicleJourney().isMonitored()) {
+                    monitored++;
+                } else {
+                    notMonitored++;
+                }
+            }
+            smRealtimeCount.put(datasetId, monitored);
+            smTheoricalCount.put(datasetId, notMonitored);
+        }
+        long duration = System.currentTimeMillis() - startTime;
+        logger.info("Finished counting SM data in:" + duration + " ms");
     }
 
     /**

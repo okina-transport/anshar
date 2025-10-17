@@ -14,13 +14,19 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockserver.integration.ClientAndServer;
+import org.mockserver.model.HttpRequest;
 import org.mockserver.verify.VerificationTimes;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 import uk.org.siri.siri21.*;
 
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.stream.XMLStreamException;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -209,4 +215,236 @@ class OutboundSubscriptionTest extends SpringBootBaseTest {
     }
 
     // TODO MHI : test for SM subscription
+
+    @Test
+    @DisplayName("Should returns “sic a quai” alerts when the subscription request is made with the parameter and the SX contains it")
+    void givenFilterEnabledAndSxContainsAlert_whenIngested_thenNotificationIncludesAlert() throws ParserConfigurationException {
+        mockServer = startClientAndServer(1080);
+        log.info("MockServer démarré sur le port 1080");
+        mockServer.when(
+                request()
+                        .withMethod("POST")
+                        .withPath("/incomingSiri")
+        ).respond(
+                response()
+                        .withStatusCode(200)
+                        .withBody("{\"message\":\"success\"}")
+        );
+
+        serverSubscriptionManager.addSubscription(TestUtils.createGmOutboundSubscriptionWithSicAQuay(true, true));
+
+        List<PtSituationElement> inputSituations = createSiriWithAlerts(true);
+
+        situationExchangeInbound.ingestSituations("DAT1", inputSituations, true);
+
+        await()
+                .atMost(Durations.TEN_SECONDS)
+                .atLeast(Durations.TWO_SECONDS)
+                .pollInterval(Durations.ONE_SECOND)
+                .pollDelay(Durations.TWO_SECONDS)
+                .until(() -> serverSubscriptionManager.getAllSubscriptions(SiriDataType.GENERAL_MESSAGE).size() == 1);
+
+        mockServer.verify(
+                request()
+                        .withMethod("POST")
+                        .withPath("/incomingSiri"),
+                VerificationTimes.exactly(1)
+        );
+
+        HttpRequest[] recordedRequests = mockServer.retrieveRecordedRequests(
+                request().withPath("/incomingSiri")
+        );
+
+        String requestBody = recordedRequests[0].getBodyAsString();
+        assertTrue(
+                requestBody.contains("SIC à quai"),
+                "The request body should contain 'SIC à quai' as the alert matches the subscription filter.");
+    }
+
+    @Test
+    @DisplayName("Should returns “sic a quai” alerts when the subscription request is made without the parameter and the SX contains it")
+    void givenFilterDisabledAndSxContainsAlert_whenIngested_thenNotificationIncludesAlert() throws ParserConfigurationException {
+        mockServer = startClientAndServer(1080);
+        log.info("MockServer démarré sur le port 1080");
+        mockServer.when(
+                request()
+                        .withMethod("POST")
+                        .withPath("/incomingSiri")
+        ).respond(
+                response()
+                        .withStatusCode(200)
+                        .withBody("{\"message\":\"success\"}")
+        );
+
+        serverSubscriptionManager.addSubscription(TestUtils.createGmOutboundSubscriptionWithSicAQuay(true, false));
+
+        List<PtSituationElement> inputSituations = createSiriWithAlerts(true);
+
+        situationExchangeInbound.ingestSituations("DAT1", inputSituations, true);
+
+        await()
+                .atMost(Durations.TEN_SECONDS)
+                .atLeast(Durations.TWO_SECONDS)
+                .pollInterval(Durations.ONE_SECOND)
+                .pollDelay(Durations.TWO_SECONDS)
+                .until(() -> serverSubscriptionManager.getAllSubscriptions(SiriDataType.GENERAL_MESSAGE).size() == 1);
+
+        mockServer.verify(
+                request()
+                        .withMethod("POST")
+                        .withPath("/incomingSiri"),
+                VerificationTimes.exactly(1)
+        );
+
+        HttpRequest[] recordedRequests = mockServer.retrieveRecordedRequests(
+                request().withPath("/incomingSiri")
+        );
+
+        String requestBody = recordedRequests[0].getBodyAsString();
+        assertTrue(
+                requestBody.contains("SIC à quai"),
+                "The request body should contain 'SIC à quai' as the alert matches the subscription filter.");
+    }
+
+    @Test
+    @DisplayName("Should does not return “sic a quai” alerts when the subscription request is made with the parameter and the SX does not contain it")
+    void givenFilterEnabledAndSxExcludesAlert_whenIngested_thenNotificationExcludesAlert() throws ParserConfigurationException {
+        mockServer = startClientAndServer(1080);
+        log.info("MockServer démarré sur le port 1080");
+        mockServer.when(
+                request()
+                        .withMethod("POST")
+                        .withPath("/incomingSiri")
+        ).respond(
+                response()
+                        .withStatusCode(200)
+                        .withBody("{\"message\":\"success\"}")
+        );
+
+        serverSubscriptionManager.addSubscription(TestUtils.createGmOutboundSubscriptionWithSicAQuay(true, true));
+
+        List<PtSituationElement> inputSituations = createSiriWithAlerts(false);
+
+        situationExchangeInbound.ingestSituations("DAT1", inputSituations, true);
+
+        await()
+                .atMost(Durations.TEN_SECONDS)
+                .atLeast(Durations.TWO_SECONDS)
+                .pollInterval(Durations.ONE_SECOND)
+                .pollDelay(Durations.TWO_SECONDS)
+                .until(() -> serverSubscriptionManager.getAllSubscriptions(SiriDataType.GENERAL_MESSAGE).size() == 1);
+
+        mockServer.verify(
+                request()
+                        .withMethod("POST")
+                        .withPath("/incomingSiri"),
+                VerificationTimes.exactly(0)
+        );
+    }
+
+    @Test
+    @DisplayName("Should does return alerts when the subscription request is made without the parameter and the SX does not contain it")
+    void givenFilterDisabledAndSxContainsAlert_whenIngested_thenNotificationExcludesAlert() throws ParserConfigurationException {
+        mockServer = startClientAndServer(1080);
+        log.info("MockServer démarré sur le port 1080");
+        mockServer.when(
+                request()
+                        .withMethod("POST")
+                        .withPath("/incomingSiri")
+        ).respond(
+                response()
+                        .withStatusCode(200)
+                        .withBody("{\"message\":\"success\"}")
+        );
+
+        serverSubscriptionManager.addSubscription(TestUtils.createGmOutboundSubscriptionWithSicAQuay(true, false));
+
+        List<PtSituationElement> inputSituations = createSiriWithAlerts(false);
+
+        situationExchangeInbound.ingestSituations("DAT1", inputSituations, true);
+
+        await()
+                .atMost(Durations.TEN_SECONDS)
+                .atLeast(Durations.TWO_SECONDS)
+                .pollInterval(Durations.ONE_SECOND)
+                .pollDelay(Durations.TWO_SECONDS)
+                .until(() -> serverSubscriptionManager.getAllSubscriptions(SiriDataType.GENERAL_MESSAGE).size() == 1);
+
+        mockServer.verify(
+                request()
+                        .withMethod("POST")
+                        .withPath("/incomingSiri"),
+                VerificationTimes.exactly(1)
+        );
+    }
+
+    private static List<PtSituationElement> createSiriWithAlerts(boolean withSicAQuay) throws ParserConfigurationException {
+        PtSituationElement situation1 = TestUtils.createSituationForLine(SITUATION_NUMBER, LINE_REF);
+        RequestorRef requestorRef = new RequestorRef();
+        requestorRef.setValue("REF1");
+        situation1.setParticipantRef(requestorRef);
+        situation1.setCreationTime(ZonedDateTime.now().minusMinutes(2));
+        HalfOpenTimestampOutputRangeStructure interval = new HalfOpenTimestampOutputRangeStructure();
+        interval.setEndTime(ZonedDateTime.now().plusMinutes(10));
+        situation1.getValidityPeriods().add(interval);
+
+        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        DocumentBuilder db = dbf.newDocumentBuilder();
+        Document doc = db.newDocument();
+
+        Element alertsElement = doc.createElement("Alerts");
+
+        Element sendNotifications = doc.createElement("SendNotifications");
+        sendNotifications.appendChild(doc.createTextNode("true"));
+        alertsElement.appendChild(sendNotifications);
+
+        Element notificationsDate = doc.createElement("NotificationsDate");
+        notificationsDate.appendChild(doc.createTextNode("2024-10-25T14:52:25Z"));
+        alertsElement.appendChild(notificationsDate);
+
+        Element alertMessagesContainer = doc.createElement("AlertMessages");
+        alertsElement.appendChild(alertMessagesContainer);
+
+        Element msg1 = doc.createElement("AlertMessage");
+        alertMessagesContainer.appendChild(msg1);
+
+        Element channelName1 = doc.createElement("ChannelName");
+        channelName1.appendChild(doc.createTextNode("SIC embarqué"));
+        msg1.appendChild(channelName1);
+
+        Element channelType1 = doc.createElement("ChannelType");
+        channelType1.appendChild(doc.createTextNode("notification"));
+        msg1.appendChild(channelType1);
+
+        Element messageText1 = doc.createElement("MessageText");
+        messageText1.appendChild(doc.createTextNode("Travaux C2 déviée entre Talensac et Place du Cirque"));
+        msg1.appendChild(messageText1);
+
+        if (withSicAQuay) {
+            createSicAQuayAlert(doc, alertMessagesContainer);
+        }
+
+        Extensions extensions = new Extensions();
+        extensions.getAnies().add(alertsElement);
+        situation1.setExtensions(extensions);
+        List<PtSituationElement> inputSituations = List.of(situation1);
+        return inputSituations;
+    }
+
+    private static void createSicAQuayAlert(Document doc, Element alertMessagesContainer) {
+        Element msg1 = doc.createElement("AlertMessage");
+        alertMessagesContainer.appendChild(msg1);
+
+        Element channelName1 = doc.createElement("ChannelName");
+        channelName1.appendChild(doc.createTextNode("SIC à quai"));
+        msg1.appendChild(channelName1);
+
+        Element channelType1 = doc.createElement("ChannelType");
+        channelType1.appendChild(doc.createTextNode("notification"));
+        msg1.appendChild(channelType1);
+
+        Element messageText1 = doc.createElement("MessageText");
+        messageText1.appendChild(doc.createTextNode("Travaux C2 déviée entre Talensac et Place du Cirque"));
+        msg1.appendChild(messageText1);
+    }
 }

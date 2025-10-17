@@ -345,4 +345,14 @@ public class TestUtils {
                 new HashMap<>(), adapters,
                 "outGmId1", "requestorRef", ZonedDateTime.now().plusHours(1), "DAT1", "clientTrackingName", useOriginalId, SiriValidator.Version.VERSION_2_1);
     }
+
+    public static OutboundSubscriptionSetup createGmOutboundSubscriptionWithSicAQuay(boolean useOriginalId, boolean isSicAQuay) {
+        String address = "http://localhost:1080/incomingSiri";
+        List<ValueAdapter> adapters = new ArrayList<>();
+        return new OutboundSubscriptionSetup(ZonedDateTime.now(),
+                SiriDataType.GENERAL_MESSAGE, address, 3600,
+                true, 30, 0,
+                new HashMap<>(), adapters,
+                "outGmId1", "requestorRef", ZonedDateTime.now().plusHours(1), "DAT1", "clientTrackingName", useOriginalId, SiriValidator.Version.VERSION_2_1, isSicAQuay);
+    }
 }

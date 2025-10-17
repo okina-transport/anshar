@@ -58,7 +58,7 @@ public class GmSIVSicAQuayPostProcessor extends ValueAdapter implements PostProc
         }
     }
 
-    private Optional<String> getAlertMessageSicAQuay(GeneralMessage gm) {
+    public static Optional<String> getAlertMessageSicAQuay(GeneralMessage gm) {
         if (gm.getExtensions() == null || CollectionUtils.isEmpty(gm.getExtensions().getAnies())) {
             return Optional.empty();
         }
