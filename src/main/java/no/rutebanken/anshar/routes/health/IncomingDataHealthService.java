@@ -60,7 +60,7 @@ public class IncomingDataHealthService {
     public void recordStatus(IncomingFlowParameters flowParameters, FlowStatus status) {
 
         DailyStatus currentColor = convertStatusToColor(status);
-        if (!dailyStatuses.containsKey(flowParameters) || !DailyStatus.GREEN.equals(currentColor)) {
+        if (!dailyStatuses.containsKey(flowParameters) || !DailyStatus.GREEN.equals(currentColor) || !DailyStatus.YELLOW.equals(currentColor)) {
             // In case of error, daily status must be red
             dailyStatuses.put(flowParameters, currentColor);
         } else {
@@ -74,7 +74,12 @@ public class IncomingDataHealthService {
     }
 
     private DailyStatus convertStatusToColor(FlowStatus flowStatus) {
-        return FlowStatus.OK.equals(flowStatus) || FlowStatus.EMPTY_FEED.equals(flowStatus)? DailyStatus.GREEN : DailyStatus.RED;
+        if (FlowStatus.OK.equals(flowStatus)) {
+            return DailyStatus.GREEN;
+        } else if (FlowStatus.EMPTY_FEED.equals(flowStatus)) {
+            return DailyStatus.YELLOW;
+        }
+        return DailyStatus.RED;
     }
 
     public Map<IncomingFlowParameters, DailyStatus> getDailyStatuses() {
