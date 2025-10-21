@@ -111,6 +111,9 @@ public class SubscriptionManager {
     @Qualifier("getRetryCountMap")
     private IMap<String, Integer> retryCountMap;
 
+    @Autowired
+    private DatasetService datasetService;
+
     public void addSubscription(String subscriptionId, SubscriptionSetup setup) {
         if (setup.isActive()) {
             subscriptions.put(subscriptionId, setup);
@@ -636,6 +639,16 @@ public class SubscriptionManager {
         count.put("fm", fmDatasetSize.values().stream().mapToInt(Number::intValue).sum());
         count.put("sm-monitored", smMonitoredDatasetSize.values().stream().mapToInt(Number::intValue).sum());
         count.put("sm-notMonitored", smNotMonitoredDatasetSize.values().stream().mapToInt(Number::intValue).sum());
+
+        Set<String> allDatasetIds = datasetService.getAllDatasetIds();
+        for (String datasetId : allDatasetIds) {
+            etDatasetSize.putIfAbsent(datasetId, 0);
+            vmDatasetSize.putIfAbsent(datasetId, 0);
+            sxDatasetSize.putIfAbsent(datasetId, 0);
+            fmDatasetSize.putIfAbsent(datasetId, 0);
+            smMonitoredDatasetSize.putIfAbsent(datasetId, 0);
+            smNotMonitoredDatasetSize.putIfAbsent(datasetId, 0);
+        }
 
         logger.debug("Building distribution stats");
         count.put("distribution", getCountPerDataset(etDatasetSize, vmDatasetSize, sxDatasetSize, smMonitoredDatasetSize, smNotMonitoredDatasetSize, fmDatasetSize));
