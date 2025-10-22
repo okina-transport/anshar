@@ -51,14 +51,14 @@ public class IncomingDataHealthServiceTest extends SpringBootBaseTest {
         /// First became ok  again
         incomingDataHealthService.recordStatus(flowParameters, FlowStatus.OK);
         Assertions.assertEquals(2, incomingDataHealthService.getDailyStatuses().size());
-        Assertions.assertEquals(DailyStatus.ORANGE, incomingDataHealthService.getDailyStatuses().get(flowParameters));
+        Assertions.assertEquals(DailyStatus.GREEN, incomingDataHealthService.getDailyStatuses().get(flowParameters));
         Assertions.assertEquals(DailyStatus.RED, incomingDataHealthService.getDailyStatuses().get(flowParameters2));
 
         /// second became ok
         incomingDataHealthService.recordStatus(flowParameters2, FlowStatus.OK);
         Assertions.assertEquals(2, incomingDataHealthService.getDailyStatuses().size());
-        Assertions.assertEquals(DailyStatus.ORANGE, incomingDataHealthService.getDailyStatuses().get(flowParameters));
-        Assertions.assertEquals(DailyStatus.ORANGE, incomingDataHealthService.getDailyStatuses().get(flowParameters2));
+        Assertions.assertEquals(DailyStatus.GREEN, incomingDataHealthService.getDailyStatuses().get(flowParameters));
+        Assertions.assertEquals(DailyStatus.GREEN, incomingDataHealthService.getDailyStatuses().get(flowParameters2));
 
     }
 }
