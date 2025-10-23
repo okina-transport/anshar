@@ -17,6 +17,7 @@ import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import no.rutebanken.anshar.util.SiriUtils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.Siri;
@@ -117,6 +118,8 @@ public class SiriLiteGeneralMessageRoute extends RestRouteBuilder {
             // create a new list, otherwise it will keep adding GmSIVSicAQuayPostProcessor to cached value adapters
             outboundAdapters = new ArrayList<>(outboundAdapters);
             outboundAdapters.add(new GmSIVSicAQuayPostProcessor());
+
+            GmSIVSicAQuayPostProcessor.filteringSiriGMToKeepSicAQuayAlertMessages(response);
         }
 
         if ("test".equals(originalId)) {
