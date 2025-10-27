@@ -5,6 +5,7 @@ import no.rutebanken.anshar.data.util.CustomSiriXml;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import org.apache.commons.io.FileUtils;
+import org.entur.siri21.util.SiriXml;
 import org.junit.jupiter.api.Test;
 import uk.org.siri.siri21.Siri;
 
@@ -17,10 +18,10 @@ import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
-import static junit.framework.TestCase.assertNotNull;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class SoapToRawTests extends SpringBootBaseTest {
 
@@ -249,7 +250,7 @@ public class SoapToRawTests extends SpringBootBaseTest {
     }
 
     @Test
-    public void cgeckStatusTest() throws JAXBException, FileNotFoundException, TransformerException, XMLStreamException {
+    public void checkStatusTest() throws JAXBException, FileNotFoundException, TransformerException, XMLStreamException {
         String receivedCheckstatus = """
                 <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
                     <soap:Header/>
@@ -319,5 +320,31 @@ public class SoapToRawTests extends SpringBootBaseTest {
             e.printStackTrace();
             throw e;
         }
+    }
+
+    @Test
+    public void etSubscriptionSoapTest() throws TransformerException, IOException, XMLStreamException, JAXBException {
+        // Arrange
+        Path inputPath = Path.of("src/test/resources/xsl/et-subscription-soap.xml");
+        String etSubscriptionSoap = Files.readString(inputPath);
+
+        // Act
+        String etSubscription = CustomSiriXml.soapToRaw(etSubscriptionSoap);
+        Siri siri = SiriXml.parseXml(etSubscription);
+
+        // Assert
+        assertNotNull(siri);
+        assertNotNull(siri.getSubscriptionRequest());
+        assertEquals("requestorRef", siri.getSubscriptionRequest().getRequestorRef().getValue());
+        assertEquals("https://www.flimsurlecyclimse.fr", siri.getSubscriptionRequest().getConsumerAddress());
+        assertEquals(1, siri.getSubscriptionRequest().getEstimatedTimetableSubscriptionRequests().size());
+
+        var etsr = siri.getSubscriptionRequest().getEstimatedTimetableSubscriptionRequests().getFirst();
+        assertEquals("5114d8c6556247689f0bf36614d78f5b", etsr.getSubscriptionIdentifier().getValue());
+
+        var etr = etsr.getEstimatedTimetableRequest();
+        assertEquals("2.0:FR-2.4", etr.getVersion());
+        assertEquals("8bd15707955240c88647c928a64f4456", etr.getMessageIdentifier().getValue());
+        assertEquals(60, etr.getPreviewInterval().getMinutes());
     }
 }
