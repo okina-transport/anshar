@@ -196,6 +196,11 @@ public class InitialDeliveryGenerator {
 
         for (String datasetId : datasetsToRequest) {
             Siri delivery = monitoredStopVisits.createServiceDelivery(subscriptionRequest.getRequestorRef(), datasetId, Integer.MAX_VALUE, searchedStopIds, null, false, previewInterval);
+            if (previewInterval >= 0) {
+                delivery = SiriUtils.removeTheoreticalSM(delivery);
+            }
+
+
             if (SiriUtils.hasDataOfType(delivery, SiriDataType.STOP_MONITORING)) {
                 results.put(datasetId, delivery);
             }

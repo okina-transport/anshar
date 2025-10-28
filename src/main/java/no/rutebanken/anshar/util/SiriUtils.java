@@ -192,6 +192,28 @@ public class SiriUtils {
         return delivery;
     }
 
+    public static Siri removeTheoreticalSM(Siri delivery) {
+        if (delivery.getServiceDelivery().getStopMonitoringDeliveries() == null) {
+            return delivery;
+        }
+
+        List<StopMonitoringDeliveryStructure> smDeliveries = delivery.getServiceDelivery().getStopMonitoringDeliveries();
+        for (StopMonitoringDeliveryStructure smDelivery : smDeliveries) {
+            List<MonitoredStopVisit> filteredStopVisits = new ArrayList<>();
+
+            for (MonitoredStopVisit monitoredStopVisit : smDelivery.getMonitoredStopVisits()) {
+                if (monitoredStopVisit.getMonitoredVehicleJourney().isMonitored() == null || monitoredStopVisit.getMonitoredVehicleJourney().isMonitored()) {
+                    filteredStopVisits.add(monitoredStopVisit);
+                }
+
+
+            }
+            smDelivery.getMonitoredStopVisits().clear();
+            smDelivery.getMonitoredStopVisits().addAll(filteredStopVisits);
+        }
+        return delivery;
+    }
+
 
     /**
      * Determines if a notification is in previewInterval window or not

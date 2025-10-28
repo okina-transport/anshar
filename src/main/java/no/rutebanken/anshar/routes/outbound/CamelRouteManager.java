@@ -135,6 +135,8 @@ public class CamelRouteManager {
                     if (subscriptionRequest.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
                         if (subscriptionRequest.getPreviewInterval() != null) {
                             siri = SiriUtils.filterStopMonitoringOnPreviewInterval(siri, subscriptionRequest);
+                        }else{
+                            siri = SiriUtils.removeTheoreticalSM(siri);
                         }
                         if (!hasStopMonitoringData(siri)) {
                             continue;
