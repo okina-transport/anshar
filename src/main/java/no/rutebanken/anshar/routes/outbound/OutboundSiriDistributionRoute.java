@@ -79,6 +79,8 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
                         CustomSiriXml.toXml(response, null, byteArrayOutputStream);
                     }else if (p.getIn().getHeader(SIRI_VERSION_HEADER_NAME).equals(SiriValidator.Version.VERSION_2_0_IDFM_2_4)){
                         CustomSiriXml.toXml(downgradeSiriVersion(response,"2.0[FR-IDF-2.4]"), null, byteArrayOutputStream);
+                    }else if (p.getIn().getHeader(SIRI_VERSION_HEADER_NAME).equals(SiriValidator.Version.VERSION_2_0_FR_2_4)){
+                        CustomSiriXml.toXml(downgradeSiriVersion(response,"2.0:FR-2.4"), null, byteArrayOutputStream);
                     }else{
                         CustomSiriXml.toXml(downgradeSiriVersion(response), null, byteArrayOutputStream);
                     }

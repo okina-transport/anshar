@@ -65,6 +65,8 @@ public class SiriUtils {
             return SiriValidator.Version.VERSION_2_1;
         } else if ("2.0[FR-IDF-2.4]".equals(version)) {
             return SiriValidator.Version.VERSION_2_0_IDFM_2_4;
+        } else if ("2.0:FR-2.4".equals(version)) {
+            return SiriValidator.Version.VERSION_2_0_FR_2_4;
         }
         logger.error("Unsupported version: {}", version);
         throw new IllegalArgumentException("Unsupported version: " + version);
