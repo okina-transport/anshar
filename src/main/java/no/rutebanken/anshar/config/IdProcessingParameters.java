@@ -85,8 +85,16 @@ public class IdProcessingParameters implements Serializable {
         if (StringUtils.isEmpty(text)) {
             return text;
         }
-        if (outputPrefixToAdd != null && text.startsWith(outputPrefixToAdd)) {
-            text = text.substring(outputPrefixToAdd.length());
+        if (outputPrefixToAdd != null) {
+            if (text.startsWith(outputPrefixToAdd)) {
+                text = text.substring(outputPrefixToAdd.length());
+            } else {
+                // handling stopPlace case
+                String stopPlacePrefix = outputPrefixToAdd.replace(":Quay:", ":StopPlace:");
+                if (text.startsWith(stopPlacePrefix)) {
+                    text = text.substring(stopPlacePrefix.length());
+                }
+            }
         }
 
         if (outputSuffixToAdd != null && text.endsWith(outputSuffixToAdd)) {

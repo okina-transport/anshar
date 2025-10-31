@@ -1,0 +1,27 @@
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+    <s:Body>
+        <Subscribe xmlns="http://wsdl.siri.org.uk">
+            <SubscriptionRequestInfo xmlns="">
+                <RequestTimestamp xmlns="http://www.siri.org.uk/siri">2025-10-14T13:30:32.5802035Z</RequestTimestamp>
+                <AccountId xmlns="http://www.siri.org.uk/siri">id</AccountId>
+                <AccountKey xmlns="http://www.siri.org.uk/siri">key</AccountKey>
+                <RequestorRef xmlns="http://www.siri.org.uk/siri">requestorRef</RequestorRef>
+                <MessageIdentifier xmlns="http://www.siri.org.uk/siri">8bd15707955240c88647c928a64f4456</MessageIdentifier>
+                <ConsumerAddress xmlns="http://www.siri.org.uk/siri">https://www.flimsurlecyclimse.fr</ConsumerAddress>
+            </SubscriptionRequestInfo>
+            <Request xmlns="">
+                <EstimatedTimetableSubscriptionRequest xmlns="http://www.siri.org.uk/siri">
+                    <SubscriberRef>sytral_lib</SubscriberRef>
+                    <SubscriptionIdentifier>5114d8c6556247689f0bf36614d78f5b</SubscriptionIdentifier>
+                    <InitialTerminationTime>2025-10-15T13:30:32.580206Z</InitialTerminationTime>
+                    <EstimatedTimetableRequest version="2.0:FR-2.4">
+                        <RequestTimestamp>2025-10-14T13:30:32.5802012Z</RequestTimestamp>
+                        <MessageIdentifier>8bd15707955240c88647c928a64f4456</MessageIdentifier>
+                        <PreviewInterval>PT60M</PreviewInterval>
+                    </EstimatedTimetableRequest>
+                    <ChangeBeforeUpdates>PT1M</ChangeBeforeUpdates>
+                </EstimatedTimetableSubscriptionRequest>
+            </Request>
+        </Subscribe>
+    </s:Body>
+</s:Envelope>

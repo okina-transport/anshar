@@ -9,11 +9,13 @@ import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import uk.org.siri.siri21.GeneralMessage;
 import uk.org.siri.siri21.GeneralMessageDeliveryStructure;
 import uk.org.siri.siri21.Siri;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.IntStream;
@@ -58,42 +60,67 @@ public class GmSIVSicAQuayPostProcessor extends ValueAdapter implements PostProc
         }
     }
 
-    public static Optional<String> getAlertMessageSicAQuay(GeneralMessage gm) {
+    private static Optional<String> getAlertMessageSicAQuay(GeneralMessage gm) {
         if (gm.getExtensions() == null || CollectionUtils.isEmpty(gm.getExtensions().getAnies())) {
             return Optional.empty();
         }
-        Optional<NodeList> optAlertMessages = gm.getExtensions().getAnies().stream()
-                .map(e -> e.getElementsByTagName(ALERT_MESSAGE_TAG_NAME))
+
+        Optional<Element> optAlertsElement = gm.getExtensions().getAnies().stream()
+                .filter(e -> e instanceof Element)
+                .map(e -> (Element) e)
+                .filter(e -> "Alerts".equals(e.getTagName()))
                 .findFirst();
-        if (optAlertMessages.isEmpty()) {
+
+        if (optAlertsElement.isEmpty()) {
             return Optional.empty();
         }
-        // Convert NodeList to List<Element> because it is easier to query with
-        List<Element> alertMessages = IntStream.range(0, optAlertMessages.get().getLength())
-                .mapToObj(optAlertMessages.get()::item)
+
+        NodeList alertMessageNodes = optAlertsElement.get().getElementsByTagName(ALERT_MESSAGE_TAG_NAME);
+        if (alertMessageNodes.getLength() == 0) {
+            return Optional.empty();
+        }
+
+        List<Element> alertMessages = IntStream.range(0, alertMessageNodes.getLength())
+                .mapToObj(alertMessageNodes::item)
                 .map(n -> (Element) n)
                 .toList();
-        for (Element alertMessage : alertMessages) {
-            NodeList channelNameNodes = alertMessage.getElementsByTagName(CHANNEL_NAME_TAG_NAME);
-            if (channelNameNodes.getLength() == 0) {
-                log.warn("No <ChannelName> in <AlertMessage> tag");
-                continue;
-            }
-            Element channelNameTag = (Element) channelNameNodes.item(0);
-            NodeList messageTextNodes = alertMessage.getElementsByTagName(MESSAGE_TEXT_TAG_NAME);
-            String content = messageTextNodes.getLength() == 0 ? "" :
-                    StringUtils.trimToEmpty(messageTextNodes.item(0).getTextContent());
-            if (channelNameTag.getTextContent().equals(CHANNEL_NAME_VALUE_SIC_A_QUAI)) {
-                return Optional.of(content);
 
+        for (Element alertMessage : alertMessages) {
+            if (isAlertMessageSicAQuai(alertMessage)) {
+                NodeList messageTextNodes = alertMessage.getElementsByTagName(MESSAGE_TEXT_TAG_NAME);
+                String content = messageTextNodes.getLength() == 0 ? "" :
+                        StringUtils.trimToEmpty(messageTextNodes.item(0).getTextContent());
+                return Optional.of(content);
             }
         }
+
         return Optional.empty();
     }
 
     @Override
     protected String apply(String value) {
         return null;
+    }
+
+    public static void filteringSiriGMToKeepSicAQuayAlertMessages(Siri siri) {
+        if (CollectionUtils.isNotEmpty(siri.getServiceDelivery().getGeneralMessageDeliveries()) &&
+                CollectionUtils.isNotEmpty(siri.getServiceDelivery().getGeneralMessageDeliveries().getFirst().getGeneralMessages())) {
+
+            siri.getServiceDelivery().getGeneralMessageDeliveries().getFirst().getGeneralMessages().removeIf(
+                    gm -> getAlertMessageSicAQuay(gm).isEmpty()
+            );
+        }
+    }
+
+    private static boolean isAlertMessageSicAQuai(Element alertMessageElement) {
+        NodeList channelNameNodes = alertMessageElement.getElementsByTagName(CHANNEL_NAME_TAG_NAME);
+        if (channelNameNodes.getLength() == 0) {
+            return false;
+        }
+        Element channelNameTag = (Element) channelNameNodes.item(0);
+        String channelName = channelNameTag.getTextContent();
+
+        return CHANNEL_NAME_VALUE_SIC_A_QUAI.equals(channelName);
     }
 }
 

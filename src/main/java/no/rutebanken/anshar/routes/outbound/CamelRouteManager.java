@@ -135,6 +135,8 @@ public class CamelRouteManager {
                     if (subscriptionRequest.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
                         if (subscriptionRequest.getPreviewInterval() != null) {
                             siri = SiriUtils.filterStopMonitoringOnPreviewInterval(siri, subscriptionRequest);
+                        }else{
+                            siri = SiriUtils.removeTheoreticalSM(siri);
                         }
                         if (!hasStopMonitoringData(siri)) {
                             continue;
@@ -348,12 +350,8 @@ public class CamelRouteManager {
 
     public void postDataToSubscription(String datasetId, Siri payload, OutboundSubscriptionSetup subscription, boolean showBody) {
         Map<String, Object> headers = new HashMap<>();
-        if (subscription.isSicAQuaySubscription() && CollectionUtils.isNotEmpty(payload.getServiceDelivery().getGeneralMessageDeliveries())) {
-            if (CollectionUtils.isNotEmpty(payload.getServiceDelivery().getGeneralMessageDeliveries().getFirst().getGeneralMessages())) {
-                payload.getServiceDelivery().getGeneralMessageDeliveries().getFirst().getGeneralMessages().removeIf(
-                        gm -> GmSIVSicAQuayPostProcessor.getAlertMessageSicAQuay(gm).isEmpty()
-                );
-            }
+        if (subscription.isSicAQuaySubscription()) {
+            GmSIVSicAQuayPostProcessor.filteringSiriGMToKeepSicAQuayAlertMessages(payload);
         }
 
         if (serviceDeliveryContainsData(payload)) {

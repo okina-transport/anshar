@@ -412,6 +412,9 @@
                         </xsl:for-each>
 
                         <xsl:element name="siril:EstimatedTimetableRequest">
+                            <xsl:attribute name="version">
+                                <xsl:value-of select="Request/@version"/>
+                            </xsl:attribute>
                             <xsl:for-each select="Request/siril:RequestTimestamp">
                                 <xsl:element name="siril:RequestTimestamp">
                                     <xsl:apply-templates select="* | node()"/>
@@ -641,7 +644,6 @@
                         </xsl:for-each>
 
                         <xsl:for-each select="siril:SubscriptionRequestInfo/siril:RequestorRef">
-
                             <xsl:element name="{local-name()}" namespace="http://www.siri.org.uk/siri">
                                 <xsl:apply-templates select="* | node()"/>
                             </xsl:element>
@@ -679,6 +681,9 @@
                                 <xsl:for-each select="siril:EstimatedTimetableRequest">
                                     <xsl:element name="EstimatedTimetableRequest"
                                                  namespace="http://www.siri.org.uk/siri">
+                                        <xsl:attribute name="version">
+                                            <xsl:value-of select="@version"/>
+                                        </xsl:attribute>
                                         <xsl:copy-of select="*" copy-namespaces="no"/>
                                     </xsl:element>
                                 </xsl:for-each>

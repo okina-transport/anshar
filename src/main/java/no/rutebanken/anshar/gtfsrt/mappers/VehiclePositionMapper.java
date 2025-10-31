@@ -102,7 +102,7 @@ public class VehiclePositionMapper {
 
     private static void mapRecordedAtTime(VehicleActivityStructure activity, GtfsRealtime.VehiclePosition vehiclePosition) {
         if (vehiclePosition.getTimestamp() != 0) {
-            ZonedDateTime timestamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(vehiclePosition.getTimestamp()), ZoneId.systemDefault());
+            ZonedDateTime timestamp = ZonedDateTime.ofInstant(Instant.ofEpochSecond(vehiclePosition.getTimestamp()), ZoneId.systemDefault());
             activity.setRecordedAtTime(timestamp);
         }
     }

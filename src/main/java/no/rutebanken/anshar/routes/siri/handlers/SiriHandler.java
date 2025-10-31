@@ -372,13 +372,17 @@ public class SiriHandler {
                 GeneralMessageRequestStructure request = serviceRequest.getGeneralMessageRequests().get(0);
                 List<InfoChannelRefStructure> requestedChannels = request.getInfoChannelReves();
                 valueAdapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.GENERAL_MESSAGE, outboundIdMappingPolicy, idMap);
+
+                serviceResponse = generalMessages.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, requestedChannels, messageId);
+
                 if (incomingSiriParameters.isGmSIVSicAQuay()) {
                     // value adapters are cached
                     // create a new list, otherwise it will keep adding GmSIVSicAQuayPostProcessor to cached value adapters
                     valueAdapters = new ArrayList<>(valueAdapters);
                     valueAdapters.add(new GmSIVSicAQuayPostProcessor());
+
+                    GmSIVSicAQuayPostProcessor.filteringSiriGMToKeepSicAQuayAlertMessages(serviceResponse);
                 }
-                serviceResponse = generalMessages.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, requestedChannels, messageId);
 
                 //Ask for general message cancellations at the same time
                 Siri cancellationResponses = generalMessageCancellations.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, requestedChannels);
