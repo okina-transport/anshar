@@ -392,7 +392,7 @@
         <dependency>
             <groupId>org.entur</groupId>
             <artifactId>siri-java-model</artifactId>
-            <version>2.0.1-mobi-iti</version>
+            <version>2.0.2-mobi-iti</version>
             <exclusions>
                 <exclusion>
                     <groupId>javax.xml.bind</groupId>
