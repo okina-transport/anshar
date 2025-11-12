@@ -1,7 +1,9 @@
 package no.rutebanken.anshar.routes.messaging;
 
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
+import no.rutebanken.anshar.data.util.CustomSiriXml;
 import no.rutebanken.anshar.data.util.SOAPSplitProcessor;
 import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.gtfsrt.ingesters.EstimatedTimetableIngester;
@@ -17,6 +19,7 @@ import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.transformer.SiriJsonTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
+import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.routes.validation.SiriXmlValidator;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
@@ -33,6 +36,8 @@ import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.Siri;
 
 import java.io.InputStream;
+import java.util.List;
+import java.util.Optional;
 
 import static no.rutebanken.anshar.routes.HttpParameter.*;
 import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_SOAP;
@@ -56,6 +61,7 @@ public class MessagingRoute extends RestRouteBuilder {
 
     @Autowired
     private SiriXmlValidator siriXmlValidator;
+
 
     @Autowired
     private AdminRouteHelper adminRouteHelper;
@@ -362,16 +368,26 @@ public class MessagingRoute extends RestRouteBuilder {
 
                     String subscriptionId = p.getIn().getHeader("subscriptionId", String.class);
                     if (StringUtils.isNotEmpty(subscriptionId)) {
-                        SubscriptionSetup subscriptionSetup = subscriptionManager.get(p.getIn().getHeader("subscriptionId", String.class));
-                        if (subscriptionSetup == null) {
-                            p.getMessage().setBody(null);
-                            return;
+                        Optional<DiscoverySubscription> discoveryOpt = subscriptionManager.getDiscoverySubscription(subscriptionId);
+                        if (discoveryOpt.isPresent()) {
+                            DiscoverySubscription discoverySubscription = discoveryOpt.get();
+                            Siri originalInput =   CustomSiriXml.parseXml(p.getIn().getBody(String.class));
+                            p.getMessage().setHeaders(p.getIn().getHeaders());
+                            List<ValueAdapter> adapters = subscriptionManager.getValueAdaptersFromId(null, discoverySubscription.getMappingAdapterId());
+                            Siri incoming = SiriValueTransformer.transform(originalInput, adapters, false, true);
+                            p.getMessage().setHeaders(p.getIn().getHeaders());
+                            p.getMessage().setBody(SiriXml.toXml(incoming));
+                        }else{
+                            SubscriptionSetup subscriptionSetup = subscriptionManager.get(p.getIn().getHeader("subscriptionId", String.class));
+                            if (subscriptionSetup == null) {
+                                p.getMessage().setBody(null);
+                                return;
+                            }
+                            Siri originalInput = siriXmlValidator.parseXml(subscriptionSetup, p.getIn().getBody(String.class));
+                            Siri incoming = SiriValueTransformer.transform(originalInput, subscriptionSetup.getMappingAdapters(), false, true);
+                            p.getMessage().setHeaders(p.getIn().getHeaders());
+                            p.getMessage().setBody(SiriXml.toXml(incoming));
                         }
-                        Siri originalInput = siriXmlValidator.parseXml(subscriptionSetup, p.getIn().getBody(String.class));
-
-                        Siri incoming = SiriValueTransformer.transform(originalInput, subscriptionSetup.getMappingAdapters(), false, true);
-                        p.getMessage().setHeaders(p.getIn().getHeaders());
-                        p.getMessage().setBody(SiriXml.toXml(incoming));
                     }
                 })
         ;

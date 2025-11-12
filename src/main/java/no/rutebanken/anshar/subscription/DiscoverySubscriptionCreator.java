@@ -2,6 +2,7 @@ package no.rutebanken.anshar.subscription;
 
 import jakarta.xml.bind.JAXBException;
 import no.rutebanken.anshar.config.DiscoverySubscription;
+import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import no.rutebanken.anshar.util.IDUtils;
@@ -36,20 +37,53 @@ public class DiscoverySubscriptionCreator {
 
     private final SubscriptionInitializer subscriptionInitializer;
 
+    private final ExtendedHazelcastService hazelcast;
+
     @Produce(SEND_DISCOVERY_REQUEST_ROUTE)
     protected ProducerTemplate discoveryRequestProducer;
 
-    public DiscoverySubscriptionCreator(SubscriptionConfig subscriptionConfig, SubscriptionInitializer subscriptionInitializer) {
+
+    public DiscoverySubscriptionCreator(SubscriptionConfig subscriptionConfig, SubscriptionInitializer subscriptionInitializer, ExtendedHazelcastService hazelcast) {
         this.subscriptionConfig = subscriptionConfig;
         this.subscriptionInitializer = subscriptionInitializer;
+        this.hazelcast = hazelcast;
     }
 
     public void createDiscoverySubscriptions() {
         logger.info("Starting subscription creation from discovery");
-        for (DiscoverySubscription stopDiscoverySubscription : subscriptionConfig.getDiscoverySubscriptions()) {
-            createSubscriptions(stopDiscoverySubscription);
+        for (DiscoverySubscription discoverySubscription : subscriptionConfig.getDiscoverySubscriptions()) {
+            if (discoverySubscription.getActive() && shouldBeStarted(discoverySubscription)) {
+                markAsInitialized(discoverySubscription);
+                createSubscriptions(discoverySubscription);
+            }
         }
         logger.info("Subscription creations from discovery completed");
+    }
+
+    private void markAsInitialized(DiscoverySubscription discoverySubscription) {
+        switch (discoverySubscription.getDiscoveryType()) {
+            case STOP_MONITORING -> {
+                hazelcast.getSMDiscoveryInitialized().add(discoverySubscription.getSubscriptionIdBase());
+            }
+            case VEHICLE_MONITORING -> {
+                hazelcast.getVMDiscoveryInitialized().add(discoverySubscription.getSubscriptionIdBase());
+            }
+        }
+    }
+
+
+    private boolean shouldBeStarted(DiscoverySubscription discoverySubscription) {
+        switch (discoverySubscription.getDiscoveryType()) {
+            case STOP_MONITORING -> {
+                return !hazelcast.getSMDiscoveryInitialized().contains(discoverySubscription.getSubscriptionIdBase());
+            }
+            case VEHICLE_MONITORING -> {
+                return !hazelcast.getVMDiscoveryInitialized().contains(discoverySubscription.getSubscriptionIdBase());
+            }
+            default -> {
+                throw new IllegalStateException("Unhandled discovery type: " + discoverySubscription.getDiscoveryType());
+            }
+        }
     }
 
     public void createSubscriptionsFromProviderResponse(Exchange e) throws XMLStreamException, JAXBException {
@@ -80,6 +114,7 @@ public class DiscoverySubscriptionCreator {
                     .collect(Collectors.toList());
         }
 
+
         if (CollectionUtils.isNotEmpty(referenceList)) {
             List<SubscriptionSetup> subscriptionsToStart = createSubscriptionsSetups(referenceList, discoveryParams);
             subscriptionConfig.getSubscriptions().addAll(subscriptionsToStart);
@@ -87,7 +122,7 @@ public class DiscoverySubscriptionCreator {
         subscriptionInitializer.createSubscriptions();
     }
 
-    private List<SubscriptionSetup> createSubscriptionsSetups(List<String> referenceList, DiscoverySubscription discoveryParams) {
+    public List<SubscriptionSetup> createSubscriptionsSetups(List<String> referenceList, DiscoverySubscription discoveryParams) {
 
         int currentNbOfMonitoredRef = 0;
         int subscriptionNb = 0;
@@ -165,6 +200,7 @@ public class DiscoverySubscriptionCreator {
         newSubscription.setUrlMap(urlMap);
         newSubscription.setCustomHeaders(discoveryParams.getCustomHeaders());
         newSubscription.setVersion("2.0");
+        newSubscription.initConsumerAdressFromParent(discoveryParams.getVendorBaseName(), discoveryParams.getSubscriptionIdBase());
         newSubscription.setContentType("text/xml;charset=UTF-8");
         newSubscription.setSubscriptionId(type + "-" + discoveryParams.getSubscriptionIdBase() + "-" + currentSubcrtiptionNb);
         newSubscription.setRequestorRef(discoveryParams.getRequestorRef());

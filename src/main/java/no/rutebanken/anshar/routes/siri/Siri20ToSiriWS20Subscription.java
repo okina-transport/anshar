@@ -83,11 +83,13 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
                 .to("direct:siri.20.to.siri.ws.20.subscription.preprocess")
                 .process(p -> {
                     logger.debug("Subscription request content:" + p.getIn().getBody());
+                    logger.info("Sending subscription request for sub:" + subscriptionSetup.getSubscriptionId());
                 })
                 .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .to(getCamelUrl(urlMap.get(RequestType.SUBSCRIBE), getTimeout()))
                 .process(p -> {
                     logger.debug("Subscription response:" + p.getIn().getBody(String.class));
+                    logger.info("Start subscription response received from sub:" + subscriptionSetup.getSubscriptionId());
                 })
                 .choice().when(simple("${in.body} != null"))
                 .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")

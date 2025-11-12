@@ -172,6 +172,14 @@ public class ExtendedHazelcastService extends HazelCastService {
         return hazelcast.getSet("anshar.sm.dataset.list");
     }
 
+    public ISet<String> getSMDiscoveryInitialized() {
+        return hazelcast.getSet("anshar.sm.discovery.intialized");
+    }
+
+    public ISet<String> getVMDiscoveryInitialized() {
+        return hazelcast.getSet("anshar.vm.discovery.intialized");
+    }
+
 
     @Bean
     public IMap<String, Set<String>> getDiscoveryStops() {
