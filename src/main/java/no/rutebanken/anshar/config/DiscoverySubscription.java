@@ -31,5 +31,8 @@ public class DiscoverySubscription implements Serializable {
     private String vendorBaseName;
     private String subscriptionIdBase;
     private Boolean validated;
+    private String version;
+    private String mappingAdapterId;
+    private Boolean active;
 
 }

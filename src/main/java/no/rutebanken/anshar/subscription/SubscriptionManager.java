@@ -19,10 +19,13 @@ package no.rutebanken.anshar.subscription;
 import com.hazelcast.map.IMap;
 import com.hazelcast.replicatedmap.ReplicatedMap;
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.data.*;
 import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
+import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
+import no.rutebanken.anshar.util.SiriUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.json.simple.JSONArray;
@@ -33,6 +36,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import uk.org.siri.siri21.Siri;
 
 import java.math.BigInteger;
 import java.time.*;
@@ -50,6 +54,8 @@ public class SubscriptionManager {
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
     private final Set<String> gtfsSubscriptions = new HashSet<>();
     private final Map<String, String> siriAPISubscriptions = new HashMap<>();
+    private Map<String, Class> mappingAdaptersById = new HashMap<>();
+
     @Autowired
     @Qualifier("getSubscriptionsMap")
     public ReplicatedMap<String, SubscriptionSetup> subscriptions;
@@ -114,6 +120,14 @@ public class SubscriptionManager {
     @Autowired
     private DatasetService datasetService;
 
+    @Autowired
+    private SubscriptionConfig subscriptionConfig;
+
+
+    public void addMappingAdapters(Map<String, Class> mappingAdaptersById) {
+        this.mappingAdaptersById.putAll(mappingAdaptersById);
+    }
+
     public void addSubscription(String subscriptionId, SubscriptionSetup setup) {
         if (setup.isActive()) {
             subscriptions.put(subscriptionId, setup);
@@ -163,6 +177,12 @@ public class SubscriptionManager {
     }
 
     public boolean touchSubscription(String subscriptionId, String monitoredRef, boolean shouldLogSuccess) {
+
+        Optional<DiscoverySubscription> discoverySubscriptionOpt = getDiscoverySubscription(subscriptionId);
+        if (discoverySubscriptionOpt.isPresent()) {
+            return touchDiscoverySubscription(discoverySubscriptionOpt.get(), monitoredRef);
+        }
+
         SubscriptionSetup setup = subscriptions.get(subscriptionId);
         hit(subscriptionId);
 
@@ -182,6 +202,25 @@ public class SubscriptionManager {
 
         // logStats();
         return success;
+    }
+
+    private boolean touchDiscoverySubscription(DiscoverySubscription discoverySubscription, String monitoredRef) {
+        Optional<SubscriptionSetup> childSubscriptionOpt = Optional.empty();
+
+        if (STOP_MONITORING.equals(discoverySubscription.getDiscoveryType())) {
+            childSubscriptionOpt = getChildSubscriptionIdFromMonitoringRefs(discoverySubscription, monitoredRef != null ? List.of(monitoredRef) : new ArrayList<>());
+
+        } else if (VEHICLE_MONITORING.equals(discoverySubscription.getDiscoveryType())) {
+            childSubscriptionOpt = getChildSubscriptionIdFromLineRefs(discoverySubscription, monitoredRef != null ? List.of(monitoredRef) : new ArrayList<>());
+        }
+
+        if (childSubscriptionOpt.isPresent()) {
+            SubscriptionSetup childSubcription = childSubscriptionOpt.get();
+            touchSubscription(childSubcription.getSubscriptionId());
+
+        }
+
+        return false;
     }
 
     /**
@@ -915,6 +954,15 @@ public class SubscriptionManager {
     public void dataReceived(String subscriptionId, int receivedByteCount, String monitoredRef, boolean shouldLogSuccess) {
 
         touchSubscription(subscriptionId, monitoredRef, shouldLogSuccess);
+
+        Optional<DiscoverySubscription> discoverySubsOpt = getDiscoverySubscription(subscriptionId);
+
+        if (discoverySubsOpt.isPresent()) {
+            dataReceivedFromDiscovery(discoverySubsOpt.get(), monitoredRef);
+            return;
+        }
+
+
         if (isActiveSubscription(subscriptionId)) {
             dataReceived.put(subscriptionId, Instant.now());
 
@@ -922,6 +970,26 @@ public class SubscriptionManager {
                 receivedBytes.set(subscriptionId,
                         receivedBytes.getOrDefault(subscriptionId, 0L) + receivedByteCount);
             }
+        }
+    }
+
+    private void dataReceivedFromDiscovery(DiscoverySubscription discoverySubscription, String monitoredRef) {
+        if (StringUtils.isEmpty(monitoredRef)) {
+            return;
+        }
+
+        Optional<SubscriptionSetup> childSubscriptionOpt = Optional.empty();
+
+        if (STOP_MONITORING.equals(discoverySubscription.getDiscoveryType())) {
+            childSubscriptionOpt = getChildSubscriptionIdFromMonitoringRefs(discoverySubscription, List.of(monitoredRef));
+
+        } else if (VEHICLE_MONITORING.equals(discoverySubscription.getDiscoveryType())) {
+            childSubscriptionOpt = getChildSubscriptionIdFromLineRefs(discoverySubscription, List.of(monitoredRef));
+        }
+
+        if (childSubscriptionOpt.isPresent()) {
+            SubscriptionSetup childSubcription = childSubscriptionOpt.get();
+            dataReceived(childSubcription.getSubscriptionId(), 0, monitoredRef);
         }
     }
 
@@ -954,5 +1022,64 @@ public class SubscriptionManager {
     public void clearAllSubscriptions() {
         subscriptions.clear();
         siriAPISubscriptions.clear();
+    }
+
+    public Optional<DiscoverySubscription> getDiscoverySubscription(String subscriptionId) {
+        return subscriptionConfig.getDiscoverySubscriptions().stream()
+                .filter(discoverySubscription -> discoverySubscription.getSubscriptionIdBase().equals(subscriptionId))
+                .findFirst();
+    }
+
+    public List<ValueAdapter> getValueAdaptersFromId(SubscriptionSetup subscriptionSetup, String mappingAdapterId) {
+        List<ValueAdapter> valueAdapters = new ArrayList<>();
+
+        if (mappingAdaptersById.containsKey(mappingAdapterId)) {
+            Class adapterClass = mappingAdaptersById.get(mappingAdapterId);
+            try {
+                valueAdapters.addAll((List<ValueAdapter>) adapterClass.getMethod("getValueAdapters", SubscriptionSetup.class).invoke(adapterClass.newInstance(), subscriptionSetup));
+
+            } catch (Exception e) {
+                throw new ServiceConfigurationError("Invalid mappingAdapterId for subscription " + subscriptionSetup, e);
+            }
+        }
+        return valueAdapters;
+    }
+
+    public Optional<SubscriptionSetup> getChildSubscriptionId(DiscoverySubscription parentDiscoverySubscription, Siri incomingSiri) {
+        if (SiriDataType.STOP_MONITORING.equals(parentDiscoverySubscription.getDiscoveryType())) {
+            List<String> monitoringRefs = SiriUtils.extractMonitoringRefs(incomingSiri);
+            return getChildSubscriptionIdFromMonitoringRefs(parentDiscoverySubscription, monitoringRefs);
+        } else if (SiriDataType.VEHICLE_MONITORING.equals(parentDiscoverySubscription.getDiscoveryType())) {
+            List<String> lineRefs = SiriUtils.extractLineRefs(incomingSiri);
+            return getChildSubscriptionIdFromLineRefs(parentDiscoverySubscription, lineRefs);
+        }
+
+        logger.warn("This discovery type is not handled : " + parentDiscoverySubscription.getDiscoveryType());
+        return Optional.empty();
+    }
+
+    public Optional<SubscriptionSetup> getChildSubscriptionIdFromMonitoringRefs(DiscoverySubscription parentDiscoverySubscription, List<String> monitoringRefs) {
+        return getAllSubscriptions(SiriDataType.STOP_MONITORING).stream()
+                .filter(subscription -> subscription.getParentSubscriptionId() != null && subscription.getParentSubscriptionId().equals(parentDiscoverySubscription.getSubscriptionIdBase())
+                        && containsMonitoringRefs(subscription, monitoringRefs))
+                .findFirst();
+
+    }
+
+    public Optional<SubscriptionSetup> getChildSubscriptionIdFromLineRefs(DiscoverySubscription parentDiscoverySubscription, List<String> lineRefs) {
+        return getAllSubscriptions(SiriDataType.VEHICLE_MONITORING).stream()
+                .filter(subscription -> subscription.getParentSubscriptionId() != null && subscription.getParentSubscriptionId().equals(parentDiscoverySubscription.getSubscriptionIdBase())
+                        && containsLineRefs(subscription, lineRefs))
+                .findFirst();
+
+    }
+
+
+    private boolean containsMonitoringRefs(SubscriptionSetup subscriptionSetup, List<String> monitoringRefs) {
+        return monitoringRefs.stream().anyMatch(subscriptionSetup.getStopMonitoringRefValues()::contains);
+    }
+
+    private boolean containsLineRefs(SubscriptionSetup subscriptionSetup, List<String> monitoringRefs) {
+        return monitoringRefs.stream().anyMatch(subscriptionSetup.getLineRefValues()::contains);
     }
 }
