@@ -321,6 +321,7 @@ public class MessagingRoute extends RestRouteBuilder {
                     .when(header(SUBSCRIPTION_MODE).isEqualTo(SubscriptionSetup.SubscriptionMode.LITE.name()))
                     .to("direct:transformSiriJsonToVM")
                 .end()
+                .to("direct:process.mapping")
                 .to("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
                 .routeId("handleSiriLiteResponse");
 
