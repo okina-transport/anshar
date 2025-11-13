@@ -43,6 +43,7 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
 
     private final CompressionProcessor compressionProcessor;
 
+
     public OutboundSiriDistributionRoute(ServerSubscriptionManager subscriptionManager, PrometheusMetricsService metrics, Utils utils, CompressionProcessor compressionProcessor) {
         this.subscriptionManager = subscriptionManager;
         this.metrics = metrics;
@@ -126,7 +127,8 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
 //                .end()
                 .removeHeader("showBody")
                 .process(compressionProcessor)
-                .toD("${header.endpoint}?maxTotalConnections=" + maxTotalConnections + "&connectionsPerRoute=" + connectionsByRoute)
+                .process(this::addParamsToEndpoint)
+                .toD("${header.endpoint}")
                 .process(e->{
                     String subsId = (String) e.getIn().getHeader("SubscriptionId");
                     subscriptionManager.clearFailTracker(subsId);
@@ -134,4 +136,13 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
                 .end();
 
     }
-}
+
+
+    private  void addParamsToEndpoint(Exchange e){
+            String originalEndpoint = (String) e.getIn().getHeader("endpoint");
+            String separator = originalEndpoint.contains("?") ? "&" : "?";
+            String newEndpoint = originalEndpoint + separator + "maxTotalConnections=" + maxTotalConnections + "&connectionsPerRoute=" + connectionsByRoute;
+            e.getIn().setHeader("endpoint",  newEndpoint);
+    }
+
+ }
