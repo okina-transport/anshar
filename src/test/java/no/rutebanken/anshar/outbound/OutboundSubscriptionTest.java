@@ -58,9 +58,10 @@ class OutboundSubscriptionTest extends SpringBootBaseTest {
     private ClientAndServer mockServer;
 
     @AfterEach
-    void stopServer() {
+    void stopServer() throws InterruptedException {
         if (mockServer != null) {
             mockServer.stop();
+            Thread.sleep(2000);
             log.info("MockServer arrêté");
         }
     }
@@ -218,7 +219,7 @@ class OutboundSubscriptionTest extends SpringBootBaseTest {
 
     @Test
     @DisplayName("Should returns “sic a quai” alerts when the subscription request is made with the parameter and the SX contains it")
-    void givenFilterEnabledAndSxContainsAlert_whenIngested_thenNotificationIncludesAlert() throws ParserConfigurationException {
+    void givenFilterEnabledAndSxContainsAlert_whenIngested_thenNotificationIncludesAlert() throws ParserConfigurationException, InterruptedException {
         mockServer = startClientAndServer(1080);
         log.info("MockServer démarré sur le port 1080");
         mockServer.when(
@@ -243,6 +244,7 @@ class OutboundSubscriptionTest extends SpringBootBaseTest {
                 .pollInterval(Durations.ONE_SECOND)
                 .pollDelay(Durations.TWO_SECONDS)
                 .until(() -> serverSubscriptionManager.getAllSubscriptions(SiriDataType.GENERAL_MESSAGE).size() == 1);
+
 
         mockServer.verify(
                 request()
