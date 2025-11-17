@@ -3,10 +3,13 @@ package no.rutebanken.anshar.XSLTests;
 import jakarta.xml.bind.JAXBException;
 import no.rutebanken.anshar.data.util.CustomSiriXml;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
+import no.rutebanken.anshar.routes.health.LivenessReadinessRoute;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import org.apache.commons.io.FileUtils;
 import org.entur.siri21.util.SiriXml;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri21.Siri;
 
 import javax.xml.stream.XMLStreamException;
@@ -27,6 +30,36 @@ public class SoapToRawTests extends SpringBootBaseTest {
 
 
     private Source xslDoc = new StreamSource("src/main/resources/xsl/siri_soap_raw.xsl");
+
+
+    @Autowired
+    private LivenessReadinessRoute livenessReadinessRoute;
+
+    @Test
+    public void testCheckStatusResponse() throws XMLStreamException, JAXBException, FileNotFoundException, TransformerException {
+
+        String body = """
+                <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                      <s:Body>
+                        <CheckStatusResponse xmlns="http://wsdl.siri.org.uk">
+                          <CheckStatusAnswerInfo xmlns="">
+                            <ResponseTimestamp xmlns="http://www.siri.org.uk/siri">2025-11-17T15:27:29.3250644Z</ResponseTimestamp>
+                            <ProducerRef xmlns="http://www.siri.org.uk/siri">qom</ProducerRef>
+                            <RequestMessageRef xmlns="http://www.siri.org.uk/siri">26c9172f-1535-491f-842c-7f82a613985c</RequestMessageRef>
+                          </CheckStatusAnswerInfo>
+                          <Answer xmlns="">
+                            <Status xmlns="http://www.siri.org.uk/siri">true</Status>
+                            <ServiceStartedTime xmlns="http://www.siri.org.uk/siri">2025-11-13T16:24:16.3597018Z</ServiceStartedTime>
+                          </Answer>
+                        </CheckStatusResponse>
+                      </s:Body>
+                    </s:Envelope>               
+                """;
+
+        boolean result = livenessReadinessRoute.isStatusOk(body);
+        Assertions.assertTrue(result);
+
+    }
 
     @Test
     public void stopPointsDiscoveryTest() throws IOException, TransformerException, JAXBException, XMLStreamException {
