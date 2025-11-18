@@ -47,9 +47,7 @@ public class DiscoverySubscriptionCreator {
     public void createDiscoverySubscriptions() {
         logger.info("Starting subscription creation from discovery");
         for (DiscoverySubscription stopDiscoverySubscription : subscriptionConfig.getDiscoverySubscriptions()) {
-            if (stopDiscoverySubscription.getActive()) {
-                createSubscriptions(stopDiscoverySubscription);
-            }
+            createSubscriptions(stopDiscoverySubscription);
         }
         logger.info("Subscription creations from discovery completed");
     }
@@ -89,7 +87,7 @@ public class DiscoverySubscriptionCreator {
         subscriptionInitializer.createSubscriptions();
     }
 
-    public List<SubscriptionSetup> createSubscriptionsSetups(List<String> referenceList, DiscoverySubscription discoveryParams) {
+    private List<SubscriptionSetup> createSubscriptionsSetups(List<String> referenceList, DiscoverySubscription discoveryParams) {
 
         int currentNbOfMonitoredRef = 0;
         int subscriptionNb = 0;
@@ -167,7 +165,6 @@ public class DiscoverySubscriptionCreator {
         newSubscription.setUrlMap(urlMap);
         newSubscription.setCustomHeaders(discoveryParams.getCustomHeaders());
         newSubscription.setVersion("2.0");
-        newSubscription.initConsumerAdressFromParent(discoveryParams.getVendorBaseName(), discoveryParams.getSubscriptionIdBase());
         newSubscription.setContentType("text/xml;charset=UTF-8");
         newSubscription.setSubscriptionId(type + "-" + discoveryParams.getSubscriptionIdBase() + "-" + currentSubcrtiptionNb);
         newSubscription.setRequestorRef(discoveryParams.getRequestorRef());

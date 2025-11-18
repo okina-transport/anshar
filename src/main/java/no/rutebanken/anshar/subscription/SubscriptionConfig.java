@@ -278,7 +278,6 @@ public class SubscriptionConfig {
                 existingSubscription.setDurationOfSubscriptionHours(incomingSubscription.getDurationOfSubscriptionHours());
                 existingSubscription.setVendorBaseName(incomingSubscription.getVendorBaseName());
                 existingSubscription.setSubscriptionIdBase(incomingSubscription.getSubscriptionIdBase());
-                existingSubscription.setActive(incomingSubscription.getActive());
             }
         }
     }

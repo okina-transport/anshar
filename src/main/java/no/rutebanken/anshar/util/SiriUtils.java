@@ -157,22 +157,6 @@ public class SiriUtils {
         return stopVisits;
     }
 
-    public static List<String> extractMonitoringRefs(Siri siri) {
-        List<String> results = new ArrayList<>();
-        List<MonitoredStopVisit> stopVisits = extractStopVisits(siri);
-        if (CollectionUtils.isEmpty(stopVisits)) {
-            return results;
-        }
-
-        for (MonitoredStopVisit stopVisit : stopVisits) {
-            if (stopVisit.getMonitoringRef() != null) {
-                results.add(stopVisit.getMonitoringRef().getValue());
-            }
-        }
-        return results;
-    }
-
-
     public static List<VehicleActivityStructure> extractVehicleActivities(Siri siri) {
         List<VehicleActivityStructure> vehicleActivities = new ArrayList<>();
 
@@ -188,21 +172,6 @@ public class SiriUtils {
             vehicleActivities.addAll(vehicleDeliveryStruct.getVehicleActivities());
         }
         return vehicleActivities;
-    }
-
-    public static List<String> extractLineRefs(Siri siri) {
-        List<String> results = new ArrayList<>();
-        List<VehicleActivityStructure> activities = extractVehicleActivities(siri);
-        if (CollectionUtils.isEmpty(activities)) {
-            return results;
-        }
-
-        for (VehicleActivityStructure vehicleActivity : activities) {
-            if (vehicleActivity.getMonitoredVehicleJourney().getLineRef() != null) {
-                results.add(vehicleActivity.getMonitoredVehicleJourney().getLineRef().getValue());
-            }
-        }
-        return results;
     }
 
     public static Siri filterStopMonitoringOnPreviewInterval(Siri delivery, OutboundSubscriptionSetup outboundSubscriptionSetup) {

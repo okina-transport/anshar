@@ -35,7 +35,7 @@ public class SubscriptionDtoToDiscoverySubscriptionConverter implements Converte
             log.warn("Subscription is not a discovery subscription, discard it: {}", source);
         } else {
             Optional<UrlMapDto> discoveryUrl = isDiscoveryUrlDefined(source);
-            if (discoveryUrl.isPresent()) {
+            if (discoveryUrl.isPresent()){
                 target = new DiscoverySubscription();
                 target.setDatasetId(source.getDatasetId());
                 target.setUrl(discoveryUrl.get().getUrl());
@@ -55,9 +55,6 @@ public class SubscriptionDtoToDiscoverySubscriptionConverter implements Converte
                 target.setSubscriptionIdBase(source.getSubscriptionId());
                 target.setValidated(BooleanUtils.isTrue(source.getValidated()));
                 target.setServiceType(SubscriptionSetup.ServiceType.valueOf(source.getServiceType()));
-                target.setVersion(source.getVersion());
-                target.setMappingAdapterId(source.getMappingAdapterId());
-                target.setActive(BooleanUtils.isTrue(source.getActive()));
             } else {
                 log.warn("Subscription has no discovery url defined, discard it: {}", source);
             }
@@ -67,13 +64,13 @@ public class SubscriptionDtoToDiscoverySubscriptionConverter implements Converte
     }
 
     private Optional<UrlMapDto> isDiscoveryUrlDefined(SubscriptionDto source) {
-        Optional<UrlMapDto> discoveryUrl = Optional.empty();
-        if (CollectionUtils.isNotEmpty(source.getUrlMaps())) {
-            discoveryUrl = source.getUrlMaps()
-                    .stream()
-                    .filter(urlMapDto -> urlMapDto.getName() == RequestType.SUBSCRIBE)
-                    .findFirst();
-        }
+       Optional<UrlMapDto> discoveryUrl = Optional.empty();
+       if (CollectionUtils.isNotEmpty(source.getUrlMaps())) {
+           discoveryUrl = source.getUrlMaps()
+                   .stream()
+                   .filter(urlMapDto -> urlMapDto.getName() == RequestType.SUBSCRIBE)
+                   .findFirst();
+       }
         return discoveryUrl;
     }
 
