@@ -199,6 +199,7 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
         String subscriptionId = subscriptionSetup.getSubscriptionId();
 
         if (subscriptionManager.isForceRestart(subscriptionId)) {
+            log.debug("Should be cancelled because force restart : " + subscriptionId);
             // If restart is triggered - ignore all other checks
             return true;
         }
@@ -210,11 +211,21 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
 
 
         if (subscriptionManager.shouldTryRestart(subscriptionId) && subscriptionManager.isRestartTimePassed(subscriptionId)) {
+            log.debug("Should be cancelled because restart time : " + subscriptionId);
             return true;
         }
 
         boolean isActive = subscriptionManager.isActiveSubscription(subscriptionId);
         boolean isHealthy = subscriptionManager.isSubscriptionHealthy(subscriptionId);
+
+        if (hasBeenStarted & !isActive) {
+            log.debug("Should be cancelled because inactive : " + subscriptionId);
+        }
+
+        if (hasBeenStarted & isActive & !isHealthy) {
+            log.debug("Should be cancelled because unhealthy : " + subscriptionId);
+        }
+
 
         return (hasBeenStarted & !isActive) || (hasBeenStarted & isActive & !isHealthy);
     }
