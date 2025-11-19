@@ -1,6 +1,7 @@
 package no.rutebanken.anshar.mapping;
 
 
+import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.routes.mapping.StopPlaceRegisterMappingFetcher;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import org.apache.commons.lang3.tuple.Pair;
@@ -21,10 +22,13 @@ import static org.mockito.Mockito.when;
 public class StopPlaceUpdaterServiceTest {
 
     @Mock
-    StopPlaceRegisterMappingFetcher  stopPlaceRegisterMappingFetcher;
+    StopPlaceRegisterMappingFetcher stopPlaceRegisterMappingFetcher;
 
     @InjectMocks
     private StopPlaceUpdaterService tested;
+
+    @Mock
+    private AnsharConfiguration ansharConfiguration;
 
     @Test
     public void test_whenUpdatingIdMappingMultipleTimes_thenDoNotDuplicateIds() {
