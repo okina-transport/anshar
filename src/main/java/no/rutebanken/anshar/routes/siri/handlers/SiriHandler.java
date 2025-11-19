@@ -53,6 +53,7 @@ import uk.org.siri.siri21.*;
 import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -154,6 +155,9 @@ public class SiriHandler {
 
     @Autowired
     StopPlaceUpdaterService stopPlaceUpdaterService;
+
+    @Autowired
+    AnsharConfiguration ansharConfiguration;
 
     public static OutboundIdMappingPolicy getIdMappingPolicy(String useOriginalId, String altId) {
         OutboundIdMappingPolicy outboundIdMappingPolicy = OutboundIdMappingPolicy.DEFAULT;
@@ -284,6 +288,10 @@ public class SiriHandler {
         Siri results;
         if (incoming.getSubscriptionRequest() != null) {
             logger.info("Handling subscriptionrequest with ID-policy {}.", outboundIdMappingPolicy);
+
+            if (!ansharConfiguration.isInitialized()) {
+                return generateServerIsIntializingError(incoming);
+            }
 
             results = serverSubscriptionManager.handleMultipleSubscriptionsRequest(incoming, incomingSiriParameters);
 
@@ -464,6 +472,93 @@ public class SiriHandler {
         }
         return null;
     }
+
+    private Siri generateServerIsIntializingError(Siri incoming) {
+
+
+        Siri errorResponse = new Siri();
+        SubscriptionResponseStructure subscriptionResponse = new SubscriptionResponseStructure();
+        ResponseStatus respStatus = new ResponseStatus();
+        respStatus.setStatus(false);
+        ServiceDeliveryErrorConditionElement errorConditionElement = new ServiceDeliveryErrorConditionElement();
+        ServiceNotAvailableErrorStructure serviceNotAvailableError = new ServiceNotAvailableErrorStructure();
+        serviceNotAvailableError.setErrorText("Server is initializing");
+        errorConditionElement.setServiceNotAvailableError(serviceNotAvailableError);
+        respStatus.setErrorCondition(errorConditionElement);
+        subscriptionResponse.getResponseStatuses().add(respStatus);
+        subscriptionResponse.setResponseTimestamp(ZonedDateTime.now());
+
+
+        String msgId = getMsgIdentifier(incoming);
+        MessageRefStructure msgStructure = new MessageRefStructure();
+        msgStructure.setValue(msgId);
+        subscriptionResponse.setRequestMessageRef(msgStructure);
+
+        errorResponse.setSubscriptionResponse(subscriptionResponse);
+
+
+        return errorResponse;
+    }
+
+    private String getMsgIdentifier(Siri incoming) {
+        if (incoming.getSubscriptionRequest() == null) {
+            return null;
+        }
+        List<String> messageIds = new ArrayList<>();
+        SubscriptionRequest subscriptionRequest = incoming.getSubscriptionRequest();
+
+        if (!subscriptionRequest.getStopMonitoringSubscriptionRequests().isEmpty()) {
+            for (StopMonitoringSubscriptionStructure stopMonitoringSubscriptionRequest : incoming.getSubscriptionRequest().getStopMonitoringSubscriptionRequests()) {
+                if (stopMonitoringSubscriptionRequest.getStopMonitoringRequest().getMessageIdentifier() != null) {
+                    messageIds.add(stopMonitoringSubscriptionRequest.getStopMonitoringRequest().getMessageIdentifier().getValue());
+                }
+            }
+        }
+
+        if (!subscriptionRequest.getVehicleMonitoringSubscriptionRequests().isEmpty()) {
+            for (VehicleMonitoringSubscriptionStructure vehicleMonitoringSubscriptionRequest : subscriptionRequest.getVehicleMonitoringSubscriptionRequests()) {
+                if (vehicleMonitoringSubscriptionRequest.getVehicleMonitoringRequest().getMessageIdentifier() != null) {
+                    messageIds.add(vehicleMonitoringSubscriptionRequest.getVehicleMonitoringRequest().getMessageIdentifier().getValue());
+                }
+            }
+        }
+
+        if (!subscriptionRequest.getEstimatedTimetableSubscriptionRequests().isEmpty()) {
+            for (EstimatedTimetableSubscriptionStructure estimatedTimetableSubscriptionRequest : subscriptionRequest.getEstimatedTimetableSubscriptionRequests()) {
+                if (estimatedTimetableSubscriptionRequest.getEstimatedTimetableRequest().getMessageIdentifier() != null) {
+                    messageIds.add(estimatedTimetableSubscriptionRequest.getEstimatedTimetableRequest().getMessageIdentifier().getValue());
+                }
+            }
+        }
+
+        if (!subscriptionRequest.getSituationExchangeSubscriptionRequests().isEmpty()) {
+            for (SituationExchangeSubscriptionStructure situationExchangeSubscriptionRequest : subscriptionRequest.getSituationExchangeSubscriptionRequests()) {
+                if (situationExchangeSubscriptionRequest.getSituationExchangeRequest().getMessageIdentifier() != null) {
+                    messageIds.add(situationExchangeSubscriptionRequest.getSituationExchangeRequest().getMessageIdentifier().getValue());
+                }
+            }
+        }
+
+        if (!subscriptionRequest.getFacilityMonitoringSubscriptionRequests().isEmpty()) {
+            for (FacilityMonitoringSubscriptionStructure facilityMonitoringSubscriptionRequest : subscriptionRequest.getFacilityMonitoringSubscriptionRequests()) {
+                if (facilityMonitoringSubscriptionRequest.getFacilityMonitoringRequest().getMessageIdentifier() != null) {
+                    messageIds.add(facilityMonitoringSubscriptionRequest.getFacilityMonitoringRequest().getMessageIdentifier().getValue());
+                }
+            }
+        }
+
+        if (!subscriptionRequest.getGeneralMessageSubscriptionRequests().isEmpty()) {
+            for (GeneralMessageSubscriptionStructure generalMessageSubscriptionRequest : subscriptionRequest.getGeneralMessageSubscriptionRequests()) {
+                if (generalMessageSubscriptionRequest.getGeneralMessageRequest().getMessageIdentifier() != null) {
+                    messageIds.add(generalMessageSubscriptionRequest.getGeneralMessageRequest().getMessageIdentifier().getValue());
+                }
+            }
+        }
+
+
+        return String.join(",", messageIds);
+    }
+
 
     /**
      * Valide les références d'arrêt (stopRef) en fonction d'un nouvel algorithme.

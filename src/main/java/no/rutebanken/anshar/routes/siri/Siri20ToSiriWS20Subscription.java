@@ -64,6 +64,17 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
 
         String endpointUrl = urlMap.get(RequestType.SUBSCRIBE);
 
+
+        onException(Exception.class)
+                .handled(true)
+                .process(exchange -> {
+                    String routeId = exchange.getFromRouteId();
+                    String errorMsg = "Error in route [" + routeId + "] : " + exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Exception.class).getMessage();
+                    exchange.getIn().setBody(errorMsg);
+                })
+                .log("Exception handled in route: ${exchange.fromRouteId}");
+
+
         //Start subscription
         from("direct:" + subscriptionSetup.getStartSubscriptionRouteName())
                 .log("Starting subscription " + subscriptionSetup.toString())

@@ -55,6 +55,15 @@ public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
     @Override
     public void configure() throws Exception {
 
+        onException(Exception.class)
+                .handled(true)
+                .process(exchange -> {
+                    String routeId = exchange.getFromRouteId();
+                    String errorMsg = "Error in route [" + routeId + "] : " + exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Exception.class).getMessage();
+                    exchange.getIn().setBody(errorMsg);
+                })
+                .log("Exception handled in route: ${exchange.fromRouteId}");
+
         Map<RequestType, String> urlMap = subscriptionSetup.getUrlMap();
         SiriRequestFactory helper = new SiriRequestFactory(subscriptionSetup);
 

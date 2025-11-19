@@ -424,9 +424,9 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
 
     }
 
-    private boolean isStatusOk(String body) throws XMLStreamException, JAXBException, FileNotFoundException, TransformerException {
+    public boolean isStatusOk(String body) throws XMLStreamException, JAXBException, FileNotFoundException, TransformerException {
         try {
-            if (body.contains("<soapenv:Body>") || body.contains("<soap:")) {
+            if (body.contains("<soapenv:Body>") || body.contains("<soap:") || body.contains("http://schemas.xmlsoap.org/soap/envelope/")) {
                 body = CustomSiriXml.soapToRaw(body);
             }
             InputStream inputStream = new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8));

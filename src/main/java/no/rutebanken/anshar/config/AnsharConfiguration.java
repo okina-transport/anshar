@@ -127,6 +127,8 @@ public class AnsharConfiguration {
     @Value("${anshar.automaticConsistencyReports.cron:0+0+9,17+*+*+?}")
     private String automaticConsistencyReportsCron;
 
+    private boolean isInitialized = false;
+
     @Bean
     public SchedulerFactoryBeanCustomizer schedulerDelayCustomizer() {
         return schedulerFactoryBean -> schedulerFactoryBean.setStartupDelay(15);

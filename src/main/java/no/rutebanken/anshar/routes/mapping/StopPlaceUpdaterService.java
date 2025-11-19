@@ -16,6 +16,7 @@
 package no.rutebanken.anshar.routes.mapping;
 
 import lombok.Getter;
+import no.rutebanken.anshar.config.AnsharConfiguration;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,6 +63,9 @@ public class StopPlaceUpdaterService {
 
     @Value("${anshar.mapping.stopplaces.update.frequency.min:60}")
     private int updateFrequency = 60;
+
+    @Autowired
+    AnsharConfiguration ansharConfiguration;
 
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
@@ -145,7 +149,7 @@ public class StopPlaceUpdaterService {
     }
 
     /**
-     * @param id stop identifier
+     * @param id        stop identifier
      * @param datasetId stop dataset id
      * @return true, if provided id can be reverted to producer id
      */
@@ -203,6 +207,9 @@ public class StopPlaceUpdaterService {
             }
             logger.info("Updated known datasets. Found {} unique dataset IDs.", knownDatasetIds.size());
         }
+
+        ansharConfiguration.setInitialized(true);
+
     }
 
     private void updateStopPlaceMapping(String mappingUrl) {

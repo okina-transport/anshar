@@ -253,7 +253,6 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                     // Invalid subscription
                     .log("Ignoring incoming delivery for invalid subscription")
                     .removeHeaders("*")
-                    .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("403")) //403 Forbidden
                     .setBody(constant("Subscription is not valid"))
                 .endChoice()
                 .routeId("process.incoming")
