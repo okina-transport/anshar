@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -63,8 +64,10 @@ class TripUpdateMapperTest {
 
         List<String> routeIdList = Arrays.asList("".split(","));
 
-        EstimatedVehicleJourney vehicleJourney = tripUpdateMapper.mapVehicleJourneyFromTripUpdate(tripBuilder.build(), "", routeIdList);
+        EstimatedVehicleJourney vehicleJourney = tripUpdateMapper.mapVehicleJourneyFromTripUpdate(tripBuilder.build(), "", routeIdList, PublishedLineNameMapping.LINE_NAME);
         assertThat(vehicleJourney).isNotNull();
+        assertThat(vehicleJourney.getDestinationRef()).isNotNull();
+        assertEquals(1, vehicleJourney.getDestinationNames().size());
 
     }
 

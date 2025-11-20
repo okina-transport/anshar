@@ -323,7 +323,7 @@ public class TripUpdateMapper {
      * @return An {@link EstimatedVehicleJourney} object representing the structured journey data,
      * or {@code null} if the route ID is not in the provided list.
      */
-    public EstimatedVehicleJourney mapVehicleJourneyFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate, String datasetId, List<String> routeIdList) {
+    public EstimatedVehicleJourney mapVehicleJourneyFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate, String datasetId, List<String> routeIdList, PublishedLineNameMapping publishedLineNameMapping) {
         GtfsRealtime.TripDescriptor tripDescriptor = tripUpdate.getTrip();
         if (!routeIdList.isEmpty()) {
             String routeIdInCache = "";
@@ -340,7 +340,8 @@ public class TripUpdateMapper {
 
         EstimatedVehicleJourney journey = new EstimatedVehicleJourney();
         DatedVehicleJourneyRef datedVehicleJourneyRef = new DatedVehicleJourneyRef();
-        datedVehicleJourneyRef.setValue(CustomStringUtils.removeSpecialCharacters(tripDescriptor.getTripId()));
+        String tripId = tripDescriptor.getTripId();
+        datedVehicleJourneyRef.setValue(CustomStringUtils.removeSpecialCharacters(tripId));
         journey.setDatedVehicleJourneyRef(datedVehicleJourneyRef);
 
         FramedVehicleJourneyRefStructure vehicleJourneyRef = createVehicleJourneyRef(tripUpdate);
@@ -351,6 +352,21 @@ public class TripUpdateMapper {
             LineRef lineRef = new LineRef();
             lineRef.setValue(tripDescriptor.getRouteId());
             journey.setLineRef(lineRef);
+
+            // publishedLineNames is filled by line name in MonitoredStopVisits
+            // we only fill it with line number when mapping is by line number
+            if (PublishedLineNameMapping.LINE_NUMBER.equals(publishedLineNameMapping)) {
+                String lineId = lineRef.getValue();
+                Optional<IdProcessingParameters> ipp = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.LINE);
+                if (ipp.isPresent()) {
+                    lineId = ipp.get().applyTransformationToString(lineId);
+                }
+                lineUpdaterService.getLineNumber(lineId).ifPresent(lineNumber -> {
+                    NaturalLanguageStringStructure nlss = new NaturalLanguageStringStructure();
+                    nlss.setValue(lineNumber);
+                    journey.getPublishedLineNames().add(nlss);
+                });
+            }
         }
 
         GtfsRealtime.VehicleDescriptor vehicleDescriptor = tripUpdate.getVehicle();
@@ -365,17 +381,33 @@ public class TripUpdateMapper {
 
         EstimatedVehicleJourney.EstimatedCalls estimatedCalls = new EstimatedVehicleJourney.EstimatedCalls();
 
+        DestinationRef destinationRef = createDestinationRef(datasetId, tripId);
+        journey.setDestinationRef(destinationRef);
+        NaturalLanguageStringStructure destinationName = createDestinationName(destinationRef, datasetId);
+        journey.getDestinationNames().add(destinationName);
+
+
+        if (tripUpdate.getTrip() != null && tripUpdate.getTrip().hasDirectionId()) {
+            NaturalLanguageStringStructure directionName = new NaturalLanguageStringStructure();
+            directionName.setValue(tripUpdate.getTrip().getDirectionId() == 0 ? "A" : "R");
+            journey.getDirectionNames().add(directionName);
+        } else {
+            stopTimesService.getDirectionId(datasetId, tripId).ifPresent(directionId -> {
+                NaturalLanguageStringStructure directionName = new NaturalLanguageStringStructure();
+                directionName.setValue(directionId);
+                journey.getDirectionNames().add(directionName);
+            });
+        }
+
+
         for (GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate : tripUpdate.getStopTimeUpdateList()) {
 
             if (stopTimeUpdate.hasScheduleRelationship() && stopTimeUpdate.getScheduleRelationship() == GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SKIPPED) {
                 continue;
             }
 
-            String stopId = getStopId(stopTimeUpdate, datasetId, tripDescriptor.getTripId());
-            Optional<StopTimesService.StopTimeCacheEntry> cacheEntry =
-                    stopTimesService.findStopTimeCacheEntryByDatasetIdAndTripIdAndStopId(datasetId,
-                            tripDescriptor.getTripId(),
-                            stopId);
+            String stopId = getStopId(stopTimeUpdate, datasetId, tripId);
+            Optional<StopTimesService.StopTimeCacheEntry> cacheEntry = stopTimesService.findStopTimeCacheEntryByDatasetIdAndTripIdAndStopId(datasetId, tripId, stopId);
             Optional<ZonedDateTime> aimedArrivalTime = cacheEntry.isPresent() ? DateUtils.convertGtfsTimeToZonedDateTime(cacheEntry.get().getArrivalTime()) : Optional.empty();
             Optional<ZonedDateTime> aimedDepartureTime = cacheEntry.isPresent() ? DateUtils.convertGtfsTimeToZonedDateTime(cacheEntry.get().getDepartureTime()) : aimedArrivalTime;
             EstimatedCall estimatedCall = mapEstimatedCallFromTripUpdate(stopTimeUpdate, aimedArrivalTime.orElse(null),

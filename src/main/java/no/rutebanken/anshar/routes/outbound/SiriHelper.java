@@ -422,6 +422,10 @@ public class SiriHelper {
     }
 
     public List<Siri> splitDeliveries(Siri payload, int maximumSizePerDelivery) {
+        return splitDeliveries(payload, maximumSizePerDelivery, null);
+    }
+
+    public List<Siri> splitDeliveries(Siri payload, int maximumSizePerDelivery, String subscriptionRef) {
 
         List<Siri> siriList = new ArrayList<>();
 
@@ -465,7 +469,7 @@ public class SiriHelper {
             List<List> etList = splitList(timetables, maximumSizePerDelivery);
 
             for (List<EstimatedVehicleJourney> list : etList) {
-                siriList.add(siriObjectFactory.createETServiceDelivery(list, payload.getServiceDelivery().getProducerRef().getValue(), payload.getServiceDelivery().getRequestMessageRef() != null ? payload.getServiceDelivery().getRequestMessageRef().getValue() : null));
+                siriList.add(siriObjectFactory.createETServiceDelivery(list, subscriptionRef, payload.getServiceDelivery().getRequestMessageRef() != null ? payload.getServiceDelivery().getRequestMessageRef().getValue() : null));
             }
 
         } else if (containsValues(payload.getServiceDelivery().getStopMonitoringDeliveries())) {
