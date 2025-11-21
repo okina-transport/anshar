@@ -123,6 +123,8 @@ public class SubscriptionInitializer implements CamelContextAware {
             mappingAdaptersById.put(annotation.id(), mappingAdapterClass);
         }
 
+        subscriptionManager.addMappingAdapters(mappingAdaptersById);
+
         logger.info("Initializing subscriptions for environment: {}", configuration.getEnvironment());
 
         if (subscriptionConfig != null) {

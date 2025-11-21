@@ -23,6 +23,7 @@ import no.rutebanken.anshar.subscription.helpers.DataNotReceivedAction;
 import no.rutebanken.anshar.subscription.helpers.FilterMapPresets;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import no.rutebanken.anshar.subscription.helpers.SubscriptionPreset;
+import org.apache.commons.lang3.StringUtils;
 import org.json.simple.JSONObject;
 
 import java.io.Serializable;
@@ -149,6 +150,13 @@ public class SubscriptionSetup implements Serializable {
     @Getter
     @Setter
     private ZonedDateTime startedAt;
+    @Getter
+    @Setter
+    private String consumerAddress;
+    @Getter
+    @Setter
+    private String parentSubscriptionId;
+
 
     public SubscriptionSetup() {
     }
@@ -192,8 +200,13 @@ public class SubscriptionSetup implements Serializable {
         this.startedAt = startedAt;
     }
 
+    public void initConsumerAdressFromParent(String parentVendor, String parentSubscriptionId) {
+        this.parentSubscriptionId = parentSubscriptionId;
+        this.consumerAddress = MessageFormat.format("/{0}/{1}/{2}/{3}", sanitizeVersion(version), serviceType == ServiceType.REST ? "rs" : "ws", parentVendor, parentSubscriptionId);
+    }
+
     public String buildUrl() {
-        return buildUrl(true);
+        return StringUtils.isEmpty(consumerAddress) ? buildUrl(true) : address + consumerAddress;
     }
 
     public String buildUrl(boolean includeServerAddress) {

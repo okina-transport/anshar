@@ -218,15 +218,13 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
         boolean isActive = subscriptionManager.isActiveSubscription(subscriptionId);
         boolean isHealthy = subscriptionManager.isSubscriptionHealthy(subscriptionId);
 
-        if (hasBeenStarted & !isActive) {
+        if (hasBeenStarted && !isActive) {
             log.debug("Should be cancelled because inactive : " + subscriptionId);
         }
 
-        if (hasBeenStarted & isActive & !isHealthy) {
+        if (hasBeenStarted && isActive && !isHealthy) {
             log.debug("Should be cancelled because unhealthy : " + subscriptionId);
         }
-
-
         return (hasBeenStarted & !isActive) || (hasBeenStarted & isActive & !isHealthy);
     }
 }

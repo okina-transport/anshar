@@ -77,9 +77,9 @@ public class IshtarSynchronizeProcessor implements Processor {
 
     @Override
     public void process(Exchange exchange) throws Exception {
+        getIdProcessingParameters();
         getGtfsRTData();
         getSiriAPIData();
-        getIdProcessingParameters();
         getSubscriptions();
     }
 

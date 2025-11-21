@@ -112,6 +112,16 @@ public class SubscriptionConfig {
                 idProcessingParameters.add(incomingParam);
             }
         }
+        idProcessingParameters.removeIf(cachedParam ->
+                !isPresentInIncoming(cachedParam, incomingParams)
+        );
+    }
+
+    private boolean isPresentInIncoming(IdProcessingParameters cachedParam, List<IdProcessingParameters> incomingParams) {
+        return incomingParams.stream().anyMatch(incoming ->
+                incoming.getDatasetId().equals(cachedParam.getDatasetId()) &&
+                        incoming.getObjectType().equals(cachedParam.getObjectType())
+        );
     }
 
     private Optional<IdProcessingParameters> getExistingIdProc(IdProcessingParameters incomingParam) {
@@ -278,6 +288,7 @@ public class SubscriptionConfig {
                 existingSubscription.setDurationOfSubscriptionHours(incomingSubscription.getDurationOfSubscriptionHours());
                 existingSubscription.setVendorBaseName(incomingSubscription.getVendorBaseName());
                 existingSubscription.setSubscriptionIdBase(incomingSubscription.getSubscriptionIdBase());
+                existingSubscription.setActive(incomingSubscription.getActive());
             }
         }
     }

@@ -19,6 +19,7 @@ import com.sun.xml.bind.marshaller.NamespacePrefixMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.xml.bind.UnmarshalException;
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.data.util.CustomSiriXml;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
@@ -54,6 +55,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import static no.rutebanken.anshar.routes.BaseRouteBuilder.getRequestUrl;
@@ -112,6 +114,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
     private AnsharConfiguration configuration;
     @Value("${default.use.original.id:false}")
     private boolean defaultUseOriginalId;
+
 
     // @formatter:off
     @Override
@@ -737,6 +740,12 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
         if (subscriptionId == null || subscriptionId.isEmpty()) {
             return null;
         }
+
+        Optional<DiscoverySubscription> discoverySubscriptionOpt = subscriptionManager.getDiscoverySubscription(subscriptionId);
+        if (discoverySubscriptionOpt.isPresent()) {
+            return discoverySubscriptionOpt.get().getDiscoveryType().name();
+        }
+
         SubscriptionSetup subscriptionSetup = subscriptionManager.get(subscriptionId);
 
         if (subscriptionSetup == null) {
@@ -751,6 +760,25 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
             return false;
         }
 
+
+        Optional<DiscoverySubscription> discoverySubscriptionOpt = subscriptionManager.getDiscoverySubscription(subscriptionId);
+        if (discoverySubscriptionOpt.isPresent()) {
+            DiscoverySubscription discoverySub = discoverySubscriptionOpt.get();
+
+            if (!"2.0".equals(discoverySub.getVersion())) {
+                e.getMessage().setHeader(TRANSFORM_VERSION, TRANSFORM_VERSION);
+            }
+
+            if (discoverySub.getServiceType() == SubscriptionSetup.ServiceType.SOAP) {
+                e.getMessage().setHeader(TRANSFORM_SOAP, TRANSFORM_SOAP);
+            }
+
+            e.getMessage().setHeaders(e.getIn().getHeaders());
+            e.getMessage().setBody(e.getIn().getBody());
+
+            return true;
+        }
+
         SubscriptionSetup subscriptionSetup = subscriptionManager.get(subscriptionId);
 
 
@@ -758,26 +786,20 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
             return false;
         }
 
-        boolean existsAndIsActive = (subscriptionManager.isSubscriptionRegistered(subscriptionId) &&
-                subscriptionSetup.isActive());
+        e.getMessage().setHeaders(e.getIn().getHeaders());
+        e.getMessage().setBody(e.getIn().getBody());
 
 
-
-        if (existsAndIsActive) {
-            e.getOut().setHeaders(e.getIn().getHeaders());
-            e.getOut().setBody(e.getIn().getBody());
-
-
-            if (!"2.0".equals(subscriptionSetup.getVersion())) {
-                e.getOut().setHeader(TRANSFORM_VERSION, TRANSFORM_VERSION);
-            }
-
-
-            if (subscriptionSetup.getServiceType() == SubscriptionSetup.ServiceType.SOAP) {
-                e.getOut().setHeader(TRANSFORM_SOAP, TRANSFORM_SOAP);
-            }
+        if (!"2.0".equals(subscriptionSetup.getVersion())) {
+           e.getMessage().setHeader(TRANSFORM_VERSION, TRANSFORM_VERSION);
         }
 
-        return existsAndIsActive;
+        if (subscriptionSetup.getServiceType() == SubscriptionSetup.ServiceType.SOAP) {
+           e.getMessage().setHeader(TRANSFORM_SOAP, TRANSFORM_SOAP);
+        }
+
+        return true;
     }
+
+
 }
