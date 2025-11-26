@@ -51,7 +51,7 @@ public class SubscriptionStatusChecker extends RouteBuilder {
 
     private void checkSubscriptionStatuses() {
         Map<String, SubscriptionSetup> filteredSubscriptions = subscriptions.entrySet().stream()
-                .filter(entry -> !"GTFS-RT".equals(entry.getValue().getContentType()))
+                .filter(entry -> !"GTFS-RT".equals(entry.getValue().getContentType()) && !SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE.equals(entry.getValue().getSubscriptionMode()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
         Map<Collection<String>, SubscriptionSetup> uniqueUrls = filteredSubscriptions.values().stream()

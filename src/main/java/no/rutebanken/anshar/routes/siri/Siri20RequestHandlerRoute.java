@@ -570,7 +570,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .setHeader(Exchange.HTTP_METHOD, constant(org.apache.camel.component.http.HttpMethods.POST))
                 .process(addRequestResponseSubscriptionUrlHeader)
                 .process(addCustomHeaders)
-                .bean(SiriObjectFactory.class, "createSubscriptionRequest")
+                .bean(SiriObjectFactory.class, "createServiceRequest")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
                 .end();
 
@@ -598,7 +598,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                     e.getIn().setHeader("SOAPAction", getSoapAction(e.getIn().getBody(SubscriptionSetup.class)));
                 })
                 .setHeader("operatorNamespace", simple("${body.operatorNamespace}")) // Need to make SOAP request with endpoint specific element namespace
-                .bean(SiriObjectFactory.class, "createSubscriptionRequest")
+                .bean(SiriObjectFactory.class, "createServiceRequest")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
                 .to("xslt-saxon:xsl/siri_20_14.xsl") // Convert SIRI raw request to SOAP version
                 .to("xslt-saxon:xsl/siri_raw_soap.xsl") // Convert SIRI raw request to SOAP version
@@ -633,7 +633,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 })
                 .setHeader(ENDPOINT_URL_HEADER, header(SUBSCRIPTION_URL_HEADER)) // Need to make SOAP request with endpoint specific element namespace
                 .setHeader("operatorNamespace", simple("${body.operatorNamespace}")) // Need to make SOAP request with endpoint specific element namespace
-                .bean(SiriObjectFactory.class, "createSubscriptionRequest")
+                .bean(SiriObjectFactory.class, "createServiceRequest")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
                 .process(e -> log.debug("========> Request Before transformed to soap siri : {}",e.getIn().getBody(String.class)))
                 .to("xslt-saxon:xsl/siri_raw_soap.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Convert SIRI raw request to SOAP version
