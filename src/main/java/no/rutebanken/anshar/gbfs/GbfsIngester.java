@@ -19,17 +19,20 @@ public class GbfsIngester {
     private final FacilityMonitoringInbound facilityMonitoringInbound;
     private final HealthManager healthManager;
     private final StationStatusToSiriFmMapper mapper;
+    private final GBFSConfiguration gbfsConfiguration;
 
-    public GbfsIngester(FacilityMonitoringInbound facilityMonitoringInbound, HealthManager healthManager, StationStatusToSiriFmMapper mapper) {
+    public GbfsIngester(FacilityMonitoringInbound facilityMonitoringInbound, HealthManager healthManager, StationStatusToSiriFmMapper mapper,
+                        GBFSConfiguration gbfsConfiguration) {
         this.facilityMonitoringInbound = facilityMonitoringInbound;
         this.healthManager = healthManager;
         this.mapper = mapper;
+        this.gbfsConfiguration = gbfsConfiguration;
     }
 
-    public void ingest(GBFSStationStatus stationStatus, String datasetId) {
+    public void ingest(GBFSStationStatus stationStatus) {
         List<FacilityConditionStructure> fcss = mapper.map(stationStatus);
         if (CollectionUtils.isEmpty(fcss)) {
-            log.warn("No facility condition mapped from GBFS station station {} on dataset {}, abort ingesting SIRI FM from GBFS", stationStatus, datasetId);
+            log.warn("No facility condition mapped from GBFS station station {} on dataset {}, abort ingesting SIRI FM from GBFS", stationStatus, gbfsConfiguration.getDefaultDataset());
             return;
         }
 
@@ -37,7 +40,7 @@ public class GbfsIngester {
 
         int nbStations = stationStatus == null || stationStatus.getData() == null ? 0 : CollectionUtils.size(stationStatus.getData().getStations());
         log.info("Mapped {} facility condition(s) from {} GBFS station status(es)", CollectionUtils.size(fcss), nbStations);
-        Collection<FacilityConditionStructure> addedFcss = facilityMonitoringInbound.ingestFacilities(datasetId, fcss);
-        log.info("GBFS - Ingested facility conditions {} on {} (dataset: {})", CollectionUtils.size(addedFcss), CollectionUtils.size(fcss), datasetId);
+        Collection<FacilityConditionStructure> addedFcss = facilityMonitoringInbound.ingestFacilities(gbfsConfiguration.getDefaultDataset(), fcss);
+        log.info("GBFS - Ingested facility conditions {} on {} (dataset: {})", CollectionUtils.size(addedFcss), CollectionUtils.size(fcss), gbfsConfiguration.getDefaultDataset());
     }
 }
