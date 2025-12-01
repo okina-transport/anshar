@@ -4,6 +4,7 @@ package no.rutebanken.anshar.util;
 import no.rutebanken.anshar.routes.outbound.OutboundSubscriptionSetup;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.entur.siri.validator.SiriValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -138,6 +139,63 @@ public class SiriUtils {
         }
         return false;
 
+    }
+
+    public static Siri setSubscriberRef(Siri siri, String subscriberRef) {
+        if (StringUtils.isEmpty(subscriberRef) || siri.getServiceDelivery() == null) {
+            return siri;
+        }
+
+        ServiceDelivery serviceDelivery = siri.getServiceDelivery();
+
+        if (!serviceDelivery.getStopMonitoringDeliveries().isEmpty()) {
+            for (StopMonitoringDeliveryStructure delivery : serviceDelivery.getStopMonitoringDeliveries()) {
+                RequestorRef subsRef = new RequestorRef();
+                subsRef.setValue(subscriberRef);
+                delivery.setSubscriberRef(subsRef);
+            }
+        }
+
+        if (!serviceDelivery.getEstimatedTimetableDeliveries().isEmpty()) {
+            for (EstimatedTimetableDeliveryStructure delivery : serviceDelivery.getEstimatedTimetableDeliveries()) {
+                RequestorRef subsRef = new RequestorRef();
+                subsRef.setValue(subscriberRef);
+                delivery.setSubscriberRef(subsRef);
+            }
+        }
+
+        if (!serviceDelivery.getVehicleMonitoringDeliveries().isEmpty()) {
+            for (VehicleMonitoringDeliveryStructure delivery : serviceDelivery.getVehicleMonitoringDeliveries()) {
+                RequestorRef subsRef = new RequestorRef();
+                subsRef.setValue(subscriberRef);
+                delivery.setSubscriberRef(subsRef);
+            }
+        }
+
+        if (!serviceDelivery.getSituationExchangeDeliveries().isEmpty()) {
+            for (SituationExchangeDeliveryStructure delivery : serviceDelivery.getSituationExchangeDeliveries()) {
+                RequestorRef subsRef = new RequestorRef();
+                subsRef.setValue(subscriberRef);
+                delivery.setSubscriberRef(subsRef);
+            }
+        }
+
+        if (!serviceDelivery.getGeneralMessageDeliveries().isEmpty()) {
+            for (GeneralMessageDeliveryStructure delivery : serviceDelivery.getGeneralMessageDeliveries()) {
+                RequestorRef subsRef = new RequestorRef();
+                subsRef.setValue(subscriberRef);
+                delivery.setSubscriberRef(subsRef);
+            }
+        }
+
+        if (!serviceDelivery.getFacilityMonitoringDeliveries().isEmpty()) {
+            for (FacilityMonitoringDeliveryStructure delivery : serviceDelivery.getFacilityMonitoringDeliveries()) {
+                RequestorRef subsRef = new RequestorRef();
+                subsRef.setValue(subscriberRef);
+                delivery.setSubscriberRef(subsRef);
+            }
+        }
+        return siri;
     }
 
     public static List<MonitoredStopVisit> extractStopVisits(Siri siri) {

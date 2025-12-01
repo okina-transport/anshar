@@ -73,12 +73,16 @@ public class TestUtils {
     }
 
     public static int printReceivedRequests(ClientAndServer mockServer) {
+        return printReceivedRequestsOnEndpoint(mockServer, "/incomingSiri");
+    }
+
+    public static int printReceivedRequestsOnEndpoint(ClientAndServer mockServer, String endpoint) {
         int nbOfReceivedRequest = 0;
 
         HttpRequest[] recordedRequests = mockServer.retrieveRecordedRequests(
                 request()
                         .withMethod("POST")
-                        .withPath("/incomingSiri")
+                        .withPath(endpoint)
         );
 
         for (HttpRequest recordedRequest : recordedRequests) {
@@ -86,6 +90,21 @@ public class TestUtils {
             logger.info("Requête reçue: " + recordedRequest);
         }
         return nbOfReceivedRequest;
+    }
+
+    public static String getFirstRequestOnEndpoint(ClientAndServer mockServer, String endpoint) {
+
+
+        HttpRequest[] recordedRequests = mockServer.retrieveRecordedRequests(
+                request()
+                        .withMethod("POST")
+                        .withPath(endpoint)
+        );
+
+        for (HttpRequest recordedRequest : recordedRequests) {
+            return recordedRequest.getBody().getValue().toString();
+        }
+        return "";
     }
 
 

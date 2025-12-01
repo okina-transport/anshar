@@ -112,7 +112,7 @@ public class CamelRouteManager {
                     deliverySize = Integer.MAX_VALUE;
                 }
 
-                List<Siri> splitSiri = siriHelper.splitDeliveries(filteredPayload, deliverySize);
+                List<Siri> splitSiri = siriHelper.splitDeliveries(filteredPayload, deliverySize, subscriptionRequest.getSubscriptionId());
 
                 if (splitSiri.size() > 1) {
                     logger.info("Object split into {} deliveries for subscription {}.", splitSiri.size(), subscriptionRequest);
@@ -132,10 +132,11 @@ public class CamelRouteManager {
                 }
 
                 for (Siri siri : splitSiri) {
+                    siri = SiriUtils.setSubscriberRef(siri, subscriptionRequest.getRequestorRef());
                     if (subscriptionRequest.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
                         if (subscriptionRequest.getPreviewInterval() != null) {
                             siri = SiriUtils.filterStopMonitoringOnPreviewInterval(siri, subscriptionRequest);
-                        }else{
+                        } else {
                             siri = SiriUtils.removeTheoreticalSM(siri);
                         }
                         if (!hasStopMonitoringData(siri)) {
