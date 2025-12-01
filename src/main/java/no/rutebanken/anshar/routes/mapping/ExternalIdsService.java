@@ -57,6 +57,9 @@ public class ExternalIdsService extends BaseRouteBuilder {
     @Value("${download.mapping.files.enabled}")
     private boolean downloadMappingFilesEnabled;
 
+    @Value("${google.drive.download.required}")
+    private boolean googleDriveDownloadRequired;
+
     @Autowired
     SubscriptionConfig subscriptionConfig;
 
@@ -112,15 +115,17 @@ public class ExternalIdsService extends BaseRouteBuilder {
             return;
         }
 
-        Flux<String> stopsMappingUrls = Flux.fromArray(urlsStopsMappingFile.split(","));
-        Flux<String> linesMappingUrls = Flux.fromArray(urlsLinesMappingFile.split(","));
+        if(googleDriveDownloadRequired){
+            Flux<String> stopsMappingUrls = Flux.fromArray(urlsStopsMappingFile.split(","));
+            Flux<String> linesMappingUrls = Flux.fromArray(urlsLinesMappingFile.split(","));
 
-        Mono<Void> downloadFilesMono = Flux.zip(
-                        downloadFilesMapping(stopsMappingUrls, pathStops, "BERTHELET_stops_mapping.csv"),
-                        downloadFilesMapping(linesMappingUrls, pathLines, "BERTHELET_lines_mapping.csv"))
-                .then();
+            Mono<Void> downloadFilesMono = Flux.zip(
+                            downloadFilesMapping(stopsMappingUrls, pathStops, "BERTHELET_stops_mapping.csv"),
+                            downloadFilesMapping(linesMappingUrls, pathLines, "BERTHELET_lines_mapping.csv"))
+                    .then();
 
-        downloadFilesMono.block();
+            downloadFilesMono.block();
+        }
 
         stopsCache.clear();
         linesCache.clear();
