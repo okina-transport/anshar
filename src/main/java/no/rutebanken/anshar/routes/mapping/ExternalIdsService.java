@@ -208,11 +208,13 @@ public class ExternalIdsService extends BaseRouteBuilder {
         }
         logger.info("Starting updating mapping external ids stops cache for dataset : {}", datasetId);
 
-        for (String fileName : Objects.requireNonNull(mappingStopsDirectory.list())) {
-            String datasetIdInFileName = fileName.replace("_stops_mapping.csv", "");
-            if (datasetId.equalsIgnoreCase(datasetIdInFileName)) {
-                File fileToRead = new File(mappingStopsDirectory, fileName);
-                feedCacheStopWithFile(fileToRead, datasetId);
+        if (mappingStopsDirectory.list() != null) {
+            for (String fileName : Objects.requireNonNull(mappingStopsDirectory.list())) {
+                String datasetIdInFileName = fileName.replace("_stops_mapping.csv", "");
+                if (datasetId.equalsIgnoreCase(datasetIdInFileName)) {
+                    File fileToRead = new File(mappingStopsDirectory, fileName);
+                    feedCacheStopWithFile(fileToRead, datasetId);
+                }
             }
         }
 
@@ -220,11 +222,13 @@ public class ExternalIdsService extends BaseRouteBuilder {
 
         logger.info("Starting updating mapping external ids lines cache for dataset : {}", datasetId);
 
-        for (String fileName : Objects.requireNonNull(mappingLinesDirectory.list())) {
-            String datasetIdInFileName = fileName.replace("_lines_mapping.csv", "");
-            if (datasetId.equalsIgnoreCase(datasetIdInFileName)) {
-                File fileToRead = new File(mappingLinesDirectory, fileName);
-                feedCacheLineWithFile(fileToRead, datasetId);
+        if (mappingLinesDirectory.list() != null) {
+            for (String fileName : Objects.requireNonNull(mappingLinesDirectory.list())) {
+                String datasetIdInFileName = fileName.replace("_lines_mapping.csv", "");
+                if (datasetId.equalsIgnoreCase(datasetIdInFileName)) {
+                    File fileToRead = new File(mappingLinesDirectory, fileName);
+                    feedCacheLineWithFile(fileToRead, datasetId);
+                }
             }
         }
 
