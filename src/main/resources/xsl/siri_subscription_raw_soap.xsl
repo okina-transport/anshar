@@ -142,6 +142,11 @@
                                 <xsl:element name="siri:ResponseTimestamp">
                                     <xsl:value-of select="../siri:ResponseTimestamp"/>
                                 </xsl:element>
+
+                                <xsl:element name="siri:SubscriberRef">
+                                    <xsl:value-of select="siri:SubscriberRef"/>
+                                </xsl:element>
+
                                 <xsl:element name="siri:RequestMessageRef">
                                     <xsl:value-of select="../siri:RequestMessageRef"/>
                                 </xsl:element>

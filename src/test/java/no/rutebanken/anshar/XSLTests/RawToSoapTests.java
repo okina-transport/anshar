@@ -11,7 +11,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
-import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.*;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -73,6 +73,40 @@ public class RawToSoapTests extends SpringBootBaseTest {
         String xslBody = CustomSiriXml.rawToSoap(body);
         assertTrue(xslBody.contains("<siri:CheckStatus xmlns:siri=\"http://wsdl.siri.org.uk\">"));
         assertTrue(xslBody.contains("<RequestorRef xmlns=\"http://www.siri.org.uk/siri\">TESTREQ</RequestorRef>"));
+    }
+
+    @Test
+    public void subscriptionRefTest() throws JAXBException, FileNotFoundException, TransformerException {
+        SubscriptionSetup subscription = new SubscriptionSetup();
+        subscription.setVersion("2.0");
+        subscription.setRequestorRef("TESTREQ");
+
+        Siri siri = new Siri();
+        ServiceDelivery serviceDel = new ServiceDelivery();
+        EstimatedTimetableDeliveryStructure et = new EstimatedTimetableDeliveryStructure();
+        et.setVersion("2.0");
+        
+        EstimatedVersionFrameStructure struct = new EstimatedVersionFrameStructure();
+        EstimatedVehicleJourney estijourney = new EstimatedVehicleJourney();
+        NaturalLanguageStringStructure publishedName = new NaturalLanguageStringStructure();
+        publishedName.setValue("lineName");
+        estijourney.getPublishedLineNames().add(publishedName);
+        struct.getEstimatedVehicleJourneies().add(estijourney);
+        et.getEstimatedJourneyVersionFrames().add(struct);
+        // et.setResponseTimestamp(ZonedDateTime.now());
+        RequestorRef reqRef = new RequestorRef();
+        reqRef.setValue("TESTREQ");
+        et.setSubscriberRef(reqRef);
+
+        serviceDel.getEstimatedTimetableDeliveries().add(et);
+        siri.setServiceDelivery(serviceDel);
+
+
+        String body = CustomSiriXml.toXml(siri);
+        System.out.println(body);
+        String xslBody = CustomSiriXml.subscriptionRawToSoap(body);
+        assertTrue(xslBody.contains("TESTREQ"));
+
     }
 
     @Test
