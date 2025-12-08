@@ -347,6 +347,9 @@ public class TripUpdateMapper {
         FramedVehicleJourneyRefStructure vehicleJourneyRef = createVehicleJourneyRef(tripUpdate);
         journey.setFramedVehicleJourneyRef(vehicleJourneyRef);
         journey.setDataSource("MOBIITI");
+        DirectionRefStructure directionRef = new DirectionRefStructure();
+        directionRef.setValue("");
+        journey.setDirectionRef(directionRef);
 
         if (tripDescriptor.hasRouteId()) {
             LineRef lineRef = new LineRef();
