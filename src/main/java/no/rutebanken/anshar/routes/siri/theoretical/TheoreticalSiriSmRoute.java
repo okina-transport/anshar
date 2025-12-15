@@ -26,7 +26,12 @@ public class TheoreticalSiriSmRoute extends BaseRouteBuilder {
             return;
         }
 
-        singletonFrom("quartz://anshar/ingest_th_sm_data?trigger.repeatInterval=" + config.getSiriGenerationFromTheoreticalDataIntervalMs(), "ingest_th_sm_data")
+        singletonFrom("quartz://anshar/ingest_th_sm_data?cron=" + config.getSiriGenerationFromTheoreticalDataCron(), "ingest_th_sm_data")
+                .bean(TheoreticalSiriSmConsumer.class, "ingestSiriSmData")
+                .end();
+
+        singletonFrom("quartz://anshar/ingest_th_sm_data_first_launch?trigger.repeatInterval=1&trigger.repeatCount=0",
+                "ingest_th_sm_data_first_launch")
                 .bean(TheoreticalSiriSmConsumer.class, "ingestSiriSmData")
                 .end();
     }

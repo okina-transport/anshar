@@ -12,6 +12,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.io.IOException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
@@ -51,8 +55,9 @@ class TheoreticalSiriSmConsumerTest extends SpringBootBaseTest {
     }
 
     @Test
-    void readDataAndProduceSiriTest() {
+    void readDataAndProduceSiriTest() throws IOException {
         camelContext.start();
+        replaceDates();
 
         consumer.ingestSiriSmData();
 
@@ -86,6 +91,25 @@ class TheoreticalSiriSmConsumerTest extends SpringBootBaseTest {
                         "TEST:Quay:44802",
                         "TEST:Quay:44616",
                         "TEST:Quay:44054");
+    }
+
+    private void replaceDates() throws IOException {
+
+
+        String filePath = "src/test/resources/theoretical-data/TEST_th_sm.csv";
+        String pattern = "20500418";
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+        LocalDate today = LocalDate.now();
+        String replacement = today.format(formatter);
+
+        ProcessBuilder pb = new ProcessBuilder(
+                "sed", "-i", "-e", "s#" + pattern + "#" + replacement + "#g", filePath
+        );
+
+
+        pb.redirectErrorStream(true);
+        Process process = pb.start();
+
     }
 
 }

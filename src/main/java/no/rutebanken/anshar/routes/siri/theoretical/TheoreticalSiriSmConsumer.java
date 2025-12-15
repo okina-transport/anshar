@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.routes.siri.theoretical;
 
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
@@ -27,10 +28,7 @@ import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -66,6 +64,7 @@ public class TheoreticalSiriSmConsumer {
     }
 
     public void ingestSiriSmData() {
+        log.info("starting ingest siri sm TH data");
         if (StringUtils.isBlank(dataDirectoryPath)) {
             log.error("No directory specified");
             return;
@@ -79,6 +78,7 @@ public class TheoreticalSiriSmConsumer {
         }
 
     }
+
 
     private void ingestSiriSmDataByDataset(Path path) {
         String datasetId = Strings.CS.removeEnd(path.getFileName().toString(), fileSuffix);
@@ -101,6 +101,12 @@ public class TheoreticalSiriSmConsumer {
             IdProcessingParameters stopIdProcessingParameters = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.STOP).orElse(emptyIdProcessing);
             IdProcessingParameters vehicleJourneyIdProcessingParameters = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.VEHICLE_JOURNEY).orElse(emptyIdProcessing);
             for (CSVRecord csvRecord : csvParser) {
+
+                if (!LocalDate.now().equals(LocalDate.parse(csvRecord.get("dateyyyyMMdd"), DATE_FORMATTER))) {
+                    continue;
+                }
+
+
                 monitoringInfo = TheoreticalStopMonitoringInfo.builder()
                         .date(LocalDate.parse(csvRecord.get("dateyyyyMMdd"), DATE_FORMATTER))
                         .monitoringRef(stopIdProcessingParameters.revertTransformationToString(csvRecord.get("monitoringRef")))

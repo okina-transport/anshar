@@ -116,6 +116,8 @@ public class AnsharConfiguration {
     private boolean siriGenerationFromTheoreticalDataEnabled;
     @Value("${anshar.generate-siri-from-th.interval:86400000}")
     private long siriGenerationFromTheoreticalDataIntervalMs;
+    @Value("${anshar.generate-siri-from-th.cron:0+0+4+*+*+?}")
+    private String siriGenerationFromTheoreticalDataCron;
     @Autowired
     @Qualifier("getLockMap")
     private IMap<String, Instant> lockMap;
