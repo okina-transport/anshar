@@ -653,10 +653,33 @@ public class SiriObjectFactory {
         if (subscriptionSetup == null) {
             return null;
         }
-        return createTerminateSubscriptionRequestWithParams(subscriptionSetup.getSubscriptionId(), createRequestorRef(subscriptionSetup.getRequestorRef()), subscriptionSetup.getVersion());
+        List<String> subscriptionIdsToTerminate = generateIdListToTerminate(subscriptionSetup);
+        return createTerminateSubscriptionRequestWithParams(subscriptionIdsToTerminate, createRequestorRef(subscriptionSetup.getRequestorRef()), subscriptionSetup.getVersion());
+    }
+
+    private static List<String> generateIdListToTerminate(SubscriptionSetup subscriptionSetup) {
+        List<String> idsToTerminate = new ArrayList<>();
+        if (SiriDataType.STOP_MONITORING.equals(subscriptionSetup.getSubscriptionType()) && subscriptionSetup.getStopMonitoringRefValues().size() > 1) {
+            for (int i = 0; i <= subscriptionSetup.getStopMonitoringRefValues().size(); i++) {
+                idsToTerminate.add(subscriptionSetup.getSubscriptionId() + "-" + i);
+            }
+        } else if (SiriDataType.VEHICLE_MONITORING.equals(subscriptionSetup.getSubscriptionType()) && subscriptionSetup.getLineRefValues().size() > 1) {
+            for (int i = 0; i <= subscriptionSetup.getLineRefValues().size(); i++) {
+                idsToTerminate.add(subscriptionSetup.getSubscriptionId() + "-" + i);
+            }
+        } else {
+            idsToTerminate.add(subscriptionSetup.getSubscriptionId());
+        }
+        return idsToTerminate;
     }
 
     public static Siri createTerminateSubscriptionRequestWithParams(String subscriptionId, RequestorRef requestorRef, String version) {
+        List<String> subscriptionsToTerminate = new ArrayList<>();
+        subscriptionsToTerminate.add(subscriptionId);
+        return createTerminateSubscriptionRequestWithParams(subscriptionsToTerminate, requestorRef, version);
+    }
+
+    public static Siri createTerminateSubscriptionRequestWithParams(List<String> subscriptionIds, RequestorRef requestorRef, String version) {
         if (requestorRef == null || requestorRef.getValue() == null) {
             logger.warn("RequestorRef cannot be null");
             return null;
@@ -664,7 +687,11 @@ public class SiriObjectFactory {
         TerminateSubscriptionRequestStructure terminationReq = new TerminateSubscriptionRequestStructure();
 
         terminationReq.setRequestTimestamp(ZonedDateTime.now());
-        terminationReq.getSubscriptionReves().add(createSubscriptionIdentifier(subscriptionId));
+
+        for (String subscriptionIdToTerminate : subscriptionIds) {
+            terminationReq.getSubscriptionReves().add(createSubscriptionIdentifier(subscriptionIdToTerminate));
+        }
+
         terminationReq.setRequestorRef(requestorRef);
         terminationReq.setMessageIdentifier(createMessageIdentifier(UUID.randomUUID().toString()));
 

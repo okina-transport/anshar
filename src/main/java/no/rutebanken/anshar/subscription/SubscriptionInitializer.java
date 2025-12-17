@@ -17,6 +17,7 @@ package no.rutebanken.anshar.subscription;
 
 import com.google.common.base.Preconditions;
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.data.DiscoveryCache;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.admin.AdminRouteHelper;
@@ -137,12 +138,14 @@ public class SubscriptionInitializer implements CamelContextAware {
 
             List<SubscriptionSetup> actualSubscriptionSetups = new ArrayList<>();
 
-            List<SubscriptionSetup> activeSubscriptions = subscriptionSetups.stream()
-                    .filter(SubscriptionSetup::isActive)
-                    .collect(Collectors.toList());
-
             List<SubscriptionSetup> disabledSubscriptions = subscriptionSetups.stream()
                     .filter(subscriptionSetup -> !subscriptionSetup.isActive())
+                    .collect(Collectors.toList());
+
+            disabledSubscriptions.addAll(getDisabledDiscoveryChilds());
+
+            List<SubscriptionSetup> activeSubscriptions = subscriptionSetups.stream()
+                    .filter(sub -> sub.isActive() && !disabledSubscriptions.contains(sub))
                     .collect(Collectors.toList());
 
             if (!disabledSubscriptions.isEmpty()) {
@@ -238,6 +241,24 @@ public class SubscriptionInitializer implements CamelContextAware {
         } else {
             logger.error("Subscriptions not configured correctly - no subscriptions will be started");
         }
+    }
+
+    private List<SubscriptionSetup> getDisabledDiscoveryChilds() {
+        List<SubscriptionSetup> disabledDiscoveryChilds = new ArrayList<>();
+        Set<DiscoverySubscription> disabledParents = subscriptionConfig.getDiscoverySubscriptions().stream()
+                .filter(disc -> !disc.getActive())
+                .collect(Collectors.toSet());
+
+        for (DiscoverySubscription disabledParent : disabledParents) {
+            Set<SubscriptionSetup> childrenToDisable = subscriptionManager.getAllSubscriptions(disabledParent.getDiscoveryType()).stream()
+                    .filter(sub -> disabledParent.getSubscriptionIdBase().equals(sub.getParentSubscriptionId()))
+                    .collect(Collectors.toSet());
+
+            disabledDiscoveryChilds.addAll(childrenToDisable);
+        }
+
+
+        return disabledDiscoveryChilds;
     }
 
 
