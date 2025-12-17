@@ -21,4 +21,5 @@ public class GtfsRTApiDto {
     private String publishedLineNameMapping;
     private String currentStatus;
     private String apiKey;
+    private PublishToDisplayAction publishToDisplayAction;
 }
