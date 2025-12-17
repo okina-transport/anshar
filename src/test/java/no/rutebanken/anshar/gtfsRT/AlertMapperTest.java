@@ -4,10 +4,13 @@ import com.google.transit.realtime.GtfsRealtime;
 import com.hazelcast.map.IMap;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.gtfsrt.mappers.AlertMapper;
+import no.rutebanken.anshar.ishtar.model.PublishToDisplayAction;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.mapping.StopTimesService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -15,6 +18,7 @@ import uk.org.siri.siri21.*;
 
 import java.time.ZonedDateTime;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -555,6 +559,47 @@ class AlertMapperTest {
         assertThat(situation.getInfoLinks().getInfoLinks().getFirst().getUri()).isEqualTo("https://www.google.fr");
         assertThat(situation.getInfoLinks().getInfoLinks().get(1).getUri()).isEqualTo("https://www.microsoft.fr");
     }
+
+    @ParameterizedTest
+    @CsvSource({"NONE,false,false","ON_PLACE,true,false", "ON_BOARD,false,true", "ON_PLACE_AND_ON_BOARD,true,true"})
+    void test_add_publishingToDisplayAction(PublishToDisplayAction publishToDisplayAction, Boolean onPlaceAssertion, Boolean onBoardAssertion) {
+        String tripId = "tripId";
+        String lineId = "lineId";
+        String datasetId = "datasetId";
+
+        GtfsRTApi gtfsrtApi = new GtfsRTApi();
+        gtfsrtApi.setDatasetId(datasetId);
+        gtfsrtApi.setPublishToDisplayAction(publishToDisplayAction);
+
+        GtfsRealtime.FeedEntity feedEntity = GtfsRealtime.FeedEntity.newBuilder()
+                .setId("id2")
+                .setAlert(
+                        GtfsRealtime.Alert.newBuilder().addInformedEntity(
+                                GtfsRealtime.EntitySelector.newBuilder()
+                                        .setTrip(
+                                                GtfsRealtime.TripDescriptor.newBuilder()
+                                                        .setTripId(tripId)
+                                        )
+                        )
+                ).build();
+
+        when(stopTimesService.checkIfKnownRouteId(datasetId, lineId)).thenReturn(true);
+        when(stopTimesService.getRouteId(datasetId, tripId)).thenReturn(Optional.of(lineId));
+
+        PtSituationElement result = alertMapper.mapSituationFromAlert(feedEntity, gtfsrtApi, Collections.emptyList()).orElse(null);
+
+        if (publishToDisplayAction != PublishToDisplayAction.NONE) {
+            assertThat(result).isNotNull();
+            assertThat(result.getPublishingActions()).isNotNull();
+            assertThat(result.getPublishingActions().getPublishToDisplayActions()).isNotEmpty().hasSize(1);
+            assertThat(result.getPublishingActions().getPublishToDisplayActions()).extracting("onPlace").containsExactly(onPlaceAssertion);
+            assertThat(result.getPublishingActions().getPublishToDisplayActions()).extracting("onBoard").containsExactly(onBoardAssertion);
+        } else {
+            assertThat(result).isNotNull();
+            assertThat(result.getPublishingActions()).isNull();
+        }
+    }
+
 
     private GtfsRealtime.EntitySelector buildEntitySelector() {
         return GtfsRealtime.EntitySelector.newBuilder().setStopId("AZERTY").build();
