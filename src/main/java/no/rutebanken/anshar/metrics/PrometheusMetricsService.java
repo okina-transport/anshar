@@ -289,10 +289,10 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
         if (siri != null && siri.getServiceDelivery() != null) {
             if (siri.getServiceDelivery().getEstimatedTimetableDeliveries() != null &&
                     !siri.getServiceDelivery().getEstimatedTimetableDeliveries().isEmpty()) {
-                EstimatedTimetableDeliveryStructure timetableDeliveryStructure = siri.getServiceDelivery().getEstimatedTimetableDeliveries().get(0);
+                EstimatedTimetableDeliveryStructure timetableDeliveryStructure = siri.getServiceDelivery().getEstimatedTimetableDeliveries().getFirst();
                 if (timetableDeliveryStructure != null && timetableDeliveryStructure.getEstimatedJourneyVersionFrames() != null &&
                         !timetableDeliveryStructure.getEstimatedJourneyVersionFrames().isEmpty()) {
-                    EstimatedVersionFrameStructure estimatedVersionFrameStructure = timetableDeliveryStructure.getEstimatedJourneyVersionFrames().get(0);
+                    EstimatedVersionFrameStructure estimatedVersionFrameStructure = timetableDeliveryStructure.getEstimatedJourneyVersionFrames().getFirst();
                     if (estimatedVersionFrameStructure != null && estimatedVersionFrameStructure.getEstimatedVehicleJourneies() != null) {
 
                         dataType = SiriDataType.ESTIMATED_TIMETABLE;
@@ -301,26 +301,42 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
                 }
             } else if (siri.getServiceDelivery().getVehicleMonitoringDeliveries() != null &&
                     !siri.getServiceDelivery().getVehicleMonitoringDeliveries().isEmpty()) {
-                VehicleMonitoringDeliveryStructure deliveryStructure = siri.getServiceDelivery().getVehicleMonitoringDeliveries().get(0);
+                VehicleMonitoringDeliveryStructure deliveryStructure = siri.getServiceDelivery().getVehicleMonitoringDeliveries().getFirst();
                 if (deliveryStructure != null) {
                     dataType = SiriDataType.VEHICLE_MONITORING;
                     count = deliveryStructure.getVehicleActivities().size();
                 }
             } else if (siri.getServiceDelivery().getSituationExchangeDeliveries() != null &&
                     !siri.getServiceDelivery().getSituationExchangeDeliveries().isEmpty()) {
-                SituationExchangeDeliveryStructure deliveryStructure = siri.getServiceDelivery().getSituationExchangeDeliveries().get(0);
+                SituationExchangeDeliveryStructure deliveryStructure = siri.getServiceDelivery().getSituationExchangeDeliveries().getFirst();
                 if (deliveryStructure != null && deliveryStructure.getSituations() != null) {
                     dataType = SiriDataType.SITUATION_EXCHANGE;
                     count = deliveryStructure.getSituations().getPtSituationElements().size();
                 }
             } else if (siri.getServiceDelivery().getStopMonitoringDeliveries() != null &&
                     !siri.getServiceDelivery().getStopMonitoringDeliveries().isEmpty()) {
-                StopMonitoringDeliveryStructure deliveryStructure = siri.getServiceDelivery().getStopMonitoringDeliveries().get(0);
+                StopMonitoringDeliveryStructure deliveryStructure = siri.getServiceDelivery().getStopMonitoringDeliveries().getFirst();
                 if (deliveryStructure != null) {
                     dataType = SiriDataType.STOP_MONITORING;
                     count = deliveryStructure.getMonitoredStopVisits().size();
                 }
+            } else if (siri.getServiceDelivery().getFacilityMonitoringDeliveries() != null &&
+                    !siri.getServiceDelivery().getFacilityMonitoringDeliveries().isEmpty()) {
+                FacilityMonitoringDeliveryStructure deliveryStruct = siri.getServiceDelivery().getFacilityMonitoringDeliveries().getFirst();
+                if (deliveryStruct != null) {
+                    dataType = SiriDataType.FACILITY_MONITORING;
+                    count = deliveryStruct.getFacilityConditions().size();
+                }
+            } else if (siri.getServiceDelivery().getGeneralMessageDeliveries() != null &&
+                    !siri.getServiceDelivery().getGeneralMessageDeliveries().isEmpty()) {
+                GeneralMessageDeliveryStructure generalMessageDeliveryStructure = siri.getServiceDelivery().getGeneralMessageDeliveries().getFirst();
+                if (generalMessageDeliveryStructure != null) {
+                    dataType = SiriDataType.GENERAL_MESSAGE;
+                    count = generalMessageDeliveryStructure.getGeneralMessages().size();
+                }
             }
+
+
             logger.debug("countOutgoingData - count:" + count + ", reqRef:" + requestorRef + ", dataType:" + dataType + ", mode:" + mode);
             countOutgoingData(requestorRef, dataType, mode, count);
         }
