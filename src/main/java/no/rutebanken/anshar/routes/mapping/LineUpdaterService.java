@@ -33,13 +33,13 @@ public class LineUpdaterService {
     BlobStoreService blobStoreService;
     @Value("${anshar.lineIds.file}")
     private String lineIdsPath;
-    @Value("${anshar.line.ids.update.frequency.hours:10}")
+    @Value("${anshar.line.ids.update.frequency.minutes:10}")
     private int updateFrequency = 10;
 
     @PostConstruct
     private void initialize() {
-        executor.scheduleAtFixedRate(this::updateLineIds, 0, updateFrequency, TimeUnit.HOURS);
-        logger.info("Initialized line-ids-updater with urls:{}, updateFrequency:{} hours", new String[]{lineIdsPath}, updateFrequency);
+        executor.scheduleAtFixedRate(this::updateLineIds, 0, updateFrequency, TimeUnit.MINUTES);
+        logger.info("Initialized line-ids-updater with urls:{}, updateFrequency:{} minutes", new String[]{lineIdsPath}, updateFrequency);
     }
 
     @PreDestroy
