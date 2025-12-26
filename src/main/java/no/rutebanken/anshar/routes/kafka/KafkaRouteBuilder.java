@@ -8,11 +8,13 @@ import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 
+import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASET_ID_HEADER_NAME;
+
 @Component
 public class KafkaRouteBuilder extends RouteBuilder {
 
-
     public static final String SEND_SX_TO_KAFKA = "direct:send.sx.to.kafka";
+    public static final String SEND_SM_TO_KAFKA = "direct:send.sm.to.kafka";
     public static final String SEND_TH_TR_CONSISTENCY_REPORT_TO_KAFKA = "direct:send.th.tr.consistency.report.to.kafka";
     public static final String SEND_TR_IN_SUBSCRIPTION_DATA_TO_KAFKA = "direct:send.tr.in.subscription.data.to.kafka";
     public static final String SEND_TR_IN_SUBSCRIPTION_MONITORING_TO_KAFKA = "direct:send.tr.in.subscription.monitoring.to.kafka";
@@ -27,17 +29,32 @@ public class KafkaRouteBuilder extends RouteBuilder {
 
     @Override
     public void configure() throws Exception {
-        if (kafkaConfig.isKafkaEnabled() && kafkaConfig.isSendSiriToKafka()) {
+        if (kafkaConfig.isKafkaEnabled() && kafkaConfig.isSendSiriSxToKafka()) {
             from(SEND_SX_TO_KAFKA)
                     .log(LoggingLevel.INFO, "Sending SX message to KAFKA")
                     .marshal(SiriDataFormatHelper.getThreadSafeSiriJaxbDataformat())
-                    .removeHeaders("*")
+                    .removeHeaders("*", DATASET_ID_HEADER_NAME)
+                    .setHeader(KafkaHeaders.CLIENT_HEADER,
+                            constant(config.getClientName().getBytes(StandardCharsets.UTF_8)))
                     .setHeader(KafkaHeaders.ENV_HEADER,
                             constant(config.getEnvironment().getBytes(StandardCharsets.UTF_8)))
                     .wireTap(kafkaConfig.createCamelProducerConfig(kafkaConfig.getSxTopic()));
         } else {
             from(SEND_SX_TO_KAFKA)
-                    .log(LoggingLevel.WARN, "Sending SIRI messages to KAFKA is disabled")
+                    .log(LoggingLevel.WARN, "Sending SIRI SX messages to KAFKA is disabled")
+                    .end();
+        }
+        if (kafkaConfig.isKafkaEnabled() && kafkaConfig.isSendSiriSmToKafka()) {
+            from(SEND_SM_TO_KAFKA)
+                    .marshal(SiriDataFormatHelper.getThreadSafeSiriJaxbDataformat())
+                    .removeHeaders("*", DATASET_ID_HEADER_NAME)
+                    .setHeader(KafkaHeaders.CLIENT_HEADER,
+                            constant(config.getClientName().getBytes(StandardCharsets.UTF_8)))
+                    .setHeader(KafkaHeaders.ENV_HEADER,
+                            constant(config.getEnvironment().getBytes(StandardCharsets.UTF_8)))
+                    .wireTap(kafkaConfig.createCamelProducerConfig(kafkaConfig.getSmTopic()));
+        } else {
+            from(SEND_SM_TO_KAFKA)
                     .end();
         }
         if (kafkaConfig.isKafkaEnabled() && kafkaConfig.isSendTrInSubscriptionDataToKafka()) {
