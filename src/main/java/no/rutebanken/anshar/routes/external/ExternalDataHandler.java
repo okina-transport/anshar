@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.routes.external;
 
+import jakarta.xml.bind.JAXBException;
 import no.rutebanken.anshar.data.DiscoveryCache;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.EstimatedTimetableInbound;
@@ -19,14 +20,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.*;
 
-import jakarta.xml.bind.JAXBException;
-
 import javax.xml.stream.XMLStreamException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASET_ID_HEADER_NAME;
 import static no.rutebanken.anshar.routes.validation.validators.Constants.URL_HEADER_NAME;
@@ -76,26 +72,12 @@ public class ExternalDataHandler {
                 return;
             }
 
-            checkAndCreateSMSubscription(siri, datasetId, url);
-
+            SubscriptionSetup smSub = checkAndCreateSMSubscription(siri, datasetId, url);
 
             List<MonitoredStopVisit> stopVisitToIngest = collectStopVisits(siri);
-
             metrics.registerIncomingDataFromExternalSource(SiriDataType.STOP_MONITORING, datasetId, stopVisitToIngest.size());
 
-
-            if (stopVisitToIngest.size() > 0) {
-                stopMonitoringInbound.ingestStopVisits(datasetId, stopVisitToIngest);
-            }
-
-
-            List<MonitoredStopVisitCancellation> stopVisitToCancel = collectStopVisitsCancellations(siri);
-
-            if (stopVisitToCancel.size() > 0) {
-                stopMonitoringInbound.cancelStopVisits(datasetId, stopVisitToCancel);
-            }
-
-
+            stopMonitoringInbound.ingestStopVisit(smSub, siri);
         } catch (JAXBException | XMLStreamException jaxbException) {
             logger.error("Error while unmarshalling siri message from external", e);
         }
@@ -305,17 +287,6 @@ public class ExternalDataHandler {
         return resultList;
     }
 
-    private List<MonitoredStopVisitCancellation> collectStopVisitsCancellations(Siri siri) {
-        List<MonitoredStopVisitCancellation> resultList = new ArrayList<>();
-        if (siri.getServiceDelivery() != null && siri.getServiceDelivery().getStopMonitoringDeliveries() != null) {
-
-            for (StopMonitoringDeliveryStructure stopMonitoringDelivery : siri.getServiceDelivery().getStopMonitoringDeliveries()) {
-                resultList.addAll(stopMonitoringDelivery.getMonitoredStopVisitCancellations());
-            }
-        }
-        return resultList;
-    }
-
     private List<VehicleActivityStructure> collectVehicleActivities(Siri siri) {
         List<VehicleActivityStructure> resultList = new ArrayList<>();
         if (siri.getServiceDelivery() != null && siri.getServiceDelivery().getVehicleMonitoringDeliveries() != null) {
@@ -328,7 +299,7 @@ public class ExternalDataHandler {
     }
 
 
-    private void checkAndCreateSMSubscription(Siri siri, String datasetId, String url) {
+    private SubscriptionSetup checkAndCreateSMSubscription(Siri siri, String datasetId, String url) {
         String subscriptionId = null;
         if (siri.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits() != null
                 && !siri.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().isEmpty()) {
@@ -345,33 +316,36 @@ public class ExternalDataHandler {
             subscriptionId = "defaultAuth";
         }
 
-        if (!subscriptionManager.isStopMonitoringSubscriptionExisting(subscriptionId, datasetId)) {
+        Optional<SubscriptionSetup> subFromCache = subscriptionManager.findStopMonitoringSubscription(subscriptionId, datasetId);
 
-            //there is no subscription for this stop. Need to create one
-            SubscriptionSetup setup = new SubscriptionSetup();
-            setup.setDatasetId(datasetId);
-            setup.setHeartbeatIntervalSeconds(DEFAULT_HEARTBEAT_SECONDS);
-            setup.setRequestorRef("OKINA-EXTERNAL-SIRI");
-            setup.setAddress(url);
-            setup.setServiceType(SubscriptionSetup.ServiceType.REST);
-            setup.setSubscriptionMode(SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE);
-            setup.setDurationOfSubscriptionHours(24);
-            setup.setVendor("OKINA");
-            setup.setContentType("ExternalSiri");
-            setup.setActive(true);
-            setup.getStopMonitoringRefValues().add(subscriptionId);
-
-            setup.setName("SM-" + subscriptionId);
-            setup.setSubscriptionType(SiriDataType.STOP_MONITORING);
-            String smSubscriptionId = "SM-" + subscriptionId;
-            setup.setSubscriptionId(smSubscriptionId);
-            Map<RequestType, String> urlMap = new HashMap<>();
-            urlMap.put(RequestType.GET_STOP_MONITORING, url);
-            setup.setUrlMap(urlMap);
-            discoveryCache.addStop(datasetId, subscriptionId);
-            subscriptionManager.addSubscription(smSubscriptionId, setup);
-
-
+        if (subFromCache.isPresent()) {
+            return subFromCache.get();
         }
+
+        //there is no subscription for this stop. Need to create one
+        SubscriptionSetup setup = new SubscriptionSetup();
+        setup.setDatasetId(datasetId);
+        setup.setHeartbeatIntervalSeconds(DEFAULT_HEARTBEAT_SECONDS);
+        setup.setRequestorRef("OKINA-EXTERNAL-SIRI");
+        setup.setAddress(url);
+        setup.setServiceType(SubscriptionSetup.ServiceType.REST);
+        setup.setSubscriptionMode(SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE);
+        setup.setDurationOfSubscriptionHours(24);
+        setup.setVendor("OKINA");
+        setup.setContentType("ExternalSiri");
+        setup.setActive(true);
+        setup.getStopMonitoringRefValues().add(subscriptionId);
+
+        setup.setName("SM-" + subscriptionId);
+        setup.setSubscriptionType(SiriDataType.STOP_MONITORING);
+        String smSubscriptionId = "SM-" + subscriptionId;
+        setup.setSubscriptionId(smSubscriptionId);
+        Map<RequestType, String> urlMap = new HashMap<>();
+        urlMap.put(RequestType.GET_STOP_MONITORING, url);
+        setup.setUrlMap(urlMap);
+        discoveryCache.addStop(datasetId, subscriptionId);
+        subscriptionManager.addSubscription(smSubscriptionId, setup);
+
+        return setup;
     }
 }

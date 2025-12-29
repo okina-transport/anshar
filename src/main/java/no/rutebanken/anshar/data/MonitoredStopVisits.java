@@ -88,6 +88,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     @Autowired
     private LineUpdaterService lineUpdaterService;
 
+
     Map<String, Integer> smTheoricalCount = new HashMap<>();
     Map<String, Integer> smRealtimeCount = new HashMap<>();
 

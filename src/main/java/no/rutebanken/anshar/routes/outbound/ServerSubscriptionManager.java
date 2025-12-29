@@ -84,9 +84,9 @@ public class ServerSubscriptionManager {
     protected ProducerTemplate siriSxTopicProducer;
     @Produce("direct:send.to.pubsub.topic.stop_monitoring")
     protected ProducerTemplate siriSmTopicProducer;
-    @Produce(KafkaRouteBuilder.SEND_SM_TO_KAFKA)
+    @Produce(KafkaRouteBuilder.SEND_SM_OUT_TO_KAFKA)
     protected ProducerTemplate sendSMToKafka;
-    @Produce(KafkaRouteBuilder.SEND_SX_TO_KAFKA)
+    @Produce(KafkaRouteBuilder.SEND_SX_OUT_TO_KAFKA)
     protected ProducerTemplate sendSXToKafka;
     @Produce("direct:send.sx.to.external.consumer")
     protected ProducerTemplate sendSXToExternalConsumer;
@@ -1122,12 +1122,6 @@ public class ServerSubscriptionManager {
             siriVmTopicProducer.asyncRequestBodyAndHeader(siriVmTopicProducer.getDefaultEndpoint(), delivery, CODESPACE_ID_KAFKA_HEADER_NAME, datasetId);
         }
 
-//        if (kafkaConfig.isSendSiriSxToKafka()) {
-//            Map<String, Object> headers = new HashMap<>();
-//            headers.put(DATASET_ID_HEADER_NAME, datasetId);
-//            sendVMToKafka.asyncRequestBodyAndHeaders(sendVMToKafka.getDefaultEndpoint(), delivery, headers);
-//        }
-
         final List<OutboundSubscriptionSetup> recipients = subscriptions
                 .values()
                 .stream()
@@ -1177,10 +1171,8 @@ public class ServerSubscriptionManager {
             sendSXToExternalConsumer.asyncRequestBodyAndHeader(sendSXToExternalConsumer.getDefaultEndpoint(), delivery, CODESPACE_ID_KAFKA_HEADER_NAME, datasetId);
         }
 
-        if (kafkaConfig.isSendSiriSxToKafka()) {
-            Map<String, Object> headers = new HashMap<>();
-            headers.put(DATASET_ID_HEADER_NAME, datasetId);
-            sendSXToKafka.asyncRequestBodyAndHeaders(sendSXToKafka.getDefaultEndpoint(), delivery, headers);
+        if (kafkaConfig.isSendSiriSxOutToKafka()) {
+            sendSXToKafka.asyncRequestBodyAndHeader(sendSXToKafka.getDefaultEndpoint(), delivery, DATASET_ID_HEADER_NAME, datasetId);
         }
 
         final List<OutboundSubscriptionSetup> recipients = subscriptions
@@ -1283,13 +1275,6 @@ public class ServerSubscriptionManager {
 
         Siri delivery = siriObjectFactory.createGMServiceDelivery(addedOrUpdated, null, null);
 
-//        if (sendActivemqKafka) {
-//            Map<String, Object> headers = new HashMap<>();
-//            headers.put(DATASET_ID_HEADER_NAME, datasetId);
-//            sendGMToKafka.asyncRequestBodyAndHeaders(sendGMToKafka.getDefaultEndpoint(), delivery, headers);
-//        }
-
-
         final List<OutboundSubscriptionSetup> recipients = subscriptions
                 .values()
                 .stream()
@@ -1328,14 +1313,6 @@ public class ServerSubscriptionManager {
             return;
         }
         Siri delivery = siriObjectFactory.createFMServiceDelivery(updates, null, null);
-
-
-//        if (sendActivemqKafka) {
-//            Map<String, Object> headers = new HashMap<>();
-//            headers.put(DATASET_ID_HEADER_NAME, datasetId);
-//            sendFMToKafka.asyncRequestBodyAndHeaders(sendFMToKafka.getDefaultEndpoint(), delivery, headers);
-//        }
-
 
         final List<OutboundSubscriptionSetup> recipients = subscriptions
                 .values()
@@ -1379,12 +1356,6 @@ public class ServerSubscriptionManager {
         if (pushToTopicEnabled) {
             siriEtTopicProducer.asyncRequestBodyAndHeader(siriEtTopicProducer.getDefaultEndpoint(), delivery, CODESPACE_ID_KAFKA_HEADER_NAME, datasetId);
         }
-
-//        if (kafkaConfig.isSendSiriSxToKafka()) {
-//            Map<String, Object> headers = new HashMap<>();
-//            headers.put(DATASET_ID_HEADER_NAME, datasetId);
-//            sendETToKafka.asyncRequestBodyAndHeaders(sendETToKafka.getDefaultEndpoint(), delivery, headers);
-//        }
 
         final List<OutboundSubscriptionSetup> recipients = subscriptions
                 .values()
@@ -1432,10 +1403,8 @@ public class ServerSubscriptionManager {
             siriSmTopicProducer.asyncRequestBodyAndHeader(siriSmTopicProducer.getDefaultEndpoint(), delivery, CODESPACE_ID_KAFKA_HEADER_NAME, datasetId);
         }
 
-        if (kafkaConfig.isSendSiriSmToKafka()) {
-            Map<String, Object> headers = new HashMap<>();
-            headers.put(DATASET_ID_HEADER_NAME, datasetId);
-            sendSMToKafka.asyncRequestBodyAndHeaders(sendSMToKafka.getDefaultEndpoint(), delivery, Map.of());
+        if (kafkaConfig.isSendSiriSmOutToKafka()) {
+            sendSMToKafka.asyncRequestBodyAndHeader(sendSMToKafka.getDefaultEndpoint(), delivery, DATASET_ID_HEADER_NAME, datasetId);
         }
 
         Set<String> monitoredRefs = SiriHelper.extractMonitoringRefs(addedOrUpdated);
