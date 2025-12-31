@@ -547,6 +547,12 @@ public class SubscriptionManager {
                 .anyMatch(subscription -> subscription.getSubscriptionId().equals(vehicleMonitoringRef) && datasetId.equals(subscription.getDatasetId()));
     }
 
+    public Optional<SubscriptionSetup> findStopMonitoringSubscription(String stopMonitoringRef, String datasetId) {
+        return getAllSubscriptions(SiriDataType.STOP_MONITORING).stream()
+                .filter(subscription -> subscription.getStopMonitoringRefValues().contains(stopMonitoringRef) && datasetId.equals(subscription.getDatasetId()))
+                .findFirst();
+    }
+
     /**
      * Indicates if a subscription is available to request or not
      *

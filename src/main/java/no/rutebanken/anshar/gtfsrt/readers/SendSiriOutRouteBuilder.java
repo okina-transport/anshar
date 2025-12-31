@@ -16,10 +16,6 @@ public class SendSiriOutRouteBuilder extends RouteBuilder {
     @Value("${external.sx.consumer.queue}")
     private String externalSxQueue;
 
-    @Value("${siri.sm.kafka.queue}")
-    private String siriSMKafkaQueue;
-
-
     @Override
     public void configure() {
 
@@ -41,47 +37,16 @@ public class SendSiriOutRouteBuilder extends RouteBuilder {
                 .to(ACTIVEMQ_PREFIX + GTFSRT_VM_QUEUE)
         ;
 
-
         from("direct:send.et.to.realtime.server")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
                 .setExchangePattern(ExchangePattern.InOnly)
                 .to(ACTIVEMQ_PREFIX + GTFSRT_ET_QUEUE)
         ;
 
-        from("direct:send.sm.to.kafka")
-                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
-                .setExchangePattern(ExchangePattern.InOnly)
-                .to(siriSMKafkaQueue)
-        ;
-
         from("direct:send.sx.to.external.consumer")
                 .marshal(SiriDataFormatHelper.getThreadSafeSiriJaxbDataformat())
                 .setExchangePattern(ExchangePattern.InOnly)
                 .to(externalSxQueue)
-        ;
-
-        from("direct:send.vm.to.kafka")
-                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
-                .setExchangePattern(ExchangePattern.InOnly)
-                .to(ACTIVEMQ_PREFIX + SIRI_VM_KAFKA_QUEUE)
-        ;
-
-        from("direct:send.et.to.kafka")
-                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
-                .setExchangePattern(ExchangePattern.InOnly)
-                .to(ACTIVEMQ_PREFIX + SIRI_ET_KAFKA_QUEUE)
-        ;
-
-        from("direct:send.gm.to.kafka")
-                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
-                .setExchangePattern(ExchangePattern.InOnly)
-                .to(ACTIVEMQ_PREFIX + SIRI_GM_KAFKA_QUEUE)
-        ;
-
-        from("direct:send.fm.to.kafka")
-                .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
-                .setExchangePattern(ExchangePattern.InOnly)
-                .to(ACTIVEMQ_PREFIX + SIRI_FM_KAFKA_QUEUE)
         ;
 
     }

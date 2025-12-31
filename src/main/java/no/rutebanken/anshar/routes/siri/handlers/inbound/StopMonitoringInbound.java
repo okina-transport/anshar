@@ -2,12 +2,16 @@ package no.rutebanken.anshar.routes.siri.handlers.inbound;
 
 import no.rutebanken.anshar.data.MonitoredStopVisits;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
+import no.rutebanken.anshar.routes.kafka.KafkaConfig;
+import no.rutebanken.anshar.routes.kafka.KafkaRouteBuilder;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.siri.handlers.Utils;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.util.StopMonitoringUtils;
+import org.apache.camel.Produce;
+import org.apache.camel.ProducerTemplate;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -21,6 +25,8 @@ import uk.org.siri.siri21.StopMonitoringDeliveryStructure;
 
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASET_ID_HEADER_NAME;
 
 @Service
 public class StopMonitoringInbound {
@@ -41,6 +47,12 @@ public class StopMonitoringInbound {
 
     @Autowired
     private PrometheusMetricsService metrics;
+
+    @Autowired
+    private KafkaConfig kafkaConfig;
+
+    @Produce(KafkaRouteBuilder.SEND_SM_IN_TO_KAFKA)
+    protected ProducerTemplate sendSmInToKafka;
 
     public boolean ingestStopVisitFromApi(SiriDataType dataFormat, String dataSetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList) {
         // logger.debug("Got SM-delivery: Subscription [{}] {}", subscriptionSetupList);
@@ -94,6 +106,11 @@ public class StopMonitoringInbound {
     public boolean ingestStopVisit(SubscriptionSetup subscriptionSetup, Siri incoming) {
         List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = incoming.getServiceDelivery().getStopMonitoringDeliveries();
         //logger.debug("Got SM-delivery: Subscription [{}] ", subscriptionSetup);
+
+        if (kafkaConfig.isKafkaEnabled() && kafkaConfig.isSendSiriSmInToKafka()) {
+            sendSmInToKafka.asyncRequestBodyAndHeader(sendSmInToKafka.getDefaultEndpoint(), incoming,
+                    DATASET_ID_HEADER_NAME, subscriptionSetup.getDatasetId());
+        }
 
         List<MonitoredStopVisit> addedOrUpdated = new ArrayList<>();
         if (stopMonitoringDeliveries != null) {
