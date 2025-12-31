@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.*;
 
+import static no.rutebanken.anshar.routes.health.IncomingFlowType.SIRI;
 import static no.rutebanken.anshar.subscription.SubscriptionSetup.ServiceType.SOAP;
 
 @Component
@@ -104,12 +105,12 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
                     log.error("No file returned for the provider " + siriApi.getDatasetId());
                 }
 
-                metrics.registerIncomingDataMonitoring("SIRI", siriApi.getDatasetId(), "200", siriApi.getUrl());
-                incomingDataHealthService.sendSubscriptionMonitoringData("SIRI", siriApi.getDatasetId(), "200", siriApi.getUrl());
+                metrics.registerIncomingDataMonitoring(SIRI.getCode(), siriApi.getDatasetId(), "200", siriApi.getUrl());
+                incomingDataHealthService.sendSubscriptionMonitoringData(SIRI.getCode(), siriApi.getDatasetId(), "200", siriApi.getUrl());
                 incomingDataHealthService.recordStatus(String.valueOf(siriApi.getId()), siriApi.getDatasetId(), siriApi.getUrl(), IncomingFlowType.SIRI, FlowStatus.OK);
             } catch (Exception e) {
-                metrics.registerIncomingDataMonitoring("SIRI", siriApi.getDatasetId(), "500", siriApi.getUrl());
-                incomingDataHealthService.sendSubscriptionMonitoringData("SIRI", siriApi.getDatasetId(), "500", siriApi.getUrl());
+                metrics.registerIncomingDataMonitoring(SIRI.getCode(), siriApi.getDatasetId(), "500", siriApi.getUrl());
+                incomingDataHealthService.sendSubscriptionMonitoringData(SIRI.getCode(), siriApi.getDatasetId(), "500", siriApi.getUrl());
                 incomingDataHealthService.recordStatus(String.valueOf(siriApi.getId()), siriApi.getDatasetId(), siriApi.getUrl(), IncomingFlowType.SIRI, FlowStatus.ERROR);
 
             }
