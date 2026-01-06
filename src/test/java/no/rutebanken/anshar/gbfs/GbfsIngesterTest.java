@@ -17,7 +17,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class GbfsIngesterTest {
+public class GbfsIngesterTest {
 
     @Mock
     FacilityMonitoringInbound facilityMonitoringInbound;
@@ -28,21 +28,18 @@ class GbfsIngesterTest {
     @Mock
     StationStatusToSiriFmMapper mapper;
 
-    @Mock
-    GBFSConfiguration gbfsConfiguration;
-
     @InjectMocks
     GbfsIngester tested;
 
     private static final String DATASET_ID = "test";
 
     @Test
-    void test_ingest_whenNoFacilityConditionIsMapped_thenDoNothing() {
+    public void test_ingest_whenNoFacilityConditionIsMapped_thenDoNothing() {
         GBFSStationStatus  stationStatus = new GBFSStationStatus();
         List<FacilityConditionStructure> fcss = List.of();
         when(mapper.map(stationStatus)).thenReturn(fcss);
 
-        tested.ingest(stationStatus);
+        tested.ingest(stationStatus, DATASET_ID);
 
         verify(mapper).map(stationStatus);
         verify(healthManager, never()).dataReceived();
@@ -50,14 +47,13 @@ class GbfsIngesterTest {
     }
 
     @Test
-    void test_ingest_whenFacilityConditionsAreMapped_thenAddThemInCache() {
+    public void test_ingest_whenFacilityConditionsAreMapped_thenAddThemInCache() {
         GBFSStationStatus  stationStatus = new GBFSStationStatus();
         FacilityConditionStructure fcs = new FacilityConditionStructure();
         List<FacilityConditionStructure> fcss = List.of(fcs);
-        when(gbfsConfiguration.getDefaultDataset()).thenReturn(DATASET_ID);
         when(mapper.map(stationStatus)).thenReturn(fcss);
 
-        tested.ingest(stationStatus);
+        tested.ingest(stationStatus, DATASET_ID);
 
         verify(mapper).map(stationStatus);
         verify(healthManager).dataReceived();
