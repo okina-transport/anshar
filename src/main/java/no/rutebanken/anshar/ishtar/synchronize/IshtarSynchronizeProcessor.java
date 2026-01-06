@@ -41,7 +41,7 @@ public class IshtarSynchronizeProcessor implements Processor {
     private static final String GET_ALL_SIRI_APIS_URI = "/siri-apis/all";
     private static final String GET_ALL_ID_PROCESSING_PARAMETERS_URI = "/id-processing-parameters/all";
     private static final String GET_ALL_SUBSCRIPTIONS_URI = "/subscriptions/all";
-    private static final String GET_ALL_GTFS_RT_APIS_URI = "/gtfs-rt-apis";
+    private static final String GET_ALL_GTFS_RT_APIS_URI = "/gtfs-rt-apis/all";
 
     private final SubscriptionConfig subscriptionConfig;
     private final DiscoverySubscriptionCreator discoverySubscriptionCreator;

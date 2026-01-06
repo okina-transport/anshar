@@ -2,7 +2,6 @@ package no.rutebanken.anshar.api;
 
 import lombok.Data;
 import no.rutebanken.anshar.config.GTFSRTType;
-import no.rutebanken.anshar.ishtar.model.PublishToDisplayAction;
 
 @Data
 public class GtfsRTApi {
@@ -20,5 +19,4 @@ public class GtfsRTApi {
     private Integer activePeriodDays;
     private PublishedLineNameMapping publishedLineNameMapping;
     private String apiKey;
-    private PublishToDisplayAction publishToDisplayAction;
 }

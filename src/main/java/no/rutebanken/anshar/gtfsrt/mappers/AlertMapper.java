@@ -4,7 +4,6 @@ package no.rutebanken.anshar.gtfsrt.mappers;
 import com.google.transit.realtime.GtfsRealtime;
 import com.hazelcast.map.IMap;
 import no.rutebanken.anshar.api.GtfsRTApi;
-import no.rutebanken.anshar.ishtar.model.PublishToDisplayAction;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.mapping.StopTimesService;
 import org.apache.commons.collections4.CollectionUtils;
@@ -13,6 +12,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 import uk.org.ifopt.siri21.StopPlaceRef;
 import uk.org.siri.siri20.EnvironmentReasonEnumeration;
 import uk.org.siri.siri20.EquipmentReasonEnumeration;
@@ -20,16 +21,15 @@ import uk.org.siri.siri20.MiscellaneousReasonEnumeration;
 import uk.org.siri.siri20.PersonnelReasonEnumeration;
 import uk.org.siri.siri21.*;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.Serializable;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 
 /***
@@ -401,7 +401,6 @@ public class AlertMapper {
         mapReasons(ptSituationElement, alert);
         mapEffect(ptSituationElement, alert);
         mapSeverity(ptSituationElement, alert);
-        addPublishToDisplayActionIfNecessary(gtfsrtApi, ptSituationElement);
 
         return Optional.of(ptSituationElement);
     }
@@ -594,30 +593,6 @@ public class AlertMapper {
 
             ptSituationElement.getValidityPeriods().add(validityPeriod);
         }
-    }
-
-    private void addPublishToDisplayActionIfNecessary(GtfsRTApi gtfsrtApi, PtSituationElement ptSituationElement) {
-        PublishToDisplayAction configuredPublishToDisplayAction = gtfsrtApi.getPublishToDisplayAction();
-        if (configuredPublishToDisplayAction != PublishToDisplayAction.NONE) {
-            ActionsStructure actionsStructure = new ActionsStructure();
-            List<uk.org.siri.siri21.PublishToDisplayAction> publishToDisplayActions = actionsStructure.getPublishToDisplayActions();
-            uk.org.siri.siri21.PublishToDisplayAction publishToDisplayAction = buildPublishToDisplayAction(configuredPublishToDisplayAction);
-
-            publishToDisplayActions.add(publishToDisplayAction);
-
-            ptSituationElement.setPublishingActions(actionsStructure);
-        }
-    }
-
-    private static uk.org.siri.siri21.PublishToDisplayAction buildPublishToDisplayAction(PublishToDisplayAction configuredPublishToDisplayAction) {
-        uk.org.siri.siri21.PublishToDisplayAction publishToDisplayAction = new uk.org.siri.siri21.PublishToDisplayAction();
-
-        publishToDisplayAction.setOnPlace(configuredPublishToDisplayAction == PublishToDisplayAction.ON_PLACE_AND_ON_BOARD
-        || configuredPublishToDisplayAction == PublishToDisplayAction.ON_PLACE);
-
-        publishToDisplayAction.setOnBoard(configuredPublishToDisplayAction == PublishToDisplayAction.ON_BOARD
-                || configuredPublishToDisplayAction == PublishToDisplayAction.ON_PLACE_AND_ON_BOARD);
-        return publishToDisplayAction;
     }
 
 }
