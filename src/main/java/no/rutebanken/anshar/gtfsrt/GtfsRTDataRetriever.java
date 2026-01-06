@@ -35,11 +35,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static no.rutebanken.anshar.routes.health.IncomingFlowType.GTFS;
-
 
 @Service
 public class GtfsRTDataRetriever {
+    public static final String GTFS_RT = "GTFS-RT";
     private static final Logger logger = LoggerFactory.getLogger(GtfsRTDataRetriever.class);
     private final String lockMap = "ansharRouteLockMap";
     private final String gtfsRtLock = "isGtfsRtRunning";
@@ -101,8 +100,8 @@ public class GtfsRTDataRetriever {
                     logger.error("Error on GTFSRT feed:" + gtfsRTApi.getDatasetId() + " - " + gtfsRTApi.getUrl());
                     logger.error("Error detail", e);
                     gtfsRTApi.setStatus(FlowStatus.ERROR);
-                    metrics.registerIncomingDataMonitoring(GTFS.getCode(), gtfsRTApi.getDatasetId(), "500", gtfsRTApi.getUrl());
-                    incomingDataHealthService.sendSubscriptionMonitoringData(GTFS.getCode(), gtfsRTApi.getDatasetId(), "500", gtfsRTApi.getUrl());
+                    metrics.registerIncomingDataMonitoring(GTFS_RT, gtfsRTApi.getDatasetId(), "500", gtfsRTApi.getUrl());
+                    incomingDataHealthService.sendSubscriptionMonitoringData(GTFS_RT, gtfsRTApi.getDatasetId(), "500", gtfsRTApi.getUrl());
                 }
                 incomingDataHealthService.recordStatus(gtfsRTApi);
             }
@@ -183,8 +182,8 @@ public class GtfsRTDataRetriever {
 
             try (InputStream inputStream = connection.getInputStream()) {
                 String responseCode = String.valueOf(connection.getResponseCode());
-                metrics.registerIncomingDataMonitoring(GTFS.getCode(), gtfsRTApi.getDatasetId(), responseCode, gtfsRTApi.getUrl());
-                incomingDataHealthService.sendSubscriptionMonitoringData(GTFS.getCode(), gtfsRTApi.getDatasetId(), responseCode, gtfsRTApi.getUrl());
+                metrics.registerIncomingDataMonitoring(GTFS_RT, gtfsRTApi.getDatasetId(), responseCode, gtfsRTApi.getUrl());
+                incomingDataHealthService.sendSubscriptionMonitoringData(GTFS_RT, gtfsRTApi.getDatasetId(), responseCode, gtfsRTApi.getUrl());
 
                 if (gtfsRTApi.getType() == null || GTFSRTType.PROTOBUF.equals(gtfsRTApi.getType())) {
                     BufferedInputStream in = new BufferedInputStream(inputStream);
@@ -197,8 +196,8 @@ public class GtfsRTDataRetriever {
                 }
             }
         } catch (IOException ex) {
-            metrics.registerIncomingDataMonitoring(GTFS.getCode(), gtfsRTApi.getDatasetId(), getErrorCode(ex.getMessage()), gtfsRTApi.getUrl());
-            incomingDataHealthService.sendSubscriptionMonitoringData(GTFS.getCode(), gtfsRTApi.getDatasetId(), getErrorCode(ex.getMessage()), gtfsRTApi.getUrl());
+            metrics.registerIncomingDataMonitoring(GTFS_RT, gtfsRTApi.getDatasetId(), getErrorCode(ex.getMessage()), gtfsRTApi.getUrl());
+            incomingDataHealthService.sendSubscriptionMonitoringData(GTFS_RT, gtfsRTApi.getDatasetId(), getErrorCode(ex.getMessage()), gtfsRTApi.getUrl());
             logger.error("Error while creating feedMessage", ex);
             return Optional.empty();
         }

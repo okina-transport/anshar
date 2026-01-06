@@ -34,7 +34,6 @@ import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.apache.camel.Exchange;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,14 +64,12 @@ import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static no.rutebanken.anshar.routes.health.IncomingFlowType.SIRI;
-
 @Service
 @Configuration
 @EnableScheduling
 public class LivenessReadinessRoute extends RestRouteBuilder {
     private static final Logger logger = LoggerFactory.getLogger(LivenessReadinessRoute.class);
-
+    public static boolean triggerRestart;
     @Value("${anshar.healthcheck.hubot.url}")
     private String hubotUrl;
     @Value("${anshar.healthcheck.hubot.payload.source}")
@@ -119,6 +116,14 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
     private void init() {
         startMonitorTime = LocalTime.parse(startMonitorTimeStr);
         endMonitorTime = LocalTime.parse(endMonitorTimeStr);
+//        if (StringUtils.isNotBlank(pathToJmxMetricsConfiguration)) {
+//            try {
+//                jmxCollector = new JmxCollector(new File(pathToJmxMetricsConfiguration));
+//                jmxCollector.register();
+//            } catch (Exception e) {
+//                logger.error("Error creating jmx collector", e);
+//            }
+//        }
     }
 
     @Override
@@ -339,14 +344,13 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
         siriStatus.setId(subscriptionsByUrl.stream().map(SubscriptionSetup::getSubscriptionId).collect(Collectors.joining(",")));
         siriStatus.setLastUpdate(System.currentTimeMillis());
         siriStatus.setUrl(url);
-        siriStatus.setDataset(subscriptionsByUrl.getFirst().getDatasetId());
-        siriStatus.setType(SIRI);
+        siriStatus.setDataset(subscriptionsByUrl.get(0).getDatasetId());
+        siriStatus.setType(IncomingFlowType.SIRI);
 
         try {
-            FlowStatus status = launchCheckStatus(subscriptionsByUrl.getFirst());
+            FlowStatus status = launchCheckStatus(subscriptionsByUrl.get(0));
             siriStatus.setStatus(status.name());
         } catch (Exception e) {
-            incomingDataHealthService.sendSubscriptionMonitoringData(SIRI.getCode(), subscriptionsByUrl.getFirst().getDatasetId(), "500",subscriptionsByUrl.getFirst().getUrlMap().get(RequestType.SUBSCRIBE));
             siriStatus.setStatus(FlowStatus.ERROR.name());
             log.error("error checking flow status", e);
         }
@@ -362,33 +366,26 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
             transformedBody = CustomSiriXml.rawToSoap(body);
         }
 
-        try (HttpClient client = HttpClient.newHttpClient()) {
-            String producerUrl = subscription.getUrlMap().get(RequestType.CHECK_STATUS);
-            if (StringUtils.isBlank(producerUrl)) {
-                producerUrl = subscription.getUrlMap().get(RequestType.SUBSCRIBE);
-            }
-            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
-                    .uri(URI.create(producerUrl))
-                    .header("Content-Type", subscription.getContentType())
-                    .POST(HttpRequest.BodyPublishers.ofString(transformedBody, StandardCharsets.UTF_8));
+        HttpClient client = HttpClient.newHttpClient();
 
-            if (MapUtils.isNotEmpty(subscription.getCustomHeaders())) {
-                subscription.getCustomHeaders().forEach((key, value) -> requestBuilder.headers(key, value.toString()));
-            }
+        HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                .uri(URI.create(subscription.getUrlMap().get(RequestType.SUBSCRIBE)))
+                .header("Content-Type", subscription.getContentType())
+                .POST(HttpRequest.BodyPublishers.ofString(transformedBody, StandardCharsets.UTF_8));
 
-            HttpResponse<String> response = client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+        if (MapUtils.isNotEmpty(subscription.getCustomHeaders()))
+            subscription.getCustomHeaders().forEach((key, value) -> requestBuilder.headers(key, value.toString()));
 
-            if (response.statusCode() == 200 && isStatusOk(response.body())) {
-                incomingDataHealthService.sendSubscriptionMonitoringData(SIRI.getCode(), subscription.getDatasetId(), "200", producerUrl);
-                return FlowStatus.OK;
-            } else {
-                incomingDataHealthService.sendSubscriptionMonitoringData(SIRI.getCode(), subscription.getDatasetId(), String.valueOf(response.statusCode()), producerUrl);
-                log.debug("original body : {}", body);
-                log.debug("transformed body : {}", transformedBody);
-                log.debug("checkStatus error: {} - {}", response.statusCode(), response.body());
-            }
-            return FlowStatus.ERROR;
+        HttpResponse<String> response = client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 200 && isStatusOk(response.body())) {
+            return FlowStatus.OK;
+        } else {
+            log.debug("original body : " + body);
+            log.debug("transformed body : " + transformedBody);
+            log.debug("checkStatus error:" + response.statusCode() + "-" + response.body());
         }
+        return FlowStatus.ERROR;
     }
 
     public ZonedDateTime getServerStartDate(SubscriptionSetup subscription) throws IOException, InterruptedException, XMLStreamException, JAXBException, TransformerException {
@@ -437,7 +434,7 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
             Siri siriResponse = SiriValueTransformer.parseXml(inputStream);
             return siriResponse.getCheckStatusResponse() != null && siriResponse.getCheckStatusResponse().isStatus();
         } catch (Exception e) {
-            logger.error("Error while trying to process chekStatus Response. body: {}", body);
+            logger.error("Error while trying to process chekStatus Response. body:" + body);
             throw e;
         }
     }
