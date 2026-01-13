@@ -28,9 +28,6 @@ class GbfsIngesterTest {
     @Mock
     StationStatusToSiriFmMapper mapper;
 
-    @Mock
-    GBFSConfiguration gbfsConfiguration;
-
     @InjectMocks
     GbfsIngester tested;
 
@@ -42,7 +39,7 @@ class GbfsIngesterTest {
         List<FacilityConditionStructure> fcss = List.of();
         when(mapper.map(stationStatus)).thenReturn(fcss);
 
-        tested.ingest(stationStatus);
+        tested.ingest(stationStatus, DATASET_ID);
 
         verify(mapper).map(stationStatus);
         verify(healthManager, never()).dataReceived();
@@ -54,10 +51,9 @@ class GbfsIngesterTest {
         GBFSStationStatus  stationStatus = new GBFSStationStatus();
         FacilityConditionStructure fcs = new FacilityConditionStructure();
         List<FacilityConditionStructure> fcss = List.of(fcs);
-        when(gbfsConfiguration.getDefaultDataset()).thenReturn(DATASET_ID);
         when(mapper.map(stationStatus)).thenReturn(fcss);
 
-        tested.ingest(stationStatus);
+        tested.ingest(stationStatus, DATASET_ID);
 
         verify(mapper).map(stationStatus);
         verify(healthManager).dataReceived();
