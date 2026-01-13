@@ -27,7 +27,7 @@ public class GbfsRouteBuilder extends RouteBuilder {
         if (gbfsActivated && ansharConfiguration.processFM()) {
             from(routeName)
                     .unmarshal().json(GBFSStationStatus.class)
-                    .bean(gbfsIngester, "ingest(${body})")
+                    .bean(gbfsIngester, "ingest(${body}, ${header.systemId})")
                     .routeId("gbfs.to.siri").end();
         }
     }
