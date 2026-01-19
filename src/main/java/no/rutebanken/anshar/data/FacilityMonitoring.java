@@ -273,7 +273,7 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
         if (CollectionUtils.isNotEmpty(requestedFacilities)) {
             // map NETEX id to ORIGINAL id
             requestedFacilities = requestedFacilities.stream()
-                    .map(rf -> parkingIdsService.getOriginalParkingId(rf).orElse(rf))
+                    .map(rf -> parkingIdsService.getOriginalParkingIdByNetexId(rf).orElse(rf))
                     .collect(Collectors.toSet());
         }
 

@@ -25,6 +25,7 @@ import no.rutebanken.anshar.routes.kafka.KafkaRouteBuilder;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
+import no.rutebanken.anshar.routes.siri.processor.FacilityRefPostProcessor;
 import no.rutebanken.anshar.routes.siri.processor.GmSIVSicAQuayPostProcessor;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
@@ -736,6 +737,7 @@ public class ServerSubscriptionManager {
         for (String dataset : datasetList) {
             Map<ObjectType, Optional<IdProcessingParameters>> idProcessingParams = incomingSubscriptionConfig.buildIdProcessingParamsFromDataset(dataset);
             List<ValueAdapter> mappers = MappingAdapterPresets.getOutboundAdapters(SiriDataType.FACILITY_MONITORING, outboundIdMappingPolicy, idProcessingParams);
+            mappers.add(new FacilityRefPostProcessor(dataset, outboundIdMappingPolicy));
             valueAdaptersByDataset.put(dataset, mappers);
         }
 

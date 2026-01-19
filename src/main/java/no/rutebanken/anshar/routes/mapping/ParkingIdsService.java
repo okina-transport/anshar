@@ -5,13 +5,16 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -22,13 +25,16 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class ParkingIdsService {
 
-    private final static ScheduledExecutorService EXECUTOR = Executors.newSingleThreadScheduledExecutor();
-    private final static Map<String, String> PARKING_ORIGINAL_ID_TO_NETEX_ID = new ConcurrentHashMap<>();
+    private static final ScheduledExecutorService EXECUTOR = Executors.newSingleThreadScheduledExecutor();
+    private static final Map<String, Map<String, String>> PARKING_BY_OPERATOR_AND_ORIGINAL_ID_TO_NETEX_ID =
+            new ConcurrentHashMap<>();
+    private static final Map<String, Pair<String, String>> PARKING_NETEX_ID_TO_OPERATOR_AND_ORIGINAL_ID =
+            new ConcurrentHashMap<>();
     private final File parkingIdMappingPath;
     private final int updateFrequency;
 
     public ParkingIdsService(@Value("${anshar.mapping.parkings.path:/tmp/exports/technique/parkingIdMappings.csv}") File parkingIdMappingPath,
-                             @Value("${anshar.mapping.parkings.update.frequency.min:120}") int updateFrequency) {
+                             @Value("${anshar.mapping.parkings.update.frequency.min:5}") int updateFrequency) {
         this.parkingIdMappingPath = parkingIdMappingPath;
         this.updateFrequency = updateFrequency;
     }
@@ -39,65 +45,75 @@ public class ParkingIdsService {
         log.info("Initialized parking id updater mapping service with path: {}, updateFrequency: {} minutes", parkingIdMappingPath, updateFrequency);
     }
 
-    private void updateParkingIds() {
+    public void updateParkingIds() {
         synchronized (this) {
             log.info("Update parking id mappings map");
 
-            PARKING_ORIGINAL_ID_TO_NETEX_ID.clear();
+            PARKING_BY_OPERATOR_AND_ORIGINAL_ID_TO_NETEX_ID.clear();
 
             try (CSVParser csvParser = CSVParser.builder()
                     .setFile(parkingIdMappingPath)
                     .setCharset(StandardCharsets.UTF_8)
                     .setFormat(CSVFormat.RFC4180
                             .builder()
-                            .setHeader("originalId", "netexId")
+                            .setHeader("operator", "originalId", "netexId")
                             .setSkipHeaderRecord(true)
                             .get())
                     .get()) {
 
                 Iterable<CSVRecord> records = csvParser.getRecords();
-
                 log.info("Read {} records from {}", CollectionUtils.size(records), parkingIdMappingPath);
-                for (CSVRecord record : records) {
+                for (CSVRecord _record : records) {
+                    String operator = _record.get("operator");
+                    String originalId = _record.get("originalId");
+                    String netexId = _record.get("netexId");
 
-                    String originalId = record.get("originalId");
-                    String netexId = record.get("netexId");
+                    Map<String, String> parkingByOriginalIdToNetexId =
+                            PARKING_BY_OPERATOR_AND_ORIGINAL_ID_TO_NETEX_ID.computeIfAbsent(operator,
+                             key -> new HashMap<>());
 
-                    if (PARKING_ORIGINAL_ID_TO_NETEX_ID.containsKey(originalId)) {
-                        log.info("Duplicate parking originalId in mapping file for originalId {}", originalId);
-                        log.info("Current netexId: {}", PARKING_ORIGINAL_ID_TO_NETEX_ID.get(originalId));
+                    if (parkingByOriginalIdToNetexId.containsKey(originalId)) {
+                        log.info("Duplicate parking originalId in mapping file for operator {} / originalId {}",
+                                operator, originalId);
+                        log.info("Current netexId: {}", parkingByOriginalIdToNetexId.get(originalId));
                         log.info("New netexId: {}", netexId);
                     }
 
-                    log.debug("originalId: {}, netexId: {}", originalId, netexId);
-                    PARKING_ORIGINAL_ID_TO_NETEX_ID.put(originalId, netexId);
+                    parkingByOriginalIdToNetexId.put(originalId, netexId);
+                    PARKING_NETEX_ID_TO_OPERATOR_AND_ORIGINAL_ID.put(netexId, Pair.of(operator, originalId));
+                    log.debug("operator: {}, originalId: {}, netexId: {}", operator, originalId, netexId);
                 }
             } catch (Exception e) {
                 log.error("Failed to read CSV records from {}", parkingIdMappingPath, e);
             }
-            log.info("Parking id mappings map has {} elements", PARKING_ORIGINAL_ID_TO_NETEX_ID.size());
+            log.info("Parking id mappings map has {} operator(s) / {} netexId(s)",
+                    PARKING_BY_OPERATOR_AND_ORIGINAL_ID_TO_NETEX_ID.size(),
+                    PARKING_NETEX_ID_TO_OPERATOR_AND_ORIGINAL_ID.size());
         }
     }
 
-    public Optional<String> getNetexParkingId(String originalId) {
-
-        if (PARKING_ORIGINAL_ID_TO_NETEX_ID.isEmpty()) {
-            updateParkingIds();
+    public Optional<String> getNetexParkingIdByOperatorAndOriginalId(String operator, String originalId) {
+        Objects.requireNonNull(operator);
+        Objects.requireNonNull(originalId);
+        synchronized (this) {
+            return Optional.ofNullable(PARKING_BY_OPERATOR_AND_ORIGINAL_ID_TO_NETEX_ID.getOrDefault(operator, Map.of()).get(originalId));
         }
-
-        return Optional.ofNullable(PARKING_ORIGINAL_ID_TO_NETEX_ID.get(originalId));
     }
 
-    public Optional<String> getOriginalParkingId(String netexId) {
-
-        if (PARKING_ORIGINAL_ID_TO_NETEX_ID.isEmpty()) {
-            updateParkingIds();
+    public Optional<String> getOriginalParkingIdByNetexId(String netexId) {
+        Objects.requireNonNull(netexId);
+        synchronized (this) {
+            return Optional.ofNullable(PARKING_NETEX_ID_TO_OPERATOR_AND_ORIGINAL_ID.getOrDefault(netexId, Pair.of(null,
+                    null)).getRight());
         }
+    }
 
-        return PARKING_ORIGINAL_ID_TO_NETEX_ID.entrySet().stream()
-                .filter(entry -> entry.getValue().equals(netexId))
-                .map(Map.Entry::getKey)
-                .findFirst();
+    public Optional<String> getOperatorByNetexId(String netexId) {
+        Objects.requireNonNull(netexId);
+        synchronized (this) {
+            return Optional.ofNullable(PARKING_NETEX_ID_TO_OPERATOR_AND_ORIGINAL_ID.getOrDefault(netexId, Pair.of(null,
+                    null)).getLeft());
+        }
     }
 
 }

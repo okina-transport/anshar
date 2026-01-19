@@ -29,6 +29,7 @@ import no.rutebanken.anshar.routes.siri.handlers.inbound.*;
 import no.rutebanken.anshar.routes.siri.handlers.outbound.*;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.helpers.StopMonitoringServiceDeliveryParameter;
+import no.rutebanken.anshar.routes.siri.processor.FacilityRefPostProcessor;
 import no.rutebanken.anshar.routes.siri.processor.GmSIVSicAQuayPostProcessor;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
@@ -422,6 +423,7 @@ public class SiriHandler {
 
 
                 valueAdapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.FACILITY_MONITORING, outboundIdMappingPolicy, idMap);
+                valueAdapters.add(new FacilityRefPostProcessor(datasetId, outboundIdMappingPolicy));
                 GeneralMessageHelper.applyTransformationsInContent(serviceResponse, valueAdapters, idMap);
 
             }
