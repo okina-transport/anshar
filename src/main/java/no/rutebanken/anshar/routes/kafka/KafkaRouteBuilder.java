@@ -4,9 +4,12 @@ import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
+import uk.org.siri.siri21.Siri;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Set;
 
 import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASET_ID_HEADER_NAME;
 
@@ -22,10 +25,12 @@ public class KafkaRouteBuilder extends RouteBuilder {
 
     private final KafkaConfig kafkaConfig;
     private final AnsharConfiguration config;
+    private final OperatorService operatorService;
 
-    public KafkaRouteBuilder(KafkaConfig kafkaConfig, AnsharConfiguration config) {
+    public KafkaRouteBuilder(KafkaConfig kafkaConfig, AnsharConfiguration config, OperatorService operatorService) {
         this.kafkaConfig = kafkaConfig;
         this.config = config;
+        this.operatorService = operatorService;
     }
 
     @Override
@@ -47,12 +52,17 @@ public class KafkaRouteBuilder extends RouteBuilder {
         if (kafkaConfig.isKafkaEnabled() && kafkaConfig.isSendSiriSxOutToKafka()) {
             from(SEND_SX_OUT_TO_KAFKA)
                     .log(LoggingLevel.INFO, "Sending SX message to KAFKA")
-                    .marshal(SiriDataFormatHelper.getThreadSafeSiriJaxbDataformat())
                     .removeHeaders("*", DATASET_ID_HEADER_NAME)
                     .setHeader(KafkaHeaders.CLIENT_HEADER,
                             constant(config.getClientName().getBytes(StandardCharsets.UTF_8)))
                     .setHeader(KafkaHeaders.ENV_HEADER,
                             constant(config.getEnvironment().getBytes(StandardCharsets.UTF_8)))
+                    .process(e -> {
+                        Set<String> operators = operatorService.getSxOperators(e.getIn().getBody(Siri.class));
+                        byte[] operatorBytes = StringUtils.join(operators, ',').getBytes(StandardCharsets.UTF_8);
+                        e.getMessage().setHeader(KafkaHeaders.OPERATORS_HEADER, operatorBytes);
+                    })
+                    .marshal(SiriDataFormatHelper.getThreadSafeSiriJaxbDataformat())
                     .wireTap(kafkaConfig.createCamelProducerConfig(kafkaConfig.getSxOutTopic()));
         } else {
             from(SEND_SX_OUT_TO_KAFKA)
