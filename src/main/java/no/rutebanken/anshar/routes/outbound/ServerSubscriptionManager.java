@@ -1174,7 +1174,10 @@ public class ServerSubscriptionManager {
         }
 
         if (kafkaConfig.isSendSiriSxOutToKafka()) {
-            sendSXToKafka.asyncRequestBodyAndHeader(sendSXToKafka.getDefaultEndpoint(), delivery, DATASET_ID_HEADER_NAME, datasetId);
+            List<Siri> deliveries = siriHelper.splitDeliveries(delivery, 1);
+            for (Siri sxDelivery : deliveries) {
+                sendSXToKafka.asyncRequestBodyAndHeader(sendSXToKafka.getDefaultEndpoint(), sxDelivery, DATASET_ID_HEADER_NAME, datasetId);
+            }
         }
 
         final List<OutboundSubscriptionSetup> recipients = subscriptions
