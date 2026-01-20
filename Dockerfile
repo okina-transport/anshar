@@ -11,5 +11,5 @@ EXPOSE 5000
 ENV LANG=C.UTF-8
 
 # Commande pour lancer l'application Spring Boot
-ENTRYPOINT ["java","--add-opens", "java.desktop/java.awt.font=ALL-UNNAMED", "--add-opens", "java.base/java.util=ALL-UNNAMED","--add-opens", "java.base/java.lang.reflect=ALL-UNNAMED","--add-opens", "java.base/java.lang=ALL-UNNAMED","--add-opens", "java.base/java.io=ALL-UNNAMED", "--add-opens", "java.base/java.text=ALL-UNNAMED","-jar","/app.jar"]
+ENTRYPOINT ["/__cacert_entrypoint.sh","java","--add-opens", "java.desktop/java.awt.font=ALL-UNNAMED", "--add-opens", "java.base/java.util=ALL-UNNAMED","--add-opens", "java.base/java.lang.reflect=ALL-UNNAMED","--add-opens", "java.base/java.lang=ALL-UNNAMED","--add-opens", "java.base/java.io=ALL-UNNAMED", "--add-opens", "java.base/java.text=ALL-UNNAMED","-jar","/app.jar"]
 
