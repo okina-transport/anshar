@@ -5,9 +5,14 @@ import com.hazelcast.query.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
+import no.rutebanken.anshar.routes.health.InputSubscriptionData;
+import no.rutebanken.anshar.routes.kafka.KafkaConfig;
+import no.rutebanken.anshar.routes.kafka.KafkaRouteBuilder;
 import no.rutebanken.anshar.routes.mapping.ParkingIdsService;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
+import org.apache.camel.Produce;
+import org.apache.camel.ProducerTemplate;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.Strings;
 import org.quartz.utils.counter.Counter;
@@ -39,6 +44,9 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
     private final AnsharConfiguration configuration;
     private final SiriObjectFactory siriObjectFactory;
     private final ParkingIdsService parkingIdsService;
+    private final KafkaConfig kafkaConfig;
+    @Produce(KafkaRouteBuilder.SEND_TR_IN_SUBSCRIPTION_DATA_TO_KAFKA)
+    private ProducerTemplate sendTrInSubscriptionDataToKafka;
 
 
     protected FacilityMonitoring(@Qualifier("getFacilityMonitoring") IMap<SiriObjectStorageKey, FacilityConditionStructure> facilityMonitoring,
@@ -47,7 +55,8 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
                                  @Qualifier("getFmChecksumMap") IMap<SiriObjectStorageKey, String> checksumCache,
                                  AnsharConfiguration configuration,
                                  SiriObjectFactory siriObjectFactory,
-                                 ParkingIdsService parkingIdsService) {
+                                 ParkingIdsService parkingIdsService,
+                                 KafkaConfig kafkaConfig) {
         super(SiriDataType.FACILITY_MONITORING);
         this.facilityMonitoring = facilityMonitoring;
         this.changesMap = changesMap;
@@ -56,6 +65,7 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
         this.configuration = configuration;
         this.siriObjectFactory = siriObjectFactory;
         this.parkingIdsService = parkingIdsService;
+        this.kafkaConfig = kafkaConfig;
     }
 
 
@@ -173,6 +183,14 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
                         outDatedCounter.increment();
                     }
                 });
+
+        if (kafkaConfig.isKafkaEnabled() && kafkaConfig.isSendTrInSubscriptionDataToKafka()) {
+            InputSubscriptionData isd = new InputSubscriptionData();
+            isd.setDataset(datasetId);
+            isd.setDataType(SiriDataType.FACILITY_MONITORING);
+            isd.setNbElements(addedData.size());
+            sendTrInSubscriptionDataToKafka.asyncRequestBody(sendTrInSubscriptionDataToKafka.getDefaultEndpoint(), isd);
+        }
 
         return addedData;
     }
