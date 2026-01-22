@@ -31,9 +31,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 
-import static no.rutebanken.anshar.routes.health.IncomingFlowType.SIRI;
 import static no.rutebanken.anshar.routes.HttpParameter.INTERNAL_SIRI_DATA_TYPE;
 import static no.rutebanken.anshar.routes.HttpParameter.PARAM_SUBSCRIPTION_ID;
+import static no.rutebanken.anshar.routes.health.IncomingFlowType.SIRI;
 
 public class Siri20ToSiriRS20RequestResponse extends SiriSubscriptionRouteBuilder {
 
@@ -90,7 +90,7 @@ public class Siri20ToSiriRS20RequestResponse extends SiriSubscriptionRouteBuilde
                 .process(p -> {
                     String url = getRequestUrl(subscriptionSetup);
                     metrics.registerIncomingDataMonitoring(SIRI.getCode(), subscriptionSetup.getDatasetId(), "200", url);
-                    incomingDataHealthService.sendSubscriptionMonitoringData(SIRI.getCode(), subscriptionSetup.getDatasetId(), "200", url);
+                    incomingDataHealthService.sendSubscriptionMonitoringData(SIRI.getCode(), subscriptionSetup.getDatasetId(), "200", url, subscriptionSetup.getSubscriptionType());
                     incomingDataHealthService.recordStatus(subscriptionSetup.getSubscriptionId(), subscriptionSetup.getDatasetId(), url, IncomingFlowType.SIRI, FlowStatus.OK);
                 })
                 .to("direct:enqueue.message")
@@ -105,7 +105,7 @@ public class Siri20ToSiriRS20RequestResponse extends SiriSubscriptionRouteBuilde
                         statusCode = httpEx.getStatusCode();
                     }
                     metrics.registerIncomingDataMonitoring(SIRI.getCode(), subscriptionSetup.getDatasetId(), String.valueOf(statusCode), url);
-                    incomingDataHealthService.sendSubscriptionMonitoringData(SIRI.getCode(), subscriptionSetup.getDatasetId(), String.valueOf(statusCode), url);
+                    incomingDataHealthService.sendSubscriptionMonitoringData(SIRI.getCode(), subscriptionSetup.getDatasetId(), String.valueOf(statusCode), url, subscriptionSetup.getSubscriptionType());
                     incomingDataHealthService.recordStatus(subscriptionSetup.getSubscriptionId(), subscriptionSetup.getDatasetId(), getRequestUrl(subscriptionSetup), IncomingFlowType.SIRI, FlowStatus.ERROR);
                     if (releaseLeadershipOnError) {
                         releaseLeadership(monitoringRouteId);

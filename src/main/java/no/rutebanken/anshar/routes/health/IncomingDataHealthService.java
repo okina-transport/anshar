@@ -2,6 +2,7 @@ package no.rutebanken.anshar.routes.health;
 
 import no.rutebanken.anshar.api.FlowStatus;
 import no.rutebanken.anshar.api.GtfsRTApi;
+import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionMonitoring;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
@@ -31,6 +32,17 @@ public class IncomingDataHealthService {
         sm.setDataType(type);
         sm.setHttpStatus(httpStatus);
         sm.setProducerUrl(producerUrl);
+        sm.setSiriDataType(null);
+        template.asyncSendBody(template.getDefaultEndpoint(), sm);
+    }
+
+    public void sendSubscriptionMonitoringData(String type, String datasetId, String httpStatus, String producerUrl, SiriDataType siriDataType) {
+        SubscriptionMonitoring sm = new SubscriptionMonitoring();
+        sm.setDataset(datasetId);
+        sm.setDataType(type);
+        sm.setHttpStatus(httpStatus);
+        sm.setProducerUrl(producerUrl);
+        sm.setSiriDataType(siriDataType);
         template.asyncSendBody(template.getDefaultEndpoint(), sm);
     }
 

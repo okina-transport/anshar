@@ -9,4 +9,5 @@ public class SubscriptionMonitoring {
     private String dataType;
     private String httpStatus;
     private String producerUrl;
+    private SiriDataType siriDataType;
 }

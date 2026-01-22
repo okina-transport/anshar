@@ -379,10 +379,10 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
             HttpResponse<String> response = client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200 && isStatusOk(response.body())) {
-                incomingDataHealthService.sendSubscriptionMonitoringData(SIRI.getCode(), subscription.getDatasetId(), "200", producerUrl);
+                incomingDataHealthService.sendSubscriptionMonitoringData(SIRI.getCode(), subscription.getDatasetId(), "200", producerUrl, subscription.getSubscriptionType());
                 return FlowStatus.OK;
             } else {
-                incomingDataHealthService.sendSubscriptionMonitoringData(SIRI.getCode(), subscription.getDatasetId(), String.valueOf(response.statusCode()), producerUrl);
+                incomingDataHealthService.sendSubscriptionMonitoringData(SIRI.getCode(), subscription.getDatasetId(), String.valueOf(response.statusCode()), producerUrl, subscription.getSubscriptionType());
                 log.debug("original body : {}", body);
                 log.debug("transformed body : {}", transformedBody);
                 log.debug("checkStatus error: {} - {}", response.statusCode(), response.body());
