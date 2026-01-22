@@ -209,7 +209,7 @@ public class DiscoverySubscriptionCreator {
         List<String> idMappingPrefixes = new ArrayList<>();
         idMappingPrefixes.add(discoveryParams.getDatasetId());
         newSubscription.setIdMappingPrefixes(idMappingPrefixes);
-        newSubscription.setRestartTime("03:20");
+        newSubscription.setRestartTime(discoveryParams.getRestartTime());
         newSubscription.getStopMonitoringRefValues().add(stopMonitoringValue);
         newSubscription.getLineRefValues().add(lineRefValue);
         newSubscription.setActive(true);

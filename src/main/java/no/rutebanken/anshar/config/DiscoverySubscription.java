@@ -34,5 +34,6 @@ public class DiscoverySubscription implements Serializable {
     private String version;
     private String mappingAdapterId;
     private Boolean active;
+    private String restartTime;
 
 }

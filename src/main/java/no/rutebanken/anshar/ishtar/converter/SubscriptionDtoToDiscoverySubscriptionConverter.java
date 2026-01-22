@@ -58,6 +58,7 @@ public class SubscriptionDtoToDiscoverySubscriptionConverter implements Converte
                 target.setVersion(source.getVersion());
                 target.setMappingAdapterId(source.getMappingAdapterId());
                 target.setActive(BooleanUtils.isTrue(source.getActive()));
+                target.setRestartTime(source.getRestartTime());
             } else {
                 log.warn("Subscription has no discovery url defined, discard it: {}", source);
             }
