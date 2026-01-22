@@ -9,7 +9,9 @@ import no.rutebanken.anshar.data.FacilityMonitoring;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.mapping.ParkingIdsService;
+import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
+import no.rutebanken.anshar.routes.siri.processor.FacilityRefPostProcessor;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -106,20 +108,21 @@ public class SiriLiteFacilityMonitoringRoute extends RestRouteBuilder {
         Set<String> facilityRefs = new HashSet<>();
         if (StringUtils.isNotBlank(facilityRef)) {
             // in case facilityRef is not a producter ID, revert it
-            parkingIdsService.getOriginalParkingId(facilityRef).ifPresentOrElse(
+            parkingIdsService.getOriginalParkingIdByNetexId(facilityRef).ifPresentOrElse(
                     facilityRefs::add,
                     () -> facilityRefs.add(facilityRef));
         }
         Siri response = facilityMonitoring.createServiceDelivery(requestorId, datasetId, etClientName, null, maxSize, null, facilityRefs, null, null, messageId);
 
         List<ValueAdapter> outboundAdapters;
+        OutboundIdMappingPolicy outboundIdMappingPolicy = SiriHandler.getIdMappingPolicy(originalId, null);
         if (datasetId != null) {
             Map<ObjectType, Optional<IdProcessingParameters>> idParams = subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);
-            outboundAdapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.FACILITY_MONITORING, SiriHandler.getIdMappingPolicy(originalId, null), idParams);
+            outboundAdapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.FACILITY_MONITORING, outboundIdMappingPolicy, idParams);
         } else {
-            outboundAdapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.FACILITY_MONITORING, SiriHandler.getIdMappingPolicy(originalId, null));
+            outboundAdapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.FACILITY_MONITORING, outboundIdMappingPolicy);
         }
-
+        outboundAdapters.add(new FacilityRefPostProcessor(datasetId, outboundIdMappingPolicy));
         if ("test".equals(originalId)) {
             outboundAdapters = null;
         }

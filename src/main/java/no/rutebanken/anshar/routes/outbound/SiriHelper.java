@@ -167,7 +167,7 @@ public class SiriHelper {
         }
 
         requestedFacilitiesSet = requestedFacilitiesSet.stream()
-                .map(requestedFacility -> parkingIdsService.getOriginalParkingId(requestedFacility).orElse(requestedFacility))
+                .map(requestedFacility -> parkingIdsService.getOriginalParkingIdByNetexId(requestedFacility).orElse(requestedFacility))
                 .collect(Collectors.toSet());
 
         if (!requestedFacilitiesSet.isEmpty()) {
