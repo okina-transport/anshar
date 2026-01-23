@@ -27,6 +27,7 @@ import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.apache.camel.component.http.HttpMethods;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -187,6 +188,13 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
             return false;
         }
         boolean isActive = subscriptionManager.isActiveSubscription(subscriptionSetup.getSubscriptionId());
+        if (StringUtils.isNotEmpty(subscriptionSetup.getParentSubscriptionId()) && !isActive) {
+            // force child discovery subscription to restart
+            subscriptionSetup.setActive(true);
+            hasBeenStarted = false;
+            subscriptionManager.addSubscription(subscriptionSetup.getSubscriptionId(), subscriptionSetup);
+            return true;
+        }
 
         return (isActive & !hasBeenStarted);
     }
