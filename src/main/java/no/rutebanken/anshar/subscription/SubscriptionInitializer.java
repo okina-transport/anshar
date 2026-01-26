@@ -48,6 +48,7 @@ import javax.annotation.PreDestroy;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static no.rutebanken.anshar.routes.siri.SiriSubscriptionRouteBuilder.*;
 import static no.rutebanken.anshar.subscription.SubscriptionSetup.ServiceType.REST;
 import static no.rutebanken.anshar.subscription.SubscriptionSetup.ServiceType.SOAP;
 
@@ -300,18 +301,19 @@ public class SubscriptionInitializer implements CamelContextAware {
                 subscriptionManager.removeSubscription(subscriptionIdToDisable);
 
                 try {
-                    camelContext.getRouteController().stopRoute(SiriSubscriptionRouteBuilder.START_ROUTE_PREFIX + disabledSubscription.getBaseRouteId());
-                    camelContext.getRouteController().stopRoute(SiriSubscriptionRouteBuilder.CHECK_STATUS_ROUTE_PREFIX + disabledSubscription.getBaseRouteId());
-                    camelContext.getRouteController().stopRoute(SiriSubscriptionRouteBuilder.CANCEL_ROUTE_PREFIX + disabledSubscription.getBaseRouteId());
-                    camelContext.getRouteController().stopRoute("monitor.subscription." + disabledSubscription.getVendor());
+                    camelContext.getRouteController().stopRoute(getStartRouteId(disabledSubscription));
+                    camelContext.getRouteController().stopRoute(getCheckStatusRouteId(disabledSubscription));
+                    camelContext.getRouteController().stopRoute(getCancelRouteId(disabledSubscription));
+                    camelContext.getRouteController().stopRoute(getMonitorRouteId(disabledSubscription));
+                    camelContext.getRouteController().stopRoute(getServiceRequestRouteId(disabledSubscription));
 
+                    camelContext.removeRoute(getStartRouteId(disabledSubscription));
+                    camelContext.removeRoute(getCheckStatusRouteId(disabledSubscription));
+                    camelContext.removeRoute(getCancelRouteId(disabledSubscription));
+                    camelContext.removeRoute(getMonitorRouteId(disabledSubscription));
+                    camelContext.removeRoute(getServiceRequestRouteId(disabledSubscription));
 
-                    camelContext.removeRoute(SiriSubscriptionRouteBuilder.START_ROUTE_PREFIX + disabledSubscription.getBaseRouteId());
-                    camelContext.removeRoute(SiriSubscriptionRouteBuilder.CHECK_STATUS_ROUTE_PREFIX + disabledSubscription.getBaseRouteId());
-                    camelContext.removeRoute(SiriSubscriptionRouteBuilder.CANCEL_ROUTE_PREFIX + disabledSubscription.getBaseRouteId());
-                    camelContext.removeRoute("monitor.subscription." + disabledSubscription.getVendor());
-                    helper.forceUnlock("monitor.subscription." + disabledSubscription.getVendor());
-
+                    helper.forceUnlock(getMonitorRouteId(disabledSubscription));
                 } catch (Exception e) {
                     logger.error("Unable to remove route : " + disabledSubscription.getSubscriptionId(), e);
                 }

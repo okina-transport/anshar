@@ -113,7 +113,7 @@ public class Siri20ToSiriWS14Subscription extends SiriSubscriptionRouteBuilder {
                 .when(header("routename").isNotNull())
                 .toD("direct:${header.routename}")
                 .endChoice()
-                .routeId("start.ws.14.subscription." + subscriptionSetup.getVendor())
+                .routeId(getStartRouteId(subscriptionSetup))
         ;
 
         //Cancel subscription
@@ -145,7 +145,7 @@ public class Siri20ToSiriWS14Subscription extends SiriSubscriptionRouteBuilder {
                         handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), body));
                     }
                 })
-                .routeId("cancel.ws.14.subscription." + subscriptionSetup.getVendor())
+                .routeId(getCancelRouteId(subscriptionSetup))
         ;
 
         initTriggerRoutes();

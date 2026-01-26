@@ -117,7 +117,7 @@ public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
                     p.getOut().setBody(null);
                 })
                 .endDoTry()
-                .routeId(START_ROUTE_PREFIX + subscriptionSetup.getBaseRouteId())
+                .routeId(getStartRouteId(subscriptionSetup))
         ;
 
         if (urlMap.get(RequestType.CHECK_STATUS) != null) {
@@ -163,7 +163,7 @@ public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
                     .when(header("routename").isNotNull())
                     .toD("direct:${header.routename}")
                     .endChoice()
-                    .routeId(CHECK_STATUS_ROUTE_PREFIX + subscriptionSetup.getBaseRouteId());
+                    .routeId(getCheckStatusRouteId(subscriptionSetup));
         }
 
         //Cancel subscription
@@ -189,7 +189,7 @@ public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
                         handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionId, body));
                     }
                 })
-                .routeId(CANCEL_ROUTE_PREFIX + subscriptionSetup.getBaseRouteId())
+                .routeId(getCancelRouteId(subscriptionSetup))
         ;
 
         initTriggerRoutes();

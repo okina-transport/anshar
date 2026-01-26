@@ -59,14 +59,13 @@ public class Siri20ToSiriWS20RequestResponse extends SiriSubscriptionRouteBuilde
 
         String httpOptions = getTimeout();
 
-        String monitoringRouteId = "monitor.ws.20." + subscriptionSetup.getSubscriptionType() + "." + subscriptionSetup.getVendor();
         boolean releaseLeadershipOnError;
-        if (subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE |
+        if (subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE ||
                 subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.POLLING_FETCHED_DELIVERY) {
 
             releaseLeadershipOnError = true;
             singletonFrom("quartz://anshar/monitor_" + subscriptionSetup.getRequestResponseRouteName() + "?trigger.repeatInterval=" + heartbeatIntervalMillis,
-                    monitoringRouteId)
+                    getMonitorRouteId(subscriptionSetup))
                     .choice()
                     .when(p -> requestData(subscriptionSetup.getSubscriptionId(), p.getFromRouteId()))
                     .to("direct:" + subscriptionSetup.getServiceRequestRouteName())
@@ -76,7 +75,6 @@ public class Siri20ToSiriWS20RequestResponse extends SiriSubscriptionRouteBuilde
             releaseLeadershipOnError = false;
         }
 
-        String routeId = subscriptionSetup.getBaseRouteId();
         from("direct:" + subscriptionSetup.getServiceRequestRouteName())
                 .messageHistory()
                 .process(p -> requestStarted())
@@ -114,7 +112,7 @@ public class Siri20ToSiriWS20RequestResponse extends SiriSubscriptionRouteBuilde
                     incomingDataHealthService.sendSubscriptionMonitoringData(SIRI.getCode(), subscriptionSetup.getDatasetId(), String.valueOf(statusCode), url, subscriptionSetup.getSubscriptionType());
                     incomingDataHealthService.recordStatus(subscriptionSetup.getSubscriptionId(), subscriptionSetup.getDatasetId(), getRequestUrl(subscriptionSetup), IncomingFlowType.SIRI, FlowStatus.ERROR);
                     if (releaseLeadershipOnError) {
-                        releaseLeadership(monitoringRouteId);
+                        releaseLeadership(getMonitorRouteId(subscriptionSetup));
                     }
                 })
                 .doFinally()
@@ -123,19 +121,19 @@ public class Siri20ToSiriWS20RequestResponse extends SiriSubscriptionRouteBuilde
                     List<MessageHistory> list = p.getProperty(Exchange.MESSAGE_HISTORY, List.class);
                     long elapsed = 0;
                     for (MessageHistory history : list) {
-                        if (history.getRouteId().equals(routeId)) {
+                        if (history.getRouteId().equals(getServiceRequestRouteId(subscriptionSetup))) {
                             elapsed += history.getElapsed();
                         }
                     }
                     if (elapsed > heartbeatIntervalMillis) {
                         log.info("Processing took longer than {} ms - releasing leadership", heartbeatIntervalMillis);
                         if (releaseLeadershipOnError) {
-                            releaseLeadership(monitoringRouteId);
+                            releaseLeadership(getMonitorRouteId(subscriptionSetup));
                         }
                     }
                 })
                 .endDoTry()
-                .routeId(routeId)
+                .routeId(getServiceRequestRouteId(subscriptionSetup))
         ;
 
     }

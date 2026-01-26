@@ -52,6 +52,7 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
     public static final String CHECK_STATUS_ROUTE_PREFIX = "check.status.";
     public static final String CANCEL_ROUTE_PREFIX = "cancel.";
     public static final String MONITOR_ROUTE_PREFIX = "monitor.subscription.";
+    public static final String SERVICE_REQUEST_ROUTE_PREFIX = "service.request.";
 
     @Autowired
     EstimatedTimetables estimatedTimetables;
@@ -59,6 +60,26 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
     boolean hasBeenStarted;
 
     private Instant lastCheckStatus = Instant.now();
+
+    public static String getStartRouteId(SubscriptionSetup subscriptionSetup) {
+        return START_ROUTE_PREFIX + subscriptionSetup.getSubscriptionId();
+    }
+
+    public static String getCheckStatusRouteId(SubscriptionSetup subscriptionSetup) {
+        return CHECK_STATUS_ROUTE_PREFIX + subscriptionSetup.getSubscriptionId();
+    }
+
+    public static String getCancelRouteId(SubscriptionSetup subscriptionSetup) {
+        return CANCEL_ROUTE_PREFIX + subscriptionSetup.getSubscriptionId();
+    }
+
+    public static String getMonitorRouteId(SubscriptionSetup subscriptionSetup) {
+        return MONITOR_ROUTE_PREFIX + subscriptionSetup.getSubscriptionId();
+    }
+
+    public static String getServiceRequestRouteId(SubscriptionSetup subscriptionSetup) {
+        return SERVICE_REQUEST_ROUTE_PREFIX + subscriptionSetup.getSubscriptionId();
+    }
 
     public SiriSubscriptionRouteBuilder(AnsharConfiguration config, SubscriptionManager subscriptionManager) {
         super(config, subscriptionManager);
@@ -104,24 +125,24 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
         }
 
         singletonFrom("quartz://anshar/monitor_" + subscriptionSetup.getSubscriptionId() + "?trigger.repeatInterval=" + 60000,
-                MONITOR_ROUTE_PREFIX + subscriptionSetup.getSubscriptionId())
+                getMonitorRouteId(subscriptionSetup))
                 .choice()
-                .when(p -> shouldPerformDataNotReceivedAction(MONITOR_ROUTE_PREFIX + subscriptionSetup.getSubscriptionId()))
+                .when(p -> shouldPerformDataNotReceivedAction(getMonitorRouteId(subscriptionSetup)))
                 .log("Performing DataNotReceivedAction: " + subscriptionSetup)
                 .setBody(simple(subscriptionSetup.getDataNotReceivedAction() != null ? subscriptionSetup.getDataNotReceivedAction().getJsonPostContent() : ""))
                 .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.APPLICATION_JSON))
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
                 .to("log:datanotreceived:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .toD(subscriptionSetup.getDataNotReceivedAction() != null ? subscriptionSetup.getDataNotReceivedAction().getEndpoint() : "empty", true)
-                .when(p -> shouldBeStarted(MONITOR_ROUTE_PREFIX + subscriptionSetup.getSubscriptionId()))
+                .when(p -> shouldBeStarted(getMonitorRouteId(subscriptionSetup)))
                 .log("Triggering start subscription: " + subscriptionSetup)
                 .process(p -> hasBeenStarted = true)
                 .to("direct:" + subscriptionSetup.getStartSubscriptionRouteName()) // Start subscription
-                .when(p -> shouldBeCancelled(MONITOR_ROUTE_PREFIX + subscriptionSetup.getSubscriptionId()))
+                .when(p -> shouldBeCancelled(getMonitorRouteId(subscriptionSetup)))
                 .log("Triggering cancel subscription: " + subscriptionSetup)
                 .process(p -> hasBeenStarted = false)
                 .to("direct:" + subscriptionSetup.getCancelSubscriptionRouteName())// Cancel subscription
-                .when(p -> shouldCheckStatus(MONITOR_ROUTE_PREFIX + subscriptionSetup.getSubscriptionId()))
+                .when(p -> shouldCheckStatus(getMonitorRouteId(subscriptionSetup)))
                 .log("Check status: " + subscriptionSetup)
                 .process(p -> lastCheckStatus = Instant.now())
                 .to("direct:" + subscriptionSetup.getCheckStatusRouteName()) // Check status
@@ -180,7 +201,7 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
         boolean requiresCheckStatusRequest = subscriptionSetup.getUrlMap().get(RequestType.CHECK_STATUS) != null;
         boolean isTimeToCheckStatus = lastCheckStatus.isBefore(Instant.now().minus(subscriptionSetup.getHeartbeatInterval()));
 
-        return isActive & requiresCheckStatusRequest & isTimeToCheckStatus;
+        return isActive && requiresCheckStatusRequest && isTimeToCheckStatus;
     }
 
     private boolean shouldBeStarted(String routeId) {
@@ -196,7 +217,7 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
             return true;
         }
 
-        return (isActive & !hasBeenStarted);
+        return (isActive && !hasBeenStarted);
     }
 
     private boolean shouldBeCancelled(String routeId) {
@@ -233,6 +254,6 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
         if (hasBeenStarted && isActive && !isHealthy) {
             log.debug("Should be cancelled because unhealthy : " + subscriptionId);
         }
-        return (hasBeenStarted & !isActive) || (hasBeenStarted & isActive & !isHealthy);
+        return (hasBeenStarted && !isActive) || (hasBeenStarted && !isHealthy);
     }
 }

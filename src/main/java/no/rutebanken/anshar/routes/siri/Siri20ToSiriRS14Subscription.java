@@ -85,7 +85,7 @@ public class Siri20ToSiriRS14Subscription extends SiriSubscriptionRouteBuilder {
                         handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), body));
                     }
                 })
-                .routeId("start.rs.14.subscription." + subscriptionSetup.getVendor())
+                .routeId(getStartRouteId(subscriptionSetup))
         ;
 
         //Cancel subscription
@@ -115,7 +115,7 @@ public class Siri20ToSiriRS14Subscription extends SiriSubscriptionRouteBuilder {
                         handler.handleIncomingSiri(incomingSiriParameters);
                     }
                 })
-                .routeId("cancel.rs.14.subscription." + subscriptionSetup.getVendor())
+                .routeId(getCancelRouteId(subscriptionSetup))
         ;
         initTriggerRoutes();
     }
