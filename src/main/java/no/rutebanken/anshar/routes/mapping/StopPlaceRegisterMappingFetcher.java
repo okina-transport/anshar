@@ -29,10 +29,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.StringTokenizer;
+import java.util.*;
 
 @Service
 public class StopPlaceRegisterMappingFetcher {
@@ -54,6 +51,33 @@ public class StopPlaceRegisterMappingFetcher {
             }
         }
         return new HashMap<>();
+    }
+
+    public Map<String, List<String>> fecthStopPlaceAndQuayData(String name) {
+        Map<String, List<String>> stopPlaceQuayData = new HashMap<>();
+        if (name != null && !name.isEmpty()) {
+
+            final InputStream blob = blobStoreService.getBlob(name);
+            if (blob != null) {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(blob));
+
+                reader.lines().forEach(line -> {
+                    StringTokenizer tokenizer = new StringTokenizer(line, ",");
+                    String quayRef = tokenizer.nextToken();
+                    String stopRef = tokenizer.nextToken();
+
+                    if (!stopPlaceQuayData.containsKey(stopRef)) {
+                        stopPlaceQuayData.put(stopRef, new ArrayList<>());
+                    }
+
+                    stopPlaceQuayData.get(stopRef).add(quayRef);
+
+                });
+            }
+
+
+        }
+        return stopPlaceQuayData;
     }
 
     public Map<String, Pair<String, String>> fetchStopPlaceMapping(String name) {

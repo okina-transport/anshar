@@ -46,6 +46,9 @@ public class SituationExchangeInbound {
     @Autowired
     private SuperIdReversionProcess reversionIdProcess;
 
+    @Autowired
+    private GeneralMessageMapper gmMapper;
+
     public boolean ingestSituationExchangeFromApi(SiriDataType dataFormat, String dataSetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList) {
         boolean deliveryContainsData;
         List<SituationExchangeDeliveryStructure> situationExchangeDeliveries = incoming.getServiceDelivery().getSituationExchangeDeliveries();
@@ -218,7 +221,7 @@ public class SituationExchangeInbound {
     private void convertToGeneralMessageAndIngest(String datasetId, List<PtSituationElement> incomingSituations) {
 
         List<GeneralMessage> incomingMessages = incomingSituations.stream()
-                .map(GeneralMessageMapper::mapToGeneralMessage)
+                .map(situation -> gmMapper.mapToGeneralMessage(datasetId, situation))
                 .collect(Collectors.toList());
 
         Collection<GeneralMessage> added = generalMessages.addAll(datasetId, incomingMessages);

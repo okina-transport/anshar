@@ -48,6 +48,8 @@ public class StopPlaceUpdaterService {
 
     private transient final Set<String> knownDatasetIds = ConcurrentHashMap.newKeySet();
 
+    private transient final ConcurrentMap<String, List<String>> stopPlaceAndQuayAssociation = new ConcurrentHashMap<>();
+
 
     @Autowired
     private StopPlaceRegisterMappingFetcher stopPlaceRegisterMappingFetcher;
@@ -58,8 +60,9 @@ public class StopPlaceUpdaterService {
     @Value("${anshar.mapping.stopplaces.gcs.path}")
     private String stopPlaceMappingPath;
 
-    @Value("${anshar.mapping.stopquayjson.gcs.path}")
-    private String stopPlaceQuayJsonPath;
+    @Value("${anshar.stop.place.quay.association.file}")
+    private String stopPlaceQuayAssociationFile;
+
 
     @Value("${anshar.mapping.stopplaces.update.frequency.min:60}")
     private int updateFrequency = 60;
@@ -195,7 +198,7 @@ public class StopPlaceUpdaterService {
         synchronized (LOCK) {
             updateStopPlaceMapping(quayMappingPath);
             updateStopPlaceMapping(stopPlaceMappingPath);
-            updateStopPlacesAndQuays(stopPlaceQuayJsonPath);
+            updateStopPlaceQuayAssociations(stopPlaceQuayAssociationFile);
 
             knownDatasetIds.clear();
             // Pour chaque ID producteur (ex: "DATASET1:StopPlace:123"),
@@ -210,6 +213,20 @@ public class StopPlaceUpdaterService {
 
         ansharConfiguration.setInitialized(true);
 
+    }
+
+    private void updateStopPlaceQuayAssociations(String stopPlaceQuayAssociationFile) {
+        Map<String, List<String>> stopPlaceAndQuays = stopPlaceRegisterMappingFetcher.fecthStopPlaceAndQuayData(stopPlaceQuayAssociationFile);
+        stopPlaceAndQuayAssociation.clear();
+        stopPlaceAndQuayAssociation.putAll(stopPlaceAndQuays);
+        logger.info("Fetching stopPlace and quay association data - done.");
+    }
+
+    public List<String> getStopPlaceChildren(String stopPlaceId) {
+        if (stopPlaceId == null || !stopPlaceAndQuayAssociation.containsKey(stopPlaceId)) {
+            return new ArrayList<>();
+        }
+        return stopPlaceAndQuayAssociation.get(stopPlaceId);
     }
 
     private void updateStopPlaceMapping(String mappingUrl) {
@@ -236,30 +253,6 @@ public class StopPlaceUpdaterService {
         logger.info("Fetching mapping data - done.");
     }
 
-    private void updateStopPlacesAndQuays(String url) {
-        logger.info("Fetching stops and quay data - start. Fetching mapping-data from {}", url);
-        final Map<String, Collection<String>> stopQuayMap = stopPlaceRegisterMappingFetcher.fetchStopPlaceQuayJson(url);
-        if (!stopQuayMap.isEmpty()) {
-            validNsrIds.clear();
-
-            int stopsCounter = stopQuayMap.size();
-            int quayCounter = 0;
-            for (String s : stopQuayMap.keySet()) {
-                // Add StopPlace-id
-                validNsrIds.add(s);
-
-                //Add quay-ids
-                final Collection<String> quayIds = stopQuayMap.get(s);
-                quayCounter += quayIds.size();
-                validNsrIds.addAll(quayIds);
-            }
-
-            logger.info("Fetching stops and quay data - done. Found {} stops, {} quays", stopsCounter, quayCounter);
-        } else {
-            logger.info("Fetching stops and quay data - done. No stops found");
-        }
-    }
-
 
     //Called from tests
     public void addStopPlaceMappings(Map<String, Pair<String, String>> stopPlaceMap) {
@@ -269,6 +262,11 @@ public class StopPlaceUpdaterService {
     //Called from tests
     public void addStopPlaceReverseMappings(Map<String, Set<String>> stopPlaceReverseMap) {
         this.reverseStopPlaceMappings.putAll(stopPlaceReverseMap);
+    }
+
+    //Called from tests
+    public void addStopPlaceQuayAssociations(Map<String, List<String>> stopPlaceQuayAssociations) {
+        this.stopPlaceAndQuayAssociation.putAll(stopPlaceQuayAssociations);
     }
 
     //Called from tests
