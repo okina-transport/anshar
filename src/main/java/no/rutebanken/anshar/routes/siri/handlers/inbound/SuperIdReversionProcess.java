@@ -67,10 +67,35 @@ public class SuperIdReversionProcess {
                 }
             }
 
+            if (affects.getStopPlaces() != null && affects.getStopPlaces().getAffectedStopPlaces() != null) {
+                for (AffectedStopPlaceStructure affectedStopPlace : affects.getStopPlaces().getAffectedStopPlaces()) {
+                    revertIdsInStopPlace(affectedStopPlace, datasetId);
+                }
+            }
+
             if (affects.getNetworks() != null && affects.getNetworks().getAffectedNetworks() != null) {
                 for (AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork : affects.getNetworks().getAffectedNetworks()) {
                     revertIdInNetwork(affectedNetwork, datasetId);
                 }
+            }
+        }
+    }
+
+    private void revertIdsInStopPlace(AffectedStopPlaceStructure affectedStopPlace, String datasetId) {
+        if (affectedStopPlace.getStopPlaceRef() == null) {
+            return;
+        }
+
+        String oldValue = affectedStopPlace.getStopPlaceRef().getValue();
+        List<String> providerIds = stopPlaceUpdaterService.getReverse(oldValue, datasetId);
+        if (!providerIds.isEmpty()) {
+            String idFromProfider = providerIds.get(0);
+            Optional<IdProcessingParameters> idParamsOpt = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.STOP);
+            if (idParamsOpt.isPresent()) {
+                IdProcessingParameters idParams = idParamsOpt.get();
+                // reverted ids will have the format : "OUTPUTPREFIX xxxx OUTPUTSUFFIX". We need to remove prefix and suffix to store the raw code in memory
+                idFromProfider = idParams.removeOutputPrefixAndSuffix(idFromProfider);
+                affectedStopPlace.getStopPlaceRef().setValue(idFromProfider);
             }
         }
     }

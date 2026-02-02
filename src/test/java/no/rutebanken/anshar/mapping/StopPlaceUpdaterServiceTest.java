@@ -42,9 +42,7 @@ public class StopPlaceUpdaterServiceTest {
                         "TEST:qsdf", Pair.of("MOBIITI:3", "Qsdf")
                 )
         );
-        when(stopPlaceRegisterMappingFetcher.fetchStopPlaceQuayJson(any())).thenReturn(
-                Map.of()
-        );
+
 
         // update id mapping twice to check for memory leak
         tested.updateIdMapping();
