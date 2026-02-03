@@ -1,6 +1,8 @@
 package no.rutebanken.anshar.routes.siri.handlers.inbound;
 
+import jakarta.xml.bind.JAXBException;
 import no.rutebanken.anshar.data.MonitoredStopVisits;
+import no.rutebanken.anshar.data.util.CustomSiriXml;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.kafka.KafkaConfig;
 import no.rutebanken.anshar.routes.kafka.KafkaRouteBuilder;
@@ -61,8 +63,17 @@ public class StopMonitoringInbound {
         if (stopMonitoringDeliveries != null) {
             stopMonitoringDeliveries.forEach(sm -> {
                         if (sm != null) {
-                            if (sm.isStatus() != null && !sm.isStatus() || sm.getErrorCondition() != null) {
-                                logger.info(utils.getErrorContents(sm.getErrorCondition()));
+                            if (sm.isStatus() != null && !sm.isStatus() || utils.hasErrorData(sm.getErrorCondition())) {
+                                String errorContents = utils.getErrorContents(sm.getErrorCondition());
+                                if (StringUtils.isEmpty(errorContents) || errorContents.length() < 5) {
+                                    try {
+                                        logger.info("unable to find error content : " + CustomSiriXml.toXml(incoming));
+                                    } catch (JAXBException e) {
+                                        logger.error("Error while trying to parse xml", e);
+                                    }
+                                } else {
+                                    logger.info(errorContents);
+                                }
                             } else {
                                 if (sm.getMonitoredStopVisits() != null) {
                                     updateStopMonitoringItemIdentifier(sm.getMonitoredStopVisits());
@@ -116,8 +127,17 @@ public class StopMonitoringInbound {
         if (stopMonitoringDeliveries != null) {
             stopMonitoringDeliveries.forEach(sm -> {
                         if (sm != null) {
-                            if (sm.isStatus() != null && !sm.isStatus() || sm.getErrorCondition() != null) {
-                                logger.info(utils.getErrorContents(sm.getErrorCondition()));
+                            if (sm.isStatus() != null && !sm.isStatus() || utils.hasErrorData(sm.getErrorCondition())) {
+                                String errorContents = utils.getErrorContents(sm.getErrorCondition());
+                                if (StringUtils.isEmpty(errorContents) || errorContents.length() < 5) {
+                                    try {
+                                        logger.info("unable to find error content : " + CustomSiriXml.toXml(incoming));
+                                    } catch (JAXBException e) {
+                                        logger.error("Error while trying to parse xml", e);
+                                    }
+                                } else {
+                                    logger.info(errorContents);
+                                }
                             } else {
                                 if (sm.getMonitoredStopVisits() != null && !sm.getMonitoredStopVisits().isEmpty()) {
                                     addedOrUpdated.addAll(ingestStopVisits(subscriptionSetup.getDatasetId(), sm.getMonitoredStopVisits()));

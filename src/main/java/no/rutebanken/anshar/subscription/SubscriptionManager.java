@@ -1068,6 +1068,12 @@ public class SubscriptionManager {
 
     }
 
+    public List<SubscriptionSetup> getChildSubscriptions(DiscoverySubscription parentDiscoverySubscription) {
+        return getAllSubscriptions(parentDiscoverySubscription.getDiscoveryType()).stream()
+                .filter(subscription -> subscription.getParentSubscriptionId() != null && subscription.getParentSubscriptionId().equals(parentDiscoverySubscription.getSubscriptionIdBase()))
+                .toList();
+    }
+
     public Optional<SubscriptionSetup> getChildSubscriptionIdFromLineRefs(DiscoverySubscription parentDiscoverySubscription, List<String> lineRefs) {
         return getAllSubscriptions(SiriDataType.VEHICLE_MONITORING).stream()
                 .filter(subscription -> subscription.getParentSubscriptionId() != null && subscription.getParentSubscriptionId().equals(parentDiscoverySubscription.getSubscriptionIdBase())

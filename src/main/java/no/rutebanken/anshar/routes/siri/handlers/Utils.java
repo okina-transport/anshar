@@ -198,6 +198,19 @@ public class Utils {
                 .collect(Collectors.toSet());
     }
 
+
+    public boolean hasErrorData(ServiceDeliveryErrorConditionElement errorCondition) {
+        return errorCondition != null && (errorCondition.getAccessNotAllowedError() != null || errorCondition.getAllowedResourceUsageExceededError() != null ||
+                errorCondition.getBeyondDataHorizon() != null || errorCondition.getCapabilityNotSupportedError() != null ||
+                errorCondition.getEndpointDeniedAccessError() != null || errorCondition.getEndpointNotAvailableAccessError() != null ||
+                errorCondition.getInvalidDataReferencesError() != null || errorCondition.getParametersIgnoredError() != null ||
+                errorCondition.getServiceNotAvailableError() != null || errorCondition.getUnapprovedKeyAccessError() != null ||
+                errorCondition.getUnknownEndpointError() != null || errorCondition.getUnknownExtensionsError() != null ||
+                errorCondition.getUnknownParticipantError() != null || errorCondition.getNoInfoForTopicError() != null ||
+                errorCondition.getOtherError() != null || errorCondition.getDescription() != null);
+    }
+
+
     /**
      * Creates a json-string containing all potential errormessage-values
      *

@@ -64,6 +64,8 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
     private static final String MAPPING_ID_TAG = "mappingId";
     private static final String MAPPING_NAME_TAG = "mappingName";
 
+    private static final String STATUS_TAG_NAME = "status";
+
     private static final String KAFKA_STATUS_TAG = "kafkaStatus";
     private static final String KAFKA_TOPIC_NAME = "kafkaTopic";
 
@@ -100,6 +102,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
     private static final String INCOMING_DATA_MONITORING = METRICS_PREFIX + "incoming.data.monitoring";
     private static final String ADAPT_ENSURE_INC_TIME_CANCELLED = METRICS_PREFIX + "data.adapter.ensure.increasing.times.cancelled.stops";
     private static final String ADAPT_EXTRA_JOURNEY_DEST_DISPLAY = METRICS_PREFIX + "data.adapter.extra.journey.dest.display";
+    private static final String RECOMPUTE_VEHICLE_JOURNEY_ID_FROM_THEORETICAL = METRICS_PREFIX + "data.recompute.vehicle.journey.id.from.theoretical";
     final Map<String, Integer> nbOfOutboundPushByRequestor = new HashMap<>();
     final Map<String, Long> totalPushTimeByRequestor = new HashMap<>();
     final Map<String, Set<Long>> smDeltaTimesTmp = new ConcurrentHashMap<>();
@@ -162,6 +165,18 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
         } else {
             totalPushTimeByRequestor.put(requestorRef, pushTime);
         }
+    }
+
+    /**
+     * Register success/failure for veicle journey id recomputering
+     *
+     * @param isSuccess true : vehicle journey id has been found in theoretical data
+     *                  false : vehicle journey id has not been found in theoretical data
+     */
+    public void registerRecomputeVehicleJourneyIdFromTheoretical(boolean isSuccess) {
+        List<Tag> counterTags = new ArrayList<>();
+        counterTags.add(new ImmutableTag(STATUS_TAG_NAME, isSuccess ? "success" : "failure"));
+        counter(RECOMPUTE_VEHICLE_JOURNEY_ID_FROM_THEORETICAL, counterTags).increment(1);
     }
 
     public void registerNegativeExpiration(SiriDataType dataType, String datasetId) {

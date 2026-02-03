@@ -16,12 +16,15 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.io.File;
 import java.io.IOException;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 
@@ -37,6 +40,10 @@ public class StopTimesService {
     private static final Logger logger = LoggerFactory.getLogger(StopTimesService.class);
 
     private static final Object LOCK = new Object();
+
+
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss");
+
 
     // datasetId -> tripId -> StopTimeCacheEntry
     private final Map<String, Map<String, List<StopTimeCacheEntry>>> stopTimesCache = new ConcurrentHashMap<>();
@@ -54,6 +61,7 @@ public class StopTimesService {
     @Value("${anshar.trips.root.directory}")
     private String tripsRootDir;
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+
 
     @PostConstruct
     private void initialize() {
@@ -358,6 +366,48 @@ public class StopTimesService {
         return stopTimeCacheEntries.stream()
                 .filter(e -> stopId.equals(e.getStopId()))
                 .findFirst();
+    }
+
+
+    public Optional<String> findTripIdByStopAndTime(String datasetId, String lineId, String stopId, String directionId, String destinationId, ZonedDateTime arrivalTime) {
+        Map<String, TripCacheEntry> tripCacheForCurrentDataset = tripsCache.get(datasetId);
+
+        if (tripCacheForCurrentDataset == null) {
+            return Optional.empty();
+        }
+
+        Integer directionIdInt = "A".equals(directionId) ? 0 : 1;
+
+        Set<String> potentialTrips = tripCacheForCurrentDataset.entrySet()
+                .stream()
+                .filter(entry -> entry.getValue().getRouteId().equals(lineId) && entry.getValue().getDirectionId().equals(directionIdInt))
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toSet());
+
+        Map<String, List<StopTimeCacheEntry>> stopTimeCacheForCurrentDataset = stopTimesCache.get(datasetId);
+
+
+        for (String potentialTrip : potentialTrips) {
+            List<StopTimeCacheEntry> currentTripStopTimes = stopTimeCacheForCurrentDataset.get(potentialTrip);
+
+            String currentDestination = getDestination(currentTripStopTimes);
+            if (!currentDestination.equals(destinationId)) {
+                continue;
+            }
+
+            for (StopTimeCacheEntry currentTripStopTime : currentTripStopTimes) {
+                if (currentTripStopTime.getStopId().equals(stopId) && arrivalTime.format(TIME_FORMATTER).equals(currentTripStopTime.getArrivalTime())) {
+                    return Optional.of(potentialTrip);
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    private String getDestination(List<StopTimeCacheEntry> stopTimes) {
+        Comparator<StopTimeCacheEntry> byStopSequence = Comparator.comparingInt(StopTimeCacheEntry::getStopSequence);
+        stopTimes.sort(byStopSequence);
+        return stopTimes.getLast().getStopId();
     }
 
     @Data

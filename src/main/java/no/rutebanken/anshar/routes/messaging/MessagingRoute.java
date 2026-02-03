@@ -36,7 +36,9 @@ import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.Siri;
 
 import java.io.InputStream;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static no.rutebanken.anshar.routes.HttpParameter.*;
@@ -100,6 +102,8 @@ public class MessagingRoute extends RestRouteBuilder {
 
     @Value("${anshar.initial.delivery.vehicle.monitoring.queue.name}")
     private String initialDeliveryVMQueueName;
+
+    private Map<String, SubscriptionSetup> discoveryFirstChild = new HashMap<>();
 
 
     @Override
@@ -373,7 +377,16 @@ public class MessagingRoute extends RestRouteBuilder {
                             DiscoverySubscription discoverySubscription = discoveryOpt.get();
                             Siri originalInput =   CustomSiriXml.parseXml(p.getIn().getBody(String.class));
                             p.getMessage().setHeaders(p.getIn().getHeaders());
-                            List<ValueAdapter> adapters = subscriptionManager.getValueAdaptersFromId(null, discoverySubscription.getMappingAdapterId());
+
+
+                            if (!discoveryFirstChild.containsKey(subscriptionId)){
+                                List<SubscriptionSetup> childrenSubscriptions = subscriptionManager.getChildSubscriptions(discoverySubscription);
+                                discoveryFirstChild.put(subscriptionId, childrenSubscriptions.getFirst());
+                            }
+
+                            SubscriptionSetup childSubscription =  discoveryFirstChild.get(subscriptionId);
+
+                            List<ValueAdapter> adapters = subscriptionManager.getValueAdaptersFromId(childSubscription, discoverySubscription.getMappingAdapterId());
                             Siri incoming = SiriValueTransformer.transform(originalInput, adapters, false, true);
                             p.getMessage().setHeaders(p.getIn().getHeaders());
                             p.getMessage().setBody(SiriXml.toXml(incoming));
