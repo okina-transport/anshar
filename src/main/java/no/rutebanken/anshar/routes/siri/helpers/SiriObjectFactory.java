@@ -856,13 +856,21 @@ public class SiriObjectFactory {
         return siri;
     }
 
-    public Siri createGMServiceDelivery(Collection<GeneralMessage> elements, String subscriptionRef, String requestMessageRef) {
+    public <T extends AbstractItemStructure> Siri createGMServiceDelivery(Collection<T> collections, String subscriptionRef, String requestMessageRef) {
         Siri siri = createSiriObject(SiriHelper.FALLBACK_SIRI_VERSION);
         ServiceDelivery delivery = createServiceDelivery(requestMessageRef);
         GeneralMessageDeliveryStructure deliveryStructure = new GeneralMessageDeliveryStructure();
         createServiceDeliveryStructure(deliveryStructure, subscriptionRef, delivery.getRequestMessageRef(), delivery.isStatus());
         deliveryStructure.setVersion(SiriHelper.FALLBACK_SIRI_VERSION);
-        deliveryStructure.getGeneralMessages().addAll(elements);
+        Stream.of(collections)
+                .flatMap(Collection::stream)
+                .forEach(element -> {
+                    if (element instanceof GeneralMessage gm) {
+                        deliveryStructure.getGeneralMessages().add(gm);
+                    } else if (element instanceof GeneralMessageCancellation cancellation) {
+                        deliveryStructure.getGeneralMessageCancellations().add(cancellation);
+                    }
+                });
         delivery.getGeneralMessageDeliveries().add(deliveryStructure);
         siri.setServiceDelivery(delivery);
         return siri;

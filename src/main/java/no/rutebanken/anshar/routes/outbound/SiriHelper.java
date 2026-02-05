@@ -31,6 +31,7 @@ import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.util.IDUtils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.entur.siri.validator.SiriValidator;
 import org.slf4j.Logger;
@@ -510,6 +511,18 @@ public class SiriHelper {
                 siriList.add(siriObjectFactory.createGMServiceDelivery(list, payload.getServiceDelivery().getProducerRef().getValue(), payload.getServiceDelivery().getRequestMessageRef() != null ? payload.getServiceDelivery().getRequestMessageRef().getValue() : null));
             }
 
+            // GM cancellations
+            List<GeneralMessageCancellation> gmCancellationsList = payload.getServiceDelivery()
+                    .getGeneralMessageDeliveries().getFirst()
+                    .getGeneralMessageCancellations();
+
+            List<List> gmCancellationList = splitList(gmCancellationsList, maximumSizePerDelivery);
+
+            for (List<GeneralMessageCancellation> list : gmCancellationList) {
+                siriList.add(siriObjectFactory.createGMServiceDelivery(list, payload.getServiceDelivery().getProducerRef().getValue(), payload.getServiceDelivery().getRequestMessageRef() != null ? payload.getServiceDelivery().getRequestMessageRef().getValue() : null));
+            }
+
+
         } else if (containsValues(payload.getServiceDelivery().getFacilityMonitoringDeliveries())) {
 
             List<FacilityConditionStructure> facilityConditionsList = payload.getServiceDelivery()
@@ -693,8 +706,8 @@ public class SiriHelper {
         List<GeneralMessageDeliveryStructure> results = new ArrayList<>();
 
         //GM-deliveries
-        List<GeneralMessageDeliveryStructure> estimatedTimetableDeliveries = siri.getServiceDelivery().getGeneralMessageDeliveries();
-        for (GeneralMessageDeliveryStructure delivery : estimatedTimetableDeliveries) {
+        List<GeneralMessageDeliveryStructure> gmDeliveries = siri.getServiceDelivery().getGeneralMessageDeliveries();
+        for (GeneralMessageDeliveryStructure delivery : gmDeliveries) {
 
             List<GeneralMessage> generalMessages = delivery.getGeneralMessages();
             List<GeneralMessage> filteredGeneralMessages = new ArrayList<>();
@@ -704,12 +717,29 @@ public class SiriHelper {
                     filteredGeneralMessages.add(generalMessage);
                 }
             }
-            if (!generalMessages.isEmpty()) {
+
+
+            List<GeneralMessageCancellation> cancellations = delivery.getGeneralMessageCancellations();
+            List<GeneralMessageCancellation> filteredCancellations = new ArrayList<>();
+            for (GeneralMessageCancellation cancellation : cancellations) {
+                if (channels.contains(cancellation.getInfoChannelRef().getValue())) {
+                    filteredCancellations.add(cancellation);
+                }
+            }
+
+
+            if (CollectionUtils.isNotEmpty(filteredGeneralMessages) || CollectionUtils.isNotEmpty(filteredCancellations)) {
                 GeneralMessageDeliveryStructure generalMessageDelStruct = new GeneralMessageDeliveryStructure();
                 generalMessageDelStruct.setResponseTimestamp(delivery.getResponseTimestamp());
                 generalMessageDelStruct.setVersion(delivery.getVersion());
 
-                generalMessageDelStruct.getGeneralMessages().addAll(filteredGeneralMessages);
+                if (CollectionUtils.isNotEmpty(filteredGeneralMessages)) {
+                    generalMessageDelStruct.getGeneralMessages().addAll(filteredGeneralMessages);
+                }
+
+                if (CollectionUtils.isNotEmpty(filteredCancellations)) {
+                    generalMessageDelStruct.getGeneralMessageCancellations().addAll(filteredCancellations);
+                }
                 results.add(generalMessageDelStruct);
             }
         }

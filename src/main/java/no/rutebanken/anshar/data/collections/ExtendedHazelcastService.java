@@ -168,6 +168,12 @@ public class ExtendedHazelcastService extends HazelCastService {
         return hazelcast.getMap("anshar.scheduled.already.sent.sm." + subscriptionId);
     }
 
+    @Bean
+    public IMap<String, Set<String>> getAlreadySentGMCancellations() {
+        return hazelcast.getMap("anshar.already.sent.gm.cancellations");
+    }
+
+
     public ISet<String> getSharedSMDatasetList() {
         return hazelcast.getSet("anshar.sm.dataset.list");
     }

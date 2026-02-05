@@ -440,7 +440,8 @@ public class CamelRouteManager {
             }
             if (SiriHelper.containsValues(serviceDelivery.getGeneralMessageDeliveries())) {
                 GeneralMessageDeliveryStructure deliveryStructure = serviceDelivery.getGeneralMessageDeliveries().get(0);
-                return (SiriHelper.containsValues(deliveryStructure.getGeneralMessages()));
+                return (SiriHelper.containsValues(deliveryStructure.getGeneralMessages())) ||
+                        (SiriHelper.containsValues(deliveryStructure.getGeneralMessageCancellations()));
             }
             if (SiriHelper.containsValues(serviceDelivery.getFacilityMonitoringDeliveries())) {
                 FacilityMonitoringDeliveryStructure deliveryStructure = serviceDelivery.getFacilityMonitoringDeliveries().get(0);

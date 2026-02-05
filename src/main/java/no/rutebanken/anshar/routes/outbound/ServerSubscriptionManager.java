@@ -150,6 +150,10 @@ public class ServerSubscriptionManager {
     @Autowired
     private InitialDeliveryGenerator initialDeliveryGenerator;
 
+    @Autowired
+    @Qualifier("getAlreadySentGMCancellations")
+    private IMap<String, Set<String>> alreadySentGmCancellations;
+
     private static boolean checkMissingMonitoringRef(SubscriptionRequest subscriptionRequest) {
         boolean missingMonitoringRef = false;
         if (subscriptionRequest != null && CollectionUtils.isNotEmpty(subscriptionRequest.getStopMonitoringSubscriptionRequests())) {
@@ -1271,7 +1275,7 @@ public class ServerSubscriptionManager {
         );
     }
 
-    private void pushUpdatedGeneralMessages(List<GeneralMessage> addedOrUpdated, String datasetId, String breadcrumbId) {
+    private <T extends AbstractItemStructure> void pushUpdatedGeneralMessages(List<T> addedOrUpdated, String datasetId, String breadcrumbId) {
         MDC.put("camel.breadcrumbId", breadcrumbId);
 
         if (addedOrUpdated == null || addedOrUpdated.isEmpty()) {
@@ -1303,11 +1307,52 @@ public class ServerSubscriptionManager {
                 delivery.getServiceDelivery().getGeneralMessageDeliveries().forEach(gmd -> gmd.setSubscriptionRef(SiriObjectFactory.createSubscriptionIdentifier(recipient.getSubscriptionId())));
             }
             Siri modifiedIdDelivery = convertIdsGeneralMessage(delivery, datasetId, recipient.getOutboundIdMappingPolicy());
-            camelRouteManager.pushSiriData(datasetId, modifiedIdDelivery, recipient, logFullContents);
+            Siri filtedDelivery = removeAlreadySentCancellations(recipient, modifiedIdDelivery);
+            camelRouteManager.pushSiriData(datasetId, filtedDelivery, recipient, logFullContents);
             logFullContents = false;
         }
 
         MDC.remove("camel.breadcrumbId");
+    }
+
+    private Siri removeAlreadySentCancellations(OutboundSubscriptionSetup recipient, Siri delivery) {
+
+        Siri result = SiriObjectFactory.deepCopy(delivery);
+
+        if (result.getServiceDelivery() == null || result.getServiceDelivery().getGeneralMessageDeliveries() == null || result.getServiceDelivery().getGeneralMessageDeliveries().isEmpty()) {
+            return result;
+        }
+
+        for (GeneralMessageDeliveryStructure generalMessageDelivery : result.getServiceDelivery().getGeneralMessageDeliveries()) {
+            if (generalMessageDelivery.getGeneralMessageCancellations() == null) {
+                continue;
+            }
+
+            List<GeneralMessageCancellation> rawCancellations = generalMessageDelivery.getGeneralMessageCancellations();
+            List<GeneralMessageCancellation> filteredCancellations = filterAlreadySentCancellations(recipient, rawCancellations);
+            generalMessageDelivery.getGeneralMessageCancellations().clear();
+            generalMessageDelivery.getGeneralMessageCancellations().addAll(filteredCancellations);
+        }
+
+
+        return result;
+    }
+
+    private List<GeneralMessageCancellation> filterAlreadySentCancellations(OutboundSubscriptionSetup recipient, List<GeneralMessageCancellation> rawCancellations) {
+        String outboundSubscriptionId = recipient.getSubscriptionId();
+        List<GeneralMessageCancellation> filteredCancellations = new ArrayList<>();
+        Set<String> alreadySentCancellationForRecipient = alreadySentGmCancellations.containsKey(outboundSubscriptionId) ? alreadySentGmCancellations.get(outboundSubscriptionId) : new HashSet<>();
+
+
+        for (GeneralMessageCancellation cancellation : rawCancellations) {
+            if (!alreadySentCancellationForRecipient.contains(cancellation.getItemRef().getValue())) {
+                filteredCancellations.add(cancellation);
+                alreadySentCancellationForRecipient.add(cancellation.getItemRef().getValue());
+            }
+        }
+        alreadySentGmCancellations.set(outboundSubscriptionId, alreadySentCancellationForRecipient);
+        return filteredCancellations;
+
     }
 
 

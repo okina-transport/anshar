@@ -220,13 +220,30 @@ public class SituationExchangeInbound {
      */
     private void convertToGeneralMessageAndIngest(String datasetId, List<PtSituationElement> incomingSituations) {
 
+
+        // Open perturbations
         List<GeneralMessage> incomingMessages = incomingSituations.stream()
+                .filter(situation -> situation.getProgress() == null || !WorkflowStatusEnumeration.CLOSED.equals(situation.getProgress()))
                 .map(situation -> gmMapper.mapToGeneralMessage(datasetId, situation))
                 .collect(Collectors.toList());
 
         Collection<GeneralMessage> added = generalMessages.addAll(datasetId, incomingMessages);
+        if (CollectionUtils.isNotEmpty(added)) {
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.GENERAL_MESSAGE, new ArrayList(added), datasetId);
+        }
 
-        serverSubscriptionManager.pushUpdatesAsync(SiriDataType.GENERAL_MESSAGE, new ArrayList(added), datasetId);
+
+        // Closed perturbations that need to be removed from cache
+        List<GeneralMessageCancellation> cancellations = incomingSituations.stream()
+                .filter(situation -> WorkflowStatusEnumeration.CLOSED.equals(situation.getProgress()))
+                .map(situation -> gmMapper.mapToCancellations(situation))
+                .toList();
+
+        if (CollectionUtils.isNotEmpty(cancellations)) {
+            generalMessages.cancelGeneralMessages(datasetId, cancellations);
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.GENERAL_MESSAGE, cancellations, datasetId);
+        }
+
 
     }
 

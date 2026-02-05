@@ -17,10 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
-import uk.org.siri.siri21.GeneralMessage;
-import uk.org.siri.siri21.InfoChannelRefStructure;
-import uk.org.siri.siri21.MessageRefStructure;
-import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.*;
 
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -216,6 +213,16 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
         return addedData;
     }
 
+    public void cancelGeneralMessages(String datasetId, List<GeneralMessageCancellation> cancellationList) {
+
+        for (GeneralMessageCancellation generalMessageCancellation : cancellationList) {
+            String infoMessage = generalMessageCancellation.getInfoMessageIdentifier().getValue();
+            String infoChannelRef = generalMessageCancellation.getInfoChannelRef() != null ? generalMessageCancellation.getInfoChannelRef().getValue() : null;
+            SiriObjectStorageKey keyToDelete = createKey(datasetId, infoMessage, infoChannelRef);
+            generalMessages.delete(keyToDelete);
+        }
+    }
+
     @Override
     public GeneralMessage add(String datasetId, GeneralMessage generalMessage) {
         Collection<GeneralMessage> added = addAll(datasetId, Collections.singletonList(generalMessage));
@@ -243,6 +250,10 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
 
     private SiriObjectStorageKey createKey(String datasetId, GeneralMessage generalMessage) {
         return new SiriObjectStorageKey(datasetId, null, generalMessage.getInfoMessageIdentifier().getValue(), null, null, generalMessage.getInfoChannelRef().getValue());
+    }
+
+    private SiriObjectStorageKey createKey(String datasetId, String infoMsgIdentifier, String infoChannelRef) {
+        return new SiriObjectStorageKey(datasetId, null, infoMsgIdentifier, null, null, infoChannelRef);
     }
 
     public Siri createServiceDelivery(String requestorId, String datasetId, String clientName, int maxSize, List<InfoChannelRefStructure> requestedChannels) {
