@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.routes.siri.handlers.inbound;
 
+import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
@@ -18,6 +19,7 @@ import java.util.Optional;
  * Class used to revert super ids (e.g:MOBIITI:Quay:1234) to provider id (PROV1:Quay:xxxx)
  * (some of our clients are sending back our own ids. We need to revert them because we only store provider ids in memory)
  */
+@Slf4j
 @Service
 public class SuperIdReversionProcess {
 
@@ -97,6 +99,8 @@ public class SuperIdReversionProcess {
                 idFromProfider = idParams.removeOutputPrefixAndSuffix(idFromProfider);
                 affectedStopPlace.getStopPlaceRef().setValue(idFromProfider);
             }
+        }else{
+            log.warn("Super id reversion process - Unable to find provider id for stopPlace:{} - dataset:{}", oldValue, datasetId);
         }
     }
 
