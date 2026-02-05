@@ -30,6 +30,7 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 @Component
 @Configuration
@@ -101,6 +102,7 @@ public class StopPlaceUpdaterService {
         Set<String> stopPlaces = reverseStopPlaceMappings.get(id);
         if (id.contains("StopPlace")){
             logger.info("reversion process found {} results for id {}",stopPlaces.size(), id);
+            logger.info("reversion process found {} - {} ",stopPlaces.stream().collect(Collectors.joining(",")), id);
         }
 
 
