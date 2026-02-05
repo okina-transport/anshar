@@ -23,6 +23,8 @@ import java.util.stream.Collectors;
 @Component
 public class GeneralMessageMapper {
 
+    private static final String DEFAULT_CHANNEL_REF = "Perturbation";
+
 
     @Autowired
     SubscriptionConfig subscriptionConfig;
@@ -178,7 +180,21 @@ public class GeneralMessageMapper {
 
     private static void mapInfoChannelRef(GeneralMessage generalMessage) {
         InfoChannelRefStructure infoChannelRef = new InfoChannelRefStructure();
-        infoChannelRef.setValue("Perturbation");
+        infoChannelRef.setValue(DEFAULT_CHANNEL_REF);
         generalMessage.setInfoChannelRef(infoChannelRef);
+    }
+
+    public static GeneralMessageCancellation mapToCancellations(PtSituationElement ptSituationElement) {
+        GeneralMessageCancellation gmCancellation = new GeneralMessageCancellation();
+        InfoChannelRefStructure infoChannelRef = new InfoChannelRefStructure();
+        infoChannelRef.setValue(DEFAULT_CHANNEL_REF);
+        gmCancellation.setInfoChannelRef(infoChannelRef);
+        InfoMessageRefStructure infoMessageRef = new InfoMessageRefStructure();
+        infoMessageRef.setValue(ptSituationElement.getSituationNumber().getValue());
+        gmCancellation.setInfoMessageIdentifier(infoMessageRef);
+        ItemRefStructure itemRef = new ItemRefStructure();
+        itemRef.setValue(ptSituationElement.getSituationNumber().getValue());
+        gmCancellation.setItemRef(itemRef);
+        return gmCancellation;
     }
 }

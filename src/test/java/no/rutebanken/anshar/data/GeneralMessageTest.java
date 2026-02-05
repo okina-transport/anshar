@@ -8,8 +8,10 @@ import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
+import no.rutebanken.anshar.routes.siri.handlers.inbound.SituationExchangeInbound;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.apache.commons.io.IOUtils;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +44,13 @@ public class GeneralMessageTest extends SpringBootBaseTest {
 
     @Autowired
     private LineUpdaterService lineupdaterService;
+
+    @Autowired
+    private SituationExchangeInbound situationExchangeInbound;
+
+    @Autowired
+    private Situations situations;
+
 
     @BeforeEach
     public void init() {
@@ -809,6 +818,30 @@ public class GeneralMessageTest extends SpringBootBaseTest {
         assertEquals(first.getGeneralMessages().size(), 1);
         assertNotNull(second.getGeneralMessageCancellations());
         assertEquals(second.getGeneralMessageCancellations().size(), 1);
+
+    }
+
+    @Test
+    public void testSXCancellationMessage() throws InterruptedException {
+        String datasetId = "TEST";
+        List<PtSituationElement> incomingSituations = new ArrayList<>();
+        PtSituationElement newOpensituation = new PtSituationElement();
+        SituationNumber sitNumber = new SituationNumber();
+        sitNumber.setValue("SIT1");
+        newOpensituation.setSituationNumber(sitNumber);
+        newOpensituation.setProgress(WorkflowStatusEnumeration.OPEN);
+        incomingSituations.add(newOpensituation);
+
+        // ingesting an open situation
+        situationExchangeInbound.ingestSituations(datasetId, incomingSituations, false);
+        Assertions.assertEquals(1, situations.getAll().size());
+        Assertions.assertEquals(1, generalMessages.getAll().size());
+
+        newOpensituation.setProgress(WorkflowStatusEnumeration.CLOSED);
+        situationExchangeInbound.ingestSituations(datasetId, incomingSituations, false);
+
+        // After ingesting the closed situation, general info must have been removed from cache
+        Assertions.assertEquals(0, generalMessages.getAll().size());
 
     }
 

@@ -1271,7 +1271,7 @@ public class ServerSubscriptionManager {
         );
     }
 
-    private void pushUpdatedGeneralMessages(List<GeneralMessage> addedOrUpdated, String datasetId, String breadcrumbId) {
+    private <T extends AbstractItemStructure> void pushUpdatedGeneralMessages(List<T> addedOrUpdated, String datasetId, String breadcrumbId) {
         MDC.put("camel.breadcrumbId", breadcrumbId);
 
         if (addedOrUpdated == null || addedOrUpdated.isEmpty()) {

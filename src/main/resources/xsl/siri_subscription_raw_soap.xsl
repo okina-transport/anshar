@@ -278,6 +278,8 @@
                                 </xsl:element>
                                 <xsl:copy-of select="./siri:GeneralMessage" copy-namespaces="no">
                                 </xsl:copy-of>
+                                <xsl:copy-of select="./siri:GeneralMessageCancellation" copy-namespaces="no">
+                                </xsl:copy-of>
                                 <xsl:copy-of select="./siri:ErrorCondition" copy-namespaces="no"/>
                             </xsl:element>
                         </xsl:if>
