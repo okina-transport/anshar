@@ -99,6 +99,10 @@ public class StopPlaceUpdaterService {
         }
 
         Set<String> stopPlaces = reverseStopPlaceMappings.get(id);
+        if (id.contains("StopPlace")){
+            logger.info("reversion process found {} results for id {}",stopPlaces.size(), id);
+        }
+
 
         if (CollectionUtils.isEmpty(stopPlaces)) {
             return List.of();
