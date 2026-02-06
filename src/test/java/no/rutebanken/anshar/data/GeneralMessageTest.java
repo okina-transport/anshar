@@ -24,6 +24,7 @@ import javax.xml.transform.TransformerException;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.ZonedDateTime;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -70,6 +71,87 @@ public class GeneralMessageTest extends SpringBootBaseTest {
         GeneralMessage msg = TestObjectFactory.createGeneralMessage();
         generalMessages.add("test", msg);
         assertTrue(generalMessages.getAll().size() == previousSize + 1);
+    }
+
+    @Test
+    public void test_that_publication_window_in_future_are_not_inserted_in_GM_cache() throws InterruptedException {
+        String datasetId = "test";
+
+
+        // Creating situation with publication window that start 1 min in the future
+        List<PtSituationElement> incomingSituations = new ArrayList<>();
+        PtSituationElement newOpensituation = new PtSituationElement();
+        SituationNumber sitNumber = new SituationNumber();
+        sitNumber.setValue("SIT1");
+        newOpensituation.setSituationNumber(sitNumber);
+        newOpensituation.setProgress(WorkflowStatusEnumeration.OPEN);
+        HalfOpenTimestampOutputRangeStructure publicationWindow = new HalfOpenTimestampOutputRangeStructure();
+        ZonedDateTime now = ZonedDateTime.now();
+        ZonedDateTime nowPlusOne = now.plusMinutes(1);
+        publicationWindow.setStartTime(nowPlusOne);
+        publicationWindow.setEndTime(nowPlusOne.plusHours(2));
+        newOpensituation.getPublicationWindows().add(publicationWindow);
+        incomingSituations.add(newOpensituation);
+
+        situationExchangeInbound.ingestSituations(datasetId, incomingSituations, false);
+
+        // Checking that General Message has NOT be inserted into GM cache (because publication window is defined in the future)
+        Assertions.assertEquals(0, generalMessages.getAll().size());
+
+        // waiting 70s. During this time, GM should have been inserted into cache, by the scheduler
+        Thread.sleep(70000);
+
+        // Checking that GM has really been inserted into cache
+        Assertions.assertEquals(1, generalMessages.getAll().size());
+
+    }
+
+    @Test
+    public void test_that_reprog_gm_window() throws InterruptedException {
+        String datasetId = "test";
+
+
+        // Creating situation with publication window that start 2 hour in the future
+        List<PtSituationElement> incomingSituations = new ArrayList<>();
+        PtSituationElement newOpensituation = new PtSituationElement();
+        SituationNumber sitNumber = new SituationNumber();
+        sitNumber.setValue("SIT1");
+        newOpensituation.setSituationNumber(sitNumber);
+        newOpensituation.setProgress(WorkflowStatusEnumeration.OPEN);
+        HalfOpenTimestampOutputRangeStructure publicationWindow = new HalfOpenTimestampOutputRangeStructure();
+        ZonedDateTime now = ZonedDateTime.now();
+        ZonedDateTime nowPlusOne = now.plusHours(2);
+        publicationWindow.setStartTime(nowPlusOne);
+        publicationWindow.setEndTime(nowPlusOne.plusHours(2));
+        newOpensituation.getPublicationWindows().add(publicationWindow);
+        incomingSituations.add(newOpensituation);
+
+        situationExchangeInbound.ingestSituations(datasetId, incomingSituations, false);
+
+        // Checking that General Message has NOT be inserted into GM cache (because publication window is defined in the future)
+        Assertions.assertEquals(0, generalMessages.getAll().size());
+
+        // waiting 70s. During this time, GM should have been inserted into cache, by the scheduler
+        Thread.sleep(70000);
+
+        // After 70s, gm must be at 0 because publication is 2 hours in the future
+        Assertions.assertEquals(0, generalMessages.getAll().size());
+
+
+        ZonedDateTime now2 = ZonedDateTime.now();
+        ZonedDateTime now2PlusOne = now2.plusMinutes(1);
+        publicationWindow.setStartTime(now2PlusOne);
+        situationExchangeInbound.ingestSituations(datasetId, incomingSituations, false);
+
+        // still empty because publication starts in 1 min
+        Assertions.assertEquals(0, generalMessages.getAll().size());
+
+        // waiting 70s. During this time, GM should have been inserted into cache, by the scheduler
+        Thread.sleep(70000);
+
+        // GM insert must have been replanned and inserted into cache
+        Assertions.assertEquals(1, generalMessages.getAll().size());
+
     }
 
 
