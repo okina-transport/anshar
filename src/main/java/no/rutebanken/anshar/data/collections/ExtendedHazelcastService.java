@@ -28,11 +28,14 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.LifecycleEvent;
 import com.hazelcast.map.IMap;
 import com.hazelcast.replicatedmap.ReplicatedMap;
+import com.hazelcast.scheduledexecutor.IScheduledExecutorService;
+import com.hazelcast.scheduledexecutor.ScheduledTaskHandler;
 import no.rutebanken.anshar.data.RequestorRefStats;
 import no.rutebanken.anshar.data.SiriObjectStorageKey;
 import no.rutebanken.anshar.routes.outbound.OutboundSubscriptionSetup;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import org.apache.commons.lang3.tuple.Pair;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.rutebanken.hazelcasthelper.service.HazelCastService;
@@ -48,8 +51,10 @@ import javax.annotation.PreDestroy;
 import java.math.BigInteger;
 import java.net.UnknownHostException;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.concurrent.ScheduledFuture;
 
 
 @Service
@@ -171,6 +176,16 @@ public class ExtendedHazelcastService extends HazelCastService {
     @Bean
     public IMap<String, Set<String>> getAlreadySentGMCancellations() {
         return hazelcast.getMap("anshar.already.sent.gm.cancellations");
+    }
+
+
+    public IMap<String, Pair<LocalDateTime, String>> getScheduledGeneralMessages(String dataset) {
+        return hazelcast.getMap("anshar.scheduled.general.messages." + dataset);
+    }
+
+    @Bean
+    public IScheduledExecutorService getSharedScheduler() {
+        return hazelcast.getScheduledExecutorService("ansharScheduler");
     }
 
 

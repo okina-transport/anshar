@@ -28,6 +28,11 @@ public class TestUtils {
         SituationNumber sitNumber = new SituationNumber();
         sitNumber.setValue(situationNumber);
         situation.setSituationNumber(sitNumber);
+
+        HalfOpenTimestampOutputRangeStructure pubWindow = new HalfOpenTimestampOutputRangeStructure();
+        pubWindow.setStartTime(ZonedDateTime.now().minusMinutes(2));
+        situation.getPublicationWindows().add(pubWindow);
+
         AffectsScopeStructure affectedStruct = new AffectsScopeStructure();
         AffectsScopeStructure.Networks networks = new AffectsScopeStructure.Networks();
         AffectsScopeStructure.Networks.AffectedNetwork affNet = new AffectsScopeStructure.Networks.AffectedNetwork();

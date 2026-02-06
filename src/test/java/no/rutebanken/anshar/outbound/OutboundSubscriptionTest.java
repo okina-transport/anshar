@@ -390,6 +390,12 @@ class OutboundSubscriptionTest extends SpringBootBaseTest {
         interval.setEndTime(ZonedDateTime.now().plusMinutes(10));
         situation1.getValidityPeriods().add(interval);
 
+        HalfOpenTimestampOutputRangeStructure pubWindow = new HalfOpenTimestampOutputRangeStructure();
+        pubWindow.setStartTime(ZonedDateTime.now().minusMinutes(2));
+
+
+        situation1.getPublicationWindows().add(pubWindow);
+
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         DocumentBuilder db = dbf.newDocumentBuilder();
         Document doc = db.newDocument();
