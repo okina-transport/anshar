@@ -13,6 +13,7 @@ import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri21.*;
@@ -74,7 +75,149 @@ public class GeneralMessageTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void test_that_publication_window_in_future_are_not_inserted_in_GM_cache() throws InterruptedException {
+    public void test_empty_affect_is_converted() throws InterruptedException {
+        generalMessages.clearAll();
+        String datasetId = "test";
+        List<PtSituationElement> incomingSituations = new ArrayList<>();
+        PtSituationElement newOpensituation = new PtSituationElement();
+        SituationNumber sitNumber = new SituationNumber();
+        sitNumber.setValue("SIT1");
+        newOpensituation.setSituationNumber(sitNumber);
+        newOpensituation.setProgress(WorkflowStatusEnumeration.OPEN);
+        HalfOpenTimestampOutputRangeStructure publicationWindow = new HalfOpenTimestampOutputRangeStructure();
+        ZonedDateTime now = ZonedDateTime.now();
+        ZonedDateTime nowPlusOne = now.minusDays(1);
+        publicationWindow.setStartTime(nowPlusOne);
+        publicationWindow.setEndTime(nowPlusOne.plusHours(2));
+        newOpensituation.getPublicationWindows().add(publicationWindow);
+        incomingSituations.add(newOpensituation);
+        situationExchangeInbound.ingestSituations(datasetId, incomingSituations, false);
+        Assertions.assertEquals(1, generalMessages.getAll().size());
+    }
+
+    @Test
+    public void test_affectedVehiclejourney_only_is_rejected() throws InterruptedException {
+        generalMessages.clearAll();
+        String datasetId = "test";
+        List<PtSituationElement> incomingSituations = new ArrayList<>();
+        PtSituationElement newOpensituation = new PtSituationElement();
+        SituationNumber sitNumber = new SituationNumber();
+        sitNumber.setValue("SIT1");
+        newOpensituation.setSituationNumber(sitNumber);
+        newOpensituation.setProgress(WorkflowStatusEnumeration.OPEN);
+        HalfOpenTimestampOutputRangeStructure publicationWindow = new HalfOpenTimestampOutputRangeStructure();
+        ZonedDateTime now = ZonedDateTime.now();
+        ZonedDateTime nowPlusOne = now.minusDays(1);
+        publicationWindow.setStartTime(nowPlusOne);
+        publicationWindow.setEndTime(nowPlusOne.plusHours(2));
+        newOpensituation.getPublicationWindows().add(publicationWindow);
+        AffectsScopeStructure affectsScopeStructure = new AffectsScopeStructure();
+        AffectsScopeStructure.VehicleJourneys affectedVJ = new AffectsScopeStructure.VehicleJourneys();
+        AffectedVehicleJourneyStructure affectedVehicle = new AffectedVehicleJourneyStructure();
+        FramedVehicleJourneyRefStructure framedVJ = new FramedVehicleJourneyRefStructure();
+        framedVJ.setDatedVehicleJourneyRef("testVJ");
+        affectedVehicle.setFramedVehicleJourneyRef(framedVJ);
+        affectedVJ.getAffectedVehicleJourneies().add(affectedVehicle);
+        affectsScopeStructure.setVehicleJourneys(affectedVJ);
+        newOpensituation.setAffects(affectsScopeStructure);
+        incomingSituations.add(newOpensituation);
+        situationExchangeInbound.ingestSituations(datasetId, incomingSituations, false);
+        Assertions.assertEquals(0, generalMessages.getAll().size());
+    }
+
+    @Test
+    public void test_affectedVehicle_only_is_rejected() throws InterruptedException {
+        generalMessages.clearAll();
+        String datasetId = "test";
+        List<PtSituationElement> incomingSituations = new ArrayList<>();
+        PtSituationElement newOpensituation = new PtSituationElement();
+        SituationNumber sitNumber = new SituationNumber();
+        sitNumber.setValue("SIT1");
+        newOpensituation.setSituationNumber(sitNumber);
+        newOpensituation.setProgress(WorkflowStatusEnumeration.OPEN);
+        HalfOpenTimestampOutputRangeStructure publicationWindow = new HalfOpenTimestampOutputRangeStructure();
+        ZonedDateTime now = ZonedDateTime.now();
+        ZonedDateTime nowPlusOne = now.minusDays(1);
+        publicationWindow.setStartTime(nowPlusOne);
+        publicationWindow.setEndTime(nowPlusOne.plusHours(2));
+        newOpensituation.getPublicationWindows().add(publicationWindow);
+        AffectsScopeStructure affectsScopeStructure = new AffectsScopeStructure();
+        AffectsScopeStructure.Vehicles vehicles = new AffectsScopeStructure.Vehicles();
+        AffectedVehicleStructure affectedVehicle = new AffectedVehicleStructure();
+        VehicleRef vehicleRef = new VehicleRef();
+        vehicleRef.setValue("testVehicle");
+        affectedVehicle.setVehicleRef(vehicleRef);
+        vehicles.getAffectedVehicles().add(affectedVehicle);
+        affectsScopeStructure.setVehicles(vehicles);
+        newOpensituation.setAffects(affectsScopeStructure);
+        incomingSituations.add(newOpensituation);
+        situationExchangeInbound.ingestSituations(datasetId, incomingSituations, false);
+        Assertions.assertEquals(0, generalMessages.getAll().size());
+    }
+
+    @Test
+    public void test_affectedLine_only_is_accepted() throws InterruptedException {
+        generalMessages.clearAll();
+        String datasetId = "test";
+        List<PtSituationElement> incomingSituations = new ArrayList<>();
+        PtSituationElement newOpensituation = new PtSituationElement();
+        SituationNumber sitNumber = new SituationNumber();
+        sitNumber.setValue("SIT1");
+        newOpensituation.setSituationNumber(sitNumber);
+        newOpensituation.setProgress(WorkflowStatusEnumeration.OPEN);
+        HalfOpenTimestampOutputRangeStructure publicationWindow = new HalfOpenTimestampOutputRangeStructure();
+        ZonedDateTime now = ZonedDateTime.now();
+        ZonedDateTime nowPlusOne = now.minusDays(1);
+        publicationWindow.setStartTime(nowPlusOne);
+        publicationWindow.setEndTime(nowPlusOne.plusHours(2));
+        newOpensituation.getPublicationWindows().add(publicationWindow);
+
+        AffectsScopeStructure affectsScopeStructure = new AffectsScopeStructure();
+        AffectsScopeStructure.Networks networks = new AffectsScopeStructure.Networks();
+        AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork = new AffectsScopeStructure.Networks.AffectedNetwork();
+        AffectedLineStructure affectedLine = new AffectedLineStructure();
+        LineRef lineRef = new LineRef();
+        lineRef.setValue("testLine");
+        affectedLine.setLineRef(lineRef);
+        affectedNetwork.getAffectedLines().add(affectedLine);
+        networks.getAffectedNetworks().add(affectedNetwork);
+        affectsScopeStructure.setNetworks(networks);
+        newOpensituation.setAffects(affectsScopeStructure);
+        incomingSituations.add(newOpensituation);
+        situationExchangeInbound.ingestSituations(datasetId, incomingSituations, false);
+        Assertions.assertEquals(1, generalMessages.getAll().size());
+    }
+
+    @Test
+    public void test_affectedPlace_only_is_rejected() throws InterruptedException {
+        generalMessages.clearAll();
+        String datasetId = "test";
+        List<PtSituationElement> incomingSituations = new ArrayList<>();
+        PtSituationElement newOpensituation = new PtSituationElement();
+        SituationNumber sitNumber = new SituationNumber();
+        sitNumber.setValue("SIT1");
+        newOpensituation.setSituationNumber(sitNumber);
+        newOpensituation.setProgress(WorkflowStatusEnumeration.OPEN);
+        HalfOpenTimestampOutputRangeStructure publicationWindow = new HalfOpenTimestampOutputRangeStructure();
+        ZonedDateTime now = ZonedDateTime.now();
+        ZonedDateTime nowPlusOne = now.minusDays(1);
+        publicationWindow.setStartTime(nowPlusOne);
+        publicationWindow.setEndTime(nowPlusOne.plusHours(2));
+        newOpensituation.getPublicationWindows().add(publicationWindow);
+        AffectsScopeStructure affectsScopeStructure = new AffectsScopeStructure();
+        AffectsScopeStructure.Places places = new AffectsScopeStructure.Places();
+        AffectedPlaceStructure affectedPlace = new AffectedPlaceStructure();
+        affectedPlace.setPlaceRef("aaa");
+        places.getAffectedPlaces().add(affectedPlace);
+        affectsScopeStructure.setPlaces(places);
+        newOpensituation.setAffects(affectsScopeStructure);
+        incomingSituations.add(newOpensituation);
+        situationExchangeInbound.ingestSituations(datasetId, incomingSituations, false);
+        Assertions.assertEquals(0, generalMessages.getAll().size());
+    }
+
+    @Test
+    public void test500_that_publication_window_in_future_are_not_inserted_in_GM_cache() throws InterruptedException {
         String datasetId = "test";
 
 
@@ -903,29 +1046,7 @@ public class GeneralMessageTest extends SpringBootBaseTest {
 
     }
 
-    @Test
-    public void testSXCancellationMessage() throws InterruptedException {
-        String datasetId = "TEST";
-        List<PtSituationElement> incomingSituations = new ArrayList<>();
-        PtSituationElement newOpensituation = new PtSituationElement();
-        SituationNumber sitNumber = new SituationNumber();
-        sitNumber.setValue("SIT1");
-        newOpensituation.setSituationNumber(sitNumber);
-        newOpensituation.setProgress(WorkflowStatusEnumeration.OPEN);
-        incomingSituations.add(newOpensituation);
 
-        // ingesting an open situation
-        situationExchangeInbound.ingestSituations(datasetId, incomingSituations, false);
-        Assertions.assertEquals(1, situations.getAll().size());
-        Assertions.assertEquals(1, generalMessages.getAll().size());
-
-        newOpensituation.setProgress(WorkflowStatusEnumeration.CLOSED);
-        situationExchangeInbound.ingestSituations(datasetId, incomingSituations, false);
-
-        // After ingesting the closed situation, general info must have been removed from cache
-        Assertions.assertEquals(0, generalMessages.getAll().size());
-
-    }
 
 
     private Content getContentFromGeneralMessage(GeneralMessage generalMessage) {

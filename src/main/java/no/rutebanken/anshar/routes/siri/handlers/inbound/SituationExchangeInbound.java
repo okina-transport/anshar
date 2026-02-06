@@ -54,7 +54,6 @@ public class SituationExchangeInbound {
 
     @Autowired
     private GeneralMessageMapper gmMapper;
-    
 
     @Autowired
     ExtendedHazelcastService hazelcastService;
@@ -63,6 +62,7 @@ public class SituationExchangeInbound {
     @Autowired
     @Qualifier("getSharedScheduler")
     private IScheduledExecutorService sharedScheduler;
+
 
     public boolean ingestSituationExchangeFromApi(SiriDataType dataFormat, String dataSetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList) {
         boolean deliveryContainsData;
@@ -329,7 +329,7 @@ public class SituationExchangeInbound {
      */
     private void convertToGeneralMessageAndIngest(String datasetId, List<PtSituationElement> incomingSituations) {
 
-
+        incomingSituations = filterUnmappableAffects(incomingSituations);
         // Open perturbations
         List<GeneralMessage> incomingMessages = incomingSituations.stream()
                 .filter(situation -> situation.getProgress() == null || !WorkflowStatusEnumeration.CLOSED.equals(situation.getProgress()))
@@ -354,6 +354,17 @@ public class SituationExchangeInbound {
         }
 
 
+    }
+
+    private List<PtSituationElement> filterUnmappableAffects(List<PtSituationElement> incomingSituations) {
+        List<PtSituationElement> filteredAffects = new ArrayList<>();
+        for (PtSituationElement incomingSituation : incomingSituations) {
+            if (incomingSituation.getAffects() == null || incomingSituation.getAffects().getNetworks() != null || incomingSituation.getAffects().getStopPlaces() != null || incomingSituation.getAffects().getStopPoints() != null) {
+                filteredAffects.add(incomingSituation);
+            }
+        }
+
+        return filteredAffects;
     }
 
     public void setValidityPeriodAndStartTimeIfNull(List<PtSituationElement> situationExchangeDeliveries, String datasetId) {
