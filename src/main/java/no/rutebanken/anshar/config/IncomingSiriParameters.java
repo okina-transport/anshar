@@ -34,6 +34,7 @@ public class IncomingSiriParameters {
     private CompressionFormat compressionFormat;
     private boolean gmSIVSicAQuay;
     private boolean theoreticalDataExcluded;
+    private boolean mergePublishingActions = false;
 
 
     public static IncomingSiriParameters buildFromSubscription(String subscriptionId, InputStream incomingSiriStream) {

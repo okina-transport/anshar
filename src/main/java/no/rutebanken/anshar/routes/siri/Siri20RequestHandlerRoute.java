@@ -382,6 +382,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                     incomingSiriParameters.setUseOriginalId(Boolean.parseBoolean(useOriginalId));
                     incomingSiriParameters.setCompressionFormat(acceptedEncoding);
                     incomingSiriParameters.setGmSIVSicAQuay(Boolean.parseBoolean(p.getIn().getHeader(PARAM_SIV_GM_SIC_A_QUAY, String.class)));
+                    incomingSiriParameters.setMergePublishingActions(Boolean.parseBoolean(p.getIn().getHeader(PARAM_MERGE_PUBLISHING_ACTIONS, String.class)));
 
                     Siri response = handler.handleIncomingSiri(incomingSiriParameters);
                     if (response != null) {

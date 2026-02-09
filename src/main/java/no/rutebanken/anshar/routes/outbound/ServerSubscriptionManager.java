@@ -27,6 +27,7 @@ import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.processor.FacilityRefPostProcessor;
 import no.rutebanken.anshar.routes.siri.processor.GmSIVSicAQuayPostProcessor;
+import no.rutebanken.anshar.routes.siri.processor.MergePublishingActionsProcessor;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -634,6 +635,11 @@ public class ServerSubscriptionManager {
             // create a new list, otherwise it will keep adding GmSIVSicAQuayPostProcessor to cached value adapters
             mappers = new ArrayList<>(mappers);
             mappers.add(new GmSIVSicAQuayPostProcessor());
+        }
+
+        if (incomingSiriParameters.isMergePublishingActions()) {
+            mappers = new ArrayList<>(mappers);
+            mappers.add(new MergePublishingActionsProcessor());
         }
 
         OutboundSubscriptionSetup newOutboundSubscription = new OutboundSubscriptionSetup(
