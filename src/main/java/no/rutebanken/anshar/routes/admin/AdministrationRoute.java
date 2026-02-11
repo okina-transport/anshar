@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.routes.admin;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.net.HttpHeaders;
 import no.rutebanken.anshar.config.AnsharConfiguration;
@@ -25,6 +26,7 @@ import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.kafka.KafkaRouteBuilder;
+import no.rutebanken.anshar.routes.outbound.OutboundErrorHandler;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
@@ -45,6 +47,7 @@ import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.RequestorRef;
 import uk.org.siri.siri21.Siri;
 
+import javax.ws.rs.core.MediaType;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.List;
@@ -124,6 +127,10 @@ public class AdministrationRoute extends RestRouteBuilder {
     private SiriObjectFactory siriObjectFactory;
 
 
+    @Autowired
+    private OutboundErrorHandler outboundErrorHandler;
+
+
 //    @Autowired
 //    private BasicAuthService basicAuthProcessor;
 
@@ -145,6 +152,7 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .apiDocs(false)
                 .get("/stats").produces(TEXT_HTML).to(STATS_ROUTE)
                 .get("/internalstats").produces(APPLICATION_JSON).to(INTERNAL_STATS_ROUTE)
+                .get("/outbounderrormapcount").to("direct:outbound.errormap.count")
                 .get("/dailyStatuses").produces(APPLICATION_JSON).to("direct:incoming.data.daily.statuses")
                 .get("/outbound/stats").produces(APPLICATION_JSON).to(OUTBOUND_STATS_ROUTE)
                 .get("/outbound").produces(APPLICATION_JSON).to(OUTBOUND_DATA_ROUTE)
@@ -161,6 +169,7 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .post("/gtfs-rt-request").produces(APPLICATION_JSON).to(ISHTAR_GET_GTFS_RT_API_REQUEST_ROUTE)
                 .post("/siri-request").produces(APPLICATION_JSON).to(ISHTAR_GET_SIRI_API_REQUEST_ROUTE)
                 .post("/subscription-request").produces(APPLICATION_JSON).to(ISHTAR_GET_SUBSCRIPTION_REQUEST_ROUTE)
+                .post("/unbanurl").produces(APPLICATION_JSON).to("direct:unbanurl")
                 .delete("/dataset/{datasetId}").to(ISHTAR_CLEAR_CACHE_BY_DATASET_ID)
                 .get("/consistency-reports/{datasetId}").produces(APPLICATION_JSON).to(GET_CONSISTENCY_REPORT_BY_DATASET_ID)
         ;
@@ -196,6 +205,27 @@ public class AdministrationRoute extends RestRouteBuilder {
                     .log("Verifying locks - done")
                     .routeId("anshar.admin.periodic.lock.verification");
         }
+
+        from("direct:unbanurl")
+                .process(exchange -> {
+                    JsonNode node = exchange.getIn().getBody(JsonNode.class);
+                    String urlToUnban = node.get("url").asText();
+                    log.info("Manually unbanning URL :{}", urlToUnban);
+                    outboundErrorHandler.resetCount(urlToUnban);
+                })
+                .routeId("unbannurl")
+        ;
+
+
+        from("direct:outbound.errormap.count")
+                .process(p -> {
+                    p.getIn().setBody(outboundErrorHandler.getOutboundErrorCount());
+                })
+                .marshal().json()
+                .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.APPLICATION_JSON))
+                .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("200"))
+                .routeId("outbound.errormap.count")
+        ;
 
         from("direct:locks")
                 .choice()

@@ -74,6 +74,8 @@ public class Constants {
     public final static String SIRI_GM_KAFKA_QUEUE = "siri.general.message.kafka?timeToLive=600000";
     public final static String SIRI_FM_KAFKA_QUEUE = "siri.facility.monitoring.kafka?timeToLive=600000";
 
+    public final static String ENDPOINT_HEADER_NAME = "endpoint";
+
 
     // TODO MHI : implement validators for SM
 
