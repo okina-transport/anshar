@@ -24,6 +24,7 @@ import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.apache.commons.collections4.CollectionUtils;
+import org.springframework.data.annotation.Transient;
 import uk.org.siri.siri21.*;
 
 import java.time.ZonedDateTime;
@@ -34,7 +35,11 @@ import java.util.Optional;
 public class UpdateVJIdProcessor extends ValueAdapter implements PostProcessor {
 
     private final String datasetId;
+
+    @Transient
     private final StopTimesService stopTimesService;
+
+    @Transient
     private final SubscriptionConfig subscriptionConfig;
 
 
