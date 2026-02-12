@@ -37,10 +37,10 @@ public class UpdateVJIdProcessor extends ValueAdapter implements PostProcessor {
     private final String datasetId;
 
     @Transient
-    private final StopTimesService stopTimesService;
+    private StopTimesService stopTimesService;
 
     @Transient
-    private final SubscriptionConfig subscriptionConfig;
+    private SubscriptionConfig subscriptionConfig;
 
 
     public UpdateVJIdProcessor(String datasetId) {
@@ -64,8 +64,17 @@ public class UpdateVJIdProcessor extends ValueAdapter implements PostProcessor {
     @Override
     public void process(Siri siri) {
 
+
         if (siri == null || siri.getServiceDelivery() == null || siri.getServiceDelivery().getStopMonitoringDeliveries() == null || siri.getServiceDelivery().getStopMonitoringDeliveries().isEmpty()) {
             return;
+        }
+
+        if (stopTimesService == null) {
+            stopTimesService = ApplicationContextHolder.getContext().getBean(StopTimesService.class);
+        }
+
+        if (subscriptionConfig == null) {
+            subscriptionConfig = ApplicationContextHolder.getContext().getBean(SubscriptionConfig.class);
         }
 
         for (StopMonitoringDeliveryStructure stopMonitoringDelivery : siri.getServiceDelivery().getStopMonitoringDeliveries()) {
