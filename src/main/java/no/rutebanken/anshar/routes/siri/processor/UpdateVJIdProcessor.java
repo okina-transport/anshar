@@ -24,6 +24,7 @@ import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.apache.commons.collections4.CollectionUtils;
+import org.springframework.data.annotation.Transient;
 import uk.org.siri.siri21.*;
 
 import java.time.ZonedDateTime;
@@ -34,8 +35,11 @@ import java.util.Optional;
 public class UpdateVJIdProcessor extends ValueAdapter implements PostProcessor {
 
     private final String datasetId;
-    private final StopTimesService stopTimesService;
-    private final SubscriptionConfig subscriptionConfig;
+
+
+    private transient StopTimesService stopTimesService;
+
+    private transient SubscriptionConfig subscriptionConfig;
 
 
     public UpdateVJIdProcessor(String datasetId) {
@@ -59,8 +63,17 @@ public class UpdateVJIdProcessor extends ValueAdapter implements PostProcessor {
     @Override
     public void process(Siri siri) {
 
+
         if (siri == null || siri.getServiceDelivery() == null || siri.getServiceDelivery().getStopMonitoringDeliveries() == null || siri.getServiceDelivery().getStopMonitoringDeliveries().isEmpty()) {
             return;
+        }
+
+        if (stopTimesService == null) {
+            stopTimesService = ApplicationContextHolder.getContext().getBean(StopTimesService.class);
+        }
+
+        if (subscriptionConfig == null) {
+            subscriptionConfig = ApplicationContextHolder.getContext().getBean(SubscriptionConfig.class);
         }
 
         for (StopMonitoringDeliveryStructure stopMonitoringDelivery : siri.getServiceDelivery().getStopMonitoringDeliveries()) {
