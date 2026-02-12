@@ -36,11 +36,10 @@ public class UpdateVJIdProcessor extends ValueAdapter implements PostProcessor {
 
     private final String datasetId;
 
-    @Transient
-    private StopTimesService stopTimesService;
 
-    @Transient
-    private SubscriptionConfig subscriptionConfig;
+    private transient StopTimesService stopTimesService;
+
+    private transient SubscriptionConfig subscriptionConfig;
 
 
     public UpdateVJIdProcessor(String datasetId) {
