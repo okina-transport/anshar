@@ -167,15 +167,19 @@ public class StopTimesService {
         try {
             Iterable<CSVRecord> records = CSVUtils.getRecords(fileToRead);
             Map<String, List<StopTimeCacheEntry>> datasetCache = stopTimesCache.computeIfAbsent(datasetId, key -> new HashMap<>());
+            Comparator<StopTimeCacheEntry> byStopSequence = Comparator.comparingInt(StopTimeCacheEntry::getStopSequence);
             for (CSVRecord csvRecord : records) {
                 String stopId = csvRecord.get("stop_id");
                 String tripId = csvRecord.get("trip_id");
                 String departureTime = csvRecord.get("departure_time");
                 String arrivalTime = csvRecord.get("arrival_time");
                 int stopSequence = Integer.parseInt(csvRecord.get("stop_sequence"));
-                datasetCache.computeIfAbsent(tripId, key -> new ArrayList<>())
+                datasetCache.computeIfAbsent(tripId, key -> new LinkedList<>())
                         .add(new StopTimeCacheEntry(arrivalTime, departureTime, stopId, stopSequence));
             }
+
+            datasetCache.values().forEach(stopTimeList -> stopTimeList.sort(byStopSequence));
+
             logger.info("Feeding cache with stop_times file: {} completed", fileToRead.getAbsolutePath());
 
         } catch (IOException | IllegalArgumentException e) {
@@ -405,8 +409,6 @@ public class StopTimesService {
     }
 
     private String getDestination(List<StopTimeCacheEntry> stopTimes) {
-        Comparator<StopTimeCacheEntry> byStopSequence = Comparator.comparingInt(StopTimeCacheEntry::getStopSequence);
-        stopTimes.sort(byStopSequence);
         return stopTimes.getLast().getStopId();
     }
 
