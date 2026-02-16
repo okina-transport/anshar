@@ -41,6 +41,13 @@ public class PoiIdsService {
 
     @PostConstruct
     private void initialize() {
+
+        if (!poiIdMappingPath.exists()) {
+            log.info("No poi file existing. Update poi file will not be scheduled");
+            return;
+        }
+
+
         EXECUTOR.scheduleAtFixedRate(this::updatePoiIds, 0, updateFrequency, TimeUnit.MINUTES);
         log.info("Initialized poi id updater mapping service with path: {}, updateFrequency: {} minutes", poiIdMappingPath, updateFrequency);
     }
@@ -70,7 +77,7 @@ public class PoiIdsService {
 
                     Map<String, String> poiByOriginalIdToNetexId =
                             POI_BY_OPERATOR_AND_ORIGINAL_ID_TO_NETEX_ID.computeIfAbsent(operator,
-                             key -> new HashMap<>());
+                                    key -> new HashMap<>());
 
                     if (poiByOriginalIdToNetexId.containsKey(originalId)) {
                         log.info("Duplicate poi originalId in mapping file for operator {} / originalId {}",
