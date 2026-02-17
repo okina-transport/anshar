@@ -54,6 +54,7 @@ import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.*;
 
 import javax.xml.datatype.Duration;
+import java.net.URI;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -154,6 +155,9 @@ public class ServerSubscriptionManager {
     @Autowired
     @Qualifier("getAlreadySentGMCancellations")
     private IMap<String, Set<String>> alreadySentGmCancellations;
+
+    @Autowired
+    private OutboundErrorHandler outboundErrorHandler;
 
     private static boolean checkMissingMonitoringRef(SubscriptionRequest subscriptionRequest) {
         boolean missingMonitoringRef = false;
@@ -503,6 +507,9 @@ public class ServerSubscriptionManager {
         if (subscription.getAddress() == null) {
             hasError = true;
             errorText = errorConsumerAddressMissing;
+        } else if (!isValidUrlWithoutLocalhost(subscription.getAddress())) {
+            hasError = true;
+            errorText = "Invalid consumer adress:" + subscription.getAddress();
         } else if (subscription.getInitialTerminationTime() == null || subscription.getInitialTerminationTime().isBefore(ZonedDateTime.now())) {
             //Subscription has already expired
             hasError = true;
@@ -510,6 +517,9 @@ public class ServerSubscriptionManager {
         } else if (isSmSubWithStartTime(incomingSiri)) {
             hasError = true;
             errorText = "Usage of startTime and previewInterval at the same time is not allowed in StopMonitoring";
+        } else if (!outboundErrorHandler.isUrlAllowed(subscription.getAddress())) {
+            hasError = true;
+            errorText = "This consumer address has been banned for repeated POST errors:" + subscription.getAddress();
         }
 
         if (subscriptions.containsKey(subscription.getSubscriptionId())) {
@@ -1553,4 +1563,22 @@ public class ServerSubscriptionManager {
     public int getOutboundSubscriptionCount() {
         return subscriptions.size();
     }
+
+    public List<String> getSubscriptionsWithBaseUrl(String baseUrl) {
+        return subscriptions.entrySet().stream()
+                .filter(entry -> entry.getValue().getAddress().startsWith(baseUrl))
+                .map(Map.Entry::getKey)
+                .toList();
+    }
+
+    private boolean isValidUrlWithoutLocalhost(String url) {
+        try {
+            URI uri = new URI(url);
+            return uri.getScheme() != null && uri.getHost() != null && !"localhost".equalsIgnoreCase(uri.getHost())
+                    && !"0.0.0.0".equalsIgnoreCase(uri.getHost()) && !"127.0.0.1".equalsIgnoreCase(uri.getHost());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
 }

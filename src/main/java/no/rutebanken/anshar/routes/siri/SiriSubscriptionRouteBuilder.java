@@ -227,6 +227,19 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
 
         String subscriptionId = subscriptionSetup.getSubscriptionId();
 
+
+        if (StringUtils.isNotEmpty(subscriptionSetup.getParentSubscriptionId())) {
+            //special case : discovery subscriptions
+            // only reason to restart : time is passed
+
+            boolean shouldBeRestarted = subscriptionManager.isRestartTimePassed(subscriptionId);
+            if (shouldBeRestarted) {
+                subscriptionManager.forceRestart(subscriptionId);
+            }
+            return shouldBeRestarted;
+        }
+
+
         if (subscriptionManager.isForceRestart(subscriptionId)) {
             log.debug("Should be cancelled because force restart : " + subscriptionId);
             // If restart is triggered - ignore all other checks

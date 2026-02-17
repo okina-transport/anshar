@@ -41,6 +41,14 @@ public class ParkingIdsService {
 
     @PostConstruct
     private void initialize() {
+
+
+        if (!parkingIdMappingPath.exists()) {
+            log.info("No parking file existing. Update parking file will not be scheduled");
+            return;
+        }
+
+
         EXECUTOR.scheduleAtFixedRate(this::updateParkingIds, 0, updateFrequency, TimeUnit.MINUTES);
         log.info("Initialized parking id updater mapping service with path: {}, updateFrequency: {} minutes", parkingIdMappingPath, updateFrequency);
     }
@@ -50,6 +58,7 @@ public class ParkingIdsService {
             log.info("Update parking id mappings map");
 
             PARKING_BY_OPERATOR_AND_ORIGINAL_ID_TO_NETEX_ID.clear();
+
 
             try (CSVParser csvParser = CSVParser.builder()
                     .setFile(parkingIdMappingPath)
@@ -70,7 +79,7 @@ public class ParkingIdsService {
 
                     Map<String, String> parkingByOriginalIdToNetexId =
                             PARKING_BY_OPERATOR_AND_ORIGINAL_ID_TO_NETEX_ID.computeIfAbsent(operator,
-                             key -> new HashMap<>());
+                                    key -> new HashMap<>());
 
                     if (parkingByOriginalIdToNetexId.containsKey(originalId)) {
                         log.info("Duplicate parking originalId in mapping file for operator {} / originalId {}",

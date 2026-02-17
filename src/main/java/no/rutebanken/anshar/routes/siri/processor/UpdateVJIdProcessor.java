@@ -83,11 +83,6 @@ public class UpdateVJIdProcessor extends ValueAdapter implements PostProcessor {
             }
 
             for (MonitoredStopVisit monitoredStopVisit : stopMonitoringDelivery.getMonitoredStopVisits()) {
-                if (!monitoredStopVisit.getMonitoredVehicleJourney().isMonitored()) {
-                    // only real time data is processed
-                    continue;
-                }
-
 
                 MonitoringRefStructure monitoringRef = monitoredStopVisit.getMonitoringRef();
                 MonitoredVehicleJourneyStructure vehicleJourney = monitoredStopVisit.getMonitoredVehicleJourney();

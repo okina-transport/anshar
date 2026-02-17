@@ -178,6 +178,11 @@ public class ExtendedHazelcastService extends HazelCastService {
         return hazelcast.getMap("anshar.already.sent.gm.cancellations");
     }
 
+    @Bean
+    public IMap<String, Integer> getOutboundErrorCount() {
+        return hazelcast.getMap("anshar.outbound.error.count");
+    }
+
 
     public IMap<String, Pair<LocalDateTime, String>> getScheduledGeneralMessages(String dataset) {
         return hazelcast.getMap("anshar.scheduled.general.messages." + dataset);

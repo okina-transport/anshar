@@ -360,6 +360,15 @@ public class TestUtils {
                 "outSubId1", "requestorRef", ZonedDateTime.now().plusHours(1), "DAT1", "clientTrackingName", useOriginalId, SiriValidator.Version.VERSION_2_1);
     }
 
+    public static OutboundSubscriptionSetup createSxOutboundSubscription(boolean useOriginalId, String address, String subId) {
+        List<ValueAdapter> adapters = new ArrayList<>();
+        return new OutboundSubscriptionSetup(ZonedDateTime.now(),
+                SiriDataType.SITUATION_EXCHANGE, address, 3600,
+                true, 30, 0,
+                new HashMap<>(), adapters,
+                subId, "requestorRef", ZonedDateTime.now().plusHours(1), "DAT1", "clientTrackingName", useOriginalId, SiriValidator.Version.VERSION_2_1);
+    }
+
     public static OutboundSubscriptionSetup createGmOutboundSubscription(boolean useOriginalId) {
         String address = "http://localhost:1080/incomingSiri";
         List<ValueAdapter> adapters = new ArrayList<>();

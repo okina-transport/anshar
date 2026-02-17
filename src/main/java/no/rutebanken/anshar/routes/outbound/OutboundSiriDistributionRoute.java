@@ -43,12 +43,15 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
 
     private final CompressionProcessor compressionProcessor;
 
+    private final OutboundErrorHandler outboundErrorHandler;
 
-    public OutboundSiriDistributionRoute(ServerSubscriptionManager subscriptionManager, PrometheusMetricsService metrics, Utils utils, CompressionProcessor compressionProcessor) {
+
+    public OutboundSiriDistributionRoute(ServerSubscriptionManager subscriptionManager, PrometheusMetricsService metrics, Utils utils, CompressionProcessor compressionProcessor, OutboundErrorHandler outboundErrorHandler) {
         this.subscriptionManager = subscriptionManager;
         this.metrics = metrics;
         this.utils = utils;
         this.compressionProcessor = compressionProcessor;
+        this.outboundErrorHandler = outboundErrorHandler;
     }
 
     // @formatter:off
@@ -57,11 +60,9 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
 
         int timeout = 15000;
 
-//        onException(Exception.class)
-//                .maximumRedeliveries(0)
-//                .redeliveryDelay(3000) //milliseconds
-//                .logRetryAttempted(true)
-//        ;
+        onException(Exception.class)
+                .process(outboundErrorHandler::recordError)
+        ;
 
         from("direct:send.to.external.subscription")
                 .routeId("send.to.external.subscription")
@@ -132,6 +133,7 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
                 .process(e->{
                     String subsId = (String) e.getIn().getHeader("SubscriptionId");
                     subscriptionManager.clearFailTracker(subsId);
+                    outboundErrorHandler.resetCount(e);
                 })
                 .end();
 
