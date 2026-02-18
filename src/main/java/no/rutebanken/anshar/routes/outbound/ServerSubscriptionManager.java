@@ -521,6 +521,10 @@ public class ServerSubscriptionManager {
             hasError = true;
             errorText = "This consumer address has been banned for repeated POST errors:" + subscription.getAddress();
         }
+        if (SiriDataType.STOP_MONITORING.equals(subscription.getSubscriptionType()) && !hasAStopFilter(subscription)) {
+            hasError = true;
+            errorText = "Unkwnown monitoringRef";
+        }
 
         if (subscriptions.containsKey(subscription.getSubscriptionId())) {
 
@@ -616,6 +620,34 @@ public class ServerSubscriptionManager {
         } else {
             logger.info("No initial delivery found for {}, dataset:{}", subscription, datasetId);
         }
+    }
+
+    /**
+     * Function to check is an outbound SM subscription has a filter on a stop
+     *
+     * @param subscriptionToCheck
+     * @return true : at list a filter on a stop is existing
+     * false : no filter on stops defined
+     */
+    private boolean hasAStopFilter(OutboundSubscriptionSetup subscriptionToCheck) {
+
+        Map<Class, Set<String>> filterMap = subscriptionToCheck.getFilterMap();
+        if (filterMap != null && filterMap.containsKey(MonitoringRefStructure.class) && CollectionUtils.isNotEmpty(filterMap.get(MonitoringRefStructure.class))) {
+            return true;
+        }
+
+        Map<String, Map<Class, Set<String>>> filterMapByDataset = subscriptionToCheck.getFilterMapByDataset();
+        if (filterMapByDataset == null) {
+            return false;
+        }
+
+        for (Map.Entry<String, Map<Class, Set<String>>> filterMapEntry : filterMapByDataset.entrySet()) {
+            Map<Class, Set<String>> datasetFilterMap = filterMapEntry.getValue();
+            if (datasetFilterMap != null && datasetFilterMap.containsKey(MonitoringRefStructure.class) && CollectionUtils.isNotEmpty(datasetFilterMap.get(MonitoringRefStructure.class))) {
+                return true;
+            }
+        }
+        return false;
     }
 
 
