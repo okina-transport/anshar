@@ -81,7 +81,7 @@ public class TheoreticalSiriSmConsumer {
 
 
     private void ingestSiriSmDataByDataset(Path path) {
-        String datasetId = Strings.CS.removeEnd(path.getFileName().toString(), fileSuffix);
+        String datasetId = Strings.CS.removeEnd(path.getFileName().toString(), fileSuffix).toUpperCase();
         if (!isAllowedToBuildSmFromTH(datasetId)) {
             return;
         }
@@ -94,12 +94,28 @@ public class TheoreticalSiriSmConsumer {
                              .setSkipHeaderRecord(true)
                              .get())) {
 
+            int nbOfRetry = 0;
+            while (!subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.STOP).isPresent()) {
+                log.info("Waiting for idProcessing to be rececovered");
+                Thread.sleep(30000);
+                nbOfRetry++;
+                if (nbOfRetry > 10) {
+                    return;
+                }
+            }
+
             List<TheoreticalStopMonitoringInfo> ingestedData = new ArrayList<>();
             TheoreticalStopMonitoringInfo monitoringInfo;
             IdProcessingParameters emptyIdProcessing = new IdProcessingParameters();
             IdProcessingParameters lineIdProcessingParameters = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.LINE).orElse(emptyIdProcessing);
             IdProcessingParameters stopIdProcessingParameters = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.STOP).orElse(emptyIdProcessing);
             IdProcessingParameters vehicleJourneyIdProcessingParameters = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.VEHICLE_JOURNEY).orElse(emptyIdProcessing);
+
+            if (StringUtils.isNotEmpty(vehicleJourneyIdProcessingParameters.getOutputPrefixToAdd())) {
+                vehicleJourneyIdProcessingParameters.setOutputPrefixToAdd(vehicleJourneyIdProcessingParameters.getOutputPrefixToAdd().replace(":ServiceJourney:", ":VehicleJourney:"));
+            }
+
+
             for (CSVRecord csvRecord : csvParser) {
 
                 if (!LocalDate.now().equals(LocalDate.parse(csvRecord.get("dateyyyyMMdd"), DATE_FORMATTER))) {
@@ -135,7 +151,7 @@ public class TheoreticalSiriSmConsumer {
                 }
 
             }
-        } catch (IOException e) {
+        } catch (IOException | InterruptedException e) {
             log.error("Error while reading theoretical siri sm data file : {}", e.getMessage());
         }
     }
