@@ -81,7 +81,7 @@ public class TheoreticalSiriSmConsumer {
 
 
     private void ingestSiriSmDataByDataset(Path path) {
-        String datasetId = Strings.CS.removeEnd(path.getFileName().toString(), fileSuffix);
+        String datasetId = Strings.CS.removeEnd(path.getFileName().toString(), fileSuffix).toUpperCase();
         if (!isAllowedToBuildSmFromTH(datasetId)) {
             return;
         }
@@ -93,6 +93,12 @@ public class TheoreticalSiriSmConsumer {
                              .setHeader()
                              .setSkipHeaderRecord(true)
                              .get())) {
+
+
+            while (!subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.STOP).isPresent()) {
+                log.info("Waiting for idProcessing to be rececovered");
+                Thread.sleep(30000);
+            }
 
             List<TheoreticalStopMonitoringInfo> ingestedData = new ArrayList<>();
             TheoreticalStopMonitoringInfo monitoringInfo;
@@ -135,7 +141,7 @@ public class TheoreticalSiriSmConsumer {
                 }
 
             }
-        } catch (IOException e) {
+        } catch (IOException | InterruptedException e) {
             log.error("Error while reading theoretical siri sm data file : {}", e.getMessage());
         }
     }
