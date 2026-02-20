@@ -166,7 +166,7 @@ public class DiscoveryStopPointsOutbound {
         StopPointRefStructure stopPointRef = new StopPointRefStructure();
         stopPointRef.setValue(stopRefAndName.getLeft());
         pointStruct.setStopPointRef(stopPointRef);
-        pointStruct.setMonitored(true);
+      
 
         if (StringUtils.isNotEmpty(stopRefAndName.getRight())) {
             NaturalLanguageStringStructure pointName = new NaturalLanguageStringStructure();
