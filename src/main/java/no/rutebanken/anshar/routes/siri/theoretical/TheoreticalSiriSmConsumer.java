@@ -112,7 +112,14 @@ public class TheoreticalSiriSmConsumer {
             IdProcessingParameters vehicleJourneyIdProcessingParameters = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.VEHICLE_JOURNEY).orElse(emptyIdProcessing);
 
             if (StringUtils.isNotEmpty(vehicleJourneyIdProcessingParameters.getOutputPrefixToAdd())) {
-                vehicleJourneyIdProcessingParameters.setOutputPrefixToAdd(vehicleJourneyIdProcessingParameters.getOutputPrefixToAdd().replace(":ServiceJourney:", ":VehicleJourney:"));
+                IdProcessingParameters replacedIdProcessing = new IdProcessingParameters();
+                replacedIdProcessing.setObjectType(ObjectType.VEHICLE_JOURNEY);
+                replacedIdProcessing.setDatasetId(vehicleJourneyIdProcessingParameters.getDatasetId());
+                replacedIdProcessing.setInputPrefixToRemove(vehicleJourneyIdProcessingParameters.getInputPrefixToRemove());
+                replacedIdProcessing.setInputSuffixToRemove(vehicleJourneyIdProcessingParameters.getInputSuffixToRemove());
+                replacedIdProcessing.setOutputPrefixToAdd(vehicleJourneyIdProcessingParameters.getOutputPrefixToAdd().replace(":ServiceJourney:", ":VehicleJourney:"));
+                replacedIdProcessing.setOutputSuffixToAdd(vehicleJourneyIdProcessingParameters.getOutputSuffixToAdd());
+                vehicleJourneyIdProcessingParameters = replacedIdProcessing;
             }
 
 
