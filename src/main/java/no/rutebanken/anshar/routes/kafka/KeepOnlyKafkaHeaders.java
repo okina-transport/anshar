@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import java.util.Map;
 
 import static no.rutebanken.anshar.routes.kafka.KafkaHeaders.*;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASET_ID_HEADER_NAME;
 
 /**
  * Processor to remove all headers except kafka headers
@@ -30,7 +31,7 @@ public class KeepOnlyKafkaHeaders implements Processor {
     public void process(Exchange exchange) throws Exception {
         Map<String, Object> originalHeaders = exchange.getIn().getHeaders();
 
-
+        String datasetId = (String) originalHeaders.getOrDefault(DATASET_ID_HEADER_NAME, null);
         String requestorRefs = (String) originalHeaders.getOrDefault(REQUESTOR_REFS_HEADER, null);
         String consumerAddress = (String) originalHeaders.getOrDefault(CONSUMER_ADDRESS_HEADER, null);
 
@@ -40,6 +41,10 @@ public class KeepOnlyKafkaHeaders implements Processor {
         exchange.getIn().setHeader(ENV_HEADER, config.getEnvironment());
         if (StringUtils.isNotEmpty(requestorRefs)) {
             exchange.getIn().setHeader(REQUESTOR_REFS_HEADER, requestorRefs);
+        }
+
+        if (StringUtils.isNotEmpty(datasetId)) {
+            exchange.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
         }
 
         if (StringUtils.isNotEmpty(consumerAddress)) {
