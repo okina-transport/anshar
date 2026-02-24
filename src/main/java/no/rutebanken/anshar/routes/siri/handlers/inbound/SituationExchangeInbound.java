@@ -24,13 +24,12 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+
 import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASET_ID_HEADER_NAME;
 
 
 import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getOriginalId;
 
-@Produce(KafkaRouteBuilder.SEND_SX_IN_TO_KAFKA)
-protected ProducerTemplate sendSxInToKafka;
 
 @Service
 public class SituationExchangeInbound {
@@ -57,6 +56,9 @@ public class SituationExchangeInbound {
 
     @Autowired
     private KafkaConfig kafkaConfig;
+
+    @Produce(KafkaRouteBuilder.SEND_SX_IN_TO_KAFKA)
+    protected ProducerTemplate sendSxInToKafka;
 
     public boolean ingestSituationExchangeFromApi(SiriDataType dataFormat, String dataSetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList) {
         boolean deliveryContainsData;
