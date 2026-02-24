@@ -67,7 +67,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.time.temporal.ChronoUnit.MILLIS;
-import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASET_ID_HEADER_NAME;
+import static no.rutebanken.anshar.routes.kafka.KafkaHeaders.CONSUMER_ADDRESS_HEADER;
+import static no.rutebanken.anshar.routes.kafka.KafkaHeaders.REQUESTOR_REFS_HEADER;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
 
 
 @SuppressWarnings("unchecked")
@@ -1495,6 +1497,8 @@ public class ServerSubscriptionManager {
         }
 
         Siri delivery = siriObjectFactory.createSMServiceDelivery(addedOrUpdated, null, null);
+        Set<String> monitoredRefs = SiriHelper.extractMonitoringRefs(addedOrUpdated);
+        List<OutboundSubscriptionSetup> impactedOutboundSubscriptions = getSubscriptionsRelatedToMonitoringRefs(datasetId, monitoredRefs);
 
 
         if (pushToTopicEnabled) {
@@ -1502,11 +1506,28 @@ public class ServerSubscriptionManager {
         }
 
         if (kafkaConfig.isSendSiriSmOutToKafka()) {
-            sendSMToKafka.asyncRequestBodyAndHeader(sendSMToKafka.getDefaultEndpoint(), delivery, DATASET_ID_HEADER_NAME, datasetId);
+            List<String> requestorsRefs = new ArrayList<>();
+            List<String> urls = new ArrayList<>();
+
+            if (CollectionUtils.isNotEmpty(impactedOutboundSubscriptions)) {
+                requestorsRefs = impactedOutboundSubscriptions.stream()
+                        .map(OutboundSubscriptionSetup::getRequestorRef)
+                        .toList();
+
+                urls = impactedOutboundSubscriptions.stream()
+                        .map(OutboundSubscriptionSetup::getAddress)
+                        .toList();
+            }
+
+            Map<String, Object> headers = new HashMap<>();
+            headers.put(DATASET_ID_HEADER_NAME, datasetId);
+            headers.put(REQUESTOR_REFS_HEADER, requestorsRefs.stream().collect(Collectors.joining(",")));
+            headers.put(CONSUMER_ADDRESS_HEADER, urls.stream().collect(Collectors.joining(",")));
+
+
+            sendSMToKafka.asyncRequestBodyAndHeaders(sendSMToKafka.getDefaultEndpoint(), delivery, headers);
         }
 
-        Set<String> monitoredRefs = SiriHelper.extractMonitoringRefs(addedOrUpdated);
-        List<OutboundSubscriptionSetup> impactedOutboundSubscriptions = getSubscriptionsRelatedToMonitoringRefs(datasetId, monitoredRefs);
 
         impactedOutboundSubscriptions.forEach(subscription -> {
             if (!delivery.getServiceDelivery().getStopMonitoringDeliveries().isEmpty()) {
