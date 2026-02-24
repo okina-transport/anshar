@@ -8,7 +8,11 @@ import no.rutebanken.anshar.routes.siri.handlers.Utils;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import no.rutebanken.anshar.routes.kafka.KafkaConfig;
+import no.rutebanken.anshar.routes.kafka.KafkaRouteBuilder;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.camel.Produce;
+import org.apache.camel.ProducerTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,8 +24,13 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASET_ID_HEADER_NAME;
+
 
 import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getOriginalId;
+
+@Produce(KafkaRouteBuilder.SEND_SX_IN_TO_KAFKA)
+protected ProducerTemplate sendSxInToKafka;
 
 @Service
 public class SituationExchangeInbound {
@@ -45,6 +54,9 @@ public class SituationExchangeInbound {
 
     @Autowired
     private SuperIdReversionProcess reversionIdProcess;
+
+    @Autowired
+    private KafkaConfig kafkaConfig;
 
     public boolean ingestSituationExchangeFromApi(SiriDataType dataFormat, String dataSetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList) {
         boolean deliveryContainsData;
@@ -80,6 +92,10 @@ public class SituationExchangeInbound {
     public boolean ingestSituationExchange(SubscriptionSetup subscriptionSetup, Siri incoming) {
         List<SituationExchangeDeliveryStructure> situationExchangeDeliveries = incoming.getServiceDelivery().getSituationExchangeDeliveries();
         logger.info("Got SX-delivery: Subscription [{}]", subscriptionSetup);
+
+        if (kafkaConfig.isKafkaEnabled() && kafkaConfig.isSendSiriSxInToKafka()) {
+            sendSxInToKafka.asyncRequestBodyAndHeader(sendSxInToKafka.getDefaultEndpoint(), incoming, DATASET_ID_HEADER_NAME, subscriptionSetup.getDatasetId());
+        }
 
         if (subscriptionSetup.getRevertIds() != null && subscriptionSetup.getRevertIds()) {
             incoming = reversionIdProcess.revertIds(incoming, subscriptionSetup.getDatasetId());

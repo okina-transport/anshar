@@ -1,21 +1,21 @@
 dateyyyyMMdd,monitoringRef,stopPointName,monitoredVehicleJourneyRef,lineRef,publishedLineName,directionName,aimedDepartureTime,aimedArrivalTime,originRef,originName,destinationRef,destinationName
-20500418,44616,TEST Gare Routière QUAI 16,TEST:VehicleJourney:40100,01,TEST Les Oliviers - TEST Gare Routière,A,065500,065500,44616,TEST Gare Routière QUAI 16,44071,Les Oliviers Passerelle
-20500418,44032,Gendarmerie,TEST:VehicleJourney:40100,01,TEST Les Oliviers - TEST Gare Routière,A,065600,065600,44616,TEST Gare Routière QUAI 16,44071,Les Oliviers Passerelle
-20500418,44005,Bellande,TEST:VehicleJourney:40100,01,TEST Les Oliviers - TEST Gare Routière,A,065700,065700,44616,TEST Gare Routière QUAI 16,44071,Les Oliviers Passerelle
-20500418,44034,Hôpital d'TEST,TEST:VehicleJourney:40100,01,TEST Les Oliviers - TEST Gare Routière,A,065800,065800,44616,TEST Gare Routière QUAI 16,44071,Les Oliviers Passerelle
-20500418,44068,Lycée Olivier de Serres,TEST:VehicleJourney:40100,01,TEST Les Oliviers - TEST Gare Routière,A,070000,070000,44616,TEST Gare Routière QUAI 16,44071,Les Oliviers Passerelle
-20500418,44036,Imprimerie-Espace Lienhart,TEST:VehicleJourney:40100,01,TEST Les Oliviers - TEST Gare Routière,A,070100,070100,44616,TEST Gare Routière QUAI 16,44071,Les Oliviers Passerelle
-20500418,44004,Anciens Abattoirs,TEST:VehicleJourney:40100,01,TEST Les Oliviers - TEST Gare Routière,A,070200,070200,44616,TEST Gare Routière QUAI 16,44071,Les Oliviers Passerelle
-20500418,44082,Ripotier,TEST:VehicleJourney:40100,01,TEST Les Oliviers - TEST Gare Routière,A,070200,070200,44616,TEST Gare Routière QUAI 16,44071,Les Oliviers Passerelle
-20500418,44505,Ucel Chamboulas,TEST:VehicleJourney:46901,69,UCEL Chamboulas - TEST Gare Routière,A,070300,070300,44505,Ucel Chamboulas,44000,TEST Gare Routière (Arrivée)
-20500418,44802,St-Privat Les Bouchets,TEST:VehicleJourney:42200,22,VESSEAUX Feschet - TEST,R,070300,070300,44802,St-Privat Les Bouchets,44138,Vesseaux Le Feschet
-20500418,44708,TEST Ancienne Gare,TEST:VehicleJourney:40100,01,TEST Les Oliviers - TEST Gare Routière,A,070400,070400,44616,TEST Gare Routière QUAI 16,44071,Les Oliviers Passerelle
-20500418,44054,Lachapelle Sortie Sud,TEST:VehicleJourney:40700,07,LACHAPELLE - ST-ETIENNE-FONTB. - TEST,A,070500,070500,44054,Lachapelle Sortie Sud,44084,Rond-Point des Ecoles
-20500418,44158,Jardins de Jastres,TEST:VehicleJourney:42100,21,TEST St Pierre - TEST Ets Scolaires,A,070500,070500,44158,Jardins de Jastres,44113,Stade Roqua
-20500418,44087,St-Didier Centre,TEST:VehicleJourney:40251,02ex,Ligne 2 express,A,070500,070500,44087,St-Didier Centre,44302,TEST Paix QUAI 2
-20500418,44063,Lavilledieu ZA Les Persèdes,TEST:VehicleJourney:42300,23,LAVILLEDIEU Crt RD103 - TEST,R,070600,070600,44063,Lavilledieu ZA Les Persèdes,44059,Lavilledieu Crt RD103
-20500418,44157,Crt Lycée Olivier de Serres,TEST:VehicleJourney:42100,21,TEST St Pierre - TEST Ets Scolaires,A,070600,070600,44158,Jardins de Jastres,44113,Stade Roqua
-20500418,44205,St-Didier Centre,TEST:VehicleJourney:40251,02ex,Ligne 2 express,A,070600,070600,44087,St-Didier Centre,44302,TEST Paix QUAI 2
-20500418,44089,St-Didier Rond-Point,TEST:VehicleJourney:40251,02ex,Ligne 2 express,A,070600,070600,44087,St-Didier Centre,44302,TEST Paix QUAI 2
-20500418,44013,Boisvignal - Sud Immac,TEST:VehicleJourney:40100,01,TEST Les Oliviers - TEST Gare Routière,A,070600,070600,44616,TEST Gare Routière QUAI 16,44071,Les Oliviers Passerelle
-20500418,44127,Vals Pont de l'Ocre,TEST:VehicleJourney:40301,03,VALS - LABEGUDE - TEST,A,070700,070700,44124,Vals La Treuillère,44075,TEST Paix QUAI 1
+20260224,44616,TEST Gare Routière QUAI 16,TEST:VehicleJourney:40100,01,TEST Les Oliviers - TEST Gare Routière,A,065500,065500,44616,TEST Gare Routière QUAI 16,44071,Les Oliviers Passerelle
+20260224,44032,Gendarmerie,TEST:VehicleJourney:40100,01,TEST Les Oliviers - TEST Gare Routière,A,065600,065600,44616,TEST Gare Routière QUAI 16,44071,Les Oliviers Passerelle
+20260224,44005,Bellande,TEST:VehicleJourney:40100,01,TEST Les Oliviers - TEST Gare Routière,A,065700,065700,44616,TEST Gare Routière QUAI 16,44071,Les Oliviers Passerelle
+20260224,44034,Hôpital d'TEST,TEST:VehicleJourney:40100,01,TEST Les Oliviers - TEST Gare Routière,A,065800,065800,44616,TEST Gare Routière QUAI 16,44071,Les Oliviers Passerelle
+20260224,44068,Lycée Olivier de Serres,TEST:VehicleJourney:40100,01,TEST Les Oliviers - TEST Gare Routière,A,070000,070000,44616,TEST Gare Routière QUAI 16,44071,Les Oliviers Passerelle
+20260224,44036,Imprimerie-Espace Lienhart,TEST:VehicleJourney:40100,01,TEST Les Oliviers - TEST Gare Routière,A,070100,070100,44616,TEST Gare Routière QUAI 16,44071,Les Oliviers Passerelle
+20260224,44004,Anciens Abattoirs,TEST:VehicleJourney:40100,01,TEST Les Oliviers - TEST Gare Routière,A,070200,070200,44616,TEST Gare Routière QUAI 16,44071,Les Oliviers Passerelle
+20260224,44082,Ripotier,TEST:VehicleJourney:40100,01,TEST Les Oliviers - TEST Gare Routière,A,070200,070200,44616,TEST Gare Routière QUAI 16,44071,Les Oliviers Passerelle
+20260224,44505,Ucel Chamboulas,TEST:VehicleJourney:46901,69,UCEL Chamboulas - TEST Gare Routière,A,070300,070300,44505,Ucel Chamboulas,44000,TEST Gare Routière (Arrivée)
+20260224,44802,St-Privat Les Bouchets,TEST:VehicleJourney:42200,22,VESSEAUX Feschet - TEST,R,070300,070300,44802,St-Privat Les Bouchets,44138,Vesseaux Le Feschet
+20260224,44708,TEST Ancienne Gare,TEST:VehicleJourney:40100,01,TEST Les Oliviers - TEST Gare Routière,A,070400,070400,44616,TEST Gare Routière QUAI 16,44071,Les Oliviers Passerelle
+20260224,44054,Lachapelle Sortie Sud,TEST:VehicleJourney:40700,07,LACHAPELLE - ST-ETIENNE-FONTB. - TEST,A,070500,070500,44054,Lachapelle Sortie Sud,44084,Rond-Point des Ecoles
+20260224,44158,Jardins de Jastres,TEST:VehicleJourney:42100,21,TEST St Pierre - TEST Ets Scolaires,A,070500,070500,44158,Jardins de Jastres,44113,Stade Roqua
+20260224,44087,St-Didier Centre,TEST:VehicleJourney:40251,02ex,Ligne 2 express,A,070500,070500,44087,St-Didier Centre,44302,TEST Paix QUAI 2
+20260224,44063,Lavilledieu ZA Les Persèdes,TEST:VehicleJourney:42300,23,LAVILLEDIEU Crt RD103 - TEST,R,070600,070600,44063,Lavilledieu ZA Les Persèdes,44059,Lavilledieu Crt RD103
+20260224,44157,Crt Lycée Olivier de Serres,TEST:VehicleJourney:42100,21,TEST St Pierre - TEST Ets Scolaires,A,070600,070600,44158,Jardins de Jastres,44113,Stade Roqua
+20260224,44205,St-Didier Centre,TEST:VehicleJourney:40251,02ex,Ligne 2 express,A,070600,070600,44087,St-Didier Centre,44302,TEST Paix QUAI 2
+20260224,44089,St-Didier Rond-Point,TEST:VehicleJourney:40251,02ex,Ligne 2 express,A,070600,070600,44087,St-Didier Centre,44302,TEST Paix QUAI 2
+20260224,44013,Boisvignal - Sud Immac,TEST:VehicleJourney:40100,01,TEST Les Oliviers - TEST Gare Routière,A,070600,070600,44616,TEST Gare Routière QUAI 16,44071,Les Oliviers Passerelle
+20260224,44127,Vals Pont de l'Ocre,TEST:VehicleJourney:40301,03,VALS - LABEGUDE - TEST,A,070700,070700,44124,Vals La Treuillère,44075,TEST Paix QUAI 1
