@@ -373,45 +373,6 @@ public class StopTimesService {
     }
 
 
-    public Optional<String> findTripIdByStopAndTime(String datasetId, String lineId, String stopId, String directionId, String destinationId, ZonedDateTime arrivalTime) {
-        Map<String, TripCacheEntry> tripCacheForCurrentDataset = tripsCache.get(datasetId);
-
-        if (tripCacheForCurrentDataset == null) {
-            return Optional.empty();
-        }
-
-        Integer directionIdInt = "A".equals(directionId) ? 0 : 1;
-
-        Set<String> potentialTrips = tripCacheForCurrentDataset.entrySet()
-                .stream()
-                .filter(entry -> entry.getValue().getRouteId().equals(lineId) && entry.getValue().getDirectionId().equals(directionIdInt))
-                .map(Map.Entry::getKey)
-                .collect(Collectors.toSet());
-
-        Map<String, List<StopTimeCacheEntry>> stopTimeCacheForCurrentDataset = stopTimesCache.get(datasetId);
-
-
-        for (String potentialTrip : potentialTrips) {
-            List<StopTimeCacheEntry> currentTripStopTimes = stopTimeCacheForCurrentDataset.get(potentialTrip);
-
-            String currentDestination = getDestination(currentTripStopTimes);
-            if (!currentDestination.equals(destinationId)) {
-                continue;
-            }
-
-            for (StopTimeCacheEntry currentTripStopTime : currentTripStopTimes) {
-                if (currentTripStopTime.getStopId().equals(stopId) && arrivalTime.format(TIME_FORMATTER).equals(currentTripStopTime.getArrivalTime())) {
-                    return Optional.of(potentialTrip);
-                }
-            }
-        }
-        return Optional.empty();
-    }
-
-    private String getDestination(List<StopTimeCacheEntry> stopTimes) {
-        return stopTimes.getLast().getStopId();
-    }
-
     @Data
     public static class StopTimeCacheEntry {
         private final String arrivalTime;
