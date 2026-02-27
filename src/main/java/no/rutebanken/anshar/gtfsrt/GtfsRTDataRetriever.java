@@ -156,7 +156,7 @@ public class GtfsRTDataRetriever {
 
         if (configuration.processSX()) {
             alertReader.setUrl(gtfsRTApi.getUrl());
-            alertReader.ingestAlertData(gtfsRTApi, routeIdList, completeGTFSFeed);
+            alertReader.ingestAlertData(gtfsRTApi, routeIdList, completeGTFSFeed, System.currentTimeMillis());
         }
         gtfsRTApi.setStatus(FlowStatus.OK);
         logger.info("GTFS-RT Reading completed for datasetId:" + gtfsRTApi.getDatasetId() + " and  URL:" + gtfsRTApi.getUrl());

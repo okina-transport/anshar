@@ -6,6 +6,7 @@ import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.SituationExchangeInbound;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
+import no.rutebanken.anshar.routes.validation.validators.Constants;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import org.apache.camel.Exchange;
 import org.slf4j.Logger;
@@ -47,6 +48,7 @@ public class SituationExchangeIngester extends RestRouteBuilder {
 
     public void processIncomingSXFromGTFSRT(Exchange e) {
         InputStream xml = e.getIn().getBody(InputStream.class);
+        Long inboundTime = e.getIn().getHeader(INBOUND_TIME_HEADER_NAME, Long.class);
         try {
             Siri siri = SiriValueTransformer.parseXml(xml);
             String datasetId = e.getIn().getHeader(DATASET_ID_HEADER_NAME, String.class);
@@ -62,7 +64,7 @@ public class SituationExchangeIngester extends RestRouteBuilder {
             List<PtSituationElement> situations = siri.getServiceDelivery().getSituationExchangeDeliveries().get(0).getSituations().getPtSituationElements();
 
 
-            Collection<PtSituationElement> ingestedSituations = situationExchangeInbound.ingestSituations(datasetId, situations, true);
+            Collection<PtSituationElement> ingestedSituations = situationExchangeInbound.ingestSituations(datasetId, situations, true, inboundTime);
 
             for (PtSituationElement situation : ingestedSituations) {
                 subscriptionManager.touchSubscription(GTFSRT_SX_PREFIX + getSituationSubscriptionId(situation), false);

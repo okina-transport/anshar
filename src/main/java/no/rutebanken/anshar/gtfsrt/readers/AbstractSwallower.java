@@ -11,8 +11,7 @@ import uk.org.siri.siri21.Siri;
 import java.util.HashMap;
 import java.util.Map;
 
-import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASET_ID_HEADER_NAME;
-import static no.rutebanken.anshar.routes.validation.validators.Constants.URL_HEADER_NAME;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
 
 
 public abstract class AbstractSwallower {
@@ -65,6 +64,7 @@ public abstract class AbstractSwallower {
         Map<String, Object> headers = new HashMap<>();
         headers.put(DATASET_ID_HEADER_NAME, datasetId);
         headers.put(URL_HEADER_NAME, url);
+        headers.put(INBOUND_TIME_HEADER_NAME, System.currentTimeMillis());
         producerTemplate.asyncRequestBodyAndHeaders(producerTemplate.getDefaultEndpoint(), siriToSend, headers);
     }
 }

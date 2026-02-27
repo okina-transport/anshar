@@ -44,6 +44,7 @@ public class StopMonitoringIngester extends RestRouteBuilder {
 
     public void processIncomingSMFromGTFSRT(Exchange e) {
         InputStream xml = e.getIn().getBody(InputStream.class);
+        Long inboundTime = e.getIn().getHeader(INBOUND_TIME_HEADER_NAME, Long.class);
         try {
             Siri siri = SiriValueTransformer.parseXml(xml);
             String datasetId = e.getIn().getHeader(DATASET_ID_HEADER_NAME, String.class);
@@ -59,7 +60,7 @@ public class StopMonitoringIngester extends RestRouteBuilder {
 
             List<MonitoredStopVisit> stopVisits = siri.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits();
 
-            Collection<MonitoredStopVisit> ingestedVisits = stopMonitoringInbound.ingestStopVisits(datasetId, stopVisits);
+            Collection<MonitoredStopVisit> ingestedVisits = stopMonitoringInbound.ingestStopVisits(datasetId, stopVisits, inboundTime);
 
             for (MonitoredStopVisit visit : ingestedVisits) {
                 subscriptionManager.touchSubscription(GTFSRT_SM_PREFIX + visit.getMonitoringRef().getValue(), false);
@@ -68,7 +69,7 @@ public class StopMonitoringIngester extends RestRouteBuilder {
             List<MonitoredStopVisitCancellation> stopVisitToCancel = siri.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisitCancellations();
 
             if (stopVisitToCancel != null && stopVisitToCancel.size() > 0) {
-                stopMonitoringInbound.cancelStopVisits(datasetId, stopVisitToCancel);
+                stopMonitoringInbound.cancelStopVisits(datasetId, stopVisitToCancel, inboundTime);
             }
 
             logger.info("GTFS-RT - Ingested  stop Times {} on {} . datasetId:{}, URL:{}", ingestedVisits.size(), stopVisits.size(), datasetId, url);

@@ -97,7 +97,7 @@ public class ScheduledNotificationSender extends BaseRouteBuilder {
             Siri delivery = entry.getValue();
             delivery = SiriUtils.filterStopMonitoringOnPreviewInterval(delivery, outboundSubscriptionSetup);
             delivery = filterAlreadySendMessages(delivery, outboundSubscriptionSetup);
-            camelRouteManager.pushSiriData(entry.getKey(), delivery, outboundSubscriptionSetup, true);
+            camelRouteManager.pushSiriData(entry.getKey(), delivery, outboundSubscriptionSetup, true, null);
         }
     }
 

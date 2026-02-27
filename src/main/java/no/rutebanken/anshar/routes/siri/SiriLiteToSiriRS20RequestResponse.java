@@ -17,6 +17,7 @@ package no.rutebanken.anshar.routes.siri;
 
 import no.rutebanken.anshar.api.FlowStatus;
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.metrics.InboundTimeProcessor;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.health.IncomingDataHealthService;
 import no.rutebanken.anshar.routes.health.IncomingFlowType;
@@ -70,17 +71,18 @@ public class SiriLiteToSiriRS20RequestResponse extends SiriSubscriptionRouteBuil
         }
 
         from("direct:" + subscriptionSetup.getServiceRequestRouteName())
-            .messageHistory()
-            .process(p -> requestStarted())
-            .log(LoggingLevel.INFO, "Retrieving data " + subscriptionSetup.toString())
+                .messageHistory()
+                .process(p -> requestStarted())
+                .log(LoggingLevel.INFO, "Retrieving data " + subscriptionSetup.toString())
                 //  .bean(helper, "createSiriDataRequest")
                 //.marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
-            .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
-            .setBody(e -> subscriptionSetup)
-            .to("direct:siri.lite.to.siri.rs.20.request-response.preprocess")
-            .to("log:request:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
-            .doTry()
+                .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
+                .setBody(e -> subscriptionSetup)
+                .to("direct:siri.lite.to.siri.rs.20.request-response.preprocess")
+                .to("log:request:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
+                .doTry()
                 .to(getCamelRequestUrl(subscriptionSetup, httpOptions))
+                .process(InboundTimeProcessor::setInboundTime)
                 .setHeader("CamelHttpPath", constant("/appContext" + subscriptionSetup.buildUrl(false)))
                 .log(LoggingLevel.DEBUG, "Got response " + subscriptionSetup.toString())
                 .to("log:response:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
@@ -94,7 +96,7 @@ public class SiriLiteToSiriRS20RequestResponse extends SiriSubscriptionRouteBuil
                 .setHeader(INTERNAL_SIRI_DATA_TYPE, simple(subscriptionSetup.getSubscriptionType().name()))
                 .setHeader(SUBSCRIPTION_MODE, simple(subscriptionSetup.getSubscriptionMode().name()))
                 .to("direct:handleSiriLiteResponse")
-            .doCatch(Exception.class)
+                .doCatch(Exception.class)
                 .log("Caught exception -" + (releaseLeadershipOnError ? "" : " NOT") + " releasing leadership: " + subscriptionSetup.toString())
                 .to("log:response:" + getClass().getSimpleName() + "?showCaughtException=true&showAll=true&multiline=true")
                 .process(p -> {
@@ -111,7 +113,7 @@ public class SiriLiteToSiriRS20RequestResponse extends SiriSubscriptionRouteBuil
                         releaseLeadership(getMonitorRouteId(subscriptionSetup));
                     }
                 })
-            .doFinally()
+                .doFinally()
                 .process(p -> {
                     requestFinished();
                     List<MessageHistory> list = p.getProperty(Exchange.MESSAGE_HISTORY, List.class);
@@ -129,8 +131,8 @@ public class SiriLiteToSiriRS20RequestResponse extends SiriSubscriptionRouteBuil
                         }
                     }
                 })
-            .endDoTry()
-            .routeId(getServiceRequestRouteId(subscriptionSetup))
+                .endDoTry()
+                .routeId(getServiceRequestRouteId(subscriptionSetup))
         ;
     }
 

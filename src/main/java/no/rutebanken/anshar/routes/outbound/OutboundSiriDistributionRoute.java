@@ -45,13 +45,16 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
 
     private final OutboundErrorHandler outboundErrorHandler;
 
+    private final PrometheusMetricsService prometheusMetricsService;
 
-    public OutboundSiriDistributionRoute(ServerSubscriptionManager subscriptionManager, PrometheusMetricsService metrics, Utils utils, CompressionProcessor compressionProcessor, OutboundErrorHandler outboundErrorHandler) {
+
+    public OutboundSiriDistributionRoute(ServerSubscriptionManager subscriptionManager, PrometheusMetricsService metrics, Utils utils, CompressionProcessor compressionProcessor, OutboundErrorHandler outboundErrorHandler, PrometheusMetricsService prometheusMetricsService) {
         this.subscriptionManager = subscriptionManager;
         this.metrics = metrics;
         this.utils = utils;
         this.compressionProcessor = compressionProcessor;
         this.outboundErrorHandler = outboundErrorHandler;
+        this.prometheusMetricsService = prometheusMetricsService;
     }
 
     // @formatter:off
@@ -129,6 +132,7 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
                 .removeHeader("showBody")
                 .process(compressionProcessor)
                 .process(this::addParamsToEndpoint)
+                .process(prometheusMetricsService::recordTotalIngestingTime)
                 .toD("${header.endpoint}")
                 .process(e->{
                     String subsId = (String) e.getIn().getHeader("SubscriptionId");

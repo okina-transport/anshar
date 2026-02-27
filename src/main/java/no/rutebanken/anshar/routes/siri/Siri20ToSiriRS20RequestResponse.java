@@ -17,6 +17,7 @@ package no.rutebanken.anshar.routes.siri;
 
 import no.rutebanken.anshar.api.FlowStatus;
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.metrics.InboundTimeProcessor;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.health.IncomingDataHealthService;
 import no.rutebanken.anshar.routes.health.IncomingFlowType;
@@ -80,6 +81,7 @@ public class Siri20ToSiriRS20RequestResponse extends SiriSubscriptionRouteBuilde
                 .to("log:request:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .doTry()
                 .to(getCamelRequestUrl(subscriptionSetup, httpOptions))
+                .process(InboundTimeProcessor::setInboundTime)
                 .setHeader("CamelHttpPath", constant("/appContext" + subscriptionSetup.buildUrl(false)))
                 .log(LoggingLevel.DEBUG, "Got response " + subscriptionSetup.toString())
                 .to("log:response:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")

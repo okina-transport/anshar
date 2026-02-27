@@ -57,7 +57,7 @@ public class AlertReader extends AbstractSwallower {
      * @param routeIdList           A list of route IDs used to filter relevant alerts.
      * @param completeGTFSRTMessage The complete GTFS-Realtime {@link GtfsRealtime.FeedMessage} containing alert data.
      */
-    public void ingestAlertData(GtfsRTApi gtfsRTApi, List<String> routeIdList, GtfsRealtime.FeedMessage completeGTFSRTMessage) {
+    public void ingestAlertData(GtfsRTApi gtfsRTApi, List<String> routeIdList, GtfsRealtime.FeedMessage completeGTFSRTMessage, Long inboundTime) {
         String datasetId = gtfsRTApi.getDatasetId();
         List<PtSituationElement> situations = buildSituationList(completeGTFSRTMessage, gtfsRTApi, routeIdList);
         updateParticipantRef(datasetId, situations);
@@ -65,7 +65,7 @@ public class AlertReader extends AbstractSwallower {
         checkAndCreateSubscriptions(subscriptionList, datasetId);
         buildSiriAndSend(situations, datasetId);
         if (BooleanUtils.isTrue(gtfsRTApi.getCloseMissingAlerts())) {
-            situationExchangeInbound.closeMissingAlerts(gtfsRTApi.getDatasetId(), situations);
+            situationExchangeInbound.closeMissingAlerts(gtfsRTApi.getDatasetId(), situations, inboundTime);
         }
 
     }

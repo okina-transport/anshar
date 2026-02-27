@@ -38,7 +38,7 @@ public class GbfsIngester {
 
         int nbStations = stationStatus == null || stationStatus.getData() == null ? 0 : CollectionUtils.size(stationStatus.getData().getStations());
         log.info("Mapped {} facility condition(s) from {} GBFS station status(es)", CollectionUtils.size(fcss), nbStations);
-        Collection<FacilityConditionStructure> addedFcss = facilityMonitoringInbound.ingestFacilities(systemId, fcss);
+        Collection<FacilityConditionStructure> addedFcss = facilityMonitoringInbound.ingestFacilities(systemId, fcss, System.currentTimeMillis());
         log.info("GBFS - Ingested facility conditions {} on {} (dataset: {})", CollectionUtils.size(addedFcss), CollectionUtils.size(fcss), systemId);
     }
 }

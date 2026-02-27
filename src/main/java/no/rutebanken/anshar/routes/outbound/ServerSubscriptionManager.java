@@ -523,6 +523,7 @@ public class ServerSubscriptionManager {
             hasError = true;
             errorText = "This consumer address has been banned for repeated POST errors:" + subscription.getAddress();
         }
+
         if (SiriDataType.STOP_MONITORING.equals(subscription.getSubscriptionType()) && !hasAStopFilter(subscription)) {
             hasError = true;
             errorText = "Unkwnown monitoringRef";
@@ -618,7 +619,7 @@ public class ServerSubscriptionManager {
                 delivery = convertIdsGeneralMessage(delivery, datasetId, subscription.getOutboundIdMappingPolicy());
             }
             logger.info("Sending initial delivery to {}, dataset:{}", subscription.getSubscriptionId(), datasetId);
-            camelRouteManager.pushSiriData(datasetId, delivery, subscription, false);
+            camelRouteManager.pushSiriData(datasetId, delivery, subscription, false, null);
         } else {
             logger.info("No initial delivery found for {}, dataset:{}", subscription, datasetId);
         }
@@ -1087,7 +1088,7 @@ public class ServerSubscriptionManager {
                 Siri terminateSubscriptionResponse = siriObjectFactory.createTerminateSubscriptionResponse(subscriptionRef);
                 logger.info("Sending TerminateSubscriptionResponse to {}", subscriptionRequest.getAddress());
 
-                camelRouteManager.pushSiriData(null, terminateSubscriptionResponse, subscriptionRequest, true);
+                camelRouteManager.pushSiriData(null, terminateSubscriptionResponse, subscriptionRequest, true, null);
             } else {
                 logger.info("Subscription terminated, but no response was sent");
             }
@@ -1133,7 +1134,12 @@ public class ServerSubscriptionManager {
         return siriObjectFactory.createCheckStatusResponse(checkStatusRequest);
     }
 
+
     public void pushUpdatesAsync(SiriDataType datatype, List updates, String datasetId) {
+        pushUpdatesAsync(datatype, updates, datasetId, null);
+    }
+
+    public void pushUpdatesAsync(SiriDataType datatype, List updates, String datasetId, Long inboundTime) {
         final String breadcrumbId = MDC.get("camel.breadcrumbId");
 
         if (outboundSenderExecutorService == null) {
@@ -1143,22 +1149,22 @@ public class ServerSubscriptionManager {
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         switch (datatype) {
             case ESTIMATED_TIMETABLE:
-                outboundSenderExecutorService.execute(() -> pushUpdatedEstimatedTimetables(updates, datasetId, breadcrumbId));
+                outboundSenderExecutorService.execute(() -> pushUpdatedEstimatedTimetables(updates, datasetId, breadcrumbId, inboundTime));
                 break;
             case SITUATION_EXCHANGE:
-                outboundSenderExecutorService.execute(() -> pushUpdatedSituations(updates, datasetId, breadcrumbId));
+                outboundSenderExecutorService.execute(() -> pushUpdatedSituations(updates, datasetId, breadcrumbId, inboundTime));
                 break;
             case VEHICLE_MONITORING:
-                outboundSenderExecutorService.execute(() -> pushUpdatedVehicleActivities(updates, datasetId, breadcrumbId));
+                outboundSenderExecutorService.execute(() -> pushUpdatedVehicleActivities(updates, datasetId, breadcrumbId, inboundTime));
                 break;
             case STOP_MONITORING:
-                outboundSenderExecutorService.execute(() -> pushUpdatedStopMonitoring(updates, datasetId, breadcrumbId));
+                outboundSenderExecutorService.execute(() -> pushUpdatedStopMonitoring(updates, datasetId, breadcrumbId, inboundTime));
                 break;
             case GENERAL_MESSAGE:
-                outboundSenderExecutorService.execute(() -> pushUpdatedGeneralMessages(updates, datasetId, breadcrumbId));
+                outboundSenderExecutorService.execute(() -> pushUpdatedGeneralMessages(updates, datasetId, breadcrumbId, inboundTime));
                 break;
             case FACILITY_MONITORING:
-                outboundSenderExecutorService.execute(() -> pushUpdatedFacilityMonitoring(updates, datasetId, breadcrumbId));
+                outboundSenderExecutorService.execute(() -> pushUpdatedFacilityMonitoring(updates, datasetId, breadcrumbId, inboundTime));
                 break;
             default:
                 // Ignore
@@ -1166,7 +1172,7 @@ public class ServerSubscriptionManager {
         }
     }
 
-    private void pushUpdatedVehicleActivities(List<VehicleActivityStructure> addedOrUpdated, String datasetId, String breadcrumbId) {
+    private void pushUpdatedVehicleActivities(List<VehicleActivityStructure> addedOrUpdated, String datasetId, String breadcrumbId, Long inboundTime) {
         MDC.put("camel.breadcrumbId", breadcrumbId);
 
         if (addedOrUpdated == null || addedOrUpdated.isEmpty()) {
@@ -1200,7 +1206,7 @@ public class ServerSubscriptionManager {
             if (!delivery.getServiceDelivery().getVehicleMonitoringDeliveries().isEmpty()) {
                 delivery.getServiceDelivery().getVehicleMonitoringDeliveries().forEach(vmd -> vmd.setSubscriptionRef(SiriObjectFactory.createSubscriptionIdentifier(recipient.getSubscriptionId())));
             }
-            camelRouteManager.pushSiriData(datasetId, delivery, recipient, logFullContents);
+            camelRouteManager.pushSiriData(datasetId, delivery, recipient, logFullContents, inboundTime);
             logFullContents = false;
         }
 
@@ -1209,7 +1215,7 @@ public class ServerSubscriptionManager {
 
 
     private void pushUpdatedSituations(
-            List<PtSituationElement> addedOrUpdated, String datasetId, String breadcrumbId
+            List<PtSituationElement> addedOrUpdated, String datasetId, String breadcrumbId, Long inboundTime
     ) {
         MDC.put("camel.breadcrumbId", breadcrumbId);
 
@@ -1257,7 +1263,7 @@ public class ServerSubscriptionManager {
                 delivery.getServiceDelivery().getSituationExchangeDeliveries().forEach(sed -> sed.setSubscriptionRef(SiriObjectFactory.createSubscriptionIdentifier(recipient.getSubscriptionId())));
             }
             Siri modifiedIdDelivery = convertIdsSituationExchange(delivery, datasetId, recipient.getOutboundIdMappingPolicy());
-            camelRouteManager.pushSiriData(datasetId, modifiedIdDelivery, recipient, logFullContents);
+            camelRouteManager.pushSiriData(datasetId, modifiedIdDelivery, recipient, logFullContents, inboundTime);
             logFullContents = false;
         }
 
@@ -1325,7 +1331,7 @@ public class ServerSubscriptionManager {
         );
     }
 
-    private <T extends AbstractItemStructure> void pushUpdatedGeneralMessages(List<T> addedOrUpdated, String datasetId, String breadcrumbId) {
+    private <T extends AbstractItemStructure> void pushUpdatedGeneralMessages(List<T> addedOrUpdated, String datasetId, String breadcrumbId, Long inboundTime) {
         MDC.put("camel.breadcrumbId", breadcrumbId);
 
         if (addedOrUpdated == null || addedOrUpdated.isEmpty()) {
@@ -1358,7 +1364,7 @@ public class ServerSubscriptionManager {
             }
             Siri modifiedIdDelivery = convertIdsGeneralMessage(delivery, datasetId, recipient.getOutboundIdMappingPolicy());
             Siri filtedDelivery = removeAlreadySentCancellations(recipient, modifiedIdDelivery);
-            camelRouteManager.pushSiriData(datasetId, filtedDelivery, recipient, logFullContents);
+            camelRouteManager.pushSiriData(datasetId, filtedDelivery, recipient, logFullContents, inboundTime);
             logFullContents = false;
         }
 
@@ -1406,7 +1412,7 @@ public class ServerSubscriptionManager {
     }
 
 
-    private void pushUpdatedFacilityMonitoring(List updates, String datasetId, String breadcrumbId) {
+    private void pushUpdatedFacilityMonitoring(List updates, String datasetId, String breadcrumbId, Long inboundTime) {
         MDC.put("camel.breadcrumbId", breadcrumbId);
 
         if (updates == null || updates.isEmpty()) {
@@ -1436,14 +1442,14 @@ public class ServerSubscriptionManager {
             if (!delivery.getServiceDelivery().getFacilityMonitoringDeliveries().isEmpty()) {
                 delivery.getServiceDelivery().getFacilityMonitoringDeliveries().forEach(fmd -> fmd.setSubscriptionRef(SiriObjectFactory.createSubscriptionIdentifier(recipient.getSubscriptionId())));
             }
-            camelRouteManager.pushSiriData(datasetId, delivery, recipient, logFullContents);
+            camelRouteManager.pushSiriData(datasetId, delivery, recipient, logFullContents, inboundTime);
             logFullContents = false;
         }
 
         MDC.remove("camel.breadcrumbId");
     }
 
-    private void pushUpdatedEstimatedTimetables(List<EstimatedVehicleJourney> addedOrUpdated, String datasetId, String breadcrumbId) {
+    private void pushUpdatedEstimatedTimetables(List<EstimatedVehicleJourney> addedOrUpdated, String datasetId, String breadcrumbId, Long inboundTime) {
 
         if (addedOrUpdated == null || addedOrUpdated.isEmpty()) {
             return;
@@ -1481,15 +1487,15 @@ public class ServerSubscriptionManager {
             if (!delivery.getServiceDelivery().getEstimatedTimetableDeliveries().isEmpty()) {
                 delivery.getServiceDelivery().getEstimatedTimetableDeliveries().forEach(etd -> etd.setSubscriptionRef(SiriObjectFactory.createSubscriptionIdentifier(recipient.getSubscriptionId())));
             }
-            camelRouteManager.pushSiriData(datasetId, delivery, recipient, logFullContents);
+            camelRouteManager.pushSiriData(datasetId, delivery, recipient, logFullContents, inboundTime);
             logFullContents = false;
         }
         MDC.remove("camel.breadcrumbId");
     }
 
 
-    private <T extends AbstractItemStructure> void pushUpdatedStopMonitoring(List<T> addedOrUpdated, String datasetId, String breadcrumbId
-    ) {
+    private <T extends AbstractItemStructure> void pushUpdatedStopMonitoring(List<T> addedOrUpdated, String datasetId, String breadcrumbId,
+                                                                             Long inboundTime) {
         MDC.put("camel.breadcrumbId", breadcrumbId);
 
         if (addedOrUpdated == null || addedOrUpdated.isEmpty()) {
@@ -1533,7 +1539,7 @@ public class ServerSubscriptionManager {
             if (!delivery.getServiceDelivery().getStopMonitoringDeliveries().isEmpty()) {
                 delivery.getServiceDelivery().getStopMonitoringDeliveries().forEach(smd -> smd.setSubscriptionRef(SiriObjectFactory.createSubscriptionIdentifier(subscription.getSubscriptionId())));
             }
-            camelRouteManager.pushSiriData(datasetId, delivery, subscription, true);
+            camelRouteManager.pushSiriData(datasetId, delivery, subscription, true, inboundTime);
         });
         MDC.remove("camel.breadcrumbId");
     }

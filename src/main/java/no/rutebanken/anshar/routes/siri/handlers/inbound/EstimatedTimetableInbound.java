@@ -37,7 +37,7 @@ public class EstimatedTimetableInbound {
     @Autowired
     private SubscriptionManager subscriptionManager;
 
-    public boolean ingestEstimatedTimetableFromApi(SiriDataType dataFormat, String dataSetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList) {
+    public boolean ingestEstimatedTimetableFromApi(SiriDataType dataFormat, String dataSetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList, Long inboundTime) {
         List<EstimatedTimetableDeliveryStructure> estimatedTimetableDeliveries = incoming.getServiceDelivery().getEstimatedTimetableDeliveries();
         logger.info("Got ET-delivery: Subscription {}", subscriptionSetupList);
 
@@ -63,7 +63,7 @@ public class EstimatedTimetableInbound {
             );
         }
 
-        serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, dataSetId);
+        serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, dataSetId, inboundTime);
 
         for (SubscriptionSetup subscriptionSetup : subscriptionSetupList) {
             List<EstimatedVehicleJourney> addedOrUpdatedBySubscription = addedOrUpdated
@@ -101,15 +101,15 @@ public class EstimatedTimetableInbound {
         return result;
     }
 
-    public Collection<EstimatedVehicleJourney> ingestEstimatedTimeTables(String datasetId, List<EstimatedVehicleJourney> incomingEstimatedTimeTables) {
+    public Collection<EstimatedVehicleJourney> ingestEstimatedTimeTables(String datasetId, List<EstimatedVehicleJourney> incomingEstimatedTimeTables, Long inboundTime) {
         Collection<EstimatedVehicleJourney> result = estimatedTimetables.addAll(datasetId, incomingEstimatedTimeTables);
         if (CollectionUtils.isNotEmpty(result)) {
-            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.ESTIMATED_TIMETABLE, new ArrayList<>(result), datasetId);
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.ESTIMATED_TIMETABLE, new ArrayList<>(result), datasetId, inboundTime);
         }
         return result;
     }
 
-    public boolean ingestEstimatedTimetable(SubscriptionSetup subscriptionSetup, Siri incoming) {
+    public boolean ingestEstimatedTimetable(SubscriptionSetup subscriptionSetup, Siri incoming, Long inboundTime) {
         List<EstimatedTimetableDeliveryStructure> estimatedTimetableDeliveries = incoming.getServiceDelivery().getEstimatedTimetableDeliveries();
         logger.info("Got ET-delivery: Subscription {}", subscriptionSetup);
 
@@ -136,7 +136,7 @@ public class EstimatedTimetableInbound {
                                                     ));
 
                                                     // Push updates to subscribers on this codespace
-                                                    serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedJourneys, codespace);
+                                                    serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedJourneys, codespace, inboundTime);
 
                                                     // Add to complete list of added situations
                                                     addedOrUpdated.addAll(addedJourneys);
@@ -144,7 +144,7 @@ public class EstimatedTimetableInbound {
                                                 }
 
                                             } else {
-                                                addedOrUpdated.addAll(ingestEstimatedTimeTables(subscriptionSetup.getDatasetId(), versionFrame.getEstimatedVehicleJourneies()));
+                                                addedOrUpdated.addAll(ingestEstimatedTimeTables(subscriptionSetup.getDatasetId(), versionFrame.getEstimatedVehicleJourneies(), inboundTime));
                                             }
                                         }
                                     });
@@ -156,7 +156,7 @@ public class EstimatedTimetableInbound {
         }
 
 
-        serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
+        serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId(), inboundTime);
 
         subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdated.size());
 

@@ -87,7 +87,7 @@ public class HeartbeatRoute extends BaseRouteBuilder {
                                         outboundSubscriptionSetup.getSubscriptionId(),
                                         resolveVersion(outboundSubscriptionSetup)
                                 );
-                                camelRouteManager.pushSiriData(null, heartbeatNotification, outboundSubscriptionSetup, true);
+                                camelRouteManager.pushSiriData(null, heartbeatNotification, outboundSubscriptionSetup, true, null);
 
                                 heartbeatTimestampMap.put(subscriptionId, Instant.now(), heartbeatInterval, TimeUnit.MILLISECONDS);
                             }

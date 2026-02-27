@@ -40,11 +40,11 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static no.rutebanken.anshar.routes.HttpParameter.INTERNAL_SIRI_DATA_TYPE;
 import static no.rutebanken.anshar.routes.HttpParameter.SIRI_VERSION_HEADER_NAME;
 import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_SOAP;
 import static no.rutebanken.anshar.routes.siri.transformer.SiriOutputTransformerRoute.OUTPUT_ADAPTERS_HEADER_NAME;
-import static no.rutebanken.anshar.routes.validation.validators.Constants.HEARTBEAT_HEADER;
-import static no.rutebanken.anshar.routes.validation.validators.Constants.IS_IDFM_GM;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
 import static org.springframework.http.HttpHeaders.CONTENT_ENCODING;
 
 @Service
@@ -78,7 +78,7 @@ public class CamelRouteManager {
      * @param payload
      * @param subscriptionRequest
      */
-    public void pushSiriData(String datasetId, Siri payload, OutboundSubscriptionSetup subscriptionRequest, boolean logBody) {
+    public void pushSiriData(String datasetId, Siri payload, OutboundSubscriptionSetup subscriptionRequest, boolean logBody, Long inboundTime) {
 
         String consumerAddress = subscriptionRequest.getAddress();
         if (consumerAddress == null) {
@@ -127,7 +127,7 @@ public class CamelRouteManager {
 
                 // On remplace les données partielles reçues par l'intégralité de la donnée si incrementalUpdate de l'abonnement est à false
                 if (!subscriptionRequest.getIncrementalUpdates()) {
-                    handleFullUpdateDelivery(subscriptionRequest);
+                    handleFullUpdateDelivery(subscriptionRequest, inboundTime);
                     return;
                 }
 
@@ -148,7 +148,7 @@ public class CamelRouteManager {
                     if (subscriptionRequest.getUpdateInterval() > 0) {
                         scheduledOutboundSubscriptionConfig.createScheduledOutboundSubscription(siri, subscriptionRequest);
                     } else {
-                        postDataToSubscription(datasetId, siri, subscriptionRequest, logBody);
+                        postDataToSubscription(datasetId, siri, subscriptionRequest, logBody, inboundTime);
                     }
                 }
 
@@ -182,11 +182,11 @@ public class CamelRouteManager {
      *
      * @param subscriptionRequest parameters of the outbound subscriptions
      */
-    private void handleFullUpdateDelivery(OutboundSubscriptionSetup subscriptionRequest) {
+    private void handleFullUpdateDelivery(OutboundSubscriptionSetup subscriptionRequest, Long inboundTime) {
         Map<String, Siri> completeDelivery = initialDeliveryGenerator.findInitialDeliveriesByDataset(subscriptionRequest);
 
         for (Map.Entry<String, Siri> deliveryWithDataset : completeDelivery.entrySet()) {
-            postDataToSubscription(deliveryWithDataset.getKey(), deliveryWithDataset.getValue(), subscriptionRequest, false);
+            postDataToSubscription(deliveryWithDataset.getKey(), deliveryWithDataset.getValue(), subscriptionRequest, false, inboundTime);
         }
     }
 
@@ -349,7 +349,7 @@ public class CamelRouteManager {
     }
 
 
-    public void postDataToSubscription(String datasetId, Siri payload, OutboundSubscriptionSetup subscription, boolean showBody) {
+    public void postDataToSubscription(String datasetId, Siri payload, OutboundSubscriptionSetup subscription, boolean showBody, Long inboundTime) {
         Map<String, Object> headers = new HashMap<>();
         if (subscription.isSicAQuaySubscription()) {
             GmSIVSicAQuayPostProcessor.filteringSiriGMToKeepSicAQuayAlertMessages(payload);
@@ -364,6 +364,7 @@ public class CamelRouteManager {
             headers.put("showBody", showBody);
             headers.put("datasetId", datasetId);
             headers.put("requestorRef", subscription.getRequestorRef());
+            headers.put(INTERNAL_SIRI_DATA_TYPE, subscription.getSubscriptionType().name());
             headers.put(SIRI_VERSION_HEADER_NAME, subscription.getSiriVersion());
             headers.put(CONTENT_ENCODING, subscription.getCompressionFormat().getCode());
             List<ValueAdapter> adapters = getAdapters(datasetId, subscription);
@@ -383,6 +384,7 @@ public class CamelRouteManager {
             ) {
                 headers.put(IS_IDFM_GM, Boolean.TRUE);
             }
+            headers.put(INBOUND_TIME_HEADER_NAME, inboundTime);
 
             siriSubscriptionProcessor.sendBodyAndHeaders(payload, headers);
         }

@@ -1,6 +1,5 @@
 package no.rutebanken.anshar.routes.siri.handlers.inbound;
 
-import com.hazelcast.map.IMap;
 import com.hazelcast.scheduledexecutor.IScheduledExecutorService;
 import com.hazelcast.scheduledexecutor.IScheduledFuture;
 import no.rutebanken.anshar.data.GeneralMessages;
@@ -75,7 +74,7 @@ public class SituationExchangeInbound {
     private IScheduledExecutorService sharedScheduler;
 
 
-    public boolean ingestSituationExchangeFromApi(SiriDataType dataFormat, String dataSetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList) {
+    public boolean ingestSituationExchangeFromApi(SiriDataType dataFormat, String dataSetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList, Long inboundTime) {
         boolean deliveryContainsData;
         List<SituationExchangeDeliveryStructure> situationExchangeDeliveries = incoming.getServiceDelivery().getSituationExchangeDeliveries();
         logger.info("Got SX-delivery: Subscription [{}]", subscriptionSetupList);
@@ -88,9 +87,9 @@ public class SituationExchangeInbound {
                                 logger.info(utils.getErrorContents(sx.getErrorCondition()));
                             } else {
                                 if (sx.getSituations() != null && sx.getSituations().getPtSituationElements() != null) {
-                                    Collection<PtSituationElement> ingested = ingestSituations(dataSetId, sx.getSituations().getPtSituationElements(), false);
+                                    Collection<PtSituationElement> ingested = ingestSituations(dataSetId, sx.getSituations().getPtSituationElements(), false, inboundTime);
                                     addedOrUpdated.addAll(ingested);
-                                    serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, dataSetId);
+                                    serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, dataSetId, inboundTime);
                                 }
                             }
                         }
@@ -106,7 +105,7 @@ public class SituationExchangeInbound {
         return deliveryContainsData;
     }
 
-    public boolean ingestSituationExchange(SubscriptionSetup subscriptionSetup, Siri incoming) {
+    public boolean ingestSituationExchange(SubscriptionSetup subscriptionSetup, Siri incoming, Long inboundTime) {
         List<SituationExchangeDeliveryStructure> situationExchangeDeliveries = incoming.getServiceDelivery().getSituationExchangeDeliveries();
         logger.info("Got SX-delivery: Subscription [{}]", subscriptionSetup);
 
@@ -135,11 +134,11 @@ public class SituationExchangeInbound {
                                             // List containing added situations for current codespace
                                             List<PtSituationElement> addedSituations = new ArrayList();
 
-                                            Collection<PtSituationElement> ingested = ingestSituations(codespace, situationsByCodespace.get(codespace), false);
+                                            Collection<PtSituationElement> ingested = ingestSituations(codespace, situationsByCodespace.get(codespace), false, inboundTime);
                                             addedSituations.addAll(ingested);
 
                                             // Push updates to subscribers on this codespace
-                                            serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedSituations, codespace);
+                                            serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedSituations, codespace, inboundTime);
 
                                             // Add to complete list of added situations
                                             addedOrUpdated.addAll(addedSituations);
@@ -147,9 +146,9 @@ public class SituationExchangeInbound {
                                         }
 
                                     } else {
-                                        Collection<PtSituationElement> ingested = ingestSituations(subscriptionSetup.getDatasetId(), sx.getSituations().getPtSituationElements(), false);
+                                        Collection<PtSituationElement> ingested = ingestSituations(subscriptionSetup.getDatasetId(), sx.getSituations().getPtSituationElements(), false, inboundTime);
                                         addedOrUpdated.addAll(ingested);
-                                        serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
+                                        serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId(), inboundTime);
                                     }
                                 }
                             }
@@ -165,13 +164,17 @@ public class SituationExchangeInbound {
         return !addedOrUpdated.isEmpty();
     }
 
+    public void closeMissingAlerts(String datasetId, List<PtSituationElement> currentOpenedSituations) {
+        closeMissingAlerts(datasetId, currentOpenedSituations, null);
+    }
+
     /**
      * Close situations that are no more existing, in the the GTFSRT-api
      *
      * @param datasetId               the datasetId for which situations must be closed
      * @param currentOpenedSituations situations that are currently available in the flow
      */
-    public void closeMissingAlerts(String datasetId, List<PtSituationElement> currentOpenedSituations) {
+    public void closeMissingAlerts(String datasetId, List<PtSituationElement> currentOpenedSituations, Long inboundTime) {
 
         Collection<PtSituationElement> storedSituations = situations.getAll(datasetId);
         if (storedSituations == null || storedSituations.isEmpty()) {
@@ -192,7 +195,7 @@ public class SituationExchangeInbound {
         }
 
         if (!situationsToClose.isEmpty()) {
-            ingestSituations(datasetId, situationsToClose, true);
+            ingestSituations(datasetId, situationsToClose, true, inboundTime);
         }
 
     }
@@ -224,6 +227,10 @@ public class SituationExchangeInbound {
     }
 
 
+    public Collection<PtSituationElement> ingestSituations(String datasetId, List<PtSituationElement> incomingSituations, boolean publishToOutbound) {
+        return ingestSituations(datasetId, incomingSituations, publishToOutbound, null);
+    }
+
     /**
      * Ingest incoming situation into cache
      *
@@ -232,10 +239,10 @@ public class SituationExchangeInbound {
      * @param publishToOutbound  if publication should be published or not to the outboud subcriptions
      * @return
      */
-    public Collection<PtSituationElement> ingestSituations(String datasetId, List<PtSituationElement> incomingSituations, boolean publishToOutbound) {
+    public Collection<PtSituationElement> ingestSituations(String datasetId, List<PtSituationElement> incomingSituations, boolean publishToOutbound, Long inboundTime) {
         Collection<PtSituationElement> result = situations.addAll(datasetId, incomingSituations);
         if (publishToOutbound && CollectionUtils.isNotEmpty(result)) {
-            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.SITUATION_EXCHANGE, new ArrayList<>(result), datasetId);
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.SITUATION_EXCHANGE, new ArrayList<>(result), datasetId, inboundTime);
         }
 
         List<PtSituationElement> currentlyOpenedSituations = incomingSituations.stream()
@@ -243,10 +250,10 @@ public class SituationExchangeInbound {
                 .toList();
 
         if (!currentlyOpenedSituations.isEmpty()) {
-            convertToGeneralMessageAndIngest(datasetId, currentlyOpenedSituations);
+            convertToGeneralMessageAndIngest(datasetId, currentlyOpenedSituations, inboundTime);
         }
 
-        scheduleFutureMessages(datasetId, incomingSituations);
+        scheduleFutureMessages(datasetId, incomingSituations, null);
         return result;
     }
 
@@ -256,7 +263,7 @@ public class SituationExchangeInbound {
      *
      * @param incomingSituations situations to check and eventually schedule in the future.
      */
-    private void scheduleFutureMessages(String datasetId, List<PtSituationElement> incomingSituations) {
+    private void scheduleFutureMessages(String datasetId, List<PtSituationElement> incomingSituations, Long inboundTime) {
 
         // Situations with no publicationWindow MUST NOT be converted to GM
         List<PtSituationElement> situationsToSchedule = incomingSituations.stream()
@@ -285,7 +292,7 @@ public class SituationExchangeInbound {
             futureSituations.add(situationToSchedule);
             IScheduledFuture<Object> plannedTask = sharedScheduler.schedule(() -> {
                 logger.info("GeneralMessage - launching future gm conversion for situation: {} ", situationNumber);
-                convertToGeneralMessageAndIngest(datasetId, futureSituations);
+                convertToGeneralMessageAndIngest(datasetId, futureSituations, inboundTime);
             }, delay, TimeUnit.MILLISECONDS);
             logger.info("GeneralMessage : scheduling future gm conversion for situation:{} - scheduledDate:{} ", situationNumber, scheduledDate);
             hazelcastService.getScheduledGeneralMessages(datasetId).put(situationNumber, Pair.of(scheduledDate, datasetId + plannedTask.getHandler().getTaskName()));
@@ -342,7 +349,7 @@ public class SituationExchangeInbound {
      * @param datasetId          the dataset on which the general messages must be ingested
      * @param incomingSituations the situations that must be converted to GeneralMessages and must be ingested
      */
-    private void convertToGeneralMessageAndIngest(String datasetId, List<PtSituationElement> incomingSituations) {
+    private void convertToGeneralMessageAndIngest(String datasetId, List<PtSituationElement> incomingSituations, Long inboundTime) {
 
         incomingSituations = filterUnmappableAffects(incomingSituations);
         // Open perturbations
@@ -353,7 +360,7 @@ public class SituationExchangeInbound {
 
         Collection<GeneralMessage> added = generalMessages.addAll(datasetId, incomingMessages);
         if (CollectionUtils.isNotEmpty(added)) {
-            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.GENERAL_MESSAGE, new ArrayList(added), datasetId);
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.GENERAL_MESSAGE, new ArrayList(added), datasetId, inboundTime);
         }
 
 
@@ -365,7 +372,7 @@ public class SituationExchangeInbound {
 
         if (CollectionUtils.isNotEmpty(cancellations)) {
             generalMessages.cancelGeneralMessages(datasetId, cancellations);
-            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.GENERAL_MESSAGE, cancellations, datasetId);
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.GENERAL_MESSAGE, cancellations, datasetId, inboundTime);
         }
 
 

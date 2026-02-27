@@ -56,7 +56,7 @@ public class StopMonitoringInbound {
     @Produce(KafkaRouteBuilder.SEND_SM_IN_TO_KAFKA)
     protected ProducerTemplate sendSmInToKafka;
 
-    public boolean ingestStopVisitFromApi(SiriDataType dataFormat, String dataSetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList) {
+    public boolean ingestStopVisitFromApi(SiriDataType dataFormat, String dataSetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList, Long inboundTime) {
         // logger.debug("Got SM-delivery: Subscription [{}] {}", subscriptionSetupList);
         List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = incoming.getServiceDelivery().getStopMonitoringDeliveries();
         List<MonitoredStopVisit> addedOrUpdated = new ArrayList<>();
@@ -86,7 +86,7 @@ public class StopMonitoringInbound {
             );
         }
 
-        serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, dataSetId);
+        serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, dataSetId, inboundTime);
 
         for (SubscriptionSetup subscriptionSetup : subscriptionSetupList) {
             List<MonitoredStopVisit> addedOrUpdatedBySubscription = addedOrUpdated
@@ -100,21 +100,30 @@ public class StopMonitoringInbound {
         return !addedOrUpdated.isEmpty();
     }
 
+
     public Collection<MonitoredStopVisit> ingestStopVisits(String datasetId, List<MonitoredStopVisit> incomingMonitoredStopVisits) {
+        return ingestStopVisits(datasetId, incomingMonitoredStopVisits, null);
+    }
+
+    public Collection<MonitoredStopVisit> ingestStopVisits(String datasetId, List<MonitoredStopVisit> incomingMonitoredStopVisits, Long inboundTime) {
         recordDeltaTimes(datasetId, incomingMonitoredStopVisits);
         Collection<MonitoredStopVisit> result = monitoredStopVisits.addAll(datasetId, incomingMonitoredStopVisits);
         if (CollectionUtils.isNotEmpty(result)) {
-            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.STOP_MONITORING, new ArrayList<>(result), datasetId);
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.STOP_MONITORING, new ArrayList<>(result), datasetId, inboundTime);
         }
         return result;
     }
 
     public void cancelStopVisits(String datasetId, List<MonitoredStopVisitCancellation> incomingMonitoredStopVisitsCancellations) {
-        monitoredStopVisits.cancelStopVsits(datasetId, incomingMonitoredStopVisitsCancellations);
-        serverSubscriptionManager.pushUpdatesAsync(SiriDataType.STOP_MONITORING, incomingMonitoredStopVisitsCancellations, datasetId);
+        cancelStopVisits(datasetId, incomingMonitoredStopVisitsCancellations, null);
     }
 
-    public boolean ingestStopVisit(SubscriptionSetup subscriptionSetup, Siri incoming) {
+    public void cancelStopVisits(String datasetId, List<MonitoredStopVisitCancellation> incomingMonitoredStopVisitsCancellations, Long inboundTime) {
+        monitoredStopVisits.cancelStopVsits(datasetId, incomingMonitoredStopVisitsCancellations);
+        serverSubscriptionManager.pushUpdatesAsync(SiriDataType.STOP_MONITORING, incomingMonitoredStopVisitsCancellations, datasetId, inboundTime);
+    }
+
+    public boolean ingestStopVisit(SubscriptionSetup subscriptionSetup, Siri incoming, Long inboundTime) {
         List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = incoming.getServiceDelivery().getStopMonitoringDeliveries();
         //logger.debug("Got SM-delivery: Subscription [{}] ", subscriptionSetup);
 
@@ -140,10 +149,10 @@ public class StopMonitoringInbound {
                                 }
                             } else {
                                 if (sm.getMonitoredStopVisits() != null && !sm.getMonitoredStopVisits().isEmpty()) {
-                                    addedOrUpdated.addAll(ingestStopVisits(subscriptionSetup.getDatasetId(), sm.getMonitoredStopVisits()));
+                                    addedOrUpdated.addAll(ingestStopVisits(subscriptionSetup.getDatasetId(), sm.getMonitoredStopVisits(), inboundTime));
                                 }
                                 if (sm.getMonitoredStopVisitCancellations() != null && !sm.getMonitoredStopVisitCancellations().isEmpty()) {
-                                    cancelStopVisits(subscriptionSetup.getDatasetId(), sm.getMonitoredStopVisitCancellations());
+                                    cancelStopVisits(subscriptionSetup.getDatasetId(), sm.getMonitoredStopVisitCancellations(), inboundTime);
                                 }
                             }
                         }

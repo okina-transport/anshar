@@ -160,6 +160,9 @@ public class SiriHandler {
     @Autowired
     AnsharConfiguration ansharConfiguration;
 
+    @Value("${anshar.disable.outbound.subscription.checks:false}")
+    private boolean disableOutboundSubscriptionChecks;
+
     public static OutboundIdMappingPolicy getIdMappingPolicy(String useOriginalId, String altId) {
         OutboundIdMappingPolicy outboundIdMappingPolicy = OutboundIdMappingPolicy.DEFAULT;
         if (altId != null) {
@@ -180,7 +183,7 @@ public class SiriHandler {
         try {
             InputStream xml = incomingSiriParameters.getIncomingSiriStream();
             if (incomingSiriParameters.getSubscriptionId() != null) {
-                inboundProcessSiriClientRequest(incomingSiriParameters.getSubscriptionId(), xml); // Response to a request we made on behalf of one of the subscriptions
+                inboundProcessSiriClientRequest(incomingSiriParameters, xml); // Response to a request we made on behalf of one of the subscriptions
             } else {
                 Siri incoming = SiriValueTransformer.parseXml(xml); // Someone asking us for siri update
                 return buildSiriResponse(incomingSiriParameters, incoming);
@@ -550,6 +553,11 @@ public class SiriHandler {
      * @return true si la référence est valide, false sinon.
      */
     private boolean validateStopReferences(String stopRef, String datasetId) {
+
+        if (disableOutboundSubscriptionChecks) {
+            return true;
+        }
+
         if (stopRef == null) {
             return false;
         }
@@ -613,10 +621,13 @@ public class SiriHandler {
     /**
      * Handling incoming requests from external servers
      *
-     * @param subscriptionId the subscription's id
-     * @param xml            the incoming message
+     * @param incomingSiriParameters the parameters
+     * @param xml                    the incoming message
      */
-    private void inboundProcessSiriClientRequest(String subscriptionId, InputStream xml) throws XMLStreamException, JAXBException {
+    private void inboundProcessSiriClientRequest(IncomingSiriParameters incomingSiriParameters, InputStream xml) throws XMLStreamException, JAXBException {
+
+        String subscriptionId = incomingSiriParameters.getSubscriptionId();
+
         SubscriptionSetup subscriptionSetup = subscriptionManager.get(subscriptionId);
 
 
@@ -686,29 +697,29 @@ public class SiriHandler {
                 String monitoredRef = null;
 
                 if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.SITUATION_EXCHANGE)) {
-                    deliveryContainsData = situationExchangeInbound.ingestSituationExchange(subscriptionSetup, incoming);
+                    deliveryContainsData = situationExchangeInbound.ingestSituationExchange(subscriptionSetup, incoming, incomingSiriParameters.getInboundTime());
                 }
                 if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.VEHICLE_MONITORING)) {
                     monitoredRef = vehicleMonitoringInbound.getLineRef(incoming);
-                    deliveryContainsData = vehicleMonitoringInbound.ingestVehicleMonitoring(subscriptionSetup, incoming);
+                    deliveryContainsData = vehicleMonitoringInbound.ingestVehicleMonitoring(subscriptionSetup, incoming, incomingSiriParameters.getInboundTime());
                 }
                 if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.ESTIMATED_TIMETABLE)) {
-                    deliveryContainsData = estimatedTimetableInbound.ingestEstimatedTimetable(subscriptionSetup, incoming);
+                    deliveryContainsData = estimatedTimetableInbound.ingestEstimatedTimetable(subscriptionSetup, incoming, incomingSiriParameters.getInboundTime());
                 }
 
                 if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
                     monitoredRef = utils.getStopRefs(incoming);
-                    deliveryContainsData = stopMonitoringInbound.ingestStopVisit(subscriptionSetup, incoming);
+                    deliveryContainsData = stopMonitoringInbound.ingestStopVisit(subscriptionSetup, incoming, incomingSiriParameters.getInboundTime());
                 }
 
                 if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.GENERAL_MESSAGE)) {
                     monitoredRef = utils.getStopRefs(incoming);
-                    deliveryContainsData = generalMessageInbound.ingestGeneralMessage(subscriptionSetup, incoming);
+                    deliveryContainsData = generalMessageInbound.ingestGeneralMessage(subscriptionSetup, incoming, incomingSiriParameters.getInboundTime());
                 }
 
                 if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.FACILITY_MONITORING)) {
                     monitoredRef = utils.getStopRefs(incoming);
-                    deliveryContainsData = facilityMonitoringInbound.ingestFacility(subscriptionSetup, incoming);
+                    deliveryContainsData = facilityMonitoringInbound.ingestFacility(subscriptionSetup, incoming, incomingSiriParameters.getInboundTime());
                 }
 
 
@@ -750,6 +761,7 @@ public class SiriHandler {
             } catch (IOException e) {
                 receivedBytes = 0;
             }
+            Long inboundTime = System.currentTimeMillis();
 
             Siri originalInput = siriXmlValidator.parseXmlWithSubscriptionSetupList(subscriptionSetupList, xml);
 
@@ -771,26 +783,26 @@ public class SiriHandler {
                 String monitoredRef = null;
 
                 if (dataFormat.equals(SiriDataType.SITUATION_EXCHANGE)) {
-                    deliveryContainsData = situationExchangeInbound.ingestSituationExchangeFromApi(dataFormat, dataSetId, incoming, subscriptionSetupList);
+                    deliveryContainsData = situationExchangeInbound.ingestSituationExchangeFromApi(dataFormat, dataSetId, incoming, subscriptionSetupList, inboundTime);
                 }
                 if (dataFormat.equals(SiriDataType.ESTIMATED_TIMETABLE)) {
-                    deliveryContainsData = estimatedTimetableInbound.ingestEstimatedTimetableFromApi(dataFormat, dataSetId, incoming, subscriptionSetupList);
+                    deliveryContainsData = estimatedTimetableInbound.ingestEstimatedTimetableFromApi(dataFormat, dataSetId, incoming, subscriptionSetupList, inboundTime);
                 }
                 if (dataFormat.equals(SiriDataType.STOP_MONITORING)) {
                     monitoredRef = utils.getStopRefs(incoming);
-                    deliveryContainsData = stopMonitoringInbound.ingestStopVisitFromApi(dataFormat, dataSetId, incoming, subscriptionSetupList);
+                    deliveryContainsData = stopMonitoringInbound.ingestStopVisitFromApi(dataFormat, dataSetId, incoming, subscriptionSetupList, inboundTime);
                 }
                 if (dataFormat.equals(SiriDataType.VEHICLE_MONITORING)) {
                     monitoredRef = vehicleMonitoringInbound.getVehicleRefs(incoming);
-                    deliveryContainsData = vehicleMonitoringInbound.ingestVehicleMonitoringFromApi(dataFormat, dataSetId, incoming, subscriptionSetupList);
+                    deliveryContainsData = vehicleMonitoringInbound.ingestVehicleMonitoringFromApi(dataFormat, dataSetId, incoming, subscriptionSetupList, inboundTime);
                 }
                 if (dataFormat.equals(SiriDataType.GENERAL_MESSAGE)) {
                     monitoredRef = utils.getStopRefs(incoming);
-                    deliveryContainsData = generalMessageInbound.ingestGeneralMessageFromApi(dataFormat, dataSetId, incoming, subscriptionSetupList);
+                    deliveryContainsData = generalMessageInbound.ingestGeneralMessageFromApi(dataFormat, dataSetId, incoming, subscriptionSetupList, inboundTime);
                 }
                 if (dataFormat.equals(SiriDataType.FACILITY_MONITORING)) {
                     monitoredRef = utils.getStopRefs(incoming);
-                    deliveryContainsData = facilityMonitoringInbound.ingestFacilityFromApi(dataFormat, dataSetId, incoming, subscriptionSetupList);
+                    deliveryContainsData = facilityMonitoringInbound.ingestFacilityFromApi(dataFormat, dataSetId, incoming, subscriptionSetupList, inboundTime);
                 }
 
                 for (SubscriptionSetup subscriptionSetup : subscriptionSetupList) {

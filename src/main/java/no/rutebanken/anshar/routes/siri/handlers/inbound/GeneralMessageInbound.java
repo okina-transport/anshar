@@ -41,7 +41,7 @@ public class GeneralMessageInbound {
     @Autowired
     private Utils utils;
 
-    public boolean ingestGeneralMessage(SubscriptionSetup subscriptionSetup, Siri incoming) {
+    public boolean ingestGeneralMessage(SubscriptionSetup subscriptionSetup, Siri incoming, Long inboundTime) {
         List<GeneralMessageDeliveryStructure> generalDeliveries = incoming.getServiceDelivery().getGeneralMessageDeliveries();
         logger.debug("Got GM-delivery: Subscription [{}] ", subscriptionSetup);
 
@@ -54,9 +54,9 @@ public class GeneralMessageInbound {
         }
 
 
-        serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
+        serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId(), inboundTime);
         if (!cancellationsAddedOrUpdated.isEmpty()) {
-            serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), cancellationsAddedOrUpdated, subscriptionSetup.getDatasetId());
+            serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), cancellationsAddedOrUpdated, subscriptionSetup.getDatasetId(), inboundTime);
         }
         subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdated.size());
         logger.debug("Active GM-elements: {}, current delivery: {}, {}", generalMessages.getSize(), addedOrUpdated.size(), subscriptionSetup);
@@ -64,7 +64,7 @@ public class GeneralMessageInbound {
         return (!addedOrUpdated.isEmpty() || !cancellationsAddedOrUpdated.isEmpty());
     }
 
-    public boolean ingestGeneralMessageFromApi(SiriDataType dataFormat, String datasetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList) {
+    public boolean ingestGeneralMessageFromApi(SiriDataType dataFormat, String datasetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList, Long inboundTime) {
         boolean deliveryContainsData;
         List<GeneralMessageDeliveryStructure> generalMessageDeliveries = incoming.getServiceDelivery().getGeneralMessageDeliveries();
         logger.info("Got GM-delivery: Subscription [{}]", subscriptionSetupList);
@@ -85,7 +85,7 @@ public class GeneralMessageInbound {
             );
         }
 
-        serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, datasetId);
+        serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, datasetId, inboundTime);
 
 
         deliveryContainsData = !addedOrUpdated.isEmpty();
@@ -97,10 +97,16 @@ public class GeneralMessageInbound {
         return deliveryContainsData;
     }
 
+
     public void ingestGeneralMessages(String datasetId, List<GeneralMessage> incomingSituations, boolean publishToOutbound) {
+        ingestGeneralMessages(datasetId, incomingSituations, publishToOutbound, null);
+
+    }
+
+    public void ingestGeneralMessages(String datasetId, List<GeneralMessage> incomingSituations, boolean publishToOutbound, Long inboundTime) {
         Collection<GeneralMessage> result = generalMessages.addAll(datasetId, incomingSituations);
         if (publishToOutbound && CollectionUtils.isNotEmpty(result)) {
-            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.GENERAL_MESSAGE, new ArrayList<>(result), datasetId);
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.GENERAL_MESSAGE, new ArrayList<>(result), datasetId, inboundTime);
         }
     }
 }
