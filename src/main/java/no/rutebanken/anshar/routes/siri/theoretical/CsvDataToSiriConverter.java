@@ -144,6 +144,7 @@ public class CsvDataToSiriConverter {
                 0,
                 PARIS_ZONE_ID));
 
+        mcs.getDestinationDisplaies().add(buildDestinationName(data));
         return mcs;
     }
 }
