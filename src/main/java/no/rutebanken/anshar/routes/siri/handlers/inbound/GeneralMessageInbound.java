@@ -2,48 +2,64 @@ package no.rutebanken.anshar.routes.siri.handlers.inbound;
 
 import no.rutebanken.anshar.data.GeneralMessages;
 import no.rutebanken.anshar.data.GeneralMessagesCancellations;
+import no.rutebanken.anshar.routes.kafka.KafkaConfig;
+import no.rutebanken.anshar.routes.kafka.KafkaRouteBuilder;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.siri.handlers.Utils;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import org.apache.camel.Produce;
+import org.apache.camel.ProducerTemplate;
 import org.apache.commons.collections4.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri21.GeneralMessage;
-import uk.org.siri.siri21.GeneralMessageCancellation;
-import uk.org.siri.siri21.GeneralMessageDeliveryStructure;
-import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.*;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+
+import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASET_ID_HEADER_NAME;
 
 @Service
 public class GeneralMessageInbound {
 
     private static final Logger logger = LoggerFactory.getLogger(GeneralMessageInbound.class);
 
-    @Autowired
-    private GeneralMessages generalMessages;
+
+    private final GeneralMessages generalMessages;
+    private final ServerSubscriptionManager serverSubscriptionManager;
+    private final SubscriptionManager subscriptionManager;
+    private final GeneralMessagesCancellations generalMessageCancellations;
+    private final Utils utils;
+    private final KafkaConfig kafkaConfig;
+
+    @Produce(KafkaRouteBuilder.SEND_GM_IN_TO_KAFKA)
+    protected ProducerTemplate sendGmInToKafka;
+
 
     @Autowired
-    private ServerSubscriptionManager serverSubscriptionManager;
-
-    @Autowired
-    private SubscriptionManager subscriptionManager;
-
-    @Autowired
-    private GeneralMessagesCancellations generalMessageCancellations;
-
-    @Autowired
-    private Utils utils;
+    public GeneralMessageInbound(GeneralMessages generalMessages, ServerSubscriptionManager serverSubscriptionManager, SubscriptionManager subscriptionManager, GeneralMessagesCancellations generalMessageCancellations, Utils utils, KafkaConfig kafkaConfig) {
+        this.generalMessages = generalMessages;
+        this.serverSubscriptionManager = serverSubscriptionManager;
+        this.subscriptionManager = subscriptionManager;
+        this.generalMessageCancellations = generalMessageCancellations;
+        this.utils = utils;
+        this.kafkaConfig = kafkaConfig;
+    }
 
     public boolean ingestGeneralMessage(SubscriptionSetup subscriptionSetup, Siri incoming, Long inboundTime) {
         List<GeneralMessageDeliveryStructure> generalDeliveries = incoming.getServiceDelivery().getGeneralMessageDeliveries();
         logger.debug("Got GM-delivery: Subscription [{}] ", subscriptionSetup);
+
+        if (kafkaConfig.isKafkaEnabled() && kafkaConfig.isSendSiriGmInToKafka()) {
+            sendGmInToKafka.asyncRequestBodyAndHeader(sendGmInToKafka.getDefaultEndpoint(), incoming,
+                    DATASET_ID_HEADER_NAME, subscriptionSetup.getDatasetId());
+        }
+
 
         List<GeneralMessage> addedOrUpdated = new ArrayList<>();
         List<GeneralMessageCancellation> cancellationsAddedOrUpdated = new ArrayList<>();
@@ -103,8 +119,36 @@ public class GeneralMessageInbound {
 
     }
 
-    public void ingestGeneralMessages(String datasetId, List<GeneralMessage> incomingSituations, boolean publishToOutbound, Long inboundTime) {
-        Collection<GeneralMessage> result = generalMessages.addAll(datasetId, incomingSituations);
+    public void ingestGeneralMessages(String datasetId, List<GeneralMessage> incomingGeneralMessages, boolean publishToOutbound, Long inboundTime) {
+        Collection<GeneralMessage> result = generalMessages.addAll(datasetId, incomingGeneralMessages);
+
+        if (kafkaConfig.isKafkaEnabled() && kafkaConfig.isSendSiriGmInToKafka() && CollectionUtils.isNotEmpty(incomingGeneralMessages)) {
+            Siri delivery = new Siri();
+            ServiceDelivery serviceDel = new ServiceDelivery();
+            GeneralMessageDeliveryStructure generalMessageDeliveryStructure = new GeneralMessageDeliveryStructure();
+            generalMessageDeliveryStructure.getGeneralMessages().addAll(incomingGeneralMessages);
+            serviceDel.getGeneralMessageDeliveries().add(generalMessageDeliveryStructure);
+            delivery.setServiceDelivery(serviceDel);
+            sendGmInToKafka.asyncRequestBodyAndHeader(sendGmInToKafka.getDefaultEndpoint(), delivery, DATASET_ID_HEADER_NAME, datasetId);
+        }
+
+        if (publishToOutbound && CollectionUtils.isNotEmpty(result)) {
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.GENERAL_MESSAGE, new ArrayList<>(result), datasetId, inboundTime);
+        }
+    }
+
+    public void ingestGeneralMessagesCancellations(String datasetId, List<GeneralMessageCancellation> cancellations, boolean publishToOutbound, Long inboundTime) {
+        Collection<GeneralMessageCancellation> result = generalMessageCancellations.addAll(datasetId, cancellations);
+        generalMessages.cancelGeneralMessages(datasetId, cancellations);
+        if (kafkaConfig.isKafkaEnabled() && kafkaConfig.isSendSiriGmInToKafka() && CollectionUtils.isNotEmpty(cancellations)) {
+            Siri delivery = new Siri();
+            ServiceDelivery serviceDel = new ServiceDelivery();
+            GeneralMessageDeliveryStructure generalMessageDeliveryStructure = new GeneralMessageDeliveryStructure();
+            generalMessageDeliveryStructure.getGeneralMessageCancellations().addAll(cancellations);
+            serviceDel.getGeneralMessageDeliveries().add(generalMessageDeliveryStructure);
+            delivery.setServiceDelivery(serviceDel);
+            sendGmInToKafka.asyncRequestBodyAndHeader(sendGmInToKafka.getDefaultEndpoint(), delivery, DATASET_ID_HEADER_NAME, datasetId);
+        }
         if (publishToOutbound && CollectionUtils.isNotEmpty(result)) {
             serverSubscriptionManager.pushUpdatesAsync(SiriDataType.GENERAL_MESSAGE, new ArrayList<>(result), datasetId, inboundTime);
         }

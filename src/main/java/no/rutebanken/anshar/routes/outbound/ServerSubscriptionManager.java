@@ -91,6 +91,8 @@ public class ServerSubscriptionManager {
     protected ProducerTemplate siriSmTopicProducer;
     @Produce(KafkaRouteBuilder.SEND_SM_OUT_TO_KAFKA)
     protected ProducerTemplate sendSMToKafka;
+    @Produce(KafkaRouteBuilder.SEND_GM_OUT_TO_KAFKA)
+    protected ProducerTemplate sendGMToKafka;
     @Produce(KafkaRouteBuilder.SEND_SX_OUT_TO_KAFKA)
     protected ProducerTemplate sendSXToKafka;
     @Produce("direct:send.sx.to.external.consumer")
@@ -1358,6 +1360,29 @@ public class ServerSubscriptionManager {
                 .collect(Collectors.toList());
 
         boolean logFullContents = true;
+
+
+        if (kafkaConfig.isSendSiriGmOutToKafka()) {
+
+            if (CollectionUtils.isNotEmpty(recipients)) {
+                List<String> requestorsRefs = recipients.stream()
+                        .map(OutboundSubscriptionSetup::getRequestorRef)
+                        .toList();
+
+                List<String> urls = recipients.stream()
+                        .map(OutboundSubscriptionSetup::getAddress)
+                        .toList();
+
+                Map<String, Object> headers = new HashMap<>();
+                headers.put(DATASET_ID_HEADER_NAME, datasetId);
+                headers.put(REQUESTOR_REFS_HEADER, requestorsRefs.stream().collect(Collectors.joining(",")));
+                headers.put(CONSUMER_ADDRESS_HEADER, urls.stream().collect(Collectors.joining(",")));
+
+                sendGMToKafka.asyncRequestBodyAndHeaders(sendGMToKafka.getDefaultEndpoint(), delivery, headers);
+            }
+
+        }
+
         for (OutboundSubscriptionSetup recipient : recipients) {
             if (!delivery.getServiceDelivery().getGeneralMessageDeliveries().isEmpty()) {
                 delivery.getServiceDelivery().getGeneralMessageDeliveries().forEach(gmd -> gmd.setSubscriptionRef(SiriObjectFactory.createSubscriptionIdentifier(recipient.getSubscriptionId())));

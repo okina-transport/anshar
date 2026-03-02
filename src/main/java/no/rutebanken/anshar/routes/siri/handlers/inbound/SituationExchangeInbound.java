@@ -38,41 +38,35 @@ public class SituationExchangeInbound {
 
     private static final Logger logger = LoggerFactory.getLogger(SituationExchangeInbound.class);
 
-    @Autowired
-    private Utils utils;
 
-    @Autowired
-    private ServerSubscriptionManager serverSubscriptionManager;
-
-    @Autowired
-    private SubscriptionManager subscriptionManager;
-
-    @Autowired
-    private Situations situations;
-
-    @Autowired
-    private GeneralMessages generalMessages;
-
-    @Autowired
-    private SuperIdReversionProcess reversionIdProcess;
-
-    @Autowired
-    private GeneralMessageMapper gmMapper;
-
-    @Autowired
-    ExtendedHazelcastService hazelcastService;
-
-    @Autowired
+    private final Utils utils;
+    private final ServerSubscriptionManager serverSubscriptionManager;
+    private final SubscriptionManager subscriptionManager;
+    private final Situations situations;
+    private final GeneralMessageInbound generalMessageInbound;
+    private final SuperIdReversionProcess reversionIdProcess;
+    private final GeneralMessageMapper gmMapper;
+    private final ExtendedHazelcastService hazelcastService;
     private KafkaConfig kafkaConfig;
+    private final IScheduledExecutorService sharedScheduler;
 
     @Produce(KafkaRouteBuilder.SEND_SX_IN_TO_KAFKA)
     protected ProducerTemplate sendSxInToKafka;
 
-
-    @Autowired
-    @Qualifier("getSharedScheduler")
-    private IScheduledExecutorService sharedScheduler;
-
+    public SituationExchangeInbound(Utils utils, ServerSubscriptionManager serverSubscriptionManager, SubscriptionManager subscriptionManager, Situations situations, GeneralMessages generalMessages, GeneralMessageInbound generalMessageInbound,
+                                    SuperIdReversionProcess reversionIdProcess, GeneralMessageMapper gmMapper, KafkaConfig kafkaConfig, @Qualifier("getSharedScheduler") IScheduledExecutorService sharedScheduler,
+                                    ExtendedHazelcastService hazelcastService) {
+        this.utils = utils;
+        this.serverSubscriptionManager = serverSubscriptionManager;
+        this.subscriptionManager = subscriptionManager;
+        this.situations = situations;
+        this.generalMessageInbound = generalMessageInbound;
+        this.reversionIdProcess = reversionIdProcess;
+        this.gmMapper = gmMapper;
+        this.kafkaConfig = kafkaConfig;
+        this.sharedScheduler = sharedScheduler;
+        this.hazelcastService = hazelcastService;
+    }
 
     public boolean ingestSituationExchangeFromApi(SiriDataType dataFormat, String dataSetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList, Long inboundTime) {
         boolean deliveryContainsData;
@@ -358,10 +352,7 @@ public class SituationExchangeInbound {
                 .map(situation -> gmMapper.mapToGeneralMessage(datasetId, situation))
                 .collect(Collectors.toList());
 
-        Collection<GeneralMessage> added = generalMessages.addAll(datasetId, incomingMessages);
-        if (CollectionUtils.isNotEmpty(added)) {
-            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.GENERAL_MESSAGE, new ArrayList(added), datasetId, inboundTime);
-        }
+        generalMessageInbound.ingestGeneralMessages(datasetId, incomingMessages, true, inboundTime);
 
 
         // Closed perturbations that need to be removed from cache
@@ -371,8 +362,7 @@ public class SituationExchangeInbound {
                 .toList();
 
         if (CollectionUtils.isNotEmpty(cancellations)) {
-            generalMessages.cancelGeneralMessages(datasetId, cancellations);
-            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.GENERAL_MESSAGE, cancellations, datasetId, inboundTime);
+            generalMessageInbound.ingestGeneralMessagesCancellations(datasetId, cancellations, true, inboundTime);
         }
 
 

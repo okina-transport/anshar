@@ -999,6 +999,9 @@ public class GeneralMessageTest extends SpringBootBaseTest {
 
     @Test
     public void testCancellations() throws UnmarshalException {
+        generalMessagesCancellations.clearAll();
+        generalMessages.clearAll();
+
         GeneralMessage msg = TestObjectFactory.createGeneralMessage();
         Content content1 = new Content();
         content1.setStopPointRefs(Arrays.asList("stop1"));
@@ -1010,8 +1013,8 @@ public class GeneralMessageTest extends SpringBootBaseTest {
         GeneralMessageCancellation msgCancel = createGeneralMessageCancellation();
 
         generalMessagesCancellations.add("test", msgCancel);
-        assertTrue(generalMessages.getAll().size() == 1);
-        assertTrue(generalMessagesCancellations.getAll().size() == 1);
+        assertEquals(1, generalMessages.getAll().size());
+        assertEquals(1, generalMessagesCancellations.getAll().size());
 
         String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
                 "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
@@ -1064,7 +1067,6 @@ public class GeneralMessageTest extends SpringBootBaseTest {
 
 
         incomingSituations.add(newOpensituation);
-
 
 
         // ingesting an open situation

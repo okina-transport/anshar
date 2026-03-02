@@ -17,6 +17,8 @@ public class KafkaConfig {
     private final boolean sendSiriSxInToKafka;
     private final boolean sendSiriSxOutToKafka;
     private final boolean sendSiriSmOutToKafka;
+    private final boolean sendSiriGmInToKafka;
+    private final boolean sendSiriGmOutToKafka;
     private final boolean sendTrInSubscriptionDataToKafka;
     private final String brokers;
     private final String clientId;
@@ -27,6 +29,8 @@ public class KafkaConfig {
     private final String smOutTopic;
     private final String thTrConsistencyTopic;
     private final String trInSubscriptionDataTopic;
+    private final String gmInTopic;
+    private final String gmOutTopic;
     private final String trInSubscriptionMonitoringTopic;
 
     public KafkaConfig(@Value("${anshar.kafka.enabled:false}") boolean kafkaEnabled,
@@ -37,6 +41,8 @@ public class KafkaConfig {
                        @Value("${anshar.kafka.groupId:}") String groupId,
                        @Value("${anshar.kafka.topic.in.sm:}") String smInTopic,
                        @Value("${anshar.kafka.topic.out.sm:}") String smOutTopic,
+                       @Value("${anshar.kafka.topic.in.gm:}") String gmInTopic,
+                       @Value("${anshar.kafka.topic.out.gm:}") String gmOutTopic,
                        @Value("${anshar.kafka.topic.in.sx:}") String sxInTopic,
                        @Value("${anshar.kafka.topic.out.sx:}") String sxOutTopic,
                        @Value("${anshar.kafka.topic.th.tr.consistency:th_tr_consistency}") String thTrConsistencyTopic,
@@ -48,6 +54,8 @@ public class KafkaConfig {
         this.sendSiriSxOutToKafka = sendSiriToKafka && StringUtils.isNotBlank(sxOutTopic);
         this.sendSiriSmOutToKafka = sendSiriToKafka && StringUtils.isNotBlank(smOutTopic);
         this.sendSiriSxInToKafka = sendSiriToKafka && StringUtils.isNotBlank(sxInTopic);
+        this.sendSiriGmInToKafka = sendSiriToKafka && StringUtils.isNotBlank(gmInTopic);
+        this.sendSiriGmOutToKafka = sendSiriToKafka && StringUtils.isNotBlank(gmOutTopic);
         this.sendTrInSubscriptionDataToKafka = sendTrInSubscriptionDataToKafka;
         this.brokers = brokers;
         this.clientId = clientId;
@@ -55,6 +63,8 @@ public class KafkaConfig {
         this.smInTopic = smInTopic;
         this.sxOutTopic = sxOutTopic;
         this.smOutTopic = smOutTopic;
+        this.gmInTopic = gmInTopic;
+        this.gmOutTopic = gmOutTopic;
         this.thTrConsistencyTopic = thTrConsistencyTopic;
         this.trInSubscriptionDataTopic = trInSubscriptionDataTopic;
         this.trInSubscriptionMonitoringTopic = trInSubscriptionMonitoringTopic;

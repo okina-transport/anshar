@@ -105,6 +105,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
     private static final String ADAPT_EXTRA_JOURNEY_DEST_DISPLAY = METRICS_PREFIX + "data.adapter.extra.journey.dest.display";
     private static final String RECOMPUTE_VEHICLE_JOURNEY_ID_FROM_THEORETICAL = METRICS_PREFIX + "data.recompute.vehicle.journey.id.from.theoretical";
     private static final String INBOUND_TO_OUTBOUND_TIME_ERRORS = METRICS_PREFIX + "data.inbound.to.outbound.time.errors";
+    private static final String INBOUND_TO_OUTBOUND_TIME = METRICS_PREFIX + "data.inbound.to.outbound.time";
     final Map<String, Integer> nbOfOutboundPushByRequestor = new HashMap<>();
     final Map<String, Long> totalPushTimeByRequestor = new HashMap<>();
     final Map<String, Set<Long>> smDeltaTimesTmp = new ConcurrentHashMap<>();
@@ -173,7 +174,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
             if (inboundToOutboudTimes.containsKey(datasetId)) {
                 currentDatasetSummary = inboundToOutboudTimes.get(datasetId);
             } else {
-                currentDatasetSummary = DistributionSummary.builder("inbound_to_outbound_seconds")
+                currentDatasetSummary = DistributionSummary.builder(INBOUND_TO_OUTBOUND_TIME)
                         .description("Temps total entre entrée et sortie (ms)")
                         .tags("datasetId", datasetId)
                         .register(this);
