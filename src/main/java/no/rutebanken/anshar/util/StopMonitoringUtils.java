@@ -1,12 +1,16 @@
 package no.rutebanken.anshar.util;
 
 
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import uk.org.siri.siri21.MonitoredStopVisit;
 import uk.org.siri.siri21.MonitoredStopVisitCancellation;
+import uk.org.siri.siri21.MonitoredVehicleJourneyStructure;
 
 import java.time.ZonedDateTime;
 import java.util.Optional;
 
+@Slf4j
 public class StopMonitoringUtils {
 
 
@@ -70,5 +74,15 @@ public class StopMonitoringUtils {
         return result;
     }
 
-
+    public static void feedDestinationDisplay(MonitoredStopVisit stopVisit) {
+        MonitoredVehicleJourneyStructure monitoredVehicleJourney = stopVisit.getMonitoredVehicleJourney();
+        if (monitoredVehicleJourney != null
+                && monitoredVehicleJourney.getMonitoredCall() != null
+                && CollectionUtils.isEmpty(monitoredVehicleJourney.getMonitoredCall().getDestinationDisplaies())
+                && CollectionUtils.isNotEmpty(monitoredVehicleJourney.getDestinationNames())) {
+                monitoredVehicleJourney.getMonitoredCall().getDestinationDisplaies().addAll(monitoredVehicleJourney.getDestinationNames());
+        } else if (stopVisit.getMonitoringRef() != null) {
+            log.debug("No destination display and no destination name found for {}", stopVisit.getMonitoringRef().getValue());
+        }
+    }
 }

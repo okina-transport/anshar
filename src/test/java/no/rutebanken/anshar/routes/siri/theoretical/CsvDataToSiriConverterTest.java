@@ -63,6 +63,7 @@ class CsvDataToSiriConverterTest {
         assertThat(mvj.getMonitoredCall().getStopPointRef().getValue()).isEqualTo(data.getMonitoringRef());
         assertThat(mvj.getMonitoredCall().getAimedArrivalTime()).isEqualTo(ZonedDateTime.of(2023, 10, 1, 12, 30, 0, 0, ZONE_ID_EUROPE_PARIS));
         assertThat(mvj.getMonitoredCall().getAimedDepartureTime()).isEqualTo(ZonedDateTime.of(2023, 10, 1, 12, 30, 0, 0, ZONE_ID_EUROPE_PARIS));
+        assertThat(mvj.getMonitoredCall().getDestinationDisplaies()).extracting("value").contains(data.getDestinationName());
     }
 
 

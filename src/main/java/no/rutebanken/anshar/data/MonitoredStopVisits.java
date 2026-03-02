@@ -430,7 +430,6 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
                     String lineName = StopMonitoringUtils.getLineName(monitoredStopVisit).orElse(null);
                     String vehicleJourneyName = StopMonitoringUtils.getVehicleJourneyName(monitoredStopVisit).orElse(null);
 
-
                     String keyCriteria = monitoredStopVisit.getItemIdentifier() != null ? monitoredStopVisit.getItemIdentifier() : monitoredStopVisit.getRecordedAtTime().format(DateTimeFormatter.ISO_DATE);
                     SiriObjectStorageKey key = createKey(datasetId, keyCriteria, monitoredStopVisit.getMonitoringRef().getValue(), vehicleJourneyName, lineName);
 
@@ -506,6 +505,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
                             feedFirstOrLastJourney(datasetId, monitoredStopVisit);
                             feedPublishedLineName(datasetId, monitoredStopVisit);
                             replaceSpecialCharacters(datasetId, monitoredStopVisit);
+                            StopMonitoringUtils.feedDestinationDisplay(monitoredStopVisit);
                             changes.add(key);
                             addedData.add(monitoredStopVisit);
                             currentHazelcastCache.set(key, monitoredStopVisit, expiration, TimeUnit.MILLISECONDS);
@@ -535,7 +535,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
     private void feedPublishedLineName(String datasetId, MonitoredStopVisit monitoredStopVisit) {
         MonitoredVehicleJourneyStructure vehicleJourney = monitoredStopVisit.getMonitoredVehicleJourney();
-        if (vehicleJourney.getPublishedLineNames() != null && vehicleJourney.getPublishedLineNames().size() > 0) {
+        if (CollectionUtils.isNotEmpty(vehicleJourney.getPublishedLineNames())) {
             // published line name already filled. no need to add it
             return;
         }

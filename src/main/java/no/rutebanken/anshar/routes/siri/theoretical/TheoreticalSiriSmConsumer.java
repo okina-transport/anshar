@@ -1,6 +1,5 @@
 package no.rutebanken.anshar.routes.siri.theoretical;
 
-import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
@@ -95,7 +94,7 @@ public class TheoreticalSiriSmConsumer {
                              .get())) {
 
             int nbOfRetry = 0;
-            while (!subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.STOP).isPresent()) {
+            while (subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.STOP).isEmpty()) {
                 log.info("Waiting for idProcessing to be rececovered");
                 Thread.sleep(30000);
                 nbOfRetry++;
