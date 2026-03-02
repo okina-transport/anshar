@@ -26,6 +26,7 @@ import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.kafka.KafkaRouteBuilder;
+import no.rutebanken.anshar.routes.outbound.ConsumerErrorDTO;
 import no.rutebanken.anshar.routes.outbound.OutboundErrorHandler;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute;
@@ -50,10 +51,7 @@ import uk.org.siri.siri21.Siri;
 import javax.ws.rs.core.MediaType;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -125,6 +123,9 @@ public class AdministrationRoute extends RestRouteBuilder {
 
     @Autowired
     private SiriObjectFactory siriObjectFactory;
+
+    @Value("${maximum.outbound.errors.allowed.by.url:2}")
+    int maximumOutboundErrorsAllowed;
 
 
     @Autowired
@@ -219,7 +220,10 @@ public class AdministrationRoute extends RestRouteBuilder {
 
         from("direct:outbound.errormap.count")
                 .process(p -> {
-                    p.getIn().setBody(outboundErrorHandler.getOutboundErrorCount());
+                    Map<String, Object> errorData = new HashMap<>();
+                    errorData.put("limit", maximumOutboundErrorsAllowed);
+                    errorData.put("data", getConsumerErrorCount());
+                    p.getIn().setBody(errorData);
                 })
                 .marshal().json()
                 .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.APPLICATION_JSON))
@@ -685,6 +689,18 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .end()
                 .toD("${header.url}")
                 .routeId("terminate.subcription");
+    }
+
+    private Set<ConsumerErrorDTO> getConsumerErrorCount() {
+
+        if (outboundErrorHandler.getOutboundErrorCount().isEmpty()){
+            return new HashSet<>();
+        }
+
+        return outboundErrorHandler.getOutboundErrorCount().entrySet().stream()
+                .map(entry -> new ConsumerErrorDTO(entry.getKey(), entry.getValue()))
+                .collect(Collectors.toSet());
+
     }
 
 
