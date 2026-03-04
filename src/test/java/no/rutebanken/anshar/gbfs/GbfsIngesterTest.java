@@ -57,7 +57,7 @@ class GbfsIngesterTest {
 
         verify(mapper).map(stationStatus);
         verify(healthManager).dataReceived();
-        verify(facilityMonitoringInbound).ingestFacilities(DATASET_ID, fcss);
+        verify(facilityMonitoringInbound).ingestFacilities(eq(DATASET_ID), eq(fcss), anyLong());
     }
 
 

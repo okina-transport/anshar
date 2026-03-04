@@ -188,7 +188,7 @@ public class FacilityMonitoring extends SiriRepository<FacilityConditionStructur
             InputSubscriptionData isd = new InputSubscriptionData();
             isd.setDataset(datasetId);
             isd.setDataType(SiriDataType.FACILITY_MONITORING);
-            isd.setNbElements(addedData.size());
+            isd.setNbElements(fmList.size());
             sendTrInSubscriptionDataToKafka.asyncRequestBody(sendTrInSubscriptionDataToKafka.getDefaultEndpoint(), isd);
         }
 

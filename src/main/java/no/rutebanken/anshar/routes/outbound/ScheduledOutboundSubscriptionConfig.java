@@ -66,7 +66,7 @@ public class ScheduledOutboundSubscriptionConfig {
 
         @Override
         public void run() {
-            camelRouteManager.postDataToSubscription(null, payload, outboundSubscriptionSetup, false);
+            camelRouteManager.postDataToSubscription(null, payload, outboundSubscriptionSetup, false, null);
         }
 
         public void setPayload(Siri payload) {

@@ -37,7 +37,7 @@ public class VehicleMonitoringInbound {
     @Autowired
     private SubscriptionManager subscriptionManager;
 
-    public boolean ingestVehicleMonitoringFromApi(SiriDataType dataFormat, String dataSetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList) {
+    public boolean ingestVehicleMonitoringFromApi(SiriDataType dataFormat, String dataSetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList, Long inboundTime) {
         logger.debug("Got VM-delivery: Subscription [{}] {}", subscriptionSetupList);
 
         List<VehicleMonitoringDeliveryStructure> vehicleMonitoringDeliveries = incoming.getServiceDelivery().getVehicleMonitoringDeliveries();
@@ -58,7 +58,7 @@ public class VehicleMonitoringInbound {
             );
         }
 
-        serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, dataSetId);
+        serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, dataSetId, inboundTime);
 
         for (SubscriptionSetup subscriptionSetup : subscriptionSetupList) {
             List<VehicleActivityStructure> addedOrUpdatedBySubscription = addedOrUpdated
@@ -70,10 +70,10 @@ public class VehicleMonitoringInbound {
         return !addedOrUpdated.isEmpty();
     }
 
-    public Collection<VehicleActivityStructure> ingestVehicleActivities(String datasetId, List<VehicleActivityStructure> incomingVehicleActivities) {
+    public Collection<VehicleActivityStructure> ingestVehicleActivities(String datasetId, List<VehicleActivityStructure> incomingVehicleActivities, Long inboundTime) {
         Collection<VehicleActivityStructure> result = vehicleActivities.addAll(datasetId, incomingVehicleActivities);
         if (CollectionUtils.isNotEmpty(result)) {
-            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.VEHICLE_MONITORING, new ArrayList<>(result), datasetId);
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.VEHICLE_MONITORING, new ArrayList<>(result), datasetId, inboundTime);
         }
         return result;
     }
@@ -140,7 +140,7 @@ public class VehicleMonitoringInbound {
                 .collect(Collectors.joining(","));
     }
 
-    public boolean ingestVehicleMonitoring(SubscriptionSetup subscriptionSetup, Siri incoming) {
+    public boolean ingestVehicleMonitoring(SubscriptionSetup subscriptionSetup, Siri incoming, Long inboundTime) {
         List<VehicleMonitoringDeliveryStructure> vehicleMonitoringDeliveries = incoming.getServiceDelivery().getVehicleMonitoringDeliveries();
         logger.debug("Got VM-delivery: Subscription [{}] {}", subscriptionSetup, subscriptionSetup.forwardPositionData() ? "- Position only" : "");
 
@@ -165,7 +165,7 @@ public class VehicleMonitoringInbound {
                                             ));
 
                                             // Push updates to subscribers on this codespace
-                                            serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedVehicles, codespace);
+                                            serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedVehicles, codespace, inboundTime);
 
                                             // Add to complete list of added situations
                                             addedOrUpdated.addAll(addedVehicles);
@@ -173,7 +173,7 @@ public class VehicleMonitoringInbound {
                                         }
 
                                     } else {
-                                        addedOrUpdated.addAll(ingestVehicleActivities(subscriptionSetup.getDatasetId(), vm.getVehicleActivities()));
+                                        addedOrUpdated.addAll(ingestVehicleActivities(subscriptionSetup.getDatasetId(), vm.getVehicleActivities(), inboundTime));
                                     }
                                 }
                             }
@@ -181,7 +181,7 @@ public class VehicleMonitoringInbound {
                     }
             );
         }
-        serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
+        serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId(), inboundTime);
 
         subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdated.size());
 

@@ -17,6 +17,7 @@ package no.rutebanken.anshar.metrics;
 
 import com.google.common.collect.Sets;
 import com.hazelcast.replicatedmap.ReplicatedMap;
+import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.ImmutableTag;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Tag;
@@ -36,6 +37,7 @@ import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.CamelContext;
 import org.apache.camel.CamelContextAware;
 import org.apache.camel.Endpoint;
+import org.apache.camel.Exchange;
 import org.apache.camel.component.seda.SedaEndpoint;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -47,6 +49,10 @@ import uk.org.siri.siri21.*;
 import javax.annotation.PreDestroy;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static no.rutebanken.anshar.routes.HttpParameter.INTERNAL_SIRI_DATA_TYPE;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASET_ID_HEADER_NAME;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.INBOUND_TIME_HEADER_NAME;
 
 @Component
 public class PrometheusMetricsService extends PrometheusMeterRegistry implements CamelContextAware {
@@ -90,19 +96,16 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
     private static final String EMPTY_RECORDED_AT_TIME = METRICS_PREFIX + "data.empty.recoreded.at.time";
     private static final String NEW_RECORDED_AFTER_OLD = METRICS_PREFIX + "data.new.recorded.before.old.recorded";
     private static final String NEGATIVE_EXPIRATION = METRICS_PREFIX + "data.negative.expiration";
-    private static final String SUBS_PUSH_WAITING_THREADS = METRICS_PREFIX + "subscription.push.waiting.threads";
-    private static final String SUBS_PUSH_ACTIVE_THREADS = METRICS_PREFIX + "subscription.push.active.threads";
-    private static final String PUSH_UPDATES_WAITING_THREADS = METRICS_PREFIX + "push.updates.waiting.threads";
-    private static final String PUSH_UPDATES_ACTIVE_THREADS = METRICS_PREFIX + "push.updates..active.threads";
     private static final String OUTBOUND_PUSH_TIME = METRICS_PREFIX + "data.outbound.push.time";
     private static final String DELTA_RECORDED_AT_TIME = METRICS_PREFIX + "data.delta.recorded.at.time";
-    private static final String OUTBOUND_PUSH_ERRORS = METRICS_PREFIX + "outbound.push.errors";
     private static final String OUTBOUND_SUBSCRIPTIONS_COUNT = METRICS_PREFIX + "outbound.subscriptions.count";
     private static final String ASYNC_PROCESS_SEDA_CURRENT_QUEUE_SIZE = METRICS_PREFIX + "async.process.seda.current.queue.size";
     private static final String INCOMING_DATA_MONITORING = METRICS_PREFIX + "incoming.data.monitoring";
     private static final String ADAPT_ENSURE_INC_TIME_CANCELLED = METRICS_PREFIX + "data.adapter.ensure.increasing.times.cancelled.stops";
     private static final String ADAPT_EXTRA_JOURNEY_DEST_DISPLAY = METRICS_PREFIX + "data.adapter.extra.journey.dest.display";
     private static final String RECOMPUTE_VEHICLE_JOURNEY_ID_FROM_THEORETICAL = METRICS_PREFIX + "data.recompute.vehicle.journey.id.from.theoretical";
+    private static final String INBOUND_TO_OUTBOUND_TIME_ERRORS = METRICS_PREFIX + "data.inbound.to.outbound.time.errors";
+    private static final String INBOUND_TO_OUTBOUND_TIME = METRICS_PREFIX + "data.inbound.to.outbound.time";
     final Map<String, Integer> nbOfOutboundPushByRequestor = new HashMap<>();
     final Map<String, Long> totalPushTimeByRequestor = new HashMap<>();
     final Map<String, Set<Long>> smDeltaTimesTmp = new ConcurrentHashMap<>();
@@ -118,6 +121,8 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
     @Autowired
     private ServerSubscriptionManager serverSubscriptionManager;
     private CamelContext camelContext;
+    // datasetId -> DistributionSummary
+    private final Map<String, DistributionSummary> inboundToOutboudTimes = new HashMap<>();
 
 
     public PrometheusMetricsService() {
@@ -150,6 +155,34 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
         }
     }
 
+
+    public void recordTotalIngestingTime(Exchange exchange) {
+        String datasetId = exchange.getIn().getHeader(DATASET_ID_HEADER_NAME, String.class);
+        String datatype = exchange.getIn().getHeader(INTERNAL_SIRI_DATA_TYPE, () -> "emptyDatatype", String.class);
+
+
+        if (exchange.getIn().getHeader(INBOUND_TIME_HEADER_NAME) == null) {
+            registerInboundToOutboundTimeError(datatype, datasetId);
+            return;
+        }
+
+        long inboundTime = exchange.getIn().getHeader(INBOUND_TIME_HEADER_NAME, Long.class);
+        long inboundToOutboundTime = System.currentTimeMillis() - inboundTime;
+
+        if (StringUtils.isNotEmpty(datasetId)) {
+            DistributionSummary currentDatasetSummary = null;
+            if (inboundToOutboudTimes.containsKey(datasetId)) {
+                currentDatasetSummary = inboundToOutboudTimes.get(datasetId);
+            } else {
+                currentDatasetSummary = DistributionSummary.builder(INBOUND_TO_OUTBOUND_TIME)
+                        .description("Temps total entre entrée et sortie (ms)")
+                        .tags("datasetId", datasetId)
+                        .register(this);
+                inboundToOutboudTimes.put(datasetId, currentDatasetSummary);
+            }
+            currentDatasetSummary.record(inboundToOutboundTime);
+        }
+    }
 
     public void recordPushTime(String requestorRef, long pushTime) {
 
@@ -188,6 +221,17 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
         counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType.name()));
         counterTags.add(new ImmutableTag(AGENCY_TAG_NAME, datasetId));
         counter(NEGATIVE_EXPIRATION, counterTags).increment(1);
+    }
+
+    public void registerInboundToOutboundTimeError(String dataType, String datasetId) {
+
+        if (StringUtils.isEmpty(datasetId)) {
+            datasetId = "emptyDatasetId";
+        }
+        List<Tag> counterTags = new ArrayList<>();
+        counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType));
+        counterTags.add(new ImmutableTag(DATASET_TAG_NAME, datasetId));
+        counter(INBOUND_TO_OUTBOUND_TIME_ERRORS, counterTags).increment(1);
     }
 
     public void registerAdaptIncreaseTime() {

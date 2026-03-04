@@ -19,39 +19,52 @@ import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.util.CustomStringUtils;
-import no.rutebanken.anshar.routes.mapping.StopTimesService;
+
+import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
+import no.rutebanken.anshar.routes.mapping.VehicleJourney.VehicleJourney;
+import no.rutebanken.anshar.routes.mapping.VehicleJourney.VehicleJourneyCache;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
+import no.rutebanken.anshar.util.MappingUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.data.annotation.Transient;
 import uk.org.siri.siri21.*;
 
+import java.time.LocalDate;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
 
 @Slf4j
 public class UpdateVJIdProcessor extends ValueAdapter implements PostProcessor {
 
+    private static final DateTimeFormatter DF_YYYYMMDD = DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final DateTimeFormatter DF_HHMMSS = DateTimeFormatter.ofPattern("HHmmss");
+
     private final String datasetId;
 
 
-    private transient StopTimesService stopTimesService;
+    private transient VehicleJourneyCache vjCache;
 
     private transient SubscriptionConfig subscriptionConfig;
+
+    private transient LineUpdaterService lineUpdaterService;
 
 
     public UpdateVJIdProcessor(String datasetId) {
         this.datasetId = datasetId;
-        stopTimesService = ApplicationContextHolder.getContext().getBean(StopTimesService.class);
+        vjCache = ApplicationContextHolder.getContext().getBean(VehicleJourneyCache.class);
         subscriptionConfig = ApplicationContextHolder.getContext().getBean(SubscriptionConfig.class);
+        lineUpdaterService = ApplicationContextHolder.getContext().getBean(LineUpdaterService.class);
     }
 
-    public UpdateVJIdProcessor(String datasetId, StopTimesService stopTimesService) {
+    public UpdateVJIdProcessor(String datasetId, VehicleJourneyCache vjCache) {
         this.datasetId = datasetId;
-        this.stopTimesService = stopTimesService;
+        this.vjCache = vjCache;
         subscriptionConfig = ApplicationContextHolder.getContext().getBean(SubscriptionConfig.class);
+        lineUpdaterService = ApplicationContextHolder.getContext().getBean(LineUpdaterService.class);
     }
 
 
@@ -68,12 +81,16 @@ public class UpdateVJIdProcessor extends ValueAdapter implements PostProcessor {
             return;
         }
 
-        if (stopTimesService == null) {
-            stopTimesService = ApplicationContextHolder.getContext().getBean(StopTimesService.class);
+        if (vjCache == null) {
+            vjCache = ApplicationContextHolder.getContext().getBean(VehicleJourneyCache.class);
         }
 
         if (subscriptionConfig == null) {
             subscriptionConfig = ApplicationContextHolder.getContext().getBean(SubscriptionConfig.class);
+        }
+
+        if (lineUpdaterService == null){
+            lineUpdaterService = ApplicationContextHolder.getContext().getBean(LineUpdaterService.class);
         }
 
         for (StopMonitoringDeliveryStructure stopMonitoringDelivery : siri.getServiceDelivery().getStopMonitoringDeliveries()) {
@@ -106,16 +123,25 @@ public class UpdateVJIdProcessor extends ValueAdapter implements PostProcessor {
 
                 String lineId = lineRef.getValue();
                 Optional<IdProcessingParameters> lineIdProcessingParameter = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.LINE);
+                String lineNumber = "";
                 if (lineIdProcessingParameter.isPresent()) {
-                    lineId = lineIdProcessingParameter.get().removeInputPrefixAndSuffix(lineId);
+                    lineId = lineIdProcessingParameter.get().applyTransformationToString(lineId);
+                    lineNumber = lineUpdaterService.getLineNumber(lineId).orElse(null);
                 }
 
+                String cacheKey = MappingUtils.buildIneoVJKey(
+                        LocalDate.now().format(DF_YYYYMMDD),
+                        aimedArrivalTime.format(DF_HHMMSS),
+                        lineNumber,
+                        directionId,
+                        stop,
+                        datasetId);
 
-                Optional<String> vehicleJourneyIdFromTH = stopTimesService.findTripIdByStopAndTime(datasetId, "1-" + lineId, stop, directionId, destinationRef, aimedArrivalTime);
+                Optional<VehicleJourney> vehicleJourneyIdFromTH = vjCache.findVehicleJourney(cacheKey);
                 if (vehicleJourneyIdFromTH.isPresent()) {
                     getMetricsService().registerRecomputeVehicleJourneyIdFromTheoretical(true);
                     FramedVehicleJourneyRefStructure framedVehicleJourneyRef = new FramedVehicleJourneyRefStructure();
-                    framedVehicleJourneyRef.setDatedVehicleJourneyRef(CustomStringUtils.applyChouetteIdTransformation(vehicleJourneyIdFromTH.get()));
+                    framedVehicleJourneyRef.setDatedVehicleJourneyRef(CustomStringUtils.applyChouetteIdTransformation(vehicleJourneyIdFromTH.get().getVehicleJourneyId()));
                     if (vehicleJourney.getFramedVehicleJourneyRef() != null && vehicleJourney.getFramedVehicleJourneyRef().getDataFrameRef() != null) {
                         framedVehicleJourneyRef.setDataFrameRef(vehicleJourney.getFramedVehicleJourneyRef().getDataFrameRef());
                     }
@@ -123,7 +149,7 @@ public class UpdateVJIdProcessor extends ValueAdapter implements PostProcessor {
 
                 } else {
                     getMetricsService().registerRecomputeVehicleJourneyIdFromTheoretical(false);
-                    log.debug("Unable to find vehicleJouney id from theoretical data : datasetId:{} - line:{} - monitoringRef:{} - directionId:{} - destinationRef:{} - aimedArrivalTime:{}", datasetId, "1-" + lineId, stop, directionId, destinationRef, aimedArrivalTime);
+                    log.debug("Unable to find vehicleJouney id from theoretical data : datasetId:{} - lineId:{} - lineNumber:{} - monitoringRef:{} - directionId:{} - destinationRef:{} - aimedArrivalTime:{}", datasetId,  lineId, lineNumber, stop, directionId, destinationRef, aimedArrivalTime);
                 }
             }
         }

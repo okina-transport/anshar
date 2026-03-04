@@ -118,6 +118,8 @@ public class AnsharConfiguration {
     private long siriGenerationFromTheoreticalDataIntervalMs;
     @Value("${anshar.generate-siri-from-th.cron:0+0+4+*+*+?}")
     private String siriGenerationFromTheoreticalDataCron;
+    @Value("${anshar.vj.mapping.cache.cron:0+0+2+*+*+?}")
+    private String vjMappingCacheCron;
     @Autowired
     @Qualifier("getLockMap")
     private IMap<String, Instant> lockMap;

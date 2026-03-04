@@ -67,7 +67,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.time.temporal.ChronoUnit.MILLIS;
-import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASET_ID_HEADER_NAME;
+import static no.rutebanken.anshar.routes.kafka.KafkaHeaders.CONSUMER_ADDRESS_HEADER;
+import static no.rutebanken.anshar.routes.kafka.KafkaHeaders.REQUESTOR_REFS_HEADER;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
 
 
 @SuppressWarnings("unchecked")
@@ -89,6 +91,8 @@ public class ServerSubscriptionManager {
     protected ProducerTemplate siriSmTopicProducer;
     @Produce(KafkaRouteBuilder.SEND_SM_OUT_TO_KAFKA)
     protected ProducerTemplate sendSMToKafka;
+    @Produce(KafkaRouteBuilder.SEND_GM_OUT_TO_KAFKA)
+    protected ProducerTemplate sendGMToKafka;
     @Produce(KafkaRouteBuilder.SEND_SX_OUT_TO_KAFKA)
     protected ProducerTemplate sendSXToKafka;
     @Produce("direct:send.sx.to.external.consumer")
@@ -521,6 +525,7 @@ public class ServerSubscriptionManager {
             hasError = true;
             errorText = "This consumer address has been banned for repeated POST errors:" + subscription.getAddress();
         }
+
         if (SiriDataType.STOP_MONITORING.equals(subscription.getSubscriptionType()) && !hasAStopFilter(subscription)) {
             hasError = true;
             errorText = "Unkwnown monitoringRef";
@@ -616,7 +621,7 @@ public class ServerSubscriptionManager {
                 delivery = convertIdsGeneralMessage(delivery, datasetId, subscription.getOutboundIdMappingPolicy());
             }
             logger.info("Sending initial delivery to {}, dataset:{}", subscription.getSubscriptionId(), datasetId);
-            camelRouteManager.pushSiriData(datasetId, delivery, subscription, false);
+            camelRouteManager.pushSiriData(datasetId, delivery, subscription, false, null);
         } else {
             logger.info("No initial delivery found for {}, dataset:{}", subscription, datasetId);
         }
@@ -1085,7 +1090,7 @@ public class ServerSubscriptionManager {
                 Siri terminateSubscriptionResponse = siriObjectFactory.createTerminateSubscriptionResponse(subscriptionRef);
                 logger.info("Sending TerminateSubscriptionResponse to {}", subscriptionRequest.getAddress());
 
-                camelRouteManager.pushSiriData(null, terminateSubscriptionResponse, subscriptionRequest, true);
+                camelRouteManager.pushSiriData(null, terminateSubscriptionResponse, subscriptionRequest, true, null);
             } else {
                 logger.info("Subscription terminated, but no response was sent");
             }
@@ -1131,7 +1136,12 @@ public class ServerSubscriptionManager {
         return siriObjectFactory.createCheckStatusResponse(checkStatusRequest);
     }
 
+
     public void pushUpdatesAsync(SiriDataType datatype, List updates, String datasetId) {
+        pushUpdatesAsync(datatype, updates, datasetId, null);
+    }
+
+    public void pushUpdatesAsync(SiriDataType datatype, List updates, String datasetId, Long inboundTime) {
         final String breadcrumbId = MDC.get("camel.breadcrumbId");
 
         if (outboundSenderExecutorService == null) {
@@ -1141,22 +1151,22 @@ public class ServerSubscriptionManager {
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         switch (datatype) {
             case ESTIMATED_TIMETABLE:
-                outboundSenderExecutorService.execute(() -> pushUpdatedEstimatedTimetables(updates, datasetId, breadcrumbId));
+                outboundSenderExecutorService.execute(() -> pushUpdatedEstimatedTimetables(updates, datasetId, breadcrumbId, inboundTime));
                 break;
             case SITUATION_EXCHANGE:
-                outboundSenderExecutorService.execute(() -> pushUpdatedSituations(updates, datasetId, breadcrumbId));
+                outboundSenderExecutorService.execute(() -> pushUpdatedSituations(updates, datasetId, breadcrumbId, inboundTime));
                 break;
             case VEHICLE_MONITORING:
-                outboundSenderExecutorService.execute(() -> pushUpdatedVehicleActivities(updates, datasetId, breadcrumbId));
+                outboundSenderExecutorService.execute(() -> pushUpdatedVehicleActivities(updates, datasetId, breadcrumbId, inboundTime));
                 break;
             case STOP_MONITORING:
-                outboundSenderExecutorService.execute(() -> pushUpdatedStopMonitoring(updates, datasetId, breadcrumbId));
+                outboundSenderExecutorService.execute(() -> pushUpdatedStopMonitoring(updates, datasetId, breadcrumbId, inboundTime));
                 break;
             case GENERAL_MESSAGE:
-                outboundSenderExecutorService.execute(() -> pushUpdatedGeneralMessages(updates, datasetId, breadcrumbId));
+                outboundSenderExecutorService.execute(() -> pushUpdatedGeneralMessages(updates, datasetId, breadcrumbId, inboundTime));
                 break;
             case FACILITY_MONITORING:
-                outboundSenderExecutorService.execute(() -> pushUpdatedFacilityMonitoring(updates, datasetId, breadcrumbId));
+                outboundSenderExecutorService.execute(() -> pushUpdatedFacilityMonitoring(updates, datasetId, breadcrumbId, inboundTime));
                 break;
             default:
                 // Ignore
@@ -1164,7 +1174,7 @@ public class ServerSubscriptionManager {
         }
     }
 
-    private void pushUpdatedVehicleActivities(List<VehicleActivityStructure> addedOrUpdated, String datasetId, String breadcrumbId) {
+    private void pushUpdatedVehicleActivities(List<VehicleActivityStructure> addedOrUpdated, String datasetId, String breadcrumbId, Long inboundTime) {
         MDC.put("camel.breadcrumbId", breadcrumbId);
 
         if (addedOrUpdated == null || addedOrUpdated.isEmpty()) {
@@ -1198,7 +1208,7 @@ public class ServerSubscriptionManager {
             if (!delivery.getServiceDelivery().getVehicleMonitoringDeliveries().isEmpty()) {
                 delivery.getServiceDelivery().getVehicleMonitoringDeliveries().forEach(vmd -> vmd.setSubscriptionRef(SiriObjectFactory.createSubscriptionIdentifier(recipient.getSubscriptionId())));
             }
-            camelRouteManager.pushSiriData(datasetId, delivery, recipient, logFullContents);
+            camelRouteManager.pushSiriData(datasetId, delivery, recipient, logFullContents, inboundTime);
             logFullContents = false;
         }
 
@@ -1207,7 +1217,7 @@ public class ServerSubscriptionManager {
 
 
     private void pushUpdatedSituations(
-            List<PtSituationElement> addedOrUpdated, String datasetId, String breadcrumbId
+            List<PtSituationElement> addedOrUpdated, String datasetId, String breadcrumbId, Long inboundTime
     ) {
         MDC.put("camel.breadcrumbId", breadcrumbId);
 
@@ -1255,7 +1265,7 @@ public class ServerSubscriptionManager {
                 delivery.getServiceDelivery().getSituationExchangeDeliveries().forEach(sed -> sed.setSubscriptionRef(SiriObjectFactory.createSubscriptionIdentifier(recipient.getSubscriptionId())));
             }
             Siri modifiedIdDelivery = convertIdsSituationExchange(delivery, datasetId, recipient.getOutboundIdMappingPolicy());
-            camelRouteManager.pushSiriData(datasetId, modifiedIdDelivery, recipient, logFullContents);
+            camelRouteManager.pushSiriData(datasetId, modifiedIdDelivery, recipient, logFullContents, inboundTime);
             logFullContents = false;
         }
 
@@ -1323,7 +1333,7 @@ public class ServerSubscriptionManager {
         );
     }
 
-    private <T extends AbstractItemStructure> void pushUpdatedGeneralMessages(List<T> addedOrUpdated, String datasetId, String breadcrumbId) {
+    private <T extends AbstractItemStructure> void pushUpdatedGeneralMessages(List<T> addedOrUpdated, String datasetId, String breadcrumbId, Long inboundTime) {
         MDC.put("camel.breadcrumbId", breadcrumbId);
 
         if (addedOrUpdated == null || addedOrUpdated.isEmpty()) {
@@ -1350,13 +1360,36 @@ public class ServerSubscriptionManager {
                 .collect(Collectors.toList());
 
         boolean logFullContents = true;
+
+
+        if (kafkaConfig.isSendSiriGmOutToKafka()) {
+
+            if (CollectionUtils.isNotEmpty(recipients)) {
+                List<String> requestorsRefs = recipients.stream()
+                        .map(OutboundSubscriptionSetup::getRequestorRef)
+                        .toList();
+
+                List<String> urls = recipients.stream()
+                        .map(OutboundSubscriptionSetup::getAddress)
+                        .toList();
+
+                Map<String, Object> headers = new HashMap<>();
+                headers.put(DATASET_ID_HEADER_NAME, datasetId);
+                headers.put(REQUESTOR_REFS_HEADER, requestorsRefs.stream().collect(Collectors.joining(",")));
+                headers.put(CONSUMER_ADDRESS_HEADER, urls.stream().collect(Collectors.joining(",")));
+
+                sendGMToKafka.asyncRequestBodyAndHeaders(sendGMToKafka.getDefaultEndpoint(), delivery, headers);
+            }
+
+        }
+
         for (OutboundSubscriptionSetup recipient : recipients) {
             if (!delivery.getServiceDelivery().getGeneralMessageDeliveries().isEmpty()) {
                 delivery.getServiceDelivery().getGeneralMessageDeliveries().forEach(gmd -> gmd.setSubscriptionRef(SiriObjectFactory.createSubscriptionIdentifier(recipient.getSubscriptionId())));
             }
             Siri modifiedIdDelivery = convertIdsGeneralMessage(delivery, datasetId, recipient.getOutboundIdMappingPolicy());
             Siri filtedDelivery = removeAlreadySentCancellations(recipient, modifiedIdDelivery);
-            camelRouteManager.pushSiriData(datasetId, filtedDelivery, recipient, logFullContents);
+            camelRouteManager.pushSiriData(datasetId, filtedDelivery, recipient, logFullContents, inboundTime);
             logFullContents = false;
         }
 
@@ -1404,7 +1437,7 @@ public class ServerSubscriptionManager {
     }
 
 
-    private void pushUpdatedFacilityMonitoring(List updates, String datasetId, String breadcrumbId) {
+    private void pushUpdatedFacilityMonitoring(List updates, String datasetId, String breadcrumbId, Long inboundTime) {
         MDC.put("camel.breadcrumbId", breadcrumbId);
 
         if (updates == null || updates.isEmpty()) {
@@ -1434,14 +1467,14 @@ public class ServerSubscriptionManager {
             if (!delivery.getServiceDelivery().getFacilityMonitoringDeliveries().isEmpty()) {
                 delivery.getServiceDelivery().getFacilityMonitoringDeliveries().forEach(fmd -> fmd.setSubscriptionRef(SiriObjectFactory.createSubscriptionIdentifier(recipient.getSubscriptionId())));
             }
-            camelRouteManager.pushSiriData(datasetId, delivery, recipient, logFullContents);
+            camelRouteManager.pushSiriData(datasetId, delivery, recipient, logFullContents, inboundTime);
             logFullContents = false;
         }
 
         MDC.remove("camel.breadcrumbId");
     }
 
-    private void pushUpdatedEstimatedTimetables(List<EstimatedVehicleJourney> addedOrUpdated, String datasetId, String breadcrumbId) {
+    private void pushUpdatedEstimatedTimetables(List<EstimatedVehicleJourney> addedOrUpdated, String datasetId, String breadcrumbId, Long inboundTime) {
 
         if (addedOrUpdated == null || addedOrUpdated.isEmpty()) {
             return;
@@ -1479,15 +1512,15 @@ public class ServerSubscriptionManager {
             if (!delivery.getServiceDelivery().getEstimatedTimetableDeliveries().isEmpty()) {
                 delivery.getServiceDelivery().getEstimatedTimetableDeliveries().forEach(etd -> etd.setSubscriptionRef(SiriObjectFactory.createSubscriptionIdentifier(recipient.getSubscriptionId())));
             }
-            camelRouteManager.pushSiriData(datasetId, delivery, recipient, logFullContents);
+            camelRouteManager.pushSiriData(datasetId, delivery, recipient, logFullContents, inboundTime);
             logFullContents = false;
         }
         MDC.remove("camel.breadcrumbId");
     }
 
 
-    private <T extends AbstractItemStructure> void pushUpdatedStopMonitoring(List<T> addedOrUpdated, String datasetId, String breadcrumbId
-    ) {
+    private <T extends AbstractItemStructure> void pushUpdatedStopMonitoring(List<T> addedOrUpdated, String datasetId, String breadcrumbId,
+                                                                             Long inboundTime) {
         MDC.put("camel.breadcrumbId", breadcrumbId);
 
         if (addedOrUpdated == null || addedOrUpdated.isEmpty()) {
@@ -1495,6 +1528,8 @@ public class ServerSubscriptionManager {
         }
 
         Siri delivery = siriObjectFactory.createSMServiceDelivery(addedOrUpdated, null, null);
+        Set<String> monitoredRefs = SiriHelper.extractMonitoringRefs(addedOrUpdated);
+        List<OutboundSubscriptionSetup> impactedOutboundSubscriptions = getSubscriptionsRelatedToMonitoringRefs(datasetId, monitoredRefs);
 
 
         if (pushToTopicEnabled) {
@@ -1502,17 +1537,34 @@ public class ServerSubscriptionManager {
         }
 
         if (kafkaConfig.isSendSiriSmOutToKafka()) {
-            sendSMToKafka.asyncRequestBodyAndHeader(sendSMToKafka.getDefaultEndpoint(), delivery, DATASET_ID_HEADER_NAME, datasetId);
+            List<String> requestorsRefs = new ArrayList<>();
+            List<String> urls = new ArrayList<>();
+
+            if (CollectionUtils.isNotEmpty(impactedOutboundSubscriptions)) {
+                requestorsRefs = impactedOutboundSubscriptions.stream()
+                        .map(OutboundSubscriptionSetup::getRequestorRef)
+                        .toList();
+
+                urls = impactedOutboundSubscriptions.stream()
+                        .map(OutboundSubscriptionSetup::getAddress)
+                        .toList();
+            }
+
+            Map<String, Object> headers = new HashMap<>();
+            headers.put(DATASET_ID_HEADER_NAME, datasetId);
+            headers.put(REQUESTOR_REFS_HEADER, requestorsRefs.stream().collect(Collectors.joining(",")));
+            headers.put(CONSUMER_ADDRESS_HEADER, urls.stream().collect(Collectors.joining(",")));
+
+
+            sendSMToKafka.asyncRequestBodyAndHeaders(sendSMToKafka.getDefaultEndpoint(), delivery, headers);
         }
 
-        Set<String> monitoredRefs = SiriHelper.extractMonitoringRefs(addedOrUpdated);
-        List<OutboundSubscriptionSetup> impactedOutboundSubscriptions = getSubscriptionsRelatedToMonitoringRefs(datasetId, monitoredRefs);
 
         impactedOutboundSubscriptions.forEach(subscription -> {
             if (!delivery.getServiceDelivery().getStopMonitoringDeliveries().isEmpty()) {
                 delivery.getServiceDelivery().getStopMonitoringDeliveries().forEach(smd -> smd.setSubscriptionRef(SiriObjectFactory.createSubscriptionIdentifier(subscription.getSubscriptionId())));
             }
-            camelRouteManager.pushSiriData(datasetId, delivery, subscription, true);
+            camelRouteManager.pushSiriData(datasetId, delivery, subscription, true, inboundTime);
         });
         MDC.remove("camel.breadcrumbId");
     }

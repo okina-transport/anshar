@@ -42,6 +42,7 @@ public class EstimatedTimetableIngester extends RestRouteBuilder {
 
     public void processIncomingETFromGTFSRT(Exchange e) {
         InputStream xml = e.getIn().getBody(InputStream.class);
+        Long inboundTime = e.getIn().getHeader(INBOUND_TIME_HEADER_NAME, Long.class);
         try {
             Siri siri = SiriValueTransformer.parseXml(xml);
             String datasetId = e.getIn().getHeader(DATASET_ID_HEADER_NAME, String.class);
@@ -56,7 +57,7 @@ public class EstimatedTimetableIngester extends RestRouteBuilder {
             healthManager.dataReceived();
 
             List<EstimatedVehicleJourney> estimatedVehicleJourneys = siri.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies();
-            Collection<EstimatedVehicleJourney> ingestedEstimatedTimetables = estimatedTimetableInbound.ingestEstimatedTimeTables(datasetId, estimatedVehicleJourneys);
+            Collection<EstimatedVehicleJourney> ingestedEstimatedTimetables = estimatedTimetableInbound.ingestEstimatedTimeTables(datasetId, estimatedVehicleJourneys, inboundTime);
 
             for (EstimatedVehicleJourney estimatedVehicleJourney : ingestedEstimatedTimetables) {
                 subscriptionManager.touchSubscription(GTFSRT_ET_PREFIX + estimatedVehicleJourney.getDatedVehicleJourneyRef().getValue(), false);

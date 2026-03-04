@@ -22,6 +22,7 @@ import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.data.util.CustomSiriXml;
+import no.rutebanken.anshar.metrics.InboundTimeProcessor;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.ServiceNotSupportedException;
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
@@ -240,6 +241,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .choice()
                 .when(e -> subscriptionExistsAndIsActive(e))
                     .convertBodyTo(String.class)
+                    .process(InboundTimeProcessor::setInboundTime)
                     .process(p -> {
                         String msg = p.getIn().getBody(String.class);
                         String[] msgSplited = msg.split("Envelope");

@@ -10,6 +10,7 @@ import no.rutebanken.anshar.gtfsrt.ingesters.EstimatedTimetableIngester;
 import no.rutebanken.anshar.gtfsrt.ingesters.SituationExchangeIngester;
 import no.rutebanken.anshar.gtfsrt.ingesters.StopMonitoringIngester;
 import no.rutebanken.anshar.gtfsrt.ingesters.VehicleMonitoringIngester;
+import no.rutebanken.anshar.metrics.InboundTimeProcessor;
 import no.rutebanken.anshar.routes.CamelRouteNames;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.admin.AdminRouteHelper;
@@ -144,6 +145,7 @@ public class MessagingRoute extends RestRouteBuilder {
                 .routeId("gtfsrt.et.queue")
                 .threads(100)
                 .maxPoolSize(100)
+                .process(InboundTimeProcessor::setInboundTime)
                 .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
@@ -160,6 +162,7 @@ public class MessagingRoute extends RestRouteBuilder {
                 .routeId("gtfsrt.sm.queue")
                 .threads(100)
                 .maxPoolSize(100)
+                .process(InboundTimeProcessor::setInboundTime)
                 .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
@@ -175,6 +178,7 @@ public class MessagingRoute extends RestRouteBuilder {
         from(messageQueueCamelRoutePrefix + GTFSRT_SX_QUEUE)
                 .routeId("gtfsrt.sx.queue")
                 .threads(2)
+                .process(InboundTimeProcessor::setInboundTime)
                 .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
@@ -190,6 +194,7 @@ public class MessagingRoute extends RestRouteBuilder {
         from(messageQueueCamelRoutePrefix + GTFSRT_VM_QUEUE )
                 .routeId("gtfsrt.vm.queue")
                 .threads(100)
+                .process(InboundTimeProcessor::setInboundTime)
                 .maxPoolSize(100)
                 .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
@@ -207,6 +212,7 @@ public class MessagingRoute extends RestRouteBuilder {
                 .routeId("external.siri.sm.queue")
                 .threads(200)
                 .maxPoolSize(200)
+                .process(InboundTimeProcessor::setInboundTime)
                 .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
@@ -220,6 +226,7 @@ public class MessagingRoute extends RestRouteBuilder {
 
         from(externalSiriETQueue)
                 .routeId("external.siri.et.queue")
+                .process(InboundTimeProcessor::setInboundTime)
                 .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
@@ -233,6 +240,7 @@ public class MessagingRoute extends RestRouteBuilder {
 
         from(externalSiriSXQueue)
                 .routeId("external.siri.sx.queue")
+                .process(InboundTimeProcessor::setInboundTime)
                 .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
@@ -246,6 +254,7 @@ public class MessagingRoute extends RestRouteBuilder {
 
         from(externalSiriVMQueue)
                 .routeId("external.siri.vm.queue")
+                .process(InboundTimeProcessor::setInboundTime)
                 .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);
                     e.getIn().setHeader(DATASET_ID_HEADER_NAME, datasetId);
@@ -300,7 +309,7 @@ public class MessagingRoute extends RestRouteBuilder {
                             .end()
                             .end()
                             .end()
-                            .removeHeaders("*", "subscriptionId", "breadcrumbId", "target_topic")
+                            .removeHeaders("*", "subscriptionId", "breadcrumbId", "target_topic", INBOUND_TIME_HEADER_NAME)
                             .to("direct:compress.jaxb")
                             .toD("${header.target_topic}?deliveryMode=1")
                 .end()
@@ -561,6 +570,9 @@ public class MessagingRoute extends RestRouteBuilder {
                     incomingSiriParameters.setMaxSize(-1);
                     incomingSiriParameters.setClientTrackingName(clientTrackingName);
                     incomingSiriParameters.setGmSIVSicAQuay(isGmSIVSicAQuay);
+
+                    Long inboundTime = p.getIn().getHeader(INBOUND_TIME_HEADER_NAME, Long.class);
+                    incomingSiriParameters.setInboundTime(inboundTime);
 
                     processorTT.mark("preparation");
 

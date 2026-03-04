@@ -1,13 +1,18 @@
 package no.rutebanken.anshar.util;
 
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.input.BOMInputStream;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
+@Slf4j
 public class CSVUtils {
     /**
      * Read a csv file and builds a collection of records
@@ -89,5 +94,24 @@ public class CSVUtils {
         return nbOfSemiColon > nbOfComma ? ";" : ",";
 
 
+    }
+
+    public static List<CSVRecord> parseCsv(File csvFileFullpath, final Class<? extends Enum<?>> headerEnum,
+                                           boolean skipHeaderRecord) throws IOException {
+        log.info("Parse CSV from {}", csvFileFullpath.getAbsolutePath());
+        try (Reader csvFileReader = new FileReader(csvFileFullpath)) {
+            CSVParser csvParser = CSVFormat.RFC4180.builder()
+                    .setHeader(headerEnum)
+                    .setSkipHeaderRecord(skipHeaderRecord)
+                    .get()
+                    .parse(csvFileReader);
+            List<CSVRecord> records = csvParser.getRecords();
+            if (CollectionUtils.isEmpty(records)) {
+                log.warn("No CSV records in file {}", csvFileFullpath.getAbsolutePath());
+            } else {
+                log.info("Parsed {} CSV records in file {}", records.size(), csvFileFullpath.getAbsolutePath());
+            }
+            return records;
+        }
     }
 }

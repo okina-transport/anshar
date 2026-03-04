@@ -59,15 +59,20 @@ public class FacilityMonitoringInbound {
         return result;
     }
 
+
     public Collection<FacilityConditionStructure> ingestFacilities(String datasetId, List<FacilityConditionStructure> incomingFacilities) {
+        return ingestFacilities(datasetId, incomingFacilities, null);
+    }
+
+    public Collection<FacilityConditionStructure> ingestFacilities(String datasetId, List<FacilityConditionStructure> incomingFacilities, Long inboundTime) {
         Collection<FacilityConditionStructure> result = facilityMonitoring.addAll(datasetId, incomingFacilities);
         if (CollectionUtils.isNotEmpty(result)) {
-            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.FACILITY_MONITORING, new ArrayList<>(result), datasetId);
+            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.FACILITY_MONITORING, new ArrayList<>(result), datasetId, inboundTime);
         }
         return result;
     }
 
-    public boolean ingestFacility(SubscriptionSetup subscriptionSetup, Siri incoming) {
+    public boolean ingestFacility(SubscriptionSetup subscriptionSetup, Siri incoming, Long inboundTime) {
         List<FacilityMonitoringDeliveryStructure> facilityMonitoringStructures = incoming.getServiceDelivery().getFacilityMonitoringDeliveries();
         logger.debug("Got FM-delivery: Subscription [{}] ", subscriptionSetup);
 
@@ -84,32 +89,32 @@ public class FacilityMonitoringInbound {
                             // List containing added situations for current codespace
                             List<FacilityConditionStructure> addedFacilities = new ArrayList();
 
-                            Collection<FacilityConditionStructure> ingested = ingestFacilities(codespace, situationsByCodespace.get(codespace));
+                            Collection<FacilityConditionStructure> ingested = ingestFacilities(codespace, situationsByCodespace.get(codespace), inboundTime);
                             addedFacilities.addAll(ingested);
 
                             // Push updates to subscribers on this codespace
-                            serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedFacilities, codespace);
+                            serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedFacilities, codespace, inboundTime);
 
                             // Add to complete list of added situations
                             addedOrUpdated.addAll(addedFacilities);
                         }
                     } else {
-                        Collection<FacilityConditionStructure> ingested = ingestFacilities(subscriptionSetup.getDatasetId(), facilityMonitoringDeliveryStructure.getFacilityConditions());
+                        Collection<FacilityConditionStructure> ingested = ingestFacilities(subscriptionSetup.getDatasetId(), facilityMonitoringDeliveryStructure.getFacilityConditions(), inboundTime);
                         addedOrUpdated.addAll(ingested);
-                        serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
+                        serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId(), inboundTime);
                     }
                 }
             }
         }
 
-        serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId());
+        serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId(), inboundTime);
         subscriptionManager.incrementObjectCounter(subscriptionSetup, addedOrUpdated.size());
         logger.debug("Active FM-elements: {}, current delivery: {}, {}", facilityMonitoring.getSize(), addedOrUpdated.size(), subscriptionSetup);
 
         return !addedOrUpdated.isEmpty();
     }
 
-    public boolean ingestFacilityFromApi(SiriDataType dataFormat, String datasetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList) {
+    public boolean ingestFacilityFromApi(SiriDataType dataFormat, String datasetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList, Long inboundTime) {
         boolean deliveryContainsData;
         List<FacilityMonitoringDeliveryStructure> facilityMonitoringDeliveries = incoming.getServiceDelivery().getFacilityMonitoringDeliveries();
         logger.info("Got FM-delivery: Subscription [{}]", subscriptionSetupList);
@@ -130,7 +135,7 @@ public class FacilityMonitoringInbound {
             );
         }
 
-        serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, datasetId);
+        serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, datasetId, inboundTime);
 
         deliveryContainsData = !addedOrUpdated.isEmpty();
 

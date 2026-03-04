@@ -81,22 +81,23 @@ public class DiscoverySubscriptionsRouteBuilder extends BaseRouteBuilder {
                 })
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat(customNamespacePrefixMapper))
                 .choice().when(header(DISCOVERY_SUBSCRIPTION_SOAP_TRANSFORMATION).isEqualTo(true))
-                    .to("xslt-saxon:xsl/siri_raw_soap.xsl") // Convert SIRI raw request to SOAP version
+                .to("xslt-saxon:xsl/siri_raw_soap.xsl") // Convert SIRI raw request to SOAP version
                 .end()
                 .setHeader("Content-type", constant("text/xml"))
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
                 .end();
+
 
         from(SEND_DISCOVERY_REQUEST_ROUTE)
                 .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
                 .to(SEND_DISCOVERY_REQUEST_PREPROCESS_ROUTE)
                 .toD("${header.endpointUrl}")
                 .choice().when(simple("${in.body} != null"))
-                    .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
-                    .choice()
-                        .when(header(DISCOVERY_SUBSCRIPTION_SOAP_TRANSFORMATION).isEqualTo(true))
-                        .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Extract SOAP version and convert to raw SIRI
-                    .end()
+                .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
+                .choice()
+                .when(header(DISCOVERY_SUBSCRIPTION_SOAP_TRANSFORMATION).isEqualTo(true))
+                .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Extract SOAP version and convert to raw SIRI
+                .end()
                 .bean(DiscoverySubscriptionCreator.class, "createSubscriptionsFromProviderResponse")
                 .end();
     }
@@ -104,10 +105,10 @@ public class DiscoverySubscriptionsRouteBuilder extends BaseRouteBuilder {
 
     public static Map<String, Object> createDiscoveryHeaders(DiscoverySubscription discoverySubscription) {
         Map<String, Object> headers = new HashMap<>();
+        headers.put(ENDPOINT_URL_HEADER, discoverySubscription.getUrl());
         if (discoverySubscription.getServiceType() == SubscriptionSetup.ServiceType.SOAP) {
             headers.put(DISCOVERY_SUBSCRIPTION_SOAP_TRANSFORMATION, true);
             headers.put(SOAP_ACTION_HEADER, convertDataTypeToSoapAction(discoverySubscription.getDiscoveryType()));
-            headers.put(ENDPOINT_URL_HEADER, discoverySubscription.getUrl());
         } else {
             headers.put(DISCOVERY_SUBSCRIPTION_SOAP_TRANSFORMATION, false);
         }

@@ -1,8 +1,10 @@
 package no.rutebanken.anshar.mapping;
 
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
-import no.rutebanken.anshar.routes.mapping.StopTimesService;
+import no.rutebanken.anshar.routes.mapping.VehicleJourney.VehicleJourney;
+import no.rutebanken.anshar.routes.mapping.VehicleJourney.VehicleJourneyCache;
 import no.rutebanken.anshar.routes.siri.processor.UpdateVJIdProcessor;
+import no.rutebanken.anshar.util.MappingUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -11,6 +13,7 @@ import uk.org.siri.siri21.*;
 
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -19,8 +22,11 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class RecomputeVehicleJourneyIdFromTheoretical extends SpringBootBaseTest {
 
+    private static final DateTimeFormatter DF_YYYYMMDD = DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final DateTimeFormatter DF_HHMMSS = DateTimeFormatter.ofPattern("HHmmss");
+
     @Mock
-    private StopTimesService stopTimesService;
+    private VehicleJourneyCache vjCache;
 
     private static final String DATASET_ID = "DAT1";
     private static final String LINE_ID = "LINE1";
@@ -33,9 +39,13 @@ public class RecomputeVehicleJourneyIdFromTheoretical extends SpringBootBaseTest
     @Test
     public void test_vjid_replacement_by_theoretical() {
 
-        ZonedDateTime now = ZonedDateTime.of(2052, 01, 01, 12, 00, 00, 00, ZoneId.systemDefault());
-        when(stopTimesService.findTripIdByStopAndTime(DATASET_ID, LINE_ID, STOP_ID, DIRECTION_ID, DESTINATION_ID, now)).thenReturn(Optional.of(EXPECTED_VJ_ID_FROM_TH));
-        UpdateVJIdProcessor updateVjProc = new UpdateVJIdProcessor(DATASET_ID, stopTimesService);
+        ZonedDateTime now = ZonedDateTime.now();
+        String key = MappingUtils.buildIneoVJKey(now.format(DF_YYYYMMDD), now.format(DF_HHMMSS),"1-"+ LINE_ID, DIRECTION_ID, STOP_ID, DATASET_ID);
+
+        VehicleJourney expectedVJ = new VehicleJourney(EXPECTED_VJ_ID_FROM_TH, "","",1);
+
+        when(vjCache.findVehicleJourney(key)).thenReturn(Optional.of(expectedVJ));
+        UpdateVJIdProcessor updateVjProc = new UpdateVJIdProcessor(DATASET_ID, vjCache);
 
 
         // siri has been generated with wrong VJ id
@@ -51,9 +61,11 @@ public class RecomputeVehicleJourneyIdFromTheoretical extends SpringBootBaseTest
     @Test
     public void test_vjid_not_replaced_because_unknown() {
 
-        ZonedDateTime now = ZonedDateTime.of(2052, 01, 01, 12, 00, 00, 00, ZoneId.systemDefault());
-        when(stopTimesService.findTripIdByStopAndTime(DATASET_ID, LINE_ID, STOP_ID, DIRECTION_ID, DESTINATION_ID, now.plusMinutes(10))).thenReturn(Optional.empty());
-        UpdateVJIdProcessor updateVjProc = new UpdateVJIdProcessor(DATASET_ID, stopTimesService);
+        ZonedDateTime now = ZonedDateTime.now();
+        String key = MappingUtils.buildIneoVJKey(now.plusMinutes(10).format(DF_YYYYMMDD), now.plusMinutes(10).format(DF_HHMMSS),"1-"+ LINE_ID, DIRECTION_ID, STOP_ID, DATASET_ID);
+
+        when(vjCache.findVehicleJourney(key)).thenReturn(Optional.empty());
+        UpdateVJIdProcessor updateVjProc = new UpdateVJIdProcessor(DATASET_ID, vjCache);
 
         // siri has been generated with wrong VJ id
         Siri siri = generateSiriWithVJ(now.plusMinutes(10));

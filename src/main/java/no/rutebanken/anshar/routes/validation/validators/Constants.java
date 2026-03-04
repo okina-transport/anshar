@@ -48,6 +48,7 @@ public class Constants {
     public static final String MONITORED_CALL_STRUCTURE = MONITORED_VEHICLE_JOURNEY + "/MonitoredCall";
 
     public static final String DATASET_ID_HEADER_NAME = "datasetId";
+    public static final String INBOUND_TIME_HEADER_NAME = "inboundTime";
 
     public static final String ORIGINAL_BODY_HEADER = "originalBody";
 

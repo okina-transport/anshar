@@ -42,6 +42,7 @@ public class VehicleMonitoringIngester extends RestRouteBuilder {
 
     public void processIncomingVMFromGTFSRT(Exchange e) {
         InputStream xml = e.getIn().getBody(InputStream.class);
+        Long inboundTime = e.getIn().getHeader(INBOUND_TIME_HEADER_NAME, Long.class);
         try {
             Siri siri = SiriValueTransformer.parseXml(xml);
             String datasetId = e.getIn().getHeader(DATASET_ID_HEADER_NAME, String.class);
@@ -56,7 +57,7 @@ public class VehicleMonitoringIngester extends RestRouteBuilder {
             healthManager.dataReceived();
 
             List<VehicleActivityStructure> vehicleActivities = siri.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities();
-            Collection<VehicleActivityStructure> ingestedVehicleJourneys = vehicleMonitoringInbound.ingestVehicleActivities(datasetId, vehicleActivities);
+            Collection<VehicleActivityStructure> ingestedVehicleJourneys = vehicleMonitoringInbound.ingestVehicleActivities(datasetId, vehicleActivities, inboundTime);
             for (VehicleActivityStructure vehicleActivity : ingestedVehicleJourneys) {
                 subscriptionManager.touchSubscription(GTFSRT_VM_PREFIX + vehicleActivity.getMonitoredVehicleJourney().getLineRef().getValue(), false);
             }

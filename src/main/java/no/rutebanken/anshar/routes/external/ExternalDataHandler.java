@@ -24,8 +24,7 @@ import javax.xml.stream.XMLStreamException;
 import java.io.InputStream;
 import java.util.*;
 
-import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASET_ID_HEADER_NAME;
-import static no.rutebanken.anshar.routes.validation.validators.Constants.URL_HEADER_NAME;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
 
 @Service
 public class ExternalDataHandler {
@@ -58,8 +57,8 @@ public class ExternalDataHandler {
 
     public void processIncomingSiriSM(Exchange e) {
         InputStream xml = e.getIn().getBody(InputStream.class);
+        Long inboundTime = e.getIn().getHeader(INBOUND_TIME_HEADER_NAME, Long.class);
         try {
-
 
             Siri siri = SiriValueTransformer.parseXml(xml);
 
@@ -77,7 +76,7 @@ public class ExternalDataHandler {
             List<MonitoredStopVisit> stopVisitToIngest = collectStopVisits(siri);
             metrics.registerIncomingDataFromExternalSource(SiriDataType.STOP_MONITORING, datasetId, stopVisitToIngest.size());
 
-            stopMonitoringInbound.ingestStopVisit(smSub, siri);
+            stopMonitoringInbound.ingestStopVisit(smSub, siri, inboundTime);
         } catch (JAXBException | XMLStreamException jaxbException) {
             logger.error("Error while unmarshalling siri message from external", e);
         }
@@ -85,6 +84,7 @@ public class ExternalDataHandler {
 
     public void processIncomingSiriET(Exchange e) {
         InputStream xml = e.getIn().getBody(InputStream.class);
+        Long inboundTime = e.getIn().getHeader(INBOUND_TIME_HEADER_NAME, Long.class);
         try {
             Siri siri = SiriValueTransformer.parseXml(xml);
             String datasetId = e.getIn().getHeader(DATASET_ID_HEADER_NAME, String.class);
@@ -101,7 +101,7 @@ public class ExternalDataHandler {
 
 
             if (etToIngest.size() > 0) {
-                estimatedTimetableInbound.ingestEstimatedTimeTables(datasetId, etToIngest);
+                estimatedTimetableInbound.ingestEstimatedTimeTables(datasetId, etToIngest, inboundTime);
             }
 
         } catch (JAXBException | XMLStreamException jaxbException) {
@@ -157,6 +157,7 @@ public class ExternalDataHandler {
 
     public void processIncomingSiriSX(Exchange e) {
         InputStream xml = e.getIn().getBody(InputStream.class);
+        Long inboundTime = e.getIn().getHeader(INBOUND_TIME_HEADER_NAME, Long.class);
         try {
             Siri siri = SiriValueTransformer.parseXml(xml);
             String datasetId = e.getIn().getHeader(DATASET_ID_HEADER_NAME, String.class);
@@ -171,7 +172,7 @@ public class ExternalDataHandler {
             List<PtSituationElement> situationsToIngest = collectSituations(siri);
 
             if (situationsToIngest.size() > 0) {
-                situationExchangeInbound.ingestSituations(datasetId, situationsToIngest, true);
+                situationExchangeInbound.ingestSituations(datasetId, situationsToIngest, true, inboundTime);
             }
 
         } catch (JAXBException | XMLStreamException jaxbException) {
@@ -181,6 +182,7 @@ public class ExternalDataHandler {
 
     public void processIncomingSiriVM(Exchange e) {
         InputStream xml = e.getIn().getBody(InputStream.class);
+        Long inboundTime = e.getIn().getHeader(INBOUND_TIME_HEADER_NAME, Long.class);
         try {
             Siri siri = SiriValueTransformer.parseXml(xml);
             String datasetId = e.getIn().getHeader(DATASET_ID_HEADER_NAME, String.class);
@@ -195,7 +197,7 @@ public class ExternalDataHandler {
             List<VehicleActivityStructure> vehicleActivitiesToIngest = collectVehicleActivities(siri);
 
             if (vehicleActivitiesToIngest.size() > 0) {
-                vehicleMonitoringInbound.ingestVehicleActivities(datasetId, vehicleActivitiesToIngest);
+                vehicleMonitoringInbound.ingestVehicleActivities(datasetId, vehicleActivitiesToIngest, inboundTime);
             }
 
         } catch (JAXBException | XMLStreamException jaxbException) {
