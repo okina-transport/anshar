@@ -41,10 +41,12 @@ import org.apache.camel.builder.RouteBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -90,6 +92,9 @@ public class SubscriptionInitializer implements CamelContextAware {
         return camelContext;
     }
 
+    @Autowired
+    private TaskScheduler taskScheduler;
+
     @Override
     public void setCamelContext(CamelContext camelContext) {
         this.camelContext = camelContext;
@@ -105,6 +110,13 @@ public class SubscriptionInitializer implements CamelContextAware {
 
     @PostConstruct
     void createSubscriptions() {
+
+        if (!configuration.isVJCacheLoaded()) {
+            logger.info("VJ cache not loaded. Trying again in 30s");
+            taskScheduler.schedule(this::createSubscriptions, Instant.now().plusSeconds(30));
+            return;
+        }
+
         camelContext.setUseMDCLogging(true);
         camelContext.setUseBreadcrumb(true);
 

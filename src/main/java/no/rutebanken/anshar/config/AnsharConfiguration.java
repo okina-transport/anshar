@@ -132,6 +132,8 @@ public class AnsharConfiguration {
     private String automaticConsistencyReportsCron;
 
     private boolean isInitialized = false;
+    private boolean isVJCacheLoaded = false;
+
 
     @Bean
     public SchedulerFactoryBeanCustomizer schedulerDelayCustomizer() {

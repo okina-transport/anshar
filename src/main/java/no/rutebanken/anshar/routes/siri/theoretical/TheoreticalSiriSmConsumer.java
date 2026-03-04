@@ -12,7 +12,9 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri20.MonitoredStopVisit;
 import uk.org.siri.siri20.ServiceDelivery;
@@ -24,6 +26,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -56,6 +59,9 @@ public class TheoreticalSiriSmConsumer {
 
     @Produce("direct:send.sm.from.th.to.realtime.server")
     protected ProducerTemplate smFromTheoreticalDataProducer;
+
+    @Autowired
+    private TaskScheduler taskScheduler;
 
     public TheoreticalSiriSmConsumer(CsvDataToSiriConverter csvDataToSiriConverter, SubscriptionConfig subscriptionConfig) {
         this.csvDataToSiriConverter = csvDataToSiriConverter;
@@ -93,14 +99,10 @@ public class TheoreticalSiriSmConsumer {
                              .setSkipHeaderRecord(true)
                              .get())) {
 
-            int nbOfRetry = 0;
-            while (subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.STOP).isEmpty()) {
-                log.info("Waiting for idProcessing to be rececovered");
-                Thread.sleep(30000);
-                nbOfRetry++;
-                if (nbOfRetry > 10) {
-                    return;
-                }
+            if (subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.STOP).isEmpty()) {
+                log.info("idProcessing not existing for datasetId :{}. Trying again in 30s", datasetId);
+                taskScheduler.schedule(() -> this.ingestSiriSmDataByDataset(path), Instant.now().plusSeconds(30));
+                return;
             }
 
             List<TheoreticalStopMonitoringInfo> ingestedData = new ArrayList<>();
@@ -157,7 +159,7 @@ public class TheoreticalSiriSmConsumer {
                 }
 
             }
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException e) {
             log.error("Error while reading theoretical siri sm data file : {}", e.getMessage());
         }
     }

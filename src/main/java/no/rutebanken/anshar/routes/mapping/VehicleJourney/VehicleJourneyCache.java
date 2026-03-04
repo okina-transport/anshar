@@ -1,6 +1,8 @@
 package no.rutebanken.anshar.routes.mapping.VehicleJourney;
 
 import lombok.extern.slf4j.Slf4j;
+import no.rutebanken.anshar.config.AnsharConfiguration;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -14,9 +16,11 @@ public class VehicleJourneyCache {
 
     private static final Map<String, VehicleJourney> VJ_CACHE = new HashMap<>();
     private final VJMappingFileParser parser;
+    private final AnsharConfiguration configuration;
 
-    public VehicleJourneyCache(VJMappingFileParser parser) {
+    public VehicleJourneyCache(VJMappingFileParser parser, AnsharConfiguration configuration) {
         this.parser = parser;
+        this.configuration = configuration;
     }
 
     public Map<String, VehicleJourney> getVjCache() {
@@ -48,7 +52,6 @@ public class VehicleJourneyCache {
         } else {
             log.info("{} entries in VJ cache", VJ_CACHE.size());
         }
-
-
+        configuration.setVJCacheLoaded(true);
     }
 }
