@@ -27,8 +27,8 @@ import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.util.MappingUtils;
+import no.rutebanken.anshar.util.StopMonitoringUtils;
 import org.apache.commons.collections4.CollectionUtils;
-import org.springframework.data.annotation.Transient;
 import uk.org.siri.siri21.*;
 
 import java.time.LocalDate;
@@ -60,11 +60,11 @@ public class UpdateVJIdProcessor extends ValueAdapter implements PostProcessor {
         lineUpdaterService = ApplicationContextHolder.getContext().getBean(LineUpdaterService.class);
     }
 
-    public UpdateVJIdProcessor(String datasetId, VehicleJourneyCache vjCache) {
+    public UpdateVJIdProcessor(String datasetId, VehicleJourneyCache vjCache, LineUpdaterService lineUpdaterService) {
         this.datasetId = datasetId;
         this.vjCache = vjCache;
         subscriptionConfig = ApplicationContextHolder.getContext().getBean(SubscriptionConfig.class);
-        lineUpdaterService = ApplicationContextHolder.getContext().getBean(LineUpdaterService.class);
+        this.lineUpdaterService = lineUpdaterService;
     }
 
 
@@ -151,12 +151,28 @@ public class UpdateVJIdProcessor extends ValueAdapter implements PostProcessor {
                         getMetricsService().registerRecomputeVehicleJourneyIdFromTheoretical(false);
                         log.debug("Unable to find vehicleJouney id from theoretical data : datasetId:{} - lineId:{} - lineNumber:{} - monitoringRef:{} - directionId:{} - destinationRef:{} - aimedArrivalTime:{}", datasetId, lineId, lineNumber, stop, directionId, destinationRef, aimedArrivalTime);
                     }
+
+
+                    monitoredStopVisit.setItemIdentifier(
+                            monitoredStopVisit.getMonitoringRef().getValue() + "_" +
+                                    StopMonitoringUtils.getVehicleJourneyName(monitoredStopVisit).orElse(null) + "_" +
+                                    getArrivalDateOrTime(monitoredStopVisit, DF_YYYYMMDD).orElse(null) + "_" +
+                                    getArrivalDateOrTime(monitoredStopVisit, DF_HHMMSS).orElse(null)
+                    );
                 }
             }
         } catch (Exception e) {
             log.debug("Error while applying UpdateVJIdProcessor, dataset:{}", datasetId, e);
         }
 
+    }
+
+    private Optional<String> getArrivalDateOrTime(MonitoredStopVisit monitoredStopVisit, DateTimeFormatter formatter) {
+        if (monitoredStopVisit.getMonitoredVehicleJourney() == null || monitoredStopVisit.getMonitoredVehicleJourney().getMonitoredCall() == null ||
+                monitoredStopVisit.getMonitoredVehicleJourney().getMonitoredCall().getAimedArrivalTime() == null) {
+            return Optional.empty();
+        }
+        return Optional.of(monitoredStopVisit.getMonitoredVehicleJourney().getMonitoredCall().getAimedArrivalTime().format(formatter));
     }
 
 }
