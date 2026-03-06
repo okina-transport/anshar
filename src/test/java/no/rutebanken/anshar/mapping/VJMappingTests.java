@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.mapping;
 
+import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.routes.mapping.VehicleJourney.VJMappingFileParser;
 import no.rutebanken.anshar.routes.mapping.VehicleJourney.VehicleJourney;
 import no.rutebanken.anshar.routes.mapping.VehicleJourney.VehicleJourneyCache;
@@ -7,6 +8,7 @@ import org.apache.commons.collections.MapUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -15,6 +17,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -22,11 +25,17 @@ public class VJMappingTests {
 
     @Mock
     VJMappingFileParser csvFileParser;
+
+    @InjectMocks
     private VehicleJourneyCache tested;
+
+    @Mock
+    AnsharConfiguration config;
+
 
     @BeforeEach
     void setUp() {
-        tested = new VehicleJourneyCache(csvFileParser);
+        tested = new VehicleJourneyCache(csvFileParser, config);
         // clear all caches
         tested.getVjCache().clear();
     }
@@ -85,6 +94,7 @@ public class VJMappingTests {
         VehicleJourney expectedVj = new VehicleJourney(null, null, null, 1);
         Map<String, VehicleJourney> expectedVjCache = Map.of("KEY", expectedVj);
         when(csvFileParser.parseVjMappingCsv()).thenReturn(expectedVjCache);
+        doNothing().when(config).setVJCacheLoaded(true);
 
         assertTrue(MapUtils.isEmpty(tested.getVjCache()), "ineo VJ cache should not be filled");
 

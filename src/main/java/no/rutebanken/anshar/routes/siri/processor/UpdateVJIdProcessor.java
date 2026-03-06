@@ -76,83 +76,87 @@ public class UpdateVJIdProcessor extends ValueAdapter implements PostProcessor {
     @Override
     public void process(Siri siri) {
 
-
-        if (siri == null || siri.getServiceDelivery() == null || siri.getServiceDelivery().getStopMonitoringDeliveries() == null || siri.getServiceDelivery().getStopMonitoringDeliveries().isEmpty()) {
-            return;
-        }
-
-        if (vjCache == null) {
-            vjCache = ApplicationContextHolder.getContext().getBean(VehicleJourneyCache.class);
-        }
-
-        if (subscriptionConfig == null) {
-            subscriptionConfig = ApplicationContextHolder.getContext().getBean(SubscriptionConfig.class);
-        }
-
-        if (lineUpdaterService == null){
-            lineUpdaterService = ApplicationContextHolder.getContext().getBean(LineUpdaterService.class);
-        }
-
-        for (StopMonitoringDeliveryStructure stopMonitoringDelivery : siri.getServiceDelivery().getStopMonitoringDeliveries()) {
-
-            if (stopMonitoringDelivery.getMonitoredStopVisits().isEmpty()) {
-                continue;
+        try {
+            if (siri == null || siri.getServiceDelivery() == null || siri.getServiceDelivery().getStopMonitoringDeliveries() == null || siri.getServiceDelivery().getStopMonitoringDeliveries().isEmpty()) {
+                return;
             }
 
-            for (MonitoredStopVisit monitoredStopVisit : stopMonitoringDelivery.getMonitoredStopVisits()) {
+            if (vjCache == null) {
+                vjCache = ApplicationContextHolder.getContext().getBean(VehicleJourneyCache.class);
+            }
 
-                MonitoringRefStructure monitoringRef = monitoredStopVisit.getMonitoringRef();
-                MonitoredVehicleJourneyStructure vehicleJourney = monitoredStopVisit.getMonitoredVehicleJourney();
-                LineRef lineRef = vehicleJourney.getLineRef();
-                String destinationRef = null;
-                if (vehicleJourney.getDestinationRef() != null) {
-                    destinationRef = monitoredStopVisit.getMonitoredVehicleJourney().getDestinationRef().getValue();
+            if (subscriptionConfig == null) {
+                subscriptionConfig = ApplicationContextHolder.getContext().getBean(SubscriptionConfig.class);
+            }
+
+            if (lineUpdaterService == null) {
+                lineUpdaterService = ApplicationContextHolder.getContext().getBean(LineUpdaterService.class);
+            }
+
+            for (StopMonitoringDeliveryStructure stopMonitoringDelivery : siri.getServiceDelivery().getStopMonitoringDeliveries()) {
+
+                if (stopMonitoringDelivery.getMonitoredStopVisits().isEmpty()) {
+                    continue;
                 }
 
-                ZonedDateTime aimedArrivalTime = vehicleJourney.getMonitoredCall().getAimedArrivalTime();
-                String directionId = CollectionUtils.isNotEmpty(vehicleJourney.getDirectionNames()) ? vehicleJourney.getDirectionNames().getFirst().getValue() : "";
+                for (MonitoredStopVisit monitoredStopVisit : stopMonitoringDelivery.getMonitoredStopVisits()) {
 
-
-                Optional<IdProcessingParameters> stopIdProcessingParameter = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.STOP);
-                String stop = monitoringRef.getValue();
-
-                if (stopIdProcessingParameter.isPresent()) {
-                    stop = stopIdProcessingParameter.get().removeInputPrefixAndSuffix(stop);
-                    destinationRef = stopIdProcessingParameter.get().removeInputPrefixAndSuffix(destinationRef);
-                }
-
-                String lineId = lineRef.getValue();
-                Optional<IdProcessingParameters> lineIdProcessingParameter = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.LINE);
-                String lineNumber = "";
-                if (lineIdProcessingParameter.isPresent()) {
-                    lineId = lineIdProcessingParameter.get().applyTransformationToString(lineId);
-                    lineNumber = lineUpdaterService.getLineNumber(lineId).orElse(null);
-                }
-
-                String cacheKey = MappingUtils.buildIneoVJKey(
-                        LocalDate.now().format(DF_YYYYMMDD),
-                        aimedArrivalTime.format(DF_HHMMSS),
-                        lineNumber,
-                        directionId,
-                        stop,
-                        datasetId);
-
-                Optional<VehicleJourney> vehicleJourneyIdFromTH = vjCache.findVehicleJourney(cacheKey);
-                if (vehicleJourneyIdFromTH.isPresent()) {
-                    getMetricsService().registerRecomputeVehicleJourneyIdFromTheoretical(true);
-                    FramedVehicleJourneyRefStructure framedVehicleJourneyRef = new FramedVehicleJourneyRefStructure();
-                    framedVehicleJourneyRef.setDatedVehicleJourneyRef(CustomStringUtils.applyChouetteIdTransformation(vehicleJourneyIdFromTH.get().getVehicleJourneyId()));
-                    if (vehicleJourney.getFramedVehicleJourneyRef() != null && vehicleJourney.getFramedVehicleJourneyRef().getDataFrameRef() != null) {
-                        framedVehicleJourneyRef.setDataFrameRef(vehicleJourney.getFramedVehicleJourneyRef().getDataFrameRef());
+                    MonitoringRefStructure monitoringRef = monitoredStopVisit.getMonitoringRef();
+                    MonitoredVehicleJourneyStructure vehicleJourney = monitoredStopVisit.getMonitoredVehicleJourney();
+                    LineRef lineRef = vehicleJourney.getLineRef();
+                    String destinationRef = null;
+                    if (vehicleJourney.getDestinationRef() != null) {
+                        destinationRef = monitoredStopVisit.getMonitoredVehicleJourney().getDestinationRef().getValue();
                     }
-                    vehicleJourney.setFramedVehicleJourneyRef(framedVehicleJourneyRef);
 
-                } else {
-                    getMetricsService().registerRecomputeVehicleJourneyIdFromTheoretical(false);
-                    log.debug("Unable to find vehicleJouney id from theoretical data : datasetId:{} - lineId:{} - lineNumber:{} - monitoringRef:{} - directionId:{} - destinationRef:{} - aimedArrivalTime:{}", datasetId,  lineId, lineNumber, stop, directionId, destinationRef, aimedArrivalTime);
+                    ZonedDateTime aimedArrivalTime = vehicleJourney.getMonitoredCall().getAimedArrivalTime();
+                    String directionId = CollectionUtils.isNotEmpty(vehicleJourney.getDirectionNames()) ? vehicleJourney.getDirectionNames().getFirst().getValue() : "";
+
+
+                    Optional<IdProcessingParameters> stopIdProcessingParameter = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.STOP);
+                    String stop = monitoringRef.getValue();
+
+                    if (stopIdProcessingParameter.isPresent()) {
+                        stop = stopIdProcessingParameter.get().removeInputPrefixAndSuffix(stop);
+                        destinationRef = stopIdProcessingParameter.get().removeInputPrefixAndSuffix(destinationRef);
+                    }
+
+                    String lineId = lineRef.getValue();
+                    Optional<IdProcessingParameters> lineIdProcessingParameter = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.LINE);
+                    String lineNumber = "";
+                    if (lineIdProcessingParameter.isPresent()) {
+                        lineId = lineIdProcessingParameter.get().applyTransformationToString(lineId);
+                        lineNumber = lineUpdaterService.getLineNumber(lineId).orElse(null);
+                    }
+
+                    String cacheKey = MappingUtils.buildIneoVJKey(
+                            LocalDate.now().format(DF_YYYYMMDD),
+                            aimedArrivalTime.format(DF_HHMMSS),
+                            lineNumber,
+                            directionId,
+                            stop,
+                            datasetId);
+
+                    Optional<VehicleJourney> vehicleJourneyIdFromTH = vjCache.findVehicleJourney(cacheKey);
+                    if (vehicleJourneyIdFromTH.isPresent()) {
+                        getMetricsService().registerRecomputeVehicleJourneyIdFromTheoretical(true);
+                        FramedVehicleJourneyRefStructure framedVehicleJourneyRef = new FramedVehicleJourneyRefStructure();
+                        framedVehicleJourneyRef.setDatedVehicleJourneyRef(CustomStringUtils.applyChouetteIdTransformation(vehicleJourneyIdFromTH.get().getVehicleJourneyId()));
+                        if (vehicleJourney.getFramedVehicleJourneyRef() != null && vehicleJourney.getFramedVehicleJourneyRef().getDataFrameRef() != null) {
+                            framedVehicleJourneyRef.setDataFrameRef(vehicleJourney.getFramedVehicleJourneyRef().getDataFrameRef());
+                        }
+                        vehicleJourney.setFramedVehicleJourneyRef(framedVehicleJourneyRef);
+
+                    } else {
+                        getMetricsService().registerRecomputeVehicleJourneyIdFromTheoretical(false);
+                        log.debug("Unable to find vehicleJouney id from theoretical data : datasetId:{} - lineId:{} - lineNumber:{} - monitoringRef:{} - directionId:{} - destinationRef:{} - aimedArrivalTime:{}", datasetId, lineId, lineNumber, stop, directionId, destinationRef, aimedArrivalTime);
+                    }
                 }
             }
+        } catch (Exception e) {
+            log.debug("Error while applying UpdateVJIdProcessor, dataset:{}", datasetId, e);
         }
+
     }
 
 }
