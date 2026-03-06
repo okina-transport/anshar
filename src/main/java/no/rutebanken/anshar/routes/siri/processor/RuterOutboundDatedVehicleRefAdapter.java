@@ -103,6 +103,19 @@ public class RuterOutboundDatedVehicleRefAdapter extends ValueAdapter implements
                         }
                     }
 
+                    List<MonitoredStopVisitCancellation> msvcs = stopMonitoringDelivery.getMonitoredStopVisitCancellations();
+                    if (msvcs != null) {
+                        for (MonitoredStopVisitCancellation msvc : msvcs) {
+
+                            FramedVehicleJourneyRefStructure vjRef = msvc.getVehicleJourneyRef();
+                            if (vjRef != null) {
+                                String datedVehicleJourneyRef = vjRef.getDatedVehicleJourneyRef();
+                                if (datedVehicleJourneyRef != null) {
+                                    vjRef.setDatedVehicleJourneyRef(apply(datedVehicleJourneyRef));
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -186,9 +199,7 @@ public class RuterOutboundDatedVehicleRefAdapter extends ValueAdapter implements
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof RuterOutboundDatedVehicleRefAdapter)) return false;
-
-        RuterOutboundDatedVehicleRefAdapter that = (RuterOutboundDatedVehicleRefAdapter) o;
+        if (!(o instanceof RuterOutboundDatedVehicleRefAdapter that)) return false;
 
         if (!super.getClassToApply().equals(that.getClassToApply())) return false;
         return outboundIdMappingPolicy == that.outboundIdMappingPolicy;
