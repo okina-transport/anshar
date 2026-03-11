@@ -109,7 +109,8 @@ public class UpdateVJIdProcessor extends ValueAdapter implements PostProcessor {
                         destinationRef = monitoredStopVisit.getMonitoredVehicleJourney().getDestinationRef().getValue();
                     }
 
-                    ZonedDateTime aimedArrivalTime = vehicleJourney.getMonitoredCall().getAimedArrivalTime();
+                    MonitoredCallStructure monitoredCall = vehicleJourney.getMonitoredCall();
+                    ZonedDateTime passingTime = monitoredCall.getAimedArrivalTime() != null ? monitoredCall.getAimedArrivalTime() : monitoredCall.getAimedDepartureTime();
                     String directionId = CollectionUtils.isNotEmpty(vehicleJourney.getDirectionNames()) ? vehicleJourney.getDirectionNames().getFirst().getValue() : "";
 
 
@@ -131,7 +132,7 @@ public class UpdateVJIdProcessor extends ValueAdapter implements PostProcessor {
 
                     String cacheKey = MappingUtils.buildIneoVJKey(
                             LocalDate.now().format(DF_YYYYMMDD),
-                            aimedArrivalTime.format(DF_HHMMSS),
+                            passingTime.format(DF_HHMMSS),
                             lineNumber,
                             directionId,
                             stop,
@@ -149,7 +150,7 @@ public class UpdateVJIdProcessor extends ValueAdapter implements PostProcessor {
 
                     } else {
                         getMetricsService().registerRecomputeVehicleJourneyIdFromTheoretical(false);
-                        log.debug("Unable to find vehicleJouney id from theoretical data : datasetId:{} - lineId:{} - lineNumber:{} - monitoringRef:{} - directionId:{} - destinationRef:{} - aimedArrivalTime:{}", datasetId, lineId, lineNumber, stop, directionId, destinationRef, aimedArrivalTime);
+                        log.debug("Unable to find vehicleJouney id from theoretical data : datasetId:{} - lineId:{} - lineNumber:{} - monitoringRef:{} - directionId:{} - destinationRef:{} - passingTime:{}", datasetId, lineId, lineNumber, stop, directionId, destinationRef, passingTime);
                     }
 
 
