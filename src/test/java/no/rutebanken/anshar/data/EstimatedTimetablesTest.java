@@ -142,7 +142,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
                 for (EstimatedVehicleJourney estimatedVehicleJourney : estimatedJourneyVersionFrame.getEstimatedVehicleJourneies()) {
                     String lineRef = estimatedVehicleJourney.getLineRef().getValue();
                     if (lineRef.startsWith("PROV1")) {
-                        assertEquals("PROV1:FlexibleLine:35", lineRef);
+                        assertEquals("PROV1:Line:35", lineRef);
                     } else {
                         assertEquals(standardlineId, lineRef);
                     }
