@@ -136,7 +136,7 @@ public class TheoreticalSiriSmConsumer {
                         .monitoringRef(stopIdProcessingParameters.revertTransformationToString(csvRecord.get("monitoringRef")))
                         .stopPointName(csvRecord.get("stopPointName"))
                         .monitoredVehicleJourneyRef(vehicleJourneyIdProcessingParameters.removeOutputPrefixAndSuffix(csvRecord.get("monitoredVehicleJourneyRef")))
-                        .lineRef(lineIdProcessingParameters.removeOutputPrefixAndSuffix(csvRecord.get("lineRef")))
+                        .lineRef(lineIdProcessingParameters.revertTransformationToString(csvRecord.get("lineRef")))
                         .publishedLineName(csvRecord.get("publishedLineName"))
                         .directionName(csvRecord.get("directionName"))
                         .aimedDepartureTime(LocalTime.parse(csvRecord.get("aimedDepartureTime"), HOUR_FORMATTER))
