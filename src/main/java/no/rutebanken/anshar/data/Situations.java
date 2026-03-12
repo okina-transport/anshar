@@ -366,6 +366,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
                     situationElements.delete(key);
                     timingTracer.mark("situationElements.delete");
                     checksumCache.remove(key);
+                    logger.info("removing key from checksumCache (neg expiration):{}", key);
                     timingTracer.mark("checksumCache.remove");
                 }
                 if (expiration < 0) {
