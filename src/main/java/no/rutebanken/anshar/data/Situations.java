@@ -339,6 +339,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
                 updated = shouldBeUpdated(situation, key, currentChecksum, existingChecksum);
             } else {
                 // Does not exist - do not add previously added closed situations
+                logger.info("does not exist : {}", situation.getSituationNumber().getValue());
                 updated = WorkflowStatusEnumeration.CLOSED != situation.getProgress() || !closedSituations.containsKey(key);
             }
             timingTracer.mark("compareChecksum");
@@ -347,6 +348,9 @@ public class Situations extends SiriRepository<PtSituationElement> {
                 timingTracer.mark("keepByProgressStatus");
                 timingTracer.mark("getExpiration");
                 if (expiration > 0) { //expiration < 0 => already expired
+                    logger.info("sitNumber:{} - currentChecksum:{}", situation.getSituationNumber().getValue(), currentChecksum);
+                    logger.info("sitNumber:{} - existingChecksum:{}", situation.getSituationNumber().getValue(), existingChecksum);
+                    logger.info("SiriStorageObjectkey:{}", key);
                     changes.put(key, situation);
                     checksumTmp.put(key, currentChecksum);
                     situationElements.set(key, situation, expiration, TimeUnit.MILLISECONDS);
@@ -421,8 +425,10 @@ public class Situations extends SiriRepository<PtSituationElement> {
     private boolean shouldBeUpdated(PtSituationElement situation, SiriObjectStorageKey key, String currentChecksum, String existingChecksum) {
         if (WorkflowStatusEnumeration.CLOSED.equals(situation.getProgress())) {
             // if the situation in cache has already a "closed" status, it must not be updated
+            logger.info("CLOSED - return:{}", !closedSituations.containsKey(key));
             return !closedSituations.containsKey(key);
         } else {
+            logger.info("OPEN - return:{}", !Objects.equals(currentChecksum, existingChecksum));
             return !Objects.equals(currentChecksum, existingChecksum);
         }
     }
