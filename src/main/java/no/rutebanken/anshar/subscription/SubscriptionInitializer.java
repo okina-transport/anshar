@@ -48,6 +48,8 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static no.rutebanken.anshar.routes.siri.SiriSubscriptionRouteBuilder.*;
@@ -95,6 +97,8 @@ public class SubscriptionInitializer implements CamelContextAware {
     @Autowired
     private TaskScheduler taskScheduler;
 
+    private ScheduledFuture<?> waitingInit;
+
     @Override
     public void setCamelContext(CamelContext camelContext) {
         this.camelContext = camelContext;
@@ -111,9 +115,15 @@ public class SubscriptionInitializer implements CamelContextAware {
     @PostConstruct
     void createSubscriptions() {
 
+
+        if (isWaitingInit()) {
+            logger.info("Another initialization is scheduled. Cancelling this one");
+            return;
+        }
+
         if (!configuration.isVJCacheLoaded()) {
             logger.info("VJ cache not loaded. Trying again in 30s");
-            taskScheduler.schedule(this::createSubscriptions, Instant.now().plusSeconds(30));
+            waitingInit = taskScheduler.schedule(this::createSubscriptions, Instant.now().plusSeconds(30));
             return;
         }
 
@@ -254,6 +264,17 @@ public class SubscriptionInitializer implements CamelContextAware {
         } else {
             logger.error("Subscriptions not configured correctly - no subscriptions will be started");
         }
+    }
+
+    private boolean isWaitingInit() {
+        if (waitingInit == null) {
+            return false;
+        }
+
+        boolean isCancelled = waitingInit.isCancelled();
+        boolean isDone = waitingInit.isDone();
+        long delayMillis = waitingInit.getDelay(TimeUnit.MILLISECONDS);
+        return !isDone && !isCancelled && delayMillis > 0;
     }
 
     private List<SubscriptionSetup> getDisabledDiscoveryChilds() {
