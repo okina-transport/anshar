@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.data;
 
+
 import com.hazelcast.map.IMap;
 import com.hazelcast.query.Predicate;
 import lombok.Getter;
@@ -38,9 +39,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 import uk.org.ifopt.siri21.StopPlaceRef;
 import uk.org.siri.siri21.*;
 
+import java.io.Serializable;
+import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -325,7 +331,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
 
             String currentChecksum = null;
             try {
-                currentChecksum = getChecksum(situation);
+                currentChecksum = getSXCheckSum(situation);
                 timingTracer.mark("getChecksum");
             } catch (Exception e) {
                 //Ignore - data will be updated
@@ -409,6 +415,247 @@ public class Situations extends SiriRepository<PtSituationElement> {
         }
 
         return changes.values();
+    }
+
+    private String getSXCheckSum(PtSituationElement ptSituationElement) throws NoSuchAlgorithmException {
+        StringBuilder result = new StringBuilder();
+        AffectsScopeStructure savedAffects = null;
+        if (ptSituationElement.getAffects() != null) {
+            savedAffects = ptSituationElement.getAffects();
+            ptSituationElement.setAffects(null);
+        }
+        Extensions savedExtension = null;
+        if (ptSituationElement.getExtensions() != null) {
+            savedExtension = ptSituationElement.getExtensions();
+            ptSituationElement.setExtensions(null);
+        }
+        result.append(getChecksum(ptSituationElement));
+        result.append("-");
+
+        if (savedAffects != null) {
+            result.append("-");
+            result.append(getAffectChecksum(savedAffects));
+            ptSituationElement.setAffects(savedAffects);
+        }
+        if (savedExtension != null) {
+            result.append("-");
+            result.append(getExtensionsChecksum(savedExtension));
+            ptSituationElement.setExtensions(savedExtension);
+        }
+        return result.toString();
+    }
+
+    private String getExtensionsChecksum(Extensions extensions) throws NoSuchAlgorithmException {
+
+        if (CollectionUtils.isEmpty(extensions.getAnies())) {
+            return "";
+        }
+        StringBuilder result = new StringBuilder();
+        for (Element any : extensions.getAnies()) {
+            if ("Alerts".equals(any.getLocalName())) {
+                result.append(getAlertsExtensionChecksum(any));
+            }
+
+        }
+
+
+        return getChecksum(result.toString());
+    }
+
+    private String getAlertsExtensionChecksum(Element alertExtension) throws NoSuchAlgorithmException {
+        List<String> messageUniqueUIDs = new ArrayList<>();
+        for (int i = 0; i < alertExtension.getChildNodes().getLength(); i++) {
+            Node node = alertExtension.getChildNodes().item(i);
+            if ("AlertMessages".equals(node.getLocalName())) {
+                messageUniqueUIDs.add(getUniqueUIDFromMessages(node.getChildNodes()));
+            }
+        }
+
+        Collections.sort(messageUniqueUIDs);
+        StringBuilder orderedUIDs = new StringBuilder();
+        messageUniqueUIDs.forEach(orderedUIDs::append);
+        return getChecksum(orderedUIDs.toString());
+    }
+
+    private String getUniqueUIDFromMessages(NodeList node) {
+        List<String> messageUniqueUIDs = new ArrayList<>();
+        for (int i = 0; i < node.getLength(); i++) {
+            Node child = node.item(i);
+            if ("AlertMessage".equals(child.getLocalName())) {
+                messageUniqueUIDs.add(getUniqueUIDFromSingleMessage(child));
+            }
+        }
+        Collections.sort(messageUniqueUIDs);
+        StringBuilder orderedUIDs = new StringBuilder();
+        messageUniqueUIDs.forEach(orderedUIDs::append);
+        return orderedUIDs.toString();
+    }
+
+    private String getUniqueUIDFromSingleMessage(Node singleAlertMessage) {
+
+        List<String> messageUids = new ArrayList<>();
+        StringBuilder result = new StringBuilder();
+        String channelName = null;
+        String channelType = null;
+        String messageUsage = null;
+        String sendNotification = null;
+        String notificationDate = null;
+        String messageText = null;
+
+        for (int i = 0; i < singleAlertMessage.getChildNodes().getLength(); i++) {
+            Node child = singleAlertMessage.getChildNodes().item(i);
+
+
+            if ("ChannelName".equals(child.getLocalName())) {
+                channelName = child.getTextContent();
+            }
+
+            if ("ChannelType".equals(child.getLocalName())) {
+                channelType = child.getTextContent();
+            }
+
+            if ("MessageUsage".equals(child.getLocalName())) {
+                messageUsage = child.getTextContent();
+            }
+
+            if ("SendNotification".equals(child.getLocalName())) {
+                sendNotification = child.getTextContent();
+            }
+
+            if ("NotificationDate".equals(child.getLocalName())) {
+                notificationDate = child.getTextContent();
+            }
+
+            if ("MessageText".equals(child.getLocalName())) {
+                messageText = child.getTextContent();
+            }
+
+        }
+        messageUids.add(channelName + channelType + messageUsage + sendNotification + notificationDate + messageText);
+
+        Collections.sort(messageUids);
+        messageUids.forEach(result::append);
+        return result.toString();
+
+    }
+
+    private String getAffectChecksum(AffectsScopeStructure savedAffects) throws NoSuchAlgorithmException {
+        StringBuilder result = new StringBuilder();
+
+        if (savedAffects.getNetworks() != null) {
+            AffectsScopeStructure.Networks networks = savedAffects.getNetworks();
+            if (CollectionUtils.isNotEmpty(networks.getAffectedNetworks())) {
+                for (AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork : networks.getAffectedNetworks()) {
+                    result.append(getAffectedNetworkChecksum(affectedNetwork));
+                }
+            }
+        }
+
+        if (savedAffects.getStopPoints() != null && CollectionUtils.isNotEmpty(savedAffects.getStopPoints().getAffectedStopPoints())) {
+            result.append(getAffectedStopPointsChecksum(savedAffects.getStopPoints().getAffectedStopPoints()));
+        }
+
+        if (savedAffects.getStopPlaces() != null && CollectionUtils.isNotEmpty(savedAffects.getStopPlaces().getAffectedStopPlaces())) {
+            result.append(getStopPlaceChecksum(savedAffects.getStopPlaces().getAffectedStopPlaces()));
+        }
+
+        if (savedAffects.getVehicleJourneys() != null && CollectionUtils.isNotEmpty(savedAffects.getVehicleJourneys().getAffectedVehicleJourneies())) {
+            result.append(getVehicleJourneysChecksum(savedAffects.getVehicleJourneys().getAffectedVehicleJourneies()));
+        }
+
+        return result.toString();
+    }
+
+    private String getVehicleJourneysChecksum(List<AffectedVehicleJourneyStructure> affectedVehicleJourneies) throws NoSuchAlgorithmException {
+        List<String> vjList = new ArrayList<>();
+        for (AffectedVehicleJourneyStructure affectedJourneys : affectedVehicleJourneies) {
+            if (CollectionUtils.isNotEmpty(affectedJourneys.getVehicleJourneyReves())) {
+                for (VehicleJourneyRef vehicleJourneyRef : affectedJourneys.getVehicleJourneyReves()) {
+                    if (org.apache.commons.lang3.StringUtils.isNotEmpty(vehicleJourneyRef.getValue())) {
+                        vjList.add(vehicleJourneyRef.getValue());
+                    }
+                }
+            }
+        }
+
+        Collections.sort(vjList);
+        StringBuilder uniqueOrderedList = new StringBuilder();
+        vjList.forEach(uniqueOrderedList::append);
+        return getChecksum(uniqueOrderedList.toString());
+    }
+
+    private String getStopPlaceChecksum(List<AffectedStopPlaceStructure> affectedStopPlaces) throws NoSuchAlgorithmException {
+        List<String> stopPointList = new ArrayList<>();
+        for (AffectedStopPlaceStructure affectedStopPoint : affectedStopPlaces) {
+            if (affectedStopPoint.getStopPlaceRef() != null) {
+                stopPointList.add(affectedStopPoint.getStopPlaceRef().getValue());
+            }
+        }
+
+        Collections.sort(stopPointList);
+        StringBuilder uniqueOrderedList = new StringBuilder();
+        stopPointList.forEach(uniqueOrderedList::append);
+        return getChecksum(uniqueOrderedList.toString());
+
+    }
+
+    private String getAffectedStopPointsChecksum(List<AffectedStopPointStructure> affectedStopPoints) throws NoSuchAlgorithmException {
+        List<String> stopPointList = new ArrayList<>();
+        for (AffectedStopPointStructure affectedStopPoint : affectedStopPoints) {
+            if (affectedStopPoint.getStopPointRef() != null) {
+                stopPointList.add(affectedStopPoint.getStopPointRef().getValue());
+            }
+        }
+
+        Collections.sort(stopPointList);
+        StringBuilder uniqueOrderedList = new StringBuilder();
+        stopPointList.forEach(uniqueOrderedList::append);
+        return getChecksum(uniqueOrderedList.toString());
+    }
+
+    private String getAffectedNetworkChecksum(AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork) throws NoSuchAlgorithmException {
+        StringBuilder result = new StringBuilder();
+        List<String> affectedLineUniqueString = new ArrayList<>();
+        if (CollectionUtils.isNotEmpty(affectedNetwork.getAffectedLines())) {
+            for (AffectedLineStructure affectedLine : affectedNetwork.getAffectedLines()) {
+                affectedLineUniqueString.add(generateLineUniqueString(affectedLine));
+            }
+        }
+
+        Collections.sort(affectedLineUniqueString);
+        affectedLineUniqueString.forEach(result::append);
+        return getChecksum(result.toString());
+    }
+
+    private String generateLineUniqueString(AffectedLineStructure affectedLine) {
+        StringBuilder result = new StringBuilder();
+        if (affectedLine.getLineRef() != null) {
+            result.append(affectedLine.getLineRef().getValue());
+        }
+
+        if (affectedLine.getRoutes() != null && CollectionUtils.isNotEmpty(affectedLine.getRoutes().getAffectedRoutes())) {
+            for (AffectedRouteStructure affectedRoute : affectedLine.getRoutes().getAffectedRoutes()) {
+                if (affectedRoute.getRouteRef() != null) {
+                    result.append(affectedRoute.getRouteRef().getValue());
+                }
+
+                if (affectedRoute.getStopPoints() != null && CollectionUtils.isNotEmpty(affectedRoute.getStopPoints().getAffectedStopPointsAndLinkProjectionToNextStopPoints())) {
+                    List<String> stopPoints = new ArrayList<>();
+                    for (Serializable spOrLink : affectedRoute.getStopPoints().getAffectedStopPointsAndLinkProjectionToNextStopPoints()) {
+                        if (spOrLink instanceof AffectedStopPointStructure affectedStopPointStructure && affectedStopPointStructure.getStopPointRef() != null) {
+                            stopPoints.add(affectedStopPointStructure.getStopPointRef().getValue());
+                        }
+                    }
+                    Collections.sort(stopPoints);
+                    for (String stopPoint : stopPoints) {
+                        result.append(stopPoint);
+                    }
+                }
+            }
+        }
+
+        return result.toString();
+
     }
 
     /**
