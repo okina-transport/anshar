@@ -60,6 +60,8 @@ public class SituationExchangeInbound {
     @Autowired
     private GeneralMessageMapper gmMapper;
 
+    @Autowired
+    ExtendedHazelcastService hazelcastService;
 
     @Autowired
     private KafkaConfig kafkaConfig;
@@ -67,6 +69,10 @@ public class SituationExchangeInbound {
     @Produce(KafkaRouteBuilder.SEND_SX_IN_TO_KAFKA)
     protected ProducerTemplate sendSxInToKafka;
 
+
+    @Autowired
+    @Qualifier("getSharedScheduler")
+    private IScheduledExecutorService sharedScheduler;
 
 
     public boolean ingestSituationExchangeFromApi(SiriDataType dataFormat, String dataSetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList) {
@@ -232,12 +238,103 @@ public class SituationExchangeInbound {
             serverSubscriptionManager.pushUpdatesAsync(SiriDataType.SITUATION_EXCHANGE, new ArrayList<>(result), datasetId);
         }
 
-        convertToGeneralMessageAndIngest(datasetId, incomingSituations);
+        List<PtSituationElement> currentlyOpenedSituations = incomingSituations.stream()
+                .filter(this::shouldSituationBeDisplayed)
+                .toList();
+
+        if (!currentlyOpenedSituations.isEmpty()) {
+            convertToGeneralMessageAndIngest(datasetId, currentlyOpenedSituations);
+        }
+
+        scheduleFutureMessages(datasetId, incomingSituations);
         return result;
     }
 
 
+    /**
+     * Search situation with publication windows in the future and schedule them to enter GM cache at the begining of the publication window
+     *
+     * @param incomingSituations situations to check and eventually schedule in the future.
+     */
+    private void scheduleFutureMessages(String datasetId, List<PtSituationElement> incomingSituations) {
 
+        // Situations with no publicationWindow MUST NOT be converted to GM
+        List<PtSituationElement> situationsToSchedule = incomingSituations.stream()
+                .filter(sit -> !shouldSituationBeDisplayed(sit) && CollectionUtils.isNotEmpty(sit.getPublicationWindows()))
+                .toList();
+
+        for (PtSituationElement situationToSchedule : situationsToSchedule) {
+            LocalDateTime scheduledDate = getSituationStartPublicationTime(situationToSchedule);
+            String situationNumber = situationToSchedule.getSituationNumber().getValue();
+            if (hazelcastService.getScheduledGeneralMessages(datasetId).containsKey(situationNumber)) {
+                LocalDateTime previousTime = hazelcastService.getScheduledGeneralMessages(datasetId).get(situationNumber).getLeft();
+                if (previousTime.isEqual(scheduledDate)) {
+                    // GM ingestion already planned. No changes in planned time. No modification needed
+                    continue;
+                } else {
+                    // planned time has changed. Need to cancel previous task and re-create a new one
+                    cancelTask(datasetId, situationNumber);
+                    hazelcastService.getScheduledGeneralMessages(datasetId).remove(situationNumber);
+                }
+            }
+
+
+            long delay = Duration.between(LocalDateTime.now(), scheduledDate).toMillis();
+
+            List<PtSituationElement> futureSituations = new ArrayList<>();
+            futureSituations.add(situationToSchedule);
+            IScheduledFuture<Object> plannedTask = sharedScheduler.schedule(() -> {
+                logger.info("GeneralMessage - launching future gm conversion for situation: {} ", situationNumber);
+                convertToGeneralMessageAndIngest(datasetId, futureSituations);
+            }, delay, TimeUnit.MILLISECONDS);
+            logger.info("GeneralMessage : scheduling future gm conversion for situation:{} - scheduledDate:{} ", situationNumber, scheduledDate);
+            hazelcastService.getScheduledGeneralMessages(datasetId).put(situationNumber, Pair.of(scheduledDate, datasetId + plannedTask.getHandler().getTaskName()));
+        }
+
+    }
+
+    private void cancelTask(String datasetId, String situationNumber) {
+        String taskName = hazelcastService.getScheduledGeneralMessages(datasetId).get(situationNumber).getRight();
+        for (List<IScheduledFuture<Object>> list : sharedScheduler.getAllScheduledFutures().values()) {
+            for (IScheduledFuture<Object> handler : list) {
+                if (taskName.equals(handler.getHandler().getTaskName())) {
+                    ScheduledFuture<?> f = sharedScheduler.getScheduledFuture(handler.getHandler());
+                    f.cancel(false);
+                }
+            }
+        }
+    }
+
+    private LocalDateTime getSituationStartPublicationTime(PtSituationElement situationToSchedule) {
+
+        Optional<ZonedDateTime> lowestOpt = situationToSchedule.getPublicationWindows().stream()
+                .map(HalfOpenTimestampOutputRangeStructure::getStartTime)
+                .min(Comparator.naturalOrder());
+
+        if (lowestOpt.isEmpty()) {
+            throw new IllegalStateException("Unable to find valid start time for situation:" + situationToSchedule.getSituationNumber());
+        }
+
+        return lowestOpt.get().toLocalDateTime();
+    }
+
+
+    /**
+     * Indicates if a situation should be displayed or not
+     * true : should be displayed, at least one publication window has null or passed startDate
+     * false : should not be displayed, all publication windows are in the future
+     *
+     * @param situation situation to check
+     * @return
+     */
+    private boolean shouldSituationBeDisplayed(PtSituationElement situation) {
+        if (situation.getPublicationWindows().isEmpty()) {
+            return false;
+        }
+        ZonedDateTime now = ZonedDateTime.now();
+        return situation.getPublicationWindows().stream()
+                .anyMatch(pubWindow -> pubWindow.getStartTime() == null || pubWindow.getStartTime().isBefore(now));
+    }
 
     /**
      * Convert a list of situations to a list of generalMessages and ingest them

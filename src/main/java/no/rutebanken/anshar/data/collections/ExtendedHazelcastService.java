@@ -184,7 +184,14 @@ public class ExtendedHazelcastService extends HazelCastService {
     }
 
 
+    public IMap<String, Pair<LocalDateTime, String>> getScheduledGeneralMessages(String dataset) {
+        return hazelcast.getMap("anshar.scheduled.general.messages." + dataset);
+    }
 
+    @Bean
+    public IScheduledExecutorService getSharedScheduler() {
+        return hazelcast.getScheduledExecutorService("ansharScheduler");
+    }
 
 
     public ISet<String> getSharedSMDatasetList() {
