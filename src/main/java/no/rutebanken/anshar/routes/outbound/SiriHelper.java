@@ -303,6 +303,21 @@ public class SiriHelper {
 
         filterMap.put(MonitoringRefStructure.class, stopPointRefValues);
 
+        if (stopMonitoringSubscription.getStopMonitoringRequest().getLineRef() != null) {
+            String lineRefValue = stopMonitoringSubscription.getStopMonitoringRequest().getLineRef().getValue();
+            Set<String> lineRefs = new HashSet<>();
+            Set<String> rawLines = Collections.singleton(lineRefValue);
+            Set<String> revertedLines = revertLineIds(outboundIdMappingPolicy, rawLines, datasetId);
+
+            if (revertedLines.isEmpty()) {
+                lineRefs.add(lineRefValue);
+            } else {
+                lineRefs.addAll(revertedLines);
+            }
+
+            filterMap.put(LineRef.class, lineRefs);
+        }
+
         return filterMap;
     }
 

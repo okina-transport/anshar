@@ -193,28 +193,29 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         lastUpdateRequested.clear();
     }
 
-
     public Siri createServiceDelivery(String requestorRef, String datasetId, int maxSize, Set<String> searchedStopIds, String messageId, boolean excludeTheoreticalData, long previewInterval) {
-        return createServiceDelivery(requestorRef, datasetId, null, maxSize, previewInterval, searchedStopIds, messageId, excludeTheoreticalData);
+        return createServiceDelivery(requestorRef, datasetId, null, maxSize, previewInterval, searchedStopIds, new HashSet<>(), messageId, excludeTheoreticalData);
+    }
+
+    public Siri createServiceDelivery(String requestorRef, String datasetId, int maxSize, Set<String> searchedStopIds, Set<String> searchedLineIds, String messageId, boolean excludeTheoreticalData, long previewInterval) {
+        return createServiceDelivery(requestorRef, datasetId, null, maxSize, previewInterval, searchedStopIds, searchedLineIds, messageId, excludeTheoreticalData);
     }
 
     public Siri createServiceDelivery(String requestorId, String datasetId, List<String> excludedDatasetIds, int maxSize, long previewInterval, Set<String> searchedStopIds) {
-        return createServiceDelivery(requestorId, datasetId, excludedDatasetIds, maxSize, previewInterval, searchedStopIds, null, false);
+        return createServiceDelivery(requestorId, datasetId, excludedDatasetIds, maxSize, previewInterval, searchedStopIds, null,null, false);
     }
 
-    public Siri createServiceDelivery(String requestorId, String datasetId, List<String> excludedDatasetIds, int maxSize, long previewInterval, Set<String> searchedStopIds, String messageId, boolean excludeTheoreticalData) {
+    public Siri createServiceDelivery(String requestorId, String datasetId, List<String> excludedDatasetIds, int maxSize, long previewInterval, Set<String> searchedStopIds, Set<String> searchedLineIds, String messageId, boolean excludeTheoreticalData) {
 
         if (requestorId == null) {
             requestorId = UUID.randomUUID().toString();
         }
 
-
-        // Filter by (datasetId and/or searchedStopIds) OR (excludedDatasetIds and/or searchedStopIds)
         Set<SiriObjectStorageKey> requestedIds = new HashSet<>();
         if (StringUtils.isNotEmpty(datasetId)) {
-            requestedIds.addAll(generateIdSet(datasetId, searchedStopIds, excludedDatasetIds));
+            requestedIds.addAll(generateIdSet(datasetId, searchedStopIds, searchedLineIds, excludedDatasetIds));
         } else {
-            requestedIds.addAll(generateIdSet(null, searchedStopIds, excludedDatasetIds));
+            requestedIds.addAll(generateIdSet(null, searchedStopIds, searchedLineIds, excludedDatasetIds));
         }
 
 
@@ -258,6 +259,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
             finalResults = finalResults.stream().filter(stop -> BooleanUtils.isTrue(stop.getMonitoredVehicleJourney().isMonitored())).collect(Collectors.toList());
         }
 
+
         logger.debug("Fetching data: {} ms", (System.currentTimeMillis() - t1));
         t1 = System.currentTimeMillis();
 
@@ -295,9 +297,9 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
      * @param excludedDatasetIds dataset ids excluded
      * @return a set of keys matching with filters
      */
-    private Set<SiriObjectStorageKey> generateIdSet(String datasetId, Set<String> searchedStopRefs, List<String> excludedDatasetIds) {
+    private Set<SiriObjectStorageKey> generateIdSet(String datasetId, Set<String> searchedStopRefs, Set<String> searchedLineIds, List<String> excludedDatasetIds) {
         // Get all relevant ids
-        Predicate<SiriObjectStorageKey, MonitoredStopVisit> predicate = SiriObjectStorageKeyUtil.getStopPredicate(searchedStopRefs, datasetId, excludedDatasetIds);
+        Predicate<SiriObjectStorageKey, MonitoredStopVisit> predicate = SiriObjectStorageKeyUtil.getStopPredicate(searchedStopRefs, searchedLineIds, datasetId, excludedDatasetIds);
         if (StringUtils.isNotEmpty(datasetId)) {
             return new HashSet<>(hazelcastService.getMonitoredStopVisitsForDataset(datasetId).keySet(predicate));
         } else {
@@ -707,7 +709,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         for (String datasetId : datasetIds) {
 
-            Predicate<SiriObjectStorageKey, MonitoredStopVisit> predicate = SiriObjectStorageKeyUtil.getStopPredicate(null, datasetId, null);
+            Predicate<SiriObjectStorageKey, MonitoredStopVisit> predicate = SiriObjectStorageKeyUtil.getStopPredicate(null, null, datasetId, null);
             Set<SiriObjectStorageKey> idSet = hazelcastService.getMonitoredStopVisitsForDataset(datasetId).keySet(predicate);
             results.put(datasetId, idSet.size());
         }
@@ -719,7 +721,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
 
         for (String datasetId : datasetIds) {
-            Predicate<SiriObjectStorageKey, MonitoredStopVisit> predicate = SiriObjectStorageKeyUtil.getStopPredicate(null, datasetId, null);
+            Predicate<SiriObjectStorageKey, MonitoredStopVisit> predicate = SiriObjectStorageKeyUtil.getStopPredicate(null, null, datasetId, null);
             Set<SiriObjectStorageKey> idSet = hazelcastService.getMonitoredStopVisitsForDataset(datasetId).keySet(predicate);
             Set<String> stopSet = new HashSet();
             for (SiriObjectStorageKey siriObjectStorageKey : idSet) {
