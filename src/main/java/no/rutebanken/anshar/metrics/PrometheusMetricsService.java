@@ -34,10 +34,7 @@ import no.rutebanken.anshar.routes.validation.ValidationType;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
-import org.apache.camel.CamelContext;
-import org.apache.camel.CamelContextAware;
-import org.apache.camel.Endpoint;
-import org.apache.camel.Exchange;
+import org.apache.camel.*;
 import org.apache.camel.component.seda.SedaEndpoint;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -49,6 +46,8 @@ import uk.org.siri.siri21.*;
 import javax.annotation.PreDestroy;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.stream.Collectors;
 
 import static no.rutebanken.anshar.routes.HttpParameter.INTERNAL_SIRI_DATA_TYPE;
 import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASET_ID_HEADER_NAME;
@@ -106,6 +105,12 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
     private static final String RECOMPUTE_VEHICLE_JOURNEY_ID_FROM_THEORETICAL = METRICS_PREFIX + "data.recompute.vehicle.journey.id.from.theoretical";
     private static final String INBOUND_TO_OUTBOUND_TIME_ERRORS = METRICS_PREFIX + "data.inbound.to.outbound.time.errors";
     private static final String INBOUND_TO_OUTBOUND_TIME = METRICS_PREFIX + "data.inbound.to.outbound.time";
+    private static final String SEND_EXTERNAL_SUBSCRIPTION_THREADS = METRICS_PREFIX + "send.external.subscription.threads";
+    private static final String EXTERNAL_SIRI_SM_THREADS = METRICS_PREFIX + "external.sm.threads";
+    private static final String THREAD_COUNT = METRICS_PREFIX + "thread.count";
+    private static final String OUTBOUND_PUSH_SIRI_THREAD_POOL = METRICS_PREFIX + "outbound.push.siri.thread.pool";
+    private static final String SERVER_SUBCRIPTION_MANAGER_THREAD_POOL = METRICS_PREFIX + "server.subscription.manager.thread.pool";
+
     final Map<String, Integer> nbOfOutboundPushByRequestor = new HashMap<>();
     final Map<String, Long> totalPushTimeByRequestor = new HashMap<>();
     final Map<String, Set<Long>> smDeltaTimesTmp = new ConcurrentHashMap<>();
@@ -114,6 +119,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
     final Map<String, Set<Long>> smDeltaTimesTmpBeforePush = new ConcurrentHashMap<>();
     final Map<String, Double> smDeltaTimesResultsBeforePush = new HashMap<>();
     final Map<String, Integer> gaugeValues = new HashMap<>();
+    private final Map<String, Long> threadCountByName = new ConcurrentHashMap<>();
     @Autowired
     protected SubscriptionManager manager;
     @Autowired
@@ -461,6 +467,27 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
         return super.scrape();
     }
 
+
+    private void calculateThreadCount() {
+        Map<String, Long> threadsByName = Thread.getAllStackTraces()
+                .keySet()
+                .stream()
+                .collect(Collectors.groupingBy(
+                        t -> t.getName().replaceAll("\\d+", "#"),
+                        Collectors.counting()
+                ));
+
+
+        threadCountByName.clear();
+        threadCountByName.putAll(threadsByName);
+
+        for (Map.Entry<String, Long> entry : threadCountByName.entrySet()) {
+            List<Tag> counterTags = new ArrayList<>();
+            counterTags.add(new ImmutableTag("ThreadName", entry.getKey()));
+            gauge(THREAD_COUNT, counterTags, threadCountByName, map -> map.getOrDefault(entry.getKey(), 0L).doubleValue());
+        }
+    }
+
     private void updateDeltaTimes() {
         for (Map.Entry<String, Set<Long>> smDeltaTimeEntry : smDeltaTimesTmp.entrySet()) {
             String requestorRef = smDeltaTimeEntry.getKey();
@@ -485,6 +512,15 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
 
     public void update() {
 
+
+        updateExecutorMetric(OUTBOUND_PUSH_SIRI_THREAD_POOL, camelRouteManager.getOutboundExecutors());
+        updateExecutorMetric(SERVER_SUBCRIPTION_MANAGER_THREAD_POOL, serverSubscriptionManager.getServerManagerExecutors());
+
+        calculateThreadCount();
+
+        gauge(SEND_EXTERNAL_SUBSCRIPTION_THREADS, "sendExternalSubscriptionThreads", value -> getThreadsInRoute("send.to.external.subscription"));
+
+        gauge(EXTERNAL_SIRI_SM_THREADS, "externalSMThreads", value -> getThreadsInRoute("external.sm.queue"));
 
         gauge(OUTBOUND_SUBSCRIPTIONS_COUNT, "outboundSubscriptionsCount", value -> serverSubscriptionManager.getOutboundSubscriptionCount());
 
@@ -576,6 +612,16 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
         }
     }
 
+    private void updateExecutorMetric(String name, ThreadPoolExecutor outboundExecutors) {
+        List<Tag> outputPushTags = new ArrayList<>();
+        outputPushTags.add(new ImmutableTag(STATUS_TAG_NAME, "waiting"));
+        gauge(name, outputPushTags, outboundExecutors, value -> outboundExecutors.getQueue().size());
+
+        outputPushTags = new ArrayList<>();
+        outputPushTags.add(new ImmutableTag(STATUS_TAG_NAME, "working"));
+        gauge(name, outputPushTags, outboundExecutors, value -> outboundExecutors.getActiveCount());
+    }
+
     private void updateDeltaTimesBeforePush() {
 
         for (Map.Entry<String, Set<Long>> smDeltaTimeEntry : smDeltaTimesTmpBeforePush.entrySet()) {
@@ -598,6 +644,10 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
         smDeltaTimesTmp.clear();
 
 
+    }
+
+    private int getThreadsInRoute(String routeId) {
+        return camelContext.getInflightRepository().size(routeId);
     }
 
     private int getAsyncProcessSedacurrentQueueSize() {

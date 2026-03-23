@@ -20,6 +20,7 @@ import com.hazelcast.core.EntryEvent;
 import com.hazelcast.map.IMap;
 import com.hazelcast.map.listener.*;
 import com.hazelcast.query.Predicate;
+import jakarta.annotation.PreDestroy;
 import jakarta.xml.bind.DatatypeConverter;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
@@ -32,6 +33,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.SerializationUtils;
 import uk.org.siri.siri21.AbstractItemStructure;
 
+import javax.annotation.PostConstruct;
 import java.io.Serializable;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -91,6 +93,8 @@ abstract class SiriRepository<T> {
     protected void enableCache(IMap<SiriObjectStorageKey, T> map) {
         enableCache(map, null);
     }
+
+    private ExecutorService changeTrackerExecutor;
 
     protected void enableCache(IMap<SiriObjectStorageKey, T> map, java.util.function.Predicate<T> includeInCachePredicate) {
 
@@ -356,10 +360,8 @@ abstract class SiriRepository<T> {
                               String key, Set<SiriObjectStorageKey> changes, int trackingPeriodMinutes, TimeUnit timeUnit) {
         final String breadcrumbId = MDC.get("camel.breadcrumbId");
 
-        ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
 
-
-        executorService.execute(() -> {
+        changeTrackerExecutor.execute(() -> {
             try {
                 MDC.put("camel.breadcrumbId", breadcrumbId);
 
@@ -539,5 +541,15 @@ abstract class SiriRepository<T> {
         }
 
         return true;
+    }
+
+    @PostConstruct
+    private void initialize() {
+        changeTrackerExecutor = Executors.newVirtualThreadPerTaskExecutor();
+    }
+
+    @PreDestroy
+    private void destroy() {
+        changeTrackerExecutor.shutdown();
     }
 }

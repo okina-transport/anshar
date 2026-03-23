@@ -16,6 +16,8 @@
 package no.rutebanken.anshar.routes.outbound;
 
 import com.hazelcast.map.IMap;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.config.ObjectType;
@@ -62,6 +64,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -102,7 +105,7 @@ public class ServerSubscriptionManager {
     @Autowired
     IMap<String, OutboundSubscriptionSetup> subscriptions;
     Map<String, List<OutboundSubscriptionSetup>> outboundSubscriptionsByMonitoringRef = new HashMap<>();
-    ExecutorService outboundSenderExecutorService;
+    private ExecutorService outboundSenderExecutorService;
     @Autowired
     @Qualifier("getFailTrackerMap")
     private IMap<String, Instant> failTrackerMap;
@@ -133,6 +136,8 @@ public class ServerSubscriptionManager {
     private KafkaConfig kafkaConfig;
     @Value("${outbound.change.before.update.cache.hours:5}")
     private int outboundChangeBeforeUpdateCacheTTL;
+    @Value("${server.subscription.manager.threads:20}")
+    private int serverSubscriptionManagerThreads;
     @Autowired
     private SubscriptionConfig incomingSubscriptionConfig;
     @Autowired
@@ -1144,11 +1149,7 @@ public class ServerSubscriptionManager {
     public void pushUpdatesAsync(SiriDataType datatype, List updates, String datasetId, Long inboundTime) {
         final String breadcrumbId = MDC.get("camel.breadcrumbId");
 
-        if (outboundSenderExecutorService == null) {
-            outboundSenderExecutorService = Executors.newFixedThreadPool(pushUpdatedThreadPool);
-        }
 
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
         switch (datatype) {
             case ESTIMATED_TIMETABLE:
                 outboundSenderExecutorService.execute(() -> pushUpdatedEstimatedTimetables(updates, datasetId, breadcrumbId, inboundTime));
@@ -1663,6 +1664,20 @@ public class ServerSubscriptionManager {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    public ThreadPoolExecutor getServerManagerExecutors() {
+        return (ThreadPoolExecutor) outboundSenderExecutorService;
+    }
+
+    @PostConstruct
+    public void init() {
+        outboundSenderExecutorService = Executors.newFixedThreadPool(serverSubscriptionManagerThreads);
+    }
+
+    @PreDestroy
+    public void destroy() {
+        outboundSenderExecutorService.shutdown();
     }
 
 }

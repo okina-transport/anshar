@@ -18,6 +18,8 @@ package no.rutebanken.anshar.routes.validation;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.hazelcast.map.IMap;
 import com.hazelcast.replicatedmap.ReplicatedMap;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import jakarta.xml.bind.*;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
@@ -122,14 +124,18 @@ public class SiriXmlValidator extends ApplicationContextHolder {
     private ExecutorService validationExecutorService;
     private ExecutorService validationReportExecutorService;
 
-    public SiriXmlValidator() {
-        ThreadFactory factory = new ThreadFactoryBuilder()
-                .setNameFormat("validation")
-                .setDaemon(true)
-                .build();
+    private static final ThreadLocal<XPath> xpathThreadLocal = ThreadLocal.withInitial(() -> XPathFactory.newInstance().newXPath());
 
-        validationExecutorService = Executors.newCachedThreadPool(factory);
-        validationReportExecutorService = Executors.newVirtualThreadPerTaskExecutor();
+    private static final ThreadLocal<DocumentBuilder> builderThreadLocal =
+            ThreadLocal.withInitial(() -> {
+                try {
+                    return builderFactory.newDocumentBuilder();
+                } catch (ParserConfigurationException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
+    public SiriXmlValidator() {
     }
 
     static {
@@ -480,12 +486,9 @@ public class SiriXmlValidator extends ApplicationContextHolder {
     private void validateAttributes(
             String siriXml, SiriDataType type, Siri siri, SiriValidationEventHandler handler
     ) throws XPathExpressionException, ParserConfigurationException, IOException, SAXException {
-        if (validationRules.isEmpty()) {
-            populateValidationRules();
-        }
-        XPathFactory xpathFactory = XPathFactory.newInstance();
-        XPath xpath = xpathFactory.newXPath();
-        DocumentBuilder builder = builderFactory.newDocumentBuilder();
+   
+        XPath xpath = xpathThreadLocal.get();
+        DocumentBuilder builder = builderThreadLocal.get();
 
         InputStream stream = new ByteArrayInputStream(siriXml.getBytes(StandardCharsets.UTF_8));
 
@@ -537,12 +540,9 @@ public class SiriXmlValidator extends ApplicationContextHolder {
     }
 
     private void validateAttributes(String siri, SiriDataType type, SiriValidationEventHandler handler) throws XPathExpressionException, ParserConfigurationException, IOException, SAXException {
-        if (validationRules.isEmpty()) {
-            populateValidationRules();
-        }
-        XPathFactory xpathFactory = XPathFactory.newInstance();
-        XPath xpath = xpathFactory.newXPath();
-        DocumentBuilder builder = builderFactory.newDocumentBuilder();
+
+        XPath xpath = xpathThreadLocal.get();
+        DocumentBuilder builder = builderThreadLocal.get();
 
         InputStream stream = new ByteArrayInputStream(siri.getBytes(StandardCharsets.UTF_8));
 
@@ -691,5 +691,22 @@ public class SiriXmlValidator extends ApplicationContextHolder {
             subscriptionManager.updateSubscription(subscriptionSetup);
             logger.info("Reached max number of validations, validated {} deliveries, disabling validation for {}", subscriptionValidationRefs.size(), subscriptionSetup);
         }
+    }
+
+    @PostConstruct
+    public void init() {
+        ThreadFactory factory = new ThreadFactoryBuilder()
+                .setNameFormat("validation-%d")
+                .setDaemon(true)
+                .build();
+        validationExecutorService = Executors.newFixedThreadPool(10, factory);
+        validationReportExecutorService = Executors.newVirtualThreadPerTaskExecutor();
+        populateValidationRules();
+    }
+
+    @PreDestroy
+    public void destroy() {
+        validationExecutorService.shutdown();
+        validationReportExecutorService.shutdown();
     }
 }
