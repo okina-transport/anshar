@@ -67,6 +67,7 @@ public class SiriLiteStopMonitoringRoute extends RestRouteBuilder {
                     String altId = p.getIn().getHeader(PARAM_USE_ALT_ID, String.class);
                     String maxSizeStr = p.getIn().getHeader(PARAM_MAX_SIZE, String.class);
                     String stopRef = p.getIn().getHeader(PARAM_STOP_REF, String.class);
+                    String lineRef = p.getIn().getHeader(PARAM_LINE_REF, String.class);
                     String etClientName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
                     String previewIntervalMinutesStr = p.getIn().getHeader(PARAM_PREVIEW_INTERVAL, String.class);
                     List<String> excludedIdList = getParameterValuesAsList(p.getIn(), PARAM_EXCLUDED_DATASET_ID);
@@ -96,9 +97,14 @@ public class SiriLiteStopMonitoringRoute extends RestRouteBuilder {
                         searchedStopIds.add(stopRef);
                     }
 
+                    Set<String> searchedLineIds = new HashSet<>();
+                    if (StringUtils.isNotEmpty(lineRef)) {
+                        searchedLineIds.add(lineRef);
+                    }
+
                     Set<String> datasets = SiriUtils.generateDatasetListFromHeader(datasetId);
                     OutboundIdMappingPolicy outboundIdMappingPolicy = SiriHandler.getIdMappingPolicy(originalId, altId);
-                    response = handleStopMonitoringMultipleDatasetRequest(outboundIdMappingPolicy, requestorId, datasets, etClientName, excludedIdList, maxSize, previewIntervalMillis, searchedStopIds, originalId, altId, messageId);
+                    response = handleStopMonitoringMultipleDatasetRequest(outboundIdMappingPolicy, requestorId, datasets, etClientName, excludedIdList, maxSize, previewIntervalMillis, searchedStopIds, searchedLineIds, originalId, altId, messageId);
 
                     HttpServletResponse out = p.getIn().getBody(HttpServletResponse.class);
 
@@ -116,22 +122,22 @@ public class SiriLiteStopMonitoringRoute extends RestRouteBuilder {
         return request.getParameter("requestorId");
     }
 
-    private Siri handleStopMonitoringMultipleDatasetRequest(OutboundIdMappingPolicy outboundIdMappingPolicy, String requestorId, Set<String> datasets, String etClientName, List<String> excludedIdList, int maxSize, long previewIntervalMillis, Set<String> searchedStopIds, String originalId, String altId, String messageId) {
+    private Siri handleStopMonitoringMultipleDatasetRequest(OutboundIdMappingPolicy outboundIdMappingPolicy, String requestorId, Set<String> datasets, String etClientName, List<String> excludedIdList, int maxSize, long previewIntervalMillis, Set<String> searchedStopIds, Set<String> searchedLineIds, String originalId, String altId, String messageId) {
 
         if (datasets.isEmpty()) {
-            return handleStopMonitoringSingleDatasetRequest(outboundIdMappingPolicy, requestorId, null, etClientName, excludedIdList, maxSize, previewIntervalMillis, searchedStopIds, originalId, altId, messageId);
+            return handleStopMonitoringSingleDatasetRequest(outboundIdMappingPolicy, requestorId, null, etClientName, excludedIdList, maxSize, previewIntervalMillis, searchedStopIds, searchedLineIds, originalId, altId, messageId);
         }
 
         Siri globalResults = null;
 
         for (String dataset : datasets) {
-            Siri datasetResult = handleStopMonitoringSingleDatasetRequest(outboundIdMappingPolicy, requestorId, dataset, etClientName, excludedIdList, maxSize, previewIntervalMillis, searchedStopIds, originalId, altId, messageId);
+            Siri datasetResult = handleStopMonitoringSingleDatasetRequest(outboundIdMappingPolicy, requestorId, dataset, etClientName, excludedIdList, maxSize, previewIntervalMillis, searchedStopIds, searchedLineIds, originalId, altId, messageId);
             globalResults = SiriUtils.mergeSiris(globalResults, datasetResult);
         }
         return globalResults;
     }
 
-    private Siri handleStopMonitoringSingleDatasetRequest(OutboundIdMappingPolicy outboundIdMappingPolicy, String requestorId, String datasetId, String etClientName, List<String> excludedIdList, int maxSize, long previewIntervalMillis, Set<String> searchedStopIds, String originalId, String altId, String messageId) {
+    private Siri handleStopMonitoringSingleDatasetRequest(OutboundIdMappingPolicy outboundIdMappingPolicy, String requestorId, String datasetId, String etClientName, List<String> excludedIdList, int maxSize, long previewIntervalMillis, Set<String> searchedStopIds, Set<String> searchedLineIds, String originalId, String altId, String messageId) {
         Siri response;
 
         Set<String> importedIds = getImportedIds(outboundIdMappingPolicy, searchedStopIds, datasetId);
@@ -142,9 +148,9 @@ public class SiriLiteStopMonitoringRoute extends RestRouteBuilder {
 
 
         if (!revertedMonitoringRefs.isEmpty()) {
-            response = monitoredStopVisits.createServiceDelivery(requestorId, datasetId, excludedIdList, maxSize, previewIntervalMillis, revertedMonitoringRefs, messageId, false);
+            response = monitoredStopVisits.createServiceDelivery(requestorId, datasetId, excludedIdList, maxSize, previewIntervalMillis, revertedMonitoringRefs, searchedLineIds, messageId, false);
         } else {
-            response = monitoredStopVisits.createServiceDelivery(requestorId, datasetId, excludedIdList, maxSize, previewIntervalMillis, searchedStopIds, messageId, false);
+            response = monitoredStopVisits.createServiceDelivery(requestorId, datasetId, excludedIdList, maxSize, previewIntervalMillis, searchedStopIds, searchedLineIds, messageId, false);
         }
 
         List<ValueAdapter> outboundAdapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.STOP_MONITORING, SiriHandler.getIdMappingPolicy(originalId, altId), subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId));

@@ -195,7 +195,8 @@ public class InitialDeliveryGenerator {
         }
 
         for (String datasetId : datasetsToRequest) {
-            Siri delivery = monitoredStopVisits.createServiceDelivery(subscriptionRequest.getRequestorRef(), datasetId, Integer.MAX_VALUE, searchedStopIds, null, false, previewInterval);
+            Set<String> filteredLines = siriHelper.getLineFiltersForDatasetId(subscriptionRequest, datasetId);
+            Siri delivery = monitoredStopVisits.createServiceDelivery(subscriptionRequest.getRequestorRef(), datasetId, Integer.MAX_VALUE, searchedStopIds, filteredLines, null, false, previewInterval);
             if (previewInterval == -1) {
                 delivery = SiriUtils.removeTheoreticalSM(delivery);
             }

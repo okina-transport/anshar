@@ -573,10 +573,52 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest implements Camel
         monitoredStopVisits.add(dataset, element1);
         monitoredStopVisits.add(dataset, element2);
 
-        Siri serviceDelivery = monitoredStopVisits.createServiceDelivery("test", dataset, Collections.emptyList(), 15000, -1, Set.of(), "messageId", true);
+        Siri serviceDelivery = monitoredStopVisits.createServiceDelivery("test", dataset, Collections.emptyList(), 15000, -1, Collections.emptySet(), Collections.emptySet(), "messageId", true);
 
         assertThat(serviceDelivery.getServiceDelivery().getStopMonitoringDeliveries().getFirst().getMonitoredStopVisits()).hasSize(1);
         assertThat(serviceDelivery.getServiceDelivery().getStopMonitoringDeliveries().getFirst().getMonitoredStopVisits().getFirst().getItemIdentifier()).isEqualTo(itemIdentifier1 + "duplicate");
+    }
+
+    @Test
+    void testCreateServiceDeliveryWithLineRefFiltering() {
+        String dataset = "test-dataset";
+        String stopReference = "FR_NAOLIB:Quay:2458";
+        String lineTarget = "LINE:TARGET";
+        String lineOther = "LINE:OTHER";
+
+        ZonedDateTime arrivalTime = ZonedDateTime.now().plusMinutes(10);
+
+        // Création d'un passage pour la ligne CIBLÉE
+        MonitoredStopVisit elementTarget = createMonitoredStopVisit(arrivalTime, stopReference, "ID-TARGET");
+        addLineRef(elementTarget, lineTarget);
+        elementTarget.getMonitoredVehicleJourney().setMonitored(true);
+
+        // Création d'un passage pour une AUTRE ligne (sur le même arrêt)
+        MonitoredStopVisit elementOther = createMonitoredStopVisit(arrivalTime, stopReference, "ID-OTHER");
+        addLineRef(elementOther, lineOther);
+        elementOther.getMonitoredVehicleJourney().setMonitored(true);
+
+        monitoredStopVisits.add(dataset, elementTarget);
+        monitoredStopVisits.add(dataset, elementOther);
+
+        Set<String> searchedLines = Set.of(lineTarget);
+
+        Siri serviceDelivery = monitoredStopVisits.createServiceDelivery("test-requestor", dataset, Collections.emptyList(), 100, -1, Set.of(stopReference), searchedLines, "msg-123", false);
+
+        List<MonitoredStopVisit> results = serviceDelivery.getServiceDelivery()
+                .getStopMonitoringDeliveries().getFirst().getMonitoredStopVisits();
+
+        // On vérifie qu'on n'a qu'un seul résultat (la ligne Target) et pas deux
+        assertThat(results).hasSize(1);
+        assertThat(results.getFirst().getItemIdentifier()).isEqualTo("ID-TARGET");
+        assertThat(results.getFirst().getMonitoredVehicleJourney().getLineRef().getValue()).isEqualTo(lineTarget);
+
+        // Si on demande une ligne qui n'existe pas, la liste doit être vide
+        Siri emptyDelivery = monitoredStopVisits.createServiceDelivery(
+                "test", dataset, Collections.emptyList(), 100, -1,
+                Set.of(stopReference), Set.of("LINE:UNKNOWN"), "msg-456", false);
+
+        assertThat(emptyDelivery.getServiceDelivery().getStopMonitoringDeliveries().getFirst().getMonitoredStopVisits()).isEmpty();
     }
 
 
