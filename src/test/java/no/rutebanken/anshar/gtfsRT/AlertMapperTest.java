@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import uk.org.siri.siri21.*;
 
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -396,7 +397,8 @@ class AlertMapperTest {
         ZonedDateTime firstSituationStart = situation.getValidityPeriods().getFirst().getStartTime();
         ZonedDateTime firstSituationEnd = situation.getValidityPeriods().getFirst().getEndTime();
         assertThat(firstSituationStart).isCloseTo(now, within(5, SECONDS));
-        assertThat(firstSituationEnd).isCloseTo(now.plusDays(3), within(5, SECONDS));
+        assertThat(firstSituationEnd.toInstant())
+                .isCloseTo(firstSituationStart.toInstant().plus(3, ChronoUnit.DAYS), within(5, SECONDS));
 
 
         // Ingesting again the same alert with empty validity period. ValidityStart and end must be recovered from hazelcast cache
