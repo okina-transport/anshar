@@ -7,6 +7,7 @@ import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
+import org.apache.commons.collections4.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.org.siri.siri21.*;
@@ -85,23 +86,33 @@ public class GeneralMessageHelper {
         Optional<OutboundIdAdapter> stopRefAdapterOpt = getStopRefAdapter(valueAdapters);
         Optional<OutboundIdAdapter> lineRefAdapterOpt = getLineRefAdapter(valueAdapters);
 
-        if (content.getLineRefs() != null && content.getLineRefs().size() > 0 && idProcLineOpt.isPresent()) {
+        if (CollectionUtils.isNotEmpty(content.getLineRefs()) && idProcLineOpt.isPresent()) {
             if (lineRefAdapterOpt.isPresent()) {
                 OutboundIdAdapter lineRefAdapter = lineRefAdapterOpt.get();
                 List<String> processedIds = content.getLineRefs().stream()
                         .map(lineRefAdapter::apply)
-                        .collect(Collectors.toList());
+                        .toList();
                 content.setLineRefs(processedIds);
             }
         }
 
-        if (content.getStopPointRefs() != null && content.getStopPointRefs().size() > 0 && idProcStopOpt.isPresent()) {
+        if (CollectionUtils.isNotEmpty(content.getStopPointRefs()) && idProcStopOpt.isPresent()) {
             if (stopRefAdapterOpt.isPresent()) {
                 OutboundIdAdapter stopRefAdapter = stopRefAdapterOpt.get();
                 List<String> processedIds = content.getStopPointRefs().stream()
                         .map(stopRefAdapter::apply)
-                        .collect(Collectors.toList());
+                        .toList();
                 content.setStopPointRefs(processedIds);
+            }
+        }
+
+        if (CollectionUtils.isNotEmpty(content.getGroupOfLinesRefs()) && idProcLineOpt.isPresent()) {
+            if (lineRefAdapterOpt.isPresent()) {
+                OutboundIdAdapter lineRefAdapter = lineRefAdapterOpt.get();
+                List<String> processedIds = content.getGroupOfLinesRefs().stream()
+                        .map(lineRefAdapter::apply)
+                        .toList();
+                content.setGroupOfLinesRefs(processedIds);
             }
         }
     }
