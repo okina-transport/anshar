@@ -2,12 +2,10 @@ package no.rutebanken.anshar.routes.siri.handlers;
 
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
-import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
-import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
+import no.rutebanken.anshar.routes.mapping.OutputExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.Strings;
 import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,7 +13,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.*;
 
-import javax.annotation.Nullable;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
@@ -28,7 +25,7 @@ public class Utils {
     private static final Logger logger = LoggerFactory.getLogger(Utils.class);
 
     @Autowired
-    private ExternalIdsService externalIdsService;
+    private OutputExternalIdsService outputExternalIdsService;
 
     @Autowired
     private SubscriptionConfig subscriptionConfig;
@@ -42,7 +39,7 @@ public class Utils {
 
     public Set<String> convertFromAltIdsToImportedIdsLine(Set<String> originalMonitoringRefs, String datasetId) {
         return originalMonitoringRefs.stream()
-                .flatMap(id -> externalIdsService.getReverseAltIdLines(datasetId, id).stream().flatMap(String::lines))
+                .flatMap(id -> outputExternalIdsService.getReverseAltIdLines(datasetId, id).stream().flatMap(String::lines))
                 .collect(Collectors.toSet());
     }
 

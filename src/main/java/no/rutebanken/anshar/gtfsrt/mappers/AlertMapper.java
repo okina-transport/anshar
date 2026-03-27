@@ -5,6 +5,7 @@ import com.google.transit.realtime.GtfsRealtime;
 import com.hazelcast.map.IMap;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.ishtar.model.PublishToDisplayAction;
+import no.rutebanken.anshar.routes.mapping.InputExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.mapping.StopTimesService;
 import org.apache.commons.collections4.CollectionUtils;
@@ -46,14 +47,17 @@ public class AlertMapper {
     private final StopTimesService stopTimesService;
     private final IMap<String, Long> sxStartActivePeriodMap;
     private final SimpleDateFormat yyyyMMddFormatter;
+    private final InputExternalIdsService inputExternalIdsService;
 
     public AlertMapper(StopPlaceUpdaterService stopPlaceService, StopTimesService stopTimesService,
-                       @Qualifier("getSxStartActivePeriodMap") IMap<String, Long> sxStartActivePeriodMap
+                       @Qualifier("getSxStartActivePeriodMap") IMap<String, Long> sxStartActivePeriodMap, InputExternalIdsService inputExternalIdsService
     ) {
         this.stopPlaceService = stopPlaceService;
         this.stopTimesService = stopTimesService;
         this.sxStartActivePeriodMap = sxStartActivePeriodMap;
+        this.inputExternalIdsService = inputExternalIdsService;
         this.yyyyMMddFormatter = new SimpleDateFormat("yyyyMMdd");
+
     }
 
     private static void mapSeverity(PtSituationElement ptSituationElement, GtfsRealtime.Alert alert) {
@@ -444,6 +448,12 @@ public class AlertMapper {
             } else if (informedEntity.hasRouteId()) {
                 routeId = informedEntity.getRouteId();
             }
+
+            Optional<String> alternateLineId = inputExternalIdsService.getLineReplacement(datasetId, routeId);
+            if (alternateLineId.isPresent()) {
+                routeId = alternateLineId.get();
+            }
+
             if (routeId != null && !stopTimesService.checkIfKnownRouteId(datasetId, routeId)) {
                 logger.debug("Route id {} not found in dataset {}, discard entity", routeId, datasetId);
                 discardEntity = true;
@@ -544,7 +554,12 @@ public class AlertMapper {
             });
         } else if (tripDescriptor.hasRouteId()) {
             LineRef lineRef = new LineRef();
-            lineRef.setValue(tripDescriptor.getRouteId());
+            String routeId = tripDescriptor.getRouteId();
+            Optional<String> replacedRouteId = inputExternalIdsService.getLineReplacement(datasetId, routeId);
+            if (replacedRouteId.isPresent()) {
+                routeId = replacedRouteId.get();
+            }
+            lineRef.setValue(routeId);
             vehicleJourney.setLineRef(lineRef);
         }
 
@@ -613,7 +628,7 @@ public class AlertMapper {
         uk.org.siri.siri21.PublishToDisplayAction publishToDisplayAction = new uk.org.siri.siri21.PublishToDisplayAction();
 
         publishToDisplayAction.setOnPlace(configuredPublishToDisplayAction == PublishToDisplayAction.ON_PLACE_AND_ON_BOARD
-        || configuredPublishToDisplayAction == PublishToDisplayAction.ON_PLACE);
+                || configuredPublishToDisplayAction == PublishToDisplayAction.ON_PLACE);
 
         publishToDisplayAction.setOnBoard(configuredPublishToDisplayAction == PublishToDisplayAction.ON_BOARD
                 || configuredPublishToDisplayAction == PublishToDisplayAction.ON_PLACE_AND_ON_BOARD);

@@ -22,7 +22,7 @@ import no.rutebanken.anshar.data.MonitoredStopVisits;
 import no.rutebanken.anshar.data.Situations;
 import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.data.util.CustomStringUtils;
-import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
+import no.rutebanken.anshar.routes.mapping.OutputExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.ParkingIdsService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
@@ -76,7 +76,7 @@ public class SiriHelper {
     private final SiriObjectFactory siriObjectFactory;
 
     @Autowired
-    ExternalIdsService externalIdsService;
+    OutputExternalIdsService outputExternalIdsService;
 
     @Autowired
     private SubscriptionConfig incomingSubscriptionConfig;
@@ -247,7 +247,7 @@ public class SiriHelper {
         if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy)) {
             Optional<IdProcessingParameters> idProcessingOpt = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.LINE);
             for (String rawLineValue : rawLineValues) {
-                List<String> originalIdLines = externalIdsService.getReverseAltIdLines(datasetId, rawLineValue);
+                List<String> originalIdLines = outputExternalIdsService.getReverseAltIdLines(datasetId, rawLineValue);
 
                 if (idProcessingOpt.isPresent()) {
                     IdProcessingParameters idProcessing = idProcessingOpt.get();
@@ -285,7 +285,7 @@ public class SiriHelper {
         if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)) {
             originalRequestedIds = stopPlaceUpdaterService.getReverseWithoutDatasetId(requestedId);
         } else if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy)) {
-            originalRequestedIds = externalIdsService.getReverseAltIdStop(datasetId, requestedId);
+            originalRequestedIds = outputExternalIdsService.getReverseAltIdStop(datasetId, requestedId);
         }
 
         for (String originalRequestedId : originalRequestedIds) {

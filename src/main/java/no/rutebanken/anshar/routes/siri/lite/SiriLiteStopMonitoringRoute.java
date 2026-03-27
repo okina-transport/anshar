@@ -9,7 +9,7 @@ import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.MonitoredStopVisits;
 import no.rutebanken.anshar.data.util.CustomStringUtils;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
-import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
+import no.rutebanken.anshar.routes.mapping.OutputExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
@@ -47,7 +47,7 @@ public class SiriLiteStopMonitoringRoute extends RestRouteBuilder {
     StopPlaceUpdaterService stopPlaceUpdaterService;
 
     @Autowired
-    ExternalIdsService externalIdsService;
+    OutputExternalIdsService outputExternalIdsService;
 
 
     @Override
@@ -195,8 +195,8 @@ public class SiriLiteStopMonitoringRoute extends RestRouteBuilder {
     public Set<String> convertFromAltIdsToImportedIdsStop(Set<String> originalMonitoringRefs, String datasetId) {
         Set<String> importedIds = new HashSet<>();
         for (String originalMonitoringRef : originalMonitoringRefs) {
-            if (StringUtils.isNotEmpty(datasetId) && StringUtils.isNotEmpty(originalMonitoringRef) && !externalIdsService.getReverseAltIdStop(datasetId, originalMonitoringRef).isEmpty()) {
-                importedIds.addAll(externalIdsService.getReverseAltIdStop(datasetId, originalMonitoringRef));
+            if (StringUtils.isNotEmpty(datasetId) && StringUtils.isNotEmpty(originalMonitoringRef) && !outputExternalIdsService.getReverseAltIdStop(datasetId, originalMonitoringRef).isEmpty()) {
+                importedIds.addAll(outputExternalIdsService.getReverseAltIdStop(datasetId, originalMonitoringRef));
             }
         }
         return importedIds;

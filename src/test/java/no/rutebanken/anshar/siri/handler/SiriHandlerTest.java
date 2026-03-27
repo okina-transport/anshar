@@ -24,7 +24,7 @@ import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.*;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
-import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
+import no.rutebanken.anshar.routes.mapping.OutputExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.SiriApisRequestHandlerRoute;
@@ -87,7 +87,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     private EstimatedTimetables estimatedTimetables;
 
     @Autowired
-    private ExternalIdsService externalIdsService;
+    private OutputExternalIdsService outputExternalIdsService;
 
     @Autowired
     private SiriApisRequestHandlerRoute siriApisRequestHandlerRoute;
@@ -1981,7 +1981,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     public void SM_AltID_DatasetId() throws JAXBException {
         resetIdProcessings();
         File file = new File("src/test/resources/stops_mapping.csv");
-        externalIdsService.feedCacheStopWithFile(file, "TEST1");
+        outputExternalIdsService.feedCacheStopWithFile(file, "TEST1");
 
         File fileInject = new File("src/test/resources/siri-sm-test1-alt.zip");
         try {
@@ -2019,7 +2019,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     @Test
     public void SM_AltID_No_DatasetId() throws JAXBException {
         File file = new File("src/test/resources/stops_mapping.csv");
-        externalIdsService.feedCacheStopWithFile(file, "TEST1");
+        outputExternalIdsService.feedCacheStopWithFile(file, "TEST1");
 
         File fileInject = new File("src/test/resources/siri-sm.zip");
         try {
@@ -2064,7 +2064,7 @@ public class SiriHandlerTest extends SpringBootBaseTest {
     public void VM_AltId_DatasetId() throws JAXBException {
         File file = new File("src/test/resources/lines_mapping.csv");
         resetIdProcessings();
-        externalIdsService.feedCacheLineWithFile(file, "TEST");
+        outputExternalIdsService.feedCacheLineWithFile(file, "TEST");
 
 
         File fileInject = new File("src/test/resources/siri-vm.zip");

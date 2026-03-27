@@ -3,7 +3,7 @@ package no.rutebanken.anshar.routes.siri.handlers.outbound;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.DiscoveryCache;
-import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
+import no.rutebanken.anshar.routes.mapping.OutputExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.handlers.Utils;
@@ -28,7 +28,7 @@ public class DiscoveryStopPointsOutbound {
     private static final Logger logger = LoggerFactory.getLogger(DiscoveryStopPointsOutbound.class);
 
     @Autowired
-    private ExternalIdsService externalIdsService;
+    private OutputExternalIdsService outputExternalIdsService;
 
     @Autowired
     private SiriObjectFactory siriObjectFactory;
@@ -107,7 +107,7 @@ public class DiscoveryStopPointsOutbound {
         Set<Pair<String, String>> result = new HashSet<>();
         for (Pair<String, String> stopRefAndName : monitoringRefList) {
             String stopRef = stopRefAndName.getLeft();
-            result.add(Pair.of(externalIdsService.getAltId(datasetId, stopRef, ObjectType.STOP).orElse(stopRef), stopRefAndName.getRight()));
+            result.add(Pair.of(outputExternalIdsService.getAltId(datasetId, stopRef, ObjectType.STOP).orElse(stopRef), stopRefAndName.getRight()));
         }
         return result;
     }
@@ -166,7 +166,7 @@ public class DiscoveryStopPointsOutbound {
         StopPointRefStructure stopPointRef = new StopPointRefStructure();
         stopPointRef.setValue(stopRefAndName.getLeft());
         pointStruct.setStopPointRef(stopPointRef);
-      
+
 
         if (StringUtils.isNotEmpty(stopRefAndName.getRight())) {
             NaturalLanguageStringStructure pointName = new NaturalLanguageStringStructure();

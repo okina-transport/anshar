@@ -38,9 +38,9 @@ import java.util.stream.Collectors;
  */
 @Component
 @Configuration
-public class ExternalIdsService extends BaseRouteBuilder {
+public class OutputExternalIdsService extends BaseRouteBuilder {
 
-    private static final Logger logger = LoggerFactory.getLogger(ExternalIdsService.class);
+    private static final Logger logger = LoggerFactory.getLogger(OutputExternalIdsService.class);
 
     @Value("${cron.download.files.mapping}")
     private String cronDownloadFilesMapping;
@@ -74,7 +74,7 @@ public class ExternalIdsService extends BaseRouteBuilder {
     private final String pathStops = "stops";
     private final String pathLines = "lines";
 
-    protected ExternalIdsService(AnsharConfiguration config, SubscriptionManager subscriptionManager) {
+    protected OutputExternalIdsService(AnsharConfiguration config, SubscriptionManager subscriptionManager) {
         super(config, subscriptionManager);
         this.webClient = createWebClient();
     }
@@ -115,7 +115,7 @@ public class ExternalIdsService extends BaseRouteBuilder {
             return;
         }
 
-        if(googleDriveDownloadRequired){
+        if (googleDriveDownloadRequired) {
             Flux<String> stopsMappingUrls = Flux.fromArray(urlsStopsMappingFile.split(","));
             Flux<String> linesMappingUrls = Flux.fromArray(urlsLinesMappingFile.split(","));
 

@@ -5,6 +5,7 @@ import com.hazelcast.map.IMap;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.gtfsrt.mappers.AlertMapper;
 import no.rutebanken.anshar.ishtar.model.PublishToDisplayAction;
+import no.rutebanken.anshar.routes.mapping.InputExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.mapping.StopTimesService;
 import org.junit.jupiter.api.Test;
@@ -43,6 +44,9 @@ class AlertMapperTest {
 
     @InjectMocks
     private AlertMapper alertMapper;
+
+    @Mock
+    private InputExternalIdsService inputExternalIdsService;
 
 
     @Test
@@ -346,6 +350,35 @@ class AlertMapperTest {
     }
 
     @Test
+    void testLineIdReplacement() {
+        String tripId = "tripId";
+        String lineId = "originalLineId";
+        String datasetId = "datasetId";
+
+        String replacedLineId = "newLineId";
+
+        GtfsRTApi gtfsrtApi = new GtfsRTApi();
+        gtfsrtApi.setDatasetId(datasetId);
+
+        GtfsRealtime.FeedEntity feedEntity = GtfsRealtime.FeedEntity.newBuilder()
+                .setId("id2")
+                .setAlert(
+                        GtfsRealtime.Alert.newBuilder().addInformedEntity(
+                                GtfsRealtime.EntitySelector.newBuilder()
+                                        .setRouteId(lineId)
+                        )
+                ).build();
+
+        when(stopTimesService.checkIfKnownRouteId(datasetId, replacedLineId)).thenReturn(true);
+        when(inputExternalIdsService.getLineReplacement(datasetId, lineId)).thenReturn(Optional.of(replacedLineId));
+
+        PtSituationElement situation = alertMapper.mapSituationFromAlert(feedEntity, gtfsrtApi, List.of(replacedLineId)).get();
+
+        assertThat(situation.getAffects()).isNotNull();
+        assertThat(situation.getAffects().getNetworks().getAffectedNetworks().getFirst().getAffectedLines().getFirst().getLineRef().getValue()).isEqualTo(replacedLineId);
+    }
+
+    @Test
     void testEmptyValidityPeriod() {
 
         String agencyId = "agencyIdTest";
@@ -563,7 +596,7 @@ class AlertMapperTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"NONE,false,false","ON_PLACE,true,false", "ON_BOARD,false,true", "ON_PLACE_AND_ON_BOARD,true,true"})
+    @CsvSource({"NONE,false,false", "ON_PLACE,true,false", "ON_BOARD,false,true", "ON_PLACE_AND_ON_BOARD,true,true"})
     void test_add_publishingToDisplayAction(PublishToDisplayAction publishToDisplayAction, Boolean onPlaceAssertion, Boolean onBoardAssertion) {
         String tripId = "tripId";
         String lineId = "lineId";

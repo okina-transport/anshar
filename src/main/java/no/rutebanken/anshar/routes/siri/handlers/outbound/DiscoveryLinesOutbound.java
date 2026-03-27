@@ -4,7 +4,7 @@ import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.DiscoveryCache;
 import no.rutebanken.anshar.data.EstimatedTimetables;
-import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
+import no.rutebanken.anshar.routes.mapping.OutputExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.handlers.Utils;
@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 public class DiscoveryLinesOutbound {
 
     @Autowired
-    private ExternalIdsService externalIdsService;
+    private OutputExternalIdsService outputExternalIdsService;
 
     @Autowired
     private EstimatedTimetables estimatedTimetables;
@@ -119,7 +119,7 @@ public class DiscoveryLinesOutbound {
         Set<Pair<String, String>> result = new HashSet<>();
         for (Pair<String, String> lineRefAndName : lineRefAndNames) {
             String lineRef = lineRefAndName.getLeft();
-            result.add(Pair.of(externalIdsService.getAltId(datasetId, lineRef, ObjectType.LINE).orElse(lineRef), lineRefAndName.getRight()));
+            result.add(Pair.of(outputExternalIdsService.getAltId(datasetId, lineRef, ObjectType.LINE).orElse(lineRef), lineRefAndName.getRight()));
         }
 
         return result;

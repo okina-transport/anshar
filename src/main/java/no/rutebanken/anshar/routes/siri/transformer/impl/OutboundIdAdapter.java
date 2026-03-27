@@ -18,7 +18,7 @@ package no.rutebanken.anshar.routes.siri.transformer.impl;
 
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
-import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
+import no.rutebanken.anshar.routes.mapping.OutputExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
@@ -44,7 +44,7 @@ public class OutboundIdAdapter extends ValueAdapter {
 
     protected transient StopPlaceUpdaterService stopPlaceService;
 
-    protected transient ExternalIdsService externalIdsService;
+    protected transient OutputExternalIdsService outputExternalIdsService;
 
     public OutboundIdAdapter(Class clazz, OutboundIdMappingPolicy outboundIdMappingPolicy) {
         super(clazz);
@@ -118,11 +118,11 @@ public class OutboundIdAdapter extends ValueAdapter {
     }
 
     protected String convertToAltId(String datasetId, String text, ObjectType objectType) {
-        if (externalIdsService == null) {
-            externalIdsService = ApplicationContextHolder.getContext().getBean(ExternalIdsService.class);
+        if (outputExternalIdsService == null) {
+            outputExternalIdsService = ApplicationContextHolder.getContext().getBean(OutputExternalIdsService.class);
         }
 
-        return StringUtils.isEmpty(text) || externalIdsService.getAltId(datasetId, text, objectType).isEmpty() ? text : externalIdsService.getAltId(datasetId, text, objectType).get();
+        return StringUtils.isEmpty(text) || outputExternalIdsService.getAltId(datasetId, text, objectType).isEmpty() ? text : outputExternalIdsService.getAltId(datasetId, text, objectType).get();
     }
 
     public static String getOriginalId(String text) {
