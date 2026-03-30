@@ -72,7 +72,7 @@ import java.util.stream.Stream;
 import static java.time.temporal.ChronoUnit.MILLIS;
 import static no.rutebanken.anshar.routes.kafka.KafkaHeaders.CONSUMER_ADDRESS_HEADER;
 import static no.rutebanken.anshar.routes.kafka.KafkaHeaders.REQUESTOR_REFS_HEADER;
-import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASET_ID_HEADER_NAME;
 
 
 @SuppressWarnings("unchecked")
@@ -611,12 +611,18 @@ public class ServerSubscriptionManager {
 
 
         switch (subscription.getSubscriptionType()) {
-            case STOP_MONITORING -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliverySMQueueName, null, headers);
-            case VEHICLE_MONITORING -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryVMQueueName, null, headers);
-            case SITUATION_EXCHANGE -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliverySXQueueName, null, headers);
-            case ESTIMATED_TIMETABLE -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryETQueueName, null, headers);
-            case GENERAL_MESSAGE -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryGMQueueName, null, headers);
-            case FACILITY_MONITORING -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryFMQueueName, null, headers);
+            case STOP_MONITORING ->
+                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliverySMQueueName, null, headers);
+            case VEHICLE_MONITORING ->
+                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryVMQueueName, null, headers);
+            case SITUATION_EXCHANGE ->
+                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliverySXQueueName, null, headers);
+            case ESTIMATED_TIMETABLE ->
+                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryETQueueName, null, headers);
+            case GENERAL_MESSAGE ->
+                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryGMQueueName, null, headers);
+            case FACILITY_MONITORING ->
+                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryFMQueueName, null, headers);
         }
     }
 
@@ -1236,13 +1242,6 @@ public class ServerSubscriptionManager {
             sendSXToExternalConsumer.asyncRequestBodyAndHeader(sendSXToExternalConsumer.getDefaultEndpoint(), delivery, CODESPACE_ID_KAFKA_HEADER_NAME, datasetId);
         }
 
-        if (kafkaConfig.isSendSiriSxOutToKafka()) {
-            List<Siri> deliveries = siriHelper.splitDeliveries(delivery, 1);
-            for (Siri sxDelivery : deliveries) {
-                sendSXToKafka.asyncRequestBodyAndHeader(sendSXToKafka.getDefaultEndpoint(), sxDelivery, DATASET_ID_HEADER_NAME, datasetId);
-            }
-        }
-
         final List<OutboundSubscriptionSetup> recipients = subscriptions
                 .values()
                 .stream()
@@ -1259,6 +1258,32 @@ public class ServerSubscriptionManager {
 
                 )
                 .collect(Collectors.toList());
+
+        if (kafkaConfig.isSendSiriSxOutToKafka()) {
+            List<String> requestorsRefs = new ArrayList<>();
+            List<String> urls = new ArrayList<>();
+
+            if (CollectionUtils.isNotEmpty(recipients)) {
+                requestorsRefs = recipients.stream()
+                        .map(OutboundSubscriptionSetup::getRequestorRef)
+                        .toList();
+
+                urls = recipients.stream()
+                        .map(OutboundSubscriptionSetup::getAddress)
+                        .toList();
+            }
+
+            Map<String, Object> headers = new HashMap<>();
+            headers.put(DATASET_ID_HEADER_NAME, datasetId);
+            headers.put(REQUESTOR_REFS_HEADER, String.join(",", requestorsRefs));
+            headers.put(CONSUMER_ADDRESS_HEADER, String.join(",", urls));
+
+            List<Siri> deliveries = siriHelper.splitDeliveries(delivery, 1);
+            for (Siri sxDelivery : deliveries) {
+                sendSXToKafka.asyncRequestBodyAndHeaders(sendSXToKafka.getDefaultEndpoint(), sxDelivery, headers);
+            }
+        }
+
 
         boolean logFullContents = true;
         for (OutboundSubscriptionSetup recipient : recipients) {
@@ -1365,22 +1390,25 @@ public class ServerSubscriptionManager {
 
         if (kafkaConfig.isSendSiriGmOutToKafka()) {
 
+            List<String> requestorsRefs = new ArrayList<>();
+            List<String> urls = new ArrayList<>();
+
             if (CollectionUtils.isNotEmpty(recipients)) {
-                List<String> requestorsRefs = recipients.stream()
+                requestorsRefs = recipients.stream()
                         .map(OutboundSubscriptionSetup::getRequestorRef)
                         .toList();
 
-                List<String> urls = recipients.stream()
+                urls = recipients.stream()
                         .map(OutboundSubscriptionSetup::getAddress)
                         .toList();
-
-                Map<String, Object> headers = new HashMap<>();
-                headers.put(DATASET_ID_HEADER_NAME, datasetId);
-                headers.put(REQUESTOR_REFS_HEADER, requestorsRefs.stream().collect(Collectors.joining(",")));
-                headers.put(CONSUMER_ADDRESS_HEADER, urls.stream().collect(Collectors.joining(",")));
-
-                sendGMToKafka.asyncRequestBodyAndHeaders(sendGMToKafka.getDefaultEndpoint(), delivery, headers);
             }
+
+            Map<String, Object> headers = new HashMap<>();
+            headers.put(DATASET_ID_HEADER_NAME, datasetId);
+            headers.put(REQUESTOR_REFS_HEADER, String.join(",", requestorsRefs));
+            headers.put(CONSUMER_ADDRESS_HEADER, String.join(",", urls));
+
+            sendGMToKafka.asyncRequestBodyAndHeaders(sendGMToKafka.getDefaultEndpoint(), delivery, headers);
 
         }
 
@@ -1553,8 +1581,8 @@ public class ServerSubscriptionManager {
 
             Map<String, Object> headers = new HashMap<>();
             headers.put(DATASET_ID_HEADER_NAME, datasetId);
-            headers.put(REQUESTOR_REFS_HEADER, requestorsRefs.stream().collect(Collectors.joining(",")));
-            headers.put(CONSUMER_ADDRESS_HEADER, urls.stream().collect(Collectors.joining(",")));
+            headers.put(REQUESTOR_REFS_HEADER, String.join(",", requestorsRefs));
+            headers.put(CONSUMER_ADDRESS_HEADER, String.join(",", urls));
 
 
             sendSMToKafka.asyncRequestBodyAndHeaders(sendSMToKafka.getDefaultEndpoint(), delivery, headers);
