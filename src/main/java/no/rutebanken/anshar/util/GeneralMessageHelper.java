@@ -4,7 +4,6 @@ import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
-import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
 import org.apache.commons.collections4.CollectionUtils;
@@ -15,16 +14,19 @@ import uk.org.siri.siri21.*;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 public class GeneralMessageHelper {
+
+    private GeneralMessageHelper() {
+        throw new IllegalStateException();
+    }
 
     private static final Logger logger = LoggerFactory.getLogger(GeneralMessageHelper.class);
 
     public static void applyTransformationsInContent(Siri siri, List<ValueAdapter> valueAdapters, Map<ObjectType, Optional<IdProcessingParameters>> idMap) {
 
         if (siri.getServiceDelivery() == null || siri.getServiceDelivery().getGeneralMessageDeliveries() == null ||
-                siri.getServiceDelivery().getGeneralMessageDeliveries().size() == 0) {
+                siri.getServiceDelivery().getGeneralMessageDeliveries().isEmpty()) {
             return;
         }
 
@@ -34,7 +36,7 @@ public class GeneralMessageHelper {
 
     }
 
-    public static Siri applyTransformationsInContent(Siri siri, List<ValueAdapter> valueAdapters, Map<ObjectType, Optional<IdProcessingParameters>> idMap, Boolean deepCopyBeforeTransform) {
+    public static Siri applyTransformationsInContent(Siri siri, List<ValueAdapter> valueAdapters, Map<ObjectType, Optional<IdProcessingParameters>> idMap, boolean deepCopyBeforeTransform) {
 
         if (siri.getServiceDelivery() == null || siri.getServiceDelivery().getGeneralMessageDeliveries() == null ||
                 siri.getServiceDelivery().getGeneralMessageDeliveries().isEmpty()) {
@@ -64,8 +66,7 @@ public class GeneralMessageHelper {
 
 
     private static void applyTransformationToGeneralMessageDelivery(GeneralMessageDeliveryStructure generalMessageDelivery, List<ValueAdapter> valueAdapters, Map<ObjectType, Optional<IdProcessingParameters>> idMap) {
-
-        if (generalMessageDelivery.getGeneralMessages() == null || generalMessageDelivery.getGeneralMessages().size() == 0) {
+        if (generalMessageDelivery.getGeneralMessages() == null || generalMessageDelivery.getGeneralMessages().isEmpty()) {
             return;
         }
 
@@ -75,45 +76,43 @@ public class GeneralMessageHelper {
     }
 
     private static void applyTransformationsToGeneralMessage(GeneralMessage generalMessage, List<ValueAdapter> valueAdapters, Map<ObjectType, Optional<IdProcessingParameters>> idMap) {
-        if (generalMessage.getContent() == null || !(generalMessage.getContent() instanceof Content)) {
+        if (!(generalMessage.getContent() instanceof Content content)) {
             return;
         }
 
-        Content content = (Content) generalMessage.getContent();
         Optional<IdProcessingParameters> idProcLineOpt = idMap.get(ObjectType.LINE);
         Optional<IdProcessingParameters> idProcStopOpt = idMap.get(ObjectType.STOP);
+        Optional<IdProcessingParameters> idProcNetworkOpt = idMap.get(ObjectType.NETWORK);
 
         Optional<OutboundIdAdapter> stopRefAdapterOpt = getStopRefAdapter(valueAdapters);
         Optional<OutboundIdAdapter> lineRefAdapterOpt = getLineRefAdapter(valueAdapters);
+        Optional<OutboundIdAdapter> networkAdapterOpt = getNetworkRefAdapter(valueAdapters);
 
-        if (CollectionUtils.isNotEmpty(content.getLineRefs()) && idProcLineOpt.isPresent()) {
-            if (lineRefAdapterOpt.isPresent()) {
-                OutboundIdAdapter lineRefAdapter = lineRefAdapterOpt.get();
-                List<String> processedIds = content.getLineRefs().stream()
-                        .map(lineRefAdapter::apply)
-                        .toList();
-                content.setLineRefs(processedIds);
-            }
+        if (CollectionUtils.isNotEmpty(content.getLineRefs()) && idProcLineOpt.isPresent()
+                && lineRefAdapterOpt.isPresent()) {
+            OutboundIdAdapter lineRefAdapter = lineRefAdapterOpt.get();
+            List<String> processedIds = content.getLineRefs().stream()
+                    .map(lineRefAdapter::apply)
+                    .toList();
+            content.setLineRefs(processedIds);
         }
 
-        if (CollectionUtils.isNotEmpty(content.getStopPointRefs()) && idProcStopOpt.isPresent()) {
-            if (stopRefAdapterOpt.isPresent()) {
-                OutboundIdAdapter stopRefAdapter = stopRefAdapterOpt.get();
-                List<String> processedIds = content.getStopPointRefs().stream()
-                        .map(stopRefAdapter::apply)
-                        .toList();
-                content.setStopPointRefs(processedIds);
-            }
+        if (CollectionUtils.isNotEmpty(content.getStopPointRefs()) && idProcStopOpt.isPresent()
+                && stopRefAdapterOpt.isPresent()) {
+            OutboundIdAdapter stopRefAdapter = stopRefAdapterOpt.get();
+            List<String> processedIds = content.getStopPointRefs().stream()
+                    .map(stopRefAdapter::apply)
+                    .toList();
+            content.setStopPointRefs(processedIds);
         }
 
-        if (CollectionUtils.isNotEmpty(content.getGroupOfLinesRefs()) && idProcLineOpt.isPresent()) {
-            if (lineRefAdapterOpt.isPresent()) {
-                OutboundIdAdapter lineRefAdapter = lineRefAdapterOpt.get();
+        if (CollectionUtils.isNotEmpty(content.getGroupOfLinesRefs()) && idProcNetworkOpt.isPresent()
+                && networkAdapterOpt.isPresent()) {
+                OutboundIdAdapter networkRefAdapter = networkAdapterOpt.get();
                 List<String> processedIds = content.getGroupOfLinesRefs().stream()
-                        .map(lineRefAdapter::apply)
+                        .map(networkRefAdapter::apply)
                         .toList();
                 content.setGroupOfLinesRefs(processedIds);
-            }
         }
     }
 
@@ -121,11 +120,10 @@ public class GeneralMessageHelper {
     private static Optional<OutboundIdAdapter> getStopRefAdapter(List<ValueAdapter> valueAdapters) {
 
         for (ValueAdapter valueAdapter : valueAdapters) {
-            if (!(valueAdapter instanceof OutboundIdAdapter)) {
+            if (!(valueAdapter instanceof OutboundIdAdapter currAdapter)) {
                 continue;
             }
 
-            OutboundIdAdapter currAdapter = (OutboundIdAdapter) valueAdapter;
             if (currAdapter.getClassToApply().equals(StopPointRefStructure.class)) {
                 return Optional.of(currAdapter);
             }
@@ -136,12 +134,25 @@ public class GeneralMessageHelper {
     private static Optional<OutboundIdAdapter> getLineRefAdapter(List<ValueAdapter> valueAdapters) {
 
         for (ValueAdapter valueAdapter : valueAdapters) {
-            if (!(valueAdapter instanceof OutboundIdAdapter)) {
+            if (!(valueAdapter instanceof OutboundIdAdapter currAdapter)) {
                 continue;
             }
 
-            OutboundIdAdapter currAdapter = (OutboundIdAdapter) valueAdapter;
             if (currAdapter.getClassToApply().equals(LineRef.class)) {
+                return Optional.of(currAdapter);
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static Optional<OutboundIdAdapter> getNetworkRefAdapter(List<ValueAdapter> valueAdapters) {
+
+        for (ValueAdapter valueAdapter : valueAdapters) {
+            if (!(valueAdapter instanceof OutboundIdAdapter currAdapter)) {
+                continue;
+            }
+
+            if (currAdapter.getClassToApply().equals((NetworkRefStructure.class))) {
                 return Optional.of(currAdapter);
             }
         }
