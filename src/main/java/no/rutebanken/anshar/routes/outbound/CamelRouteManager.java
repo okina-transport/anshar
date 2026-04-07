@@ -438,13 +438,10 @@ public class CamelRouteManager {
         return false;
     }
 
-    public ThreadPoolExecutor getOutboundExecutors() {
-        return (ThreadPoolExecutor) executors;
-    }
 
     @PostConstruct
     public void init() {
-        executors = Executors.newFixedThreadPool(outboundPushSiriThreads);
+        executors = Executors.newVirtualThreadPerTaskExecutor();
     }
 
     @PreDestroy
