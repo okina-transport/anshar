@@ -8,18 +8,28 @@ import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import org.apache.camel.CamelContext;
 import org.awaitility.Durations;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 class TheoreticalSiriSmConsumerTest extends SpringBootBaseTest {
+
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     @Autowired
     private CamelContext camelContext;
@@ -33,8 +43,18 @@ class TheoreticalSiriSmConsumerTest extends SpringBootBaseTest {
     @Autowired
     private SubscriptionManager subscriptionManager;
 
+    @BeforeAll
+    static void setUp() throws Exception {
+        updateInputCsvFile();
+    }
+
+    @AfterAll
+    static void tearDown() throws Exception {
+        removeTheoreticalCsvFile();
+    }
+
     @BeforeEach
-    void setUp() {
+    void beforeEach() {
         subscriptionConfig.getIdProcessingParameters().clear();
         IdProcessingParameters vjIdProcessing = new IdProcessingParameters();
         vjIdProcessing.setInputPrefixToRemove("TEST:VehicleJourney:");
@@ -55,9 +75,8 @@ class TheoreticalSiriSmConsumerTest extends SpringBootBaseTest {
     }
 
     @Test
-    void readDataAndProduceSiriTest() throws IOException {
+    void readDataAndProduceSiriTest() {
         camelContext.start();
-        replaceDates();
 
         consumer.ingestSiriSmData();
 
@@ -93,23 +112,30 @@ class TheoreticalSiriSmConsumerTest extends SpringBootBaseTest {
                         "TEST:Quay:44054");
     }
 
-    private void replaceDates() throws IOException {
+    static void updateInputCsvFile() throws Exception {
+        Path templateFile = Paths.get("src/test/resources/theoretical-data/TEST_th_sm_template.csv");
+        Path copy = Paths.get("src/test/resources/theoretical-data/TEST_th_sm.csv");
+        List<String> modifiedLines = new ArrayList<>();
+        List<String> templateLines = Files.readAllLines(templateFile);
 
+        for (int i = 0; i < templateLines.size(); i++) {
+            String line = templateLines.get(i);
 
-        String filePath = "src/test/resources/theoretical-data/TEST_th_sm.csv";
-        String pattern = "20500418";
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
-        LocalDate today = LocalDate.now();
-        String replacement = today.format(formatter);
+            if (i == 0) {
+                modifiedLines.add(line);
+            } else {
+                String[] parts = line.split(",");
+                parts[0] = LocalDate.now().format(DATE_FORMATTER);
+                modifiedLines.add(String.join(",", parts));
+            }
+        }
 
-        ProcessBuilder pb = new ProcessBuilder(
-                "sed", "-i", "-e", "s#" + pattern + "#" + replacement + "#g", filePath
-        );
-
-
-        pb.redirectErrorStream(true);
-        Process process = pb.start();
-
+        Files.write(copy, modifiedLines, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
     }
 
+
+    static void removeTheoreticalCsvFile() throws IOException {
+        Path csvFilePath = Paths.get("src/test/resources/theoretical-data/TEST_th_sm.csv");
+        Files.delete(csvFilePath);
+    }
 }
