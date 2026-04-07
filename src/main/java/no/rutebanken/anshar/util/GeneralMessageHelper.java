@@ -11,9 +11,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.org.siri.siri21.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class GeneralMessageHelper {
 
@@ -93,7 +95,7 @@ public class GeneralMessageHelper {
             OutboundIdAdapter lineRefAdapter = lineRefAdapterOpt.get();
             List<String> processedIds = content.getLineRefs().stream()
                     .map(lineRefAdapter::apply)
-                    .toList();
+                    .collect(Collectors.toCollection(ArrayList::new));
             content.setLineRefs(processedIds);
         }
 
@@ -102,7 +104,7 @@ public class GeneralMessageHelper {
             OutboundIdAdapter stopRefAdapter = stopRefAdapterOpt.get();
             List<String> processedIds = content.getStopPointRefs().stream()
                     .map(stopRefAdapter::apply)
-                    .toList();
+                    .collect(Collectors.toCollection(ArrayList::new));
             content.setStopPointRefs(processedIds);
         }
 
@@ -111,7 +113,7 @@ public class GeneralMessageHelper {
                 OutboundIdAdapter networkRefAdapter = networkAdapterOpt.get();
                 List<String> processedIds = content.getGroupOfLinesRefs().stream()
                         .map(networkRefAdapter::apply)
-                        .toList();
+                        .collect(Collectors.toCollection(ArrayList::new));
                 content.setGroupOfLinesRefs(processedIds);
         }
     }
