@@ -108,7 +108,6 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
     private static final String SEND_EXTERNAL_SUBSCRIPTION_THREADS = METRICS_PREFIX + "send.external.subscription.threads";
     private static final String EXTERNAL_SIRI_SM_THREADS = METRICS_PREFIX + "external.sm.threads";
     private static final String THREAD_COUNT = METRICS_PREFIX + "thread.count";
-    private static final String OUTBOUND_PUSH_SIRI_THREAD_POOL = METRICS_PREFIX + "outbound.push.siri.thread.pool";
     private static final String SERVER_SUBCRIPTION_MANAGER_THREAD_POOL = METRICS_PREFIX + "server.subscription.manager.thread.pool";
 
     final Map<String, Integer> nbOfOutboundPushByRequestor = new HashMap<>();
@@ -513,7 +512,6 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
     public void update() {
 
 
-        updateExecutorMetric(OUTBOUND_PUSH_SIRI_THREAD_POOL, camelRouteManager.getOutboundExecutors());
         updateExecutorMetric(SERVER_SUBCRIPTION_MANAGER_THREAD_POOL, serverSubscriptionManager.getServerManagerExecutors());
 
         calculateThreadCount();
