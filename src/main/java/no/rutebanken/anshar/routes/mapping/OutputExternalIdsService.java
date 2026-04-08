@@ -60,6 +60,10 @@ public class OutputExternalIdsService extends BaseRouteBuilder {
     @Value("${google.drive.download.required}")
     private boolean googleDriveDownloadRequired;
 
+
+    @Value("${prefix.alt.id.by.dataset:true}")
+    private boolean prefixAltIdByDataset;
+
     @Autowired
     SubscriptionConfig subscriptionConfig;
 
@@ -272,8 +276,12 @@ public class OutputExternalIdsService extends BaseRouteBuilder {
 
             for (CSVRecord record : records) {
                 String stopId = record.get("stop_id");
-                String stopAltId = record.get("stop_alt_id");
+                String stopAltId = record.isSet("stop_alt_id") ? record.get("stop_alt_id") : record.get("stop_alt_id Titan");
                 stopId = applyTransformation(stopId, idParametersOpt);
+
+                if (prefixAltIdByDataset) {
+                    stopAltId = datasetId + ":Quay:" + stopAltId;
+                }
                 currentStopAltStopCache.put(stopId, stopAltId);
 
                 if (firstRecord) {
@@ -326,6 +334,10 @@ public class OutputExternalIdsService extends BaseRouteBuilder {
 
                 String lineId = record.isSet("line_id") ? record.get("line_id") : record.get("route_id");
                 String lineAltId = record.isSet("line_alt_id") ? record.get("line_alt_id") : record.get("route_alt_id Titan");
+
+                if (prefixAltIdByDataset) {
+                    lineAltId = datasetId + ":Line:" + lineAltId;
+                }
 
                 lineId = applyTransformation(lineId, idParametersOpt);
                 List<String> lineIdList;
