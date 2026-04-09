@@ -40,16 +40,13 @@ import java.time.Instant;
 @Component
 public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
 
-    private static final Logger logger = LoggerFactory.getLogger(SiriSubscriptionRouteBuilder.class);
 
     NamespacePrefixMapper customNamespacePrefixMapper;
 
     SubscriptionSetup subscriptionSetup;
 
-    private Instant restartTriggered = Instant.MIN;
 
     public static final String START_ROUTE_PREFIX = "start.";
-    public static final String CHECK_STATUS_ROUTE_PREFIX = "check.status.";
     public static final String CANCEL_ROUTE_PREFIX = "cancel.";
     public static final String MONITOR_ROUTE_PREFIX = "monitor.subscription.";
     public static final String SERVICE_REQUEST_ROUTE_PREFIX = "service.request.";
@@ -59,15 +56,11 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
 
     boolean hasBeenStarted;
 
-    private Instant lastCheckStatus = Instant.now();
 
     public static String getStartRouteId(SubscriptionSetup subscriptionSetup) {
         return START_ROUTE_PREFIX + subscriptionSetup.getSubscriptionId();
     }
 
-    public static String getCheckStatusRouteId(SubscriptionSetup subscriptionSetup) {
-        return CHECK_STATUS_ROUTE_PREFIX + subscriptionSetup.getSubscriptionId();
-    }
 
     public static String getCancelRouteId(SubscriptionSetup subscriptionSetup) {
         return CANCEL_ROUTE_PREFIX + subscriptionSetup.getSubscriptionId();
@@ -110,163 +103,4 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
         };
     }
 
-    void initTriggerRoutes() {
-//        if (!subscriptionManager.isNewSubscription(subscriptionSetup.getSubscriptionId())) {
-//            logger.info("Subscription is NOT new - flagging as already started if active {}", subscriptionSetup);
-//            hasBeenStarted = subscriptionManager.isActiveSubscription(subscriptionSetup.getSubscriptionId());
-//        }
-        // Assuming ALL subscriptions are hunky-dory on start-up
-        if (subscriptionManager.get(subscriptionSetup.getSubscriptionId()) != null) {
-            // Subscription is already initialized on another pod - keep existing status
-            hasBeenStarted = subscriptionManager.isActiveSubscription(subscriptionSetup.getSubscriptionId());
-        } else {
-            // Unknown subscription or first pod to start
-//            hasBeenStarted = subscriptionSetup.isActive();
-        }
-
-        singletonFrom("quartz://anshar/monitor_" + subscriptionSetup.getSubscriptionId() + "?trigger.repeatInterval=" + 60000,
-                getMonitorRouteId(subscriptionSetup))
-                .choice()
-                .when(p -> shouldPerformDataNotReceivedAction(getMonitorRouteId(subscriptionSetup)))
-                .log("Performing DataNotReceivedAction: " + subscriptionSetup)
-                .setBody(simple(subscriptionSetup.getDataNotReceivedAction() != null ? subscriptionSetup.getDataNotReceivedAction().getJsonPostContent() : ""))
-                .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.APPLICATION_JSON))
-                .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
-                .to("log:datanotreceived:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
-                .toD(subscriptionSetup.getDataNotReceivedAction() != null ? subscriptionSetup.getDataNotReceivedAction().getEndpoint() : "empty", true)
-                .when(p -> shouldBeStarted(getMonitorRouteId(subscriptionSetup)))
-                .log("Triggering start subscription: " + subscriptionSetup)
-                .process(p -> hasBeenStarted = true)
-                .to("direct:" + subscriptionSetup.getStartSubscriptionRouteName()) // Start subscription
-                .when(p -> shouldBeCancelled(getMonitorRouteId(subscriptionSetup)))
-                .log("Triggering cancel subscription: " + subscriptionSetup)
-                .process(p -> hasBeenStarted = false)
-                .to("direct:" + subscriptionSetup.getCancelSubscriptionRouteName())// Cancel subscription
-                .when(p -> shouldCheckStatus(getMonitorRouteId(subscriptionSetup)))
-                .log("Check status: " + subscriptionSetup)
-                .process(p -> lastCheckStatus = Instant.now())
-                .to("direct:" + subscriptionSetup.getCheckStatusRouteName()) // Check status
-                .end()
-        ;
-    }
-
-    private boolean shouldPerformDataNotReceivedAction(String routeId) {
-        if (!isLeader(routeId)) {
-            return false;
-        }
-        String subscriptionId = subscriptionSetup.getSubscriptionId();
-        if (subscriptionManager.isActiveSubscription(subscriptionId)) {
-            DataNotReceivedAction dataNotReceivedAction = subscriptionSetup.getDataNotReceivedAction();
-            if (dataNotReceivedAction != null) {
-                boolean enabled = dataNotReceivedAction.isEnabled();
-
-                boolean isReceiving = subscriptionManager.isSubscriptionReceivingData(subscriptionId,
-                        dataNotReceivedAction.getInactivityMinutes() * 60L);
-
-                if (!isReceiving) {
-                    Instant lastDataReceived = subscriptionManager.getLastDataReceived(subscriptionId);
-
-                    if (lastDataReceived != null && lastDataReceived.isBefore(restartTriggered)) {
-                        return false;
-                    }
-
-                    if (estimatedTimetables.getDatasetSize(subscriptionSetup.getDatasetId()) == 0) {
-                        return false;
-                    }
-
-                    if (enabled) {
-                        //Clear data
-                        estimatedTimetables.clearAllByDatasetId(subscriptionSetup.getDatasetId());
-
-                        restartTriggered = Instant.now();
-
-                        logger.warn("Triggering DataNotReceivedAction: POST {} to {}", dataNotReceivedAction.getJsonPostContent(), dataNotReceivedAction.getEndpoint());
-                    } else {
-                        logger.info("Should have triggered DataNotReceivedAction, but it has been disabled");
-
-                    }
-
-                    return enabled;
-                }
-            }
-        }
-        return false;
-    }
-
-    private boolean shouldCheckStatus(String routeId) {
-        if (!isLeader(routeId)) {
-            return false;
-        }
-        boolean isActive = subscriptionManager.isActiveSubscription(subscriptionSetup.getSubscriptionId());
-        boolean requiresCheckStatusRequest = subscriptionSetup.getUrlMap().get(RequestType.CHECK_STATUS) != null;
-        boolean isTimeToCheckStatus = lastCheckStatus.isBefore(Instant.now().minus(subscriptionSetup.getHeartbeatInterval()));
-
-        return isActive && requiresCheckStatusRequest && isTimeToCheckStatus;
-    }
-
-    private boolean shouldBeStarted(String routeId) {
-        if (!isLeader(routeId)) {
-            return false;
-        }
-        boolean isActive = subscriptionManager.isActiveSubscription(subscriptionSetup.getSubscriptionId());
-        if (StringUtils.isNotEmpty(subscriptionSetup.getParentSubscriptionId()) && !isActive) {
-            // force child discovery subscription to restart
-            subscriptionSetup.setActive(true);
-            hasBeenStarted = false;
-            subscriptionManager.addSubscription(subscriptionSetup.getSubscriptionId(), subscriptionSetup);
-            return true;
-        }
-
-        return (isActive && !hasBeenStarted);
-    }
-
-    private boolean shouldBeCancelled(String routeId) {
-        if (!isLeader(routeId)) {
-            return false;
-        }
-
-        String subscriptionId = subscriptionSetup.getSubscriptionId();
-
-
-        if (StringUtils.isNotEmpty(subscriptionSetup.getParentSubscriptionId())) {
-            //special case : discovery subscriptions
-            // only reason to restart : time is passed
-
-            boolean shouldBeRestarted = subscriptionManager.isRestartTimePassed(subscriptionId);
-            if (shouldBeRestarted) {
-                subscriptionManager.forceRestart(subscriptionId);
-            }
-            return shouldBeRestarted;
-        }
-
-
-        if (subscriptionManager.isForceRestart(subscriptionId)) {
-            log.debug("Should be cancelled because force restart : " + subscriptionId);
-            // If restart is triggered - ignore all other checks
-            return true;
-        }
-
-        if (config.isHealthcheckDisabled()) {
-            //Healthcheck is disabled : subscription must never be restarted
-            return false;
-        }
-
-
-        if (subscriptionManager.shouldTryRestart(subscriptionId) && subscriptionManager.isRestartTimePassed(subscriptionId)) {
-            log.debug("Should be cancelled because restart time : " + subscriptionId);
-            return true;
-        }
-
-        boolean isActive = subscriptionManager.isActiveSubscription(subscriptionId);
-        boolean isHealthy = subscriptionManager.isSubscriptionHealthy(subscriptionId);
-
-        if (hasBeenStarted && !isActive) {
-            log.debug("Should be cancelled because inactive : " + subscriptionId);
-        }
-
-        if (hasBeenStarted && isActive && !isHealthy) {
-            log.debug("Should be cancelled because unhealthy : " + subscriptionId);
-        }
-        return (hasBeenStarted && !isActive) || (hasBeenStarted && !isHealthy);
-    }
 }

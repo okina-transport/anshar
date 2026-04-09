@@ -76,9 +76,11 @@ public class Constants {
     public final static String SIRI_FM_KAFKA_QUEUE = "siri.facility.monitoring.kafka?timeToLive=600000";
 
     public final static String ENDPOINT_HEADER_NAME = "endpoint";
+    public final static String RECORDED_SUBSCRIPTION_HEADER_NAME = "recordedSubscriptionId";
+    public final static String RECORDED_SUBSCRIPTION_ACTION = "recordedSubscriptionAction";
+    public final static String RECORDED_SUBSCRIPTION_ACTION_SUBSCRIBE = "Subscribe";
+    public final static String RECORDED_SUBSCRIPTION_ACTION_TERMINATE = "Terminate";
 
-
-    // TODO MHI : implement validators for SM
 
     private Constants() {
         // should not be instantiated

@@ -97,6 +97,25 @@ public class TestUtils {
         return nbOfReceivedRequest;
     }
 
+    public static int countNonCheckStatusRequests(ClientAndServer mockServer, String endpoint) {
+        int nbOfReceivedRequest = 0;
+
+        HttpRequest[] recordedRequests = mockServer.retrieveRecordedRequests(
+                request()
+                        .withMethod("POST")
+                        .withPath(endpoint)
+        );
+
+        for (HttpRequest recordedRequest : recordedRequests) {
+            if (!recordedRequest.getBody().getValue().toString().contains("CheckStatus")) {
+                nbOfReceivedRequest++;
+                logger.info("Requête reçue: " + recordedRequest);
+            }
+
+        }
+        return nbOfReceivedRequest;
+    }
+
     public static String getFirstRequestOnEndpoint(ClientAndServer mockServer, String endpoint) {
 
 
@@ -110,6 +129,38 @@ public class TestUtils {
             return recordedRequest.getBody().getValue().toString();
         }
         return "";
+    }
+
+    public static String getFirstNonCheckStatusRequestOnEndpoint(ClientAndServer mockServer, String endpoint) {
+
+
+        HttpRequest[] recordedRequests = mockServer.retrieveRecordedRequests(
+                request()
+                        .withMethod("POST")
+                        .withPath(endpoint)
+        );
+
+        for (HttpRequest recordedRequest : recordedRequests) {
+            if (!recordedRequest.getBody().getValue().toString().contains("CheckStatus")) {
+                return recordedRequest.getBody().getValue().toString();
+            }
+        }
+        return "";
+    }
+
+    public static List<String> getNonCheckStatusRequests(ClientAndServer mockServer, String endpoint) {
+        HttpRequest[] recordedRequests = mockServer.retrieveRecordedRequests(
+                request()
+                        .withMethod("POST")
+                        .withPath(endpoint)
+        );
+        List<String> results = new LinkedList<>();
+        for (HttpRequest recordedRequest : recordedRequests) {
+            if (!recordedRequest.getBody().getValue().toString().contains("CheckStatus")) {
+                results.add(recordedRequest.getBody().getValue().toString());
+            }
+        }
+        return results;
     }
 
 

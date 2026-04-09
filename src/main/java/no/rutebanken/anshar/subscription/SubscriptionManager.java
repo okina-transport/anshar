@@ -21,107 +21,127 @@ import com.hazelcast.replicatedmap.ReplicatedMap;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.data.*;
+import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import no.rutebanken.anshar.util.SiriUtils;
+import org.apache.camel.CamelContext;
+import org.apache.camel.CamelContextAware;
+import org.apache.camel.Exchange;
+import org.apache.camel.ProducerTemplate;
+import org.apache.camel.builder.ExchangeBuilder;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.Siri;
 
 import java.math.BigInteger;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
 import static no.rutebanken.anshar.subscription.SiriDataType.*;
 
 @Service
-public class SubscriptionManager {
+@EnableScheduling
+public class SubscriptionManager implements CamelContextAware {
 
     private static final Logger logger = LoggerFactory.getLogger(SubscriptionManager.class);
-    private static final Integer MAX_RESTART_TRIES = 3;
-    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private final Set<String> gtfsSubscriptions = new HashSet<>();
     private final Map<String, String> siriAPISubscriptions = new HashMap<>();
     private Map<String, Class> mappingAdaptersById = new HashMap<>();
 
-    @Autowired
-    @Qualifier("getSubscriptionsMap")
-    public ReplicatedMap<String, SubscriptionSetup> subscriptions;
-    @Autowired
-    @Qualifier("getActivatedTimestampMap")
-    IMap<String, java.time.Instant> activatedTimestamp;
-    @Value("${anshar.healthcheck.interval.factor:12}")
-    private int healthcheckIntervalFactor;
-    @Autowired
-    private AnsharConfiguration configuration;
-    @Autowired
-    @Qualifier("getLastActivityMap")
-    private ReplicatedMap<String, Instant> lastActivity;
-    @Autowired
-    @Qualifier("getDataReceivedMap")
-    private ReplicatedMap<String, java.time.Instant> dataReceived;
-    @Autowired
-    @Qualifier("getReceivedBytesMap")
-    private IMap<String, Long> receivedBytes;
-    @Value("${anshar.environment}")
-    private String environment;
-    @Autowired
-    @Qualifier("getHitcountMap")
-    private IMap<String, Integer> hitcount;
-    @Autowired
-    @Qualifier("getForceRestartMap")
-    private IMap<String, String> forceRestartMap;
-    @Autowired
-    private IMap<String, BigInteger> objectCounter;
-    @Autowired
-    private SiriObjectFactory siriObjectFactory;
-    @Autowired
-    private HealthManager healthManager;
-    @Autowired
-    private Situations sx;
-    @Autowired
-    private EstimatedTimetables et;
-    @Autowired
-    private VehicleActivities vm;
-    @Autowired
-    private MonitoredStopVisits sm;
-    @Autowired
-    private FacilityMonitoring fm;
-    @Autowired
-    @Qualifier("getSituationChangesMap")
-    private IMap<String, Set<SiriObjectStorageKey>> sxChanges;
-    @Autowired
-    @Qualifier("getEstimatedTimetableChangesMap")
-    private IMap<String, Set<SiriObjectStorageKey>> etChanges;
-    @Autowired
-    @Qualifier("getVehicleChangesMap")
-    private IMap<String, Set<SiriObjectStorageKey>> vmChanges;
-    @Autowired
-    @Qualifier("getMonitoredStopVisitChangesMap")
-    private IMap<String, Set<SiriObjectStorageKey>> smChanges;
-    @Autowired
-    private RequestorRefRepository requestorRefRepository;
-    @Autowired
-    @Qualifier("getRetryCountMap")
-    private IMap<String, Integer> retryCountMap;
+    private final ReplicatedMap<String, SubscriptionSetup> subscriptions;
+    private final IMap<String, java.time.Instant> activatedTimestamp;
+    private final AnsharConfiguration configuration;
+    private final ReplicatedMap<String, Instant> lastActivity;
+    private final ReplicatedMap<String, java.time.Instant> dataReceived;
+    private final IMap<String, Long> receivedBytes;
+    private final String environment;
+    private final IMap<String, Integer> hitcount;
+    private final IMap<String, BigInteger> objectCounter;
+    private final SiriObjectFactory siriObjectFactory;
+    private final HealthManager healthManager;
+    private final Situations sx;
+    private final EstimatedTimetables et;
+    private final VehicleActivities vm;
+    private final MonitoredStopVisits sm;
+    private final FacilityMonitoring fm;
+    private final IMap<String, Set<SiriObjectStorageKey>> sxChanges;
+    private final IMap<String, Set<SiriObjectStorageKey>> etChanges;
+    private final IMap<String, Set<SiriObjectStorageKey>> vmChanges;
+    private final IMap<String, Set<SiriObjectStorageKey>> smChanges;
+    private final RequestorRefRepository requestorRefRepository;
+    private final DatasetService datasetService;
+    private final SubscriptionConfig subscriptionConfig;
+    private final ExtendedHazelcastService hazelcastService;
+    private CamelContext camelContext;
+    private final int unresponsiveDelay;
 
-    @Autowired
-    private DatasetService datasetService;
+    public SubscriptionManager(@Qualifier("getSubscriptionsMap") ReplicatedMap<String, SubscriptionSetup> subscriptions, @Qualifier("getActivatedTimestampMap") IMap<String, Instant> activatedTimestamp,
+                               AnsharConfiguration configuration, @Qualifier("getLastActivityMap") ReplicatedMap<String, Instant> lastActivity,
+                               @Qualifier("getDataReceivedMap") ReplicatedMap<String, Instant> dataReceived, @Qualifier("getReceivedBytesMap") IMap<String, Long> receivedBytes, @Value("${anshar.environment}") String environment,
+                               @Qualifier("getHitcountMap") IMap<String, Integer> hitcount, IMap<String, BigInteger> objectCounter,
+                               SiriObjectFactory siriObjectFactory, HealthManager healthManager, Situations sx, EstimatedTimetables et, VehicleActivities vm, MonitoredStopVisits sm, FacilityMonitoring fm,
+                               @Qualifier("getSituationChangesMap") IMap<String, Set<SiriObjectStorageKey>> sxChanges, @Qualifier("getEstimatedTimetableChangesMap") IMap<String, Set<SiriObjectStorageKey>> etChanges,
+                               @Qualifier("getVehicleChangesMap") IMap<String, Set<SiriObjectStorageKey>> vmChanges, @Qualifier("getMonitoredStopVisitChangesMap") IMap<String, Set<SiriObjectStorageKey>> smChanges,
+                               RequestorRefRepository requestorRefRepository, DatasetService datasetService, SubscriptionConfig subscriptionConfig,
+                               ExtendedHazelcastService hazelcastService, @Value("${anshar.subscription.unresponsive.delay.min:15}") int unresponsiveDelay) {
+        this.subscriptions = subscriptions;
+        this.activatedTimestamp = activatedTimestamp;
+        this.configuration = configuration;
+        this.lastActivity = lastActivity;
+        this.dataReceived = dataReceived;
+        this.receivedBytes = receivedBytes;
+        this.environment = environment;
+        this.hitcount = hitcount;
+        this.objectCounter = objectCounter;
+        this.siriObjectFactory = siriObjectFactory;
+        this.healthManager = healthManager;
+        this.sx = sx;
+        this.et = et;
+        this.vm = vm;
+        this.sm = sm;
+        this.fm = fm;
+        this.sxChanges = sxChanges;
+        this.etChanges = etChanges;
+        this.vmChanges = vmChanges;
+        this.smChanges = smChanges;
+        this.requestorRefRepository = requestorRefRepository;
+        this.datasetService = datasetService;
+        this.subscriptionConfig = subscriptionConfig;
+        this.hazelcastService = hazelcastService;
+        this.unresponsiveDelay = unresponsiveDelay;
+    }
 
-    @Autowired
-    private SubscriptionConfig subscriptionConfig;
+
+    @Override
+    public CamelContext getCamelContext() {
+        return camelContext;
+    }
+
+    @Override
+    public void setCamelContext(CamelContext camelContext) {
+        this.camelContext = camelContext;
+        logger.info("ShutdownStrategy: {}", camelContext.getShutdownStrategy());
+    }
 
 
     public void addMappingAdapters(Map<String, Class> mappingAdaptersById) {
@@ -129,12 +149,11 @@ public class SubscriptionManager {
     }
 
     public void addSubscription(String subscriptionId, SubscriptionSetup setup) {
-        if (setup.isActive()) {
-            subscriptions.put(subscriptionId, setup);
-            logger.trace("Added subscription {}", setup);
-            activatePendingSubscription(subscriptionId);
-        }
-        //  logStats();
+
+        subscriptions.computeIfAbsent(subscriptionId, k -> {
+            logger.info("Subscription added to manager:{}", subscriptionId);
+            return setup;
+        });
     }
 
     public boolean removeSubscription(String subscriptionId) {
@@ -153,7 +172,6 @@ public class SubscriptionManager {
             hitcount.remove(subscriptionId);
             objectCounter.remove(subscriptionId);
         } else if (found) {
-            setup.setActive(false);
             addSubscription(subscriptionId, setup);
         }
 
@@ -237,7 +255,6 @@ public class SubscriptionManager {
                 return touchSubscription(subscriptionId, monitoredRef);
             } else {
                 logger.info("Remote service has been restarted, forcing subscription to be restarted [{}]", setup);
-                forceRestart(subscriptionId);
             }
         }
         return false;
@@ -312,181 +329,13 @@ public class SubscriptionManager {
         }
     }
 
-    public boolean isActiveSubscription(String subscriptionId) {
-        SubscriptionSetup subscriptionSetup = subscriptions.get(subscriptionId);
-        if (subscriptionSetup != null) {
-            return subscriptionSetup.isActive();
-        }
-        return false;
-    }
-
-    public boolean activatePendingSubscription(String subscriptionId) {
-        SubscriptionSetup subscriptionSetup = subscriptions.get(subscriptionId);
-
-        if (subscriptionSetup != null) {
-            subscriptionSetup.setActive(true);
-            boolean shouldLogSuccess = !subscriptionSetup.getVendor().contains("AURA-MULTITUD-CITYWAY-SIRI-") && (subscriptionSetup.getContentType() == null || !subscriptionSetup.getContentType().equals("GTFS-RT"));
-            // Subscriptions are inserted as immutable - need to replace previous value
-            subscriptionSetup.setStartedAt(ZonedDateTime.now());
-            subscriptions.put(subscriptionId, subscriptionSetup);
-            lastActivity.put(subscriptionId, Instant.now());
-            activatedTimestamp.put(subscriptionId, Instant.now());
-            retryCountMap.put(subscriptionId, 0);
-            if (shouldLogSuccess) {
-                logger.info("Pending subscription {} activated", subscriptions.get(subscriptionId));
-            }
-
-            if (!dataReceived.containsKey(subscriptionId)) {
-                dataReceived(subscriptionId, shouldLogSuccess);
-            }
-            if (!receivedBytes.containsKey(subscriptionId)) {
-                receivedBytes.set(subscriptionId, 0L);
-            }
-            return true;
-        }
-
-        logger.warn("Pending subscriptionId [{}] NOT found", subscriptionId);
-        return false;
-    }
-
-    public boolean isNewSubscription(String subscriptionId) {
-        return lastActivity.get(subscriptionId) == null;
-    }
 
     public Instant getLastDataReceived(String subscriptionId) {
         return dataReceived.get(subscriptionId);
     }
 
-    public void forceRestart(String subscriptionId) {
-        forceRestartMap.put(subscriptionId, subscriptionId);
-        forceRestartMap.flush();
-    }
-
-    public boolean isForceRestart(String subscriptionId) {
-        if (subscriptionId == null) {
-            logger.warn("Null subscriptionId provided to isForceRestart check");
-            return false;
-        }
-
-        try {
-            String removedValue = forceRestartMap.remove(subscriptionId);
-
-            if (removedValue != null) {
-                SubscriptionSetup subscription = subscriptions.get(subscriptionId);
-                String subscriptionInfo = (subscription != null)
-                        ? subscription.toString()
-                        : "unknown subscription";
-
-                logger.info("Forced restart triggered for subscription {} - {}",
-                        subscriptionInfo, removedValue);
-                return true;
-            }
-            return false;
-
-        } catch (Exception e) {
-            logger.error("Error checking forced restart for subscription {}: {}",
-                    subscriptionId, e.getMessage());
-            return false;
-        }
-    }
-
-    public Boolean isSubscriptionHealthy(String subscriptionId) {
-        return isSubscriptionHealthy(subscriptionId, healthcheckIntervalFactor);
-    }
-
-    private Boolean isSubscriptionHealthy(String subscriptionId, int healthCheckIntervalFactor) {
-        Instant instant = lastActivity.get(subscriptionId);
-
-        if (instant == null) {
-            //Subscription has not had any activity, and may not have been started yet - flag as healthy
-            return true;
-        }
-
-        logger.trace("SubscriptionId [{}], last activity {}.", subscriptionId, instant);
-
-        SubscriptionSetup activeSubscription = subscriptions.get(subscriptionId);
-        if (activeSubscription != null && activeSubscription.isActive()) {
-
-            Duration heartbeatInterval = activeSubscription.getHeartbeatInterval();
-            if (heartbeatInterval == null) {
-                heartbeatInterval = Duration.ofMinutes(5);
-            }
-
-            long allowedInterval = heartbeatInterval.toMillis() * healthCheckIntervalFactor;
-
-            if (instant.isBefore(Instant.now().minusMillis(allowedInterval))) {
-                //Subscription exists, but there has not been any activity recently
-                return false;
-            }
-
-            if (isRestartTimePassed(subscriptionId)) {
-                forceRestart(subscriptionId);
-                return false;
-            }
-
-        }
-
-        return true;
-    }
-
-    /**
-     * Checks if the subscription should be restarted, depending on restart time filled in subscription request
-     * If current time is after restart time AND subscription has been started before restart time => restart
-     *
-     * @param subscriptionId
-     * @return True : subscription should be restarted
-     * false : subscription should not be restarted
-     */
-    public boolean isRestartTimePassed(String subscriptionId) {
-        SubscriptionSetup activeSubscription = subscriptions.get(subscriptionId);
-
-        //If active subscription has existed longer than "initial subscription duration" - restart
-        Instant activated = activatedTimestamp.get(subscriptionId);
-
-
-        if (activeSubscription != null && activated != null) {
-
-            if (activeSubscription.getRestartTime() != null && activeSubscription.getRestartTime().contains(":")) {
-                // Allowing subscriptions to be restarted at specified time
-                ZonedDateTime restartTime = ZonedDateTime.of(LocalDate.now(), LocalTime.parse(activeSubscription.getRestartTime()), ZoneId.systemDefault());
-
-                //Current time is after restart time AND subscription has been activated before restart time
-                if (restartTime.isBefore(ZonedDateTime.now()) && activated.atZone(ZoneId.systemDefault()).isBefore(restartTime)) {
-                    logger.info("Subscription [{}] configured for nightly restart at {}.", activeSubscription, restartTime);
-                    increaseTryCount(subscriptionId);
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Checks if the subscription should try to restart or not, depending on MAX_RESTART_TRIES set in this class
-     *
-     * @param subscriptionId
-     * @return true : current try nb is < MAX_RESTART_TRIES  : should try to restart
-     * false : current try nb is > MAX_RESTART_TRIES : no more try should be done
-     */
-    public boolean shouldTryRestart(String subscriptionId) {
-        return !retryCountMap.containsKey(subscriptionId) || retryCountMap.get(subscriptionId) < MAX_RESTART_TRIES;
-    }
-
-
-    /**
-     * Increase the number of tries, for the subscription given as parameter
-     *
-     * @param subscriptionId
-     * @return
-     */
-    public void increaseTryCount(String subscriptionId) {
-        Integer currentNbOfTries = retryCountMap.containsKey(subscriptionId) ? retryCountMap.get(subscriptionId) : 0;
-        retryCountMap.put(subscriptionId, currentNbOfTries + 1);
-
-    }
 
     public boolean isSubscriptionRegistered(String subscriptionId) {
-
         return subscriptions.containsKey(subscriptionId);
     }
 
@@ -786,13 +635,12 @@ public class SubscriptionManager {
         obj.put("activated", formatTimestamp(activatedTimestamp.get(setup.getSubscriptionId())));
         obj.put("lastActivity", formatTimestamp(lastActivity.get(setup.getSubscriptionId())));
         obj.put("lastDataReceived", formatTimestamp(dataReceived.get(setup.getSubscriptionId())));
-        if (!setup.isActive()) {
-            obj.put("status", "deactivated");
+        if (!SubscriptionStatus.RUNNING.equals(setup.getStatus())) {
+            obj.put("status", "not running");
             obj.put("healthy", null);
             obj.put("flagAsNotReceivingData", false);
         } else {
-            obj.put("status", "active");
-            obj.put("healthy", isSubscriptionHealthy(setup.getSubscriptionId()));
+            obj.put("status", "running");
             obj.put("flagAsNotReceivingData", (dataReceived.get(setup.getSubscriptionId()) != null && (dataReceived.get(setup.getSubscriptionId())).isBefore(Instant.now().minusSeconds(1800))));
         }
         obj.put("hitcount", hitcount.get(setup.getSubscriptionId()));
@@ -837,109 +685,6 @@ public class SubscriptionManager {
         return null;
     }
 
-    /**
-     * Terminating all subscriptions by SiriDataType - to be used before a full restart to
-     */
-    public void terminateAllSubscriptions(SiriDataType type) {
-        logger.warn("Terminating ALL {}subscriptions", (type != null ? type + "-" : ""));
-        int counter = 0;
-        int inactiveCounter = 0;
-        for (SubscriptionSetup subscription : subscriptions.values()) {
-            if (type == null || subscription.getSubscriptionType().equals(type)) {
-                if (isActiveSubscription(subscription.getSubscriptionId())) {
-                    stopSubscription(subscription.getSubscriptionId());
-                    counter++;
-                } else {
-                    inactiveCounter++;
-                }
-            }
-        }
-        logger.warn("Stopped {} subscriptions, {} inactive.", counter, inactiveCounter);
-    }
-
-    public void terminateSubscription(String subscriptionId) {
-        logger.warn("Terminating subscription by id : {}", subscriptionId);
-        for (SubscriptionSetup subscription : subscriptions.values()) {
-            if (subscription.getSubscriptionId().equals(subscriptionId)) {
-                stopSubscription(subscription.getSubscriptionId());
-            }
-        }
-    }
-
-
-    /**
-     * Terminating all subscriptions - to be used before a full restart to
-     */
-    public void triggerRestartAllActiveSubscriptions(SiriDataType type) {
-
-        logger.warn("Triggering restart of ALL active {}subscriptions", (type != null ? type + "-" : ""));
-        int counter = 0;
-        int inactiveCounter = 0;
-        for (SubscriptionSetup subscription : subscriptions.values()) {
-            if (type == null || subscription.getSubscriptionType().equals(type)) {
-                if (isActiveSubscription(subscription.getSubscriptionId())) {
-                    forceRestart(subscription.getSubscriptionId());
-                    counter++;
-                } else {
-                    inactiveCounter++;
-                }
-            }
-        }
-        logger.warn("Restarted {} subscriptions, {} inactive.", counter, inactiveCounter);
-    }
-
-    public void stopSubscription(String subscriptionId) {
-        if (subscriptionId != null) {
-            SubscriptionSetup subscriptionSetup = subscriptions.get(subscriptionId);
-            if (subscriptionSetup != null) {
-                subscriptionSetup.setActive(false);
-                subscriptions.put(subscriptionId, subscriptionSetup);
-
-                removeSubscription(subscriptionId);
-                logger.info("Handled request to cancel subscription {}", subscriptionSetup);
-            }
-        }
-    }
-
-    public void startSubscription(String subscriptionId) {
-        if (subscriptionId != null) {
-            SubscriptionSetup subscriptionSetup = subscriptions.get(subscriptionId);
-            if (subscriptionSetup != null) {
-                subscriptionSetup.setActive(true);
-                activatePendingSubscription(subscriptionId);
-                logger.info("Handled request to start subscription {}", subscriptionSetup);
-            }
-        }
-    }
-
-    public Set<String> getAllUnhealthySubscriptions(int allowedInactivitySeconds) {
-        Set<String> subscriptionIds = subscriptions.keySet()
-                .stream()
-                .filter(this::isActiveSubscription)
-                .filter(subscriptionId -> !isSubscriptionReceivingData(subscriptionId, allowedInactivitySeconds))
-                .collect(Collectors.toSet());
-        if (subscriptionIds != null && !subscriptionIds.isEmpty()) {
-
-            return subscriptions.values()
-                    .stream()
-                    .filter(subscriptionSetup -> subscriptionIds.contains(subscriptionSetup.getSubscriptionId()))
-                    .map(SubscriptionSetup::getVendor)
-                    .collect(Collectors.toSet());
-        }
-        return new HashSet<>();
-    }
-
-    public boolean isSubscriptionReceivingData(String subscriptionId, long allowedInactivitySeconds) {
-        if (!isActiveSubscription(subscriptionId)) {
-            return true;
-        }
-        boolean isReceiving = true;
-        Instant lastDataReceived = dataReceived.get(subscriptionId);
-        if (lastDataReceived != null) {
-            isReceiving = (Instant.now().minusSeconds(allowedInactivitySeconds).isBefore(lastDataReceived));
-        }
-        return isReceiving;
-    }
 
     public void dataReceived(String subscriptionId) {
         dataReceived(subscriptionId, 0);
@@ -965,13 +710,11 @@ public class SubscriptionManager {
         }
 
 
-        if (isActiveSubscription(subscriptionId)) {
-            dataReceived.put(subscriptionId, Instant.now());
+        dataReceived.put(subscriptionId, Instant.now());
 
-            if (receivedByteCount > 0) {
-                receivedBytes.set(subscriptionId,
-                        receivedBytes.getOrDefault(subscriptionId, 0L) + receivedByteCount);
-            }
+        if (receivedByteCount > 0) {
+            receivedBytes.set(subscriptionId,
+                    receivedBytes.getOrDefault(subscriptionId, 0L) + receivedByteCount);
         }
     }
 
@@ -1089,5 +832,250 @@ public class SubscriptionManager {
 
     private boolean containsLineRefs(SubscriptionSetup subscriptionSetup, List<String> monitoringRefs) {
         return monitoringRefs.stream().anyMatch(subscriptionSetup.getLineRefValues()::contains);
+    }
+
+    public IMap<String, Instant> getActivatedTimestamp() {
+        return activatedTimestamp;
+    }
+
+    public ReplicatedMap<String, SubscriptionSetup> getSubscriptions() {
+        return subscriptions;
+    }
+
+
+    /**
+     * Main function that check subscriptions and launch restart if needed
+     */
+    @Scheduled(fixedRateString = "${scheduler.subscription-check.rate:PT20M}")
+    public void launchSubscriptionsLifeCycleCheck() {
+        logger.info("Starting subscriptions lifecycle check");
+        long startTime = System.currentTimeMillis();
+        hazelcastService.getSubscriptionInitNextSynchroTimes().clear();
+
+
+        List<SubscriptionSetup> subscriptionsToRestart = getSubscriptionsToStop();
+        logger.info("Subscriptions to restart : {}", subscriptionsToRestart.size());
+        launchTerminateRequest(subscriptionsToRestart);
+        launchSubscriptionRequest(subscriptionsToRestart);
+
+
+        List<SubscriptionSetup> newSubscriptions = subscriptions.values()
+                .stream().filter(subscription -> subscription.isActive() && SubscriptionSetup.SubscriptionMode.SUBSCRIBE.equals(subscription.getSubscriptionMode()) && SubscriptionStatus.WAITING_FOR_START.equals(subscription.getStatus()))
+                .toList();
+
+        logger.info("New subscriptions to start : {}", newSubscriptions.size());
+        launchSubscriptionRequest(newSubscriptions);
+
+
+        logger.info("Subscriptions lifecycle check completed in {} ms", System.currentTimeMillis() - startTime);
+    }
+
+    /**
+     * Send a terminateSubscription request for subscriptions that need to be stopped
+     *
+     * @param subscriptionsToStop subscriptions that need to be stopped
+     */
+    public void launchTerminateRequest(List<SubscriptionSetup> subscriptionsToStop) {
+        if (CollectionUtils.isEmpty(subscriptionsToStop)) {
+            return;
+        }
+        subscriptionsToStop.forEach(this::sendTerminateRequest);
+    }
+
+    /**
+     * Find subscriptions that need to be stopped :
+     * - unresponsive subscriptions with no activity (lastActivity > limit)
+     * - out of date subscriptions (restart time passed)
+     *
+     * @return List of subscriptions that need to be stopped
+     */
+    private List<SubscriptionSetup> getSubscriptionsToStop() {
+        List<SubscriptionSetup> subscriptionsToStop = new ArrayList<>();
+        subscriptionsToStop.addAll(getUnresponsiveSubscriptions());
+        subscriptionsToStop.addAll(getOutOfDateSubscriptions());
+        return subscriptionsToStop;
+    }
+
+
+    /**
+     * Find out of date subscriptions
+     * - was started before restart time
+     * - now > restart time
+     *
+     * @return the list of out to date subscriptions
+     */
+    private List<SubscriptionSetup> getOutOfDateSubscriptions() {
+        List<SubscriptionSetup> outOfDateSubs = subscriptions.values().stream()
+                .filter(SubscriptionPredicates.IS_RUNNING)
+                .filter(SubscriptionPredicates.IS_OUT_OF_DATE)
+                .toList();
+
+        List<String> outOfDateSubsIds = outOfDateSubs.stream().map(SubscriptionSetup::getSubscriptionId).toList();
+        if (CollectionUtils.isNotEmpty(outOfDateSubsIds)) {
+            logger.info("Out of date subs:{}", String.join(",", outOfDateSubsIds));
+        }
+        return outOfDateSubs;
+    }
+
+
+    /**
+     * Find unresponsive subscriptions (subscriptions that did not receive data since a long time)
+     *
+     * @return list of unresponsive subscriptions
+     */
+    public List<SubscriptionSetup> getUnresponsiveSubscriptions() {
+        List<SubscriptionSetup> unresponsiveSubs = subscriptions.values().stream()
+                .filter(SubscriptionPredicates.IS_RUNNING)
+                .filter(SubscriptionPredicates.isUnresponsive(lastActivity, unresponsiveDelay))
+                .toList();
+
+        List<String> unresponsiveSubsIds = unresponsiveSubs.stream().map(SubscriptionSetup::getSubscriptionId).toList();
+        if (CollectionUtils.isNotEmpty(unresponsiveSubs)) {
+            logger.info("Unresponsive subs:{}", String.join(",", unresponsiveSubsIds));
+        }
+        return unresponsiveSubs;
+    }
+
+
+    /**
+     * Send a SubscriptionRequest for subscriptions that need to be started
+     *
+     * @param subscriptionsToStart subscriptions that need to be started
+     */
+    public void launchSubscriptionRequest(List<SubscriptionSetup> subscriptionsToStart) {
+        if (CollectionUtils.isEmpty(subscriptionsToStart)) {
+            return;
+        }
+        subscriptionsToStart.forEach(this::sendSubscriptionRequest);
+    }
+
+
+    /**
+     * Save the last request into the subscription (monitoring purpose)
+     * Request can be SubscriptionRequest or TerminateSubscriptionRequest
+     *
+     * @param exchange exchange that contains request and parameters
+     */
+    public void recordRequest(Exchange exchange) {
+        String subscriptionId = exchange.getIn().getHeader(RECORDED_SUBSCRIPTION_HEADER_NAME, String.class);
+        SubscriptionSetup foundSubscription = subscriptions.get(subscriptionId);
+        if (foundSubscription != null) {
+            foundSubscription.setLastRequest(exchange.getIn().getBody(String.class));
+
+            String action = exchange.getIn().getHeader(RECORDED_SUBSCRIPTION_ACTION, String.class);
+            if (RECORDED_SUBSCRIPTION_ACTION_SUBSCRIBE.equals(action)) {
+                foundSubscription.setStatus(SubscriptionStatus.RUNNING);
+                foundSubscription.setStartedAt(ZonedDateTime.now());
+            } else if (RECORDED_SUBSCRIPTION_ACTION_TERMINATE.equals(action)) {
+                foundSubscription.setStatus(SubscriptionStatus.STOPPED);
+            }
+            subscriptions.put(subscriptionId, foundSubscription);
+        }
+    }
+
+    /**
+     * Save the last response into the subscription (monitoring purpose)
+     * Response can be from SubscriptionRequest or TerminateSubscriptionRequest
+     *
+     * @param exchange exchange that contains response and parameters
+     */
+    public void recordResponse(Exchange exchange) {
+        String subscriptionId = exchange.getIn().getHeader(RECORDED_SUBSCRIPTION_HEADER_NAME, String.class);
+        SubscriptionSetup foundSubscription = subscriptions.get(subscriptionId);
+        if (foundSubscription != null) {
+            foundSubscription.setLastResponse(exchange.getIn().getBody(String.class));
+            subscriptions.put(subscriptionId, foundSubscription);
+        }
+    }
+
+    /**
+     * Launch a subscriptionRequest for subscription given as parameter
+     *
+     * @param subscriptionSetup Subscription for which a subscriptionRequest must be sent
+     */
+    public void sendSubscriptionRequest(SubscriptionSetup subscriptionSetup) {
+        Exchange exchange = ExchangeBuilder.anExchange(camelContext).withBody(subscriptionSetup).build();
+        try (ProducerTemplate producer = camelContext.createProducerTemplate()) {
+            producer.requestBody("direct:" + subscriptionSetup.getStartSubscriptionRouteName(), exchange);
+        } catch (Exception e) {
+            throw new RuntimeException("Error while sending subscriptionRequest : ", e);
+        }
+    }
+
+    /**
+     * Launch a TerminateSubscription for subscription given as parameter
+     *
+     * @param subscriptionSetup Subscription for which a TerminateSubscription must be sent
+     */
+    public void sendTerminateRequest(SubscriptionSetup subscriptionSetup) {
+        Exchange exchange = ExchangeBuilder.anExchange(camelContext).withBody(subscriptionSetup).build();
+        try (ProducerTemplate producer = camelContext.createProducerTemplate()) {
+            producer.send("direct:" + subscriptionSetup.getCancelSubscriptionRouteName(), exchange);
+        } catch (Exception e) {
+            throw new RuntimeException("Error while sending TerminateSubscriptionRequest  : ", e);
+        }
+    }
+
+    /**
+     * Read the subscription to recover the last request and last response (monitoring purpose)
+     *
+     * @param subscriptionId subscription for which data must be read
+     * @return a json object with last request and last response
+     */
+    public JSONObject getSubscriptionLastRequestResponse(String subscriptionId) {
+
+        JSONObject lastRequestResponse = new JSONObject();
+        SubscriptionSetup foundSubscription = subscriptions.get(subscriptionId);
+        if (foundSubscription != null) {
+            lastRequestResponse.put("lastRequest", foundSubscription.getLastRequest());
+            lastRequestResponse.put("lastResponse", foundSubscription.getLastResponse());
+        }
+
+        return lastRequestResponse;
+    }
+
+    /**
+     * Get the statuses of all subscriptions (monitoring purpose)
+     *
+     * @return all status data of the subscriptions
+     */
+    public List<SubscriptionInfo> getSubscriptionStatuses() {
+        return subscriptions.values().stream()
+                .map(subscription -> new SubscriptionInfo(
+                        subscription,
+                        lastActivity.get(subscription.getSubscriptionId()),
+                        receivedBytes.get(subscription.getSubscriptionId())
+                ))
+                .toList();
+    }
+
+    public boolean isSubscriptionReceivingData(String subscriptionId, long allowedInactivitySeconds) {
+        boolean isReceiving = true;
+        Instant lastDataReceived = dataReceived.get(subscriptionId);
+        if (lastDataReceived != null) {
+            isReceiving = (Instant.now().minusSeconds(allowedInactivitySeconds).isBefore(lastDataReceived));
+        }
+        return isReceiving;
+    }
+
+    public void setLastActivity(String subscriptionId, Instant instant) {
+        lastActivity.put(subscriptionId, instant);
+    }
+
+    /**
+     * Subscriptions previously stopped by user needs to be re-activated
+     *
+     * @param activeSubscriptions subscriptions that need to be reactivated
+     */
+    public void resetPreviouslyStoppedSubscriptions(List<SubscriptionSetup> activeSubscriptions) {
+        activeSubscriptions.stream().filter(SubscriptionSetup::isActive)
+                .forEach(subscription -> {
+                    SubscriptionSetup existingSubscription = subscriptions.get(subscription.getSubscriptionId());
+                    if (existingSubscription != null && SubscriptionStatus.STOPPED.equals(existingSubscription.getStatus())) {
+                        existingSubscription.setStatus(SubscriptionStatus.WAITING_FOR_START);
+                        existingSubscription.setActive(true);
+                        subscriptions.put(existingSubscription.getSubscriptionId(), existingSubscription);
+                    }
+                });
     }
 }
