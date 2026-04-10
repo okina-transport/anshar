@@ -106,6 +106,9 @@ public class MessagingRoute extends RestRouteBuilder {
 
     private Map<String, SubscriptionSetup> discoveryFirstChild = new HashMap<>();
 
+    @Value("${anshar.external.sm.threads:200}")
+    private int externalSMThreads;
+
 
     @Override
     // @formatter:off
@@ -210,8 +213,8 @@ public class MessagingRoute extends RestRouteBuilder {
 
         from(externalSiriSMQueue)
                 .routeId("external.siri.sm.queue")
-                .threads(200)
-                .maxPoolSize(200)
+                .threads(externalSMThreads)
+                .maxPoolSize(externalSMThreads)
                 .process(InboundTimeProcessor::setInboundTime)
                 .process(e -> {
                     String datasetId = e.getMessage().getHeader(DATASET_ID_HEADER_NAME, String.class);

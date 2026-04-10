@@ -15,6 +15,8 @@
 
 package no.rutebanken.anshar.routes.outbound;
 
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.siri.handlers.outbound.SituationExchangeOutbound;
@@ -39,6 +41,7 @@ import java.net.SocketException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 import static no.rutebanken.anshar.routes.HttpParameter.INTERNAL_SIRI_DATA_TYPE;
 import static no.rutebanken.anshar.routes.HttpParameter.SIRI_VERSION_HEADER_NAME;
@@ -56,7 +59,7 @@ public class CamelRouteManager {
     ServerSubscriptionManager subscriptionManager;
     @Autowired
     ScheduledOutboundSubscriptionConfig scheduledOutboundSubscriptionConfig;
-    Map<String, ExecutorService> threadFactoryMap = new HashMap<>();
+
     @Autowired
     private SiriHelper siriHelper;
     @Value("${anshar.default.max.elements.per.delivery:1000}")
@@ -68,6 +71,9 @@ public class CamelRouteManager {
     @Autowired
     private PrometheusMetricsService prometheusMetricsService;
     private ExecutorService executors;
+
+    @Value("${anshar.outbound.push.siri.threads:20}")
+    private int outboundPushSiriThreads;
 
     @Autowired
     InitialDeliveryGenerator initialDeliveryGenerator;
@@ -86,9 +92,9 @@ public class CamelRouteManager {
             return;
         }
         final String breadcrumbId = MDC.get("camel.breadcrumbId");
-        ExecutorService executorService = getOrCreateExecutorService(subscriptionRequest);
 
-        executorService.submit(() -> {
+
+        executors.submit(() -> {
             try {
 
                 long startTime = System.currentTimeMillis();
@@ -169,7 +175,7 @@ public class CamelRouteManager {
                 }
                 subscriptionManager.pushFailedForSubscription(subscriptionRequest.getSubscriptionId());
 
-                removeDeadSubscriptionExecutors(subscriptionManager);
+
             } finally {
                 MDC.remove("camel.breadcrumbId");
             }
@@ -315,39 +321,6 @@ public class CamelRouteManager {
                         ));
     }
 
-    private ExecutorService getOrCreateExecutorService(OutboundSubscriptionSetup subscriptionRequest) {
-
-        if (executors == null) {
-            executors = Executors.newVirtualThreadPerTaskExecutor();
-        }
-
-        return executors;
-    }
-
-
-    /**
-     * Clean up dead ExecutorServices
-     *
-     * @param subscriptionManager
-     */
-    private void removeDeadSubscriptionExecutors(ServerSubscriptionManager subscriptionManager) {
-        List<String> idsToRemove = new ArrayList<>();
-        for (String id : threadFactoryMap.keySet()) {
-            if (!subscriptionManager.subscriptions.containsKey(id)) {
-                final ExecutorService service = threadFactoryMap.get(id);
-                idsToRemove.add(id);
-                // Force shutdown since outbound subscription has been stopped
-                service.shutdownNow();
-            }
-        }
-        if (!idsToRemove.isEmpty()) {
-            for (String id : idsToRemove) {
-                logger.info("Remove executor for subscription {}", id);
-                threadFactoryMap.remove(id);
-            }
-        }
-    }
-
 
     public void postDataToSubscription(String datasetId, Siri payload, OutboundSubscriptionSetup subscription, boolean showBody, Long inboundTime) {
         Map<String, Object> headers = new HashMap<>();
@@ -463,5 +436,16 @@ public class CamelRouteManager {
             return (expectedDepartureTime - aimedDepartureTime) > outboundSubscriptionSetup.getChangeBeforeUpdates();
         }
         return false;
+    }
+
+
+    @PostConstruct
+    public void init() {
+        executors = Executors.newVirtualThreadPerTaskExecutor();
+    }
+
+    @PreDestroy
+    public void destroy() {
+        executors.shutdown();
     }
 }

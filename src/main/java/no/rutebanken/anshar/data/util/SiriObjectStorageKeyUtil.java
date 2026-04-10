@@ -12,8 +12,8 @@ import java.util.Set;
 public class SiriObjectStorageKeyUtil {
 
 
-    public static Predicate<SiriObjectStorageKey, MonitoredStopVisit> getStopPredicate(Set<String> searchedStopRefs, String datasetId, List<String> excludedDatasetIds) {
-        return entry -> isKeyCompliantWithFilters(entry.getKey(), null, null, searchedStopRefs, datasetId, excludedDatasetIds, null, null);
+    public static Predicate<SiriObjectStorageKey, MonitoredStopVisit> getStopPredicate(Set<String> searchedStopRefs, Set<String> searchedLineIds, String datasetId, List<String> excludedDatasetIds) {
+        return entry -> isKeyCompliantWithFilters(entry.getKey(), searchedLineIds, null, searchedStopRefs, datasetId, excludedDatasetIds, null, null);
     }
 
     public static Predicate<SiriObjectStorageKey, VehicleActivityStructure> getVehiclePredicate(Set<String> linerefSet, Set<String> vehicleRefSet, String datasetId, List<String> excludedDatasetIds) {

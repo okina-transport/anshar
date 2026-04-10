@@ -22,7 +22,7 @@ import no.rutebanken.anshar.data.MonitoredStopVisits;
 import no.rutebanken.anshar.data.Situations;
 import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.data.util.CustomStringUtils;
-import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
+import no.rutebanken.anshar.routes.mapping.OutputExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.ParkingIdsService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
@@ -76,7 +76,7 @@ public class SiriHelper {
     private final SiriObjectFactory siriObjectFactory;
 
     @Autowired
-    ExternalIdsService externalIdsService;
+    OutputExternalIdsService outputExternalIdsService;
 
     @Autowired
     private SubscriptionConfig incomingSubscriptionConfig;
@@ -247,7 +247,7 @@ public class SiriHelper {
         if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy)) {
             Optional<IdProcessingParameters> idProcessingOpt = subscriptionConfig.getIdParametersForDataset(datasetId, ObjectType.LINE);
             for (String rawLineValue : rawLineValues) {
-                List<String> originalIdLines = externalIdsService.getReverseAltIdLines(datasetId, rawLineValue);
+                List<String> originalIdLines = outputExternalIdsService.getReverseAltIdLines(datasetId, rawLineValue);
 
                 if (idProcessingOpt.isPresent()) {
                     IdProcessingParameters idProcessing = idProcessingOpt.get();
@@ -259,10 +259,6 @@ public class SiriHelper {
                 processedLineValues.addAll(originalIdLines);
             }
         } else {
-            rawLineValues = rawLineValues.stream()
-                    .map(rawValue -> rawValue.replaceAll(":FlexibleLine:", ":Line:"))
-                    .collect(Collectors.toSet());
-
             Optional<String> datasetOpt = subscriptionConfig.findDatasetFromSearch(rawLineValues, ObjectType.LINE);
             if (datasetOpt.isPresent()) {
                 Optional<IdProcessingParameters> idProcLineOpt = subscriptionConfig.getIdParametersForDataset(datasetOpt.get(), ObjectType.LINE);
@@ -289,7 +285,7 @@ public class SiriHelper {
         if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)) {
             originalRequestedIds = stopPlaceUpdaterService.getReverseWithoutDatasetId(requestedId);
         } else if (OutboundIdMappingPolicy.ALT_ID.equals(outboundIdMappingPolicy)) {
-            originalRequestedIds = externalIdsService.getReverseAltIdStop(datasetId, requestedId);
+            originalRequestedIds = outputExternalIdsService.getReverseAltIdStop(datasetId, requestedId);
         }
 
         for (String originalRequestedId : originalRequestedIds) {
@@ -306,6 +302,21 @@ public class SiriHelper {
         }
 
         filterMap.put(MonitoringRefStructure.class, stopPointRefValues);
+
+        if (stopMonitoringSubscription.getStopMonitoringRequest().getLineRef() != null) {
+            String lineRefValue = stopMonitoringSubscription.getStopMonitoringRequest().getLineRef().getValue();
+            Set<String> lineRefs = new HashSet<>();
+            Set<String> rawLines = Collections.singleton(lineRefValue);
+            Set<String> revertedLines = revertLineIds(outboundIdMappingPolicy, rawLines, datasetId);
+
+            if (revertedLines.isEmpty()) {
+                lineRefs.add(lineRefValue);
+            } else {
+                lineRefs.addAll(revertedLines);
+            }
+
+            filterMap.put(LineRef.class, lineRefs);
+        }
 
         return filterMap;
     }
@@ -351,11 +362,6 @@ public class SiriHelper {
 
             Set<String> requestedIds = new HashSet<>();
             requestedIds.add(requestedId);
-
-            requestedIds = requestedIds.stream()
-                    .map(value -> value.replace(":FlexibleLine:", ":Line:"))
-                    .collect(Collectors.toSet());
-
             return subscriptionConfig.buildIdProcessingParams(datasetId, requestedIds, ObjectType.LINE);
         }
 
@@ -374,9 +380,6 @@ public class SiriHelper {
             for (LineDirectionStructure lineDirection : estimatedTimetableSubscription.getEstimatedTimetableRequest().getLines().getLineDirections()) {
                 requestedIds.add(lineDirection.getLineRef().getValue());
             }
-            requestedIds = requestedIds.stream()
-                    .map(value -> value.replace(":FlexibleLine:", ":Line:"))
-                    .collect(Collectors.toSet());
         }
 
         return subscriptionConfig.buildIdProcessingParams(datasetId, requestedIds, ObjectType.LINE);

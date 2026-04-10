@@ -14,17 +14,15 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import uk.org.siri.siri21.EstimatedVehicleJourney;
-import uk.org.siri.siri21.MonitoredStopVisit;
-import uk.org.siri.siri21.MonitoredStopVisitCancellation;
+import uk.org.siri.siri21.*;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
@@ -49,7 +47,7 @@ class TripUpdateMapperTest {
     private SubscriptionConfig subscriptionConfig;
 
     @Test
-    void testGTFSRTTripUpdateMapperTest() {
+    void testGTFSRTTripUpdateMapperTest_with_occupancy() {
         GtfsRealtime.TripUpdate.Builder tripBuilder = GtfsRealtime.TripUpdate.newBuilder();
         GtfsRealtime.TripDescriptor.Builder tripDescBuild = GtfsRealtime.TripDescriptor.newBuilder();
         tripDescBuild.setTripId("tripId");
@@ -62,40 +60,61 @@ class TripUpdateMapperTest {
         stopTimeUpd.setDeparture(ste.build());
         tripBuilder.addStopTimeUpdate(stopTimeUpd);
 
-        List<String> routeIdList = Arrays.asList("".split(","));
+        List<String> routeIdList = Collections.emptyList();
+        GtfsRealtime.VehiclePosition.OccupancyStatus status = GtfsRealtime.VehiclePosition.OccupancyStatus.FEW_SEATS_AVAILABLE;
 
-        EstimatedVehicleJourney vehicleJourney = tripUpdateMapper.mapVehicleJourneyFromTripUpdate(tripBuilder.build(), "", routeIdList, PublishedLineNameMapping.LINE_NAME);
+        EstimatedVehicleJourney vehicleJourney = tripUpdateMapper.mapVehicleJourneyFromTripUpdate(
+                tripBuilder.build(), "", routeIdList, PublishedLineNameMapping.LINE_NAME, status);
+
         assertThat(vehicleJourney).isNotNull();
-        assertThat(vehicleJourney.getDestinationRef()).isNotNull();
-        assertEquals(1, vehicleJourney.getDestinationNames().size());
-
+        assertThat(vehicleJourney.getEstimatedCalls().getEstimatedCalls()).isNotEmpty();
+        EstimatedCall firstCall = vehicleJourney.getEstimatedCalls().getEstimatedCalls().get(0);
+        assertEquals(OccupancyEnumeration.FEW_SEATS_AVAILABLE, firstCall.getExpectedDepartureOccupancies().get(0).getOccupancyLevel());
     }
 
     @Test
-    void testGTFSRTTripUpdateToStopMonitoringMapperTest_without_direction() {
+    void testGTFSRTTripUpdateToStopMonitoringMapperTest_with_occupancy() {
         String dataset = "DAT1";
         String tripId = "tripId";
-        when(stopTimesService.getDirectionId(dataset, tripId)).thenReturn(Optional.of("A"));
+        String stopId = "stopId";
 
+        when(stopTimesService.getDirectionId(dataset, tripId)).thenReturn(Optional.of("A"));
 
         GtfsRealtime.TripUpdate.Builder tripBuilder = GtfsRealtime.TripUpdate.newBuilder();
         GtfsRealtime.TripDescriptor.Builder tripDescBuild = GtfsRealtime.TripDescriptor.newBuilder();
-        tripDescBuild.setTripId("tripId");
+        tripDescBuild.setTripId(tripId);
         tripBuilder.setTrip(tripDescBuild);
         GtfsRealtime.TripUpdate.StopTimeUpdate.Builder stopTimeUpd = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder();
-        stopTimeUpd.setStopId("stopId");
+        stopTimeUpd.setStopId(stopId);
         stopTimeUpd.setStopSequence(0);
         GtfsRealtime.TripUpdate.StopTimeEvent.Builder ste = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder();
         ste.setDelay(50);
         stopTimeUpd.setDeparture(ste.build());
         tripBuilder.addStopTimeUpdate(stopTimeUpd);
 
-        List<String> routeIdList = Arrays.asList("".split(","));
-        List<MonitoredStopVisit> stopMonitorings = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), dataset, routeIdList, PublishedLineNameMapping.LINE_NAME, new HashMap<>());
+        GtfsRealtime.VehiclePosition.OccupancyStatus expectedStatus = GtfsRealtime.VehiclePosition.OccupancyStatus.MANY_SEATS_AVAILABLE;
+        List<String> routeIdList = Collections.emptyList();
+        Map<String, GtfsRealtime.VehiclePosition> vehiclePositionsByTripId = new HashMap<>();
+        List<MonitoredStopVisit> stopMonitorings = tripUpdateMapper.mapStopVisitFromTripUpdate(
+                tripBuilder.build(),
+                dataset,
+                routeIdList,
+                PublishedLineNameMapping.LINE_NAME,
+                vehiclePositionsByTripId,
+                expectedStatus
+        );
+
         Assertions.assertEquals(1, stopMonitorings.size());
         MonitoredStopVisit sm = stopMonitorings.getFirst();
+
         Assertions.assertEquals(1, sm.getMonitoredVehicleJourney().getDirectionNames().size());
         Assertions.assertEquals("A", sm.getMonitoredVehicleJourney().getDirectionNames().getFirst().getValue());
+
+        MonitoredCallStructure monitoredCall = sm.getMonitoredVehicleJourney().getMonitoredCall();
+        Assertions.assertNotNull(monitoredCall);
+        Assertions.assertFalse(monitoredCall.getExpectedDepartureOccupancies().isEmpty(), "La liste d'occupation ne devrait pas être vide");
+        OccupancyEnumeration siriOccupancy = monitoredCall.getExpectedDepartureOccupancies().getFirst().getOccupancyLevel();
+        Assertions.assertEquals(OccupancyEnumeration.MANY_SEATS_AVAILABLE, siriOccupancy);
     }
 
     @Test
@@ -114,7 +133,7 @@ class TripUpdateMapperTest {
         tripBuilder.addStopTimeUpdate(stopTimeUpd);
 
         List<String> routeIdList = Arrays.asList("".split(","));
-        List<MonitoredStopVisit> stopMonitorings = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), "", routeIdList, PublishedLineNameMapping.LINE_NAME, new HashMap<>());
+        List<MonitoredStopVisit> stopMonitorings = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), "", routeIdList, PublishedLineNameMapping.LINE_NAME, new HashMap<>(), null);
         Assertions.assertEquals(1, stopMonitorings.size());
         MonitoredStopVisit sm = stopMonitorings.getFirst();
         Assertions.assertEquals(1, sm.getMonitoredVehicleJourney().getDirectionNames().size());
@@ -137,7 +156,7 @@ class TripUpdateMapperTest {
         tripBuilder.addStopTimeUpdate(stopTimeUpd);
 
         List<String> routeIdList = Arrays.asList("".split(","));
-        List<MonitoredStopVisit> stopMonitorings = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), "", routeIdList, PublishedLineNameMapping.LINE_NAME, new HashMap<>());
+        List<MonitoredStopVisit> stopMonitorings = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), "", routeIdList, PublishedLineNameMapping.LINE_NAME, new HashMap<>(), null);
         Assertions.assertEquals(1, stopMonitorings.size());
         MonitoredStopVisit sm = stopMonitorings.getFirst();
         Assertions.assertEquals(1, sm.getMonitoredVehicleJourney().getDirectionNames().size());
@@ -215,7 +234,7 @@ class TripUpdateMapperTest {
         when(subscriptionConfig.getIdParametersForDataset("test", ObjectType.LINE)).thenReturn(Optional.of(ipp));
 
         // Act
-        List<MonitoredStopVisit> output = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), "test", routeIdList, PublishedLineNameMapping.LINE_NUMBER, new HashMap<>());
+        List<MonitoredStopVisit> output = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), "test", routeIdList, PublishedLineNameMapping.LINE_NUMBER, new HashMap<>(), null);
 
         // Assert
         Assertions.assertEquals("1", output.getFirst().getMonitoredVehicleJourney().getPublishedLineNames().getFirst().getValue());
@@ -243,10 +262,113 @@ class TripUpdateMapperTest {
         when(subscriptionConfig.getIdParametersForDataset("test", ObjectType.LINE)).thenReturn(Optional.empty());
 
         // Act
-        List<MonitoredStopVisit> output = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), "test", routeIdList, PublishedLineNameMapping.LINE_NUMBER, new HashMap<>());
+        List<MonitoredStopVisit> output = tripUpdateMapper.mapStopVisitFromTripUpdate(tripBuilder.build(), "test", routeIdList, PublishedLineNameMapping.LINE_NUMBER, new HashMap<>(), null);
 
         // Assert
         Assertions.assertTrue(CollectionUtils.isEmpty(output.getFirst().getMonitoredVehicleJourney().getPublishedLineNames()));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = GtfsRealtime.VehiclePosition.OccupancyStatus.class, names = {
+            "EMPTY",
+            "MANY_SEATS_AVAILABLE",
+            "FEW_SEATS_AVAILABLE",
+            "STANDING_ROOM_ONLY",
+            "CRUSHED_STANDING_ROOM_ONLY",
+            "FULL",
+            "NOT_ACCEPTING_PASSENGERS",
+            "NO_DATA_AVAILABLE",
+            "NOT_BOARDABLE"
+    })
+    void testOccupancyMappingAllCases(GtfsRealtime.VehiclePosition.OccupancyStatus gtfsStatus) {
+        String dataset = "DAT1";
+        GtfsRealtime.TripUpdate tripUpdate = GtfsRealtime.TripUpdate.newBuilder()
+                .setTrip(GtfsRealtime.TripDescriptor.newBuilder().setTripId("test-trip").build())
+                .addStopTimeUpdate(GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder()
+                        .setStopId("stop-1")
+                        .setStopSequence(1)
+                        .build())
+                .build();
+
+        List<MonitoredStopVisit> results = tripUpdateMapper.mapStopVisitFromTripUpdate(
+                tripUpdate,
+                dataset,
+                Collections.emptyList(),
+                PublishedLineNameMapping.LINE_NAME,
+                new HashMap<>(),
+                gtfsStatus
+        );
+
+        MonitoredCallStructure monitoredCall = results.getFirst().getMonitoredVehicleJourney().getMonitoredCall();
+        var occupancies = monitoredCall.getExpectedDepartureOccupancies();
+
+        switch (gtfsStatus) {
+            case EMPTY ->
+                    Assertions.assertEquals(OccupancyEnumeration.EMPTY, occupancies.getFirst().getOccupancyLevel());
+            case MANY_SEATS_AVAILABLE ->
+                    Assertions.assertEquals(OccupancyEnumeration.MANY_SEATS_AVAILABLE, occupancies.getFirst().getOccupancyLevel());
+            case FEW_SEATS_AVAILABLE ->
+                    Assertions.assertEquals(OccupancyEnumeration.FEW_SEATS_AVAILABLE, occupancies.getFirst().getOccupancyLevel());
+            case STANDING_ROOM_ONLY ->
+                    Assertions.assertEquals(OccupancyEnumeration.STANDING_ROOM_ONLY, occupancies.getFirst().getOccupancyLevel());
+            case CRUSHED_STANDING_ROOM_ONLY ->
+                    Assertions.assertEquals(OccupancyEnumeration.CRUSHED_STANDING_ROOM_ONLY, occupancies.getFirst().getOccupancyLevel());
+            case FULL ->
+                    Assertions.assertEquals(OccupancyEnumeration.FULL, occupancies.getFirst().getOccupancyLevel());
+            case NOT_ACCEPTING_PASSENGERS ->
+                    Assertions.assertEquals(OccupancyEnumeration.NOT_ACCEPTING_PASSENGERS, occupancies.getFirst().getOccupancyLevel());
+            case NO_DATA_AVAILABLE ->
+                    Assertions.assertTrue(occupancies.isEmpty(), "La liste devrait être vide pour NO_DATA_AVAILABLE");
+            default -> // Cas UNKNOWN (ex: NOT_BOARDABLE)
+                    Assertions.assertEquals(OccupancyEnumeration.UNKNOWN, occupancies.getFirst().getOccupancyLevel());
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "EMPTY, empty",
+            "MANY_SEATS_AVAILABLE, manySeatsAvailable",
+            "FEW_SEATS_AVAILABLE, fewSeatsAvailable",
+            "STANDING_ROOM_ONLY, standingRoomOnly",
+            "CRUSHED_STANDING_ROOM_ONLY, crushedStandingRoomOnly",
+            "FULL, full",
+            "NOT_ACCEPTING_PASSENGERS, notAcceptingPassengers"
+    })
+    void testETOccupancyMappingAllCases(String gtfsInput, String siriExpected) {
+        GtfsRealtime.VehiclePosition.OccupancyStatus gtfsStatus = GtfsRealtime.VehiclePosition.OccupancyStatus.valueOf(gtfsInput);
+        OccupancyEnumeration expectedSiri = OccupancyEnumeration.fromValue(siriExpected);
+
+        GtfsRealtime.TripUpdate tripUpdate = GtfsRealtime.TripUpdate.newBuilder()
+                .setTrip(GtfsRealtime.TripDescriptor.newBuilder().setTripId("trip-1").build())
+                .addStopTimeUpdate(GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder()
+                        .setStopId("stop-1")
+                        .setStopSequence(1)
+                        .build())
+                .build();
+
+        EstimatedVehicleJourney result = tripUpdateMapper.mapVehicleJourneyFromTripUpdate(
+                tripUpdate, "dataset", Collections.emptyList(), PublishedLineNameMapping.LINE_NAME, gtfsStatus);
+
+        EstimatedCall call = result.getEstimatedCalls().getEstimatedCalls().get(0);
+
+        Assertions.assertFalse(call.getExpectedDepartureOccupancies().isEmpty(), "L'occupancy ne devrait pas être vide pour " + gtfsInput);
+        OccupancyEnumeration actualSiri = call.getExpectedDepartureOccupancies().get(0).getOccupancyLevel();
+        Assertions.assertEquals(expectedSiri, actualSiri, "Le mapping pour " + gtfsInput + " a échoué");
+    }
+
+    @Test
+    void testETOccupancyMappingNoDataCase() {
+        GtfsRealtime.TripUpdate tripUpdate = GtfsRealtime.TripUpdate.newBuilder()
+                .setTrip(GtfsRealtime.TripDescriptor.newBuilder().setTripId("trip-1").build())
+                .addStopTimeUpdate(GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder().setStopId("stop-1").build())
+                .build();
+
+        EstimatedVehicleJourney result = tripUpdateMapper.mapVehicleJourneyFromTripUpdate(
+                tripUpdate, "dataset", Collections.emptyList(), PublishedLineNameMapping.LINE_NAME,
+                GtfsRealtime.VehiclePosition.OccupancyStatus.NO_DATA_AVAILABLE);
+
+        EstimatedCall call = result.getEstimatedCalls().getEstimatedCalls().get(0);
+        assertThat(call.getExpectedDepartureOccupancies()).isEmpty();
     }
 
 }

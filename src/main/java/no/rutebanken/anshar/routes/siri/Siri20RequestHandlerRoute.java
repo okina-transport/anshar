@@ -116,6 +116,9 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
     @Value("${default.use.original.id:false}")
     private boolean defaultUseOriginalId;
 
+    @Value("${seda.max.concurrent.consumers:20}")
+    private int sedaMaxConcurrentConsumers;
+
 
     // @formatter:off
     @Override
@@ -263,7 +266,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .routeId("process.incoming")
         ;
 
-        from("seda:async.process.request?concurrentConsumers=1000&limitConcurrentConsumers=false")
+        from("seda:async.process.request?concurrentConsumers=" + sedaMaxConcurrentConsumers + "&limitConcurrentConsumers=false")
                 .setExchangePattern(ExchangePattern.InOnly)
                 .convertBodyTo(String.class)
                 .process(p -> {

@@ -360,7 +360,7 @@ public class GeneralMessageTest extends SpringBootBaseTest {
                 Content cont = (Content) generalMessage.getContent();
                 String lineRef = cont.getLineRefs().get(0);
                 if (lineRef.startsWith("PROV1")) {
-                    assertEquals("PROV1:FlexibleLine:35", lineRef);
+                    assertEquals("PROV1:Line:35", lineRef);
                 } else {
                     assertEquals(standardlineId, lineRef);
                 }

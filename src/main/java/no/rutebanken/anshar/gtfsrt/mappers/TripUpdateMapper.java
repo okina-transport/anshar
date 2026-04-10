@@ -139,7 +139,7 @@ public class TripUpdateMapper {
      * @param publishedLineNameMapping The way to map PublishedLineName from GTFS-RT TripUpdate to Siri StopMonitoring
      * @return A list of {@link MonitoredStopVisit} objects representing structured stop visit data.
      */
-    public List<MonitoredStopVisit> mapStopVisitFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate, String datasetId, List<String> routeIdList, PublishedLineNameMapping publishedLineNameMapping, Map<String, GtfsRealtime.VehiclePosition> vehiclePositionsByTripId) {
+    public List<MonitoredStopVisit> mapStopVisitFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate, String datasetId, List<String> routeIdList, PublishedLineNameMapping publishedLineNameMapping, Map<String, GtfsRealtime.VehiclePosition> vehiclePositionsByTripId, GtfsRealtime.VehiclePosition.OccupancyStatus occupancyStatus) {
         List<MonitoredStopVisit> stopVisitList = new ArrayList<>();
         FramedVehicleJourneyRefStructure vehicleJourneyRef = createVehicleJourneyRef(tripUpdate);
 
@@ -218,6 +218,13 @@ public class TripUpdateMapper {
             if (stopTimeUpdate.hasScheduleRelationship() && stopTimeUpdate.getScheduleRelationship() == GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SKIPPED) {
                 monitoredCallStructure.setDepartureStatus(CallStatusEnumeration.MISSED);
                 monitoredCallStructure.setArrivalStatus(CallStatusEnumeration.MISSED);
+            }
+
+            OccupancyEnumeration siriOccupancy = mapOccupancy(occupancyStatus);
+            if (siriOccupancy != null) {
+                VehicleOccupancyStructure occupancyStructure = new VehicleOccupancyStructure();
+                occupancyStructure.setOccupancyLevel(siriOccupancy);
+                monitoredCallStructure.getExpectedDepartureOccupancies().add(occupancyStructure);
             }
 
             try {
@@ -323,7 +330,7 @@ public class TripUpdateMapper {
      * @return An {@link EstimatedVehicleJourney} object representing the structured journey data,
      * or {@code null} if the route ID is not in the provided list.
      */
-    public EstimatedVehicleJourney mapVehicleJourneyFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate, String datasetId, List<String> routeIdList, PublishedLineNameMapping publishedLineNameMapping) {
+    public EstimatedVehicleJourney mapVehicleJourneyFromTripUpdate(GtfsRealtime.TripUpdate tripUpdate, String datasetId, List<String> routeIdList, PublishedLineNameMapping publishedLineNameMapping, GtfsRealtime.VehiclePosition.OccupancyStatus occupancyStatus) {
         GtfsRealtime.TripDescriptor tripDescriptor = tripUpdate.getTrip();
         if (!routeIdList.isEmpty()) {
             String routeIdInCache = "";
@@ -416,6 +423,13 @@ public class TripUpdateMapper {
             EstimatedCall estimatedCall = mapEstimatedCallFromTripUpdate(stopTimeUpdate, aimedArrivalTime.orElse(null),
                     aimedDepartureTime.orElse(null), tripUpdate.hasDelay() ? tripUpdate.getDelay() : null);
 
+            OccupancyEnumeration siriOccupancy = mapOccupancy(occupancyStatus);
+            if (siriOccupancy != null) {
+                VehicleOccupancyStructure occupancyStructure = new VehicleOccupancyStructure();
+                occupancyStructure.setOccupancyLevel(siriOccupancy);
+                estimatedCall.getExpectedDepartureOccupancies().add(occupancyStructure);
+            }
+
             try {
                 Extensions extensions = new Extensions();
                 List<Object> extensionElements = new ArrayList<>(extensions.getAnies());
@@ -442,6 +456,23 @@ public class TripUpdateMapper {
 
         journey.setEstimatedCalls(estimatedCalls);
         return journey;
+    }
+
+    private OccupancyEnumeration mapOccupancy(GtfsRealtime.VehiclePosition.OccupancyStatus status) {
+        if (status == null || status == GtfsRealtime.VehiclePosition.OccupancyStatus.NO_DATA_AVAILABLE) {
+            return null;
+        }
+
+        return switch (status) {
+            case EMPTY -> OccupancyEnumeration.EMPTY;
+            case MANY_SEATS_AVAILABLE -> OccupancyEnumeration.MANY_SEATS_AVAILABLE;
+            case FEW_SEATS_AVAILABLE -> OccupancyEnumeration.FEW_SEATS_AVAILABLE;
+            case STANDING_ROOM_ONLY -> OccupancyEnumeration.STANDING_ROOM_ONLY;
+            case CRUSHED_STANDING_ROOM_ONLY -> OccupancyEnumeration.CRUSHED_STANDING_ROOM_ONLY;
+            case FULL -> OccupancyEnumeration.FULL;
+            case NOT_ACCEPTING_PASSENGERS -> OccupancyEnumeration.NOT_ACCEPTING_PASSENGERS;
+            default -> OccupancyEnumeration.UNKNOWN;
+        };
     }
 
     /**

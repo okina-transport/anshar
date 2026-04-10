@@ -67,9 +67,17 @@ public class TripUpdateReader extends AbstractSwallower {
      */
     public void ingestTripUpdateData(String datasetId, List<String> routeIdList, GtfsRealtime.FeedMessage completeGTFSRTMessage, PublishedLineNameMapping publishedLineNameMapping) {
 
+        Map<String, GtfsRealtime.VehiclePosition.OccupancyStatus> occupancyMap = new HashMap<>();
+        for (GtfsRealtime.FeedEntity entity : completeGTFSRTMessage.getEntityList()) {
+            if (entity.hasVehicle() && entity.getVehicle().hasTrip()) {
+                String tripId = entity.getVehicle().getTrip().getTripId();
+                occupancyMap.put(tripId, entity.getVehicle().getOccupancyStatus());
+            }
+        }
+
         if (configuration.processET()) {
             //// ESTIMATED TIME TABLES
-            List<EstimatedVehicleJourney> estimatedVehicleJourneys = buildEstimatedVehicleJourneyList(completeGTFSRTMessage, datasetId, routeIdList, publishedLineNameMapping);
+            List<EstimatedVehicleJourney> estimatedVehicleJourneys = buildEstimatedVehicleJourneyList(completeGTFSRTMessage, datasetId, routeIdList, publishedLineNameMapping, occupancyMap);
             List<String> etSubscriptionList = getSubscriptionsFromEstimatedTimeTables(estimatedVehicleJourneys);
             checkAndCreateSubscriptions(etSubscriptionList, GTFSRT_ET_PREFIX, SiriDataType.ESTIMATED_TIMETABLE, RequestType.GET_ESTIMATED_TIMETABLE, datasetId);
             List<String> lineList = getLines(estimatedVehicleJourneys);
@@ -81,7 +89,7 @@ public class TripUpdateReader extends AbstractSwallower {
 
         if (configuration.processSM()) {
             //// STOP VISITS
-            List<MonitoredStopVisit> stopVisits = buildStopVisitList(completeGTFSRTMessage, datasetId, routeIdList, publishedLineNameMapping);
+            List<MonitoredStopVisit> stopVisits = buildStopVisitList(completeGTFSRTMessage, datasetId, routeIdList, publishedLineNameMapping, occupancyMap);
             List<MonitoredStopVisitCancellation> stopCancellations = buildStopCancellationList(completeGTFSRTMessage, datasetId, routeIdList);
             List<String> visitSubscriptionList = getSubscriptionsFromVisits(stopVisits);
             checkAndCreateSubscriptions(visitSubscriptionList, GTFSRT_SM_PREFIX, SiriDataType.STOP_MONITORING, RequestType.GET_STOP_MONITORING, datasetId);
@@ -148,7 +156,7 @@ public class TripUpdateReader extends AbstractSwallower {
      * @param publishedLineNameMapping The way to map PublishedLineName from GTFS-RT TripUpdate to Siri StopMonitoring
      * @return A list of {@link MonitoredStopVisit} objects representing structured stop visit data.
      */
-    private List<MonitoredStopVisit> buildStopVisitList(GtfsRealtime.FeedMessage feedMessage, String datasetId, List<String> routeIdList, PublishedLineNameMapping publishedLineNameMapping) {
+    private List<MonitoredStopVisit> buildStopVisitList(GtfsRealtime.FeedMessage feedMessage, String datasetId, List<String> routeIdList, PublishedLineNameMapping publishedLineNameMapping, Map<String, GtfsRealtime.VehiclePosition.OccupancyStatus> occupancyMap) {
         List<MonitoredStopVisit> stopVisits = new ArrayList<>();
 
         long recordedAtTimeLong = feedMessage.getHeader().getTimestamp();
@@ -169,7 +177,10 @@ public class TripUpdateReader extends AbstractSwallower {
             if (feedEntity.getTripUpdate() == null)
                 continue;
 
-            List<MonitoredStopVisit> currentStopVisitList = tripUpdateMapper.mapStopVisitFromTripUpdate(feedEntity.getTripUpdate(), datasetId, routeIdList, publishedLineNameMapping, vehiclePositionsByTripId);
+            String tripId = feedEntity.getTripUpdate().getTrip().getTripId();
+            GtfsRealtime.VehiclePosition.OccupancyStatus status = occupancyMap.get(tripId);
+
+            List<MonitoredStopVisit> currentStopVisitList = tripUpdateMapper.mapStopVisitFromTripUpdate(feedEntity.getTripUpdate(), datasetId, routeIdList, publishedLineNameMapping, vehiclePositionsByTripId, status);
             stopVisits.addAll(currentStopVisitList);
         }
 
@@ -213,25 +224,32 @@ public class TripUpdateReader extends AbstractSwallower {
      * This method processes trip updates from the feed message and converts them into structured estimated vehicle journeys.
      *
      * @param feedMessage The GTFS-Realtime {@link GtfsRealtime.FeedMessage} containing trip update data.
-     * @param datasedId   datasetId used to check known id
+     * @param datasetId   datasetId used to check known id
      * @param routeIdList A list of route IDs used to filter relevant estimated vehicle journeys.
      * @return A list of {@link EstimatedVehicleJourney} objects representing structured estimated vehicle journey data.
      */
-    private List<EstimatedVehicleJourney> buildEstimatedVehicleJourneyList(GtfsRealtime.FeedMessage feedMessage, String datasedId, List<String> routeIdList, PublishedLineNameMapping publishedLineNameMapping) {
+    private List<EstimatedVehicleJourney> buildEstimatedVehicleJourneyList(GtfsRealtime.FeedMessage feedMessage, String datasetId, List<String> routeIdList, PublishedLineNameMapping publishedLineNameMapping, Map<String, GtfsRealtime.VehiclePosition.OccupancyStatus> occupancyMap) {
         List<EstimatedVehicleJourney> estimatedVehicleJourneys = new ArrayList<>();
-
 
         for (GtfsRealtime.FeedEntity feedEntity : feedMessage.getEntityList()) {
             if (feedEntity.getTripUpdate() == null)
                 continue;
 
-            EstimatedVehicleJourney estimatedVehicleJourney = tripUpdateMapper.mapVehicleJourneyFromTripUpdate(feedEntity.getTripUpdate(), datasedId, routeIdList, publishedLineNameMapping);
+            String tripId = feedEntity.getTripUpdate().getTrip().getTripId();
+            GtfsRealtime.VehiclePosition.OccupancyStatus status = occupancyMap.get(tripId);
+
+            EstimatedVehicleJourney estimatedVehicleJourney = tripUpdateMapper.mapVehicleJourneyFromTripUpdate(
+                    feedEntity.getTripUpdate(),
+                    datasetId,
+                    routeIdList,
+                    publishedLineNameMapping,
+                    status);
+
             if (estimatedVehicleJourney != null) {
                 estimatedVehicleJourneys.add(estimatedVehicleJourney);
             }
         }
         return estimatedVehicleJourneys;
-
     }
 
     /**

@@ -5,7 +5,7 @@ import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.MonitoredStopVisits;
 import no.rutebanken.anshar.data.util.CustomStringUtils;
-import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
+import no.rutebanken.anshar.routes.mapping.OutputExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
@@ -36,7 +36,7 @@ public class StopMonitoringOutbound {
     StopPlaceUpdaterService stopPlaceUpdaterService;
 
     @Autowired
-    ExternalIdsService externalIdsService;
+    OutputExternalIdsService outputExternalIdsService;
 
     @Autowired
     MonitoredStopVisits monitoredStopVisits;
@@ -71,8 +71,8 @@ public class StopMonitoringOutbound {
     public Set<String> convertFromAltIdsToImportedIdsStop(Set<String> originalMonitoringRefs, String datasetId) {
         Set<String> importedIds = new HashSet<>();
         for (String originalMonitoringRef : originalMonitoringRefs) {
-            if (StringUtils.isNotEmpty(datasetId) && StringUtils.isNotEmpty(originalMonitoringRef) && !externalIdsService.getReverseAltIdStop(datasetId, originalMonitoringRef).isEmpty()) {
-                importedIds.addAll(externalIdsService.getReverseAltIdStop(datasetId, originalMonitoringRef));
+            if (StringUtils.isNotEmpty(datasetId) && StringUtils.isNotEmpty(originalMonitoringRef) && !outputExternalIdsService.getReverseAltIdStop(datasetId, originalMonitoringRef).isEmpty()) {
+                importedIds.addAll(outputExternalIdsService.getReverseAltIdStop(datasetId, originalMonitoringRef));
             } else {
                 // we need to keep original search to avoid search with empty stops and recover all stops from cache
                 importedIds.add(originalMonitoringRef);

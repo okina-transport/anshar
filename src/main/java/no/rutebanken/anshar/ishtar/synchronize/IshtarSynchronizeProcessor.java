@@ -11,7 +11,7 @@ import no.rutebanken.anshar.ishtar.model.GtfsRTApiDto;
 import no.rutebanken.anshar.ishtar.model.IdProcessingParameterDto;
 import no.rutebanken.anshar.ishtar.model.SiriApiDto;
 import no.rutebanken.anshar.ishtar.model.SubscriptionDto;
-import no.rutebanken.anshar.routes.mapping.ExternalIdsService;
+import no.rutebanken.anshar.routes.mapping.OutputExternalIdsService;
 import no.rutebanken.anshar.subscription.DiscoverySubscriptionCreator;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
@@ -55,7 +55,7 @@ public class IshtarSynchronizeProcessor implements Processor {
     private final SubscriptionDtoToSubscriptionSetupConverter toSubscriptionSetupConverter;
 
     @Autowired
-    ExternalIdsService externalIdsService;
+    OutputExternalIdsService outputExternalIdsService;
 
 
     @Autowired
@@ -173,7 +173,7 @@ public class IshtarSynchronizeProcessor implements Processor {
             subscriptionConfig.mergeIdProcessingParams(ipp);
             log.info("After merge {} ID ProcessingParameter(s) in cache",
                     subscriptionConfig.getIdProcessingParameters().size());
-            externalIdsService.downloadFilesAndRefreshCache();
+            outputExternalIdsService.downloadFilesAndRefreshCache();
         } catch (WebClientException e) {
             log.error("--> ISHTAR : error during IdProcessing synchronization : {}", e.getMessage());
             log.debug("Error during IdProcessing synchronization", e);
