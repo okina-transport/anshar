@@ -736,7 +736,9 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
             return "GetSituationExchange";
         } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.STOP_MONITORING) {
             return "GetStopMonitoring";
-        } else {
+        } else if (subscriptionSetup.getSubscriptionType() == SiriDataType.GENERAL_MESSAGE) {
+            return "GetGeneralMessage";
+        }else {
             throw new ServiceNotSupportedException();
         }
     }
