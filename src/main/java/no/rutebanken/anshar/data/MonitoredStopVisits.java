@@ -632,6 +632,12 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         }
 
         monitoredStopVisit.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().setDatedVehicleJourneyRef(CustomStringUtils.removeSpecialCharacters(vehicleJourneyRef));
+
+        if(monitoredStopVisit.getMonitoredVehicleJourney().getLineRef() != null && StringUtils.isNotEmpty(monitoredStopVisit.getMonitoredVehicleJourney().getLineRef().getValue())){
+            LineRef lineRef = new LineRef();
+            lineRef.setValue(CustomStringUtils.applyChouetteLineIdTransformation(monitoredStopVisit.getMonitoredVehicleJourney().getLineRef().getValue()));
+            monitoredStopVisit.getMonitoredVehicleJourney().setLineRef(lineRef);
+        }
     }
 
     /**
