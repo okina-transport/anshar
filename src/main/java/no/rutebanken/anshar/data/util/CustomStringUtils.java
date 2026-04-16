@@ -65,16 +65,16 @@ public class CustomStringUtils {
     }
 
     /**
-     * Apply the same transformation as chouette on line ids (replace "##3A##" by "-")
+     * Replace ":" by "-")
      *
      * @param input string to process
      * @return the transformed string
      */
-    public static String applyChouetteLineIdTransformation(String input) {
+    public static String replaceColonsByDashes(String input) {
         if (StringUtils.isEmpty(input)) {
             return input;
         }
-        return input.replace(COLON_REPLACEMENT_CODE, "-");
+        return input.replace(":", "-");
     }
 
 }

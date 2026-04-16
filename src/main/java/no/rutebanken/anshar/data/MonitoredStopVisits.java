@@ -42,6 +42,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Repository;
 import uk.org.siri.siri21.*;
@@ -87,6 +88,9 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     private VehicleJourneyService vehicleJourneyService;
     @Autowired
     private LineUpdaterService lineUpdaterService;
+
+    @Value("${replace.colons.by.dashes.line.id:false}")
+    private boolean replaceColonsByDashes;
 
 
     Map<String, Integer> smTheoricalCount = new HashMap<>();
@@ -633,9 +637,9 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         monitoredStopVisit.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().setDatedVehicleJourneyRef(CustomStringUtils.removeSpecialCharacters(vehicleJourneyRef));
 
-        if(monitoredStopVisit.getMonitoredVehicleJourney().getLineRef() != null && StringUtils.isNotEmpty(monitoredStopVisit.getMonitoredVehicleJourney().getLineRef().getValue())){
+        if(replaceColonsByDashes && monitoredStopVisit.getMonitoredVehicleJourney().getLineRef() != null && StringUtils.isNotEmpty(monitoredStopVisit.getMonitoredVehicleJourney().getLineRef().getValue())){
             LineRef lineRef = new LineRef();
-            lineRef.setValue(CustomStringUtils.applyChouetteLineIdTransformation(monitoredStopVisit.getMonitoredVehicleJourney().getLineRef().getValue()));
+            lineRef.setValue(CustomStringUtils.replaceColonsByDashes(monitoredStopVisit.getMonitoredVehicleJourney().getLineRef().getValue()));
             monitoredStopVisit.getMonitoredVehicleJourney().setLineRef(lineRef);
         }
     }
