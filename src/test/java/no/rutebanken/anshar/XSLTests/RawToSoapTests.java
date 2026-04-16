@@ -87,7 +87,7 @@ class RawToSoapTests extends SpringBootBaseTest {
         ServiceDelivery serviceDel = new ServiceDelivery();
         EstimatedTimetableDeliveryStructure et = new EstimatedTimetableDeliveryStructure();
         et.setVersion("2.0");
-        
+
         EstimatedVersionFrameStructure struct = new EstimatedVersionFrameStructure();
         EstimatedVehicleJourney estijourney = new EstimatedVehicleJourney();
         NaturalLanguageStringStructure publishedName = new NaturalLanguageStringStructure();
@@ -215,7 +215,7 @@ class RawToSoapTests extends SpringBootBaseTest {
         Document document = parseXML(file);
         NodeList idLists = document.getElementsByTagName(tagName);
 
-               int nbOfLines = 0;
+        int nbOfLines = 0;
         for (int i = 0; i < idLists.getLength(); i++) {
             Node node = idLists.item(i);
             nbOfLines++;

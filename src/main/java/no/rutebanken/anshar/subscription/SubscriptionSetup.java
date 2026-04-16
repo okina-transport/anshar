@@ -180,6 +180,13 @@ public class SubscriptionSetup implements Serializable {
     @Setter
     private PublishToDisplayAction publishToDisplayAction;
 
+    @Getter
+    @Setter
+    private Boolean skipHeader;
+
+    @Getter
+    @Setter
+    private Boolean useNamespaceForAnswerParsing;
 
     public SubscriptionSetup() {
     }

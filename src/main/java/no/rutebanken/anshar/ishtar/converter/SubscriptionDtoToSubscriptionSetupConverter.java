@@ -70,6 +70,8 @@ public class SubscriptionDtoToSubscriptionSetupConverter implements Converter<Su
 
             target.setValidated(BooleanUtils.isTrue(source.getValidated()));
             target.setGenerateSX(BooleanUtils.isTrue(source.getGenerateSX()));
+            target.setSkipHeader(BooleanUtils.isTrue(source.getSkipHeader()));
+            target.setUseNamespaceForAnswerParsing(BooleanUtils.isTrue(source.getUseNamespaceForAnswerParsing()));
 
             if (!SubscriptionSetup.SubscriptionMode.SUBSCRIBE.equals(target.getSubscriptionMode())) {
                 target.setStatus(SubscriptionStatus.RUNNING);

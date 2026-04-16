@@ -189,10 +189,10 @@ public class SiriObjectFactory {
 
 
     public static Siri createServiceRequest(SubscriptionSetup subscriptionSetup) {
-        return createServiceRequest(subscriptionSetup.getSubscriptionType(), subscriptionSetup.getVersion(), subscriptionSetup.getRequestorRef(), subscriptionSetup.getPreviewInterval(), subscriptionSetup.getStopMonitoringRefValues());
+        return createServiceRequest(subscriptionSetup.getSubscriptionType(), subscriptionSetup.getVersion(), subscriptionSetup.getRequestorRef(), subscriptionSetup.getPreviewInterval(), subscriptionSetup.getStopMonitoringRefValues(), subscriptionSetup.getLineRefValues());
     }
 
-    public static Siri createServiceRequest(SiriDataType type, String version, String requestorRef, @Nullable Duration previewInterval, List<String> stopMonitoringRefValues) {
+    public static Siri createServiceRequest(SiriDataType type, String version, String requestorRef, @Nullable Duration previewInterval, List<String> stopMonitoringRefValues, List<String> lineRefValues) {
         Siri siri = createSiriObject(version);
 
         ServiceRequest request = new ServiceRequest();
@@ -214,6 +214,20 @@ public class SiriObjectFactory {
             EstimatedTimetableRequestStructure etRequestStruct = createEstimatedTimetableRequestStructure(previewInterval, version);
             request.setMessageIdentifier(etRequestStruct.getMessageIdentifier());
             request.getEstimatedTimetableRequests().add(etRequestStruct);
+            if (CollectionUtils.isNotEmpty(lineRefValues)) {
+                EstimatedTimetableRequestStructure.Lines lines = new EstimatedTimetableRequestStructure.Lines();
+                List<LineDirectionStructure> subscriptionTargetLines = lines.getLineDirections();
+                for (String lineReference : lineRefValues) {
+                    LineDirectionStructure lineDirectionStructure = new LineDirectionStructure();
+                    LineRef lineRef = new LineRef();
+                    lineRef.setValue(lineReference);
+                    lineDirectionStructure.setLineRef(lineRef);
+                    subscriptionTargetLines.add(lineDirectionStructure);
+
+                }
+                etRequestStruct.setLines(lines);
+            }
+
         }
         if (type.equals(SiriDataType.STOP_MONITORING)) {
             if (CollectionUtils.isNotEmpty(stopMonitoringRefValues)) {

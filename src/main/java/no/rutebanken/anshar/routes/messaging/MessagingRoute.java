@@ -374,7 +374,14 @@ public class MessagingRoute extends RestRouteBuilder {
                     .log(LoggingLevel.DEBUG, "Transforming SOAP")
                     .process(soapSplitProcessor)
                     .doTry()
+                        .process(e -> {
+                            String subscriptionId = e.getIn().getHeader(PARAM_SUBSCRIPTION_ID, String.class);
+                            SubscriptionSetup subscriptionSetup = StringUtils.isNotEmpty(subscriptionId) ? subscriptionManager.get(subscriptionId) : null;
+                            boolean useNamespaceForAnswerParsing = subscriptionSetup != null && Boolean.TRUE.equals(subscriptionSetup.getUseNamespaceForAnswerParsing());
+                            e.getIn().setHeader("siriTransformationFromType", String.valueOf(useNamespaceForAnswerParsing));
+                        })
                         .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Extract SOAP version and convert to raw SIRI
+                        .removeHeaders("siriTransformationFromType")
                     .doCatch(SAXParseException.class, IllegalStateException.class)
                         .process(this::handleSoapXmlParseError)
                         .stop()
