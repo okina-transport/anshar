@@ -1,0 +1,113 @@
+<?xml version="1.0"?>
+<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope/" soap:encodingStyle="http://www.w3.org/2003/05/soap-encoding">
+    <soap:Header></soap:Header>
+    <soap:Body>
+        <GetGeneralMessageResponse xmlns:ns6="http://datex2.eu/schema/2_0RC1/2_0" xmlns:ns5="http://www.ifopt.org.uk/ifopt" xmlns:ns2="http://www.siri.org.uk/siri" xmlns:ns4="http://www.ifopt.org.uk/acsb" xmlns:ns3="http://www.opengis.net/gml/3.2">
+            <ServiceDeliveryInfo>
+                <ns2:ResponseTimestamp>2026-04-16T08:59:21.580495001Z</ns2:ResponseTimestamp>
+                <ns2:ProducerRef>Ginko</ns2:ProducerRef>
+                <ns2:ResponseMessageIdentifier>525e8257-cc84-4f3d-8391-659579243e56</ns2:ResponseMessageIdentifier>
+                <ns2:RequestMessageRef>Test::Message::0cf8d414-e0dc-4ad1-a939-9f5383b1de5a</ns2:RequestMessageRef>
+            </ServiceDeliveryInfo>
+            <Answer xsi:type="ns2:GeneralMessageDeliveryStructure" version="1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                <ns2:ResponseTimestamp>2026-04-16T08:59:21.580514314Z</ns2:ResponseTimestamp>
+                <ns2:GeneralMessage formatRef="France">
+                    <ns2:ItemIdentifier>23040</ns2:ItemIdentifier>
+                    <ns2:InfoMessageIdentifier>23040</ns2:InfoMessageIdentifier>
+                    <ns2:InfoChannelRef>Perturbation</ns2:InfoChannelRef>
+                    <ns2:ValidUntilTime>2026-04-17T02:59:00.606+02:00</ns2:ValidUntilTime>
+                    <ns2:Content xsi:type="FrGeneralMessage">
+                        <LineRef>11</LineRef>
+                        <StopPointRef>JEANNET3</StopPointRef>
+                        <StopPointRef>LIBERTE3</StopPointRef>
+                        <StopPointRef>COMSARA1</StopPointRef>
+                        <StopPointRef>DENROCH2</StopPointRef>
+                        <StopPointRef>CENSTPI1</StopPointRef>
+                        <StopPointRef>RIVOTTE</StopPointRef>
+                        <StopPointRef>MARILOU2</StopPointRef>
+                        <StopPointRef>CHEPLAN1</StopPointRef>
+                        <StopPointRef>COLPROU1</StopPointRef>
+                        <StopPointRef>CITAR02</StopPointRef>
+                        <StopPointRef>VIEILLE1</StopPointRef>
+                        <StopPointRef>PAPILLO2</StopPointRef>
+                        <StopPointRef>CHEMPAL1</StopPointRef>
+                        <StopPointRef>COURTIL2</StopPointRef>
+                        <StopPointRef>BELFORT2</StopPointRef>
+                        <StopPointRef>CHARIGN2</StopPointRef>
+                        <StopPointRef>CULPRES1</StopPointRef>
+                        <StopPointRef>BAILLE2</StopPointRef>
+                        <StopPointRef>REPUBL2</StopPointRef>
+                        <StopPointRef>CRAS</StopPointRef>
+                        <StopPointRef>LEBEUF2</StopPointRef>
+                        <StopPointRef>FLORE4</StopPointRef>
+                        <Message>
+                            <MessageType>textOnly</MessageType>
+                            <MessageText>Course Cycliste Classic Grand Besançon • Ligne 11 déviée entre Cité des Arts et Rivotte en direction de Rivotte • vendredi 17 avril de 14h00 à 16h00.</MessageText>
+                        </Message>
+                        <Message>
+                            <MessageType>shortMessage</MessageType>
+                            <MessageText>Course Cycliste Classic Grand Besançon • Ligne 11 déviée entre Cité des Arts et Rivotte en direction de Rivotte • vendredi 17 avril de 14h00 à 16h00.</MessageText>
+                        </Message>
+                        <Message>
+                            <MessageType>longMessage</MessageType>
+                            <MessageText>Course Cycliste Classic Grand Besançon • Ligne 11 déviée entre Cité des Arts et Rivotte en direction de Rivotte • vendredi 17 avril de 14h00 à 16h00.</MessageText>
+                        </Message>
+                        <Message>
+                            <MessageType>HTML</MessageType>
+                            <MessageText>&lt;div class="gk-mivMessage"&gt;Course Cycliste Classic Grand Besançon&lt;/strong&gt;&amp;nbsp;&amp;bull;&amp;nbsp;Ligne &lt;strong&gt;11&lt;/strong&gt; déviée entre &lt;strong&gt;Cité des Arts&lt;/strong&gt; et &lt;strong&gt;Rivotte&lt;/strong&gt; en direction de Rivotte&amp;nbsp;&amp;bull;&amp;nbsp;vendredi 17 avril de 14h00 à 16h00.&lt;/div&gt;</MessageText>
+                        </Message>
+                    </ns2:Content>
+                </ns2:GeneralMessage>
+                <ns2:GeneralMessage formatRef="France">
+                    <ns2:ItemIdentifier>23041</ns2:ItemIdentifier>
+                    <ns2:InfoMessageIdentifier>23041</ns2:InfoMessageIdentifier>
+                    <ns2:InfoChannelRef>Perturbation</ns2:InfoChannelRef>
+                    <ns2:ValidUntilTime>2026-04-17T02:59:00.622+02:00</ns2:ValidUntilTime>
+                    <ns2:Content xsi:type="FrGeneralMessage">
+                        <LineRef>11</LineRef>
+                        <StopPointRef>COURBET1</StopPointRef>
+                        <StopPointRef>DENROCH1</StopPointRef>
+                        <StopPointRef>JEANNET2</StopPointRef>
+                        <StopPointRef>CENSTPI2</StopPointRef>
+                        <StopPointRef>LIBERTE4</StopPointRef>
+                        <StopPointRef>COMSARA1</StopPointRef>
+                        <StopPointRef>RIVOTTE</StopPointRef>
+                        <StopPointRef>POSTE2</StopPointRef>
+                        <StopPointRef>MARILOU1</StopPointRef>
+                        <StopPointRef>CITAR01</StopPointRef>
+                        <StopPointRef>FLORE2</StopPointRef>
+                        <StopPointRef>CHEPLAN2</StopPointRef>
+                        <StopPointRef>PAPILLO1</StopPointRef>
+                        <StopPointRef>COLPROU2</StopPointRef>
+                        <StopPointRef>CHEMPAL2</StopPointRef>
+                        <StopPointRef>BELFORT1</StopPointRef>
+                        <StopPointRef>CULPRES2</StopPointRef>
+                        <StopPointRef>VIEILLE2</StopPointRef>
+                        <StopPointRef>ECOLE4V2</StopPointRef>
+                        <StopPointRef>CHARIGN1</StopPointRef>
+                        <StopPointRef>BAILLE1</StopPointRef>
+                        <StopPointRef>ORCHAMP9</StopPointRef>
+                        <StopPointRef>LEBEUF1</StopPointRef>
+                        <Message>
+                            <MessageType>textOnly</MessageType>
+                            <MessageText>Course Cycliste Classic Grand Besançon • Ligne 11 déviée entre Rivotte et Cité des Arts en direction de Combe Saragosse • vendredi 17 avril de 14h00 à 16h00.</MessageText>
+                        </Message>
+                        <Message>
+                            <MessageType>shortMessage</MessageType>
+                            <MessageText>Course Cycliste Classic Grand Besançon • Ligne 11 déviée entre Rivotte et Cité des Arts en direction de Combe Saragosse • vendredi 17 avril de 14h00 à 16h00.</MessageText>
+                        </Message>
+                        <Message>
+                            <MessageType>longMessage</MessageType>
+                            <MessageText>Course Cycliste Classic Grand Besançon • Ligne 11 déviée entre Rivotte et Cité des Arts en direction de Combe Saragosse • vendredi 17 avril de 14h00 à 16h00.</MessageText>
+                        </Message>
+                        <Message>
+                            <MessageType>HTML</MessageType>
+                            <MessageText>&lt;div class="gk-mivMessage"&gt;Course Cycliste Classic Grand Besançon&lt;/strong&gt;&amp;nbsp;&amp;bull;&amp;nbsp;Ligne &lt;strong&gt;11&lt;/strong&gt; déviée entre &lt;strong&gt;Rivotte&lt;/strong&gt; et &lt;strong&gt;Cité des Arts&lt;/strong&gt; en direction de Combe Saragosse&amp;nbsp;&amp;bull;&amp;nbsp;vendredi 17 avril de 14h00 à 16h00.&lt;/div&gt;</MessageText>
+                        </Message>
+                    </ns2:Content>
+                </ns2:GeneralMessage>
+            </Answer>
+        </GetGeneralMessageResponse>
+        <soap:Fault></soap:Fault>
+    </soap:Body>
+</soap:Envelope>

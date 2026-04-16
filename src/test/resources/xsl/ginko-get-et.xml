@@ -1,0 +1,763 @@
+<?xml version="1.0"?>
+<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope/" soap:encodingStyle="http://www.w3.org/2003/05/soap-encoding">
+    <soap:Header></soap:Header>
+    <soap:Body>
+        <GetEstimatedTimetableResponse xmlns:ns6="http://datex2.eu/schema/2_0RC1/2_0" xmlns:ns5="http://www.ifopt.org.uk/ifopt" xmlns:ns2="http://www.siri.org.uk/siri" xmlns:ns4="http://www.ifopt.org.uk/acsb" xmlns:ns3="http://www.opengis.net/gml/3.2">
+            <ServiceDeliveryInfo>
+                <ns2:ResponseTimestamp>2026-04-16T09:35:45.373332503Z</ns2:ResponseTimestamp>
+                <ns2:ProducerRef>Ginko</ns2:ProducerRef>
+                <ns2:ResponseMessageIdentifier>7fe14644-060f-402d-a315-bcb217d160f5</ns2:ResponseMessageIdentifier>
+                <ns2:RequestMessageRef>Test::Message::0cf8d414-e0dc-4ad1-a939-9f5383b1de5a</ns2:RequestMessageRef>
+            </ServiceDeliveryInfo>
+            <Answer xsi:type="ns2:EstimatedTimetableDeliveryStructure" version="1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                <ns2:EstimatedJourneyVersionFrame>
+                    <ns2:RecordedAtTime>2026-04-16T09:35:45.373832126Z</ns2:RecordedAtTime>
+                    <ns2:EstimatedVehicleJourney>
+                        <ns2:LineRef>22</ns2:LineRef>
+                        <ns2:DirectionRef>Retour</ns2:DirectionRef>
+                        <ns2:DatedVehicleJourneyRef>S13848J124V9231266</ns2:DatedVehicleJourneyRef>
+                        <ns2:PublishedLineName xml:lang="FR">Avanne-Aveney &lt;&gt; CHU Minjoz</ns2:PublishedLineName>
+                        <ns2:DestinationRef>AVANNE05</ns2:DestinationRef>
+                        <ns2:DestinationName xml:lang="FR">Avanne-Aveney - Mairie</ns2:DestinationName>
+                        <ns2:EstimatedCalls>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>CHR1</ns2:StopPointRef>
+                                <ns2:Order>1</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">CHU Minjoz</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:00:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T09:59:38.719710739Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:00:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T09:59:38.719710739Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>BELIN2</ns2:StopPointRef>
+                                <ns2:Order>2</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Belin</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:02:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:01:38.719712962Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:02:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:01:38.719712962Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>PIEMONT1</ns2:StopPointRef>
+                                <ns2:Order>3</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Piémont</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:04:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:03:38.719714878Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:04:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:03:38.719714878Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>VOLTAIR1</ns2:StopPointRef>
+                                <ns2:Order>4</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Voltaire</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:06:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:05:38.719716771Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:06:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:05:38.719716771Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>PAVIE1</ns2:StopPointRef>
+                                <ns2:Order>5</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Pavie</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:07:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:06:38.719718655Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:07:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:06:38.719718655Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>VIVARAI1</ns2:StopPointRef>
+                                <ns2:Order>6</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Vivarais</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:08:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:07:38.719720603Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:08:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:07:38.719720603Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>LANGUED2</ns2:StopPointRef>
+                                <ns2:Order>7</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Languedoc</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:09:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:08:38.719722488Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:09:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:08:38.719722488Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>BEARN2</ns2:StopPointRef>
+                                <ns2:Order>8</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Béarn</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:10:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:09:38.719724384Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:10:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:09:38.719724384Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>DEVIGNY2</ns2:StopPointRef>
+                                <ns2:Order>9</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">De Vigny</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:11:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:10:38.719726234Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:11:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:10:38.719726234Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>MAISRET2</ns2:StopPointRef>
+                                <ns2:Order>10</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Maison de Retraite</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:13:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:12:38.719728105Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:13:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:12:38.719728105Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>VALLON2</ns2:StopPointRef>
+                                <ns2:Order>11</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Vallon</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:14:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:13:38.719730041Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:14:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:13:38.719730041Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>AVANNE10</ns2:StopPointRef>
+                                <ns2:Order>12</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Grand Prés</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:15:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:14:38.719731904Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:15:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:14:38.719731904Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>CIMAVAN1</ns2:StopPointRef>
+                                <ns2:Order>13</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Cimetière d'Avanne</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:16:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:15:38.719733771Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:16:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:15:38.719733771Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                        </ns2:EstimatedCalls>
+                    </ns2:EstimatedVehicleJourney>
+                    <ns2:EstimatedVehicleJourney>
+                        <ns2:LineRef>22</ns2:LineRef>
+                        <ns2:DirectionRef>Retour</ns2:DirectionRef>
+                        <ns2:DatedVehicleJourneyRef>S13848J124V9231267</ns2:DatedVehicleJourneyRef>
+                        <ns2:PublishedLineName xml:lang="FR">Avanne-Aveney &lt;&gt; CHU Minjoz</ns2:PublishedLineName>
+                        <ns2:DestinationRef>AVANNE05</ns2:DestinationRef>
+                        <ns2:DestinationName xml:lang="FR">Avanne-Aveney - Mairie</ns2:DestinationName>
+                        <ns2:EstimatedCalls>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>CHR1</ns2:StopPointRef>
+                                <ns2:Order>1</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">CHU Minjoz</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:38:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:37:38.719365796Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:38:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:37:38.719365796Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>BELIN2</ns2:StopPointRef>
+                                <ns2:Order>2</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Belin</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:40:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:39:38.719368547Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:40:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:39:38.719368547Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>PIEMONT1</ns2:StopPointRef>
+                                <ns2:Order>3</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Piémont</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:42:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:41:38.719370689Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:42:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:41:38.719370689Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>VOLTAIR1</ns2:StopPointRef>
+                                <ns2:Order>4</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Voltaire</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:44:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:43:38.719372618Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:44:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:43:38.719372618Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>PAVIE1</ns2:StopPointRef>
+                                <ns2:Order>5</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Pavie</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:45:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:44:38.71937462Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:45:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:44:38.71937462Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>VIVARAI1</ns2:StopPointRef>
+                                <ns2:Order>6</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Vivarais</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:46:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:45:38.71937699Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:46:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:45:38.71937699Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>LANGUED2</ns2:StopPointRef>
+                                <ns2:Order>7</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Languedoc</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:47:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:46:38.719378888Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:47:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:46:38.719378888Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>BEARN2</ns2:StopPointRef>
+                                <ns2:Order>8</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Béarn</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:48:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:47:38.719380748Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:48:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:47:38.719380748Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>DEVIGNY2</ns2:StopPointRef>
+                                <ns2:Order>9</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">De Vigny</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:49:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:48:38.719382651Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:49:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:48:38.719382651Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>MAISRET2</ns2:StopPointRef>
+                                <ns2:Order>10</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Maison de Retraite</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:51:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:50:38.719384609Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:51:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:50:38.719384609Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>VALLON2</ns2:StopPointRef>
+                                <ns2:Order>11</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Vallon</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:52:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:51:38.719386609Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:52:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:51:38.719386609Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>AVANNE10</ns2:StopPointRef>
+                                <ns2:Order>12</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Grand Prés</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:53:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:52:38.719388581Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:53:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:52:38.719388581Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>CIMAVAN1</ns2:StopPointRef>
+                                <ns2:Order>13</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Cimetière d'Avanne</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T10:54:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:53:38.719390604Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T10:54:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:53:38.719390604Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                        </ns2:EstimatedCalls>
+                    </ns2:EstimatedVehicleJourney>
+                    <ns2:EstimatedVehicleJourney>
+                        <ns2:LineRef>22</ns2:LineRef>
+                        <ns2:DirectionRef>Aller</ns2:DirectionRef>
+                        <ns2:DatedVehicleJourneyRef>S13848J124V9231250</ns2:DatedVehicleJourneyRef>
+                        <ns2:PublishedLineName xml:lang="FR">Avanne-Aveney &lt;&gt; CHU Minjoz</ns2:PublishedLineName>
+                        <ns2:DestinationRef>CHR1</ns2:DestinationRef>
+                        <ns2:DestinationName xml:lang="FR">Besançon - CHU Minjoz</ns2:DestinationName>
+                        <ns2:EstimatedCalls>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>AVANNE05</ns2:StopPointRef>
+                                <ns2:Order>1</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Mairie</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Besançon - CHU Minjoz</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:00:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T10:59:38.719516Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:00:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T10:59:38.719516Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>GRDPRES1</ns2:StopPointRef>
+                                <ns2:Order>2</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Grand Prés</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Besançon - CHU Minjoz</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:01:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:00:38.719518198Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:01:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:00:38.719518198Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>VALLON1</ns2:StopPointRef>
+                                <ns2:Order>3</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Vallon</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Besançon - CHU Minjoz</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:02:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:01:38.719520091Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:02:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:01:38.719520091Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>MAISRET1</ns2:StopPointRef>
+                                <ns2:Order>4</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Maison de Retraite</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Besançon - CHU Minjoz</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:04:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:03:38.719522135Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:04:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:03:38.719522135Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>VALERY1</ns2:StopPointRef>
+                                <ns2:Order>5</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Valéry</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Besançon - CHU Minjoz</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:05:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:04:38.71952413Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:05:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:04:38.71952413Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>BEARN1</ns2:StopPointRef>
+                                <ns2:Order>6</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Béarn</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Besançon - CHU Minjoz</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:06:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:05:38.719525924Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:06:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:05:38.719525924Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>LANGUED1</ns2:StopPointRef>
+                                <ns2:Order>7</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Languedoc</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Besançon - CHU Minjoz</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:07:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:06:38.71952787Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:07:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:06:38.71952787Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>VIVARAI2</ns2:StopPointRef>
+                                <ns2:Order>8</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Vivarais</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Besançon - CHU Minjoz</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:08:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:07:38.719529713Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:08:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:07:38.719529713Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>PAVIE2</ns2:StopPointRef>
+                                <ns2:Order>9</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Pavie</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Besançon - CHU Minjoz</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:09:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:08:38.719531693Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:09:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:08:38.719531693Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>VOLTAIR2</ns2:StopPointRef>
+                                <ns2:Order>10</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Voltaire</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Besançon - CHU Minjoz</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:10:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:09:38.71953358Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:10:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:09:38.71953358Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>PIEMONT2</ns2:StopPointRef>
+                                <ns2:Order>11</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Piémont</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Besançon - CHU Minjoz</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:12:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:11:38.719535428Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:12:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:11:38.719535428Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>BELIN1</ns2:StopPointRef>
+                                <ns2:Order>12</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Belin</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Besançon - CHU Minjoz</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:14:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:13:38.719537294Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:14:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:13:38.719537294Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                        </ns2:EstimatedCalls>
+                    </ns2:EstimatedVehicleJourney>
+                    <ns2:EstimatedVehicleJourney>
+                        <ns2:LineRef>22</ns2:LineRef>
+                        <ns2:DirectionRef>Retour</ns2:DirectionRef>
+                        <ns2:DatedVehicleJourneyRef>S13848J124V9231268</ns2:DatedVehicleJourneyRef>
+                        <ns2:PublishedLineName xml:lang="FR">Avanne-Aveney &lt;&gt; CHU Minjoz</ns2:PublishedLineName>
+                        <ns2:DestinationRef>AVANNE05</ns2:DestinationRef>
+                        <ns2:DestinationName xml:lang="FR">Avanne-Aveney - Mairie</ns2:DestinationName>
+                        <ns2:EstimatedCalls>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>CHR1</ns2:StopPointRef>
+                                <ns2:Order>1</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">CHU Minjoz</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:18:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:17:38.719392518Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:18:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:17:38.719392518Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>BELIN2</ns2:StopPointRef>
+                                <ns2:Order>2</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Belin</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:20:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:19:38.71939477Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:20:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:19:38.71939477Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>PIEMONT1</ns2:StopPointRef>
+                                <ns2:Order>3</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Piémont</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:22:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:21:38.71939657Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:22:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:21:38.71939657Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>VOLTAIR1</ns2:StopPointRef>
+                                <ns2:Order>4</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Voltaire</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:24:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:23:38.719398393Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:24:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:23:38.719398393Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>PAVIE1</ns2:StopPointRef>
+                                <ns2:Order>5</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Pavie</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:25:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:24:38.719400174Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:25:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:24:38.719400174Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>VIVARAI1</ns2:StopPointRef>
+                                <ns2:Order>6</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Vivarais</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:26:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:25:38.719402019Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:26:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:25:38.719402019Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>LANGUED2</ns2:StopPointRef>
+                                <ns2:Order>7</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Languedoc</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:27:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:26:38.719403871Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:27:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:26:38.719403871Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>BEARN2</ns2:StopPointRef>
+                                <ns2:Order>8</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Béarn</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:28:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:27:38.719405628Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:28:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:27:38.719405628Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>DEVIGNY2</ns2:StopPointRef>
+                                <ns2:Order>9</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">De Vigny</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:29:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:28:38.719407414Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:29:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:28:38.719407414Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>MAISRET2</ns2:StopPointRef>
+                                <ns2:Order>10</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Maison de Retraite</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:31:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:30:38.719409171Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:31:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:30:38.719409171Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>VALLON2</ns2:StopPointRef>
+                                <ns2:Order>11</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Vallon</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:32:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:31:38.719411018Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:32:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:31:38.719411018Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>AVANNE10</ns2:StopPointRef>
+                                <ns2:Order>12</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Grand Prés</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:33:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:32:38.719412818Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:33:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:32:38.719412818Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>CIMAVAN1</ns2:StopPointRef>
+                                <ns2:Order>13</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Cimetière d'Avanne</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Avanne-Aveney - Mairie</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:34:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:33:38.719414613Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:34:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:33:38.719414613Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                        </ns2:EstimatedCalls>
+                    </ns2:EstimatedVehicleJourney>
+                    <ns2:EstimatedVehicleJourney>
+                        <ns2:LineRef>22</ns2:LineRef>
+                        <ns2:DirectionRef>Aller</ns2:DirectionRef>
+                        <ns2:DatedVehicleJourneyRef>S13848J124V9231251</ns2:DatedVehicleJourneyRef>
+                        <ns2:PublishedLineName xml:lang="FR">Avanne-Aveney &lt;&gt; CHU Minjoz</ns2:PublishedLineName>
+                        <ns2:DestinationRef>CHR1</ns2:DestinationRef>
+                        <ns2:DestinationName xml:lang="FR">Besançon - CHU Minjoz</ns2:DestinationName>
+                        <ns2:EstimatedCalls>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>AVANNE05</ns2:StopPointRef>
+                                <ns2:Order>1</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Mairie</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Besançon - CHU Minjoz</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:37:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:36:38.719339687Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:37:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:36:38.719339687Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>GRDPRES1</ns2:StopPointRef>
+                                <ns2:Order>2</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Grand Prés</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Besançon - CHU Minjoz</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:38:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:37:38.719342885Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:38:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:37:38.719342885Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>VALLON1</ns2:StopPointRef>
+                                <ns2:Order>3</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Vallon</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Besançon - CHU Minjoz</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:39:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:38:38.719344867Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:39:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:38:38.719344867Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>MAISRET1</ns2:StopPointRef>
+                                <ns2:Order>4</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Maison de Retraite</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Besançon - CHU Minjoz</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:41:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:40:38.719346949Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:41:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:40:38.719346949Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>VALERY1</ns2:StopPointRef>
+                                <ns2:Order>5</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Valéry</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Besançon - CHU Minjoz</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:42:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:41:38.719349024Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:42:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:41:38.719349024Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>BEARN1</ns2:StopPointRef>
+                                <ns2:Order>6</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Béarn</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Besançon - CHU Minjoz</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:43:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:42:38.719350849Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:43:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:42:38.719350849Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>LANGUED1</ns2:StopPointRef>
+                                <ns2:Order>7</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Languedoc</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Besançon - CHU Minjoz</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:44:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:43:38.719352797Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:44:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:43:38.719352797Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>VIVARAI2</ns2:StopPointRef>
+                                <ns2:Order>8</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Vivarais</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Besançon - CHU Minjoz</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:45:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:44:38.719354716Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:45:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:44:38.719354716Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>PAVIE2</ns2:StopPointRef>
+                                <ns2:Order>9</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Pavie</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Besançon - CHU Minjoz</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:46:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:45:38.719357156Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:46:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:45:38.719357156Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>VOLTAIR2</ns2:StopPointRef>
+                                <ns2:Order>10</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Voltaire</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Besançon - CHU Minjoz</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:47:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:46:38.719359424Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:47:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:46:38.719359424Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>PIEMONT2</ns2:StopPointRef>
+                                <ns2:Order>11</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Piémont</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Besançon - CHU Minjoz</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:49:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:48:38.719361686Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:49:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:48:38.719361686Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                            <ns2:EstimatedCall>
+                                <ns2:StopPointRef>BELIN1</ns2:StopPointRef>
+                                <ns2:Order>12</ns2:Order>
+                                <ns2:StopPointName xml:lang="FR">Belin</ns2:StopPointName>
+                                <ns2:DestinationDisplay>Besançon - CHU Minjoz</ns2:DestinationDisplay>
+                                <ns2:AimedArrivalTime>2026-04-16T11:51:00Z</ns2:AimedArrivalTime>
+                                <ns2:ExpectedArrivalTime>2026-04-16T11:50:38.719363609Z</ns2:ExpectedArrivalTime>
+                                <ns2:ArrivalProximityText xml:lang="FR">En approche</ns2:ArrivalProximityText>
+                                <ns2:AimedDepartureTime>2026-04-16T11:51:00Z</ns2:AimedDepartureTime>
+                                <ns2:ExpectedDepartureTime>2026-04-16T11:50:38.719363609Z</ns2:ExpectedDepartureTime>
+                            </ns2:EstimatedCall>
+                        </ns2:EstimatedCalls>
+                    </ns2:EstimatedVehicleJourney>
+                </ns2:EstimatedJourneyVersionFrame>
+            </Answer>
+        </GetEstimatedTimetableResponse>
+        <soap:Fault></soap:Fault>
+    </soap:Body>
+</soap:Envelope>

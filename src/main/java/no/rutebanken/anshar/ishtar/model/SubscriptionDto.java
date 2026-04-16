@@ -42,4 +42,6 @@ public class SubscriptionDto {
     private Boolean overrideDestinationName;
     private Boolean generateSX;
     private String publishToDisplayAction;
+    private Boolean skipHeader;
+    private Boolean useNamespaceForAnswerParsing;
 }

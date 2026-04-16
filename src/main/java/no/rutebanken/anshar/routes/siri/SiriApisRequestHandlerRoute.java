@@ -81,7 +81,7 @@ public class SiriApisRequestHandlerRoute extends BaseRouteBuilder {
     }
 
 
-    private void createSubscriptionsFromApis() throws IOException, SAXException, ParserConfigurationException, XMLStreamException {
+    private void createSubscriptionsFromApis() {
         List<SiriApi> siriApis = subscriptionConfig.getSiriApis();
 
         long startTime = DateTime.now().toInstant().getMillis();

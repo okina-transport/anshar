@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope/" soap:encodingStyle="http://www.w3.org/2003/05/soap-encoding">
+    <soap:Header/>
+    <soap:Body>
+        <GetStopMonitoringResponse xmlns:ns2="http://www.siri.org.uk/siri" xmlns:ns3="http://www.ifopt.org.uk/acsb" xmlns:ns4="http://www.ifopt.org.uk/ifopt" xmlns:ns5="http://www.opengis.net/gml/3.2" xmlns:ns6="http://datex2.eu/schema/2_0RC1/2_0">
+            <ServiceDeliveryInfo>
+                <ns2:ResponseTimestamp>2026-04-15T09:21:49.600836088Z</ns2:ResponseTimestamp>
+                <ns2:ProducerRef>Ginko</ns2:ProducerRef>
+                <ns2:ResponseMessageIdentifier>33de6518-15df-4c0b-9d89-08520d83714a</ns2:ResponseMessageIdentifier>
+                <ns2:RequestMessageRef>b1479bd0-e087-4990-a5b2-6f5909def443</ns2:RequestMessageRef>
+            </ServiceDeliveryInfo>
+            <Answer xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.0" xsi:type="ns2:StopMonitoringDeliveryStructure">
+                <ns2:MonitoringRef>CITAR01</ns2:MonitoringRef>
+                <ns2:MonitoringName xml:lang="FR">Cité des Arts</ns2:MonitoringName>
+                <ns2:MonitoredStopVisit>
+                    <ns2:RecordedAtTime>2026-04-15T11:21:40.272365389+02:00</ns2:RecordedAtTime>
+                    <ns2:ItemIdentifier>CITAR01-9046591</ns2:ItemIdentifier>
+                    <ns2:MonitoringRef>CITAR01</ns2:MonitoringRef>
+                    <ns2:MonitoredVehicleJourney>
+                        <ns2:LineRef>11</ns2:LineRef>
+                        <ns2:DirectionRef>Retour</ns2:DirectionRef>
+                        <ns2:PublishedLineName xml:lang="FR">11</ns2:PublishedLineName>
+                        <ns2:OriginRef>RIVOTTE</ns2:OriginRef>
+                        <ns2:OriginName xml:lang="FR">Rivotte</ns2:OriginName>
+                        <ns2:DestinationRef>COMSARA1</ns2:DestinationRef>
+                        <ns2:DestinationName xml:lang="FR">Combe Saragosse</ns2:DestinationName>
+                        <ns2:MonitoredCall>
+                            <ns2:StopPointRef>CITAR01</ns2:StopPointRef>
+                            <ns2:Order>2</ns2:Order>
+                            <ns2:StopPointName>Cité des Arts</ns2:StopPointName>
+                            <ns2:AimedArrivalTime>2026-04-15T13:25:00.272364807+02:00</ns2:AimedArrivalTime>
+                            <ns2:ExpectedArrivalTime>2026-04-15T09:25:40.272364657Z</ns2:ExpectedArrivalTime>
+                        </ns2:MonitoredCall>
+                    </ns2:MonitoredVehicleJourney>
+                </ns2:MonitoredStopVisit>
+                <ns2:MonitoredStopVisit>
+                    <ns2:RecordedAtTime>2026-04-15T11:21:31.253738067+02:00</ns2:RecordedAtTime>
+                    <ns2:ItemIdentifier>CITAR01-9046592</ns2:ItemIdentifier>
+                    <ns2:MonitoringRef>CITAR01</ns2:MonitoringRef>
+                    <ns2:MonitoredVehicleJourney>
+                        <ns2:LineRef>11</ns2:LineRef>
+                        <ns2:DirectionRef>Retour</ns2:DirectionRef>
+                        <ns2:PublishedLineName xml:lang="FR">11</ns2:PublishedLineName>
+                        <ns2:OriginRef>RIVOTTE</ns2:OriginRef>
+                        <ns2:OriginName xml:lang="FR">Rivotte</ns2:OriginName>
+                        <ns2:DestinationRef>COMSARA1</ns2:DestinationRef>
+                        <ns2:DestinationName xml:lang="FR">Combe Saragosse</ns2:DestinationName>
+                        <ns2:MonitoredCall>
+                            <ns2:StopPointRef>CITAR01</ns2:StopPointRef>
+                            <ns2:Order>2</ns2:Order>
+                            <ns2:StopPointName>Cité des Arts</ns2:StopPointName>
+                            <ns2:AimedArrivalTime>2026-04-15T13:57:00.253737516+02:00</ns2:AimedArrivalTime>
+                            <ns2:ExpectedArrivalTime>2026-04-15T09:57:31.253737367Z</ns2:ExpectedArrivalTime>
+                        </ns2:MonitoredCall>
+                    </ns2:MonitoredVehicleJourney>
+                </ns2:MonitoredStopVisit>
+                <ns2:MonitoredStopVisit>
+                    <ns2:RecordedAtTime>2026-04-15T11:21:40.272438649+02:00</ns2:RecordedAtTime>
+                    <ns2:ItemIdentifier>CITAR01-9046593</ns2:ItemIdentifier>
+                    <ns2:MonitoringRef>CITAR01</ns2:MonitoringRef>
+                    <ns2:MonitoredVehicleJourney>
+                        <ns2:LineRef>11</ns2:LineRef>
+                        <ns2:DirectionRef>Retour</ns2:DirectionRef>
+                        <ns2:PublishedLineName xml:lang="FR">11</ns2:PublishedLineName>
+                        <ns2:OriginRef>RIVOTTE</ns2:OriginRef>
+                        <ns2:OriginName xml:lang="FR">Rivotte</ns2:OriginName>
+                        <ns2:DestinationRef>COMSARA1</ns2:DestinationRef>
+                        <ns2:DestinationName xml:lang="FR">Combe Saragosse</ns2:DestinationName>
+                        <ns2:MonitoredCall>
+                            <ns2:StopPointRef>CITAR01</ns2:StopPointRef>
+                            <ns2:Order>2</ns2:Order>
+                            <ns2:StopPointName>Cité des Arts</ns2:StopPointName>
+                            <ns2:AimedArrivalTime>2026-04-15T14:28:00.272438141+02:00</ns2:AimedArrivalTime>
+                            <ns2:ExpectedArrivalTime>2026-04-15T10:28:40.272437986Z</ns2:ExpectedArrivalTime>
+                        </ns2:MonitoredCall>
+                    </ns2:MonitoredVehicleJourney>
+                </ns2:MonitoredStopVisit>
+                <ns2:MonitoredStopVisit>
+                    <ns2:RecordedAtTime>2026-04-15T11:21:31.253835423+02:00</ns2:RecordedAtTime>
+                    <ns2:ItemIdentifier>CITAR01-9046594</ns2:ItemIdentifier>
+                    <ns2:MonitoringRef>CITAR01</ns2:MonitoringRef>
+                    <ns2:MonitoredVehicleJourney>
+                        <ns2:LineRef>11</ns2:LineRef>
+                        <ns2:DirectionRef>Retour</ns2:DirectionRef>
+                        <ns2:PublishedLineName xml:lang="FR">11</ns2:PublishedLineName>
+                        <ns2:OriginRef>RIVOTTE</ns2:OriginRef>
+                        <ns2:OriginName xml:lang="FR">Rivotte</ns2:OriginName>
+                        <ns2:DestinationRef>COMSARA1</ns2:DestinationRef>
+                        <ns2:DestinationName xml:lang="FR">Combe Saragosse</ns2:DestinationName>
+                        <ns2:MonitoredCall>
+                            <ns2:StopPointRef>CITAR01</ns2:StopPointRef>
+                            <ns2:Order>2</ns2:Order>
+                            <ns2:StopPointName>Cité des Arts</ns2:StopPointName>
+                            <ns2:AimedArrivalTime>2026-04-15T14:59:00.253834852+02:00</ns2:AimedArrivalTime>
+                            <ns2:ExpectedArrivalTime>2026-04-15T10:59:31.253834701Z</ns2:ExpectedArrivalTime>
+                        </ns2:MonitoredCall>
+                    </ns2:MonitoredVehicleJourney>
+                </ns2:MonitoredStopVisit>
+                <ns2:MonitoredStopVisit>
+                    <ns2:RecordedAtTime>2026-04-15T11:21:40.272512152+02:00</ns2:RecordedAtTime>
+                    <ns2:ItemIdentifier>CITAR01-9046595</ns2:ItemIdentifier>
+                    <ns2:MonitoringRef>CITAR01</ns2:MonitoringRef>
+                    <ns2:MonitoredVehicleJourney>
+                        <ns2:LineRef>11</ns2:LineRef>
+                        <ns2:DirectionRef>Retour</ns2:DirectionRef>
+                        <ns2:PublishedLineName xml:lang="FR">11</ns2:PublishedLineName>
+                        <ns2:OriginRef>RIVOTTE</ns2:OriginRef>
+                        <ns2:OriginName xml:lang="FR">Rivotte</ns2:OriginName>
+                        <ns2:DestinationRef>COMSARA1</ns2:DestinationRef>
+                        <ns2:DestinationName xml:lang="FR">Combe Saragosse</ns2:DestinationName>
+                        <ns2:MonitoredCall>
+                            <ns2:StopPointRef>CITAR01</ns2:StopPointRef>
+                            <ns2:Order>2</ns2:Order>
+                            <ns2:StopPointName>Cité des Arts</ns2:StopPointName>
+                            <ns2:AimedArrivalTime>2026-04-15T15:30:00.272511623+02:00</ns2:AimedArrivalTime>
+                            <ns2:ExpectedArrivalTime>2026-04-15T11:30:40.27251147Z</ns2:ExpectedArrivalTime>
+                        </ns2:MonitoredCall>
+                    </ns2:MonitoredVehicleJourney>
+                </ns2:MonitoredStopVisit>
+                <ns2:MonitoredStopVisit>
+                    <ns2:RecordedAtTime>2026-04-15T11:21:31.25391615+02:00</ns2:RecordedAtTime>
+                    <ns2:ItemIdentifier>CITAR01-9046596</ns2:ItemIdentifier>
+                    <ns2:MonitoringRef>CITAR01</ns2:MonitoringRef>
+                    <ns2:MonitoredVehicleJourney>
+                        <ns2:LineRef>11</ns2:LineRef>
+                        <ns2:DirectionRef>Retour</ns2:DirectionRef>
+                        <ns2:PublishedLineName xml:lang="FR">11</ns2:PublishedLineName>
+                        <ns2:OriginRef>RIVOTTE</ns2:OriginRef>
+                        <ns2:OriginName xml:lang="FR">Rivotte</ns2:OriginName>
+                        <ns2:DestinationRef>COMSARA1</ns2:DestinationRef>
+                        <ns2:DestinationName xml:lang="FR">Combe Saragosse</ns2:DestinationName>
+                        <ns2:MonitoredCall>
+                            <ns2:StopPointRef>CITAR01</ns2:StopPointRef>
+                            <ns2:Order>2</ns2:Order>
+                            <ns2:StopPointName>Cité des Arts</ns2:StopPointName>
+                            <ns2:AimedArrivalTime>2026-04-15T16:02:00.2539156+02:00</ns2:AimedArrivalTime>
+                            <ns2:ExpectedArrivalTime>2026-04-15T12:02:31.253915449Z</ns2:ExpectedArrivalTime>
+                        </ns2:MonitoredCall>
+                    </ns2:MonitoredVehicleJourney>
+                </ns2:MonitoredStopVisit>
+            </Answer>
+        </GetStopMonitoringResponse>
+        <soap:Fault/>
+    </soap:Body>
+</soap:Envelope>

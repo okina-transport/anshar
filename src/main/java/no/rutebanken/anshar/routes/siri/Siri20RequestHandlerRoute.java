@@ -97,6 +97,12 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
             e.getIn().getHeaders().putAll(sub.getCustomHeaders());
         }
     };
+    private final Processor addSoapActionHeader = (e) -> {
+        e.getIn().setHeader("SOAPAction", getSoapAction(e.getIn().getBody(SubscriptionSetup.class)));
+    };
+    private final Processor addSoapHeaderDisabledHeader = (e) -> {
+        e.getIn().setHeader("soapHeaderDisabled", String.valueOf(Boolean.TRUE.equals(e.getIn().getBody(SubscriptionSetup.class).getSkipHeader())));
+    };
     private final Processor oauthHeadersProcess = (e) -> {
         SubscriptionSetup subscriptionSetup = e.getIn().getBody(SubscriptionSetup.class);
         if (subscriptionSetup.getOauth2Config() != null) {
@@ -634,9 +640,8 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .setHeader(Exchange.HTTP_METHOD, constant(org.apache.camel.component.http.HttpMethods.POST))
                 .process(addRequestResponseSubscriptionUrlHeader)
                 .process(addCustomHeaders)
-                .process(e -> {
-                    e.getIn().setHeader("SOAPAction", getSoapAction(e.getIn().getBody(SubscriptionSetup.class)));
-                })
+                .process(addSoapActionHeader)
+                .process(addSoapHeaderDisabledHeader)
                 .setHeader(ENDPOINT_URL_HEADER, header(SUBSCRIPTION_URL_HEADER)) // Need to make SOAP request with endpoint specific element namespace
                 .setHeader("operatorNamespace", simple("${body.operatorNamespace}")) // Need to make SOAP request with endpoint specific element namespace
                 .bean(SiriObjectFactory.class, "createServiceRequest")
@@ -647,6 +652,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .process(e -> log.debug("========> Request transformed to soap siri : {}", e.getIn().getBody(String.class)))
                 .removeHeader(ENDPOINT_URL_HEADER)
                 .removeHeader("operatorNamespace")
+                .removeHeader("soapHeaderDisabled")
                 .end();
 
         from("direct:siri.20.to.siri.ws.20.subscription.preprocess")

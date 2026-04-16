@@ -33,8 +33,6 @@ import java.nio.charset.StandardCharsets;
 
 public class CustomSiriXml {
 
-    private static final Logger logger = LoggerFactory.getLogger(CustomSiriXml.class);
-
     private static JAXBContext jaxbContext;
 
     private static JAXBContext siri20JaxbContext;
