@@ -130,6 +130,10 @@ public class AnsharConfiguration {
     private boolean automaticConsistencyReportsEnabled;
     @Value("${anshar.automaticConsistencyReports.cron:0+0+9,17+*+*+?}")
     private String automaticConsistencyReportsCron;
+    @Value("${anshar.xsl.soap.header.disabled:false}")
+    private boolean xslSoapHeaderDisabled;
+    @Value("${anshar.xsl.siri.tag.creation.from.answer.type.enabled:false}")
+    private boolean xslSiriTagCreationFromAnswerTypeEnabled;
 
     private boolean isInitialized = false;
     private boolean isVJCacheLoaded = false;

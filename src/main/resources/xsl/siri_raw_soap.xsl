@@ -26,6 +26,7 @@
     <xsl:param name="siriSoapNamespace" select="'http://wsdl.siri.org.uk'"/>
     <xsl:param name="siriNamespace" select="'http://www.siri.org.uk/siri'"/>
     <xsl:param name="endpointUrl"/>
+    <xsl:param name="soapHeaderDisabled" select="'false'"/>
     <!-- Configurable namespace for soapenv - use default if not supplied -->
     <xsl:param name="soapEnvelopeNamespace" select="'http://schemas.xmlsoap.org/soap/envelope/'"/>
 
@@ -214,7 +215,9 @@
                     </xsl:element>
                 </xsl:when>
                 <xsl:otherwise>
-                    <xsl:element name="soapenv:Header" namespace="{$soapEnvelopeNamespace}"/>
+                    <xsl:if test="$soapHeaderDisabled = 'false'">
+                        <xsl:element name="soapenv:Header" namespace="{$soapEnvelopeNamespace}"/>
+                    </xsl:if>
                 </xsl:otherwise>
             </xsl:choose>
             <xsl:element name="soapenv:Body" namespace="{$soapEnvelopeNamespace}">
@@ -467,6 +470,9 @@
                                     <xsl:element name="siri:MonitoringRef">
                                         <xsl:value-of select="siri:MonitoringRef"></xsl:value-of>
                                     </xsl:element>
+                                </xsl:if>
+                                <xsl:if test="siri:Lines != ''">
+                                    <xsl:copy-of select="siri:Lines"/>
                                 </xsl:if>
                             </xsl:element>
                             <xsl:element name="RequestExtension"/>

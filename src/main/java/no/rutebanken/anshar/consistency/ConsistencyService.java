@@ -88,7 +88,7 @@ public class ConsistencyService {
         params.setTheoreticalDataExcluded(true);
         params.setVersion("2.1");
         Siri request = SiriObjectFactory.createServiceRequest(type, "2.1", REQUESTOR_REF,
-                null, null);
+                null, Collections.emptyList(), Collections.emptyList());
         return siriHandler.buildSiriResponse(params, request);
     }
 

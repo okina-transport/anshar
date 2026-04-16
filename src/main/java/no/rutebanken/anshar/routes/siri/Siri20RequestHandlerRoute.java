@@ -642,11 +642,13 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .bean(SiriObjectFactory.class, "createServiceRequest")
                 .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
                 .process(e -> log.debug("========> Request Before transformed to soap siri : {}",e.getIn().getBody(String.class)))
+                .setHeader("soapHeaderDisabled", constant(String.valueOf(configuration.isXslSoapHeaderDisabled())))
                 .to("xslt-saxon:xsl/siri_raw_soap.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Convert SIRI raw request to SOAP version
                 .to("xslt-saxon:xsl/siri_14_20.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Convert SIRI raw request to SOAP version
                 .process(e -> log.debug("========> Request transformed to soap siri : {}", e.getIn().getBody(String.class)))
                 .removeHeader(ENDPOINT_URL_HEADER)
                 .removeHeader("operatorNamespace")
+                .removeHeader("soapHeaderDisabled")
                 .end();
 
         from("direct:siri.20.to.siri.ws.20.subscription.preprocess")

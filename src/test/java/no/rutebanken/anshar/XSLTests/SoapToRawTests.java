@@ -1,6 +1,7 @@
 package no.rutebanken.anshar.XSLTests;
 
 import jakarta.xml.bind.JAXBException;
+import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.data.util.CustomSiriXml;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.health.LivenessReadinessRoute;
@@ -24,19 +25,21 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class SoapToRawTests extends SpringBootBaseTest {
+@Slf4j
+class SoapToRawTests extends SpringBootBaseTest {
 
+    private static final String FILE_DELETION_FAILED = "File deletion failed";
 
-    private Source xslDoc = new StreamSource("src/main/resources/xsl/siri_soap_raw.xsl");
-
+    private final Source xslDoc = new StreamSource("src/main/resources/xsl/siri_soap_raw.xsl");
 
     @Autowired
     private LivenessReadinessRoute livenessReadinessRoute;
 
     @Test
-    public void testCheckStatusResponse() throws XMLStreamException, JAXBException, FileNotFoundException, TransformerException {
+    void testCheckStatusResponse() throws XMLStreamException, JAXBException, FileNotFoundException, TransformerException {
 
         String body = """
                 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
@@ -53,7 +56,7 @@ public class SoapToRawTests extends SpringBootBaseTest {
                           </Answer>
                         </CheckStatusResponse>
                       </s:Body>
-                    </s:Envelope>               
+                    </s:Envelope>
                 """;
 
         boolean result = livenessReadinessRoute.isStatusOk(body);
@@ -62,7 +65,7 @@ public class SoapToRawTests extends SpringBootBaseTest {
     }
 
     @Test
-    public void stopPointsDiscoveryTest() throws IOException, TransformerException, JAXBException, XMLStreamException {
+    void stopPointsDiscoveryTest() {
 
         TransformerFactory tFactory = TransformerFactory.newInstance();
 
@@ -80,17 +83,19 @@ public class SoapToRawTests extends SpringBootBaseTest {
             Siri incoming = SiriValueTransformer.parseXml(new ByteArrayInputStream(FileUtils.readFileToByteArray(file)));
 
             assertNotNull(incoming.getStopPointsRequest());
-            file.delete();
+            boolean delete = file.delete();
+            if (!delete) {
+                log.error(FILE_DELETION_FAILED);
+            }
 
 
         } catch (Exception e) {
-            e.printStackTrace();
-            throw e;
+            log.error(e.getMessage());
         }
     }
 
     @Test
-    public void fmSOAPTest() throws JAXBException, FileNotFoundException, TransformerException, XMLStreamException {
+    void fmSOAPTest() throws JAXBException, FileNotFoundException, TransformerException, XMLStreamException {
 
         String soapFMmsg = """
                 <?xml version="1.0" encoding="UTF-8"?>
@@ -283,7 +288,7 @@ public class SoapToRawTests extends SpringBootBaseTest {
     }
 
     @Test
-    public void checkStatusTest() throws JAXBException, FileNotFoundException, TransformerException, XMLStreamException {
+    void checkStatusTest() throws JAXBException, FileNotFoundException, TransformerException, XMLStreamException {
         String receivedCheckstatus = """
                 <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
                     <soap:Header/>
@@ -329,7 +334,7 @@ public class SoapToRawTests extends SpringBootBaseTest {
 
 
     @Test
-    public void linesDiscoveryTest() throws IOException, TransformerException, JAXBException, XMLStreamException {
+    void linesDiscoveryTest() {
 
         TransformerFactory tFactory = TransformerFactory.newInstance();
         Source xmlDoc = new StreamSource("src/test/resources/discoveryTest/lines_soap_to_xml_test.xml");
@@ -347,16 +352,19 @@ public class SoapToRawTests extends SpringBootBaseTest {
             Siri incoming = SiriValueTransformer.parseXml(new ByteArrayInputStream(FileUtils.readFileToByteArray(file)));
 
             assertNotNull(incoming.getLinesRequest());
-            file.delete();
+            boolean delete = file.delete();
+            if (!delete) {
+                log.error(FILE_DELETION_FAILED);
+            }
+
 
         } catch (Exception e) {
-            e.printStackTrace();
-            throw e;
+            log.error(e.getMessage());
         }
     }
 
     @Test
-    public void etSubscriptionSoapTest() throws TransformerException, IOException, XMLStreamException, JAXBException {
+    void etSubscriptionSoapTest() throws TransformerException, IOException, XMLStreamException, JAXBException {
         // Arrange
         Path inputPath = Path.of("src/test/resources/xsl/et-subscription-soap.xml");
         String etSubscriptionSoap = Files.readString(inputPath);
@@ -380,4 +388,74 @@ public class SoapToRawTests extends SpringBootBaseTest {
         assertEquals("8bd15707955240c88647c928a64f4456", etr.getMessageIdentifier().getValue());
         assertEquals(60, etr.getPreviewInterval().getMinutes());
     }
+
+    @Test
+    void ginkoXslSiriTransformationStopMonitoringTest() throws TransformerException, IOException, XMLStreamException, JAXBException {
+        Path inputPath = Path.of("src/test/resources/xsl/ginko-get-sm.xml");
+
+        String smResponse = applyXslt(Files.newInputStream(inputPath));
+
+        Siri siri = SiriXml.parseXml(smResponse);
+
+        assertNotNull(siri);
+        assertThat(siri.getServiceDelivery()).isNotNull();
+        assertThat(siri.getServiceDelivery().getStopMonitoringDeliveries()).isNotEmpty().hasSize(1);
+        assertThat(siri.getServiceDelivery().getStopMonitoringDeliveries().getFirst().getMonitoredStopVisits()).isNotEmpty().hasSize(6);
+    }
+
+    @Test
+    void ginkoXslSiriTransformationSituationExchangeTest() throws TransformerException, IOException, XMLStreamException, JAXBException {
+        Path inputPath = Path.of("src/test/resources/xsl/ginko-get-sx.xml");
+
+        String sxResponse = applyXslt(Files.newInputStream(inputPath));
+
+        Siri siri = SiriXml.parseXml(sxResponse);
+
+        assertNotNull(siri);
+        assertThat(siri.getServiceDelivery()).isNotNull();
+        assertThat(siri.getServiceDelivery().getSituationExchangeDeliveries()).isNotEmpty().hasSize(1);
+        assertThat(siri.getServiceDelivery().getSituationExchangeDeliveries().getFirst().getSituations()).isNotNull();
+        assertThat(siri.getServiceDelivery().getSituationExchangeDeliveries().getFirst().getSituations().getPtSituationElements()).isNotEmpty().hasSize(13);
+    }
+
+    @Test
+    void ginkoXslSiriTransformationEstimatedTimetableTest() throws TransformerException, IOException, XMLStreamException, JAXBException {
+        Path inputPath = Path.of("src/test/resources/xsl/ginko-get-et.xml");
+
+        String etResponse = applyXslt(Files.newInputStream(inputPath));
+
+        Siri siri = SiriXml.parseXml(etResponse);
+
+        assertNotNull(siri);
+        assertThat(siri.getServiceDelivery()).isNotNull();
+        assertThat(siri.getServiceDelivery().getEstimatedTimetableDeliveries()).isNotEmpty().hasSize(1);
+        assertThat(siri.getServiceDelivery().getEstimatedTimetableDeliveries().getFirst().getEstimatedJourneyVersionFrames()).isNotEmpty().hasSize(1);
+        assertThat(siri.getServiceDelivery().getEstimatedTimetableDeliveries().getFirst().getEstimatedJourneyVersionFrames().getFirst().getEstimatedVehicleJourneies()).isNotEmpty().hasSize(5);
+    }
+
+    @Test
+    void ginkoXslSiriTransformationGeneralMessageTest() throws TransformerException, IOException, XMLStreamException, JAXBException {
+        Path inputPath = Path.of("src/test/resources/xsl/ginko-get-gm.xml");
+
+        String gmResponse = applyXslt(Files.newInputStream(inputPath));
+
+        Siri siri = SiriXml.parseXml(gmResponse);
+
+        assertNotNull(siri);
+        assertThat(siri.getServiceDelivery()).isNotNull();
+        assertThat(siri.getServiceDelivery().getGeneralMessageDeliveries()).isNotEmpty().hasSize(1);
+        assertThat(siri.getServiceDelivery().getGeneralMessageDeliveries().getFirst().getGeneralMessages()).isNotEmpty().hasSize(2);
+    }
+
+    private String applyXslt(InputStream xml) throws TransformerException {
+        TransformerFactory factory = TransformerFactory.newInstance();
+        Transformer transformer = factory.newTransformer(xslDoc);
+        transformer.setParameter("siriTransformationFromType", "true");
+
+        StringWriter writer = new StringWriter();
+        transformer.transform(new StreamSource(xml), new StreamResult(writer));
+
+        return writer.toString();
+    }
+
 }

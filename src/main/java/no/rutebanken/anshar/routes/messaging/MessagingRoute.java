@@ -364,7 +364,9 @@ public class MessagingRoute extends RestRouteBuilder {
                 .when(header(TRANSFORM_SOAP).isEqualTo(simple(TRANSFORM_SOAP)))
                     .log(LoggingLevel.DEBUG, "Transforming SOAP")
                     .process(soapSplitProcessor)
+                    .setHeader("siriTransformationFromType", constant(String.valueOf(configuration.isXslSiriTagCreationFromAnswerTypeEnabled())))
                     .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Extract SOAP version and convert to raw SIRI
+                    .removeHeaders("siriTransformationFromType")
                     .endChoice()
                 .end()
                 .choice()

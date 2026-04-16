@@ -18,13 +18,16 @@
                 xmlns:xs="http://www.w3.org/2001/XMLSchema"
                 xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
                 xmlns:soapenv2="http://www.w3.org/2003/05/soap-envelope"
+                xmlns:soap="http://www.w3.org/2003/05/soap-envelope/"
                 xmlns:siri="http://www.siri.org.uk/siri"
                 xmlns:siril="http://www.siri.org.uk/siri"
+                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                 exclude-result-prefixes="xs" version="2.0">
 
     <xsl:output indent="yes"/>
 
     <xsl:param name="operatorNamespace"/>
+    <xsl:param name="siriTransformationFromType" select="'false'"/>
 
     <!-- If not SOAP-envelope - copy all as-is-->
     <xsl:template match="/siri:Siri">
@@ -62,7 +65,18 @@
 
     <xsl:template match="soapenv2:Header"/>
 
-    <xsl:template match="*"/>
+
+    <xsl:template match="soap:Envelope">
+        <xsl:apply-templates/>
+    </xsl:template>
+
+    <xsl:template match="soap:Header"/>
+
+    <xsl:template match="soap:Fault"/>
+
+    <xsl:template match="soap:Body">
+        <xsl:apply-templates/>
+    </xsl:template>
 
     <xsl:template
             match="*:NotifyVehicleMonitoring | *:NotifySituationExchange | *:NotifyEstimatedTimetable | *:NotifyStopMonitoring | *:NotifyFacilityMonitoring | *:NotifyHeartbeat | *:GetVehicleMonitoringResponse | *:GetSituationExchangeResponse | *:GetStopMonitoringResponse | *:GetEstimatedTimetable | *:GetEstimatedTimetableResponse | *:SubscribeResponse | *:DeleteSubscriptionResponse | *:HeartbeatNotification | *:SituationExchangeAnswer | *:VehicleMonitoringAnswer | *:CheckStatusResponse | *:DataSupplyResponse | *:GetStopMonitoring | *:GetVehicleMonitoring | *:StopPointsDiscovery | *:LinesDiscovery | *:GetSituationExchange | *:GetGeneralMessage | *:GetGeneralMessageResponse  | *:GetFacilityMonitoring | *:GetFacilityMonitoringResponse  | *:Subscribe | *:DeleteSubscription | *:CheckStatus |*:StopPointsDiscoveryResponse | *:LinesDiscoveryResponse"> <!-- TODO add all conseptual types of requests -->
@@ -925,7 +939,6 @@
                     </xsl:element>
                 </xsl:element>
             </xsl:when>
-
             <xsl:otherwise>
                 <xsl:element name="siril:Siri">
                     <xsl:attribute name="version">
@@ -938,7 +951,37 @@
                         <xsl:copy-of select="ServiceDeliveryInfo/siril:ConsumerAddress" copy-namespaces="no"/>
                         <xsl:copy-of select="ServiceDeliveryInfo/siril:ResponseMessageIdentifier" copy-namespaces="no"/>
                         <xsl:copy-of select="ServiceDeliveryInfo/siril:RequestMessageRef" copy-namespaces="no"/>
-                        <xsl:copy-of select="Answer/*"/>
+                        <xsl:if test="$siriTransformationFromType = 'false'">
+                            <xsl:copy-of select="Answer/*"/>
+                        </xsl:if>
+                        <xsl:if test="$siriTransformationFromType = 'true'">
+                            <xsl:variable name="typeName" select="Answer/@xsi:type"/>
+                            <xsl:choose>
+                                <xsl:when test="$typeName = 'ns2:StopMonitoringDeliveryStructure'">
+                                    <siril:StopMonitoringDelivery>
+                                        <xsl:copy-of select="Answer/*"/>
+                                    </siril:StopMonitoringDelivery>
+                                </xsl:when>
+                                <xsl:when test="$typeName = 'ns2:EstimatedTimetableDeliveryStructure'">
+                                    <siril:EstimatedTimetableDelivery>
+                                        <xsl:copy-of select="Answer/*"/>
+                                    </siril:EstimatedTimetableDelivery>
+                                </xsl:when>
+                                <xsl:when test="$typeName = 'ns2:GeneralMessageDeliveryStructure'">
+                                    <siril:GeneralMessageDelivery>
+                                        <xsl:copy-of select="Answer/*"/>
+                                    </siril:GeneralMessageDelivery>
+                                </xsl:when>
+                                <xsl:when test="$typeName = 'ns2:SituationExchangeDeliveryStructure'">
+                                    <siril:SituationExchangeDelivery>
+                                        <xsl:copy-of select="Answer/*"/>
+                                    </siril:SituationExchangeDelivery>
+                                </xsl:when>
+                                <xsl:otherwise>
+                                    <xsl:copy-of select="Answer/*"/>
+                                </xsl:otherwise>
+                            </xsl:choose>
+                        </xsl:if>
                     </xsl:element>
                 </xsl:element>
             </xsl:otherwise>
@@ -947,5 +990,6 @@
 
     </xsl:template>
 
-
+    <xsl:template match="*">
+    </xsl:template>
 </xsl:stylesheet>
