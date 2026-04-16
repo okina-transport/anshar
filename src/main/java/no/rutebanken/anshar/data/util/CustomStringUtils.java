@@ -64,4 +64,17 @@ public class CustomStringUtils {
         return input.replace(COLON_REPLACEMENT_CODE, ":");
     }
 
+    /**
+     * Replace ":" by "-")
+     *
+     * @param input string to process
+     * @return the transformed string
+     */
+    public static String replaceColonsByDashes(String input) {
+        if (StringUtils.isEmpty(input)) {
+            return input;
+        }
+        return input.replace(":", "-");
+    }
+
 }
