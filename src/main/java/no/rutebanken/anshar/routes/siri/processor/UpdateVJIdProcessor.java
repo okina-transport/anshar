@@ -110,6 +110,11 @@ public class UpdateVJIdProcessor extends ValueAdapter implements PostProcessor {
                         }
 
                         MonitoredCallStructure monitoredCall = vehicleJourney.getMonitoredCall();
+                        if (monitoredCall.getAimedArrivalTime() == null && monitoredCall.getAimedDepartureTime() == null){
+                            log.info("No aimed time for message : {}", monitoredStopVisit.getItemIdentifier());
+                            continue;
+                        }
+
                         ZonedDateTime passingTime = monitoredCall.getAimedArrivalTime() != null ? monitoredCall.getAimedArrivalTime() : monitoredCall.getAimedDepartureTime();
                         String directionId = CollectionUtils.isNotEmpty(vehicleJourney.getDirectionNames()) ? vehicleJourney.getDirectionNames().getFirst().getValue() : "";
 
