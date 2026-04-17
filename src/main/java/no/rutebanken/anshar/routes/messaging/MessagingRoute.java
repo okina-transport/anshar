@@ -29,6 +29,7 @@ import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.Predicate;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.entur.siri21.util.SiriXml;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -393,7 +394,9 @@ public class MessagingRoute extends RestRouteBuilder {
 
                             if (!discoveryFirstChild.containsKey(subscriptionId)){
                                 List<SubscriptionSetup> childrenSubscriptions = subscriptionManager.getChildSubscriptions(discoverySubscription);
-                                discoveryFirstChild.put(subscriptionId, childrenSubscriptions.getFirst());
+                                if (CollectionUtils.isNotEmpty(childrenSubscriptions)){
+                                    discoveryFirstChild.put(subscriptionId, childrenSubscriptions.getFirst());
+                                }
                             }
 
                             SubscriptionSetup childSubscription =  discoveryFirstChild.get(subscriptionId);
