@@ -198,6 +198,7 @@ public class SiriHandler {
 
     public Siri buildSiriResponse(IncomingSiriParameters incomingSiriParameters, Siri request) {
         Siri response = outboundProcessSiriServerRequest(request, incomingSiriParameters);
+        utils.handleFlexibleLines(response);
         incomingSiriParameters.setVersion(request.getVersion());
         return response;
     }
