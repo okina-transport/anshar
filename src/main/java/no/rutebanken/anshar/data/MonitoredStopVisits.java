@@ -89,7 +89,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     @Autowired
     private LineUpdaterService lineUpdaterService;
 
-    @Value("${replace.colons.by.dashes.line.id.datasets:}")
+    @Value("${replace.colons.by.dashes.datasets:}")
     private List<String> replaceColonsInLineDatasets;
 
 
@@ -484,7 +484,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
                     }
 
 
-                    if (CollectionUtils.isEmpty(monitoredStopVisit.getMonitoredVehicleJourney().getDestinationNames())) {
+                    if (hasNoDestinationName(monitoredStopVisit.getMonitoredVehicleJourney())) {
                         NaturalLanguageStringStructure destinationName = new NaturalLanguageStringStructure();
                         if (!EMPTY_DESTINATION.equals(monitoredStopVisit.getMonitoredVehicleJourney().getDestinationRef().getValue())) {
                             destinationName.setLang("FR");
@@ -537,6 +537,11 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         markDataReceived(SiriDataType.STOP_MONITORING, datasetId, smList.size(), changes.size(), outdatedCounter.getValue(), (invalidLocationCounter.getValue() + notMeaningfulCounter.getValue() + notUpdatedCounter.getValue()));
         return addedData;
+    }
+
+    private boolean hasNoDestinationName(MonitoredVehicleJourneyStructure monitoredVehicleJourney){
+        return  CollectionUtils.isEmpty(monitoredVehicleJourney.getDestinationNames())
+                || monitoredVehicleJourney.getDestinationNames().stream().allMatch(destinationName -> StringUtils.isBlank(destinationName.getValue()));
     }
 
     private void feedPublishedLineName(String datasetId, MonitoredStopVisit monitoredStopVisit) {
