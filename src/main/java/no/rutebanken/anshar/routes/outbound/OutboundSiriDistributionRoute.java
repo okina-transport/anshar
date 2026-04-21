@@ -78,6 +78,7 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
                 .to("direct:siri.transform.data")
                 .process(p -> {
                     Siri response = p.getIn().getBody(Siri.class);
+                    utils.handleFlexibleLines(response);
                     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
                     if (p.getIn().getHeader(SIRI_VERSION_HEADER_NAME).equals(SiriValidator.Version.VERSION_2_1)){
                         CustomSiriXml.toXml(response, null, byteArrayOutputStream);

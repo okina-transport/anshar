@@ -259,6 +259,10 @@ public class SiriHelper {
                 processedLineValues.addAll(originalIdLines);
             }
         } else {
+            rawLineValues = rawLineValues.stream()
+                    .map(rawValue -> rawValue.replaceAll(":FlexibleLine:", ":Line:"))
+                    .collect(Collectors.toSet());
+
             Optional<String> datasetOpt = subscriptionConfig.findDatasetFromSearch(rawLineValues, ObjectType.LINE);
             if (datasetOpt.isPresent()) {
                 Optional<IdProcessingParameters> idProcLineOpt = subscriptionConfig.getIdParametersForDataset(datasetOpt.get(), ObjectType.LINE);
@@ -362,6 +366,11 @@ public class SiriHelper {
 
             Set<String> requestedIds = new HashSet<>();
             requestedIds.add(requestedId);
+
+            requestedIds = requestedIds.stream()
+                    .map(value -> value.replace(":FlexibleLine:", ":Line:"))
+                    .collect(Collectors.toSet());
+
             return subscriptionConfig.buildIdProcessingParams(datasetId, requestedIds, ObjectType.LINE);
         }
 
@@ -380,6 +389,9 @@ public class SiriHelper {
             for (LineDirectionStructure lineDirection : estimatedTimetableSubscription.getEstimatedTimetableRequest().getLines().getLineDirections()) {
                 requestedIds.add(lineDirection.getLineRef().getValue());
             }
+            requestedIds = requestedIds.stream()
+                    .map(value -> value.replace(":FlexibleLine:", ":Line:"))
+                    .collect(Collectors.toSet());
         }
 
         return subscriptionConfig.buildIdProcessingParams(datasetId, requestedIds, ObjectType.LINE);

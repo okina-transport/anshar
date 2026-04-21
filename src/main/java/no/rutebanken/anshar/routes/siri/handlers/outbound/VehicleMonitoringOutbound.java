@@ -43,7 +43,7 @@ public class VehicleMonitoringOutbound {
             LineRef lineRef = req.getLineRef();
             if (lineRef != null) {
                 Set<String> linerefList = filterMap.get(LineRef.class) != null ? filterMap.get(LineRef.class) : new HashSet<>();
-                linerefList.add(lineRef.getValue());
+                linerefList.add(lineRef.getValue().replaceAll(":FlexibleLine:", ":Line:"));
                 filterMap.put(LineRef.class, linerefList);
             }
         }

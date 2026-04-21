@@ -142,7 +142,7 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
             for (VehicleActivityStructure vehicleActivity : vehicleMonitoringDelivery.getVehicleActivities()) {
                 String lineRef = vehicleActivity.getMonitoredVehicleJourney().getLineRef().getValue();
                 if (lineRef.startsWith("PROV1")) {
-                    assertEquals("PROV1:Line:35", lineRef);
+                    assertEquals("PROV1:FlexibleLine:35", lineRef);
                 } else {
                     assertEquals(standardlineId, lineRef);
                 }
