@@ -354,7 +354,7 @@ public class SituationsTest extends SpringBootBaseTest {
             assertNotNull(affectedLine.getLineRef());
             String lineId = affectedLine.getLineRef().getValue();
             if (lineId.startsWith("PROV1")) {
-                assertEquals("PROV1:Line:35", lineId);
+                assertEquals("PROV1:FlexibleLine:35", lineId);
             } else {
                 assertEquals(standardlineId, lineId);
             }
