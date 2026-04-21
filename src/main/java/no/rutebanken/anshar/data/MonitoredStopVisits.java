@@ -89,8 +89,8 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
     @Autowired
     private LineUpdaterService lineUpdaterService;
 
-    @Value("${replace.colons.by.dashes.line.id:false}")
-    private boolean replaceColonsByDashes;
+    @Value("${replace.colons.by.dashes.line.id.datasets:}")
+    private List<String> replaceColonsInLineDatasets;
 
 
     Map<String, Integer> smTheoricalCount = new HashMap<>();
@@ -637,7 +637,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
 
         monitoredStopVisit.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().setDatedVehicleJourneyRef(CustomStringUtils.removeSpecialCharacters(vehicleJourneyRef));
 
-        if(replaceColonsByDashes && monitoredStopVisit.getMonitoredVehicleJourney().getLineRef() != null && StringUtils.isNotEmpty(monitoredStopVisit.getMonitoredVehicleJourney().getLineRef().getValue())){
+        if(CollectionUtils.isNotEmpty(replaceColonsInLineDatasets) && replaceColonsInLineDatasets.contains(datasetId) && monitoredStopVisit.getMonitoredVehicleJourney().getLineRef() != null && StringUtils.isNotEmpty(monitoredStopVisit.getMonitoredVehicleJourney().getLineRef().getValue())){
             LineRef lineRef = new LineRef();
             lineRef.setValue(CustomStringUtils.replaceColonsByDashes(monitoredStopVisit.getMonitoredVehicleJourney().getLineRef().getValue()));
             monitoredStopVisit.getMonitoredVehicleJourney().setLineRef(lineRef);
