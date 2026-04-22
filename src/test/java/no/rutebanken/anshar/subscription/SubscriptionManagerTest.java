@@ -15,325 +15,270 @@
 
 package no.rutebanken.anshar.subscription;
 
+import lombok.extern.slf4j.Slf4j;
+import no.rutebanken.anshar.idTests.TestUtils;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
+import no.rutebanken.anshar.subscription.helpers.RequestType;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockserver.integration.ClientAndServer;
+import org.mockserver.matchers.TimeToLive;
+import org.mockserver.matchers.Times;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalTime;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Set;
-import java.util.UUID;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.*;
 
+import static org.mockserver.integration.ClientAndServer.startClientAndServer;
+import static org.mockserver.model.HttpRequest.request;
+import static org.mockserver.model.HttpResponse.response;
+import static org.mockserver.model.XPathBody.xpath;
+
+@Slf4j
 public class SubscriptionManagerTest extends SpringBootBaseTest {
 
     @Autowired
     private SubscriptionManager subscriptionManager;
+
+    @Autowired
+    private SubscriptionInitializer subscriptionInitializer;
+
+    @Autowired
+    private SubscriptionConfig subscriptionConfig;
 
     @Value("${anshar.healthcheck.interval.factor:12}")
     private int healthcheckIntervalFactor;
 
     @BeforeEach
     public void init() {
-        subscriptionManager.subscriptions.clear();
+        subscriptionManager.getSubscriptions().clear();
     }
 
-    @Test
-    public void activeSubscriptionIsHealthy() {
-        long subscriptionDurationSec = 1;
-        SubscriptionSetup subscriptionSoonToExpire = createSubscription(subscriptionDurationSec);
-        String subscriptionId = UUID.randomUUID().toString();
-        subscriptionManager.addSubscription(subscriptionId, subscriptionSoonToExpire);
-        subscriptionManager.activatePendingSubscription(subscriptionId);
-        subscriptionManager.touchSubscription(subscriptionId);
+    private final String subscriptionResponse = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+               <soapenv:Header/>
+               <soapenv:Body>
+                  <SubscribeResponse xmlns="http://wsdl.siri.org.uk">
+                     <SubscriptionAnswerInfo xmlns="">
+                        <ResponseTimestamp xmlns="http://www.siri.org.uk/siri">2026-04-16T15:37:15.061130044+02:00</ResponseTimestamp>
+                        <ResponderRef xmlns="http://www.siri.org.uk/siri">SM-GCA-LOC6-0-0</ResponderRef>
+                        <RequestMessageRef xmlns="http://www.siri.org.uk/siri">977116a4-4423-45b5-85b1-d052ee3f7aae</RequestMessageRef>
+                     </SubscriptionAnswerInfo>
+                     <Answer xmlns="">
+                        <siri:ResponseStatus xmlns:siri="http://www.siri.org.uk/siri">
+                           <ResponseTimestamp xmlns="http://www.siri.org.uk/siri">2026-04-16T15:37:15.061131465+02:00</ResponseTimestamp>
+                           <RequestMessageRef xmlns="http://www.siri.org.uk/siri">977116a4-4423-45b5-85b1-d052ee3f7aae</RequestMessageRef>
+                           <SubscriptionRef xmlns="http://www.siri.org.uk/siri">SM-GCA-LOC6-0-0</SubscriptionRef>
+                           <Status xmlns="http://www.siri.org.uk/siri">true</Status>
+                        </siri:ResponseStatus> 
+                     </Answer>
+                     <AnswerExtension xmlns=""/>
+                  </SubscribeResponse>
+               </soapenv:Body>
+            </soapenv:Envelope>
+            """;
 
-        assertTrue(subscriptionManager.isSubscriptionHealthy(subscriptionId));
+
+    private final String checkStatusResponse = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+               <soapenv:Body>
+                  <CheckStatusResponse xmlns="http://wsdl.siri.org.uk">
+                     <CheckStatusAnswerInfo xmlns="">
+                        <ResponseTimestamp xmlns="http://www.siri.org.uk/siri">2026-04-16T16:43:23.014823312+02:00</ResponseTimestamp>
+                        <ProducerRef xmlns="http://www.siri.org.uk/siri">MOBIITI</ProducerRef>
+                        <ResponseMessageIdentifier xmlns="http://www.siri.org.uk/siri">13a2934f-72e0-4d3a-8025-ced145176d34</ResponseMessageIdentifier>
+                     </CheckStatusAnswerInfo>
+                     <Answer xmlns="">
+                        <Status xmlns="http://www.siri.org.uk/siri">true</Status>
+                        <ServiceStartedTime xmlns="http://www.siri.org.uk/siri">2026-04-16T10:16:45.122508394+02:00</ServiceStartedTime>
+                     </Answer>
+                     <AnswerExtension xmlns=""/>
+                  </CheckStatusResponse>
+               </soapenv:Body>
+            </soapenv:Envelope>
+            """;
+
+    @AfterEach
+    void stopServer() throws InterruptedException {
+        if (mockServer != null) {
+            mockServer.stop();
+            Thread.sleep(2000);
+            log.info("MockServer arrêté");
+        }
     }
 
-    @Test
-    public void activeSubscriptionNoHeartbeat() throws InterruptedException {
-        long subscriptionDurationSec = 180;
-        SubscriptionSetup activeSubscription = createSubscription(subscriptionDurationSec, Duration.ofMillis(150));
-        String subscriptionId = UUID.randomUUID().toString();
-        subscriptionManager.addSubscription(subscriptionId, activeSubscription);
-        subscriptionManager.activatePendingSubscription(subscriptionId);
-        subscriptionManager.touchSubscription(subscriptionId);
-
-        assertTrue(subscriptionManager.isSubscriptionHealthy(subscriptionId));
-
-        Thread.sleep(activeSubscription.getHeartbeatInterval().toMillis() * healthcheckIntervalFactor + 150);
-
-        assertFalse(subscriptionManager.isSubscriptionHealthy(subscriptionId));
-    }
-
-
-    @Test
-    public void notStartedSubscriptionIsHealthy() throws InterruptedException {
-
-        long subscriptionDurationSec = 1;
-        SubscriptionSetup pendingSubscription = createSubscription(subscriptionDurationSec, Duration.ofMillis(150));
-        pendingSubscription.setActive(false);
-        String subscriptionId = UUID.randomUUID().toString();
-        subscriptionManager.addSubscription(subscriptionId, pendingSubscription);
-
-        assertTrue(subscriptionManager.isSubscriptionHealthy(subscriptionId));
-
-        Thread.sleep(pendingSubscription.getHeartbeatInterval().toMillis() * healthcheckIntervalFactor + 150);
-
-        assertTrue(subscriptionManager.isSubscriptionHealthy(subscriptionId));
-    }
-
-
-    @Test
-    public void testAutomaticRestartTrigger() throws InterruptedException {
-
-        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
-        String restartTime = ZonedDateTime.now().plusMinutes(2).format(timeFormatter);
-
-        SubscriptionSetup subscription = createSubscription(1000000L);
-
-        subscription.setRestartTime(restartTime);
-
-        String subscriptionId = subscription.getSubscriptionId();
-
-        subscriptionManager.addSubscription(subscriptionId, subscription);
-        subscriptionManager.activatedTimestamp.set(subscriptionId, Instant.now().minusSeconds(3600));
-
-        assertTrue(subscriptionManager.isSubscriptionHealthy(subscriptionId));
-
-        restartTime = ZonedDateTime.now().minusMinutes(2).format(timeFormatter);
-        subscription.setRestartTime(restartTime);
-        subscriptionManager.addSubscription(subscriptionId, subscription);
-        subscriptionManager.activatedTimestamp.set(subscriptionId, Instant.now().minusSeconds(3600));
-
-        assertFalse(subscriptionManager.isSubscriptionHealthy(subscriptionId));
-        assertTrue(subscriptionManager.isForceRestart(subscriptionId));
-    }
-
-    @Test
-    public void testForceRestartTrigger() throws InterruptedException {
-
-        SubscriptionSetup subscription = createSubscription(1000000L);
-
-        String subscriptionId = subscription.getSubscriptionId();
-
-        subscriptionManager.addSubscription(subscriptionId, subscription);
-        subscriptionManager.activatedTimestamp.set(subscriptionId, Instant.now().minusSeconds(3600));
-
-        assertTrue(subscriptionManager.isSubscriptionHealthy(subscriptionId));
-
-        subscriptionManager.forceRestart(subscriptionId);
-
-        assertTrue(subscriptionManager.isForceRestart(subscriptionId));
-
-        // Triggered restart does not affect health-status
-        assertTrue(subscriptionManager.isSubscriptionHealthy(subscriptionId));
-
-        //When a force restart is triggered, it is only triggered once
-        assertFalse(subscriptionManager.isForceRestart(subscriptionId));
-    }
-
-    @Test
-    public void testCheckStatusResponseOK() throws InterruptedException {
-        long subscriptionDurationSec = 180;
-        SubscriptionSetup subscription = createSubscription(subscriptionDurationSec);
-        subscriptionManager.addSubscription(subscription.getSubscriptionId(), subscription);
-        subscriptionManager.activatePendingSubscription(subscription.getSubscriptionId());
-
-        ZonedDateTime serviceStartedTime = ZonedDateTime.now().minusMinutes(1);
-        boolean touched = subscriptionManager.touchSubscription(subscription.getSubscriptionId(), serviceStartedTime, null);
-        assertTrue(touched);
-        assertTrue(subscriptionManager.isSubscriptionHealthy(subscription.getSubscriptionId()));
-
-    }
-
-    @Test
-    public void testAddSubscription() {
-        SubscriptionSetup subscription = createSubscription(1);
-        assertFalse(subscriptionManager.isSubscriptionRegistered(subscription.getSubscriptionId()), "Subscription already marked as registered");
-        subscriptionManager.addSubscription(subscription.getSubscriptionId(), subscription);
-        subscriptionManager.activatePendingSubscription(subscription.getSubscriptionId());
-
-        assertTrue(subscriptionManager.isSubscriptionRegistered(subscription.getSubscriptionId()), "Subscription not marked as registered");
-        assertTrue(subscriptionManager.isActiveSubscription(subscription.getSubscriptionId()), "Subscription not marked as active");
-
-
-        assertNotNull(subscriptionManager.get(subscription.getSubscriptionId()), "Subscription not found");
-    }
+    private ClientAndServer mockServer;
 
 
     @Test
-    public void testRemoveSubscription() {
-        SubscriptionSetup subscription = createSubscription(1);
-        assertFalse(subscriptionManager.isSubscriptionRegistered(subscription.getSubscriptionId()));
+    void test_unresponsive_subscription() throws Exception {
 
-        subscriptionManager.addSubscription(subscription.getSubscriptionId(), subscription);
-        subscriptionManager.activatePendingSubscription(subscription.getSubscriptionId());
-
-        assertTrue(
-                subscriptionManager.isSubscriptionRegistered(subscription.getSubscriptionId()),
-                "Subscription not registered"
-        );
-        assertTrue(
-                subscriptionManager.isActiveSubscription(subscription.getSubscriptionId()),
-                "Subscription not marked as active"
+        mockServer = startClientAndServer(1080);
+        mockServer.when(
+                request()
+                        .withMethod("POST")
+                        .withPath("/providerEndpoint")
+                        .withBody(xpath(
+                                "count(//*[local-name()='StopMonitoringSubscriptionRequest']) > 0"
+                        ))
+        ).respond(
+                response()
+                        .withStatusCode(200)
+                        .withBody(subscriptionResponse)
         );
 
-        subscriptionManager.removeSubscription(subscription.getSubscriptionId());
-        assertFalse(
-                subscriptionManager.isActiveSubscription(subscription.getSubscriptionId()),
-                "Removed subscription marked as active"
+        mockServer.when(
+                request()
+                        .withMethod("POST")
+                        .withPath("/providerEndpoint"),
+                Times.unlimited(), TimeToLive.unlimited(), -10
+        ).respond(
+                response()
+                        .withStatusCode(200)
+                        .withBody(checkStatusResponse)
         );
+
+        SubscriptionSetup subscription = createSubscription(10800);
+        subscriptionConfig.getSubscriptions().add(subscription);
+        subscriptionInitializer.createSubscriptions();
+
+        Thread.sleep(91000);
+
+        int nbOfReceivedRequests = TestUtils.countNonCheckStatusRequests(mockServer, "/providerEndpoint");
+        String result = TestUtils.getFirstNonCheckStatusRequestOnEndpoint(mockServer, "/providerEndpoint");
+        Assertions.assertEquals(1, nbOfReceivedRequests);
+        Assertions.assertTrue(result.contains("StopMonitoringSubscriptionRequest") && result.contains("STOP1"));
+
+        SubscriptionSetup existingSubscription = subscriptionManager.get(subscription.getSubscriptionId());
+
+        // simulating a very old activity
+        Instant instant = Instant.now().minus(30, ChronoUnit.MINUTES);
+        subscriptionManager.setLastActivity(subscription.getSubscriptionId(), instant);
+
+        // check should launch a restart of the subscription because last activity is too old
+        subscriptionManager.launchSubscriptionsLifeCycleCheck();
+
+        // provider should receive 3 requests :  1-original subscribe, 2-terminateSubscription, 3-new subscribe
+        nbOfReceivedRequests = TestUtils.countNonCheckStatusRequests(mockServer, "/providerEndpoint");
+        List<String> receivedRequests = TestUtils.getNonCheckStatusRequests(mockServer, "/providerEndpoint");
+        Assertions.assertEquals(3, nbOfReceivedRequests);
+        Assertions.assertTrue(isSubscriptionRequest(receivedRequests.get(0)));
+        Assertions.assertTrue(isTerminateSubscriptionRequest(receivedRequests.get(1)));
+        Assertions.assertTrue(isSubscriptionRequest(receivedRequests.get(2)));
+
+
     }
 
     @Test
-    public void testForceRemoveSubscription() {
-        SubscriptionSetup subscription = createSubscription(1);
-        assertFalse(subscriptionManager.isSubscriptionRegistered(subscription.getSubscriptionId()));
+    void test_restart_time_passed() throws Exception {
 
-        subscriptionManager.addSubscription(subscription.getSubscriptionId(), subscription);
-        subscriptionManager.activatePendingSubscription(subscription.getSubscriptionId());
-
-        subscriptionManager.removeSubscription(subscription.getSubscriptionId(), true);
-        assertFalse(
-                subscriptionManager.isActiveSubscription(subscription.getSubscriptionId()),
-                "Removed subscription marked as active"
+        mockServer = startClientAndServer(1080);
+        mockServer.when(
+                request()
+                        .withMethod("POST")
+                        .withPath("/providerEndpoint")
+                        .withBody(xpath(
+                                "count(//*[local-name()='StopMonitoringSubscriptionRequest']) > 0"
+                        ))
+        ).respond(
+                response()
+                        .withStatusCode(200)
+                        .withBody(subscriptionResponse)
         );
-    }
 
-    @Test
-    public void testStatsObjectCounterHugeNumber() {
-        SubscriptionSetup subscription = createSubscription(1);
-        assertFalse(subscriptionManager.isSubscriptionRegistered(subscription.getSubscriptionId()));
-
-        subscriptionManager.addSubscription(subscription.getSubscriptionId(), subscription);
-        subscriptionManager.activatePendingSubscription(subscription.getSubscriptionId());
-
-        for (int i = 0; i < 10; i++) {
-            subscriptionManager.incrementObjectCounter(subscription, Integer.MAX_VALUE);
-        }
-
-        JSONObject jsonObject = subscriptionManager.buildStats();
-
-        assertNotNull(jsonObject.get("types"));
-        assertTrue(jsonObject.get("types") instanceof JSONArray);
-
-        JSONArray types = (JSONArray) jsonObject.get("types");
-
-        JSONArray subscriptions = new JSONArray();
-        for (int i = 0; i < types.size(); i++) {
-            subscriptions.addAll((JSONArray) ((JSONObject) types.get(i)).get("subscriptions"));
-        }
-
-        boolean verifiedCounter = false;
-        for (Object object : subscriptions) {
-            JSONObject jsonStats = (JSONObject) object;
-            if (subscription.getSubscriptionId().equals(jsonStats.get("subscriptionId"))) {
-                assertNotNull(jsonStats.get("objectcount"));
-                assertTrue(jsonStats.get("objectcount").toString().length() > String.valueOf(Integer.MAX_VALUE).length());
-                verifiedCounter = true;
-            }
-        }
-        assertTrue(verifiedCounter, "Counter has not been verified");
-    }
-
-    @Test
-    public void testStatByteCounter() {
-        SubscriptionSetup subscription = createSubscription(1);
-        assertFalse(subscriptionManager.isSubscriptionRegistered(subscription.getSubscriptionId()));
-
-        subscriptionManager.addSubscription(subscription.getSubscriptionId(), subscription);
-        subscriptionManager.activatePendingSubscription(subscription.getSubscriptionId());
-
-        int sum = 0;
-        int increment = 999;
-        for (int i = 1; i < 10; i++) {
-            sum += increment;
-            subscriptionManager.incrementObjectCounter(subscription, increment);
-        }
-
-        JSONObject jsonObject = subscriptionManager.buildStats();
-        assertNotNull(jsonObject.get("types"));
-        assertTrue(jsonObject.get("types") instanceof JSONArray);
-
-        JSONArray types = (JSONArray) jsonObject.get("types");
-
-        JSONArray subscriptions = new JSONArray();
-        for (int i = 0; i < types.size(); i++) {
-            subscriptions.addAll((JSONArray) ((JSONObject) types.get(i)).get("subscriptions"));
-        }
-        assertTrue(subscriptions.size() > 0);
-
-        boolean verifiedCounter = false;
-        for (Object object : subscriptions) {
-            JSONObject jsonStats = (JSONObject) object;
-            if (subscription.getSubscriptionId().equals(jsonStats.get("subscriptionId"))) {
-                assertEquals("" + sum, "" + jsonStats.get("objectcount"));
-                verifiedCounter = true;
-            }
-        }
-        assertTrue(verifiedCounter, "Counter has not been verified");
-    }
-
-    @Test
-    public void testIsSubscriptionRegistered() {
-
-        assertFalse(
-                subscriptionManager.activatePendingSubscription("RandomSubscriptionId"),
-                "Unknown subscription has been activated"
+        mockServer.when(
+                request()
+                        .withMethod("POST")
+                        .withPath("/providerEndpoint"),
+                Times.unlimited(), TimeToLive.unlimited(), -10
+        ).respond(
+                response()
+                        .withStatusCode(200)
+                        .withBody(checkStatusResponse)
         );
-        assertFalse(
-                subscriptionManager.isSubscriptionRegistered("RandomSubscriptionId"),
-                "Unknown subscription reported as registered"
-        );
+
+        SubscriptionSetup subscription = createSubscription(10800);
+        subscriptionConfig.getSubscriptions().add(subscription);
+        subscriptionInitializer.createSubscriptions();
+
+        Thread.sleep(91000);
+
+        int nbOfReceivedRequests = TestUtils.countNonCheckStatusRequests(mockServer, "/providerEndpoint");
+        String result = TestUtils.getFirstNonCheckStatusRequestOnEndpoint(mockServer, "/providerEndpoint");
+        Assertions.assertEquals(1, nbOfReceivedRequests);
+        Assertions.assertTrue(result.contains("StopMonitoringSubscriptionRequest") && result.contains("STOP1"));
+
+        SubscriptionSetup existingSubscription = subscriptionManager.get(subscription.getSubscriptionId());
+
+        // simulating a subscription started 2 hours ago
+        ZonedDateTime fakeStartedTime = ZonedDateTime.now().minusHours(2);
+        existingSubscription.setStartedAt(fakeStartedTime);
+
+        // setting the restart time to : now - 10 min
+        LocalTime now = LocalTime.now().minusMinutes(10);
+        String fakeRestartTime = String.format("%02d:%02d", now.getHour(), now.getMinute());
+        existingSubscription.setRestartTime(fakeRestartTime);
+        subscriptionManager.updateSubscription(existingSubscription);
+
+
+        // check should launch a restart of the subscription because now > restart time and startedAt < restartTime
+        subscriptionManager.launchSubscriptionsLifeCycleCheck();
+
+        // provider should receive 3 requests :  1-original subscribe, 2-terminateSubscription, 3-new subscribe
+        nbOfReceivedRequests = TestUtils.countNonCheckStatusRequests(mockServer, "/providerEndpoint");
+        List<String> receivedRequests = TestUtils.getNonCheckStatusRequests(mockServer, "/providerEndpoint");
+        Assertions.assertEquals(3, nbOfReceivedRequests);
+        Assertions.assertTrue(isSubscriptionRequest(receivedRequests.get(0)));
+        Assertions.assertTrue(isTerminateSubscriptionRequest(receivedRequests.get(1)));
+        Assertions.assertTrue(isSubscriptionRequest(receivedRequests.get(2)));
+
+
     }
 
-    @Test
-    public void testAddSubscriptionAndReceivingData() {
-        SubscriptionSetup subscription = createSubscription(1000);
-        subscription.setVendor("VIPVendor");
-        subscription.setActive(true);
-
-        String subscriptionId = subscription.getSubscriptionId();
-        subscriptionManager.addSubscription(subscriptionId, subscription);
-        assertTrue(subscriptionManager.isSubscriptionHealthy(subscriptionId));
-        subscriptionManager.dataReceived(subscriptionId);
-
-        Set<String> allUnhealthySubscriptions = subscriptionManager.getAllUnhealthySubscriptions(1);
-        assertFalse(allUnhealthySubscriptions.contains(subscription.getVendor()));
-        try {
-            Thread.sleep(100);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        Set<String> allUnhealthySubscriptions_2 = subscriptionManager.getAllUnhealthySubscriptions(0);
-        assertTrue(allUnhealthySubscriptions_2.contains(subscription.getVendor()));
+    public static String getCurrentTimeMinus10() {
+        LocalTime now = LocalTime.now().minusMinutes(10);
+        return String.format("%02d:%02d", now.getHour(), now.getMinute());
     }
+
+    private boolean isTerminateSubscriptionRequest(String requestToCheck) {
+        log.info("Checking that request is a terminate subscription request:" + requestToCheck);
+        return requestToCheck.contains("DeleteSubscription");
+    }
+
+    private boolean isSubscriptionRequest(String requestToCheck) {
+        log.info("Checking that request is a subscription request:" + requestToCheck);
+        return requestToCheck.contains("StopMonitoringSubscriptionRequest");
+    }
+
 
     private SubscriptionSetup createSubscription(long initialDuration) {
         return createSubscription(initialDuration, Duration.ofMinutes(4));
     }
 
     private SubscriptionSetup createSubscription(long initialDuration, Duration heartbeatInterval) {
-        return new SubscriptionSetup(
-                SiriDataType.SITUATION_EXCHANGE,
+        HashMap<RequestType, String> urlMap = new HashMap<>();
+        urlMap.put(RequestType.SUBSCRIBE, "http://localhost:1080/providerEndpoint");
+        urlMap.put(RequestType.DELETE_SUBSCRIPTION, "http://localhost:1080/providerEndpoint");
+
+        SubscriptionSetup sub = new SubscriptionSetup(
+                SiriDataType.STOP_MONITORING,
                 SubscriptionSetup.SubscriptionMode.SUBSCRIBE,
                 "http://localhost",
                 heartbeatInterval,
                 Duration.ofHours(1),
                 "http://www.kolumbus.no/siri",
-                new HashMap<>(),
-                "1.4",
+                urlMap,
+                "2.0",
                 "SwarcoMizar",
                 "tst",
                 SubscriptionSetup.ServiceType.SOAP,
@@ -346,5 +291,10 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
                 true,
                 ZonedDateTime.now()
         );
+
+        sub.getStopMonitoringRefValues().add("STOP1");
+        sub.setContentType("text/xml;charset=UTF-8");
+        sub.setRestartTime("02:00");
+        return sub;
     }
 }

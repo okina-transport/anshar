@@ -16,9 +16,11 @@
 package no.rutebanken.anshar.subscription;
 
 import com.google.common.base.Preconditions;
+import com.hazelcast.scheduledexecutor.IScheduledExecutorService;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.data.DiscoveryCache;
+import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.admin.AdminRouteHelper;
 import no.rutebanken.anshar.routes.health.IncomingDataHealthService;
@@ -40,13 +42,14 @@ import org.apache.camel.builder.ExchangeBuilder;
 import org.apache.camel.builder.RouteBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -60,44 +63,45 @@ import static no.rutebanken.anshar.subscription.SubscriptionSetup.ServiceType.SO
 public class SubscriptionInitializer implements CamelContextAware {
     private static final Logger logger = LoggerFactory.getLogger(SubscriptionInitializer.class);
 
-    @Autowired
-    private SubscriptionManager subscriptionManager;
 
-    @Autowired
-    private SubscriptionConfig subscriptionConfig;
-
-    @Autowired
-    private SiriHandler handler;
-
-    @Autowired
-    private AnsharConfiguration configuration;
-
-    @Autowired
-    private DiscoveryCache discoveryCache;
-
-    @Autowired
-    private ProducerTemplate producerTemplate;
-
-    @Autowired
-    private AdminRouteHelper helper;
-
-    @Autowired
-    private PrometheusMetricsService metrics;
-
-    @Autowired
-    private IncomingDataHealthService incomingDataHealthService;
+    private final SubscriptionManager subscriptionManager;
+    private final SubscriptionConfig subscriptionConfig;
+    private final SiriHandler handler;
+    private final AnsharConfiguration configuration;
+    private final DiscoveryCache discoveryCache;
+    private final ProducerTemplate producerTemplate;
+    private final AdminRouteHelper helper;
+    private final PrometheusMetricsService metrics;
+    private final IncomingDataHealthService incomingDataHealthService;
+    private final TaskScheduler taskScheduler;
+    private final ExtendedHazelcastService hazelcastService;
+    private final IScheduledExecutorService sharedScheduler;
+    private static final int DEFAULT_INITIALIZER_DELAY_MIN = 1;
 
     private CamelContext camelContext;
+    private ScheduledFuture<?> waitingInit;
+
+    public SubscriptionInitializer(SubscriptionManager subscriptionManager, SubscriptionConfig subscriptionConfig, SiriHandler handler, AnsharConfiguration configuration, DiscoveryCache discoveryCache,
+                                   ProducerTemplate producerTemplate, AdminRouteHelper helper, PrometheusMetricsService metrics, IncomingDataHealthService incomingDataHealthService,
+                                   TaskScheduler taskScheduler, ExtendedHazelcastService hazelcastService, @Qualifier("getSharedScheduler") IScheduledExecutorService sharedScheduler) {
+        this.subscriptionManager = subscriptionManager;
+        this.subscriptionConfig = subscriptionConfig;
+        this.handler = handler;
+        this.configuration = configuration;
+        this.discoveryCache = discoveryCache;
+        this.producerTemplate = producerTemplate;
+        this.helper = helper;
+        this.metrics = metrics;
+        this.incomingDataHealthService = incomingDataHealthService;
+        this.taskScheduler = taskScheduler;
+        this.hazelcastService = hazelcastService;
+        this.sharedScheduler = sharedScheduler;
+    }
 
     @Override
     public CamelContext getCamelContext() {
         return camelContext;
     }
-
-    @Autowired
-    private TaskScheduler taskScheduler;
-
-    private ScheduledFuture<?> waitingInit;
 
     @Override
     public void setCamelContext(CamelContext camelContext) {
@@ -154,10 +158,7 @@ public class SubscriptionInitializer implements CamelContextAware {
         if (subscriptionConfig != null) {
             List<SubscriptionSetup> subscriptionSetups = subscriptionConfig.getSubscriptions();
             logger.info("Initializing {} subscriptions", subscriptionSetups.size());
-            Set<String> subscriptionIds = new HashSet<>();
-            Set<String> subscriptionNames = new HashSet<>();
 
-            Set<Long> subscriptionInternalIds = new HashSet<>();
 
             List<SubscriptionSetup> actualSubscriptionSetups = new ArrayList<>();
 
@@ -171,6 +172,8 @@ public class SubscriptionInitializer implements CamelContextAware {
                     .filter(sub -> sub.isActive() && !disabledSubscriptions.contains(sub))
                     .collect(Collectors.toList());
 
+            subscriptionManager.resetPreviouslyStoppedSubscriptions(activeSubscriptions);
+
             if (!disabledSubscriptions.isEmpty()) {
                 disableSubscriptions(disabledSubscriptions);
             }
@@ -178,91 +181,83 @@ public class SubscriptionInitializer implements CamelContextAware {
             logger.info("Initializing {} subscriptions", activeSubscriptions.size());
             // Validation and consistency-verification
             for (SubscriptionSetup subscriptionSetup : activeSubscriptions) {
-
-
-                if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
-                    discoveryCache.addStops(subscriptionSetup.getDatasetId(), subscriptionSetup.getStopMonitoringRefValues());
-                }
-
-                if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.VEHICLE_MONITORING)) {
-                    discoveryCache.addLines(subscriptionSetup.getDatasetId(), subscriptionSetup.getLineRefValues());
-                }
-
-                subscriptionSetup.setAddress(configuration.getInboundUrl());
-
-                if (!isValid(subscriptionSetup)) {
-                    throw new ServiceConfigurationError("Configuration is not valid for subscription " + subscriptionSetup);
-                }
-
-
-                List<ValueAdapter> valueAdapters = new ArrayList<>();
-
-                if (mappingAdaptersById.containsKey(subscriptionSetup.getMappingAdapterId())) {
-                    Class adapterClass = mappingAdaptersById.get(subscriptionSetup.getMappingAdapterId());
-                    try {
-                        valueAdapters.addAll((List<ValueAdapter>) adapterClass.getMethod("getValueAdapters", SubscriptionSetup.class).invoke(adapterClass.newInstance(), subscriptionSetup));
-
-                    } catch (Exception e) {
-                        throw new ServiceConfigurationError("Invalid mappingAdapterId for subscription " + subscriptionSetup, e);
-                    }
-                }
-                //Is added to ALL subscriptions AFTER subscription-specific adapters
-                valueAdapters.add(new CodespaceProcessor(subscriptionSetup.getDatasetId()));
-                valueAdapters.add(new EnsureIncreasingTimesForCancelledStopsProcessor(subscriptionSetup.getDatasetId()));
-                valueAdapters.add(new ExtraJourneyDestinationDisplayPostProcessor(subscriptionSetup.getDatasetId()));
-                valueAdapters.add(new EnsureNonNullVehicleModePostProcessor(subscriptionSetup.getDatasetId()));
-
-                subscriptionSetup.setMappingAdapters(valueAdapters);
-
-                if (subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.FETCHED_DELIVERY ||
-                        subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.POLLING_FETCHED_DELIVERY) {
-
-                    //Fetched delivery needs both subscribe-route and ServiceRequest-route
-                    String url = subscriptionSetup.getUrlMap().get(RequestType.SUBSCRIBE);
-
-                    subscriptionSetup.getUrlMap().putIfAbsent(RequestType.GET_ESTIMATED_TIMETABLE, url);
-                    subscriptionSetup.getUrlMap().putIfAbsent(RequestType.GET_VEHICLE_MONITORING, url);
-                    subscriptionSetup.getUrlMap().putIfAbsent(RequestType.GET_SITUATION_EXCHANGE, url);
-                }
-
+                addInfoToSubscription(mappingAdaptersById, subscriptionSetup);
                 SubscriptionSetup existingSubscription = subscriptionManager.getSubscriptionBySubscriptionId(subscriptionSetup.getSubscriptionId());
-
-
                 if (existingSubscription != null && !existingSubscription.equals(subscriptionSetup)) {
                     logger.info("Subscription with internalId={} is updated - reinitializing. {}", subscriptionSetup.getInternalId(), subscriptionSetup);
                     disableSubscriptions(List.of(existingSubscription));
                 }
-
                 actualSubscriptionSetups.add(subscriptionSetup);
-                subscriptionIds.add(subscriptionSetup.getSubscriptionId());
-                subscriptionNames.add(subscriptionSetup.getVendor());
-
-            }
-            if (configuration.processAdmin()) {
-                // If not admin - do NOT add subscription-handlers
-                for (SubscriptionSetup subscriptionSetup : actualSubscriptionSetups) {
-
-                    if (subscriptionManager.isSubscriptionRegistered(subscriptionSetup.getSubscriptionId()) && subscriptionManager.get(subscriptionSetup.getSubscriptionId()).isActive()) {
-                        //subscription already active. no need to start it
-                        continue;
-                    }
-
-                    if (subscriptionManager.isSubscriptionRegistered(subscriptionSetup.getSubscriptionId())) {
-                        //subscription previously disabled. Re-activating it
-                        subscriptionManager.startSubscription(subscriptionSetup.getSubscriptionId());
-                        continue;
-                    }
-
-                    startSubscription(subscriptionSetup);
-                }
             }
             for (SubscriptionSetup subscriptionSetup : actualSubscriptionSetups) {
                 if (!subscriptionManager.isSubscriptionRegistered(subscriptionSetup.getSubscriptionId())) {
                     subscriptionManager.addSubscription(subscriptionSetup.getSubscriptionId(), subscriptionSetup);
+                    initRouteBuilders(subscriptionSetup);
                 }
             }
+
+            // All active subscriptions has been added to manager. Launching init on one replica+
+            if (hazelcastService.getSubscriptionInitNextSynchroTimes().isEmpty()) {
+                LocalDateTime nextLaunchTime = LocalDateTime.now().plusMinutes(DEFAULT_INITIALIZER_DELAY_MIN);
+                hazelcastService.getSubscriptionInitNextSynchroTimes().add(nextLaunchTime);
+
+                long delayMs = DEFAULT_INITIALIZER_DELAY_MIN * 60 * 1000;
+                com.hazelcast.scheduledexecutor.IScheduledFuture<Object> plannedTask = sharedScheduler.schedule(subscriptionManager::launchSubscriptionsLifeCycleCheck, delayMs, TimeUnit.MILLISECONDS);
+            } else {
+                logger.info("Subscription init already planned");
+            }
+
+
         } else {
             logger.error("Subscriptions not configured correctly - no subscriptions will be started");
+        }
+    }
+
+    private void addInfoToSubscription(Map<String, Class> mappingAdaptersById, SubscriptionSetup subscriptionSetup) {
+
+        if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
+            discoveryCache.addStops(subscriptionSetup.getDatasetId(), subscriptionSetup.getStopMonitoringRefValues());
+        }
+
+        if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.VEHICLE_MONITORING)) {
+            discoveryCache.addLines(subscriptionSetup.getDatasetId(), subscriptionSetup.getLineRefValues());
+        }
+
+        subscriptionSetup.setAddress(configuration.getInboundUrl());
+
+        if (!isValid(subscriptionSetup)) {
+            throw new ServiceConfigurationError("Configuration is not valid for subscription " + subscriptionSetup);
+        }
+
+
+        List<ValueAdapter> valueAdapters = new ArrayList<>();
+
+        if (mappingAdaptersById.containsKey(subscriptionSetup.getMappingAdapterId())) {
+            Class adapterClass = mappingAdaptersById.get(subscriptionSetup.getMappingAdapterId());
+            try {
+                valueAdapters.addAll((List<ValueAdapter>) adapterClass.getMethod("getValueAdapters", SubscriptionSetup.class).invoke(adapterClass.newInstance(), subscriptionSetup));
+
+            } catch (Exception e) {
+                throw new ServiceConfigurationError("Invalid mappingAdapterId for subscription " + subscriptionSetup, e);
+            }
+        }
+        //Is added to ALL subscriptions AFTER subscription-specific adapters
+        valueAdapters.add(new CodespaceProcessor(subscriptionSetup.getDatasetId()));
+        valueAdapters.add(new EnsureIncreasingTimesForCancelledStopsProcessor(subscriptionSetup.getDatasetId()));
+        valueAdapters.add(new ExtraJourneyDestinationDisplayPostProcessor(subscriptionSetup.getDatasetId()));
+        valueAdapters.add(new EnsureNonNullVehicleModePostProcessor(subscriptionSetup.getDatasetId()));
+
+        subscriptionSetup.setMappingAdapters(valueAdapters);
+
+        if (subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.FETCHED_DELIVERY ||
+                subscriptionSetup.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.POLLING_FETCHED_DELIVERY) {
+
+            //Fetched delivery needs both subscribe-route and ServiceRequest-route
+            String url = subscriptionSetup.getUrlMap().get(RequestType.SUBSCRIBE);
+
+            subscriptionSetup.getUrlMap().putIfAbsent(RequestType.GET_ESTIMATED_TIMETABLE, url);
+            subscriptionSetup.getUrlMap().putIfAbsent(RequestType.GET_VEHICLE_MONITORING, url);
+            subscriptionSetup.getUrlMap().putIfAbsent(RequestType.GET_SITUATION_EXCHANGE, url);
         }
     }
 
@@ -296,19 +291,12 @@ public class SubscriptionInitializer implements CamelContextAware {
     }
 
 
-    private void startSubscription(SubscriptionSetup subscriptionSetup) {
-
-
+    private void initRouteBuilders(SubscriptionSetup subscriptionSetup) {
         try {
             List<RouteBuilder> routeBuilder = getRouteBuilders(subscriptionSetup);
             //Adding all routes to current context
             for (RouteBuilder builder : routeBuilder) {
                 camelContext.addRoutes(builder);
-            }
-
-            Exchange exchange = ExchangeBuilder.anExchange(camelContext).withBody(subscriptionSetup).build();
-            if (!subscriptionManager.isActiveSubscription(subscriptionSetup.getSubscriptionId()) && subscriptionSetup.isActive()) {
-                producerTemplate.send("direct:" + subscriptionSetup.getStartSubscriptionRouteName(), exchange);
             }
 
         } catch (Exception e) {
@@ -325,31 +313,11 @@ public class SubscriptionInitializer implements CamelContextAware {
         for (SubscriptionSetup disabledSubscription : disabledSubscriptions) {
             String subscriptionIdToDisable = disabledSubscription.getSubscriptionId();
             if (subscriptionManager.isSubscriptionRegistered(subscriptionIdToDisable) && subscriptionManager.get(subscriptionIdToDisable).isActive()) {
-                Exchange exchange = ExchangeBuilder.anExchange(camelContext).withBody(disabledSubscription).build();
-                if (disabledSubscription.getServiceType().equals(SOAP)) {
-                    producerTemplate.send("direct:" + disabledSubscription.getCancelSubscriptionRouteName(), exchange);
-                } else if (disabledSubscription.getServiceType().equals(REST)) {
-                    producerTemplate.send("direct:" + disabledSubscription.getCancelSubscriptionRouteName(), exchange);
-                }
-                subscriptionManager.removeSubscription(subscriptionIdToDisable);
+                subscriptionManager.sendTerminateRequest(disabledSubscription);
+                disabledSubscription.setActive(false);
+                disabledSubscription.setStatus(SubscriptionStatus.STOPPED);
+                subscriptionManager.updateSubscription(disabledSubscription);
 
-                try {
-                    camelContext.getRouteController().stopRoute(getStartRouteId(disabledSubscription));
-                    camelContext.getRouteController().stopRoute(getCheckStatusRouteId(disabledSubscription));
-                    camelContext.getRouteController().stopRoute(getCancelRouteId(disabledSubscription));
-                    camelContext.getRouteController().stopRoute(getMonitorRouteId(disabledSubscription));
-                    camelContext.getRouteController().stopRoute(getServiceRequestRouteId(disabledSubscription));
-
-                    camelContext.removeRoute(getStartRouteId(disabledSubscription));
-                    camelContext.removeRoute(getCheckStatusRouteId(disabledSubscription));
-                    camelContext.removeRoute(getCancelRouteId(disabledSubscription));
-                    camelContext.removeRoute(getMonitorRouteId(disabledSubscription));
-                    camelContext.removeRoute(getServiceRequestRouteId(disabledSubscription));
-
-                    helper.forceUnlock(getMonitorRouteId(disabledSubscription));
-                } catch (Exception e) {
-                    logger.error("Unable to remove route : " + disabledSubscription.getSubscriptionId(), e);
-                }
             }
         }
     }

@@ -275,6 +275,7 @@ public class SubscriptionConfig {
                 discoverySubscriptions.add(incomingSubscription);
             } else {
                 DiscoverySubscription existingSubscription = existingSubscriptionOpt.get();
+                updateDiscoveryChildrenStatus(incomingSubscription);
                 existingSubscription.setDatasetId(incomingSubscription.getDatasetId());
                 existingSubscription.setUrl(incomingSubscription.getUrl());
                 existingSubscription.setDiscoveryType(incomingSubscription.getDiscoveryType());
@@ -289,6 +290,15 @@ public class SubscriptionConfig {
                 existingSubscription.setVendorBaseName(incomingSubscription.getVendorBaseName());
                 existingSubscription.setSubscriptionIdBase(incomingSubscription.getSubscriptionIdBase());
                 existingSubscription.setActive(incomingSubscription.getActive());
+            }
+        }
+    }
+
+    private void updateDiscoveryChildrenStatus(DiscoverySubscription incomingSubscription) {
+
+        for (SubscriptionSetup subscription : subscriptions) {
+            if (incomingSubscription.getSubscriptionIdBase().equals(subscription.getParentSubscriptionId())) {
+                subscription.setActive(incomingSubscription.getActive());
             }
         }
     }
