@@ -15,6 +15,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import uk.org.siri.siri21.*;
 
@@ -39,12 +40,14 @@ public class TripUpdateMapper {
     private final StopPlaceUpdaterService stopPlaceService;
     private final LineUpdaterService lineUpdaterService;
     private final SubscriptionConfig subscriptionConfig;
+    private final List<String> replaceColonsInLineDatasets;
 
-    public TripUpdateMapper(StopTimesService stopTimesService, StopPlaceUpdaterService stopPlaceService, LineUpdaterService lineUpdaterService, SubscriptionConfig subscriptionConfig) {
+    public TripUpdateMapper(StopTimesService stopTimesService, StopPlaceUpdaterService stopPlaceService, LineUpdaterService lineUpdaterService, SubscriptionConfig subscriptionConfig,  @Value("${replace.colons.by.dashes.datasets:}") List<String> replaceColonsInLineDatasets) {
         this.stopTimesService = stopTimesService;
         this.stopPlaceService = stopPlaceService;
         this.lineUpdaterService = lineUpdaterService;
         this.subscriptionConfig = subscriptionConfig;
+        this.replaceColonsInLineDatasets = replaceColonsInLineDatasets;
     }
 
     /**
@@ -302,6 +305,9 @@ public class TripUpdateMapper {
     private NaturalLanguageStringStructure createDestinationName(DestinationRef destinationRef, String datasetId) {
 
         NaturalLanguageStringStructure naturalLanguageStringStructure = new NaturalLanguageStringStructure();
+        if (CollectionUtils.isNotEmpty(replaceColonsInLineDatasets) && replaceColonsInLineDatasets.contains(datasetId)){
+            destinationRef.setValue(CustomStringUtils.applyChouetteIdTransformation(destinationRef.getValue()));
+        }
         naturalLanguageStringStructure.setValue(stopPlaceService.getStopName(destinationRef.getValue(), datasetId));
         return naturalLanguageStringStructure;
     }
