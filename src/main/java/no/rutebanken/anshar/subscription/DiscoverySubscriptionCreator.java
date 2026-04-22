@@ -118,6 +118,8 @@ public class DiscoverySubscriptionCreator {
         if (CollectionUtils.isNotEmpty(referenceList)) {
             List<SubscriptionSetup> subscriptionsToStart = createSubscriptionsSetups(referenceList, discoveryParams);
             subscriptionConfig.getSubscriptions().addAll(subscriptionsToStart);
+        } else {
+            logger.error("Discovery response received but no points found in response. id : {}", discoveryParams.getSubscriptionIdBase());
         }
         subscriptionInitializer.createSubscriptions();
     }

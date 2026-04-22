@@ -60,6 +60,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
     @BeforeEach
     public void init() {
         subscriptionManager.getSubscriptions().clear();
+        subscriptionConfig.getSubscriptions().clear();
     }
 
     private final String subscriptionResponse = """
@@ -122,6 +123,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
 
     @Test
     void test_unresponsive_subscription() throws Exception {
+        subscriptionManager.getSubscriptions().clear();
 
         mockServer = startClientAndServer(1080);
         mockServer.when(
@@ -181,6 +183,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
 
     @Test
     void test_restart_time_passed() throws Exception {
+        subscriptionManager.getSubscriptions().clear();
 
         mockServer = startClientAndServer(1080);
         mockServer.when(
