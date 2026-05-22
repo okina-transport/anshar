@@ -10,9 +10,6 @@ import no.rutebanken.anshar.routes.siri.handlers.Utils;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.AnnotatedStopPointStructure;
 import uk.org.siri.siri21.NaturalLanguageStringStructure;
@@ -25,23 +22,19 @@ import java.util.stream.Collectors;
 @Service
 public class DiscoveryStopPointsOutbound {
 
-    private static final Logger logger = LoggerFactory.getLogger(DiscoveryStopPointsOutbound.class);
+    private final OutputExternalIdsService outputExternalIdsService;
+    private final SiriObjectFactory siriObjectFactory;
+    private final Utils utils;
+    private final StopPlaceUpdaterService stopPlaceUpdaterService;
+    private final DiscoveryCache discoveryCache;
 
-    @Autowired
-    private OutputExternalIdsService outputExternalIdsService;
-
-    @Autowired
-    private SiriObjectFactory siriObjectFactory;
-
-    @Autowired
-    private Utils utils;
-
-    @Autowired
-    private StopPlaceUpdaterService stopPlaceUpdaterService;
-
-    @Autowired
-    private DiscoveryCache discoveryCache;
-
+    public DiscoveryStopPointsOutbound(OutputExternalIdsService outputExternalIdsService, SiriObjectFactory siriObjectFactory, Utils utils, StopPlaceUpdaterService stopPlaceUpdaterService, DiscoveryCache discoveryCache) {
+        this.outputExternalIdsService = outputExternalIdsService;
+        this.siriObjectFactory = siriObjectFactory;
+        this.utils = utils;
+        this.stopPlaceUpdaterService = stopPlaceUpdaterService;
+        this.discoveryCache = discoveryCache;
+    }
 
     /**
      * Creates a siri response with all points existing in the cache
@@ -74,7 +67,6 @@ public class DiscoveryStopPointsOutbound {
 
 
         for (Map.Entry<String, Set<String>> stopsByDatasetEntry : stopsByDatasetId.entrySet()) {
-            Set<String> rawStops = new HashSet<>();
             //for each datasetId
             Set<String> stopList = stopsByDatasetEntry.getValue();
             String currentDatasetId = stopsByDatasetEntry.getKey();
@@ -82,13 +74,15 @@ public class DiscoveryStopPointsOutbound {
             if (stopList == null || stopList.isEmpty()) {
                 continue;
             }
-            rawStops.addAll(extractAndTransformStopId(currentDatasetId, stopList, idProcessingMap));
-
-            for (String rawStop : rawStops) {
-                monitoringRefList.add(Pair.of(rawStop, stopPlaceUpdaterService.getStopName(rawStop, currentDatasetId)));
+            for (String originalStopId : stopList) {
+                Optional<String> transformedStopId = extractAndTransformStopId(currentDatasetId, originalStopId,
+                        idProcessingMap);
+                if (transformedStopId.isPresent()) {
+                    monitoringRefList.add(Pair.of(transformedStopId.get(),
+                            stopPlaceUpdaterService.getStopName(originalStopId, currentDatasetId)));
+                }
             }
         }
-
 
         if (OutboundIdMappingPolicy.DEFAULT.equals(outboundIdMappingPolicy)) {
             monitoringRefList = replaceByDefaultId(monitoringRefList);
@@ -127,29 +121,23 @@ public class DiscoveryStopPointsOutbound {
     }
 
 
-    private Set<String> extractAndTransformStopId(String datasetId, Set<String> stopIds, Map<String, IdProcessingParameters> idProcessingMap) {
-
+    private Optional<String> extractAndTransformStopId(String datasetId, String stopId,
+                                                       Map<String, IdProcessingParameters> idProcessingMap) {
         if (!idProcessingMap.containsKey(datasetId)) {
             //no idProcessingMap, no transformation
-            return stopIds;
+            return Optional.of(stopId);
         }
-
-        Set<String> results = new HashSet<>();
-
         IdProcessingParameters idProcessing = idProcessingMap.get(datasetId);
 
-        Set<String> transformedIds = stopIds.stream()
-                .map(idProcessing::applyTransformationToString)
-                .collect(Collectors.toSet());
+        String transformedId = idProcessing.applyTransformationToString(stopId);
 
-        for (String transformedId : transformedIds) {
-            if (stopPlaceUpdaterService.isKnownId(transformedId)) {
-                results.add(transformedId);
-            } else if (stopPlaceUpdaterService.isKnownId(transformedId.replace(":Quay:", ":StopPlace:"))) {
-                results.add(transformedId.replace(":Quay:", ":StopPlace:"));
-            }
+        if (stopPlaceUpdaterService.isKnownId(transformedId)) {
+            return Optional.of(transformedId);
+        } else if (stopPlaceUpdaterService.isKnownId(transformedId.replace(":Quay:", ":StopPlace:"))) {
+            return Optional.of(transformedId.replace(":Quay:", ":StopPlace:"));
         }
-        return results;
+
+        return Optional.empty();
     }
 
     /**
@@ -176,17 +164,4 @@ public class DiscoveryStopPointsOutbound {
         return pointStruct;
     }
 
-    /**
-     * Function to trace the list of points that are unknown from theorical data
-     *
-     * @param stopPointList The list of sto points id to check
-     */
-    private void traceUnknownStopPoints(List<String> stopPointList) {
-        List<String> unknownPoints = stopPointList.stream()
-                .filter(stopPointId -> stopPointId.startsWith("MOBIITI:Quay:"))
-                .collect(Collectors.toList());
-
-        logger.warn("These points were received in real-time data but are unknown from theorical data :" + unknownPoints.stream().collect(Collectors.joining(",")));
-
-    }
 }
