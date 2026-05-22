@@ -85,6 +85,7 @@ public class IshtarRouteBuilder extends BaseRouteBuilder {
                 .setBody(simple("Error during data synchronization : ${exception.message}"))
                 .end()
                 .process(ishtarSynchronizeProcessor)
+                .wireTap("activemq:queue:launchSynchroInGTFSRetriever")
                 .wireTap("direct:createSubscriptions")
                 .end();
 

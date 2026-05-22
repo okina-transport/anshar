@@ -8,6 +8,7 @@ import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +17,7 @@ import java.util.Map;
 
 import static no.rutebanken.anshar.routes.kafka.KafkaRouteBuilder.SEND_TR_IN_SUBSCRIPTION_MONITORING_TO_KAFKA;
 
+@EnableScheduling
 @Service
 public class IncomingDataHealthService {
 
