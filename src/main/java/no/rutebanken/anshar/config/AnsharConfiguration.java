@@ -131,6 +131,9 @@ public class AnsharConfiguration {
     @Value("${anshar.automaticConsistencyReports.cron:0+0+9,17+*+*+?}")
     private String automaticConsistencyReportsCron;
 
+    @Value("${anshar.gtfsrt.retrieve.enabled:true}")
+    private boolean gtfsrtRetrieveEnabled;
+
     private boolean isInitialized = false;
     private boolean isVJCacheLoaded = false;
 

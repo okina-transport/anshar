@@ -1,33 +1,26 @@
-package no.rutebanken.anshar.gtfsrt.readers;
+package no.rutebanken.anshar.gtfsrt.ingesters;
 
-
+import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import no.rutebanken.anshar.util.IDUtils;
-import org.apache.camel.ProducerTemplate;
-import uk.org.siri.siri21.Siri;
+
 
 import java.util.HashMap;
 import java.util.Map;
 
-import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
 
-
-public abstract class AbstractSwallower {
-
+public class AbstractIngester extends RestRouteBuilder {
     private static final int DEFAULT_HEARTBEAT_SECONDS = 300;
 
-    protected String url;
+
     protected String prefix;
     protected SiriDataType dataType;
     protected RequestType requestType;
 
-    public void setUrl(String url) {
-        this.url = url;
-    }
 
-    protected SubscriptionSetup createStandardSubscription(String objectRef, String datasetId) {
+    protected SubscriptionSetup createStandardSubscription(String objectRef, String datasetId, String url) {
         SubscriptionSetup setup = new SubscriptionSetup();
         setup.setDatasetId(datasetId);
         setup.setHeartbeatIntervalSeconds(DEFAULT_HEARTBEAT_SECONDS);
@@ -49,22 +42,8 @@ public abstract class AbstractSwallower {
         setup.setUrlMap(urlMap);
         setup.setInternalId(IDUtils.getUniqueInternalIdForGTFSRT());
 
-
         return setup;
     }
 
-    protected void sendToRealTimeServer(ProducerTemplate producerTemplate, Siri siriToSend, String datasetId) {
-        Map<String, Object> headers = new HashMap<>();
-        headers.put(DATASET_ID_HEADER_NAME, datasetId);
-        headers.put(URL_HEADER_NAME, url);
-        producerTemplate.asyncRequestBodyAndHeaders(producerTemplate.getDefaultEndpoint(), siriToSend, headers);
-    }
 
-    protected void sendToRealTimeServer(ProducerTemplate producerTemplate, uk.org.siri.siri20.Siri siriToSend, String datasetId) {
-        Map<String, Object> headers = new HashMap<>();
-        headers.put(DATASET_ID_HEADER_NAME, datasetId);
-        headers.put(URL_HEADER_NAME, url);
-        headers.put(INBOUND_TIME_HEADER_NAME, System.currentTimeMillis());
-        producerTemplate.asyncRequestBodyAndHeaders(producerTemplate.getDefaultEndpoint(), siriToSend, headers);
-    }
 }

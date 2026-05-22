@@ -15,6 +15,7 @@
 
 package no.rutebanken.anshar.routes.health;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hazelcast.collection.ISet;
 import io.prometheus.jmx.JmxCollector;
 import io.prometheus.metrics.model.snapshots.MetricSnapshots;
@@ -27,6 +28,7 @@ import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
+import no.rutebanken.anshar.routes.validation.validators.Constants;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
@@ -66,6 +68,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static no.rutebanken.anshar.routes.health.IncomingFlowType.SIRI;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.INCOMING_FLOW_PARAMETERS_HEADER_NAME;
 
 @Service
 @Configuration
@@ -114,6 +117,9 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
 
     @Autowired
     private IncomingDataHealthService incomingDataHealthService;
+
+    public final static String DAILY_STATUS_QUEUE = "activemq:queue:gtfsrt.daily.statuses";
+
 
     @PostConstruct
     private void init() {
@@ -284,6 +290,19 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
                 .endChoice()
                 .routeId("health.notify.hubot")
         ;
+
+        from(DAILY_STATUS_QUEUE)
+                .process(e -> {
+                    String json = e.getIn().getHeader(INCOMING_FLOW_PARAMETERS_HEADER_NAME, String.class);
+                    IncomingFlowParameters incomingFlowParameters = new ObjectMapper().readValue(json, IncomingFlowParameters.class);
+
+
+                    FlowStatus dailyStatus = e.getIn().getBody(FlowStatus.class);
+                    incomingDataHealthService.recordStatus(incomingFlowParameters, dailyStatus);
+
+                })
+                .routeId("gtfsrt.daily.Status.route");
+
 
     }
 

@@ -54,6 +54,8 @@ public class Constants {
 
     public static final String HEARTBEAT_HEADER = "HeartBeat";
     public static final String URL_HEADER_NAME = "URL";
+    public static final String CLOSE_MISSING_ALERTS_HEADER_NAME = "CLOSE_MISSING_ALERTS";
+    public static final String INCOMING_FLOW_PARAMETERS_HEADER_NAME = "incomingFlowParameters";
 
     public static final String IS_IDFM_GM = "isIdfmGM";
 
