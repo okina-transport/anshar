@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.ishtar.model.*;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
-import no.rutebanken.anshar.subscription.SubscriptionStatus;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.apache.camel.TypeConverters;
 import org.apache.commons.collections4.ListUtils;
@@ -69,14 +68,6 @@ public class SubscriptionDtoToSubscriptionSetupConverter implements Converter<Su
             target.setPreviewIntervalSeconds(source.getPreviewIntervalSeconds());
 
             target.setValidated(BooleanUtils.isTrue(source.getValidated()));
-
-            if (!SubscriptionSetup.SubscriptionMode.SUBSCRIBE.equals(target.getSubscriptionMode())) {
-                target.setStatus(SubscriptionStatus.RUNNING);
-            }
-
-            if (!target.isActive()) {
-                target.setStatus(SubscriptionStatus.STOPPED);
-            }
 
 
             // required to avoid NPE on to SubscriptionSetup#buildUrl()

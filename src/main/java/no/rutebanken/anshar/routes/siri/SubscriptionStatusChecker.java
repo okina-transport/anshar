@@ -13,7 +13,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
 
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -44,16 +47,6 @@ public class SubscriptionStatusChecker extends RouteBuilder {
                     urlRestartDates.clear();
                     checkSubscriptionStatuses();
                 });
-
-        from("direct:recordRequest")
-                .routeId("subscription-record-request")
-                .process(subscriptionManager::recordRequest);
-
-        from("direct:recordResponse")
-                .routeId("subscription-record-response")
-                .process(subscriptionManager::recordResponse);
-
-
     }
 
     private void checkSubscriptionStatuses() {
@@ -78,7 +71,6 @@ public class SubscriptionStatusChecker extends RouteBuilder {
             });
         });
 
-        List<SubscriptionSetup> subscriptionsToRestart = new ArrayList<>();
         filteredSubscriptions.entrySet().forEach(entry -> {
             String subscriptionId = entry.getKey();
             SubscriptionSetup subscription = entry.getValue();
@@ -95,14 +87,13 @@ public class SubscriptionStatusChecker extends RouteBuilder {
                         .anyMatch(url -> subscriptionStartDate.isBefore(urlRestartDates.get(url)));
 
                 if (needsRestart) {
-                    subscriptionsToRestart.add(entry.getValue());
+                    subscription.setStartedAt(ZonedDateTime.now());
+                    subscriptionManager.forceRestart(subscription.getSubscriptionId());
                     log.info("Subscription {} needs restart (started at {}). At least one URL was restarted after subscription start.",
                             subscriptionId, subscriptionStartDate);
                 }
             }
         });
-        subscriptionManager.launchTerminateRequest(subscriptionsToRestart);
-        subscriptionManager.launchSubscriptionRequest(subscriptionsToRestart);
     }
 
     private ZonedDateTime performStatusCheck(String url, List<SubscriptionSetup> subscriptions) {

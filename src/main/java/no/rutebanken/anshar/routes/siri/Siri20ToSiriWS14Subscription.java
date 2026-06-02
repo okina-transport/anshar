@@ -35,8 +35,7 @@ import java.util.Map;
 
 import static no.rutebanken.anshar.routes.HttpParameter.PARAM_RESPONSE_CODE;
 import static no.rutebanken.anshar.routes.siri.helpers.SiriRequestFactory.getCamelUrl;
-import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
-
+import static no.rutebanken.anshar.subscription.SubscriptionSetup.SubscriptionMode.FETCHED_DELIVERY;
 
 public class Siri20ToSiriWS14Subscription extends SiriSubscriptionRouteBuilder {
     private static final Logger logger = LoggerFactory.getLogger(Siri20ToSiriWS14Subscription.class);
@@ -73,12 +72,8 @@ public class Siri20ToSiriWS14Subscription extends SiriSubscriptionRouteBuilder {
                     logger.debug("Subscription request content:" + p.getIn().getBody());
                 })
                 .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
-                .setHeader(RECORDED_SUBSCRIPTION_HEADER_NAME, simple(subscriptionSetup.getSubscriptionId()))
-                .setHeader(RECORDED_SUBSCRIPTION_ACTION, simple(RECORDED_SUBSCRIPTION_ACTION_SUBSCRIBE))
-                .wireTap("direct:recordRequest")
                 .doTry()
                 .to(getCamelUrl(urlMap.get(RequestType.SUBSCRIBE), getTimeout()))
-
                 .to("log:received response:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .doCatch(ConnectException.class)
                 .log("Caught ConnectException - subscription not started - will try again: " + subscriptionSetup.toString())
@@ -94,6 +89,7 @@ public class Siri20ToSiriWS14Subscription extends SiriSubscriptionRouteBuilder {
                     String responseCode = p.getIn().getHeader(PARAM_RESPONSE_CODE, String.class);
                     if ("200".equals(responseCode) | "201".equals(responseCode)) {
                         logger.info("SubscriptionResponse OK - Async response performs actual registration");
+                        subscriptionManager.activatePendingSubscription(subscriptionSetup.getSubscriptionId());
                     } else {
                         hasBeenStarted = false;
                     }
@@ -104,9 +100,15 @@ public class Siri20ToSiriWS14Subscription extends SiriSubscriptionRouteBuilder {
                         handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), body));
                     }
 
+                    if (subscriptionSetup.getSubscriptionMode().equals(FETCHED_DELIVERY) &&
+                            !subscriptionManager.isSubscriptionReceivingData(subscriptionSetup.getSubscriptionId(),
+                                    subscriptionSetup.getHeartbeatInterval().toMillis() / 1000)) {
+                        logger.info("No data received since last CheckStatusRequest - triggering DataSupplyRequest.");
+                        p.getOut().setHeader("routename", subscriptionSetup.getServiceRequestRouteName());
+                    }
+
 
                 })
-                .wireTap("direct:recordResponse")
                 .choice()
                 .when(header("routename").isNotNull())
                 .toD("direct:${header.routename}")
@@ -130,11 +132,7 @@ public class Siri20ToSiriWS14Subscription extends SiriSubscriptionRouteBuilder {
                 .setHeader(Exchange.HTTP_METHOD, constant(org.apache.camel.component.http.HttpMethods.POST))
                 .process(addCustomHeaders())
                 .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
-                .setHeader(RECORDED_SUBSCRIPTION_HEADER_NAME, simple(subscriptionSetup.getSubscriptionId()))
-                .setHeader(RECORDED_SUBSCRIPTION_ACTION, constant(RECORDED_SUBSCRIPTION_ACTION_TERMINATE))
-                .wireTap("direct:recordRequest")
                 .to(getCamelUrl(urlMap.get(RequestType.DELETE_SUBSCRIPTION), getTimeout()))
-                .wireTap("direct:recordResponse")
                 .choice().when(simple("${in.body} != null"))
                 .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false") // Extract SOAP version and convert to raw SIRI
                 .to("xslt-saxon:xsl/siri_14_20.xsl?allowStAX=false") // Convert from v1.4 to 2.0
@@ -150,7 +148,7 @@ public class Siri20ToSiriWS14Subscription extends SiriSubscriptionRouteBuilder {
                 .routeId(getCancelRouteId(subscriptionSetup))
         ;
 
-
+        initTriggerRoutes();
     }
 
 }

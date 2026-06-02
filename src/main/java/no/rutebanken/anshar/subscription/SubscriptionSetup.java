@@ -15,7 +15,6 @@
 
 package no.rutebanken.anshar.subscription;
 
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -158,18 +157,6 @@ public class SubscriptionSetup implements Serializable {
     @Setter
     private String parentSubscriptionId;
 
-    @Getter
-    @Setter
-    @EqualsAndHashCode.Exclude
-    private String lastRequest;
-    @Getter
-    @Setter
-    @EqualsAndHashCode.Exclude
-    private String lastResponse;
-
-    @EqualsAndHashCode.Exclude
-    private SubscriptionStatus status = SubscriptionStatus.WAITING_FOR_START;
-
 
     public SubscriptionSetup() {
     }
@@ -211,14 +198,6 @@ public class SubscriptionSetup implements Serializable {
         this.durationOfSubscription = durationOfSubscription;
         this.active = active;
         this.startedAt = startedAt;
-
-        if (!SubscriptionMode.SUBSCRIBE.equals(subscriptionMode)) {
-            this.status = SubscriptionStatus.RUNNING;
-        }
-
-        if (!isActive()) {
-            this.status = SubscriptionStatus.STOPPED;
-        }
     }
 
     public void initConsumerAdressFromParent(String parentVendor, String parentSubscriptionId) {
@@ -306,6 +285,7 @@ public class SubscriptionSetup implements Serializable {
     public JSONObject toJSON() {
         Map<String, Object> map = new HashMap<>();
         map.put("internalId", getInternalId());
+        map.put("activated", isActive());
         map.put("vendor", getVendor());
         map.put("name", getName());
         map.put("description", createDescription());
@@ -494,18 +474,66 @@ public class SubscriptionSetup implements Serializable {
             return false;
         }
 
-        return this.subscriptionId.equals(that.subscriptionId);
+        if (getInternalId() != that.getInternalId()) {
+            log.info("getInternalId() does not match [{}] vs [{}]", getInternalId(), that.getInternalId());
+            return false;
+        }
+        if (getSubscriptionType() != that.getSubscriptionType()) {
+            log.info("getSubscriptionType() does not match [{}] vs [{}]", getSubscriptionType(), that.getSubscriptionType());
+            return false;
+        }
+        if (!address.equals(that.address)) {
+            log.info("address does not match [{}] vs [{}]", address, that.address);
+            return false;
+        }
+        if (getOperatorNamespace() != null ? !getOperatorNamespace().equals(that.getOperatorNamespace()) : that.getOperatorNamespace() != null) {
+            log.info("getOperatorNamespace() does not match [{}] vs [{}]", getOperatorNamespace(), that.getOperatorNamespace());
+            return false;
+        }
+        if (!getUrlMap().equals(that.getUrlMap())) {
+            log.info("getUrlMap() does not match [{}] vs [{}]", getUrlMap(), that.getUrlMap());
+            return false;
+        }
+        if (!getVersion().equals(that.getVersion())) {
+            log.info("getVersion() does not match [{}] vs [{}]", getVersion(), that.getVersion());
+            return false;
+        }
+        if (!getVendor().equals(that.getVendor())) {
+            log.info("getVendor() does not match [{}] vs [{}]", getVendor(), that.getVendor());
+            return false;
+        }
+        if (!getDatasetId().equals(that.getDatasetId())) {
+            log.info("getDatasetId() does not match [{}] vs [{}]", getDatasetId(), that.getDatasetId());
+            return false;
+        }
+        if (getServiceType() != that.getServiceType()) {
+            log.info("getServiceType() does not match [{}] vs [{}]", getServiceType(), that.getServiceType());
+            return false;
+        }
+        if (getDurationOfSubscription() != null ? !getDurationOfSubscription().equals(that.getDurationOfSubscription()) : that.getDurationOfSubscription() != null) {
+            log.info("getDurationOfSubscription() does not match [{}] vs [{}]", getDurationOfSubscription(), that.getDurationOfSubscription());
+            return false;
+        }
+        if (getSubscriptionMode() != that.getSubscriptionMode()) {
+            log.info("getSubscriptionMode() does not match [{}] vs [{}]", getSubscriptionMode(), that.getSubscriptionMode());
+            return false;
+        }
+        if (getIdMappingPrefixes() != null ? !getIdMappingPrefixes().equals(that.getIdMappingPrefixes()) : that.getIdMappingPrefixes() != null) {
+            log.info("getIdMappingPrefixes() does not match [{}] vs [{}]", getIdMappingPrefixes(), that.getIdMappingPrefixes());
+            return false;
+        }
+        if (getMappingAdapterId() != null ? !getMappingAdapterId().equals(that.getMappingAdapterId()) : that.getMappingAdapterId() != null) {
+            log.info("getMappingAdapterId() does not match [{}] vs [{}]", getMappingAdapterId(), that.getMappingAdapterId());
+            return false;
+        }
+        if (!Arrays.equals(filterMapPresets, that.filterMapPresets)) {
+            log.info("filterMapPresets does not match [{}] vs [{}]", filterMapPresets, that.filterMapPresets);
+            return false;
+        }
+        return true;
     }
 
     public enum ServiceType {SOAP, REST}
 
     public enum SubscriptionMode {SUBSCRIBE, REQUEST_RESPONSE, POLLING_FETCHED_DELIVERY, FETCHED_DELIVERY, LITE, LITE_XML, WEBSOCKET, BIG_DATA_EXPORT, VM_POSITION_FORWARDING}
-
-    public SubscriptionStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(SubscriptionStatus status) {
-        this.status = status;
-    }
 }

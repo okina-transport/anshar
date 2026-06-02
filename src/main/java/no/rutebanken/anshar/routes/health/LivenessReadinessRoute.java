@@ -346,7 +346,7 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
             FlowStatus status = launchCheckStatus(subscriptionsByUrl.getFirst());
             siriStatus.setStatus(status.name());
         } catch (Exception e) {
-            incomingDataHealthService.sendSubscriptionMonitoringData(SIRI.getCode(), subscriptionsByUrl.getFirst().getDatasetId(), "500", subscriptionsByUrl.getFirst().getUrlMap().get(RequestType.SUBSCRIBE));
+            incomingDataHealthService.sendSubscriptionMonitoringData(SIRI.getCode(), subscriptionsByUrl.getFirst().getDatasetId(), "500",subscriptionsByUrl.getFirst().getUrlMap().get(RequestType.SUBSCRIBE));
             siriStatus.setStatus(FlowStatus.ERROR.name());
             log.error("error checking flow status", e);
         }
@@ -462,9 +462,7 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
     }
 
     private Set<String> getAllUnhealthySubscriptions() {
-        return subscriptionManager.getUnresponsiveSubscriptions().stream()
-                .map(SubscriptionSetup::getSubscriptionId)
-                .collect(Collectors.toSet());
+        return subscriptionManager.getAllUnhealthySubscriptions(allowedInactivityMinutes * 60);
     }
 
     private boolean isJmxMetricsScrapingActive() {

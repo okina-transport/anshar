@@ -17,8 +17,6 @@ package no.rutebanken.anshar.routes.admin;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.common.net.HttpHeaders;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.consistency.ConsistencyForAllDatasetsProcessor;
@@ -35,7 +33,6 @@ import no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.validation.SiriXmlValidator;
 import no.rutebanken.anshar.subscription.SiriDataType;
-import no.rutebanken.anshar.subscription.SubscriptionInfo;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.Exchange;
@@ -77,9 +74,6 @@ public class AdministrationRoute extends RestRouteBuilder {
     public static final String ISHTAR_CLEAR_CACHE_BY_DATASET_ID = "direct:ishtar.clear.cache.by.datasetId";
     public static final String GET_CONSISTENCY_REPORT_BY_DATASET_ID = "direct:get.consistency.report.by.datasetId";
     private static final String STATS_ROUTE = "direct:stats";
-    private static final String SUBSCRIPTION_STATUSES = "direct:subscriptions.statuses";
-    private static final String SUBSCRIPTION_LAST_REQUEST_RESPONSE = "direct:subscription.last.request.response";
-    private static final String LAUNCH_SUBSCRIPTION_LIFECYCLE_CHECK = "direct:launch.subscriptions.lifecycle.check";
     private static final String INTERNAL_STATS_ROUTE = "direct:internal.stats";
     private static final String OUTBOUND_STATS_ROUTE = "direct:outbound.stats";
     private static final String OUTBOUND_DATA_ROUTE = "direct:outbound.data";
@@ -173,9 +167,6 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .get("/situations/{datasetId}").produces(TEXT_HTML).to(SITUATIONS_ROUTE)
                 .get("/synthesis").produces(TEXT_HTML).to(SYNTHESIS_ROUTE)
                 .get("/synchronize/data").to(ISHTAR_SYNCHRONIZE_DATA_ROUTE)
-                .get("/subscriptions-statuses").produces(APPLICATION_JSON).to(SUBSCRIPTION_STATUSES)
-                .get("/launch-subscriptions-lifecycle-check").produces(APPLICATION_JSON).to(LAUNCH_SUBSCRIPTION_LIFECYCLE_CHECK)
-                .get("/last-request-response/{subscriptionId}").produces(APPLICATION_JSON).to(SUBSCRIPTION_LAST_REQUEST_RESPONSE)
                 .post("/gtfs-rt-request").produces(APPLICATION_JSON).to(ISHTAR_GET_GTFS_RT_API_REQUEST_ROUTE)
                 .post("/siri-request").produces(APPLICATION_JSON).to(ISHTAR_GET_SIRI_API_REQUEST_ROUTE)
                 .post("/subscription-request").produces(APPLICATION_JSON).to(ISHTAR_GET_SUBSCRIPTION_REQUEST_ROUTE)
@@ -330,21 +321,6 @@ public class AdministrationRoute extends RestRouteBuilder {
                     .routeId("admin.stats")
             ;
         } else {
-            from(SUBSCRIPTION_STATUSES)
-                    .setHeader(HttpHeaders.CONTENT_TYPE, simple(APPLICATION_JSON))
-                    .process(p -> {
-                        List<SubscriptionInfo> statuses = subscriptionManager.getSubscriptionStatuses();
-                        String json = new ObjectMapper().registerModule(new JavaTimeModule())
-                                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS).writeValueAsString(statuses);
-                        p.getMessage().setBody(json);
-                        p.getIn().setHeader("Content-type", "application/json");
-                    });
-
-            from(LAUNCH_SUBSCRIPTION_LIFECYCLE_CHECK)
-                    .process(p -> {
-                        subscriptionManager.launchSubscriptionsLifeCycleCheck();
-                    });
-
             //either proxy or data-handler
             from(STATS_ROUTE)
                     //.process(basicAuthProcessor)
@@ -413,14 +389,6 @@ public class AdministrationRoute extends RestRouteBuilder {
                         p.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 400);
                     }
                 });
-
-        from(SUBSCRIPTION_LAST_REQUEST_RESPONSE)
-                .process(p -> {
-                    String subscriptionId = p.getIn().getHeader("subscriptionId", String.class);
-                    JSONObject lastRequestResponse = subscriptionManager.getSubscriptionLastRequestResponse(subscriptionId);
-                    p.getIn().setBody(lastRequestResponse.toJSONString());
-                })
-        ;
 
         from(OUTBOUND_UNSUBSCRIBE_BY_SIRI_DATA_TYPE_ROUTE)
                 .process(p -> {
@@ -515,6 +483,18 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .end()
         ;
 
+        from("direct:stop")
+                //      .process(basicAuthProcessor)
+                .bean(subscriptionManager, "stopSubscription(${header.subscriptionId})")
+                .routeId("admin.stop")
+        ;
+
+        //Start subscription
+        from("direct:start")
+                //   .process(basicAuthProcessor)
+                .bean(subscriptionManager, "startSubscription(${header.subscriptionId})")
+                .routeId("admin.start")
+        ;
 
         if (!configuration.processData()) {
             //Return subscription status
@@ -533,6 +513,20 @@ public class AdministrationRoute extends RestRouteBuilder {
             ;
         }
 
+        //Return subscription status
+        from("direct:terminate.all.subscriptions")
+                //    .process(basicAuthProcessor)
+                .bean(subscriptionManager, "terminateAllSubscriptions(${header.type})")
+                .routeId("admin.terminate.all.subscriptions")
+        ;
+
+
+        //Return subscription status
+        from("direct:restart.all.subscriptions")
+                //     .process(basicAuthProcessor)
+                .bean(subscriptionManager, "triggerRestartAllActiveSubscriptions(${header.type})")
+                .routeId("admin.start.all.subscriptions")
+        ;
 
         //Return subscription status
         from("direct:flush.data.from.subscription")
@@ -553,7 +547,7 @@ public class AdministrationRoute extends RestRouteBuilder {
         from("direct:validate.all.subscriptions")
                 //    .process(basicAuthProcessor)
                 .process(p -> {
-                    Set<String> ids = subscriptionManager.getSubscriptions().keySet();
+                    Set<String> ids = subscriptionManager.subscriptions.keySet();
                     log.info("Enabling validation for {} subscriptions", ids.size());
                     for (String subscriptionId : ids) {
                         SubscriptionSetup subscriptionSetup = subscriptionManager.get(subscriptionId);
@@ -699,7 +693,7 @@ public class AdministrationRoute extends RestRouteBuilder {
 
     private Set<ConsumerErrorDTO> getConsumerErrorCount() {
 
-        if (outboundErrorHandler.getOutboundErrorCount().isEmpty()) {
+        if (outboundErrorHandler.getOutboundErrorCount().isEmpty()){
             return new HashSet<>();
         }
 

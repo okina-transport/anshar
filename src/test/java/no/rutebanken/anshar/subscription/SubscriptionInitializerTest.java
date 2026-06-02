@@ -26,7 +26,6 @@ import no.rutebanken.anshar.routes.siri.Siri20ToSiriWS20Subscription;
 import org.apache.camel.builder.RouteBuilder;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 
@@ -35,12 +34,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class SubscriptionInitializerTest extends SpringBootBaseTest {
 
-
-    @Autowired
-    private SubscriptionInitializer initializer;
+    private final SubscriptionInitializer initializer = new SubscriptionInitializer();
 
     /*
-
+     
      
       SIRI 2.0
      
@@ -96,7 +93,6 @@ public class SubscriptionInitializerTest extends SpringBootBaseTest {
         assertTrue(routeBuilders.size() == 1);
         assertTrue(routeBuilders.get(0) instanceof Siri20ToSiriWS20RequestResponse);
     }
-
     @Test
     public void testSiri20SoapSubscribe() {
         SubscriptionSetup subscriptionSetup = createSubscriptionSetup(SubscriptionSetup.SubscriptionMode.SUBSCRIBE, SubscriptionSetup.ServiceType.SOAP, "2.0");
@@ -150,7 +146,6 @@ public class SubscriptionInitializerTest extends SpringBootBaseTest {
         assertTrue(routeBuilders.size() == 1);
         assertTrue(routeBuilders.get(0) instanceof Siri20ToSiriWS14RequestResponse);
     }
-
     @Test
     public void testSiri14SoapSubscribe() {
         SubscriptionSetup subscriptionSetup = createSubscriptionSetup(SubscriptionSetup.SubscriptionMode.SUBSCRIBE, SubscriptionSetup.ServiceType.SOAP, "1.4");

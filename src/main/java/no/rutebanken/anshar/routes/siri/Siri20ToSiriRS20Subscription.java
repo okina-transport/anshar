@@ -38,7 +38,6 @@ import java.util.Map;
 
 import static no.rutebanken.anshar.routes.HttpParameter.PARAM_RESPONSE_CODE;
 import static no.rutebanken.anshar.routes.siri.helpers.SiriRequestFactory.getCamelUrl;
-import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
 import static no.rutebanken.anshar.subscription.SubscriptionSetup.SubscriptionMode.FETCHED_DELIVERY;
 
 public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
@@ -95,9 +94,6 @@ public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
                 .setBody(e -> subscriptionSetup)
                 .to("direct:siri.20.to.siri.rs.20.subscription.preprocess")
                 .to("log:sent request:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
-                .setHeader(RECORDED_SUBSCRIPTION_HEADER_NAME, simple(subscriptionSetup.getSubscriptionId()))
-                .setHeader(RECORDED_SUBSCRIPTION_ACTION, simple(RECORDED_SUBSCRIPTION_ACTION_SUBSCRIBE))
-                .wireTap("direct:recordRequest")
                 .doTry()
                 .to(getCamelUrl(urlMap.get(RequestType.SUBSCRIBE), getTimeout()))
                 .to("log:received response:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
@@ -109,7 +105,7 @@ public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
                         handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), body));
                     } else if ("200".equals(responseCode) | "201".equals(responseCode)) {
                         logger.info("SubscriptionResponse OK - Async response performs actual registration");
-
+                        subscriptionManager.activatePendingSubscription(subscriptionSetup.getSubscriptionId());
                     } else {
                         hasBeenStarted = false;
                     }
@@ -121,10 +117,54 @@ public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
                     p.getOut().setBody(null);
                 })
                 .endDoTry()
-                .wireTap("direct:recordResponse")
                 .routeId(getStartRouteId(subscriptionSetup))
         ;
 
+        if (urlMap.get(RequestType.CHECK_STATUS) != null) {
+            //Check status-request checks the server status - NOT the subscription
+            from("direct:" + subscriptionSetup.getCheckStatusRouteName())
+                    .process(oauthHeadersProcess)
+                    .to("direct:oauth2.authorize")
+                    .bean(helper, "createSiriCheckStatusRequest")
+                    .marshal(SiriDataFormatHelper.getSiriJaxbDataformat())
+                    .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
+                    .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
+                    .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
+                    .process(addCustomHeaders())
+                    .to(getCamelUrl(urlMap.get(RequestType.CHECK_STATUS), getTimeout()))
+                    .process(p -> {
+
+                        String responseCode = p.getIn().getHeader(PARAM_RESPONSE_CODE, String.class);
+                        if ("200".equals(responseCode)) {
+                            logger.trace("CheckStatus OK - Remote service is up [{}]",
+                                    subscriptionSetup.buildUrl()
+                            );
+                            InputStream body = p.getIn().getBody(InputStream.class);
+                            if (body != null && body.available() > 0) {
+                                handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), body));
+                            }
+                        } else {
+                            logger.info("CheckStatus NOT OK - Remote service is down [{}]",
+                                    subscriptionSetup.buildUrl()
+                            );
+                        }
+
+                        if (subscriptionSetup.getSubscriptionMode().equals(FETCHED_DELIVERY) && !subscriptionManager.isSubscriptionReceivingData(subscriptionSetup.getSubscriptionId(),
+                                subscriptionSetup.getHeartbeatInterval().toMillis() / 1000
+                        )) {
+                            logger.info(
+                                    "No data received since last CheckStatusRequest - triggering DataSupplyRequest.");
+                            p.getOut().setHeader("routename", subscriptionSetup.getServiceRequestRouteName());
+                        }
+
+
+                    })
+                    .choice()
+                    .when(header("routename").isNotNull())
+                    .toD("direct:${header.routename}")
+                    .endChoice()
+                    .routeId(getCheckStatusRouteId(subscriptionSetup));
+        }
 
         //Cancel subscription
         from("direct:" + subscriptionSetup.getCancelSubscriptionRouteName())
@@ -140,11 +180,7 @@ public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
                 .process(addCustomHeaders())
                 .to("log:sent request:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
-                .setHeader(RECORDED_SUBSCRIPTION_HEADER_NAME, simple(subscriptionSetup.getSubscriptionId()))
-                .setHeader(RECORDED_SUBSCRIPTION_ACTION, constant(RECORDED_SUBSCRIPTION_ACTION_TERMINATE))
-                .wireTap("direct:recordRequest")
                 .to(getCamelUrl(urlMap.get(RequestType.DELETE_SUBSCRIPTION), getTimeout()))
-                .wireTap("direct:recordResponse")
                 .to("log:received response:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .process(exchange -> {
                     InputStream body = exchange.getIn().getBody(InputStream.class);
@@ -156,5 +192,6 @@ public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
                 .routeId(getCancelRouteId(subscriptionSetup))
         ;
 
+        initTriggerRoutes();
     }
 }

@@ -188,10 +188,6 @@ public class ExtendedHazelcastService extends HazelCastService {
         return hazelcast.getMap("anshar.scheduled.general.messages." + dataset);
     }
 
-    public ISet<LocalDateTime> getSubscriptionInitNextSynchroTimes() {
-        return hazelcast.getSet("anshar.subscription.next.synchronization.times");
-    }
-
     @Bean
     public IScheduledExecutorService getSharedScheduler() {
         return hazelcast.getScheduledExecutorService("ansharScheduler");

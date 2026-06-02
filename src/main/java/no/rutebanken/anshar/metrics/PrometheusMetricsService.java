@@ -34,7 +34,6 @@ import no.rutebanken.anshar.routes.validation.ValidationType;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
-import no.rutebanken.anshar.subscription.SubscriptionStatus;
 import org.apache.camel.*;
 import org.apache.camel.component.seda.SedaEndpoint;
 import org.apache.commons.lang3.StringUtils;
@@ -576,7 +575,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
 
         // TODO MHI : add SM to prometheus
 
-        ReplicatedMap<String, SubscriptionSetup> subscriptions = manager.getSubscriptions();
+        ReplicatedMap<String, SubscriptionSetup> subscriptions = manager.subscriptions;
         for (SubscriptionSetup subscription : subscriptions.values()) {
 
             SiriDataType subscriptionType = subscription.getSubscriptionType();
@@ -592,6 +591,11 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
             counterTags.add(new ImmutableTag(AGENCY_TAG_NAME, subscription.getDatasetId()));
             counterTags.add(new ImmutableTag("vendor", subscription.getVendor()));
 
+
+            //Flag as failing when ACTIVE, and NOT HEALTHY
+            gauge(gauge_failing, getTagsWithTimeLimit(counterTags, "now"), subscription.getSubscriptionId(), value ->
+                    (manager.isActiveSubscription(subscription.getSubscriptionId()) &&
+                            !manager.isSubscriptionHealthy(subscription.getSubscriptionId())) ? 1 : 0);
 
             //Set flag as data failing when ACTIVE, and NOT receiving data
 
@@ -656,7 +660,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
     }
 
     private double isSubscriptionFailing(SubscriptionManager manager, SubscriptionSetup subscription, int allowedSeconds) {
-        if (SubscriptionStatus.RUNNING.equals(subscription.getStatus()) &&
+        if (manager.isActiveSubscription(subscription.getSubscriptionId()) &&
                 !manager.isSubscriptionReceivingData(subscription.getSubscriptionId(), allowedSeconds)) {
             return 1;
         }

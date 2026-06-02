@@ -670,12 +670,22 @@ public class SiriHandler {
             } else if (incoming.getSubscriptionResponse() != null) {
                 SubscriptionResponseStructure subscriptionResponse = incoming.getSubscriptionResponse();
                 subscriptionResponse.getResponseStatuses().forEach(responseStatus -> {
-                    logger.info("Subscription response received: {} with status: {}", subscriptionId, responseStatus.isStatus());
+                    if (responseStatus.isStatus() == null || (responseStatus.isStatus() != null && responseStatus.isStatus())) {
+
+                        // If no status is provided it is handled as "true"
+
+                        subscriptionManager.activatePendingSubscription(subscriptionId);
+                    }
                 });
-                subscriptionManager.touchSubscription(subscriptionId);
 
             } else if (incoming.getTerminateSubscriptionResponse() != null) {
-                logger.info("Terminate subscription received: {}", subscriptionId);
+                TerminateSubscriptionResponseStructure terminateSubscriptionResponse = incoming.getTerminateSubscriptionResponse();
+                terminateSubscriptionResponse.getTerminationResponseStatuses().forEach(sub -> {
+                    if (sub.isStatus()) {
+                        subscriptionManager.terminateSubscription(subscriptionId);
+                    }
+                });
+                logger.info("Subscription terminated {}", subscriptionSetup);
 
             } else if (incoming.getDataReadyNotification() != null) {
                 //Handled using camel routing

@@ -33,8 +33,9 @@ import org.slf4j.LoggerFactory;
 import java.io.InputStream;
 import java.util.Map;
 
+import static no.rutebanken.anshar.routes.HttpParameter.PARAM_RESPONSE_CODE;
 import static no.rutebanken.anshar.routes.siri.helpers.SiriRequestFactory.getCamelUrl;
-import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
+import static no.rutebanken.anshar.subscription.SubscriptionSetup.SubscriptionMode.FETCHED_DELIVERY;
 
 public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
     private static final Logger logger = LoggerFactory.getLogger(Siri20ToSiriWS20Subscription.class);
@@ -85,11 +86,7 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
                     logger.info("Sending subscription request for sub:" + subscriptionSetup.getSubscriptionId());
                 })
                 .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
-                .setHeader(RECORDED_SUBSCRIPTION_HEADER_NAME, simple(subscriptionSetup.getSubscriptionId()))
-                .setHeader(RECORDED_SUBSCRIPTION_ACTION, simple(RECORDED_SUBSCRIPTION_ACTION_SUBSCRIBE))
-                .wireTap("direct:recordRequest")
                 .to(getCamelUrl(urlMap.get(RequestType.SUBSCRIBE), getTimeout()))
-                .wireTap("direct:recordResponse")
                 .process(p -> {
                     logger.debug("Subscription response:" + p.getIn().getBody(String.class));
                     logger.info("Start subscription response received from sub:" + subscriptionSetup.getSubscriptionId());
@@ -111,6 +108,56 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
                 .routeId(getStartRouteId(subscriptionSetup))
         ;
 
+        if (urlMap.get(RequestType.CHECK_STATUS) != null) {
+            //Check status-request checks the server status - NOT the subscription
+            from("direct:" + subscriptionSetup.getCheckStatusRouteName())
+                    .bean(helper, "createSiriCheckStatusRequest")
+                    .marshal(SiriDataFormatHelper.getSiriJaxbDataformat(customNamespacePrefixMapper))
+                    .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
+                    .setHeader("SOAPAction", constant("CheckStatus"))
+                    .setHeader("operatorNamespace", constant(subscriptionSetup.getOperatorNamespace())) // Need to make SOAP request with endpoint specific element namespace
+                    .setHeader("endpointUrl", constant(endpointUrl)) // Need to make SOAP request with endpoint specific element namespace
+                    .setHeader("soapEnvelopeNamespace",
+                            constant(subscriptionSetup.getSoapenvNamespace())
+                    ) // Need to make SOAP request with endpoint specific element namespace
+                    .to("xslt-saxon:xsl/siri_raw_soap.xsl") // Convert SIRI raw request to SOAP version
+                    .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
+                    .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
+                    .setHeader(Exchange.HTTP_METHOD,
+                            constant(org.apache.camel.http.common.HttpMethods.POST)
+                    )
+                    .process(addCustomHeaders())
+                    .to("log:cs:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                    .to(getCamelUrl(urlMap.get(RequestType.CHECK_STATUS), getTimeout()))
+                    .choice().when(simple("${in.body} != null")).to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Extract SOAP version and convert to raw SIRI
+                    .end()
+                    .process(p -> {
+
+                        String responseCode = p.getIn().getHeader(PARAM_RESPONSE_CODE, String.class);
+                        if ("200".equals(responseCode)) {
+                            InputStream body = p.getIn().getBody(InputStream.class);
+                            if (body != null && body.available() > 0) {
+                                handler.handleIncomingSiri(IncomingSiriParameters.buildFromSubscription(subscriptionSetup.getSubscriptionId(), body));
+                            }
+                        } else {
+                            logger.info("CheckStatus NOT OK - Remote service is down [{}]",
+                                    subscriptionSetup.buildUrl()
+                            );
+                        }
+
+                        if (subscriptionSetup.getSubscriptionMode().equals(FETCHED_DELIVERY) && !subscriptionManager.isSubscriptionReceivingData(subscriptionSetup.getSubscriptionId(),
+                                subscriptionSetup.getHeartbeatInterval().toMillis() / 1000
+                        )) {
+                            logger.info(
+                                    "No data received since last CheckStatusRequest - triggering DataSupplyRequest.");
+                            p.getOut().setHeader("routename", subscriptionSetup.getServiceRequestRouteName());
+                        }
+
+
+                    })
+                    .choice().when(header("routename").isNotNull()).toD("direct:${header.routename}").endChoice()
+                    .routeId(getCheckStatusRouteId(subscriptionSetup));
+        }
 
         //Cancel subscription
         from("direct:" + subscriptionSetup.getCancelSubscriptionRouteName())
@@ -127,13 +174,9 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
                 .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
                 .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
-                .setHeader(RECORDED_SUBSCRIPTION_HEADER_NAME, simple(subscriptionSetup.getSubscriptionId()))
-                .setHeader(RECORDED_SUBSCRIPTION_ACTION, constant(RECORDED_SUBSCRIPTION_ACTION_TERMINATE))
                 .process(addCustomHeaders())
                 .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
-                .wireTap("direct:recordRequest")
                 .to(getCamelUrl(urlMap.get(RequestType.DELETE_SUBSCRIPTION), getTimeout()))
-                .wireTap("direct:recordResponse")
                 .choice().when(simple("${in.body} != null"))
                 .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Extract SOAP version and convert to raw SIRI
                 .end()
@@ -147,7 +190,7 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
                 .routeId(getCancelRouteId(subscriptionSetup))
         ;
 
-
+        initTriggerRoutes();
     }
 
 }

@@ -11,7 +11,6 @@ import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
-import no.rutebanken.anshar.subscription.SubscriptionStatus;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.apache.camel.Exchange;
 import org.apache.commons.lang3.StringUtils;
@@ -143,7 +142,6 @@ public class ExternalDataHandler {
             setup.setContentType("ExternalSiri");
             setup.setActive(true);
             setup.getStopMonitoringRefValues().add(subscriptionId);
-            setup.setStatus(SubscriptionStatus.RUNNING);
             String etSubscriptionId = "ET-" + subscriptionId;
             setup.setName(etSubscriptionId);
             setup.setSubscriptionType(SiriDataType.ESTIMATED_TIMETABLE);
@@ -224,7 +222,6 @@ public class ExternalDataHandler {
             setup.setVendor("OKINA");
             setup.setContentType("ExternalSiri");
             setup.setActive(true);
-            setup.setStatus(SubscriptionStatus.RUNNING);
 
             setup.setName(subscriptionId);
             setup.setSubscriptionType(SiriDataType.SITUATION_EXCHANGE);
@@ -255,7 +252,6 @@ public class ExternalDataHandler {
             setup.setVendor("OKINA");
             setup.setContentType("ExternalSiri");
             setup.setActive(true);
-            setup.setStatus(SubscriptionStatus.RUNNING);
 
             setup.setName(subscriptionId);
             setup.setSubscriptionType(SiriDataType.VEHICLE_MONITORING);
@@ -341,7 +337,6 @@ public class ExternalDataHandler {
         setup.setContentType("ExternalSiri");
         setup.setActive(true);
         setup.getStopMonitoringRefValues().add(subscriptionId);
-        setup.setStatus(SubscriptionStatus.RUNNING);
 
         setup.setName("SM-" + subscriptionId);
         setup.setSubscriptionType(SiriDataType.STOP_MONITORING);
