@@ -1078,4 +1078,14 @@ public class SubscriptionManager implements CamelContextAware {
                     }
                 });
     }
+
+    public void updateChildSubscriptionsFromParent(List<DiscoverySubscription> discoverySubscriptions) {
+        for (DiscoverySubscription discoverySubscription : discoverySubscriptions) {
+            List<SubscriptionSetup> childs = getChildSubscriptions(discoverySubscription);
+            for (SubscriptionSetup child : childs) {
+                child.setRestartTime(discoverySubscription.getRestartTime());
+                subscriptions.put(child.getSubscriptionId(), child);
+            }
+        }
+    }
 }

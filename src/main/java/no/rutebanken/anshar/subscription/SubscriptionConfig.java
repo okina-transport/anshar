@@ -290,6 +290,7 @@ public class SubscriptionConfig {
                 existingSubscription.setVendorBaseName(incomingSubscription.getVendorBaseName());
                 existingSubscription.setSubscriptionIdBase(incomingSubscription.getSubscriptionIdBase());
                 existingSubscription.setActive(incomingSubscription.getActive());
+                existingSubscription.setRestartTime(incomingSubscription.getRestartTime());
             }
         }
     }
@@ -299,6 +300,7 @@ public class SubscriptionConfig {
         for (SubscriptionSetup subscription : subscriptions) {
             if (incomingSubscription.getSubscriptionIdBase().equals(subscription.getParentSubscriptionId())) {
                 subscription.setActive(incomingSubscription.getActive());
+                subscription.setRestartTime(incomingSubscription.getRestartTime());
             }
         }
     }

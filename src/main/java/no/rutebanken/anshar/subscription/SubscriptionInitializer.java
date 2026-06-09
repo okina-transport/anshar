@@ -143,6 +143,8 @@ public class SubscriptionInitializer implements CamelContextAware {
             return;
         }
 
+        subscriptionManager.updateChildSubscriptionsFromParent(subscriptionConfig.getDiscoverySubscriptions());
+
         final Map<String, Object> mappingBeans = ApplicationContextHolder.getContext().getBeansWithAnnotation(Mapping.class);
         final Map<String, Class> mappingAdaptersById = new HashMap<>();
         for (final Object myFoo : mappingBeans.values()) {
