@@ -78,7 +78,7 @@ public class SubscriptionDtoToSubscriptionSetupConverter implements Converter<Su
                 target.setStatus(SubscriptionStatus.STOPPED);
             }
 
-
+            target.setOverrideDestinationName(source.getOverrideDestinationName());
             // required to avoid NPE on to SubscriptionSetup#buildUrl()
             target.setAddress(inboundUrl);
             if (target.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.SUBSCRIBE && StringUtils.isEmpty(MapUtils.getString(target.getUrlMap(), RequestType.SUBSCRIBE))) {
