@@ -221,6 +221,7 @@ public class SubscriptionConfig {
                 existingSubscription.setVehicleMonitoringRefValue(incomingSubscription.getVehicleMonitoringRefValue());
                 existingSubscription.setUpdateIntervalSeconds(incomingSubscription.getUpdateInterval().toSeconds());
                 existingSubscription.setPreviewIntervalSeconds(incomingSubscription.getPreviewInterval().toSeconds());
+                existingSubscription.setOverrideDestinationName(incomingSubscription.isOverrideDestinationName());
             } else {
                 subscriptions.add(incomingSubscription);
             }

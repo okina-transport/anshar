@@ -22,23 +22,16 @@ import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.data.DiscoveryCache;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
-import no.rutebanken.anshar.routes.admin.AdminRouteHelper;
 import no.rutebanken.anshar.routes.health.IncomingDataHealthService;
 import no.rutebanken.anshar.routes.siri.*;
 import no.rutebanken.anshar.routes.siri.adapters.Mapping;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
-import no.rutebanken.anshar.routes.siri.processor.CodespaceProcessor;
-import no.rutebanken.anshar.routes.siri.processor.EnsureIncreasingTimesForCancelledStopsProcessor;
-import no.rutebanken.anshar.routes.siri.processor.EnsureNonNullVehicleModePostProcessor;
-import no.rutebanken.anshar.routes.siri.processor.ExtraJourneyDestinationDisplayPostProcessor;
+import no.rutebanken.anshar.routes.siri.processor.*;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.apache.camel.CamelContext;
 import org.apache.camel.CamelContextAware;
-import org.apache.camel.Exchange;
-import org.apache.camel.ProducerTemplate;
-import org.apache.camel.builder.ExchangeBuilder;
 import org.apache.camel.builder.RouteBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,8 +48,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static no.rutebanken.anshar.routes.siri.SiriSubscriptionRouteBuilder.*;
-import static no.rutebanken.anshar.subscription.SubscriptionSetup.ServiceType.REST;
 import static no.rutebanken.anshar.subscription.SubscriptionSetup.ServiceType.SOAP;
 
 @Component
@@ -69,8 +60,6 @@ public class SubscriptionInitializer implements CamelContextAware {
     private final SiriHandler handler;
     private final AnsharConfiguration configuration;
     private final DiscoveryCache discoveryCache;
-    private final ProducerTemplate producerTemplate;
-    private final AdminRouteHelper helper;
     private final PrometheusMetricsService metrics;
     private final IncomingDataHealthService incomingDataHealthService;
     private final TaskScheduler taskScheduler;
@@ -82,15 +71,13 @@ public class SubscriptionInitializer implements CamelContextAware {
     private ScheduledFuture<?> waitingInit;
 
     public SubscriptionInitializer(SubscriptionManager subscriptionManager, SubscriptionConfig subscriptionConfig, SiriHandler handler, AnsharConfiguration configuration, DiscoveryCache discoveryCache,
-                                   ProducerTemplate producerTemplate, AdminRouteHelper helper, PrometheusMetricsService metrics, IncomingDataHealthService incomingDataHealthService,
+                                   PrometheusMetricsService metrics, IncomingDataHealthService incomingDataHealthService,
                                    TaskScheduler taskScheduler, ExtendedHazelcastService hazelcastService, @Qualifier("getSharedScheduler") IScheduledExecutorService sharedScheduler) {
         this.subscriptionManager = subscriptionManager;
         this.subscriptionConfig = subscriptionConfig;
         this.handler = handler;
         this.configuration = configuration;
         this.discoveryCache = discoveryCache;
-        this.producerTemplate = producerTemplate;
-        this.helper = helper;
         this.metrics = metrics;
         this.incomingDataHealthService = incomingDataHealthService;
         this.taskScheduler = taskScheduler;
@@ -248,6 +235,10 @@ public class SubscriptionInitializer implements CamelContextAware {
         valueAdapters.add(new EnsureIncreasingTimesForCancelledStopsProcessor(subscriptionSetup.getDatasetId()));
         valueAdapters.add(new ExtraJourneyDestinationDisplayPostProcessor(subscriptionSetup.getDatasetId()));
         valueAdapters.add(new EnsureNonNullVehicleModePostProcessor(subscriptionSetup.getDatasetId()));
+
+        if (SiriDataType.STOP_MONITORING.equals(subscriptionSetup.getSubscriptionType()) && subscriptionSetup.isOverrideDestinationName()) {
+            valueAdapters.add(new UpdateDestinationNameProcessor(subscriptionSetup.getDatasetId()));
+        }
 
         subscriptionSetup.setMappingAdapters(valueAdapters);
 

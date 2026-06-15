@@ -157,6 +157,9 @@ public class SubscriptionSetup implements Serializable {
     @Getter
     @Setter
     private String parentSubscriptionId;
+    @Getter
+    @Setter
+    private boolean overrideDestinationName = false;
 
     @Getter
     @Setter

@@ -39,5 +39,6 @@ public class SubscriptionDto {
     private List<IdMappingPrefixDto> idMappingPrefixes;
     private Boolean validated;
     private String currentStatus;
+    private Boolean overrideDestinationName;
 
 }
