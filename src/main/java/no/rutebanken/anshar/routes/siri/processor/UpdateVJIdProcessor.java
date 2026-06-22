@@ -20,6 +20,7 @@ import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.util.CustomStringUtils;
 
+import no.rutebanken.anshar.gtfsrt.mappers.utils.ElementUtils;
 import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.routes.mapping.VehicleJourney.VehicleJourney;
 import no.rutebanken.anshar.routes.mapping.VehicleJourney.VehicleJourneyCache;
@@ -29,6 +30,7 @@ import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.util.MappingUtils;
 import no.rutebanken.anshar.util.StopMonitoringUtils;
 import org.apache.commons.collections4.CollectionUtils;
+import org.w3c.dom.Element;
 import uk.org.siri.siri21.*;
 
 import java.time.LocalDate;
@@ -110,7 +112,7 @@ public class UpdateVJIdProcessor extends ValueAdapter implements PostProcessor {
                         }
 
                         MonitoredCallStructure monitoredCall = vehicleJourney.getMonitoredCall();
-                        if (monitoredCall.getAimedArrivalTime() == null && monitoredCall.getAimedDepartureTime() == null){
+                        if (monitoredCall.getAimedArrivalTime() == null && monitoredCall.getAimedDepartureTime() == null) {
                             log.info("No aimed time for message : {}", monitoredStopVisit.getItemIdentifier());
                             continue;
                         }
@@ -152,6 +154,10 @@ public class UpdateVJIdProcessor extends ValueAdapter implements PostProcessor {
                                 framedVehicleJourneyRef.setDataFrameRef(vehicleJourney.getFramedVehicleJourneyRef().getDataFrameRef());
                             }
                             vehicleJourney.setFramedVehicleJourneyRef(framedVehicleJourneyRef);
+                            Extensions extensions = new Extensions();
+                            Element elt = ElementUtils.createSimpleExtensionElement("preProc", "updateVj");
+                            extensions.getAnies().add(elt);
+                            monitoredStopVisit.setExtensions(extensions);
 
                         } else {
                             getMetricsService().registerRecomputeVehicleJourneyIdFromTheoretical(false);
