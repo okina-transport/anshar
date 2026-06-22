@@ -15,6 +15,8 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static no.rutebanken.anshar.util.CSVUtils.parseCsv;
 
@@ -70,6 +72,9 @@ public class VJMappingFileParser {
                     datasetId);
             result.put(key, vj);
         }
+
+        Set<String> tripsWith21 = result.keySet().stream().filter(key -> key.contains("21-")).collect(Collectors.toSet());
+        log.warn("trips with 21- :{}", tripsWith21.size());
         return result;
     }
 
@@ -86,7 +91,6 @@ public class VJMappingFileParser {
         DATASET_ID
 
     }
-
 
 
     /**
