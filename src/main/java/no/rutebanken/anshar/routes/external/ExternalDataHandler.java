@@ -3,6 +3,7 @@ package no.rutebanken.anshar.routes.external;
 import jakarta.xml.bind.JAXBException;
 import no.rutebanken.anshar.data.DiscoveryCache;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
+import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.EstimatedTimetableInbound;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.SituationExchangeInbound;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.StopMonitoringInbound;
@@ -17,7 +18,6 @@ import org.apache.camel.Exchange;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.*;
 
@@ -34,31 +34,34 @@ public class ExternalDataHandler {
 
     private static final int DEFAULT_HEARTBEAT_SECONDS = 300;
 
-    @Autowired
-    private VehicleMonitoringInbound vehicleMonitoringInbound;
 
-    @Autowired
-    private SituationExchangeInbound situationExchangeInbound;
+    private final VehicleMonitoringInbound vehicleMonitoringInbound;
+    private final SituationExchangeInbound situationExchangeInbound;
+    private final StopMonitoringInbound stopMonitoringInbound;
+    private final EstimatedTimetableInbound estimatedTimetableInbound;
+    private final SubscriptionManager subscriptionManager;
+    private final PrometheusMetricsService metrics;
+    private final DiscoveryCache discoveryCache;
+    private final HealthManager healthManager;
 
-    @Autowired
-    private StopMonitoringInbound stopMonitoringInbound;
-
-    @Autowired
-    private EstimatedTimetableInbound estimatedTimetableInbound;
-
-    @Autowired
-    private SubscriptionManager subscriptionManager;
-
-    @Autowired
-    private PrometheusMetricsService metrics;
-
-    @Autowired
-    private DiscoveryCache discoveryCache;
+    public ExternalDataHandler(VehicleMonitoringInbound vehicleMonitoringInbound, SituationExchangeInbound situationExchangeInbound, StopMonitoringInbound stopMonitoringInbound,
+                               EstimatedTimetableInbound estimatedTimetableInbound, SubscriptionManager subscriptionManager, PrometheusMetricsService metrics,
+                               DiscoveryCache discoveryCache, HealthManager healthManager) {
+        this.vehicleMonitoringInbound = vehicleMonitoringInbound;
+        this.situationExchangeInbound = situationExchangeInbound;
+        this.stopMonitoringInbound = stopMonitoringInbound;
+        this.estimatedTimetableInbound = estimatedTimetableInbound;
+        this.subscriptionManager = subscriptionManager;
+        this.metrics = metrics;
+        this.discoveryCache = discoveryCache;
+        this.healthManager = healthManager;
+    }
 
 
     public void processIncomingSiriSM(Exchange e) {
         InputStream xml = e.getIn().getBody(InputStream.class);
         Long inboundTime = e.getIn().getHeader(INBOUND_TIME_HEADER_NAME, Long.class);
+        healthManager.dataReceived();
         try {
 
             Siri siri = SiriValueTransformer.parseXml(xml);
@@ -86,6 +89,7 @@ public class ExternalDataHandler {
     public void processIncomingSiriET(Exchange e) {
         InputStream xml = e.getIn().getBody(InputStream.class);
         Long inboundTime = e.getIn().getHeader(INBOUND_TIME_HEADER_NAME, Long.class);
+        healthManager.dataReceived();
         try {
             Siri siri = SiriValueTransformer.parseXml(xml);
             String datasetId = e.getIn().getHeader(DATASET_ID_HEADER_NAME, String.class);
@@ -101,7 +105,7 @@ public class ExternalDataHandler {
             List<EstimatedVehicleJourney> etToIngest = collectEstimatedTimeTables(siri);
 
 
-            if (etToIngest.size() > 0) {
+            if (!etToIngest.isEmpty()) {
                 estimatedTimetableInbound.ingestEstimatedTimeTables(datasetId, etToIngest, inboundTime);
             }
 
@@ -160,6 +164,7 @@ public class ExternalDataHandler {
     public void processIncomingSiriSX(Exchange e) {
         InputStream xml = e.getIn().getBody(InputStream.class);
         Long inboundTime = e.getIn().getHeader(INBOUND_TIME_HEADER_NAME, Long.class);
+        healthManager.dataReceived();
         try {
             Siri siri = SiriValueTransformer.parseXml(xml);
             String datasetId = e.getIn().getHeader(DATASET_ID_HEADER_NAME, String.class);
@@ -173,7 +178,7 @@ public class ExternalDataHandler {
             checkAndCreateSXSubscription(siri, datasetId, url);
             List<PtSituationElement> situationsToIngest = collectSituations(siri);
 
-            if (situationsToIngest.size() > 0) {
+            if (!situationsToIngest.isEmpty()) {
                 situationExchangeInbound.ingestSituations(datasetId, situationsToIngest, true, inboundTime);
             }
 
@@ -185,6 +190,7 @@ public class ExternalDataHandler {
     public void processIncomingSiriVM(Exchange e) {
         InputStream xml = e.getIn().getBody(InputStream.class);
         Long inboundTime = e.getIn().getHeader(INBOUND_TIME_HEADER_NAME, Long.class);
+        healthManager.dataReceived();
         try {
             Siri siri = SiriValueTransformer.parseXml(xml);
             String datasetId = e.getIn().getHeader(DATASET_ID_HEADER_NAME, String.class);
@@ -198,7 +204,7 @@ public class ExternalDataHandler {
             checkAndCreateVMSubscription(siri, datasetId, url);
             List<VehicleActivityStructure> vehicleActivitiesToIngest = collectVehicleActivities(siri);
 
-            if (vehicleActivitiesToIngest.size() > 0) {
+            if (!vehicleActivitiesToIngest.isEmpty()) {
                 vehicleMonitoringInbound.ingestVehicleActivities(datasetId, vehicleActivitiesToIngest, inboundTime);
             }
 
