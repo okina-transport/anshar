@@ -3,6 +3,8 @@ package no.rutebanken.anshar.ishtar.clearcache;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.*;
 import no.rutebanken.anshar.kishar.KisharClient;
+import no.rutebanken.anshar.logging.ActionOutcome;
+import no.rutebanken.anshar.logging.UserActionLoggingService;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.apache.commons.lang3.StringUtils;
@@ -27,8 +29,12 @@ public class ClearCacheProcessor implements Processor {
     private final Situations sx;
     private final VehicleActivities vm;
     private final KisharClient kisharClient;
+    private final UserActionLoggingService userActionLoggingService;
 
-    public ClearCacheProcessor(AnsharConfiguration config, EstimatedTimetables et, FacilityMonitoring fm, GeneralMessages gm, GeneralMessagesCancellations gmc, MonitoredStopVisits sm, Situations sx, VehicleActivities vm, KisharClient kisharClient) {
+    public ClearCacheProcessor(AnsharConfiguration config, EstimatedTimetables et, FacilityMonitoring fm,
+                                GeneralMessages gm, GeneralMessagesCancellations gmc, MonitoredStopVisits sm,
+                                Situations sx, VehicleActivities vm, KisharClient kisharClient,
+                                UserActionLoggingService userActionLoggingService) {
         this.config = config;
         this.et = et;
         this.fm = fm;
@@ -38,6 +44,7 @@ public class ClearCacheProcessor implements Processor {
         this.sx = sx;
         this.vm = vm;
         this.kisharClient = kisharClient;
+        this.userActionLoggingService = userActionLoggingService;
     }
 
     @Override
@@ -54,32 +61,40 @@ public class ClearCacheProcessor implements Processor {
             return;
         }
         log.info("Start clearing cache for dataset {}", datasetId);
-        if (config.processET()) {
-            et.clearAllByDatasetId(datasetId);
-        }
-        if (config.processFM()) {
-            fm.clearAllByDatasetId(datasetId);
-        }
-        if (config.processGM()) {
-            gm.clearAllByDatasetId(datasetId);
-            gmc.clearAllByDatasetId(datasetId);
-        }
-        if(config.processSM()) {
-            sm.clearAllByDatasetId(datasetId);
-        }
-        if (config.processSX()) {
-            sx.clearAllByDatasetId(datasetId);
-        }
-        if (config.processVM()) {
-            vm.clearAllByDatasetId(datasetId);
-        }
+        String user = userActionLoggingService.extractUser(exchange);
+        ActionOutcome outcome = ActionOutcome.success();
         try {
-            this.kisharClient.clearCacheByDatasetId(datasetId);
+            if (config.processET()) {
+                et.clearAllByDatasetId(datasetId);
+            }
+            if (config.processFM()) {
+                fm.clearAllByDatasetId(datasetId);
+            }
+            if (config.processGM()) {
+                gm.clearAllByDatasetId(datasetId);
+                gmc.clearAllByDatasetId(datasetId);
+            }
+            if (config.processSM()) {
+                sm.clearAllByDatasetId(datasetId);
+            }
+            if (config.processSX()) {
+                sx.clearAllByDatasetId(datasetId);
+            }
+            if (config.processVM()) {
+                vm.clearAllByDatasetId(datasetId);
+            }
+            try {
+                this.kisharClient.clearCacheByDatasetId(datasetId);
+            } catch (Exception e) {
+                log.error("Error clearing KISHAR cache for dataset {}", datasetId);
+                log.debug("Error clearing KISHAR cache", e);
+            }
+            exchange.getIn().setHeader(PARAM_RESPONSE_CODE, 204);
         } catch (Exception e) {
-            // no big deal if KISHAR cache clearing fails
-            log.error("Error clearing KISHAR cache for dataset {}", datasetId);
-            log.debug("Error clearing KISHAR cache", e);
+            outcome = ActionOutcome.failure(e);
+            exchange.getIn().setHeader(PARAM_RESPONSE_CODE, 500);
+        } finally {
+            userActionLoggingService.logCacheClear(datasetId, user, outcome);
         }
-        exchange.getIn().setHeader(PARAM_RESPONSE_CODE, 204);
     }
 }

@@ -194,6 +194,10 @@ public class ServerSubscriptionManager {
                 .collect(Collectors.toList());
     }
 
+    public OutboundSubscriptionSetup findSubscriptionById(String subscriptionId) {
+        return subscriptions.get(subscriptionId);
+    }
+
     public JSONArray getSubscriptionsAsJson() {
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
