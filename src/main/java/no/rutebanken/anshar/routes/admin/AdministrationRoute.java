@@ -28,8 +28,11 @@ import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.kafka.KafkaRouteBuilder;
+import no.rutebanken.anshar.logging.ActionOutcome;
+import no.rutebanken.anshar.logging.UserActionLoggingService;
 import no.rutebanken.anshar.routes.outbound.ConsumerErrorDTO;
 import no.rutebanken.anshar.routes.outbound.OutboundErrorHandler;
+import no.rutebanken.anshar.routes.outbound.OutboundSubscriptionSetup;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
@@ -136,6 +139,9 @@ public class AdministrationRoute extends RestRouteBuilder {
 
     @Autowired
     private OutboundErrorHandler outboundErrorHandler;
+
+    @Autowired
+    private UserActionLoggingService userActionLoggingService;
 
 
 //    @Autowired
@@ -427,7 +433,16 @@ public class AdministrationRoute extends RestRouteBuilder {
                     String siriDataTypeInput = p.getIn().getHeader("siriDataType", String.class);
                     try {
                         SiriDataType siriDataType = SiriDataType.valueOf(siriDataTypeInput);
-                        serverSubscriptionManager.terminateAllSubscriptionsByType(siriDataType, false);
+                        List<OutboundSubscriptionSetup> targeted = serverSubscriptionManager.getAllSubscriptions(siriDataType);
+                        ActionOutcome outcome = ActionOutcome.success();
+                        try {
+                            serverSubscriptionManager.terminateAllSubscriptionsByType(siriDataType, false);
+                        } catch (Exception e) {
+                            outcome = ActionOutcome.failure(e);
+                            p.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 500);
+                        } finally {
+                            userActionLoggingService.logOutboundUnsubscribeByType(targeted, userActionLoggingService.extractUser(p), outcome);
+                        }
                     } catch (IllegalArgumentException e) {
                         p.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 400);
                     }
@@ -462,9 +477,22 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .process(p -> {
                     String siriDataTypeInput = p.getIn().getHeader("siriDataType", String.class);
                     String requestorRef = p.getIn().getHeader("requestorRef", String.class);
-                    log.info("Deleting subscriptions for dataType : " + siriDataTypeInput + " and requestorRef : " + requestorRef);
+                    log.info("Deleting subscriptions for dataType: {} and requestorRef: {}", siriDataTypeInput, requestorRef);
                     try {
-                        serverSubscriptionManager.terminateAllsubscriptionsForTypeAndRequestor(SiriDataType.valueOf(siriDataTypeInput), requestorRef, false);
+                        SiriDataType siriDataType = SiriDataType.valueOf(siriDataTypeInput);
+                        List<OutboundSubscriptionSetup> targeted = serverSubscriptionManager.getAllSubscriptions(siriDataType)
+                                .stream()
+                                .filter(s -> requestorRef.equals(s.getRequestorRef()))
+                                .collect(Collectors.toList());
+                        ActionOutcome outcome = ActionOutcome.success();
+                        try {
+                            serverSubscriptionManager.terminateAllsubscriptionsForTypeAndRequestor(siriDataType, requestorRef, false);
+                        } catch (Exception e) {
+                            outcome = ActionOutcome.failure(e);
+                            p.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 500);
+                        } finally {
+                            userActionLoggingService.logOutboundUnsubscribeByTypeAndRequestor(targeted, userActionLoggingService.extractUser(p), outcome);
+                        }
                     } catch (IllegalArgumentException e) {
                         p.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 400);
                     }
@@ -528,7 +556,19 @@ public class AdministrationRoute extends RestRouteBuilder {
         } else {
             //Return subscription status
             from("direct:terminate.outbound.subscription")
-                    .bean(serverSubscriptionManager, "terminateSubscription(${header.subscriptionId}, false)")
+                    .process(p -> {
+                        String subscriptionId = p.getIn().getHeader("subscriptionId", String.class);
+                        OutboundSubscriptionSetup setup = serverSubscriptionManager.findSubscriptionById(subscriptionId);
+                        ActionOutcome outcome = ActionOutcome.success();
+                        try {
+                            serverSubscriptionManager.terminateSubscription(subscriptionId, false);
+                        } catch (Exception e) {
+                            outcome = ActionOutcome.failure(e);
+                            p.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 500);
+                        } finally {
+                            userActionLoggingService.logOutboundTerminate(subscriptionId, setup, userActionLoggingService.extractUser(p), outcome);
+                        }
+                    })
                     .routeId("admin.terminate.subscription")
             ;
         }
