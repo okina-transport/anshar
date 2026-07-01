@@ -19,14 +19,14 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.*;
 
 import java.time.*;
 import java.util.*;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -34,6 +34,7 @@ import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapte
 import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASET_ID_HEADER_NAME;
 
 @Service
+@EnableScheduling
 public class SituationExchangeInbound {
 
     private static final Logger logger = LoggerFactory.getLogger(SituationExchangeInbound.class);
@@ -287,22 +288,51 @@ public class SituationExchangeInbound {
             IScheduledFuture<Object> plannedTask = sharedScheduler.schedule(() -> {
                 logger.info("GeneralMessage - launching future gm conversion for situation: {} ", situationNumber);
                 convertToGeneralMessageAndIngest(datasetId, futureSituations, inboundTime);
+
             }, delay, TimeUnit.MILLISECONDS);
+            logger.info("SCHEDULE - situationNumber={} -> taskName={}", situationNumber, plannedTask.getHandler().getTaskName());
+
             logger.info("GeneralMessage : scheduling future gm conversion for situation:{} - scheduledDate:{} ", situationNumber, scheduledDate);
-            hazelcastService.getScheduledGeneralMessages(datasetId).put(situationNumber, Pair.of(scheduledDate, datasetId + plannedTask.getHandler().getTaskName()));
+            hazelcastService.getScheduledGeneralMessages(datasetId).put(situationNumber, Pair.of(scheduledDate, plannedTask.getHandler().getTaskName()));
         }
 
     }
 
-    private void cancelTask(String datasetId, String situationNumber) {
-        String taskName = hazelcastService.getScheduledGeneralMessages(datasetId).get(situationNumber).getRight();
+    @Scheduled(fixedRate = 600000)
+    public void cleanupFinishedTasks() {
+        sharedScheduler.getAllScheduledFutures().values().forEach(list ->
+                list.forEach(future -> {
+                    if (future.isDone() || future.isCancelled()) {
+                        try {
+                            future.dispose();
+                        } catch (Exception e) {
+                            logger.debug("GeneralMessage : impossible de disposer une tâche terminée - {}", e.getMessage());
+                        }
+                    }
+                })
+        );
+    }
+
+    private IScheduledFuture<Object> findScheduledFutureByName(String taskName) {
         for (List<IScheduledFuture<Object>> list : sharedScheduler.getAllScheduledFutures().values()) {
             for (IScheduledFuture<Object> handler : list) {
                 if (taskName.equals(handler.getHandler().getTaskName())) {
-                    ScheduledFuture<?> f = sharedScheduler.getScheduledFuture(handler.getHandler());
-                    f.cancel(false);
+                    return handler;
                 }
             }
+        }
+        return null;
+    }
+
+
+    private void cancelTask(String datasetId, String situationNumber) {
+        String taskName = hazelcastService.getScheduledGeneralMessages(datasetId).get(situationNumber).getRight();
+        logger.info("cancelTask - taskName recherché = '{}'", taskName);
+        IScheduledFuture<Object> future = findScheduledFutureByName(taskName);
+        logger.info("cancelTask - future trouvée = {}", future != null);
+        if (future != null) {
+            future.cancel(false);
+            future.dispose();
         }
     }
 
