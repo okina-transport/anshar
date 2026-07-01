@@ -17,6 +17,7 @@ package no.rutebanken.anshar.metrics;
 
 import com.google.common.collect.Sets;
 import com.hazelcast.replicatedmap.ReplicatedMap;
+import com.hazelcast.scheduledexecutor.IScheduledExecutorService;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.ImmutableTag;
 import io.micrometer.core.instrument.Meter;
@@ -26,7 +27,6 @@ import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import no.rutebanken.anshar.data.EstimatedTimetables;
 import no.rutebanken.anshar.data.Situations;
 import no.rutebanken.anshar.data.VehicleActivities;
-import no.rutebanken.anshar.routes.outbound.CamelRouteManager;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import no.rutebanken.anshar.routes.siri.transformer.MappingNames;
@@ -35,12 +35,15 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.SubscriptionStatus;
-import org.apache.camel.*;
+import org.apache.camel.CamelContext;
+import org.apache.camel.CamelContextAware;
+import org.apache.camel.Endpoint;
+import org.apache.camel.Exchange;
 import org.apache.camel.component.seda.SedaEndpoint;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import uk.org.siri.siri21.*;
 
@@ -110,6 +113,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
     private static final String EXTERNAL_SIRI_SM_THREADS = METRICS_PREFIX + "external.sm.threads";
     private static final String THREAD_COUNT = METRICS_PREFIX + "thread.count";
     private static final String SERVER_SUBCRIPTION_MANAGER_THREAD_POOL = METRICS_PREFIX + "server.subscription.manager.thread.pool";
+    private static final String HAZELCAST_SCHEDULED_FUTURES = METRICS_PREFIX + "hazelcast.scheduledFutures";
 
     final Map<String, Integer> nbOfOutboundPushByRequestor = new HashMap<>();
     final Map<String, Long> totalPushTimeByRequestor = new HashMap<>();
@@ -120,19 +124,21 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
     final Map<String, Double> smDeltaTimesResultsBeforePush = new HashMap<>();
     final Map<String, Integer> gaugeValues = new HashMap<>();
     private final Map<String, Long> threadCountByName = new ConcurrentHashMap<>();
-    @Autowired
-    protected SubscriptionManager manager;
-    @Autowired
-    private CamelRouteManager camelRouteManager;
-    @Autowired
-    private ServerSubscriptionManager serverSubscriptionManager;
+
+    protected final SubscriptionManager manager;
+    private final ServerSubscriptionManager serverSubscriptionManager;
+    private final IScheduledExecutorService sharedScheduler;
+
     private CamelContext camelContext;
     // datasetId -> DistributionSummary
     private final Map<String, DistributionSummary> inboundToOutboudTimes = new HashMap<>();
 
 
-    public PrometheusMetricsService() {
+    public PrometheusMetricsService(SubscriptionManager manager, ServerSubscriptionManager serverSubscriptionManager, @Qualifier("getSharedScheduler") IScheduledExecutorService sharedScheduler) {
         super(PrometheusConfig.DEFAULT);
+        this.manager = manager;
+        this.serverSubscriptionManager = serverSubscriptionManager;
+        this.sharedScheduler = sharedScheduler;
         counter(STARTUP_TIME).increment((double) System.currentTimeMillis() / 1000);
     }
 
@@ -517,6 +523,8 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
 
         calculateThreadCount();
 
+        updateScheduledFuturesMetric();
+
         gauge(SEND_EXTERNAL_SUBSCRIPTION_THREADS, "sendExternalSubscriptionThreads", value -> getThreadsInRoute("send.to.external.subscription"));
 
         gauge(EXTERNAL_SIRI_SM_THREADS, "externalSMThreads", value -> getThreadsInRoute("external.sm.queue"));
@@ -638,6 +646,17 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
         smDeltaTimesTmp.clear();
 
 
+    }
+
+    private void updateScheduledFuturesMetric() {
+
+        gauge(HAZELCAST_SCHEDULED_FUTURES, sharedScheduler, scheduler ->
+                scheduler.getAllScheduledFutures()
+                        .values()
+                        .stream()
+                        .mapToInt(List::size)
+                        .sum()
+        );
     }
 
     private int getThreadsInRoute(String routeId) {
