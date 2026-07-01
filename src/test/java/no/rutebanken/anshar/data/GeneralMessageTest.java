@@ -1,5 +1,8 @@
 package no.rutebanken.anshar.data;
 
+import com.hazelcast.scheduledexecutor.IScheduledExecutorService;
+import jakarta.xml.bind.JAXBException;
+import jakarta.xml.bind.UnmarshalException;
 import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
@@ -15,10 +18,8 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import uk.org.siri.siri21.*;
-
-import jakarta.xml.bind.JAXBException;
-import jakarta.xml.bind.UnmarshalException;
 
 import javax.xml.transform.TransformerException;
 import java.io.FileNotFoundException;
@@ -51,6 +52,11 @@ public class GeneralMessageTest extends SpringBootBaseTest {
 
     @Autowired
     private Situations situations;
+
+
+    @Autowired
+    @Qualifier("getSharedScheduler")
+    IScheduledExecutorService sharedScheduler;
 
 
     @BeforeEach
@@ -290,6 +296,18 @@ public class GeneralMessageTest extends SpringBootBaseTest {
 
         // waiting 70s. During this time, GM should have been inserted into cache, by the scheduler
         Thread.sleep(70000);
+
+
+        situationExchangeInbound.cleanupFinishedTasks();
+
+
+        sharedScheduler.getAllScheduledFutures().values().forEach(list ->
+                list.forEach(f -> System.out.println(
+                        "==========>   task=" + f.getHandler().getTaskName() +
+                                " done=" + f.isDone() +
+                                " cancelled=" + f.isCancelled()
+                ))
+        );
 
         // GM insert must have been replanned and inserted into cache
         Assertions.assertEquals(1, generalMessages.getAll().size());
