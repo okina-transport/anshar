@@ -51,7 +51,6 @@ import java.util.stream.Stream;
 @Service
 public class SiriObjectFactory {
 
-    private static final String SIRI_VERSION = "2.1";
     private static final Logger logger = LoggerFactory.getLogger(SiriObjectFactory.class);
 
     private static final KryoPool kryoPool;
@@ -987,6 +986,26 @@ public class SiriObjectFactory {
         }
 
         siri.setCheckStatusResponse(response);
+        return siri;
+    }
+
+    public static Siri createBadRequestResponse(String description) {
+        Siri siri = createSiriObject(SiriHelper.FALLBACK_SIRI_VERSION);
+        ServiceDelivery serviceDelivery = new ServiceDelivery();
+        serviceDelivery.setResponseTimestamp(ZonedDateTime.now(ZoneId.systemDefault()));
+        serviceDelivery.setProducerRef(createRequestorRef("MOBIITI"));
+        serviceDelivery.setStatus(false);
+
+        ServiceDeliveryStructure.ErrorCondition errorCondition = new ServiceDeliveryStructure.ErrorCondition();
+        OtherErrorStructure otherError = new OtherErrorStructure();
+        otherError.setErrorText("[BAD_REQUEST] Impossible de décoder la requête");
+        errorCondition.setOtherError(otherError);
+        ErrorDescriptionStructure errorDescription = new ErrorDescriptionStructure();
+        errorDescription.setValue(description);
+        errorCondition.setDescription(errorDescription);
+        serviceDelivery.setErrorCondition(errorCondition);
+
+        siri.setServiceDelivery(serviceDelivery);
         return siri;
     }
 

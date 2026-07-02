@@ -35,6 +35,7 @@ import org.entur.siri21.util.SiriXml;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.xml.sax.SAXParseException;
 import uk.org.siri.siri21.Siri;
 
 import java.io.InputStream;
@@ -364,7 +365,12 @@ public class MessagingRoute extends RestRouteBuilder {
                 .when(header(TRANSFORM_SOAP).isEqualTo(simple(TRANSFORM_SOAP)))
                     .log(LoggingLevel.DEBUG, "Transforming SOAP")
                     .process(soapSplitProcessor)
-                    .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Extract SOAP version and convert to raw SIRI
+                    .doTry()
+                        .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false&resultHandlerFactory=#streamResultHandlerFactory") // Extract SOAP version and convert to raw SIRI
+                    .doCatch(SAXParseException.class, IllegalStateException.class)
+                        .process(this::handleSoapXmlParseError)
+                        .stop()
+                    .end()
                     .endChoice()
                 .end()
                 .choice()
@@ -621,6 +627,14 @@ public class MessagingRoute extends RestRouteBuilder {
         ;
     }
 
+    private void handleSoapXmlParseError(Exchange e) throws Exception {
+        Exception caught = e.getProperty(Exchange.EXCEPTION_CAUGHT, Exception.class);
+        if (!(caught instanceof SAXParseException) && !(caught.getCause() instanceof SAXParseException)) {
+            throw caught;
+        }
+        e.getMessage().setHeader(Exchange.HTTP_RESPONSE_CODE, "400");
+        buildBadRequestSiriResponse(e);
+    }
 
     private Boolean enrichSiriData(Exchange e) {
         String subscriptionId = e.getIn().getHeader(PARAM_SUBSCRIPTION_ID, String.class);

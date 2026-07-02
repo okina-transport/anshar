@@ -21,6 +21,7 @@ import jakarta.xml.bind.UnmarshalException;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import no.rutebanken.anshar.data.util.CustomSiriXml;
+import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import org.apache.camel.Exchange;
 import org.apache.camel.InvalidPayloadException;
 import org.apache.camel.LoggingLevel;
@@ -35,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
+import org.xml.sax.SAXParseException;
 import uk.org.siri.siri20.*;
 import uk.org.siri.siri21.GeneralMessage;
 import uk.org.siri.siri21.GeneralMessageDeliveryStructure;
@@ -42,14 +44,17 @@ import uk.org.siri.siri21.Siri;
 
 import javax.ws.rs.core.MediaType;
 import javax.xml.stream.XMLStreamException;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.ConnectException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
 import static no.rutebanken.anshar.routes.HttpParameter.SIRI_VERSION_HEADER_NAME;
+import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_SOAP;
 
 public class RestRouteBuilder extends RouteBuilder {
 
@@ -104,10 +109,10 @@ public class RestRouteBuilder extends RouteBuilder {
                 .redeliveryDelay(10000)
                 .useExponentialBackOff();
 
-        onException(UnmarshalException.class, InvalidPayloadException.class)
+        onException(UnmarshalException.class, InvalidPayloadException.class, SAXParseException.class)
                 .handled(true)
                 .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("400"))
-                .setBody(simple("Invalid XML"))
+                .process(this::buildBadRequestSiriResponse)
         ;
 
         onException(AccessDeniedException.class)
@@ -513,6 +518,29 @@ public class RestRouteBuilder extends RouteBuilder {
                 ;
             }
         }
+    }
+
+    protected void buildBadRequestSiriResponse(Exchange e) {
+        try {
+            Siri errorResponse = SiriObjectFactory.createBadRequestResponse("Invalid XML");
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            CustomSiriXml.toXml(downgradeSiriVersion(errorResponse), null, out);
+            String xml = out.toString(StandardCharsets.UTF_8);
+            if (TRANSFORM_SOAP.equals(e.getIn().getHeader(TRANSFORM_SOAP))) {
+                xml = wrapInSoapEnvelope(xml);
+            }
+            e.getMessage().setHeader(Exchange.CONTENT_TYPE, MediaType.TEXT_XML);
+            e.getMessage().setBody(xml);
+        } catch (Exception ex) {
+            logger.error("Could not build SIRI BAD_REQUEST response", ex);
+            e.getMessage().setBody("Invalid XML");
+        }
+    }
+
+    private static String wrapInSoapEnvelope(String rawSiriXml) {
+        String body = rawSiriXml.replaceFirst("^<\\?xml[^>]*\\?>\\s*", "");
+        return "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+                + "<soapenv:Body>" + body + "</soapenv:Body></soapenv:Envelope>";
     }
 
     /**
