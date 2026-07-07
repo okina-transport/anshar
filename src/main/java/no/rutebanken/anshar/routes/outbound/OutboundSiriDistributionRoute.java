@@ -3,7 +3,6 @@ package no.rutebanken.anshar.routes.outbound;
 import no.rutebanken.anshar.data.util.CustomSiriXml;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute;
-import no.rutebanken.anshar.routes.siri.handlers.Utils;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
@@ -23,35 +22,24 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.ORIGIN
 @Service
 public class OutboundSiriDistributionRoute extends RouteBuilder {
 
+    private final ServerSubscriptionManager subscriptionManager;
+    private final PrometheusMetricsService metrics;
+    private final CompressionProcessor compressionProcessor;
+    private final OutboundErrorHandler outboundErrorHandler;
+    private final PrometheusMetricsService prometheusMetricsService;
     @Value("${outbound.distribution.route.maxTotalConnections}")
     private long maxTotalConnections;
-
     @Value("${outbound.distribution.route.connectionsbyroute}")
     private long connectionsByRoute;
-
     @Value("${outbound.distribution.threads}")
     private int threads;
-
     @Value("${outbound.distribution.max.pool.size}")
     private int maxPoolSize;
 
-    private final ServerSubscriptionManager subscriptionManager;
 
-    private final PrometheusMetricsService metrics;
-
-    private final Utils utils;
-
-    private final CompressionProcessor compressionProcessor;
-
-    private final OutboundErrorHandler outboundErrorHandler;
-
-    private final PrometheusMetricsService prometheusMetricsService;
-
-
-    public OutboundSiriDistributionRoute(ServerSubscriptionManager subscriptionManager, PrometheusMetricsService metrics, Utils utils, CompressionProcessor compressionProcessor, OutboundErrorHandler outboundErrorHandler, PrometheusMetricsService prometheusMetricsService) {
+    public OutboundSiriDistributionRoute(ServerSubscriptionManager subscriptionManager, PrometheusMetricsService metrics, CompressionProcessor compressionProcessor, OutboundErrorHandler outboundErrorHandler, PrometheusMetricsService prometheusMetricsService) {
         this.subscriptionManager = subscriptionManager;
         this.metrics = metrics;
-        this.utils = utils;
         this.compressionProcessor = compressionProcessor;
         this.outboundErrorHandler = outboundErrorHandler;
         this.prometheusMetricsService = prometheusMetricsService;
@@ -72,13 +60,12 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
                 .log(LoggingLevel.DEBUG, "POST data to ${header.SubscriptionId}")
                 .setHeader("CamelHttpMethod", constant("POST"))
                 .setHeader(Exchange.CONTENT_TYPE, constant("text/xml; charset=utf-8"))
-                .process(e->{
-                    metrics.countOutgoingData(e.getIn().getBody(Siri.class),(String) e.getIn().getHeader("requestorRef"),SubscriptionSetup.SubscriptionMode.SUBSCRIBE);
-                })
+                .process(e->
+                    metrics.countOutgoingData(e.getIn().getBody(Siri.class),(String) e.getIn().getHeader("requestorRef"),SubscriptionSetup.SubscriptionMode.SUBSCRIBE)
+                )
                 .to("direct:siri.transform.data")
                 .process(p -> {
                     Siri response = p.getIn().getBody(Siri.class);
-                    utils.handleFlexibleLines(response);
                     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
                     if (p.getIn().getHeader(SIRI_VERSION_HEADER_NAME).equals(SiriValidator.Version.VERSION_2_1)){
                         CustomSiriXml.toXml(response, null, byteArrayOutputStream);
@@ -95,7 +82,7 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
                 .when(header(IS_IDFM_GM).isEqualTo(Boolean.TRUE))
                 .process(p -> {
                     String siriGmXml = p.getIn().getBody(String.class);
-                    siriGmXml = siriGmXml.replaceAll("FrGeneralMessageStructure", "IDFGeneralMessageStructure");
+                    siriGmXml = siriGmXml.replace("FrGeneralMessageStructure", "IDFGeneralMessageStructure");
                     p.getIn().setBody(siriGmXml);
                 })
                 .endChoice()
@@ -113,8 +100,8 @@ public class OutboundSiriDistributionRoute extends RouteBuilder {
                         String transformedBody = e.getIn().getBody(String.class);
                         if (transformedBody.length() < 40){
                             // transform msg too short. means there was an issue
-                            log.error("Error while transforming soap response. Original body was: " + e.getIn().getHeader(ORIGINAL_BODY_HEADER));
-                            log.error("transformed body: " + transformedBody);
+                            log.error("Error while transforming soap response. Original body was: {}", e.getIn().getHeader(ORIGINAL_BODY_HEADER));
+                            log.error("transformed body: {}", transformedBody);
                         }
                         e.getIn().removeHeader(ORIGINAL_BODY_HEADER);
                      })

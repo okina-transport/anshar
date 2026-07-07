@@ -15,17 +15,11 @@
 
 package no.rutebanken.anshar.data;
 
-import jakarta.xml.bind.UnmarshalException;
-import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.config.AnsharConfiguration;
-import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
-import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.SituationExchangeInbound;
-import no.rutebanken.anshar.subscription.SubscriptionConfig;
-import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -33,16 +27,15 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri21.*;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.ArrayList;
 
 import static no.rutebanken.anshar.data.Situations.TEN_YEARS_MS;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
 public class SituationsTest extends SpringBootBaseTest {
@@ -52,13 +45,7 @@ public class SituationsTest extends SpringBootBaseTest {
     private Situations situations;
 
     @Autowired
-    private SubscriptionConfig subscriptionConfig;
-
-    @Autowired
     private AnsharConfiguration configuration;
-
-    @Autowired
-    private LineUpdaterService lineupdaterService;
 
     @Autowired
     private SituationExchangeInbound situationExchangeInbound;
@@ -274,92 +261,6 @@ public class SituationsTest extends SpringBootBaseTest {
 //        //Verify that all elements still exist
 //        assertEquals(previousSize + 4, situations.getAll().size());
 //    }
-
-    @Test
-    public void testFlexibleLineConversion() throws UnmarshalException {
-        String flexibleLineId = "PROV1:Line:35";
-        String standardlineId = "PROV2:Line:AAA";
-
-        List<GtfsRTApi> gtfsApis = new ArrayList<>();
-        GtfsRTApi api1 = new GtfsRTApi();
-        api1.setDatasetId("PROV1");
-        GtfsRTApi api2 = new GtfsRTApi();
-        api2.setDatasetId("PROV2");
-        gtfsApis.add(api1);
-        gtfsApis.add(api2);
-
-        subscriptionConfig.setGtfsRTApis(gtfsApis);
-
-        Map<String, Boolean> flexibleLineMap = new HashMap<>();
-        flexibleLineMap.put(flexibleLineId, true);
-        flexibleLineMap.put(standardlineId, false);
-        lineupdaterService.addFlexibleLines(flexibleLineMap);
-
-        String datasetId = "DATASET1";
-        String prefix = "cache-updates-sx-";
-        PtSituationElement sx1 = TestObjectFactory.createPtSituationElement("ruter", prefix + "1234", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
-        addLineRef(sx1, flexibleLineId);
-
-        PtSituationElement sx2 = TestObjectFactory.createPtSituationElement("ruter", prefix + "2345", ZonedDateTime.now().minusDays(1), ZonedDateTime.now().plusHours(1));
-        addLineRef(sx2, standardlineId);
-
-        situations.add(datasetId, sx1);
-        situations.add(datasetId, sx2);
-
-        Collection<PtSituationElement> sampleSit = situations.getAll();
-        assertFalse(sampleSit.isEmpty());
-
-        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
-                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
-                "    <ServiceRequest>\n" +
-                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
-                "        <SituationExchangeRequest version=\"2.0\">\n" +
-                "        </SituationExchangeRequest>\n" +
-                "    </ServiceRequest>\n" +
-                "</Siri>";
-
-        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
-
-        IncomingSiriParameters params = new IncomingSiriParameters();
-        params.setIncomingSiriStream(xml);
-        params.setDatasetId("DATASET1");
-        params.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("true", "false"));
-        params.setMaxSize(-1);
-
-        Siri response = handler.handleIncomingSiri(params);
-
-
-        assertNotNull(response.getServiceDelivery());
-        assertNotNull(response.getServiceDelivery().getSituationExchangeDeliveries());
-        assertFalse(response.getServiceDelivery().getSituationExchangeDeliveries().isEmpty());
-        SituationExchangeDeliveryStructure del = response.getServiceDelivery().getSituationExchangeDeliveries().get(0);
-
-        assertNotNull(del.getSituations());
-        assertFalse(del.getSituations().getPtSituationElements().isEmpty());
-
-        for (PtSituationElement ptSituationElement : del.getSituations().getPtSituationElements()) {
-
-            assertNotNull(ptSituationElement.getAffects());
-            assertNotNull(ptSituationElement.getAffects().getNetworks());
-            assertNotNull(ptSituationElement.getAffects().getNetworks().getAffectedNetworks());
-            assertFalse(ptSituationElement.getAffects().getNetworks().getAffectedNetworks().isEmpty());
-
-            AffectsScopeStructure.Networks.AffectedNetwork affectNet = ptSituationElement.getAffects().getNetworks().getAffectedNetworks().get(0);
-
-            assertNotNull(affectNet.getAffectedLines());
-            assertFalse(affectNet.getAffectedLines().isEmpty());
-
-            AffectedLineStructure affectedLine = affectNet.getAffectedLines().get(0);
-
-            assertNotNull(affectedLine.getLineRef());
-            String lineId = affectedLine.getLineRef().getValue();
-            if (lineId.startsWith("PROV1")) {
-                assertEquals("PROV1:FlexibleLine:35", lineId);
-            } else {
-                assertEquals(standardlineId, lineId);
-            }
-        }
-    }
 
     @CsvSource({
             "2025-01-01T23:59:59Z,2025-01-01T12:00:00Z,10,43799000",
