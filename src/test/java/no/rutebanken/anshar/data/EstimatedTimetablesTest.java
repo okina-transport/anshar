@@ -15,23 +15,14 @@
 
 package no.rutebanken.anshar.data;
 
-import jakarta.xml.bind.UnmarshalException;
-import no.rutebanken.anshar.api.GtfsRTApi;
-import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
-import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
-import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
-import no.rutebanken.anshar.subscription.SubscriptionConfig;
-import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri21.*;
 
-import java.io.InputStream;
 import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
 import java.util.*;
 
@@ -43,15 +34,6 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
 
     @Autowired
     private EstimatedTimetables estimatedTimetables;
-
-    @Autowired
-    private SiriHandler handler;
-
-    @Autowired
-    private SubscriptionConfig subscriptionConfig;
-
-    @Autowired
-    private LineUpdaterService lineupdaterService;
 
     @BeforeEach
     public void init() {
@@ -73,84 +55,8 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
 
         estimatedTimetables.add("test", element);
 
-        assertTrue(estimatedTimetables.getAll().size() == previousSize + 1);
+        assertEquals(estimatedTimetables.getAll().size(), previousSize + 1);
     }
-
-    @Test
-    public void testFlexibleLineConversion() throws UnmarshalException {
-        String flexibleLineId = "PROV1:Line:35";
-        String standardlineId = "PROV2:Line:AAA";
-
-        List<GtfsRTApi> gtfsApis = new ArrayList<>();
-        GtfsRTApi api1 = new GtfsRTApi();
-        api1.setDatasetId("PROV1");
-        GtfsRTApi api2 = new GtfsRTApi();
-        api2.setDatasetId("PROV2");
-        gtfsApis.add(api1);
-        gtfsApis.add(api2);
-
-        subscriptionConfig.setGtfsRTApis(gtfsApis);
-
-        Map<String, Boolean> flexibleLineMap = new HashMap<>();
-        flexibleLineMap.put(flexibleLineId, true);
-        flexibleLineMap.put(standardlineId, false);
-        lineupdaterService.addFlexibleLines(flexibleLineMap);
-
-        String datasetId = "DATASET1";
-
-
-        EstimatedVehicleJourney et1 = TestObjectFactory.createEstimatedVehicleJourney(standardlineId, "4321", 0, 30, ZonedDateTime.now().plusMinutes(1), true);
-        EstimatedVehicleJourney et2 = TestObjectFactory.createEstimatedVehicleJourney(flexibleLineId, "4322", 0, 30, ZonedDateTime.now().plusMinutes(1), true);
-
-        estimatedTimetables.add(datasetId, et1);
-        estimatedTimetables.add(datasetId, et2);
-
-
-        Collection<EstimatedVehicleJourney> ets = estimatedTimetables.getAll();
-        assertFalse(ets.isEmpty());
-
-
-        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
-                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
-                "    <ServiceRequest>\n" +
-                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
-                "        <EstimatedTimetableRequest version=\"2.0\">\n" +
-                "        </EstimatedTimetableRequest>\n" +
-                "    </ServiceRequest>\n" +
-                "</Siri>";
-
-
-        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
-
-        IncomingSiriParameters params = new IncomingSiriParameters();
-        params.setIncomingSiriStream(xml);
-        params.setDatasetId("DATASET1");
-        params.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("true", "false"));
-        params.setMaxSize(-1);
-
-        Siri response = handler.handleIncomingSiri(params);
-        assertNotNull(response.getServiceDelivery());
-
-        assertNotNull(response.getServiceDelivery().getEstimatedTimetableDeliveries());
-        assertTrue(response.getServiceDelivery().getEstimatedTimetableDeliveries().size() > 0);
-
-
-        for (EstimatedTimetableDeliveryStructure estimatedTimetableDelivery : response.getServiceDelivery().getEstimatedTimetableDeliveries()) {
-
-            for (EstimatedVersionFrameStructure estimatedJourneyVersionFrame : estimatedTimetableDelivery.getEstimatedJourneyVersionFrames()) {
-
-                for (EstimatedVehicleJourney estimatedVehicleJourney : estimatedJourneyVersionFrame.getEstimatedVehicleJourneies()) {
-                    String lineRef = estimatedVehicleJourney.getLineRef().getValue();
-                    if (lineRef.startsWith("PROV1")) {
-                        assertEquals("PROV1:FlexibleLine:35", lineRef);
-                    } else {
-                        assertEquals(standardlineId, lineRef);
-                    }
-                }
-            }
-        }
-    }
-
 
     public void testGetUpdatesOnly() {
 
@@ -253,24 +159,15 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         ZonedDateTime departure = ZonedDateTime.now().plusHours(1);
         estimatedTimetables.add("test", TestObjectFactory.createEstimatedVehicleJourney("12345", "4321", 0, 30, departure, true));
         int expectedSize = previousSize + 1;
-        assertTrue(
-                estimatedTimetables.getAll().size() == expectedSize,
-                "Adding Journey did not add element."
-        );
+        assertEquals(estimatedTimetables.getAll().size(), expectedSize, "Adding Journey did not add element.");
 
         estimatedTimetables.add("test", TestObjectFactory.createEstimatedVehicleJourney("12345", "4321", 0, 30, departure, true));
-        assertTrue(
-                estimatedTimetables.getAll().size() == expectedSize,
-                "Updating Journey added element."
-        );
+        assertEquals(estimatedTimetables.getAll().size(), expectedSize, "Updating Journey added element.");
 
         ZonedDateTime departure_2 = ZonedDateTime.now().plusHours(1);
         estimatedTimetables.add("test", TestObjectFactory.createEstimatedVehicleJourney("54321", "4321", 0, 30, departure_2, true));
         expectedSize++;
-        assertTrue(
-                estimatedTimetables.getAll().size() == expectedSize,
-                "Adding Journey did not add element."
-        );
+        assertEquals(estimatedTimetables.getAll().size(), expectedSize, "Adding Journey did not add element.");
 
         estimatedTimetables.add("test2", TestObjectFactory.createEstimatedVehicleJourney("12345", "4321", 0, 30, departure_2, true));
         expectedSize++;
@@ -292,19 +189,13 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
 
         estimatedTimetables.add("test", estimatedVehicleJourney);
         int expectedSize = previousSize + 1;
-        assertTrue(
-                estimatedTimetables.getAll().size() == expectedSize,
-                "Adding Journey did not add element."
-        );
+        assertEquals(estimatedTimetables.getAll().size(), expectedSize, "Adding Journey did not add element.");
 
         EstimatedVehicleJourney estimatedVehicleJourney1 = TestObjectFactory.createEstimatedVehicleJourney(lineRefValue, "4321", 0, 20, departure, true);
         estimatedVehicleJourney1.setRecordedAtTime(ZonedDateTime.now());
         estimatedTimetables.add("test", estimatedVehicleJourney1);
 
-        assertTrue(
-                estimatedTimetables.getAll().size() == expectedSize,
-                "Updating Journey added element."
-        );
+        assertEquals(estimatedTimetables.getAll().size(), expectedSize, "Updating Journey added element.");
 
         boolean checkedMatchingJourney = false;
         Collection<EstimatedVehicleJourney> all = estimatedTimetables.getAll();
@@ -416,7 +307,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
 
                 EstimatedCall estimatedCall = estimatedCallsList.get(0);
                 assertEquals(e.getStopPointRef().getValue(), estimatedCall.getStopPointRef().getValue());
-                assertTrue(estimatedCall.getExpectedArrivalTime().minusSeconds(99).equals(estimatedCall.getAimedArrivalTime()));
+                assertEquals(estimatedCall.getExpectedArrivalTime().minusSeconds(99), estimatedCall.getAimedArrivalTime());
             }
         }
     }
@@ -439,7 +330,7 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         assertNotNull(serviceDelivery_1);
         assertNotNull(serviceDelivery_1.getServiceDelivery());
         assertNotNull(serviceDelivery_1.getServiceDelivery().getEstimatedTimetableDeliveries());
-        assertTrue(serviceDelivery_1.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 2);
+        assertEquals(2, serviceDelivery_1.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size());
 
         Siri serviceDelivery_2 = estimatedTimetables.createServiceDelivery(requestorId, datasetId, 2, -1);
 
@@ -471,11 +362,8 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         assertNotNull(serviceDelivery_1);
         assertNotNull(serviceDelivery_1.getServiceDelivery());
         assertNotNull(serviceDelivery_1.getServiceDelivery().getEstimatedTimetableDeliveries());
-        assertTrue(
-                serviceDelivery_1.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
-                        .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 1,
-                "Only first journey should have been returned"
-        );
+        assertEquals(1, serviceDelivery_1.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
+                .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size(), "Only first journey should have been returned");
         assertFalse(serviceDelivery_1.getServiceDelivery().isMoreData());
 
 
@@ -485,11 +373,8 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         assertNotNull(serviceDelivery_10);
         assertNotNull(serviceDelivery_10.getServiceDelivery());
         assertNotNull(serviceDelivery_10.getServiceDelivery().getEstimatedTimetableDeliveries());
-        assertTrue(
-                serviceDelivery_10.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
-                        .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 2,
-                "Both journeys should have been returned"
-        );
+        assertEquals(2, serviceDelivery_10.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
+                .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size(), "Both journeys should have been returned");
 
         assertFalse(serviceDelivery_10.getServiceDelivery().isMoreData());
 
@@ -504,9 +389,8 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         assertNotNull(serviceDelivery_30);
         assertNotNull(serviceDelivery_30.getServiceDelivery());
         assertNotNull(serviceDelivery_30.getServiceDelivery().getEstimatedTimetableDeliveries());
-        assertTrue(serviceDelivery_30.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
-                        .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 3,
-                "Cancelled journey in the future should have been returned");
+        assertEquals(3, serviceDelivery_30.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
+                .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size(), "Cancelled journey in the future should have been returned");
         assertFalse(serviceDelivery_30.getServiceDelivery().isMoreData());
 
         Siri serviceDelivery_3 = estimatedTimetables.createServiceDelivery(null, datasetId, 10, -1);
@@ -515,9 +399,8 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         assertNotNull(serviceDelivery_3);
         assertNotNull(serviceDelivery_3.getServiceDelivery());
         assertNotNull(serviceDelivery_3.getServiceDelivery().getEstimatedTimetableDeliveries());
-        assertTrue(serviceDelivery_3.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
-                        .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 3,
-                "Default request should have returned all journeys");
+        assertEquals(3, serviceDelivery_3.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
+                .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size(), "Default request should have returned all journeys");
 
         assertFalse(serviceDelivery_3.getServiceDelivery().isMoreData());
 
@@ -529,9 +412,8 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
         assertNotNull(serviceDelivery_3);
         assertNotNull(serviceDelivery_3.getServiceDelivery());
         assertNotNull(serviceDelivery_3.getServiceDelivery().getEstimatedTimetableDeliveries());
-        assertTrue(serviceDelivery_3.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
-                        .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size() == 2,
-                "Default request should have returned all journeys");
+        assertEquals(2, serviceDelivery_3.getServiceDelivery().getEstimatedTimetableDeliveries().get(0)
+                .getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies().size(), "Default request should have returned all journeys");
 
 
         serviceDelivery_3 = estimatedTimetables.createServiceDelivery(requestorId, datasetId, 2, -1);
@@ -615,13 +497,13 @@ public class EstimatedTimetablesTest extends SpringBootBaseTest {
 
 
     private void assertExcludedId(String excludedDatasetId) {
-        Siri serviceDelivery = estimatedTimetables.createServiceDelivery(null, null, null, Arrays.asList(excludedDatasetId), 100, -1, new HashSet<>());
+        Siri serviceDelivery = estimatedTimetables.createServiceDelivery(null, null, null, Collections.singletonList(excludedDatasetId), 100, -1, new HashSet<>());
 
         List<EstimatedVehicleJourney> journeys = serviceDelivery.getServiceDelivery().getEstimatedTimetableDeliveries().get(0).getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies();
 
         assertEquals(2, journeys.size());
         for (EstimatedVehicleJourney et : journeys) {
-            assertFalse(et.getDataSource().equals(excludedDatasetId));
+            assertNotEquals(et.getDataSource(), excludedDatasetId);
         }
     }
 

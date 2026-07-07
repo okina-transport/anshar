@@ -15,27 +15,25 @@
 
 package no.rutebanken.anshar.data;
 
-import no.rutebanken.anshar.api.GtfsRTApi;
-import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
-import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.org.siri.siri21.*;
+import uk.org.siri.siri21.ProgressBetweenStopsStructure;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.VehicleActivityStructure;
+import uk.org.siri.siri21.VehicleMonitoringRefStructure;
 
-import jakarta.xml.bind.UnmarshalException;
-
-import java.io.InputStream;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
 
 import static no.rutebanken.anshar.helpers.SleepUtil.sleep;
 import static org.junit.jupiter.api.Assertions.*;
@@ -79,79 +77,6 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
     }
 
     @Test
-    public void testFlexibleLineConversion() throws UnmarshalException {
-        String flexibleLineId = "PROV1:Line:35";
-        String standardlineId = "PROV2:Line:AAA";
-
-        List<GtfsRTApi> gtfsApis = new ArrayList<>();
-        GtfsRTApi api1 = new GtfsRTApi();
-        api1.setDatasetId("PROV1");
-        GtfsRTApi api2 = new GtfsRTApi();
-        api2.setDatasetId("PROV2");
-        gtfsApis.add(api1);
-        gtfsApis.add(api2);
-
-        subscriptionConfig.setGtfsRTApis(gtfsApis);
-
-        Map<String, Boolean> flexibleLineMap = new HashMap<>();
-        flexibleLineMap.put(flexibleLineId, true);
-        flexibleLineMap.put(standardlineId, false);
-        lineupdaterService.addFlexibleLines(flexibleLineMap);
-
-        String datasetId = "DATASET1";
-        String vehicleReference = "A";
-
-
-        VehicleActivityStructure vm1 = TestObjectFactory.createVehicleActivityStructure(ZonedDateTime.now().plusMinutes(1), vehicleReference, standardlineId, "VEH1");
-        VehicleActivityStructure vm2 = TestObjectFactory.createVehicleActivityStructure(ZonedDateTime.now().plusMinutes(1), vehicleReference, flexibleLineId, "VEH1");
-
-        vehicleActivities.add(datasetId, vm1);
-        vehicleActivities.add(datasetId, vm2);
-
-
-        Collection<VehicleActivityStructure> vms = vehicleActivities.getAll();
-        assertFalse(vms.isEmpty());
-
-
-        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
-                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
-                "    <ServiceRequest>\n" +
-                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
-                "        <VehicleMonitoringRequest version=\"2.0\">\n" +
-                "        </VehicleMonitoringRequest>\n" +
-                "    </ServiceRequest>\n" +
-                "</Siri>";
-
-
-        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
-
-        IncomingSiriParameters params = new IncomingSiriParameters();
-        params.setIncomingSiriStream(xml);
-        params.setDatasetId("DATASET1");
-        params.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("true", "false"));
-        params.setMaxSize(-1);
-
-        Siri response = handler.handleIncomingSiri(params);
-        assertNotNull(response.getServiceDelivery());
-
-        assertNotNull(response.getServiceDelivery().getVehicleMonitoringDeliveries());
-        assertTrue(response.getServiceDelivery().getVehicleMonitoringDeliveries().size() > 0);
-
-
-        for (VehicleMonitoringDeliveryStructure vehicleMonitoringDelivery : response.getServiceDelivery().getVehicleMonitoringDeliveries()) {
-            for (VehicleActivityStructure vehicleActivity : vehicleMonitoringDelivery.getVehicleActivities()) {
-                String lineRef = vehicleActivity.getMonitoredVehicleJourney().getLineRef().getValue();
-                if (lineRef.startsWith("PROV1")) {
-                    assertEquals("PROV1:FlexibleLine:35", lineRef);
-                } else {
-                    assertEquals(standardlineId, lineRef);
-                }
-            }
-        }
-
-    }
-
-    @Test
     public void testUpdatedVehicle() {
         int previousSize = vehicleActivities.getAll().size();
 
@@ -174,7 +99,7 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
         //Verify that activity is found as updated
         assertNotNull(updatedVehicle);
         //Verify that existing element is updated
-        assertTrue(vehicleActivities.getAll().size() == previousSize + 1);
+        assertEquals(vehicleActivities.getAll().size(), previousSize + 1);
 
         //Add brand new element
         VehicleActivityStructure element3 = TestObjectFactory.createVehicleActivityStructure(
@@ -331,13 +256,13 @@ public class VehicleActivitiesTest extends SpringBootBaseTest {
     }
 
     private void assertExcludedId(String excludedDatasetId) {
-        Siri serviceDelivery = vehicleActivities.createServiceDelivery(null, null, null, Arrays.asList(excludedDatasetId), 100);
+        Siri serviceDelivery = vehicleActivities.createServiceDelivery(null, null, null, Collections.singletonList(excludedDatasetId), 100);
 
         List<VehicleActivityStructure> vehicleActivities = serviceDelivery.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).getVehicleActivities();
 
         assertEquals(2, vehicleActivities.size());
         for (VehicleActivityStructure activity : vehicleActivities) {
-            assertFalse(activity.getMonitoredVehicleJourney().getDataSource().equals(excludedDatasetId));
+            assertNotEquals(activity.getMonitoredVehicleJourney().getDataSource(), excludedDatasetId);
         }
     }
 

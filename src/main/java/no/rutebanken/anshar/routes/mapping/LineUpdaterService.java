@@ -18,14 +18,15 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.StringTokenizer;
-import java.util.concurrent.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 @Component
 @Configuration
 public class LineUpdaterService {
     private static final Logger logger = LoggerFactory.getLogger(LineUpdaterService.class);
     private static final Object LOCK = new Object();
-    private transient final ConcurrentMap<String, Boolean> areLineFlexible = new ConcurrentHashMap<>();
     private final Map<String, String> lineNameMap = new HashMap<>();
     private final Map<String, String> lineNumberMap = new HashMap<>();
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
@@ -67,7 +68,6 @@ public class LineUpdaterService {
             reader.lines().forEach(line -> {
                 StringTokenizer tokenizer = new StringTokenizer(line, ",");
                 String lineId = tokenizer.nextToken();
-                String isFlexible = tokenizer.nextToken();
                 if (tokenizer.hasMoreTokens()) {
                     String lineName = tokenizer.nextToken();
                     lineNameMap.put(lineId, lineName);
@@ -76,30 +76,14 @@ public class LineUpdaterService {
                     String lineNumber = tokenizer.nextToken();
                     lineNumberMap.put(lineId, lineNumber);
                 }
-                areLineFlexible.put(lineId, Boolean.valueOf(isFlexible));
             });
 
             long t2 = System.currentTimeMillis();
 
-            logger.info("Fetched mapping data - {} mappings. [fetched: {}ms]", areLineFlexible.size(), (t2 - t1));
+            logger.info("Fetched mapping data - {} mappings. [fetched: {}ms]", lineNameMap.size(), (t2 - t1));
         } else {
             logger.error("Blob is null. Can't update line mapping");
         }
-    }
-
-    /**
-     * Read the line cache and tells if a line is flexible or not
-     *
-     * @param lineId line to check
-     * @return true : line is flexisble
-     * false : line is NOT flexible
-     */
-    public boolean isLineFlexible(String lineId) {
-        return areLineFlexible.containsKey(lineId) && areLineFlexible.get(lineId);
-    }
-
-    public void addFlexibleLines(Map<String, Boolean> flexibleLines) {
-        areLineFlexible.putAll(flexibleLines);
     }
 
     public Optional<String> getLineName(String lineId) {
@@ -139,6 +123,6 @@ public class LineUpdaterService {
             lineOriginalId = lineOriginalId.substring(0, lineOriginalId.length() - 4);
         }
 
-        return lineNameMap.containsKey(lineOriginalId) || areLineFlexible.containsKey(lineOriginalId.replace("Flexible", ""));
+        return lineNameMap.containsKey(lineOriginalId);
     }
 }

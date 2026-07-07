@@ -2,21 +2,15 @@ package no.rutebanken.anshar.routes.siri.handlers;
 
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
-import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
-import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.routes.mapping.OutputExternalIdsService;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.Strings;
 import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.*;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -26,169 +20,12 @@ public class Utils {
 
     private static final Logger logger = LoggerFactory.getLogger(Utils.class);
 
-    @Autowired
-    private OutputExternalIdsService outputExternalIdsService;
+    private final OutputExternalIdsService outputExternalIdsService;
+    private final SubscriptionConfig subscriptionConfig;
 
-    @Autowired
-    private SubscriptionConfig subscriptionConfig;
-
-    @Autowired
-    private LineUpdaterService lineUpdaterService;
-
-    public static String encodeOrReturnRaw(String rawURL) {
-        return URLEncoder.encode(rawURL, StandardCharsets.UTF_8);
-    }
-
-    /**
-     * Read a siri and checks all line references : if a reference to a flexibleLine is found, replaces ":Line:" by "FlexibleLine"
-     *
-     * @param siri Siri object to update with flexible lines modifications
-     */
-    public void handleFlexibleLines(Siri siri) {
-
-
-        if (siri == null || siri.getServiceDelivery() == null) {
-            return;
-        }
-
-        ServiceDelivery delivery = siri.getServiceDelivery();
-
-        if (delivery.getSituationExchangeDeliveries() != null && !delivery.getSituationExchangeDeliveries().isEmpty()) {
-            handleFlexibleLineInSX(delivery.getSituationExchangeDeliveries());
-        }
-
-        if (delivery.getGeneralMessageDeliveries() != null && !delivery.getGeneralMessageDeliveries().isEmpty()) {
-            handleFlexibleLineInGM(delivery.getGeneralMessageDeliveries());
-        }
-
-        if (delivery.getEstimatedTimetableDeliveries() != null && !delivery.getEstimatedTimetableDeliveries().isEmpty()) {
-            handleFlexibleLineInET(delivery.getEstimatedTimetableDeliveries());
-        }
-
-        if (delivery.getVehicleMonitoringDeliveries() != null && !delivery.getVehicleMonitoringDeliveries().isEmpty()) {
-            handleFlexibleLineInVM(delivery.getVehicleMonitoringDeliveries());
-        }
-
-        if (delivery.getStopMonitoringDeliveries() != null && !delivery.getStopMonitoringDeliveries().isEmpty()) {
-            handleFlexibleLineInSM(delivery.getStopMonitoringDeliveries());
-        }
-    }
-
-    private void handleFlexibleLineInSM(List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries) {
-        for (StopMonitoringDeliveryStructure stopMonitoringDelivery : stopMonitoringDeliveries) {
-            if (stopMonitoringDelivery.getMonitoredStopVisits() == null || stopMonitoringDelivery.getMonitoredStopVisits().isEmpty()) {
-                continue;
-            }
-
-            for (MonitoredStopVisit monitoredStopVisit : stopMonitoringDelivery.getMonitoredStopVisits()) {
-
-                if (monitoredStopVisit.getMonitoredVehicleJourney() == null || monitoredStopVisit.getMonitoredVehicleJourney().getLineRef() == null) {
-                    continue;
-                }
-                handleFlexibleLineInLineRef(monitoredStopVisit.getMonitoredVehicleJourney().getLineRef());
-            }
-        }
-    }
-
-    private void handleFlexibleLineInVM(List<VehicleMonitoringDeliveryStructure> vehicleMonitoringDeliveries) {
-        for (VehicleMonitoringDeliveryStructure vehicleMonitoringDelivery : vehicleMonitoringDeliveries) {
-            if (vehicleMonitoringDelivery.getVehicleActivities() == null || vehicleMonitoringDelivery.getVehicleActivities().isEmpty()) {
-                continue;
-            }
-
-            for (VehicleActivityStructure vehicleActivity : vehicleMonitoringDelivery.getVehicleActivities()) {
-                if (vehicleActivity.getMonitoredVehicleJourney() != null) {
-                    if (vehicleActivity.getMonitoredVehicleJourney().getLineRef() != null) {
-                        handleFlexibleLineInLineRef(vehicleActivity.getMonitoredVehicleJourney().getLineRef());
-                    }
-                }
-            }
-        }
-    }
-
-    private void handleFlexibleLineInET(List<EstimatedTimetableDeliveryStructure> estimatedTimetableDeliveries) {
-        for (EstimatedTimetableDeliveryStructure estimatedTimetableDelivery : estimatedTimetableDeliveries) {
-            if (estimatedTimetableDelivery.getEstimatedJourneyVersionFrames() == null || estimatedTimetableDelivery.getEstimatedJourneyVersionFrames().isEmpty()) {
-                continue;
-            }
-            for (EstimatedVersionFrameStructure estimatedJourneyVersionFrame : estimatedTimetableDelivery.getEstimatedJourneyVersionFrames()) {
-                for (EstimatedVehicleJourney estimatedVehicleJourney : estimatedJourneyVersionFrame.getEstimatedVehicleJourneies()) {
-                    if (estimatedVehicleJourney.getLineRef() != null) {
-                        handleFlexibleLineInLineRef(estimatedVehicleJourney.getLineRef());
-                    }
-                }
-            }
-        }
-    }
-
-    private void handleFlexibleLineInGM(List<GeneralMessageDeliveryStructure> generalMessageDeliveries) {
-
-        for (GeneralMessageDeliveryStructure generalMessageDelivery : generalMessageDeliveries) {
-            if (generalMessageDelivery.getGeneralMessages() == null || generalMessageDelivery.getGeneralMessages().isEmpty()) {
-                continue;
-            }
-
-            for (GeneralMessage generalMessage : generalMessageDelivery.getGeneralMessages()) {
-                Object contentObj = generalMessage.getContent();
-                if (contentObj instanceof Content content) {
-                    if (content.getLineRefs() != null && !content.getLineRefs().isEmpty()) {
-                        List<String> convertedLineRfs = new ArrayList<>();
-
-                        for (String lineRef : content.getLineRefs()) {
-                            if (lineUpdaterService.isLineFlexible(Strings.CS.removeEnd(lineRef, ":LOC"))) {
-                                convertedLineRfs.add(lineRef.replace(":Line", ":FlexibleLine"));
-                            } else {
-                                convertedLineRfs.add(lineRef);
-                            }
-                        }
-                        content.setLineRefs(convertedLineRfs);
-                    }
-                }
-            }
-        }
-    }
-
-    private void handleFlexibleLineInSX(List<SituationExchangeDeliveryStructure> situationExchangeDeliveries) {
-
-        for (SituationExchangeDeliveryStructure situationExchangeDelivery : situationExchangeDeliveries) {
-
-            if (situationExchangeDelivery.getSituations() == null || situationExchangeDelivery.getSituations().getPtSituationElements().isEmpty()) {
-                continue;
-            }
-
-            for (PtSituationElement ptSituationElement : situationExchangeDelivery.getSituations().getPtSituationElements()) {
-
-                if (ptSituationElement.getAffects() == null || ptSituationElement.getAffects().getNetworks() == null || ptSituationElement.getAffects().getNetworks().getAffectedNetworks().isEmpty()) {
-                    continue;
-                }
-
-                for (AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork : ptSituationElement.getAffects().getNetworks().getAffectedNetworks()) {
-                    handleFlexibleLineInAffectedNetworks(affectedNetwork);
-                }
-            }
-        }
-    }
-
-    private void handleFlexibleLineInAffectedNetworks(AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork) {
-
-        if (affectedNetwork.getAffectedLines() == null || affectedNetwork.getAffectedLines().isEmpty()) {
-            return;
-        }
-
-        for (AffectedLineStructure affectedLine : affectedNetwork.getAffectedLines()) {
-            if (affectedLine.getLineRef() == null) {
-                continue;
-            }
-            LineRef lineRef = affectedLine.getLineRef();
-            handleFlexibleLineInLineRef(lineRef);
-        }
-    }
-
-    private void handleFlexibleLineInLineRef(LineRef lineRef) {
-        String originalLineId = lineRef.getValue();
-        if (lineUpdaterService.isLineFlexible(Strings.CS.removeEnd(originalLineId, ":LOC"))) {
-            lineRef.setValue(originalLineId.replace(":Line", ":FlexibleLine"));
-        }
+    public Utils(OutputExternalIdsService outputExternalIdsService, SubscriptionConfig subscriptionConfig) {
+        this.outputExternalIdsService = outputExternalIdsService;
+        this.subscriptionConfig = subscriptionConfig;
     }
 
     public Set<String> convertFromAltIdsToImportedIdsLine(Set<String> originalMonitoringRefs, String datasetId) {
@@ -350,7 +187,7 @@ public class Utils {
         errorCondition.setDescription(errorDesc);
         siri.getServiceDelivery().getVehicleMonitoringDeliveries().get(0).setErrorCondition(errorCondition);
         String requestMsgRef = siri.getServiceDelivery().getRequestMessageRef().getValue();
-        siri.getServiceDelivery().getVehicleMonitoringDeliveries().forEach(vm -> logger.info("requestorRef:" + requestMsgRef + " - " + getErrorContents(vm.getErrorCondition())));
+        siri.getServiceDelivery().getVehicleMonitoringDeliveries().forEach(vm -> logger.info("requestorRef: {} - {}", requestMsgRef, getErrorContents(vm.getErrorCondition())));
 
     }
 

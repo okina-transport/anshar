@@ -15,32 +15,20 @@
 
 package no.rutebanken.anshar.data;
 
-import no.rutebanken.anshar.api.GtfsRTApi;
-import no.rutebanken.anshar.config.IncomingSiriParameters;
-import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
-import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
-import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.subscription.SiriDataType;
-import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.apache.camel.CamelContext;
 import org.apache.camel.CamelContextAware;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
 import org.apache.camel.component.mock.MockEndpoint;
-import org.apache.commons.io.IOUtils;
 import org.junit.Ignore;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri21.*;
 
-import jakarta.xml.bind.UnmarshalException;
-
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
 import java.util.*;
 
@@ -52,39 +40,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 
 public class MonitoredStopVisitsTest extends SpringBootBaseTest implements CamelContextAware {
 
 
-    @Autowired
-    private MonitoredStopVisits monitoredStopVisits;
-
-    @Autowired
-    private SiriHandler handler;
-
-    @Autowired
-    private SubscriptionConfig subscriptionConfig;
-
-    @Autowired
-    private LineUpdaterService lineupdaterService;
-
-
     @Produce(value = "direct:send.to.external.subscription")
     protected ProducerTemplate sendExternalSubscription;
+    @Produce(value = "direct:enqueue.message")
+    protected ProducerTemplate enqueueMessageProducer;
+    @Autowired
+    private MonitoredStopVisits monitoredStopVisits;
+    private CamelContext camelContext;
 
     @BeforeEach
     public void init() {
         monitoredStopVisits.clearAll();
     }
-
-    private CamelContext camelContext;
-
-
-    @Produce(value = "direct:enqueue.message")
-    protected ProducerTemplate enqueueMessageProducer;
-
 
     @Test
     public void testSplitDoubleMessage() throws InterruptedException {
@@ -354,70 +327,6 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest implements Camel
         assertEquals(previousSize, monitoredStopVisits.getAll().size(), "Null-element added");
     }
 
-    @Test
-    public void testFlexibleLineConversion() throws UnmarshalException {
-        String flexibleLineId = "PROV1:Line:35";
-        String standardlineId = "PROV2:Line:AAA";
-
-        List<GtfsRTApi> gtfsApis = new ArrayList<>();
-        GtfsRTApi api1 = new GtfsRTApi();
-        api1.setDatasetId("PROV1");
-        GtfsRTApi api2 = new GtfsRTApi();
-        api2.setDatasetId("PROV2");
-        gtfsApis.add(api1);
-        gtfsApis.add(api2);
-
-        subscriptionConfig.setGtfsRTApis(gtfsApis);
-
-        Map<String, Boolean> flexibleLineMap = new HashMap<>();
-        flexibleLineMap.put(flexibleLineId, true);
-        flexibleLineMap.put(standardlineId, false);
-        lineupdaterService.addFlexibleLines(flexibleLineMap);
-
-        String datasetId = "DATASET1";
-
-
-        MonitoredStopVisit sm1 = TestObjectFactory.createMonitoredStopVisit(ZonedDateTime.now().plusMinutes(1), "aa");
-        addLineRef(sm1, standardlineId);
-
-        MonitoredStopVisit sm2 = TestObjectFactory.createMonitoredStopVisit(ZonedDateTime.now().plusMinutes(1), "aa");
-        addLineRef(sm2, flexibleLineId);
-
-        monitoredStopVisits.add(datasetId, sm1);
-        monitoredStopVisits.add(datasetId, sm2);
-
-
-        Collection<MonitoredStopVisit> sms = monitoredStopVisits.getAll();
-        assertFalse(sms.isEmpty());
-
-
-        String stringXml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
-                "<Siri xmlns=\"http://www.siri.org.uk/siri\" xmlns:ns2=\"http://www.ifopt.org.uk/acsb\" xmlns:ns3=\"http://www.ifopt.org.uk/ifopt\" xmlns:ns4=\"http://datex2.eu/schema/2_0RC1/2_0\" version=\"2.0\">\n" +
-                "    <ServiceRequest>\n" +
-                "        <RequestorRef>#RequestorREF#12EFS1aaa-2</RequestorRef>\n" +
-                "        <StopMonitoringRequest version=\"2.0\">\n" +
-                "        </StopMonitoringRequest>\n" +
-                "    </ServiceRequest>\n" +
-                "</Siri>";
-
-
-        InputStream xml = IOUtils.toInputStream(stringXml, StandardCharsets.UTF_8);
-
-
-        IncomingSiriParameters params = new IncomingSiriParameters();
-        params.setIncomingSiriStream(xml);
-        params.setDatasetId("DATASET1");
-        params.setOutboundIdMappingPolicy(SiriHandler.getIdMappingPolicy("true", "false"));
-        params.setMaxSize(-1);
-
-
-        Siri response = handler.handleIncomingSiri(params);
-        Assertions.assertNotNull(response);
-        Assertions.assertNotNull(response.getServiceDelivery());
-        assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().isEmpty());
-        Assertions.assertFalse(response.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits().get(0).getMonitoringRef() == null);
-    }
-
     private void addLineRef(MonitoredStopVisit sm1, String lineId) {
         LineRef lineRef = new LineRef();
         lineRef.setValue(lineId);
@@ -646,13 +555,13 @@ public class MonitoredStopVisitsTest extends SpringBootBaseTest implements Camel
     }
 
     private void assertExcludedId(String excludedDatasetId) {
-        Siri serviceDelivery = monitoredStopVisits.createServiceDelivery(null, null, Arrays.asList(excludedDatasetId), 100, -1, new HashSet<>());
+        Siri serviceDelivery = monitoredStopVisits.createServiceDelivery(null, null, Collections.singletonList(excludedDatasetId), 100, -1, new HashSet<>());
 
         List<MonitoredStopVisit> monitoredStopVisits = serviceDelivery.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits();
 
         assertEquals(2, monitoredStopVisits.size());
         for (MonitoredStopVisit activity : monitoredStopVisits) {
-            assertFalse(activity.getMonitoredVehicleJourney().getDataSource().equals(excludedDatasetId));
+            assertNotEquals(activity.getMonitoredVehicleJourney().getDataSource(), excludedDatasetId);
         }
     }
 
