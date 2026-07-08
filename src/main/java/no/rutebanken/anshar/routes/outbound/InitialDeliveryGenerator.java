@@ -12,6 +12,8 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import no.rutebanken.anshar.util.SiriUtils;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.SetUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -177,6 +179,9 @@ public class InitialDeliveryGenerator {
         Set<String> datasetsToRequest;
         if (subscriptionRequest.getDatasetList().isEmpty()) {
             datasetsToRequest = monitoredStopVisits.getAllDatasetIds();
+            if (CollectionUtils.isNotEmpty(subscriptionRequest.getValueAdaptersByDataset().keySet())) {
+                datasetsToRequest = SetUtils.intersection(datasetsToRequest, subscriptionRequest.getValueAdaptersByDataset().keySet());
+            }
         } else {
             datasetsToRequest = new HashSet<>(subscriptionRequest.getDatasetList());
         }

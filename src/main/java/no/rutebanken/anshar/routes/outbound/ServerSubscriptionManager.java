@@ -1607,7 +1607,7 @@ public class ServerSubscriptionManager {
         for (String monitoredRef : monitoredRefs) {
             if (outboundSubscriptionsByMonitoringRef.containsKey(monitoredRef)) {
                 for (OutboundSubscriptionSetup outboundSubscriptionSetup : outboundSubscriptionsByMonitoringRef.get(monitoredRef)) {
-                    if (CollectionUtils.isEmpty(outboundSubscriptionSetup.getDatasetList()) || outboundSubscriptionSetup.getDatasetList().contains(datasetId)) {
+                    if ((CollectionUtils.isEmpty(outboundSubscriptionSetup.getDatasetList()) && outboundSubscriptionSetup.getValueAdaptersByDataset().containsKey(datasetId)) || outboundSubscriptionSetup.getDatasetList().contains(datasetId)) {
                         results.add(outboundSubscriptionSetup);
                     }
                 }
