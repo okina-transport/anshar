@@ -1,6 +1,6 @@
 package no.rutebanken.anshar.util;
 
-import io.micrometer.core.instrument.util.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 
@@ -22,7 +22,7 @@ public class IDUtils {
      * @return
      */
     public static Set<String> revertMonitoringRefs(Set<String> originalMonitoringRefs, Optional<IdProcessingParameters> idParametersOpt) {
-        if (!idParametersOpt.isPresent()) {
+        if (idParametersOpt.isEmpty()) {
             return originalMonitoringRefs;
         }
         Set<String> revertedIds = new HashSet<>();
@@ -33,7 +33,7 @@ public class IDUtils {
     }
 
     public static String revertMonitoringRef(String originalMonitoringRef, Optional<IdProcessingParameters> idParametersOpt) {
-        if (!idParametersOpt.isPresent()) {
+        if (idParametersOpt.isEmpty()) {
             return originalMonitoringRef;
         }
 

@@ -683,8 +683,8 @@ public class ServerSubscriptionManager {
         String version = getVersion(incomingSiri);
         Duration previewInterval = null;
         if (SiriUtils.hasSMRequest(subscriptionRequest)
-                && subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0).getStopMonitoringRequest().getPreviewInterval() != null) {
-            previewInterval = subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0).getStopMonitoringRequest().getPreviewInterval();
+                && subscriptionRequest.getStopMonitoringSubscriptionRequests().getFirst().getStopMonitoringRequest().getPreviewInterval() != null) {
+            previewInterval = subscriptionRequest.getStopMonitoringSubscriptionRequests().getFirst().getStopMonitoringRequest().getPreviewInterval();
         } else {
             mappers = MappingAdapterPresets.getOutboundAdapters(outboundIdMappingPolicy);
         }
@@ -1608,7 +1608,7 @@ public class ServerSubscriptionManager {
         for (String monitoredRef : monitoredRefs) {
             if (outboundSubscriptionsByMonitoringRef.containsKey(monitoredRef)) {
                 for (OutboundSubscriptionSetup outboundSubscriptionSetup : outboundSubscriptionsByMonitoringRef.get(monitoredRef)) {
-                    if (CollectionUtils.isEmpty(outboundSubscriptionSetup.getDatasetList()) || outboundSubscriptionSetup.getDatasetList().contains(datasetId)) {
+                    if ((CollectionUtils.isEmpty(outboundSubscriptionSetup.getDatasetList()) && outboundSubscriptionSetup.getValueAdaptersByDataset().containsKey(datasetId)) || outboundSubscriptionSetup.getDatasetList().contains(datasetId)) {
                         results.add(outboundSubscriptionSetup);
                     }
                 }
