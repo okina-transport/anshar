@@ -1,4 +1,4 @@
-package no.rutebanken.anshar.routes.outbound;
+package no.rutebanken.anshar.routes.outbound.model;
 
 import lombok.Getter;
 

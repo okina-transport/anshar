@@ -26,7 +26,7 @@ import no.rutebanken.anshar.metrics.InboundTimeProcessor;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.ServiceNotSupportedException;
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
-import no.rutebanken.anshar.routes.outbound.CompressionFormat;
+import no.rutebanken.anshar.routes.outbound.model.CompressionFormat;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.OAuthConfigElement;

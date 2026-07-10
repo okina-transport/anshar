@@ -2,6 +2,7 @@ package no.rutebanken.anshar.util;
 
 
 import no.rutebanken.anshar.routes.outbound.OutboundSubscriptionSetup;
+import no.rutebanken.anshar.routes.outbound.model.OutSubscriptionIdentifier;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -141,7 +142,9 @@ public class SiriUtils {
 
     }
 
-    public static Siri setSubscriberRef(Siri siri, String subscriberRef) {
+    public static Siri setSubscriberAndSubscriptionRef(Siri siri, OutSubscriptionIdentifier outSubscriptionIdentifier) {
+        String subscriberRef = outSubscriptionIdentifier.subscriberRef();
+        String subscriptionRef = outSubscriptionIdentifier.subscripitionRef();
         if (StringUtils.isEmpty(subscriberRef) || siri.getServiceDelivery() == null) {
             return siri;
         }
@@ -153,6 +156,9 @@ public class SiriUtils {
                 RequestorRef subsRef = new RequestorRef();
                 subsRef.setValue(subscriberRef);
                 delivery.setSubscriberRef(subsRef);
+                SubscriptionRefStructure subscriptionRefStructure = new SubscriptionRefStructure();
+                subscriptionRefStructure.setValue(subscriptionRef);
+                delivery.setSubscriptionRef(subscriptionRefStructure);
             }
         }
 
@@ -161,6 +167,9 @@ public class SiriUtils {
                 RequestorRef subsRef = new RequestorRef();
                 subsRef.setValue(subscriberRef);
                 delivery.setSubscriberRef(subsRef);
+                SubscriptionRefStructure subscriptionRefStructure = new SubscriptionRefStructure();
+                subscriptionRefStructure.setValue(subscriptionRef);
+                delivery.setSubscriptionRef(subscriptionRefStructure);
             }
         }
 
@@ -169,6 +178,9 @@ public class SiriUtils {
                 RequestorRef subsRef = new RequestorRef();
                 subsRef.setValue(subscriberRef);
                 delivery.setSubscriberRef(subsRef);
+                SubscriptionRefStructure subscriptionRefStructure = new SubscriptionRefStructure();
+                subscriptionRefStructure.setValue(subscriptionRef);
+                delivery.setSubscriptionRef(subscriptionRefStructure);
             }
         }
 
@@ -177,6 +189,9 @@ public class SiriUtils {
                 RequestorRef subsRef = new RequestorRef();
                 subsRef.setValue(subscriberRef);
                 delivery.setSubscriberRef(subsRef);
+                SubscriptionRefStructure subscriptionRefStructure = new SubscriptionRefStructure();
+                subscriptionRefStructure.setValue(subscriptionRef);
+                delivery.setSubscriptionRef(subscriptionRefStructure);
             }
         }
 
@@ -185,6 +200,9 @@ public class SiriUtils {
                 RequestorRef subsRef = new RequestorRef();
                 subsRef.setValue(subscriberRef);
                 delivery.setSubscriberRef(subsRef);
+                SubscriptionRefStructure subscriptionRefStructure = new SubscriptionRefStructure();
+                subscriptionRefStructure.setValue(subscriptionRef);
+                delivery.setSubscriptionRef(subscriptionRefStructure);
             }
         }
 
@@ -193,6 +211,9 @@ public class SiriUtils {
                 RequestorRef subsRef = new RequestorRef();
                 subsRef.setValue(subscriberRef);
                 delivery.setSubscriberRef(subsRef);
+                SubscriptionRefStructure subscriptionRefStructure = new SubscriptionRefStructure();
+                subscriptionRefStructure.setValue(subscriptionRef);
+                delivery.setSubscriptionRef(subscriptionRefStructure);
             }
         }
         return siri;

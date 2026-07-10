@@ -59,7 +59,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
 
     @BeforeEach
     public void init() {
-        subscriptionManager.getSubscriptions().clear();
+        subscriptionManager.subscriptions.clear();
     }
 
     private final String subscriptionResponse = """
