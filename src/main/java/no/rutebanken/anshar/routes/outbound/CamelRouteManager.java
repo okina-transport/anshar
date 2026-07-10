@@ -19,6 +19,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import no.rutebanken.anshar.data.VehicleActivities;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
+import no.rutebanken.anshar.routes.outbound.model.OutSubscriptionIdentifier;
 import no.rutebanken.anshar.routes.siri.handlers.outbound.SituationExchangeOutbound;
 import no.rutebanken.anshar.routes.siri.processor.GmSIVSicAQuayPostProcessor;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
@@ -41,7 +42,6 @@ import java.net.SocketException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 
 import static no.rutebanken.anshar.routes.HttpParameter.INTERNAL_SIRI_DATA_TYPE;
 import static no.rutebanken.anshar.routes.HttpParameter.SIRI_VERSION_HEADER_NAME;
@@ -132,13 +132,13 @@ public class CamelRouteManager {
 
 
                 // On remplace les données partielles reçues par l'intégralité de la donnée si incrementalUpdate de l'abonnement est à false
-                if (!subscriptionRequest.getIncrementalUpdates()) {
+                if (!subscriptionRequest.isIncrementalUpdates()) {
                     handleFullUpdateDelivery(subscriptionRequest, inboundTime);
                     return;
                 }
 
                 for (Siri siri : splitSiri) {
-                    siri = SiriUtils.setSubscriberRef(siri, subscriptionRequest.getRequestorRef());
+                    siri = SiriUtils.setSubscriberAndSubscriptionRef(siri, new OutSubscriptionIdentifier(subscriptionRequest.getRequestorRef(), subscriptionRequest.getSubscriptionId()));
                     if (subscriptionRequest.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
                         if (subscriptionRequest.getPreviewInterval() != null) {
                             siri = SiriUtils.filterStopMonitoringOnPreviewInterval(siri, subscriptionRequest);

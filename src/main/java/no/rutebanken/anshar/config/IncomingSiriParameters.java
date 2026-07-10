@@ -2,7 +2,7 @@ package no.rutebanken.anshar.config;
 
 import lombok.Getter;
 import lombok.Setter;
-import no.rutebanken.anshar.routes.outbound.CompressionFormat;
+import no.rutebanken.anshar.routes.outbound.model.CompressionFormat;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 
 import java.io.InputStream;
