@@ -429,7 +429,7 @@ public class SiriHelper {
         return splitDeliveries(payload, maximumSizePerDelivery, null);
     }
 
-    public List<Siri> splitDeliveries(Siri payload, int maximumSizePerDelivery, String subscriptionRef) {
+    public List<Siri> splitDeliveries(Siri payload, int maximumSizePerDelivery, String subscriptionId) {
 
         List<Siri> siriList = new ArrayList<>();
 
@@ -438,6 +438,11 @@ public class SiriHelper {
             return siriList;
         }
 
+        MessageRefStructure requestMessageRef = payload.getServiceDelivery().getRequestMessageRef();
+        String requestMessageRefValue = null;
+        if (requestMessageRef != null) {
+            requestMessageRefValue = requestMessageRef.getValue();
+        }
         if (containsValues(payload.getServiceDelivery().getSituationExchangeDeliveries())) {
 
             List<PtSituationElement> situationElementList = payload.getServiceDelivery()
@@ -448,7 +453,7 @@ public class SiriHelper {
             List<List> sxList = splitList(situationElementList, maximumSizePerDelivery);
 
             for (List<PtSituationElement> list : sxList) {
-                siriList.add(siriObjectFactory.createSXServiceDelivery(list, payload.getServiceDelivery().getProducerRef().getValue(), payload.getServiceDelivery().getRequestMessageRef() != null ? payload.getServiceDelivery().getRequestMessageRef().getValue() : null));
+                siriList.add(siriObjectFactory.createSXServiceDelivery(list, payload.getServiceDelivery().getProducerRef().getValue(), requestMessageRef != null ? requestMessageRefValue : null));
             }
 
         } else if (containsValues(payload.getServiceDelivery().getVehicleMonitoringDeliveries())) {
@@ -460,7 +465,7 @@ public class SiriHelper {
             List<List> vmList = splitList(vehicleActivities, maximumSizePerDelivery);
 
             for (List<VehicleActivityStructure> list : vmList) {
-                siriList.add(siriObjectFactory.createVMServiceDelivery(list, payload.getServiceDelivery().getProducerRef().getValue(), payload.getServiceDelivery().getRequestMessageRef() != null ? payload.getServiceDelivery().getRequestMessageRef().getValue() : null));
+                siriList.add(siriObjectFactory.createVMServiceDelivery(list, payload.getServiceDelivery().getProducerRef().getValue(), requestMessageRefValue));
             }
 
         } else if (containsValues(payload.getServiceDelivery().getEstimatedTimetableDeliveries())) {
@@ -473,7 +478,7 @@ public class SiriHelper {
             List<List> etList = splitList(timetables, maximumSizePerDelivery);
 
             for (List<EstimatedVehicleJourney> list : etList) {
-                siriList.add(siriObjectFactory.createETServiceDelivery(list, subscriptionRef, payload.getServiceDelivery().getRequestMessageRef() != null ? payload.getServiceDelivery().getRequestMessageRef().getValue() : null));
+                siriList.add(siriObjectFactory.createETServiceDelivery(list, subscriptionId, requestMessageRefValue));
             }
 
         } else if (containsValues(payload.getServiceDelivery().getStopMonitoringDeliveries())) {
@@ -486,7 +491,7 @@ public class SiriHelper {
                 List<List> etList = splitList(monitoredStopVisits, maximumSizePerDelivery);
 
                 for (List<MonitoredStopVisit> list : etList) {
-                    siriList.add(siriObjectFactory.createSMServiceDelivery(list, payload.getServiceDelivery().getProducerRef().getValue(), payload.getServiceDelivery().getRequestMessageRef() != null ? payload.getServiceDelivery().getRequestMessageRef().getValue() : null));
+                    siriList.add(siriObjectFactory.createSMServiceDelivery(list, subscriptionId, requestMessageRefValue));
                 }
             }
 
@@ -498,7 +503,7 @@ public class SiriHelper {
             if (!cancellations.isEmpty()) {
                 List<List> cancellationList = splitList(cancellations, maximumSizePerDelivery);
                 for (List<MonitoredStopVisit> list : cancellationList) {
-                    siriList.add(siriObjectFactory.createSMServiceDelivery(list, payload.getServiceDelivery().getProducerRef().getValue(), payload.getServiceDelivery().getRequestMessageRef() != null ? payload.getServiceDelivery().getRequestMessageRef().getValue() : null));
+                    siriList.add(siriObjectFactory.createSMServiceDelivery(list, payload.getServiceDelivery().getProducerRef().getValue(), requestMessageRefValue));
                 }
             }
 
@@ -511,7 +516,7 @@ public class SiriHelper {
             List<List> gmList = splitList(generalMsgList, maximumSizePerDelivery);
 
             for (List<GeneralMessage> list : gmList) {
-                siriList.add(siriObjectFactory.createGMServiceDelivery(list, payload.getServiceDelivery().getProducerRef().getValue(), payload.getServiceDelivery().getRequestMessageRef() != null ? payload.getServiceDelivery().getRequestMessageRef().getValue() : null));
+                siriList.add(siriObjectFactory.createGMServiceDelivery(list, payload.getServiceDelivery().getProducerRef().getValue(), requestMessageRefValue));
             }
 
             // GM cancellations
@@ -522,7 +527,7 @@ public class SiriHelper {
             List<List> gmCancellationList = splitList(gmCancellationsList, maximumSizePerDelivery);
 
             for (List<GeneralMessageCancellation> list : gmCancellationList) {
-                siriList.add(siriObjectFactory.createGMServiceDelivery(list, payload.getServiceDelivery().getProducerRef().getValue(), payload.getServiceDelivery().getRequestMessageRef() != null ? payload.getServiceDelivery().getRequestMessageRef().getValue() : null));
+                siriList.add(siriObjectFactory.createGMServiceDelivery(list, payload.getServiceDelivery().getProducerRef().getValue(), requestMessageRefValue));
             }
 
 

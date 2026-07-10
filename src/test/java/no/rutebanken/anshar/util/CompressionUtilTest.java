@@ -1,6 +1,6 @@
 package no.rutebanken.anshar.util;
 
-import no.rutebanken.anshar.routes.outbound.CompressionFormat;
+import no.rutebanken.anshar.routes.outbound.model.CompressionFormat;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;

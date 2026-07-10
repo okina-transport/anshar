@@ -2,6 +2,7 @@ package no.rutebanken.anshar.routes.outbound;
 
 import com.aayushatharva.brotli4j.encoder.Encoder;
 import lombok.extern.slf4j.Slf4j;
+import no.rutebanken.anshar.routes.outbound.model.CompressionFormat;
 import no.rutebanken.anshar.util.CompressionUtil;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;

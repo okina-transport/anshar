@@ -683,8 +683,8 @@ public class ServerSubscriptionManager {
         String version = getVersion(incomingSiri);
         Duration previewInterval = null;
         if (SiriUtils.hasSMRequest(subscriptionRequest)
-                && subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0).getStopMonitoringRequest().getPreviewInterval() != null) {
-            previewInterval = subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0).getStopMonitoringRequest().getPreviewInterval();
+                && subscriptionRequest.getStopMonitoringSubscriptionRequests().getFirst().getStopMonitoringRequest().getPreviewInterval() != null) {
+            previewInterval = subscriptionRequest.getStopMonitoringSubscriptionRequests().getFirst().getStopMonitoringRequest().getPreviewInterval();
         } else {
             mappers = MappingAdapterPresets.getOutboundAdapters(outboundIdMappingPolicy);
         }
@@ -727,7 +727,6 @@ public class ServerSubscriptionManager {
                 incomingSiriParameters.getCompressionFormat(),
                 isSicAQuay
         );
-
         newOutboundSubscription.setOutboundIdMappingPolicy(outboundIdMappingPolicy);
         newOutboundSubscription.setPreviewInterval(previewInterval);
 
@@ -1030,27 +1029,27 @@ public class ServerSubscriptionManager {
         if (SiriHelper.containsValues(subscriptionRequest.getSituationExchangeSubscriptionRequests())) {
 
             SituationExchangeSubscriptionStructure situationExchangeSubscriptionStructure = subscriptionRequest.
-                    getSituationExchangeSubscriptionRequests().get(0);
+                    getSituationExchangeSubscriptionRequests().getFirst();
 
             return getSubscriptionIdentifier(situationExchangeSubscriptionStructure);
 
         } else if (SiriHelper.containsValues(subscriptionRequest.getVehicleMonitoringSubscriptionRequests())) {
 
             VehicleMonitoringSubscriptionStructure vehicleMonitoringSubscriptionStructure =
-                    subscriptionRequest.getVehicleMonitoringSubscriptionRequests().get(0);
+                    subscriptionRequest.getVehicleMonitoringSubscriptionRequests().getFirst();
 
             return getSubscriptionIdentifier(vehicleMonitoringSubscriptionStructure);
 
         } else if (SiriHelper.containsValues(subscriptionRequest.getEstimatedTimetableSubscriptionRequests())) {
 
             EstimatedTimetableSubscriptionStructure estimatedTimetableSubscriptionStructure =
-                    subscriptionRequest.getEstimatedTimetableSubscriptionRequests().get(0);
+                    subscriptionRequest.getEstimatedTimetableSubscriptionRequests().getFirst();
 
             return getSubscriptionIdentifier(estimatedTimetableSubscriptionStructure);
         } else if (SiriHelper.containsValues(subscriptionRequest.getStopMonitoringSubscriptionRequests())) {
 
             StopMonitoringSubscriptionStructure stopMonitoringSubscriptionStructure =
-                    subscriptionRequest.getStopMonitoringSubscriptionRequests().get(0);
+                    subscriptionRequest.getStopMonitoringSubscriptionRequests().getFirst();
 
             return getSubscriptionIdentifier(stopMonitoringSubscriptionStructure);
         } else if (SiriHelper.containsValues(subscriptionRequest.getGeneralMessageSubscriptionRequests())) {
