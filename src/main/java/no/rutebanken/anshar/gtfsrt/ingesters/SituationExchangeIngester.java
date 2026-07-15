@@ -131,6 +131,7 @@ public class SituationExchangeIngester extends AbstractIngester {
         setup.setSubscriptionId(prefix + datasetId);
         setup.setName(prefix + datasetId);
         setup.setSubscriptionType(SiriDataType.SITUATION_EXCHANGE);
+        setup.getUrlMap().clear();
         setup.getUrlMap().put(RequestType.GET_SITUATION_EXCHANGE, url);
         subscriptionManager.addSubscription(prefix + datasetId, setup);
         subscriptionManager.addGTFSRTSubscription(prefix + datasetId);

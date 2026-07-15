@@ -125,6 +125,7 @@ public class VehicleMonitoringIngester extends AbstractIngester {
             setup.setName(globalSubscriptionId);
             setup.setSubscriptionId(globalSubscriptionId);
             setup.getLineRefValues().add(objectRef);
+            setup.getUrlMap().clear();
             setup.getUrlMap().put(RequestType.GET_VEHICLE_MONITORING, url);
             subscriptionManager.addSubscription(globalSubscriptionId, setup);
         }
