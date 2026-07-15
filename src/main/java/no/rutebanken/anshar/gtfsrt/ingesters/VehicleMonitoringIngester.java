@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.gtfsrt.ingesters;
 
+import jakarta.xml.bind.JAXBException;
 import no.rutebanken.anshar.data.DiscoveryCache;
 import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.VehicleMonitoringInbound;
@@ -7,14 +8,13 @@ import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.apache.camel.Exchange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.Siri;
 import uk.org.siri.siri21.VehicleActivityStructure;
-
-import jakarta.xml.bind.JAXBException;
 
 import javax.xml.stream.XMLStreamException;
 import java.io.InputStream;
@@ -125,6 +125,7 @@ public class VehicleMonitoringIngester extends AbstractIngester {
             setup.setName(globalSubscriptionId);
             setup.setSubscriptionId(globalSubscriptionId);
             setup.getLineRefValues().add(objectRef);
+            setup.getUrlMap().put(RequestType.GET_VEHICLE_MONITORING, url);
             subscriptionManager.addSubscription(globalSubscriptionId, setup);
         }
     }
