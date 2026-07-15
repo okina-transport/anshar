@@ -1,11 +1,13 @@
 package no.rutebanken.anshar.gtfsrt.ingesters;
 
+import jakarta.xml.bind.JAXBException;
 import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.SituationExchangeInbound;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
+import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.apache.camel.Exchange;
 import org.apache.commons.lang3.BooleanUtils;
 import org.slf4j.Logger;
@@ -13,8 +15,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.PtSituationElement;
 import uk.org.siri.siri21.Siri;
-
-import jakarta.xml.bind.JAXBException;
 
 import javax.xml.stream.XMLStreamException;
 import java.io.InputStream;
@@ -131,6 +131,7 @@ public class SituationExchangeIngester extends AbstractIngester {
         setup.setSubscriptionId(prefix + datasetId);
         setup.setName(prefix + datasetId);
         setup.setSubscriptionType(SiriDataType.SITUATION_EXCHANGE);
+        setup.getUrlMap().put(RequestType.GET_SITUATION_EXCHANGE, url);
         subscriptionManager.addSubscription(prefix + datasetId, setup);
         subscriptionManager.addGTFSRTSubscription(prefix + datasetId);
     }
