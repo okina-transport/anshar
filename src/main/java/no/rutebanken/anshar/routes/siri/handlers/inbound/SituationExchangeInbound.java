@@ -321,6 +321,20 @@ public class SituationExchangeInbound {
         }
     }
 
+    public void cleanupFinishedTasks() {
+        sharedScheduler.getAllScheduledFutures().values().forEach(list ->
+                list.forEach(future -> {
+                    if (future.isDone() || future.isCancelled()) {
+                        try {
+                            future.dispose();
+                        } catch (Exception e) {
+                            logger.debug("GeneralMessage : impossible de disposer une tâche terminée - {}", e.getMessage());
+                        }
+                    }
+                })
+        );
+    }
+
     private LocalDateTime getSituationStartPublicationTime(PtSituationElement situationToSchedule) {
 
         Optional<ZonedDateTime> lowestOpt = situationToSchedule.getPublicationWindows().stream()
