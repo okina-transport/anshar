@@ -21,7 +21,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.*;
 
@@ -298,20 +297,6 @@ public class SituationExchangeInbound {
 
     }
 
-    @Scheduled(fixedRate = 600000)
-    public void cleanupFinishedTasks() {
-        sharedScheduler.getAllScheduledFutures().values().forEach(list ->
-                list.forEach(future -> {
-                    if (future.isDone() || future.isCancelled()) {
-                        try {
-                            future.dispose();
-                        } catch (Exception e) {
-                            logger.debug("GeneralMessage : impossible de disposer une tâche terminée - {}", e.getMessage());
-                        }
-                    }
-                })
-        );
-    }
 
     private IScheduledFuture<Object> findScheduledFutureByName(String taskName) {
         for (List<IScheduledFuture<Object>> list : sharedScheduler.getAllScheduledFutures().values()) {
