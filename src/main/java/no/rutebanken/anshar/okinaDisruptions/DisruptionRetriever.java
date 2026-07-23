@@ -8,6 +8,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.micrometer.core.instrument.util.StringUtils;
 import no.rutebanken.anshar.okinaDisruptions.model.Disruption;
 import no.rutebanken.anshar.okinaDisruptions.model.MillisOrLocalDateTimeDeserializer;
+import no.rutebanken.anshar.routes.siri.converter.SxInboundData;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.SituationExchangeInbound;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
@@ -113,7 +114,14 @@ public class DisruptionRetriever {
 
             List<String> subscriptionList = getSubscriptions(situations);
             checkAndCreateSubscriptions(subscriptionList);
-            ingestedSituations.addAll(situationExchangeInbound.ingestSituations(currentDisruptionEntry.getKey().toUpperCase(), situations, true, System.currentTimeMillis()));
+            ingestedSituations.addAll(situationExchangeInbound
+                    .ingestSituations(SxInboundData.builder()
+                            .datasetId(currentDisruptionEntry.getKey().toUpperCase())
+                            .incomingSituations(situations)
+                            .inboundTime(System.currentTimeMillis())
+                            .build()
+                    )
+            );
 
         }
 

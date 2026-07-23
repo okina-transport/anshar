@@ -22,4 +22,5 @@ public class GtfsRTApiDto {
     private String currentStatus;
     private String apiKey;
     private PublishToDisplayAction publishToDisplayAction;
+    private Boolean generateGM;
 }

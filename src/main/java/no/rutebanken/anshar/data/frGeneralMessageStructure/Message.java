@@ -16,7 +16,7 @@ import java.io.Serializable;
 public class Message implements Serializable {
 
     @XmlElement(name = "MessageType", namespace = "http://www.siri.org.uk/siri")
-    private String msgType;
+    private MessageType msgType;
 
     @XmlElement(name = "MessageText", namespace = "http://www.siri.org.uk/siri")
     private String msgText;

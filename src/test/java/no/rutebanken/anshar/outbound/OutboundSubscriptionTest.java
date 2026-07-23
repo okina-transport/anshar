@@ -6,6 +6,7 @@ import no.rutebanken.anshar.config.IncomingSiriParameters;
 import no.rutebanken.anshar.idTests.TestUtils;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
+import no.rutebanken.anshar.routes.siri.converter.SxInboundData;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.SituationExchangeInbound;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.awaitility.Durations;
@@ -189,7 +190,11 @@ class OutboundSubscriptionTest extends SpringBootBaseTest {
         situation1.getValidityPeriods().add(interval);
         List<PtSituationElement> inputSituations = List.of(situation1);
 
-        situationExchangeInbound.ingestSituations("DAT1", inputSituations, true);
+        situationExchangeInbound.ingestSituations(SxInboundData.builder()
+                .datasetId("DAT1")
+                .incomingSituations(inputSituations)
+                .publishToOutbound(true)
+                .build());
 
         await()
                 .atMost(Durations.TEN_SECONDS)
@@ -198,7 +203,11 @@ class OutboundSubscriptionTest extends SpringBootBaseTest {
                 .pollDelay(Durations.TWO_SECONDS)
                 .until(() -> serverSubscriptionManager.getAllSubscriptions(SiriDataType.GENERAL_MESSAGE).size() == 1);
 
-        situationExchangeInbound.ingestSituations("DAT1", inputSituations, true);
+        situationExchangeInbound.ingestSituations(SxInboundData.builder()
+                .datasetId("DAT1")
+                .incomingSituations(inputSituations)
+                .publishToOutbound(true)
+                .build());
 
         await()
                 .atMost(Durations.TEN_SECONDS)
@@ -236,7 +245,11 @@ class OutboundSubscriptionTest extends SpringBootBaseTest {
 
         List<PtSituationElement> inputSituations = createSiriWithAlerts(true);
 
-        situationExchangeInbound.ingestSituations("DAT1", inputSituations, true);
+        situationExchangeInbound.ingestSituations(SxInboundData.builder()
+                .datasetId("DAT1")
+                .incomingSituations(inputSituations)
+                .publishToOutbound(true)
+                .build());
 
         await()
                 .atMost(Durations.TEN_SECONDS)
@@ -282,7 +295,11 @@ class OutboundSubscriptionTest extends SpringBootBaseTest {
 
         List<PtSituationElement> inputSituations = createSiriWithAlerts(true);
 
-        situationExchangeInbound.ingestSituations("DAT1", inputSituations, true);
+        situationExchangeInbound.ingestSituations(SxInboundData.builder()
+                .datasetId("DAT1")
+                .incomingSituations(inputSituations)
+                .publishToOutbound(true)
+                .build());
 
         await()
                 .atMost(Durations.TEN_SECONDS)
@@ -327,7 +344,11 @@ class OutboundSubscriptionTest extends SpringBootBaseTest {
 
         List<PtSituationElement> inputSituations = createSiriWithAlerts(false);
 
-        situationExchangeInbound.ingestSituations("DAT1", inputSituations, true);
+        situationExchangeInbound.ingestSituations(SxInboundData.builder()
+                .datasetId("DAT1")
+                .incomingSituations(inputSituations)
+                .publishToOutbound(true)
+                .build());
 
         await()
                 .atMost(Durations.TEN_SECONDS)
@@ -363,7 +384,11 @@ class OutboundSubscriptionTest extends SpringBootBaseTest {
 
         List<PtSituationElement> inputSituations = createSiriWithAlerts(false);
 
-        situationExchangeInbound.ingestSituations("DAT1", inputSituations, true);
+        situationExchangeInbound.ingestSituations(SxInboundData.builder()
+                .datasetId("DAT1")
+                .incomingSituations(inputSituations)
+                .publishToOutbound(true)
+                .build());
 
         await()
                 .atMost(Durations.TEN_SECONDS)

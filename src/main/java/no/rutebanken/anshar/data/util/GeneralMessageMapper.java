@@ -5,6 +5,7 @@ import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Message;
+import no.rutebanken.anshar.data.frGeneralMessageStructure.MessageType;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.apache.commons.lang3.StringUtils;
@@ -61,13 +62,13 @@ public class GeneralMessageMapper {
         Message msg = new Message();
 
         msg.setMsgText(getMsgText(situation));
-        msg.setMsgType("textOnly");
+        msg.setMsgType(MessageType.TEXT_ONLY);
 
         if (situation.getAffects() != null) {
             mapAffects(datasetId, content, situation);
         }
 
-        content.setMessage(msg);
+        content.getMessages().add(msg);
         generalMessage.setContent(content);
     }
 

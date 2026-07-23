@@ -146,8 +146,6 @@ public class SubscriptionSetup implements Serializable {
     @Getter
     @Setter
     private boolean useProvidedCodespaceId = false;
-    @Setter
-    private boolean enrichSiriData = false;
     @Getter
     @Setter
     private ZonedDateTime startedAt;
@@ -172,6 +170,10 @@ public class SubscriptionSetup implements Serializable {
 
     @EqualsAndHashCode.Exclude
     private SubscriptionStatus status = SubscriptionStatus.WAITING_FOR_START;
+
+    @Getter
+    @Setter
+    private Boolean generateSX;
 
 
     public SubscriptionSetup() {
@@ -423,10 +425,6 @@ public class SubscriptionSetup implements Serializable {
             //Reset validationFilter when validation is disabled
             setValidationFilter(null);
         }
-    }
-
-    public boolean enrichSiriData() {
-        return enrichSiriData;
     }
 
     public void setAddress(String address) {

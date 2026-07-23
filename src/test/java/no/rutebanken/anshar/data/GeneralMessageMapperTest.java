@@ -3,6 +3,7 @@ package no.rutebanken.anshar.data;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
+import no.rutebanken.anshar.data.frGeneralMessageStructure.MessageType;
 import no.rutebanken.anshar.data.util.GeneralMessageMapper;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
@@ -62,8 +63,8 @@ public class GeneralMessageMapperTest extends SpringBootBaseTest {
         assertEquals(ZonedDateTime.of(2024, 11, 29, 19, 50, 0, 0, ZoneId.of("Europe/Paris")),
                 output.getValidUntilTime());
         Content outputContent = (Content) output.getContent();
-        assertEquals("Travaux prévus, Ligne C2 et 28 impactées", outputContent.getMessage().getMsgText());
-        assertEquals("textOnly", outputContent.getMessage().getMsgType());
+        assertEquals("Travaux prévus, Ligne C2 et 28 impactées", outputContent.getMessages().getFirst().getMsgText());
+        assertEquals(MessageType.TEXT_ONLY, outputContent.getMessages().getFirst().getMsgType());
         assertEquals(0, outputContent.getGroupOfLinesRefs().size());
         assertTrue(CollectionUtils.isEqualCollection(List.of("NAOLIBORG:Line:C2:LOC", "NAOLIBORG:Line:28:LOC"),
                 outputContent.getLineRefs()), "should map 2 line refs");

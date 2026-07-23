@@ -40,5 +40,5 @@ public class SubscriptionDto {
     private Boolean validated;
     private String currentStatus;
     private Boolean overrideDestinationName;
-
+    private Boolean generateSX;
 }

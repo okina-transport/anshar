@@ -4,6 +4,7 @@ import jakarta.xml.bind.JAXBException;
 import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Message;
+import no.rutebanken.anshar.data.frGeneralMessageStructure.MessageType;
 import no.rutebanken.anshar.data.util.CustomSiriXml;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import org.apache.commons.collections4.CollectionUtils;
@@ -49,8 +50,9 @@ public class GmSIVSicAQuayPostProcessor extends ValueAdapter implements PostProc
                         }
                         Message message = new Message();
                         message.setMsgText(alertMessageSicAQuay.get());
-                        message.setMsgType("textOnly");
-                        content.setMessage(message);
+                        message.setMsgType(MessageType.TEXT_ONLY);
+                        content.getMessages().clear();
+                        content.getMessages().add(message);
                         gm.setContent(content);
                     } catch (JAXBException e) {
                         log.error("Error updating Content.Message.MessageText value", e);
