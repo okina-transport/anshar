@@ -28,6 +28,7 @@ import org.mockserver.matchers.TimeToLive;
 import org.mockserver.matchers.Times;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -248,6 +249,47 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
 
     }
 
+    @Test
+    void test_unresponsive_check_disabled_for_sx_only() {
+        subscriptionManager.getSubscriptions().clear();
+
+        SubscriptionSetup smSubscription = createRunningSubscription(SiriDataType.STOP_MONITORING);
+        SubscriptionSetup sxSubscription = createRunningSubscription(SiriDataType.SITUATION_EXCHANGE);
+
+        subscriptionManager.addSubscription(smSubscription.getSubscriptionId(), smSubscription);
+        subscriptionManager.addSubscription(sxSubscription.getSubscriptionId(), sxSubscription);
+
+        Instant staleActivity = Instant.now().minus(30, ChronoUnit.MINUTES);
+        subscriptionManager.setLastActivity(smSubscription.getSubscriptionId(), staleActivity);
+        subscriptionManager.setLastActivity(sxSubscription.getSubscriptionId(), staleActivity);
+
+        try {
+            // check enabled (default) : both SM and SX are reported unresponsive
+            ReflectionTestUtils.setField(subscriptionManager, "disableUnresponsiveCheckSx", false);
+            List<String> unresponsiveIds = subscriptionManager.getUnresponsiveSubscriptions().stream()
+                    .map(SubscriptionSetup::getSubscriptionId)
+                    .toList();
+            Assertions.assertTrue(unresponsiveIds.contains(smSubscription.getSubscriptionId()));
+            Assertions.assertTrue(unresponsiveIds.contains(sxSubscription.getSubscriptionId()));
+
+            // check disabled for SX : only SM is reported unresponsive, SX is excluded
+            ReflectionTestUtils.setField(subscriptionManager, "disableUnresponsiveCheckSx", true);
+            unresponsiveIds = subscriptionManager.getUnresponsiveSubscriptions().stream()
+                    .map(SubscriptionSetup::getSubscriptionId)
+                    .toList();
+            Assertions.assertTrue(unresponsiveIds.contains(smSubscription.getSubscriptionId()));
+            Assertions.assertFalse(unresponsiveIds.contains(sxSubscription.getSubscriptionId()));
+        } finally {
+            ReflectionTestUtils.setField(subscriptionManager, "disableUnresponsiveCheckSx", false);
+        }
+    }
+
+    private SubscriptionSetup createRunningSubscription(SiriDataType type) {
+        SubscriptionSetup subscription = createSubscription(type, 10800);
+        subscription.setStatus(SubscriptionStatus.RUNNING);
+        return subscription;
+    }
+
     public static String getCurrentTimeMinus10() {
         LocalTime now = LocalTime.now().minusMinutes(10);
         return String.format("%02d:%02d", now.getHour(), now.getMinute());
@@ -269,12 +311,20 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
     }
 
     private SubscriptionSetup createSubscription(long initialDuration, Duration heartbeatInterval) {
+        return createSubscription(SiriDataType.STOP_MONITORING, initialDuration, heartbeatInterval);
+    }
+
+    private SubscriptionSetup createSubscription(SiriDataType type, long initialDuration) {
+        return createSubscription(type, initialDuration, Duration.ofMinutes(4));
+    }
+
+    private SubscriptionSetup createSubscription(SiriDataType type, long initialDuration, Duration heartbeatInterval) {
         HashMap<RequestType, String> urlMap = new HashMap<>();
         urlMap.put(RequestType.SUBSCRIBE, "http://localhost:1080/providerEndpoint");
         urlMap.put(RequestType.DELETE_SUBSCRIPTION, "http://localhost:1080/providerEndpoint");
 
         SubscriptionSetup sub = new SubscriptionSetup(
-                SiriDataType.STOP_MONITORING,
+                type,
                 SubscriptionSetup.SubscriptionMode.SUBSCRIBE,
                 "http://localhost",
                 heartbeatInterval,
