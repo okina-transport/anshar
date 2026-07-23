@@ -2,6 +2,7 @@ package no.rutebanken.anshar.gtfsrt.ingesters;
 
 import jakarta.xml.bind.JAXBException;
 import no.rutebanken.anshar.routes.health.HealthManager;
+import no.rutebanken.anshar.routes.siri.converter.SxInboundData;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.SituationExchangeInbound;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -50,20 +51,25 @@ public class SituationExchangeIngester extends AbstractIngester {
             Boolean closeMissingAlerts = e.getIn().getHeader(CLOSE_MISSING_ALERTS_HEADER_NAME, Boolean.class);
 
             if (siri.getServiceDelivery() == null || siri.getServiceDelivery().getSituationExchangeDeliveries() == null || siri.getServiceDelivery().getSituationExchangeDeliveries().get(0).getSituations() == null) {
-                logger.info("Empty Situation exchange from GTFS-RT on dataset:" + datasetId);
+                logger.info("Empty Situation exchange from GTFS-RT on dataset: {}", datasetId);
                 return;
             }
 
             healthManager.dataReceived();
 
-            List<PtSituationElement> situations = siri.getServiceDelivery().getSituationExchangeDeliveries().get(0).getSituations().getPtSituationElements();
+            List<PtSituationElement> situations = siri.getServiceDelivery().getSituationExchangeDeliveries().getFirst().getSituations().getPtSituationElements();
             if (BooleanUtils.isTrue(closeMissingAlerts)) {
                 situationExchangeInbound.closeMissingAlerts(datasetId, situations, inboundTime);
             }
             List<String> subscriptionList = getSubscriptions(situations);
             checkAndCreateSubscriptions(subscriptionList, datasetId, url);
 
-            Collection<PtSituationElement> ingestedSituations = situationExchangeInbound.ingestSituations(datasetId, situations, true, inboundTime);
+            Collection<PtSituationElement> ingestedSituations = situationExchangeInbound.ingestSituations(SxInboundData
+                    .builder()
+                    .datasetId(datasetId)
+                    .incomingSituations(situations)
+                    .inboundTime(inboundTime)
+                    .build());
 
             for (PtSituationElement situation : ingestedSituations) {
                 subscriptionManager.touchSubscription(GTFSRT_SX_PREFIX + getSituationSubscriptionId(situation), false);

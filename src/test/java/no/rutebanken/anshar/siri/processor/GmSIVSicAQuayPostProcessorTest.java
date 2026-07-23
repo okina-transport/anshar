@@ -146,7 +146,9 @@ class GmSIVSicAQuayPostProcessorTest {
 
         // Assert
         Content content = CustomSiriXml.getGeneralMessageContent(siri.getServiceDelivery().getGeneralMessageDeliveries().getFirst().getGeneralMessages().getFirst());
-        assertThat(content.getMessage().getMsgText()).isEqualTo("MESSAGE TEXT SIC A QUAY");
+        assertThat(content).isNotNull();
+        assertThat(content.getMessages()).isNotEmpty();
+        assertThat(content.getMessages().getFirst().getMsgText()).isEqualTo("MESSAGE TEXT SIC A QUAY");
     }
 
     @Test
@@ -159,7 +161,9 @@ class GmSIVSicAQuayPostProcessorTest {
 
         // Assert
         Content content = CustomSiriXml.getGeneralMessageContent(siri.getServiceDelivery().getGeneralMessageDeliveries().getFirst().getGeneralMessages().getFirst());
-        assertThat(content.getMessage().getMsgText()).isEqualTo("MESSAGE TEXT CONTENT");
+        assertThat(content).isNotNull();
+        assertThat(content.getMessages()).isNotEmpty();
+        assertThat(content.getMessages().getFirst().getMsgText()).isEqualTo("MESSAGE TEXT CONTENT");
     }
 
     @Test
@@ -172,7 +176,9 @@ class GmSIVSicAQuayPostProcessorTest {
 
         // Assert
         Content content = CustomSiriXml.getGeneralMessageContent(siri.getServiceDelivery().getGeneralMessageDeliveries().getFirst().getGeneralMessages().getFirst());
-        assertThat(content.getMessage().getMsgText()).isEqualTo("MESSAGE TEXT CONTENT");
+        assertThat(content).isNotNull();
+        assertThat(content.getMessages()).isNotEmpty();
+        assertThat(content.getMessages().getFirst().getMsgText()).isEqualTo("MESSAGE TEXT CONTENT");
     }
 
 }

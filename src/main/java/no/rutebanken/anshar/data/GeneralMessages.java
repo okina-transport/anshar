@@ -2,9 +2,11 @@ package no.rutebanken.anshar.data;
 
 import com.hazelcast.map.IMap;
 import com.hazelcast.query.Predicate;
+import jakarta.xml.bind.JAXBException;
 import lombok.Getter;
 import lombok.Setter;
 import no.rutebanken.anshar.config.AnsharConfiguration;
+import no.rutebanken.anshar.data.util.CustomSiriXml;
 import no.rutebanken.anshar.data.util.SiriObjectStorageKeyUtil;
 import no.rutebanken.anshar.data.util.TimingTracer;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
@@ -155,6 +157,14 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
 
                     if (StringUtils.isEmpty(generalMessage.getItemIdentifier())) {
                         generalMessage.setItemIdentifier(UUID.randomUUID().toString());
+                    }
+
+                    if (generalMessage.getContent() != null) {
+                        try {
+                            generalMessage.setContent(CustomSiriXml.getGeneralMessageContent(generalMessage));
+                        } catch (JAXBException e) {
+                            logger.warn("Unable to parse GM content for {}", generalMessage.getInfoMessageIdentifier(), e);
+                        }
                     }
 
                     if (generalMessage.getValidUntilTime() == null) {

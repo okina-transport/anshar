@@ -53,18 +53,15 @@ public class IshtarSynchronizeProcessor implements Processor {
     private final IdProcessingParameterDtoConverter idProcessingParameterDtoConverter;
     private final SubscriptionDtoToDiscoverySubscriptionConverter toDiscoverySubscriptionConverter;
     private final SubscriptionDtoToSubscriptionSetupConverter toSubscriptionSetupConverter;
-
-    @Autowired
-    OutputExternalIdsService outputExternalIdsService;
-
-
-    @Autowired
-    private TokenService tokenService;
+    private final OutputExternalIdsService outputExternalIdsService;
+    private final TokenService tokenService;
 
     public IshtarSynchronizeProcessor(SubscriptionConfig subscriptionConfig,
                                       DiscoverySubscriptionCreator discoverySubscriptionCreator,
                                       @Value("${ishtar.server.url}") URL ishtarUrl,
-                                      SubscriptionDtoToSubscriptionSetupConverter toSubscriptionSetupConverter) {
+                                      SubscriptionDtoToSubscriptionSetupConverter toSubscriptionSetupConverter,
+                                      OutputExternalIdsService outputExternalIdsService,
+                                      TokenService tokenService) {
         this.subscriptionConfig = subscriptionConfig;
         this.discoverySubscriptionCreator = discoverySubscriptionCreator;
         this.webClient = WebClient.builder().baseUrl(ishtarUrl.toString()).defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE).build();
@@ -73,6 +70,8 @@ public class IshtarSynchronizeProcessor implements Processor {
         this.idProcessingParameterDtoConverter = new IdProcessingParameterDtoConverter();
         this.toDiscoverySubscriptionConverter = new SubscriptionDtoToDiscoverySubscriptionConverter();
         this.toSubscriptionSetupConverter = toSubscriptionSetupConverter;
+        this.outputExternalIdsService = outputExternalIdsService;
+        this.tokenService = tokenService;
     }
 
     @Override

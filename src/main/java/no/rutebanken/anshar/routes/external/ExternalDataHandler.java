@@ -4,6 +4,7 @@ import jakarta.xml.bind.JAXBException;
 import no.rutebanken.anshar.data.DiscoveryCache;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.health.HealthManager;
+import no.rutebanken.anshar.routes.siri.converter.SxInboundData;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.EstimatedTimetableInbound;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.SituationExchangeInbound;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.StopMonitoringInbound;
@@ -179,7 +180,12 @@ public class ExternalDataHandler {
             List<PtSituationElement> situationsToIngest = collectSituations(siri);
 
             if (!situationsToIngest.isEmpty()) {
-                situationExchangeInbound.ingestSituations(datasetId, situationsToIngest, true, inboundTime);
+                situationExchangeInbound.ingestSituations(SxInboundData
+                        .builder()
+                        .datasetId(datasetId)
+                        .incomingSituations(situationsToIngest)
+                        .inboundTime(inboundTime)
+                        .build());
             }
 
         } catch (JAXBException | XMLStreamException jaxbException) {

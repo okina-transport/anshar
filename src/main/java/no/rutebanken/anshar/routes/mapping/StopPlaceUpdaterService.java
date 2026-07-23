@@ -229,6 +229,18 @@ public class StopPlaceUpdaterService {
         return stopPlaceAndQuayAssociation.get(stopPlaceId);
     }
 
+    public String getParentStopPlace(String quayId) {
+        if (quayId == null) {
+            return null;
+        }
+        for (Map.Entry<String, List<String>> entry : stopPlaceAndQuayAssociation.entrySet()) {
+            if (entry.getValue().contains(quayId)) {
+                return entry.getKey();
+            }
+        }
+        return null;
+    }
+
     private void updateStopPlaceMapping(String mappingUrl) {
         logger.info("Fetching mapping data - start. Fetching mapping-data from {}", mappingUrl);
 

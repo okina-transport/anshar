@@ -12,6 +12,7 @@ import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.outbound.OutboundSubscriptionSetup;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
+import no.rutebanken.anshar.routes.siri.converter.SxInboundData;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.SituationExchangeInbound;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
@@ -102,7 +103,11 @@ public class SX_subscription_tests extends SpringBootBaseTest {
         situationsToIngest.add(situation1);
 
 
-        situationExchangeInbound.ingestSituations("DAT1", situationsToIngest, true);
+        situationExchangeInbound.ingestSituations(SxInboundData.builder()
+                .datasetId("DAT1")
+                .incomingSituations(situationsToIngest)
+                .publishToOutbound(true)
+                .build());
 
         //Attente nécessaire car le post est traité par un thread
         Thread.sleep(5000);
@@ -147,7 +152,11 @@ public class SX_subscription_tests extends SpringBootBaseTest {
         situationsToIngest.add(situation1);
 
 
-        situationExchangeInbound.ingestSituations("DAT1", situationsToIngest, true);
+        situationExchangeInbound.ingestSituations(SxInboundData.builder()
+                .datasetId("DAT1")
+                .incomingSituations(situationsToIngest)
+                .publishToOutbound(true)
+                .build());
 
         //Attente nécessaire car le post est traité par un thread
         Thread.sleep(5000);
@@ -191,7 +200,11 @@ public class SX_subscription_tests extends SpringBootBaseTest {
         situationsToIngest.add(situation1);
 
 
-        situationExchangeInbound.ingestSituations("DAT1", situationsToIngest, true);
+        situationExchangeInbound.ingestSituations(SxInboundData.builder()
+                .datasetId("DAT1")
+                .incomingSituations(situationsToIngest)
+                .publishToOutbound(true)
+                .build());
 
         //Attente nécessaire car le post est traité par un thread
         Thread.sleep(5000);
@@ -235,7 +248,11 @@ public class SX_subscription_tests extends SpringBootBaseTest {
         situationsToIngest.add(situation1);
 
 
-        situationExchangeInbound.ingestSituations("DAT1", situationsToIngest, true);
+        situationExchangeInbound.ingestSituations(SxInboundData.builder()
+                .datasetId("DAT1")
+                .incomingSituations(situationsToIngest)
+                .publishToOutbound(true)
+                .build());
 
         //Attente nécessaire car le post est traité par un thread
         Thread.sleep(5000);

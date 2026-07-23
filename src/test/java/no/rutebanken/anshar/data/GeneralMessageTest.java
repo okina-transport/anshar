@@ -8,6 +8,7 @@ import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import no.rutebanken.anshar.data.util.CustomSiriXml;
 import no.rutebanken.anshar.helpers.TestObjectFactory;
 import no.rutebanken.anshar.integration.SpringBootBaseTest;
+import no.rutebanken.anshar.routes.siri.converter.SxInboundData;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.SituationExchangeInbound;
 import org.apache.commons.io.IOUtils;
@@ -49,6 +50,7 @@ public class GeneralMessageTest extends SpringBootBaseTest {
     @BeforeEach
     public void init() {
         generalMessages.clearAll();
+        situations.clearAll();
     }
 
     @Test
@@ -83,7 +85,11 @@ public class GeneralMessageTest extends SpringBootBaseTest {
         publicationWindow.setEndTime(nowPlusOne.plusHours(2));
         newOpensituation.getPublicationWindows().add(publicationWindow);
         incomingSituations.add(newOpensituation);
-        situationExchangeInbound.ingestSituations(datasetId, incomingSituations, false);
+        situationExchangeInbound.ingestSituations(SxInboundData.builder()
+                .datasetId(datasetId)
+                .incomingSituations(incomingSituations)
+                .publishToOutbound(false)
+                .build());
         Assertions.assertEquals(1, generalMessages.getAll().size());
     }
 
@@ -113,7 +119,11 @@ public class GeneralMessageTest extends SpringBootBaseTest {
         affectsScopeStructure.setVehicleJourneys(affectedVJ);
         newOpensituation.setAffects(affectsScopeStructure);
         incomingSituations.add(newOpensituation);
-        situationExchangeInbound.ingestSituations(datasetId, incomingSituations, false);
+        situationExchangeInbound.ingestSituations(SxInboundData.builder()
+                .datasetId(datasetId)
+                .incomingSituations(incomingSituations)
+                .publishToOutbound(false)
+                .build());
         Assertions.assertEquals(0, generalMessages.getAll().size());
     }
 
@@ -143,7 +153,11 @@ public class GeneralMessageTest extends SpringBootBaseTest {
         affectsScopeStructure.setVehicles(vehicles);
         newOpensituation.setAffects(affectsScopeStructure);
         incomingSituations.add(newOpensituation);
-        situationExchangeInbound.ingestSituations(datasetId, incomingSituations, false);
+        situationExchangeInbound.ingestSituations(SxInboundData.builder()
+                .datasetId(datasetId)
+                .incomingSituations(incomingSituations)
+                .publishToOutbound(false)
+                .build());
         Assertions.assertEquals(0, generalMessages.getAll().size());
     }
 
@@ -176,7 +190,11 @@ public class GeneralMessageTest extends SpringBootBaseTest {
         affectsScopeStructure.setNetworks(networks);
         newOpensituation.setAffects(affectsScopeStructure);
         incomingSituations.add(newOpensituation);
-        situationExchangeInbound.ingestSituations(datasetId, incomingSituations, false);
+        situationExchangeInbound.ingestSituations(SxInboundData.builder()
+                .datasetId(datasetId)
+                .incomingSituations(incomingSituations)
+                .publishToOutbound(false)
+                .build());
         Assertions.assertEquals(1, generalMessages.getAll().size());
     }
 
@@ -204,7 +222,11 @@ public class GeneralMessageTest extends SpringBootBaseTest {
         affectsScopeStructure.setPlaces(places);
         newOpensituation.setAffects(affectsScopeStructure);
         incomingSituations.add(newOpensituation);
-        situationExchangeInbound.ingestSituations(datasetId, incomingSituations, false);
+        situationExchangeInbound.ingestSituations(SxInboundData.builder()
+                .datasetId(datasetId)
+                .incomingSituations(incomingSituations)
+                .publishToOutbound(false)
+                .build());
         Assertions.assertEquals(0, generalMessages.getAll().size());
     }
 
@@ -228,7 +250,11 @@ public class GeneralMessageTest extends SpringBootBaseTest {
         newOpensituation.getPublicationWindows().add(publicationWindow);
         incomingSituations.add(newOpensituation);
 
-        situationExchangeInbound.ingestSituations(datasetId, incomingSituations, false);
+        situationExchangeInbound.ingestSituations(SxInboundData.builder()
+                .datasetId(datasetId)
+                .incomingSituations(incomingSituations)
+                .publishToOutbound(false)
+                .build());
 
         // Checking that General Message has NOT be inserted into GM cache (because publication window is defined in the future)
         Assertions.assertEquals(0, generalMessages.getAll().size());
@@ -261,7 +287,11 @@ public class GeneralMessageTest extends SpringBootBaseTest {
         newOpensituation.getPublicationWindows().add(publicationWindow);
         incomingSituations.add(newOpensituation);
 
-        situationExchangeInbound.ingestSituations(datasetId, incomingSituations, false);
+        situationExchangeInbound.ingestSituations(SxInboundData.builder()
+                .datasetId(datasetId)
+                .incomingSituations(incomingSituations)
+                .publishToOutbound(false)
+                .build());
 
         // Checking that General Message has NOT be inserted into GM cache (because publication window is defined in the future)
         Assertions.assertEquals(0, generalMessages.getAll().size());
@@ -276,7 +306,11 @@ public class GeneralMessageTest extends SpringBootBaseTest {
         ZonedDateTime now2 = ZonedDateTime.now();
         ZonedDateTime now2PlusOne = now2.plusMinutes(1);
         publicationWindow.setStartTime(now2PlusOne);
-        situationExchangeInbound.ingestSituations(datasetId, incomingSituations, false);
+        situationExchangeInbound.ingestSituations(SxInboundData.builder()
+                .datasetId(datasetId)
+                .incomingSituations(incomingSituations)
+                .publishToOutbound(false)
+                .build());
 
         // still empty because publication starts in 1 min
         Assertions.assertEquals(0, generalMessages.getAll().size());
@@ -989,12 +1023,20 @@ public class GeneralMessageTest extends SpringBootBaseTest {
 
 
         // ingesting an open situation
-        situationExchangeInbound.ingestSituations(datasetId, incomingSituations, false);
+        situationExchangeInbound.ingestSituations(SxInboundData.builder()
+                .datasetId(datasetId)
+                .incomingSituations(incomingSituations)
+                .publishToOutbound(false)
+                .build());
         Assertions.assertEquals(1, situations.getAll().size());
         Assertions.assertEquals(1, generalMessages.getAll().size());
 
         newOpensituation.setProgress(WorkflowStatusEnumeration.CLOSED);
-        situationExchangeInbound.ingestSituations(datasetId, incomingSituations, false);
+        situationExchangeInbound.ingestSituations(SxInboundData.builder()
+                .datasetId(datasetId)
+                .incomingSituations(incomingSituations)
+                .publishToOutbound(false)
+                .build());
 
         // After ingesting the closed situation, general info must have been removed from cache
         Assertions.assertEquals(0, generalMessages.getAll().size());

@@ -21,4 +21,5 @@ public class GtfsRTApi {
     private PublishedLineNameMapping publishedLineNameMapping;
     private String apiKey;
     private PublishToDisplayAction publishToDisplayAction;
+    private Boolean generateGM;
 }

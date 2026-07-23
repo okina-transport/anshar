@@ -63,7 +63,6 @@ public class SubscriptionManager implements CamelContextAware {
 
     private static final Logger logger = LoggerFactory.getLogger(SubscriptionManager.class);
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
-    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private final Set<String> gtfsSubscriptions = new HashSet<>();
     private final Map<String, String> siriAPISubscriptions = new HashMap<>();
     private Map<String, Class> mappingAdaptersById = new HashMap<>();

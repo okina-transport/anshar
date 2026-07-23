@@ -2,13 +2,15 @@ package no.rutebanken.anshar.routes.siri.handlers.inbound;
 
 import com.hazelcast.scheduledexecutor.IScheduledExecutorService;
 import com.hazelcast.scheduledexecutor.IScheduledFuture;
-import no.rutebanken.anshar.data.GeneralMessages;
 import no.rutebanken.anshar.data.Situations;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.data.util.GeneralMessageMapper;
 import no.rutebanken.anshar.routes.kafka.KafkaConfig;
 import no.rutebanken.anshar.routes.kafka.KafkaRouteBuilder;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
+import no.rutebanken.anshar.routes.siri.converter.SxInboundData;
+import no.rutebanken.anshar.routes.siri.converter.SxToGmCancellationInboundData;
+import no.rutebanken.anshar.routes.siri.converter.SxToGmInboundData;
 import no.rutebanken.anshar.routes.siri.handlers.Utils;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
@@ -16,16 +18,34 @@ import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri21.*;
+import uk.org.siri.siri21.GeneralMessage;
+import uk.org.siri.siri21.GeneralMessageCancellation;
+import uk.org.siri.siri21.HalfOpenTimestampOutputRangeStructure;
+import uk.org.siri.siri21.PtSituationElement;
+import uk.org.siri.siri21.RequestorRef;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.SituationExchangeDeliveryStructure;
+import uk.org.siri.siri21.WorkflowStatusEnumeration;
 
-import java.time.*;
-import java.util.*;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -43,7 +63,8 @@ public class SituationExchangeInbound {
     private final ServerSubscriptionManager serverSubscriptionManager;
     private final SubscriptionManager subscriptionManager;
     private final Situations situations;
-    private final GeneralMessageInbound generalMessageInbound;
+    private final GeneralMessageWriter generalMessageWriter;
+    private final SituationExchangeWriter situationExchangeWriter;
     private final SuperIdReversionProcess reversionIdProcess;
     private final GeneralMessageMapper gmMapper;
     private final ExtendedHazelcastService hazelcastService;
@@ -53,14 +74,22 @@ public class SituationExchangeInbound {
     @Produce(KafkaRouteBuilder.SEND_SX_IN_TO_KAFKA)
     protected ProducerTemplate sendSxInToKafka;
 
-    public SituationExchangeInbound(Utils utils, ServerSubscriptionManager serverSubscriptionManager, SubscriptionManager subscriptionManager, Situations situations, GeneralMessages generalMessages, GeneralMessageInbound generalMessageInbound,
-                                    SuperIdReversionProcess reversionIdProcess, GeneralMessageMapper gmMapper, KafkaConfig kafkaConfig, @Qualifier("getSharedScheduler") IScheduledExecutorService sharedScheduler,
+    public SituationExchangeInbound(Utils utils,
+                                    ServerSubscriptionManager serverSubscriptionManager,
+                                    SubscriptionManager subscriptionManager,
+                                    Situations situations,
+                                    GeneralMessageWriter generalMessageWriter,
+                                    SituationExchangeWriter situationExchangeWriter,
+                                    SuperIdReversionProcess reversionIdProcess,
+                                    GeneralMessageMapper gmMapper,
+                                    KafkaConfig kafkaConfig, @Qualifier("getSharedScheduler") IScheduledExecutorService sharedScheduler,
                                     ExtendedHazelcastService hazelcastService) {
         this.utils = utils;
         this.serverSubscriptionManager = serverSubscriptionManager;
         this.subscriptionManager = subscriptionManager;
         this.situations = situations;
-        this.generalMessageInbound = generalMessageInbound;
+        this.generalMessageWriter = generalMessageWriter;
+        this.situationExchangeWriter = situationExchangeWriter;
         this.reversionIdProcess = reversionIdProcess;
         this.gmMapper = gmMapper;
         this.kafkaConfig = kafkaConfig;
@@ -81,7 +110,13 @@ public class SituationExchangeInbound {
                                 logger.info(utils.getErrorContents(sx.getErrorCondition()));
                             } else {
                                 if (sx.getSituations() != null && sx.getSituations().getPtSituationElements() != null) {
-                                    Collection<PtSituationElement> ingested = ingestSituations(dataSetId, sx.getSituations().getPtSituationElements(), false, inboundTime);
+                                    //Collection<PtSituationElement> ingested = ingestSituations(dataSetId, sx.getSituations().getPtSituationElements(), false, inboundTime);
+                                    Collection<PtSituationElement> ingested = ingestSituations(SxInboundData.builder()
+                                            .datasetId(dataSetId)
+                                            .incomingSituations(sx.getSituations().getPtSituationElements())
+                                            .publishToOutbound(false)
+                                            .inboundTime(inboundTime)
+                                            .build());
                                     addedOrUpdated.addAll(ingested);
                                     serverSubscriptionManager.pushUpdatesAsync(dataFormat, addedOrUpdated, dataSetId, inboundTime);
                                 }
@@ -128,7 +163,12 @@ public class SituationExchangeInbound {
                                             // List containing added situations for current codespace
                                             List<PtSituationElement> addedSituations = new ArrayList();
 
-                                            Collection<PtSituationElement> ingested = ingestSituations(codespace, situationsByCodespace.get(codespace), false, inboundTime);
+                                            Collection<PtSituationElement> ingested = ingestSituations(SxInboundData.builder()
+                                                    .datasetId(codespace)
+                                                    .incomingSituations(situationsByCodespace.get(codespace))
+                                                    .publishToOutbound(false)
+                                                    .inboundTime(inboundTime)
+                                                    .build());
                                             addedSituations.addAll(ingested);
 
                                             // Push updates to subscribers on this codespace
@@ -140,7 +180,12 @@ public class SituationExchangeInbound {
                                         }
 
                                     } else {
-                                        Collection<PtSituationElement> ingested = ingestSituations(subscriptionSetup.getDatasetId(), sx.getSituations().getPtSituationElements(), false, inboundTime);
+                                        Collection<PtSituationElement> ingested = ingestSituations(SxInboundData.builder()
+                                                .datasetId(subscriptionSetup.getDatasetId())
+                                                .incomingSituations(sx.getSituations().getPtSituationElements())
+                                                .publishToOutbound(false)
+                                                .inboundTime(inboundTime)
+                                                .build());
                                         addedOrUpdated.addAll(ingested);
                                         serverSubscriptionManager.pushUpdatesAsync(subscriptionSetup.getSubscriptionType(), addedOrUpdated, subscriptionSetup.getDatasetId(), inboundTime);
                                     }
@@ -189,7 +234,12 @@ public class SituationExchangeInbound {
         }
 
         if (!situationsToClose.isEmpty()) {
-            ingestSituations(datasetId, situationsToClose, true, inboundTime);
+            //ingestSituations(datasetId, situationsToClose, true, inboundTime);
+            ingestSituations(SxInboundData.builder()
+                    .datasetId(datasetId)
+                    .incomingSituations(situationsToClose)
+                    .inboundTime(inboundTime)
+                    .build());
         }
 
     }
@@ -221,36 +271,28 @@ public class SituationExchangeInbound {
     }
 
 
-    public Collection<PtSituationElement> ingestSituations(String datasetId, List<PtSituationElement> incomingSituations, boolean publishToOutbound) {
-        return ingestSituations(datasetId, incomingSituations, publishToOutbound, null);
-    }
-
-    /**
-     * Ingest incoming situation into cache
-     *
-     * @param datasetId          dataset of the subscription
-     * @param incomingSituations incoming situations to ingest
-     * @param publishToOutbound  if publication should be published or not to the outboud subcriptions
-     * @return
-     */
-    public Collection<PtSituationElement> ingestSituations(String datasetId, List<PtSituationElement> incomingSituations, boolean publishToOutbound, Long inboundTime) {
-        Collection<PtSituationElement> result = situations.addAll(datasetId, incomingSituations);
-        if (publishToOutbound && CollectionUtils.isNotEmpty(result)) {
-            serverSubscriptionManager.pushUpdatesAsync(SiriDataType.SITUATION_EXCHANGE, new ArrayList<>(result), datasetId, inboundTime);
-        }
+    public Collection<PtSituationElement> ingestSituations(SxInboundData situationExchangeInbound) {
+        String datasetId = situationExchangeInbound.getDatasetId();
+        List<PtSituationElement> incomingSituations = situationExchangeInbound.getIncomingSituations();
+        Long inboundTime = situationExchangeInbound.getInboundTime();
+        Collection<PtSituationElement> result = situationExchangeWriter.write(situationExchangeInbound);
 
         List<PtSituationElement> currentlyOpenedSituations = incomingSituations.stream()
                 .filter(this::shouldSituationBeDisplayed)
                 .toList();
 
-        if (!currentlyOpenedSituations.isEmpty()) {
-            convertToGeneralMessageAndIngest(datasetId, currentlyOpenedSituations, inboundTime);
+        if (!currentlyOpenedSituations.isEmpty() && BooleanUtils.isTrue(situationExchangeInbound.isConvertSxToGm())) {
+            convertToGeneralMessageAndIngest(SxInboundData.builder()
+                    .datasetId(datasetId)
+                    .incomingSituations(currentlyOpenedSituations)
+                    .inboundTime(inboundTime).build());
         }
 
-        scheduleFutureMessages(datasetId, incomingSituations, null);
+        if (situationExchangeInbound.isConvertSxToGm()) {
+            scheduleFutureMessages(datasetId, incomingSituations, null);
+        }
         return result;
     }
-
 
     /**
      * Search situation with publication windows in the future and schedule them to enter GM cache at the begining of the publication window
@@ -282,12 +324,15 @@ public class SituationExchangeInbound {
 
             long delay = Duration.between(LocalDateTime.now(), scheduledDate).toMillis();
 
+
             List<PtSituationElement> futureSituations = new ArrayList<>();
             futureSituations.add(situationToSchedule);
             IScheduledFuture<Object> plannedTask = sharedScheduler.schedule(() -> {
                 logger.info("GeneralMessage - launching future gm conversion for situation: {} ", situationNumber);
-                convertToGeneralMessageAndIngest(datasetId, futureSituations, inboundTime);
-
+                convertToGeneralMessageAndIngest(SxInboundData.builder()
+                        .datasetId(datasetId)
+                        .incomingSituations(futureSituations)
+                        .inboundTime(inboundTime).build());
             }, delay, TimeUnit.MILLISECONDS);
             logger.info("SCHEDULE - situationNumber={} -> taskName={}", situationNumber, plannedTask.getHandler().getTaskName());
 
@@ -366,14 +411,10 @@ public class SituationExchangeInbound {
                 .anyMatch(pubWindow -> pubWindow.getStartTime() == null || pubWindow.getStartTime().isBefore(now));
     }
 
-    /**
-     * Convert a list of situations to a list of generalMessages and ingest them
-     *
-     * @param datasetId          the dataset on which the general messages must be ingested
-     * @param incomingSituations the situations that must be converted to GeneralMessages and must be ingested
-     */
-    private void convertToGeneralMessageAndIngest(String datasetId, List<PtSituationElement> incomingSituations, Long inboundTime) {
-
+    private void convertToGeneralMessageAndIngest(SxInboundData sxInboundData) {
+        String datasetId = sxInboundData.getDatasetId();
+        List<PtSituationElement> incomingSituations = sxInboundData.getIncomingSituations();
+        Long inboundTime = sxInboundData.getInboundTime();
         incomingSituations = filterUnmappableAffects(incomingSituations);
         // Open perturbations
         List<GeneralMessage> incomingMessages = incomingSituations.stream()
@@ -381,8 +422,12 @@ public class SituationExchangeInbound {
                 .map(situation -> gmMapper.mapToGeneralMessage(datasetId, situation))
                 .collect(Collectors.toList());
 
-        generalMessageInbound.ingestGeneralMessages(datasetId, incomingMessages, true, inboundTime);
-
+        generalMessageWriter.ingestGeneralMessages(SxToGmInboundData.builder()
+                .datasetId(datasetId)
+                .incoming(incomingMessages)
+                .inboundTime(inboundTime)
+                .build()
+        );
 
         // Closed perturbations that need to be removed from cache
         List<GeneralMessageCancellation> cancellations = incomingSituations.stream()
@@ -391,7 +436,7 @@ public class SituationExchangeInbound {
                 .toList();
 
         if (CollectionUtils.isNotEmpty(cancellations)) {
-            generalMessageInbound.ingestGeneralMessagesCancellations(datasetId, cancellations, true, inboundTime);
+            generalMessageWriter.ingestGeneralMessagesCancellations(SxToGmCancellationInboundData.builder().datasetId(datasetId).incoming(cancellations).inboundTime(inboundTime).build());
         }
 
 

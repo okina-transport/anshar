@@ -12,8 +12,9 @@ import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.outbound.OutboundSubscriptionSetup;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
+import no.rutebanken.anshar.routes.siri.converter.SxToGmInboundData;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
-import no.rutebanken.anshar.routes.siri.handlers.inbound.GeneralMessageInbound;
+import no.rutebanken.anshar.routes.siri.handlers.inbound.GeneralMessageWriter;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -26,8 +27,6 @@ import org.junit.jupiter.api.Test;
 import org.mockserver.integration.ClientAndServer;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.siri.siri21.GeneralMessage;
-
-import jakarta.xml.bind.JAXBException;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -50,7 +49,7 @@ public class GM_subscription_tests extends SpringBootBaseTest {
     private GeneralMessages generalMessages;
 
     @Autowired
-    private GeneralMessageInbound generalMessageInbound;
+    private GeneralMessageWriter generalMessageWriter;
 
     @Autowired
     private SubscriptionConfig subscriptionConfig;
@@ -110,7 +109,7 @@ public class GM_subscription_tests extends SpringBootBaseTest {
         generalMessagesToIngest.add(generalMessage1);
 
 
-        generalMessageInbound.ingestGeneralMessages("DAT1", generalMessagesToIngest, true);
+        generalMessageWriter.ingestGeneralMessages(SxToGmInboundData.builder().datasetId("DAT1").incoming(generalMessagesToIngest).build());
 
         //Attente nécessaire car le post est traité par un thread
         Thread.sleep(5000);
@@ -155,7 +154,7 @@ public class GM_subscription_tests extends SpringBootBaseTest {
         generalMessagesToIngest.add(generalMessage1);
 
 
-        generalMessageInbound.ingestGeneralMessages("DAT1", generalMessagesToIngest, true);
+        generalMessageWriter.ingestGeneralMessages(SxToGmInboundData.builder().datasetId("DAT1").incoming(generalMessagesToIngest).build());
 
         //Attente nécessaire car le post est traité par un thread
         Thread.sleep(5000);
@@ -199,7 +198,7 @@ public class GM_subscription_tests extends SpringBootBaseTest {
         generalMessagesToIngest.add(generalMessage1);
 
 
-        generalMessageInbound.ingestGeneralMessages("DAT1", generalMessagesToIngest, true);
+        generalMessageWriter.ingestGeneralMessages(SxToGmInboundData.builder().datasetId("DAT1").incoming(generalMessagesToIngest).build());
 
         //Attente nécessaire car le post est traité par un thread
         Thread.sleep(5000);
@@ -243,7 +242,7 @@ public class GM_subscription_tests extends SpringBootBaseTest {
         generalMessagesToIngest.add(generalMessage1);
 
 
-        generalMessageInbound.ingestGeneralMessages("DAT1", generalMessagesToIngest, true);
+        generalMessageWriter.ingestGeneralMessages(SxToGmInboundData.builder().datasetId("DAT1").incoming(generalMessagesToIngest).build());
 
         //Attente nécessaire car le post est traité par un thread
         Thread.sleep(5000);

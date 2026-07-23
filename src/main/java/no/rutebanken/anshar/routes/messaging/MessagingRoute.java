@@ -636,16 +636,4 @@ public class MessagingRoute extends RestRouteBuilder {
         buildBadRequestSiriResponse(e);
     }
 
-    private Boolean enrichSiriData(Exchange e) {
-        String subscriptionId = e.getIn().getHeader(PARAM_SUBSCRIPTION_ID, String.class);
-        if (subscriptionId == null || subscriptionId.isEmpty()) {
-            return false;
-        }
-        SubscriptionSetup subscriptionSetup = subscriptionManager.get(subscriptionId);
-
-        if (subscriptionSetup == null) {
-            return false;
-        }
-        return subscriptionSetup.enrichSiriData();
-    }
 }

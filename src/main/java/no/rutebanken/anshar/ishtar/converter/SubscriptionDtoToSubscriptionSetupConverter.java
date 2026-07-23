@@ -69,6 +69,7 @@ public class SubscriptionDtoToSubscriptionSetupConverter implements Converter<Su
             target.setPreviewIntervalSeconds(source.getPreviewIntervalSeconds());
 
             target.setValidated(BooleanUtils.isTrue(source.getValidated()));
+            target.setGenerateSX(BooleanUtils.isTrue(source.getGenerateSX()));
 
             if (!SubscriptionSetup.SubscriptionMode.SUBSCRIBE.equals(target.getSubscriptionMode())) {
                 target.setStatus(SubscriptionStatus.RUNNING);
