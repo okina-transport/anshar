@@ -7,6 +7,7 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
@@ -65,6 +66,22 @@ public class SubscriptionPredicates {
             String subscriptionId = subscription.getSubscriptionId();
             return !lastActivity.containsKey(subscriptionId)
                     || lastActivity.get(subscriptionId).isBefore(Instant.now().minus(unresponsiveDelay, ChronoUnit.MINUTES));
+        };
+    }
+
+    /**
+     * Checks if the subscription is eligible for a responsive check. Subscription is eligible if :
+     * - subscription is SM/VM/ET/FM OR (subscription is SX/GM and check is disabled)
+     *
+     * @param disableCheckUnresponsiveSX true : check is disabled for SX/GM subs
+     *                                   false:  check is enabled
+     * @return true : subscription is eligible. Unresponsive check must be done on this subscription
+     * * false : Unresponsive check must not be done
+     */
+    public static Predicate<SubscriptionSetup> isApplicableToUnresponsiveTest(boolean disableCheckUnresponsiveSX) {
+        List<SiriDataType> mandatoryCheckTypes = List.of(SiriDataType.ESTIMATED_TIMETABLE, SiriDataType.STOP_MONITORING, SiriDataType.VEHICLE_MONITORING, SiriDataType.FACILITY_MONITORING);
+        return subscription -> {
+            return mandatoryCheckTypes.contains(subscription.getSubscriptionType()) || !disableCheckUnresponsiveSX;
         };
     }
 }

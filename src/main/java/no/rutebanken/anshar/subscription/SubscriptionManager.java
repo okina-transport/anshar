@@ -47,10 +47,10 @@ import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.Siri;
 
 import java.math.BigInteger;
-import java.time.*;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -94,6 +94,7 @@ public class SubscriptionManager implements CamelContextAware {
     private final ExtendedHazelcastService hazelcastService;
     private CamelContext camelContext;
     private final int unresponsiveDelay;
+    private final boolean disableUnresponsiveCheckSx;
 
     public SubscriptionManager(@Qualifier("getSubscriptionsMap") ReplicatedMap<String, SubscriptionSetup> subscriptions, @Qualifier("getActivatedTimestampMap") IMap<String, Instant> activatedTimestamp,
                                AnsharConfiguration configuration, @Qualifier("getLastActivityMap") ReplicatedMap<String, Instant> lastActivity,
@@ -103,7 +104,8 @@ public class SubscriptionManager implements CamelContextAware {
                                @Qualifier("getSituationChangesMap") IMap<String, Set<SiriObjectStorageKey>> sxChanges, @Qualifier("getEstimatedTimetableChangesMap") IMap<String, Set<SiriObjectStorageKey>> etChanges,
                                @Qualifier("getVehicleChangesMap") IMap<String, Set<SiriObjectStorageKey>> vmChanges, @Qualifier("getMonitoredStopVisitChangesMap") IMap<String, Set<SiriObjectStorageKey>> smChanges,
                                RequestorRefRepository requestorRefRepository, DatasetService datasetService, SubscriptionConfig subscriptionConfig,
-                               ExtendedHazelcastService hazelcastService, @Value("${anshar.subscription.unresponsive.delay.min:15}") int unresponsiveDelay) {
+                               ExtendedHazelcastService hazelcastService, @Value("${anshar.subscription.unresponsive.delay.min:15}") int unresponsiveDelay,
+                               @Value("${disable.check.unresponsive.subscription.sx:false}") boolean disableUnresponsiveCheckSx) {
         this.subscriptions = subscriptions;
         this.activatedTimestamp = activatedTimestamp;
         this.configuration = configuration;
@@ -129,6 +131,7 @@ public class SubscriptionManager implements CamelContextAware {
         this.subscriptionConfig = subscriptionConfig;
         this.hazelcastService = hazelcastService;
         this.unresponsiveDelay = unresponsiveDelay;
+        this.disableUnresponsiveCheckSx = disableUnresponsiveCheckSx;
     }
 
 
@@ -925,6 +928,7 @@ public class SubscriptionManager implements CamelContextAware {
      */
     public List<SubscriptionSetup> getUnresponsiveSubscriptions() {
         List<SubscriptionSetup> unresponsiveSubs = subscriptions.values().stream()
+                .filter(SubscriptionPredicates.isApplicableToUnresponsiveTest(disableUnresponsiveCheckSx))
                 .filter(SubscriptionPredicates.IS_RUNNING)
                 .filter(SubscriptionPredicates.isUnresponsive(lastActivity, unresponsiveDelay))
                 .toList();
