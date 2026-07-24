@@ -17,7 +17,6 @@ import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.StringTokenizer;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -66,15 +65,19 @@ public class LineUpdaterService {
             BufferedReader reader = new BufferedReader(new InputStreamReader(blob));
 
             reader.lines().forEach(line -> {
-                StringTokenizer tokenizer = new StringTokenizer(line, ",");
-                String lineId = tokenizer.nextToken();
-                if (tokenizer.hasMoreTokens()) {
-                    String lineName = tokenizer.nextToken();
-                    lineNameMap.put(lineId, lineName);
+                String[] fields = line.split(",", -1);
+
+                if (fields.length < 1) {
+                    logger.warn("Invalid line: {}", line);
+                    return;
                 }
-                if (tokenizer.hasMoreTokens()) {
-                    String lineNumber = tokenizer.nextToken();
-                    lineNumberMap.put(lineId, lineNumber);
+
+                String lineId = fields[0];
+                if (fields.length > 2 && !fields[2].isEmpty()) {
+                    lineNameMap.put(lineId, fields[2]);
+                }
+                if (fields.length > 3 && !fields[3].isEmpty()) {
+                    lineNumberMap.put(lineId, fields[3]);
                 }
             });
 
