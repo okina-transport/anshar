@@ -92,6 +92,8 @@
                         <xsl:copy-of select="../siri:RequestMessageRef" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:ConsumerAddress" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:ResponseMessageIdentifier" copy-namespaces="no"/>
+                        <xsl:copy-of select="../siri:Status" copy-namespaces="no"/>
+                        <xsl:copy-of select="../siri:ErrorCondition" copy-namespaces="no"/>
                     </xsl:element>
                     <xsl:element name="Notification">
                         <xsl:if test="local-name()='StopMonitoringDelivery'">
@@ -102,9 +104,12 @@
                                 <xsl:element name="siri:ResponseTimestamp">
                                     <xsl:value-of select="../siri:ResponseTimestamp"/>
                                 </xsl:element>
+                                <xsl:copy-of select="./siri:SubscriberRef" copy-namespaces="no"/>
+                                <xsl:copy-of select="./siri:SubscriptionRef" copy-namespaces="no"/>
                                 <xsl:element name="siri:RequestMessageRef">
                                     <xsl:value-of select="../siri:RequestMessageRef"/>
                                 </xsl:element>
+                                <xsl:copy-of select="./siri:Status" copy-namespaces="no"/>
                                 <xsl:copy-of select="./siri:MonitoredStopVisit" copy-namespaces="no">
                                 </xsl:copy-of>
                                 <xsl:copy-of select="./siri:MonitoredStopVisitCancellation" copy-namespaces="no">
@@ -132,6 +137,8 @@
                         <xsl:copy-of select="../siri:RequestMessageRef" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:ConsumerAddress" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:ResponseMessageIdentifier" copy-namespaces="no"/>
+                        <xsl:copy-of select="../siri:Status" copy-namespaces="no"/>
+                        <xsl:copy-of select="../siri:ErrorCondition" copy-namespaces="no"/>
                     </xsl:element>
                     <xsl:element name="Notification">
                         <xsl:if test="local-name()='EstimatedTimetableDelivery'">
@@ -143,13 +150,13 @@
                                     <xsl:value-of select="../siri:ResponseTimestamp"/>
                                 </xsl:element>
 
-                                <xsl:element name="siri:SubscriberRef">
-                                    <xsl:value-of select="siri:SubscriberRef"/>
-                                </xsl:element>
+                                <xsl:copy-of select="./siri:SubscriberRef" copy-namespaces="no"/>
+                                <xsl:copy-of select="./siri:SubscriptionRef" copy-namespaces="no"/>
 
                                 <xsl:element name="siri:RequestMessageRef">
                                     <xsl:value-of select="../siri:RequestMessageRef"/>
                                 </xsl:element>
+                                <xsl:copy-of select="./siri:Status" copy-namespaces="no"/>
                                 <xsl:copy-of select="./siri:EstimatedJourneyVersionFrame" copy-namespaces="no">
                                 </xsl:copy-of>
                             </xsl:element>
@@ -177,6 +184,8 @@
                         <xsl:copy-of select="../siri:RequestMessageRef" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:ConsumerAddress" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:ResponseMessageIdentifier" copy-namespaces="no"/>
+                        <xsl:copy-of select="../siri:Status" copy-namespaces="no"/>
+                        <xsl:copy-of select="../siri:ErrorCondition" copy-namespaces="no"/>
                     </xsl:element>
                     <xsl:element name="Notification">
                         <xsl:if test="local-name()='SituationExchangeDelivery'">
@@ -187,9 +196,12 @@
                                 <xsl:element name="siri:ResponseTimestamp">
                                     <xsl:value-of select="../siri:ResponseTimestamp"/>
                                 </xsl:element>
+                                <xsl:copy-of select="./siri:SubscriberRef" copy-namespaces="no"/>
+                                <xsl:copy-of select="./siri:SubscriptionRef" copy-namespaces="no"/>
                                 <xsl:element name="siri:RequestMessageRef">
                                     <xsl:value-of select="../siri:RequestMessageRef"/>
                                 </xsl:element>
+                                <xsl:copy-of select="./siri:Status" copy-namespaces="no"/>
                                 <xsl:copy-of select="./siri:Situations" copy-namespaces="no">
                                 </xsl:copy-of>
                             </xsl:element>
@@ -215,6 +227,8 @@
                         <xsl:copy-of select="../siri:RequestMessageRef" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:ConsumerAddress" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:ResponseMessageIdentifier" copy-namespaces="no"/>
+                        <xsl:copy-of select="../siri:Status" copy-namespaces="no"/>
+                        <xsl:copy-of select="../siri:ErrorCondition" copy-namespaces="no"/>
                     </xsl:element>
                     <xsl:element name="Notification">
                         <xsl:if test="local-name()='VehicleMonitoringDelivery'">
@@ -225,9 +239,12 @@
                                 <xsl:element name="siri:ResponseTimestamp">
                                     <xsl:value-of select="../siri:ResponseTimestamp"/>
                                 </xsl:element>
+                                <xsl:copy-of select="./siri:SubscriberRef" copy-namespaces="no"/>
+                                <xsl:copy-of select="./siri:SubscriptionRef" copy-namespaces="no"/>
                                 <xsl:element name="siri:RequestMessageRef">
                                     <xsl:value-of select="../siri:RequestMessageRef"/>
                                 </xsl:element>
+                                <xsl:copy-of select="./siri:Status" copy-namespaces="no"/>
                                 <xsl:copy-of select="./siri:VehicleActivity" copy-namespaces="no">
                                 </xsl:copy-of>
                             </xsl:element>
@@ -260,6 +277,7 @@
                         <xsl:copy-of select="../siri:RequestMessageRef" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:ConsumerAddress" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:ResponseMessageIdentifier" copy-namespaces="no"/>
+                        <xsl:copy-of select="../siri:Status" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:ErrorCondition" copy-namespaces="no"/>
                     </xsl:element>
 
@@ -273,9 +291,12 @@
                                 <xsl:element name="siri:ResponseTimestamp">
                                     <xsl:value-of select="../siri:ResponseTimestamp"/>
                                 </xsl:element>
+                                <xsl:copy-of select="./siri:SubscriberRef" copy-namespaces="no"/>
+                                <xsl:copy-of select="./siri:SubscriptionRef" copy-namespaces="no"/>
                                 <xsl:element name="siri:RequestMessageRef">
                                     <xsl:value-of select="../siri:RequestMessageRef"/>
                                 </xsl:element>
+                                <xsl:copy-of select="./siri:Status" copy-namespaces="no"/>
                                 <xsl:copy-of select="./siri:GeneralMessage" copy-namespaces="no">
                                 </xsl:copy-of>
                                 <xsl:copy-of select="./siri:GeneralMessageCancellation" copy-namespaces="no">
@@ -304,6 +325,8 @@
                         <xsl:copy-of select="../siri:RequestMessageRef" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:ConsumerAddress" copy-namespaces="no"/>
                         <xsl:copy-of select="../siri:ResponseMessageIdentifier" copy-namespaces="no"/>
+                        <xsl:copy-of select="../siri:Status" copy-namespaces="no"/>
+                        <xsl:copy-of select="../siri:ErrorCondition" copy-namespaces="no"/>
                     </xsl:element>
                     <xsl:element name="Notification">
                         <xsl:if test="local-name()='FacilityMonitoringDelivery'">
@@ -314,9 +337,12 @@
                                 <xsl:element name="siri:ResponseTimestamp">
                                     <xsl:value-of select="../siri:ResponseTimestamp"/>
                                 </xsl:element>
+                                <xsl:copy-of select="./siri:SubscriberRef" copy-namespaces="no"/>
+                                <xsl:copy-of select="./siri:SubscriptionRef" copy-namespaces="no"/>
                                 <xsl:element name="siri:RequestMessageRef">
                                     <xsl:value-of select="../siri:RequestMessageRef"/>
                                 </xsl:element>
+                                <xsl:copy-of select="./siri:Status" copy-namespaces="no"/>
                                 <xsl:copy-of select="./siri:FacilityCondition" copy-namespaces="no">
                                 </xsl:copy-of>
                             </xsl:element>
