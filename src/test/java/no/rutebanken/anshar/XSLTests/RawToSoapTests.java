@@ -26,6 +26,7 @@ import javax.xml.transform.stream.StreamSource;
 import java.io.*;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
@@ -36,7 +37,7 @@ public class RawToSoapTests extends SpringBootBaseTest {
     private Source xslDoc = new StreamSource("src/main/resources/xsl/siri_raw_soap.xsl");
 
     @Test
-    public void stopPointsDiscoveryTest() throws IOException, TransformerException, JAXBException, XMLStreamException, ParserConfigurationException, SAXException {
+    public void stopPointsDiscoveryTest() throws IOException, TransformerException, ParserConfigurationException, SAXException {
 
         TransformerFactory tFactory = TransformerFactory.newInstance();
 
@@ -110,6 +111,76 @@ public class RawToSoapTests extends SpringBootBaseTest {
     }
 
     @Test
+    public void estimatedTimetableNotificationContainsSubscriberSubscriptionAndStatusTest() throws JAXBException, FileNotFoundException, TransformerException {
+
+        Siri siri = new Siri();
+        ServiceDelivery serviceDel = new ServiceDelivery();
+        EstimatedTimetableDeliveryStructure et = new EstimatedTimetableDeliveryStructure();
+        et.setVersion("2.0");
+
+        EstimatedVersionFrameStructure struct = new EstimatedVersionFrameStructure();
+        EstimatedVehicleJourney estijourney = new EstimatedVehicleJourney();
+        NaturalLanguageStringStructure publishedName = new NaturalLanguageStringStructure();
+        publishedName.setValue("lineName");
+        estijourney.getPublishedLineNames().add(publishedName);
+        struct.getEstimatedVehicleJourneies().add(estijourney);
+        et.getEstimatedJourneyVersionFrames().add(struct);
+
+        RequestorRef subscriberRef = new RequestorRef();
+        subscriberRef.setValue("SUBSCRIBER_1");
+        et.setSubscriberRef(subscriberRef);
+
+        SubscriptionRefStructure subscriptionRef = new SubscriptionRefStructure();
+        subscriptionRef.setValue("SUBSCRIPTION_1");
+        et.setSubscriptionRef(subscriptionRef);
+
+        et.setStatus(true);
+        serviceDel.setStatus(true);
+
+        serviceDel.getEstimatedTimetableDeliveries().add(et);
+        siri.setServiceDelivery(serviceDel);
+
+        String body = CustomSiriXml.toXml(siri);
+        String xslBody = CustomSiriXml.subscriptionRawToSoap(body);
+
+        assertTrue("SubscriberRef is missing from the SOAP notification", xslBody.contains("SUBSCRIBER_1"));
+        assertTrue("SubscriptionRef is missing from the SOAP notification", xslBody.contains("SUBSCRIPTION_1"));
+        // one Status at ServiceDelivery level (ServiceDeliveryInfo) and one at the Delivery level (Notification)
+        assertEquals("Status is missing from the SOAP notification (ServiceDeliveryInfo and/or Notification)", 2, countStatusTrueOccurrences(xslBody));
+    }
+
+    @Test
+    public void vehicleMonitoringNotificationContainsSubscriberSubscriptionAndStatusTest() throws JAXBException, FileNotFoundException, TransformerException {
+
+        Siri siri = new Siri();
+        ServiceDelivery serviceDel = new ServiceDelivery();
+        VehicleMonitoringDeliveryStructure vm = new VehicleMonitoringDeliveryStructure();
+        vm.setVersion("2.0");
+
+        RequestorRef subscriberRef = new RequestorRef();
+        subscriberRef.setValue("SUBSCRIBER_2");
+        vm.setSubscriberRef(subscriberRef);
+
+        SubscriptionRefStructure subscriptionRef = new SubscriptionRefStructure();
+        subscriptionRef.setValue("SUBSCRIPTION_2");
+        vm.setSubscriptionRef(subscriptionRef);
+
+        vm.setStatus(true);
+        serviceDel.setStatus(true);
+
+        serviceDel.getVehicleMonitoringDeliveries().add(vm);
+        siri.setServiceDelivery(serviceDel);
+
+        String body = CustomSiriXml.toXml(siri);
+        String xslBody = CustomSiriXml.subscriptionRawToSoap(body);
+
+        assertTrue("SubscriberRef is missing from the SOAP notification", xslBody.contains("SUBSCRIBER_2"));
+        assertTrue("SubscriptionRef is missing from the SOAP notification", xslBody.contains("SUBSCRIPTION_2"));
+        // one Status at ServiceDelivery level (ServiceDeliveryInfo) and one at the Delivery level (Notification)
+        assertEquals("Status is missing from the SOAP notification (ServiceDeliveryInfo and/or Notification)", 2, countStatusTrueOccurrences(xslBody));
+    }
+
+    @Test
     public void linesDiscoveryTest() throws IOException, TransformerException, SAXException, XMLStreamException, ParserConfigurationException {
 
         TransformerFactory tFactory = TransformerFactory.newInstance();
@@ -133,6 +204,17 @@ public class RawToSoapTests extends SpringBootBaseTest {
             e.printStackTrace();
             throw e;
         }
+    }
+
+    private static final Pattern STATUS_TRUE_PATTERN = Pattern.compile("<[\\w:]*Status\\b[^>]*>true</[\\w:]*Status>");
+
+    private int countStatusTrueOccurrences(String xml) {
+        java.util.regex.Matcher matcher = STATUS_TRUE_PATTERN.matcher(xml);
+        int count = 0;
+        while (matcher.find()) {
+            count++;
+        }
+        return count;
     }
 
     private void checkXmlResult(File file, List<String> expectedValues, String tagName) throws ParserConfigurationException, SAXException, IOException {
