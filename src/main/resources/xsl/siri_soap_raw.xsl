@@ -65,7 +65,7 @@
     <xsl:template match="*"/>
 
     <xsl:template
-            match="*:NotifyVehicleMonitoring | *:NotifySituationExchange | *:NotifyEstimatedTimetable | *:NotifyStopMonitoring | *:NotifyFacilityMonitoring | *:NotifyHeartbeat | *:GetVehicleMonitoringResponse | *:GetSituationExchangeResponse | *:GetStopMonitoringResponse | *:GetEstimatedTimetable | *:GetEstimatedTimetableResponse | *:SubscribeResponse | *:DeleteSubscriptionResponse | *:HeartbeatNotification | *:SituationExchangeAnswer | *:VehicleMonitoringAnswer | *:CheckStatusResponse | *:DataSupplyResponse | *:GetStopMonitoring | *:GetVehicleMonitoring | *:StopPointsDiscovery | *:LinesDiscovery | *:GetSituationExchange | *:GetGeneralMessage | *:GetGeneralMessageResponse  | *:GetFacilityMonitoring | *:GetFacilityMonitoringResponse  | *:Subscribe | *:DeleteSubscription | *:CheckStatus |*:StopPointsDiscoveryResponse | *:LinesDiscoveryResponse"> <!-- TODO add all conseptual types of requests -->
+            match="*:NotifyVehicleMonitoring | *:NotifySituationExchange | *:NotifyEstimatedTimetable | *:NotifyStopMonitoring | *:NotifyFacilityMonitoring | *:NotifyGeneralMessage | *:NotifyHeartbeat | *:GetVehicleMonitoringResponse | *:GetSituationExchangeResponse | *:GetStopMonitoringResponse | *:GetEstimatedTimetable | *:GetEstimatedTimetableResponse | *:SubscribeResponse | *:DeleteSubscriptionResponse | *:HeartbeatNotification | *:SituationExchangeAnswer | *:VehicleMonitoringAnswer | *:CheckStatusResponse | *:DataSupplyResponse | *:GetStopMonitoring | *:GetVehicleMonitoring | *:StopPointsDiscovery | *:LinesDiscovery | *:GetSituationExchange | *:GetGeneralMessage | *:GetGeneralMessageResponse  | *:GetFacilityMonitoring | *:GetFacilityMonitoringResponse  | *:Subscribe | *:DeleteSubscription | *:CheckStatus |*:StopPointsDiscoveryResponse | *:LinesDiscoveryResponse"> <!-- TODO add all conseptual types of requests -->
 
         <xsl:choose>
             <xsl:when test="local-name()='SubscribeResponse'">
@@ -183,7 +183,7 @@
             </xsl:when>
 
             <xsl:when
-                    test="local-name()='NotifyEstimatedTimetable' or local-name()='NotifyVehicleMonitoring' or local-name()='NotifySituationExchange' or local-name()='NotifyStopMonitoring' or local-name()='NotifyFacilityMonitoring'">
+                    test="local-name()='NotifyEstimatedTimetable' or local-name()='NotifyVehicleMonitoring' or local-name()='NotifySituationExchange' or local-name()='NotifyStopMonitoring' or local-name()='NotifyFacilityMonitoring' or local-name()='NotifyGeneralMessage'">
                 <xsl:element name="siril:Siri">
                     <xsl:attribute name="version">
                         <xsl:value-of select="'2.0'"/>
