@@ -30,6 +30,7 @@ public class GtfsRTApiDtoConverter implements Converter<GtfsRTApiDto, GtfsRTApi>
         target.setCloseMissingAlerts(BooleanUtils.isTrue(source.getCloseMissingAlerts()));
         target.setGenerateActivePeriod(BooleanUtils.isTrue(source.getGenerateActivePeriod()));
         target.setPublishToDisplayAction(source.getPublishToDisplayAction());
+        target.setRevertIds(BooleanUtils.isTrue(source.getRevertIds()));
         if (source.getActivePeriodDays() != null) {
             target.setActivePeriodDays(source.getActivePeriodDays());
         }

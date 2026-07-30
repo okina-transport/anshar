@@ -23,4 +23,5 @@ public class GtfsRTApiDto {
     private String apiKey;
     private PublishToDisplayAction publishToDisplayAction;
     private Boolean generateGM;
+    private Boolean revertIds;
 }
