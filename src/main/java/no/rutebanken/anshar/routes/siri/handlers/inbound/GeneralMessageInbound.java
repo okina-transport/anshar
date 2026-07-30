@@ -18,11 +18,7 @@ import org.apache.commons.lang3.BooleanUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import uk.org.siri.siri21.GeneralMessage;
-import uk.org.siri.siri21.GeneralMessageCancellation;
-import uk.org.siri.siri21.GeneralMessageDeliveryStructure;
-import uk.org.siri.siri21.PtSituationElement;
-import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -85,7 +81,7 @@ public class GeneralMessageInbound {
         }
 
         if (BooleanUtils.isTrue(subscriptionSetup.getGenerateSX())) {
-            List<PtSituationElement> generatedSx = generalMessageConverter.convertGeneralMessageToSx(new GmFeed(subscriptionSetup.getDatasetId(), addedOrUpdated, cancellationsAddedOrUpdated));
+            List<PtSituationElement> generatedSx = generalMessageConverter.convertGeneralMessageToSx(new GmFeed(subscriptionSetup.getDatasetId(), addedOrUpdated, cancellationsAddedOrUpdated, subscriptionSetup.getPublishToDisplayAction()));
             situationExchangeWriter.write(SxInboundData.builder()
                     .datasetId(subscriptionSetup.getDatasetId())
                     .incomingSituations(generatedSx)

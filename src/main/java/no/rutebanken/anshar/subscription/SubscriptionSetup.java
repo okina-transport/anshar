@@ -19,6 +19,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import no.rutebanken.anshar.ishtar.model.PublishToDisplayAction;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.helpers.DataNotReceivedAction;
 import no.rutebanken.anshar.subscription.helpers.FilterMapPresets;
@@ -174,6 +175,10 @@ public class SubscriptionSetup implements Serializable {
     @Getter
     @Setter
     private Boolean generateSX;
+
+    @Getter
+    @Setter
+    private PublishToDisplayAction publishToDisplayAction;
 
 
     public SubscriptionSetup() {

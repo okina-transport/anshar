@@ -41,4 +41,5 @@ public class SubscriptionDto {
     private String currentStatus;
     private Boolean overrideDestinationName;
     private Boolean generateSX;
+    private String publishToDisplayAction;
 }

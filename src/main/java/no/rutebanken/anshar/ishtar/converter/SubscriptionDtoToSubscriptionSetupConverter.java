@@ -86,6 +86,10 @@ public class SubscriptionDtoToSubscriptionSetupConverter implements Converter<Su
                 log.warn("subscription has no subscribe URL, discard it: {}", source);
                 target = null;
             }
+
+            if (StringUtils.isNotEmpty(source.getPublishToDisplayAction())) {
+                target.setPublishToDisplayAction(PublishToDisplayAction.valueOf(source.getPublishToDisplayAction()));
+            }
         }
         log.debug("target: {}", target);
         return target;

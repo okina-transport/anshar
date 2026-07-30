@@ -2,8 +2,10 @@ package no.rutebanken.anshar.routes.siri.converter;
 
 import no.rutebanken.anshar.data.SiriObjectStorageKey;
 import no.rutebanken.anshar.data.Situations;
+import no.rutebanken.anshar.ishtar.model.PublishToDisplayAction;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Component;
+import uk.org.siri.siri21.ActionsStructure;
 import uk.org.siri.siri21.GeneralMessageCancellation;
 import uk.org.siri.siri21.PtSituationElement;
 import uk.org.siri.siri21.WorkflowStatusEnumeration;
@@ -36,6 +38,8 @@ public class GeneralMessageConverter {
                     .map(gm -> gmToSxResolver.map(gm, datasetId))
                     .collect(Collectors.toList());
 
+            addPublishToDisplayAction(generatedSx, gmFeed.publishToDisplayAction());
+
         }
         if (CollectionUtils.isNotEmpty(gmFeed.cancellations())) {
             for (GeneralMessageCancellation cancellation : gmFeed.cancellations()) {
@@ -51,6 +55,34 @@ public class GeneralMessageConverter {
 
         return situationsToIngest;
     }
+
+    private void addPublishToDisplayAction(List<PtSituationElement> generatedSx, PublishToDisplayAction publishToDisplayAction) {
+        if (PublishToDisplayAction.NONE.equals(publishToDisplayAction)) {
+            return;
+        }
+
+        ActionsStructure actionsStructure = new ActionsStructure();
+        List<uk.org.siri.siri21.PublishToDisplayAction> publishToDisplayActions = actionsStructure.getPublishToDisplayActions();
+        uk.org.siri.siri21.PublishToDisplayAction publishToDisplayActionNetex = buildPublishToDisplayAction(publishToDisplayAction);
+        publishToDisplayActions.add(publishToDisplayActionNetex);
+
+        for (PtSituationElement sx : generatedSx) {
+            sx.setPublishingActions(actionsStructure);
+        }
+
+    }
+
+    private static uk.org.siri.siri21.PublishToDisplayAction buildPublishToDisplayAction(PublishToDisplayAction configuredPublishToDisplayAction) {
+        uk.org.siri.siri21.PublishToDisplayAction publishToDisplayAction = new uk.org.siri.siri21.PublishToDisplayAction();
+
+        publishToDisplayAction.setOnPlace(configuredPublishToDisplayAction == PublishToDisplayAction.ON_PLACE_AND_ON_BOARD
+                || configuredPublishToDisplayAction == PublishToDisplayAction.ON_PLACE);
+
+        publishToDisplayAction.setOnBoard(configuredPublishToDisplayAction == PublishToDisplayAction.ON_BOARD
+                || configuredPublishToDisplayAction == PublishToDisplayAction.ON_PLACE_AND_ON_BOARD);
+        return publishToDisplayAction;
+    }
+
 
     private PtSituationElement getSxFromCache(GeneralMessageCancellation cancellation, String datasetId) {
         SiriObjectStorageKey key;
