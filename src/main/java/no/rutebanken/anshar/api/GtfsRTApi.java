@@ -22,4 +22,5 @@ public class GtfsRTApi {
     private String apiKey;
     private PublishToDisplayAction publishToDisplayAction;
     private Boolean generateGM;
+    private Boolean revertIds;
 }
