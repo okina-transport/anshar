@@ -172,12 +172,24 @@ public class SubscriptionInitializer implements CamelContextAware {
             for (SubscriptionSetup subscriptionSetup : activeSubscriptions) {
                 addInfoToSubscription(mappingAdaptersById, subscriptionSetup);
                 SubscriptionSetup existingSubscription = subscriptionManager.getSubscriptionBySubscriptionId(subscriptionSetup.getSubscriptionId());
+                if (existingSubscription != null) {
+                    if (!existingSubscription.equals(subscriptionSetup)) {
+                        logger.info("Subscription with internalId={} is updated - reinitializing. {}", subscriptionSetup.getInternalId(), subscriptionSetup);
+                        disableSubscriptions(List.of(existingSubscription));
+                    } else {
+                        subscriptionManager.updateSubscription(subscriptionSetup);
+                    }
+
+
+                }
                 if (existingSubscription != null && !existingSubscription.equals(subscriptionSetup)) {
                     logger.info("Subscription with internalId={} is updated - reinitializing. {}", subscriptionSetup.getInternalId(), subscriptionSetup);
                     disableSubscriptions(List.of(existingSubscription));
                 }
                 actualSubscriptionSetups.add(subscriptionSetup);
             }
+
+
             for (SubscriptionSetup subscriptionSetup : actualSubscriptionSetups) {
                 if (!subscriptionManager.isSubscriptionRegistered(subscriptionSetup.getSubscriptionId())) {
                     subscriptionManager.addSubscription(subscriptionSetup.getSubscriptionId(), subscriptionSetup);
