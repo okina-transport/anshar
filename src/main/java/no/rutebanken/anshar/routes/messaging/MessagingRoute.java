@@ -111,6 +111,9 @@ public class MessagingRoute extends RestRouteBuilder {
     @Value("${anshar.external.sm.threads:200}")
     private int externalSMThreads;
 
+    @Value("${external.sx.consumer.queue}")
+    private String externalSxQueue;
+
 
     @Override
     // @formatter:off
@@ -271,6 +274,11 @@ public class MessagingRoute extends RestRouteBuilder {
                 .bean(ExternalDataHandler.class, "processIncomingSiriVM")
         ;
 
+        from("direct:send.sx.to.external.consumer")
+                .marshal(SiriDataFormatHelper.getThreadSafeSiriJaxbDataformat())
+                .setExchangePattern(ExchangePattern.InOnly)
+                .to(externalSxQueue)
+        ;
 
         from("direct:process.message.synchronous")
                 .routeId("process.message.synchronous")
