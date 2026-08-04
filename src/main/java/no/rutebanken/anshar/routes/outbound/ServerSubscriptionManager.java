@@ -615,18 +615,12 @@ public class ServerSubscriptionManager {
 
 
         switch (subscription.getSubscriptionType()) {
-            case STOP_MONITORING ->
-                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliverySMQueueName, null, headers);
-            case VEHICLE_MONITORING ->
-                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryVMQueueName, null, headers);
-            case SITUATION_EXCHANGE ->
-                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliverySXQueueName, null, headers);
-            case ESTIMATED_TIMETABLE ->
-                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryETQueueName, null, headers);
-            case GENERAL_MESSAGE ->
-                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryGMQueueName, null, headers);
-            case FACILITY_MONITORING ->
-                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryFMQueueName, null, headers);
+            case STOP_MONITORING -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliverySMQueueName, null, headers);
+            case VEHICLE_MONITORING -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryVMQueueName, null, headers);
+            case SITUATION_EXCHANGE -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliverySXQueueName, null, headers);
+            case ESTIMATED_TIMETABLE -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryETQueueName, null, headers);
+            case GENERAL_MESSAGE -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryGMQueueName, null, headers);
+            case FACILITY_MONITORING -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryFMQueueName, null, headers);
         }
     }
 
@@ -715,7 +709,7 @@ public class ServerSubscriptionManager {
                 siriHelper.getFilter(subscriptionRequest, outboundIdMappingPolicy, datasetId),
                 mappers,
                 findSubscriptionIdentifier(subscriptionRequest),
-                subscriptionRequest.getRequestorRef().getValue(),
+                getSubscriberRef(subscriptionRequest),
                 findInitialTerminationTime(subscriptionRequest),
                 datasetId,
                 clientTrackingName,
@@ -731,6 +725,24 @@ public class ServerSubscriptionManager {
         newOutboundSubscription.setPreviewInterval(previewInterval);
 
         return newOutboundSubscription;
+    }
+
+    private String getSubscriberRef(SubscriptionRequest subscriptionRequest) {
+
+        if (CollectionUtils.isNotEmpty(subscriptionRequest.getSituationExchangeSubscriptionRequests()) && subscriptionRequest.getSituationExchangeSubscriptionRequests().getFirst().getSubscriberRef() != null) {
+            return subscriptionRequest.getSituationExchangeSubscriptionRequests().getFirst().getSubscriberRef().getValue();
+        } else if (CollectionUtils.isNotEmpty(subscriptionRequest.getStopMonitoringSubscriptionRequests()) && subscriptionRequest.getStopMonitoringSubscriptionRequests().getFirst().getSubscriberRef() != null) {
+            return subscriptionRequest.getStopMonitoringSubscriptionRequests().getFirst().getSubscriberRef().getValue();
+        } else if (CollectionUtils.isNotEmpty(subscriptionRequest.getVehicleMonitoringSubscriptionRequests()) && subscriptionRequest.getVehicleMonitoringSubscriptionRequests().getFirst().getSubscriberRef() != null) {
+            return subscriptionRequest.getVehicleMonitoringSubscriptionRequests().getFirst().getSubscriberRef().getValue();
+        } else if (CollectionUtils.isNotEmpty(subscriptionRequest.getEstimatedTimetableSubscriptionRequests()) && subscriptionRequest.getEstimatedTimetableSubscriptionRequests().getFirst().getSubscriberRef() != null) {
+            return subscriptionRequest.getEstimatedTimetableSubscriptionRequests().getFirst().getSubscriberRef().getValue();
+        } else if (CollectionUtils.isNotEmpty(subscriptionRequest.getFacilityMonitoringSubscriptionRequests()) && subscriptionRequest.getFacilityMonitoringSubscriptionRequests().getFirst().getSubscriberRef() != null) {
+            return subscriptionRequest.getFacilityMonitoringSubscriptionRequests().getFirst().getSubscriberRef().getValue();
+        } else if (CollectionUtils.isNotEmpty(subscriptionRequest.getGeneralMessageSubscriptionRequests()) && subscriptionRequest.getGeneralMessageSubscriptionRequests().getFirst().getSubscriberRef() != null) {
+            return subscriptionRequest.getGeneralMessageSubscriptionRequests().getFirst().getSubscriberRef().getValue();
+        }
+        return subscriptionRequest.getRequestorRef().getValue();
     }
 
 
