@@ -192,6 +192,7 @@ public class CamelRouteManager {
         Map<String, Siri> completeDelivery = initialDeliveryGenerator.findInitialDeliveriesByDataset(subscriptionRequest);
 
         for (Map.Entry<String, Siri> deliveryWithDataset : completeDelivery.entrySet()) {
+            SiriUtils.setSubscriberAndSubscriptionRef(deliveryWithDataset.getValue(), new OutSubscriptionIdentifier(subscriptionRequest.getRequestorRef(), subscriptionRequest.getSubscriptionId()));
             postDataToSubscription(deliveryWithDataset.getKey(), deliveryWithDataset.getValue(), subscriptionRequest, false, inboundTime);
         }
     }
