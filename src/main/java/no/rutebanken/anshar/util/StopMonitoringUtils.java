@@ -3,9 +3,11 @@ package no.rutebanken.anshar.util;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import uk.org.siri.siri21.MonitoredStopVisit;
 import uk.org.siri.siri21.MonitoredStopVisitCancellation;
 import uk.org.siri.siri21.MonitoredVehicleJourneyStructure;
+import uk.org.siri.siri21.NaturalLanguageStringStructure;
 
 import java.time.ZonedDateTime;
 import java.util.Optional;
@@ -14,10 +16,7 @@ import java.util.Optional;
 public class StopMonitoringUtils {
 
 
-    private static final String ENTRY_TIME_TAG_NAME = "EntryTime";
-
-
-    public static Optional<String> getLineName(MonitoredStopVisit stopVisit) {
+    public static Optional<String> getLineRef(MonitoredStopVisit stopVisit) {
         if (stopVisit.getMonitoredVehicleJourney() == null || stopVisit.getMonitoredVehicleJourney().getLineRef() == null) {
             return Optional.empty();
         }
@@ -25,7 +24,17 @@ public class StopMonitoringUtils {
         return Optional.ofNullable(stopVisit.getMonitoredVehicleJourney().getLineRef().getValue());
     }
 
-    public static Optional<String> getLineName(MonitoredStopVisitCancellation stopVisitCancellation) {
+    public static Optional<String> getLineName(MonitoredStopVisit stopVisit) {
+        if (stopVisit.getMonitoredVehicleJourney() == null) {
+            return Optional.empty();
+        }
+        return stopVisit.getMonitoredVehicleJourney().getPublishedLineNames().stream()
+                .map(NaturalLanguageStringStructure::getValue)
+                .filter(StringUtils::isNotBlank)
+                .findFirst();
+    }
+
+    public static Optional<String> getLineRef(MonitoredStopVisitCancellation stopVisitCancellation) {
         if (stopVisitCancellation.getLineRef() == null || stopVisitCancellation.getLineRef().getValue() == null) {
             return Optional.empty();
         }
@@ -33,7 +42,7 @@ public class StopMonitoringUtils {
         return Optional.ofNullable(stopVisitCancellation.getLineRef().getValue());
     }
 
-    public static Optional<String> getVehicleJourneyName(MonitoredStopVisit stopVisit) {
+    public static Optional<String> getVehicleJourneyRef(MonitoredStopVisit stopVisit) {
         if (stopVisit.getMonitoredVehicleJourney() == null || stopVisit.getMonitoredVehicleJourney().getFramedVehicleJourneyRef() == null) {
             return Optional.empty();
         }
@@ -41,7 +50,17 @@ public class StopMonitoringUtils {
         return Optional.ofNullable(stopVisit.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().getDatedVehicleJourneyRef());
     }
 
-    public static Optional<String> getVehicleJourneyName(MonitoredStopVisitCancellation stopVisitCancellation) {
+    public static Optional<String> getVehicleJourneyName(MonitoredStopVisit stopVisit) {
+        if (stopVisit.getMonitoredVehicleJourney() == null) {
+            return Optional.empty();
+        }
+        return stopVisit.getMonitoredVehicleJourney().getVehicleJourneyNames().stream()
+                .map(NaturalLanguageStringStructure::getValue)
+                .filter(StringUtils::isNotBlank)
+                .findFirst();
+    }
+
+    public static Optional<String> getVehicleJourneyRef(MonitoredStopVisitCancellation stopVisitCancellation) {
         if (stopVisitCancellation.getVehicleJourneyRef() == null || stopVisitCancellation.getVehicleJourneyRef().getDatedVehicleJourneyRef() == null) {
             return Optional.empty();
         }
@@ -57,6 +76,22 @@ public class StopMonitoringUtils {
         return Optional.ofNullable(stopVisit.getMonitoringRef().getValue());
     }
 
+    public static Optional<String> getDestinationRef(MonitoredStopVisit stopVisit) {
+        if (stopVisit.getMonitoredVehicleJourney() == null || stopVisit.getMonitoredVehicleJourney().getDestinationRef() == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(stopVisit.getMonitoredVehicleJourney().getDestinationRef().getValue());
+    }
+
+    public static Optional<String> getDestinationName(MonitoredStopVisit stopVisit) {
+        if (stopVisit.getMonitoredVehicleJourney() == null) {
+            return Optional.empty();
+        }
+        return stopVisit.getMonitoredVehicleJourney().getDestinationNames().stream()
+                .map(NaturalLanguageStringStructure::getValue)
+                .filter(StringUtils::isNotBlank)
+                .findFirst();
+    }
 
     public static Optional<String> getAimedTimeAtStop(MonitoredStopVisit stopVisit) {
         Optional<String> result = Optional.empty();
@@ -80,7 +115,7 @@ public class StopMonitoringUtils {
                 && monitoredVehicleJourney.getMonitoredCall() != null
                 && CollectionUtils.isEmpty(monitoredVehicleJourney.getMonitoredCall().getDestinationDisplaies())
                 && CollectionUtils.isNotEmpty(monitoredVehicleJourney.getDestinationNames())) {
-                monitoredVehicleJourney.getMonitoredCall().getDestinationDisplaies().addAll(monitoredVehicleJourney.getDestinationNames());
+            monitoredVehicleJourney.getMonitoredCall().getDestinationDisplaies().addAll(monitoredVehicleJourney.getDestinationNames());
         } else if (stopVisit.getMonitoringRef() != null) {
             log.debug("No destination display and no destination name found for {}", stopVisit.getMonitoringRef().getValue());
         }

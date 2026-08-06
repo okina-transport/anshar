@@ -19,7 +19,6 @@ import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.util.CustomStringUtils;
-
 import no.rutebanken.anshar.routes.mapping.LineUpdaterService;
 import no.rutebanken.anshar.routes.mapping.VehicleJourney.VehicleJourney;
 import no.rutebanken.anshar.routes.mapping.VehicleJourney.VehicleJourneyCache;
@@ -110,7 +109,7 @@ public class UpdateVJIdProcessor extends ValueAdapter implements PostProcessor {
                         }
 
                         MonitoredCallStructure monitoredCall = vehicleJourney.getMonitoredCall();
-                        if (monitoredCall.getAimedArrivalTime() == null && monitoredCall.getAimedDepartureTime() == null){
+                        if (monitoredCall.getAimedArrivalTime() == null && monitoredCall.getAimedDepartureTime() == null) {
                             log.info("No aimed time for message : {}", monitoredStopVisit.getItemIdentifier());
                             continue;
                         }
@@ -161,7 +160,7 @@ public class UpdateVJIdProcessor extends ValueAdapter implements PostProcessor {
 
                         monitoredStopVisit.setItemIdentifier(
                                 monitoredStopVisit.getMonitoringRef().getValue() + "_" +
-                                        StopMonitoringUtils.getVehicleJourneyName(monitoredStopVisit).orElse(null) + "_" +
+                                        StopMonitoringUtils.getVehicleJourneyRef(monitoredStopVisit).orElse(null) + "_" +
                                         getArrivalDateOrTime(monitoredStopVisit, DF_YYYYMMDD).orElse(null) + "_" +
                                         getArrivalDateOrTime(monitoredStopVisit, DF_HHMMSS).orElse(null)
                         );

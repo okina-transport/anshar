@@ -53,8 +53,7 @@ import static no.rutebanken.anshar.subscription.SubscriptionSetup.ServiceType.SO
 @Component
 public class SubscriptionInitializer implements CamelContextAware {
     private static final Logger logger = LoggerFactory.getLogger(SubscriptionInitializer.class);
-
-
+    private static final int DEFAULT_INITIALIZER_DELAY_MIN = 1;
     private final SubscriptionManager subscriptionManager;
     private final SubscriptionConfig subscriptionConfig;
     private final SiriHandler handler;
@@ -65,8 +64,6 @@ public class SubscriptionInitializer implements CamelContextAware {
     private final TaskScheduler taskScheduler;
     private final ExtendedHazelcastService hazelcastService;
     private final IScheduledExecutorService sharedScheduler;
-    private static final int DEFAULT_INITIALIZER_DELAY_MIN = 1;
-
     private CamelContext camelContext;
     private ScheduledFuture<?> waitingInit;
 
