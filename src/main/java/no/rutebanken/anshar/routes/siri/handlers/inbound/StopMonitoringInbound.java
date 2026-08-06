@@ -34,27 +34,20 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASE
 public class StopMonitoringInbound {
 
     private static final Logger logger = LoggerFactory.getLogger(StopMonitoringInbound.class);
-
-    @Autowired
-    private MonitoredStopVisits monitoredStopVisits;
-
-    @Autowired
-    private Utils utils;
-
-    @Autowired
-    private ServerSubscriptionManager serverSubscriptionManager;
-
-    @Autowired
-    private SubscriptionManager subscriptionManager;
-
-    @Autowired
-    private PrometheusMetricsService metrics;
-
-    @Autowired
-    private KafkaConfig kafkaConfig;
-
     @Produce(KafkaRouteBuilder.SEND_SM_IN_TO_KAFKA)
     protected ProducerTemplate sendSmInToKafka;
+    @Autowired
+    private MonitoredStopVisits monitoredStopVisits;
+    @Autowired
+    private Utils utils;
+    @Autowired
+    private ServerSubscriptionManager serverSubscriptionManager;
+    @Autowired
+    private SubscriptionManager subscriptionManager;
+    @Autowired
+    private PrometheusMetricsService metrics;
+    @Autowired
+    private KafkaConfig kafkaConfig;
 
     public boolean ingestStopVisitFromApi(SiriDataType dataFormat, String dataSetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList, Long inboundTime) {
         // logger.debug("Got SM-delivery: Subscription [{}] {}", subscriptionSetupList);
@@ -195,15 +188,15 @@ public class StopMonitoringInbound {
         String existingItemIdentifier = monitoredStopVisit.getItemIdentifier();
         String newItemIdentifier = "";
         try {
-            String stopName = StopMonitoringUtils.getMonitoringRef(monitoredStopVisit).orElse(null);
-            String lineName = StopMonitoringUtils.getLineName(monitoredStopVisit).orElse(null);
-            String vehicleJourneyName = StopMonitoringUtils.getVehicleJourneyName(monitoredStopVisit).orElse(null);
+            String stopRef = StopMonitoringUtils.getMonitoringRef(monitoredStopVisit).orElse(null);
+            String lineRef = StopMonitoringUtils.getLineRef(monitoredStopVisit).orElse(null);
+            String vehicleJourneyRef = StopMonitoringUtils.getVehicleJourneyRef(monitoredStopVisit).orElse(null);
             String aimedTime = StopMonitoringUtils.getAimedTimeAtStop(monitoredStopVisit).orElse(null);
-            Objects.requireNonNull(stopName);
-            Objects.requireNonNull(lineName);
-            Objects.requireNonNull(vehicleJourneyName);
+            Objects.requireNonNull(stopRef);
+            Objects.requireNonNull(lineRef);
+            Objects.requireNonNull(vehicleJourneyRef);
             Objects.requireNonNull(aimedTime);
-            newItemIdentifier = stopName + lineName + vehicleJourneyName + aimedTime;
+            newItemIdentifier = stopRef + lineRef + vehicleJourneyRef + aimedTime;
         } catch (Exception e) {
             logger.error("Unable to compute new itemIdentifier from {}", monitoredStopVisit.getItemIdentifier());
         }
