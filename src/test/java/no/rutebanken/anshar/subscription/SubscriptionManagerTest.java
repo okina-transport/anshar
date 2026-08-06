@@ -215,7 +215,7 @@ public class SubscriptionManagerTest extends SpringBootBaseTest {
         subscriptionConfig.getSubscriptions().add(subscription);
         subscriptionInitializer.createSubscriptions();
 
-        Thread.sleep(91000);
+        Thread.sleep(121000);
 
         int nbOfReceivedRequests = TestUtils.countNonCheckStatusRequests(mockServer, "/providerEndpoint");
         String result = TestUtils.getFirstNonCheckStatusRequestOnEndpoint(mockServer, "/providerEndpoint");
