@@ -183,6 +183,11 @@ public class ExtendedHazelcastService extends HazelCastService {
         return hazelcast.getMap("anshar.outbound.error.count");
     }
 
+    @Bean
+    public ISet<String> getBannedUrls() {
+        return hazelcast.getSet("anshar.outbound.banned.urls");
+    }
+
 
     public IMap<String, Pair<LocalDateTime, String>> getScheduledGeneralMessages(String dataset) {
         return hazelcast.getMap("anshar.scheduled.general.messages." + dataset);

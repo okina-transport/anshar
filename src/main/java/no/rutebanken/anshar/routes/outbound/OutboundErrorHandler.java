@@ -1,7 +1,13 @@
 package no.rutebanken.anshar.routes.outbound;
 
+import com.hazelcast.collection.ISet;
 import com.hazelcast.map.IMap;
+import com.hazelcast.scheduledexecutor.DuplicateTaskException;
+import com.hazelcast.scheduledexecutor.IScheduledExecutorService;
+import com.hazelcast.scheduledexecutor.NamedTask;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import org.apache.camel.Exchange;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -13,6 +19,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 
 import static no.rutebanken.anshar.routes.validation.validators.Constants.ENDPOINT_HEADER_NAME;
@@ -27,16 +34,39 @@ import static no.rutebanken.anshar.routes.validation.validators.Constants.ENDPOI
 public class OutboundErrorHandler {
 
 
+    private static final String BAN_CHECK_TASK_NAME = "outboundErrorHandler-banUrlsExceedingLimit";
+
     private final IMap<String, Integer> outboundErrorCount;
     int maximumOutboundErrorsAllowed;
     private final ServerSubscriptionManager subscriptionManager;
+    private final IScheduledExecutorService sharedScheduler;
+    private final ISet<String> bannedUrls;
 
     public OutboundErrorHandler(@Qualifier("getOutboundErrorCount") IMap<String, Integer> outboundErrorCount,
                                 @Value("${maximum.outbound.errors.allowed.by.url:2}") int maximumOutboundErrorsAllowed,
-                                @Autowired ServerSubscriptionManager subscriptionManager) {
+                                @Autowired ServerSubscriptionManager subscriptionManager,
+                                @Qualifier("getSharedScheduler") IScheduledExecutorService sharedScheduler,
+                                @Qualifier("getBannedUrls") ISet<String> bannedUrls) {
         this.outboundErrorCount = outboundErrorCount;
         this.maximumOutboundErrorsAllowed = maximumOutboundErrorsAllowed;
         this.subscriptionManager = subscriptionManager;
+        this.sharedScheduler = sharedScheduler;
+        this.bannedUrls = bannedUrls;
+    }
+
+    /**
+     * Schedules the ban-check task on the Hazelcast member owning the task's key, so that
+     * exactly one node of the cluster runs it, regardless of how many nodes call this at startup.
+     * Waits for the Spring context to be fully refreshed, since the task may run immediately
+     * (initial delay 0) and would otherwise find {@link ApplicationContextHolder} not yet set.
+     */
+    @PostConstruct
+    public void scheduleBanCheck() {
+        try {
+            sharedScheduler.scheduleOnKeyOwnerAtFixedRate(this::banUrlsExceedingLimit, BAN_CHECK_TASK_NAME, 0, 5, TimeUnit.MINUTES);
+        } catch (DuplicateTaskException e) {
+            log.info("Ban-check task [{}] is already scheduled on the cluster", BAN_CHECK_TASK_NAME);
+        }
     }
 
     /**
@@ -51,12 +81,8 @@ public class OutboundErrorHandler {
         int errorCount = outboundErrorCount.getOrDefault(baseUrl, 0);
         errorCount++;
 
-        log.info("Outbound error push [{}/{}] for url : {}", errorCount, maximumOutboundErrorsAllowed, baseUrl);
+        log.debug("Outbound error push [{}/{}] for url : {}", errorCount, maximumOutboundErrorsAllowed, baseUrl);
         outboundErrorCount.put(baseUrl, errorCount);
-
-        if (errorCount >= maximumOutboundErrorsAllowed) {
-            banUrl(baseUrl);
-        }
     }
 
     /**
@@ -66,6 +92,7 @@ public class OutboundErrorHandler {
      */
     private void banUrl(String baseUrl) {
         log.info("Banning url : {} because of repeated push errors", baseUrl);
+        bannedUrls.add(baseUrl);
         List<String> outboundSubscriptionsToRemove = subscriptionManager.getSubscriptionsWithBaseUrl(baseUrl);
         log.info("Removing subscriptions with error URL: {}", String.join(",", outboundSubscriptionsToRemove));
         outboundSubscriptionsToRemove.forEach(subscriptionToRemove -> subscriptionManager.terminateSubscription(subscriptionToRemove, false));
@@ -90,6 +117,7 @@ public class OutboundErrorHandler {
      */
     public void resetCount(String baseUrl) {
         outboundErrorCount.remove(baseUrl);
+        bannedUrls.remove(baseUrl);
     }
 
     /**
@@ -150,5 +178,20 @@ public class OutboundErrorHandler {
     public void clearOutboundErrors() {
         log.info("Clearing outbound errors");
         outboundErrorCount.clear();
+        bannedUrls.clear();
     }
+
+    /**
+     * Bans every url whose error count has reached the allowed maximum and that isn't already banned.
+     * scheduled on a single node of the cluster.
+     */
+    public void banUrlsExceedingLimit() {
+        outboundErrorCount.forEach((url, errorCount) -> {
+            if (errorCount >= maximumOutboundErrorsAllowed && !bannedUrls.contains(url)) {
+                banUrl(url);
+            }
+        });
+    }
+
+
 }
