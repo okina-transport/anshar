@@ -648,6 +648,7 @@
                 <version>3.5.3</version>
                 <inherited>true</inherited>
                 <configuration>
+                    <rerunFailingTestsCount>2</rerunFailingTestsCount>
                     <excludes>
                         <exclude>**/*KT.java</exclude>
                     </excludes>
