@@ -110,7 +110,18 @@ public class OutboundErrorHandler {
      */
     private String getBaseURLfromExchange(Exchange exchange) throws URISyntaxException {
         String endpoint = (String) exchange.getIn().getHeader(ENDPOINT_HEADER_NAME);
-        URI uri = new URI(endpoint);
+        return getBaseURL(endpoint);
+    }
+
+    /**
+     * Normalizes a url to scheme://host+path, stripping port and query string, so that
+     * error-counting, banishment and ban-checking all key on the same value.
+     *
+     * @param url url to normalize
+     * @return the normalized base url
+     */
+    private String getBaseURL(String url) throws URISyntaxException {
+        URI uri = new URI(url);
         return uri.getScheme() + "://" + uri.getHost() + (uri.getPath() != null ? uri.getPath() : "");
     }
 
@@ -122,7 +133,13 @@ public class OutboundErrorHandler {
      * false : url is banished. Subscription request will be refused
      */
     public boolean isUrlAllowed(String url) {
-        return outboundErrorCount.getOrDefault(url, 0) < maximumOutboundErrorsAllowed;
+        try {
+            String baseUrl = getBaseURL(url);
+            return outboundErrorCount.getOrDefault(baseUrl, 0) < maximumOutboundErrorsAllowed;
+        } catch (URISyntaxException e) {
+            log.warn("Unable to parse url [{}] while checking if it is banished", url, e);
+            return true;
+        }
     }
 
 
