@@ -59,7 +59,7 @@ public class DisruptionRetriever {
     }
 
     public void retrieveDisruptions() {
-        logger.info("Début récupération des perturbations");
+        logger.debug("Début récupération des perturbations");
 
         try {
             String disruptionsString = disruptionService.getAllDisrutionsFromOkinaDB(ansharUserId);
@@ -78,7 +78,7 @@ public class DisruptionRetriever {
     void ingestDisruption(String disruptionsString) throws JsonProcessingException {
 
         if (StringUtils.isEmpty(disruptionsString)) {
-            logger.info("Pas de nouvelle perturbation");
+            logger.debug("Pas de nouvelle perturbation");
             return;
         }
 
