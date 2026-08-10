@@ -187,23 +187,23 @@ public class Situations extends SiriRepository<PtSituationElement> {
         long t1 = System.currentTimeMillis();
 
         Set<SiriObjectStorageKey> sizeLimitedIds = requestedIds.stream().limit(maxSize).collect(Collectors.toSet());
-        logger.info("Limiting size: {} ms", (System.currentTimeMillis() - t1));
+        logger.debug("Limiting size: {} ms", (System.currentTimeMillis() - t1));
         t1 = System.currentTimeMillis();
 
         Boolean isMoreData = sizeLimitedIds.size() < requestedIds.size();
 
         //Remove collected objects
         sizeLimitedIds.forEach(requestedIds::remove);
-        logger.info("Limiting size: {} ms", (System.currentTimeMillis() - t1));
+        logger.debug("Limiting size: {} ms", (System.currentTimeMillis() - t1));
         t1 = System.currentTimeMillis();
 
         Collection<PtSituationElement> values = situationElements.getAll(sizeLimitedIds).values();
-        logger.info("Fetching data: {} ms", (System.currentTimeMillis() - t1));
+        logger.debug("Fetching data: {} ms", (System.currentTimeMillis() - t1));
         t1 = System.currentTimeMillis();
 
         Siri siri = siriObjectFactory.createSXServiceDelivery(values, requestorId, messageId);
         siri.getServiceDelivery().setMoreData(isMoreData);
-        logger.info("Creating SIRI-delivery: {} ms", (System.currentTimeMillis() - t1));
+        logger.debug("Creating SIRI-delivery: {} ms", (System.currentTimeMillis() - t1));
 
         if (!isAdHocRequest) {
             if (requestedIds.size() > situationElements.size()) {

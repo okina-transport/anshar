@@ -268,18 +268,18 @@ public class EstimatedTimetables extends SiriRepository<EstimatedVehicleJourney>
 
         long t3 = System.currentTimeMillis();
 
-        logger.info("Filter by startTime: {}, limiting size: {} ms", (t2 - t1), (t3 - t2));
+        logger.debug("Filter by startTime: {}, limiting size: {} ms", (t2 - t1), (t3 - t2));
 
         t1 = System.currentTimeMillis();
 
         Boolean isMoreData = (previewIntervalExclusionCounter.get() + sizeLimitedIds.size()) < requestedIds.size();
 
         Collection<EstimatedVehicleJourney> values = timetableDeliveries.getAll(sizeLimitedIds).values();
-        logger.info("Fetching data: {} ms", (System.currentTimeMillis() - t1));
+        logger.debug("Fetching data: {} ms", (System.currentTimeMillis() - t1));
         t1 = System.currentTimeMillis();
 
         Siri siri = siriObjectFactory.createETServiceDelivery(values, requestorId, requestMessageRef);
-        logger.info("Creating SIRI-delivery: {} ms", (System.currentTimeMillis() - t1));
+        logger.debug("Creating SIRI-delivery: {} ms", (System.currentTimeMillis() - t1));
 
         siri.getServiceDelivery().setMoreData(isMoreData);
 

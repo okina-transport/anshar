@@ -140,7 +140,7 @@ public class KafkaRouteBuilder extends RouteBuilder {
                     .process(keepOnlyKafkaHeaders)
                     .wireTap(kafkaConfig.createCamelProducerConfig(kafkaConfig.getThTrConsistencyTopic()));
             from(SEND_TR_IN_SUBSCRIPTION_MONITORING_TO_KAFKA)
-                    .log(LoggingLevel.INFO, "Sending TR in subscription monitoring to KAFKA")
+                    .log(LoggingLevel.DEBUG, "Sending TR in subscription monitoring to KAFKA")
                     .marshal()
                     .json()
                     .process(keepOnlyKafkaHeaders)
