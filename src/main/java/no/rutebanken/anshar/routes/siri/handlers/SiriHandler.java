@@ -320,7 +320,7 @@ public class SiriHandler {
                 }
             }
         } else if (incoming.getCheckStatusRequest() != null) {
-            logger.info("Handling checkStatusRequest...");
+            logger.debug("Handling checkStatusRequest...");
             return serverSubscriptionManager.handleCheckStatusRequest(incoming.getCheckStatusRequest());
         } else if (incoming.getServiceRequest() != null) {
             logger.debug("Handling serviceRequest with ID-policy {}.", outboundIdMappingPolicy);
