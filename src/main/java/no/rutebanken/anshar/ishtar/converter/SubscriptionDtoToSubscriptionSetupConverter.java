@@ -82,14 +82,18 @@ public class SubscriptionDtoToSubscriptionSetupConverter implements Converter<Su
             target.setOverrideDestinationName(source.getOverrideDestinationName());
             // required to avoid NPE on to SubscriptionSetup#buildUrl()
             target.setAddress(inboundUrl);
+
+            if (StringUtils.isNotEmpty(source.getPublishToDisplayAction())) {
+                target.setPublishToDisplayAction(PublishToDisplayAction.valueOf(source.getPublishToDisplayAction()));
+            }
+
+
             if (target.getSubscriptionMode() == SubscriptionSetup.SubscriptionMode.SUBSCRIBE && StringUtils.isEmpty(MapUtils.getString(target.getUrlMap(), RequestType.SUBSCRIBE))) {
                 log.warn("subscription has no subscribe URL, discard it: {}", source);
                 target = null;
             }
 
-            if (StringUtils.isNotEmpty(source.getPublishToDisplayAction())) {
-                target.setPublishToDisplayAction(PublishToDisplayAction.valueOf(source.getPublishToDisplayAction()));
-            }
+
         }
         log.debug("target: {}", target);
         return target;
