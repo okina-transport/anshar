@@ -8,6 +8,7 @@ import no.rutebanken.anshar.data.frGeneralMessageStructure.Message;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.MessageType;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jsoup.Jsoup;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +34,72 @@ public class GeneralMessageMapper {
     @Autowired
     StopPlaceUpdaterService stopPlaceUpdaterService;
 
+    private static void mapAffectedRoute(AffectedRouteStructure affectedRoute, Set<String> stopPointRefs) {
+        if (affectedRoute.getStopPoints() == null) {
+            return;
+        }
+        stopPointRefs.addAll(affectedRoute.getStopPoints().getAffectedStopPointsAndLinkProjectionToNextStopPoints()
+                .stream()
+                .filter(e -> e instanceof AffectedStopPointStructure && ((AffectedStopPointStructure) e).getStopPointRef() != null)
+                .map(e -> ((AffectedStopPointStructure) e).getStopPointRef().getValue())
+                .collect(Collectors.toList()));
+    }
+
+    private static String getMsgText(PtSituationElement situation) {
+        // Get descriptions without HTML tags / line breaks
+        return situation.getDescriptions().stream().filter(d -> StringUtils.isNotBlank(d.getValue())).map(d -> Jsoup.parse(d.getValue()).text()).collect(Collectors.joining(", "));
+    }
+
+    private static void mapValidUntil(GeneralMessage generalMessage, PtSituationElement situation) {
+        ZonedDateTime currentMax = null;
+
+        for (HalfOpenTimestampOutputRangeStructure validityPeriod : situation.getValidityPeriods()) {
+            if (currentMax == null || currentMax.isBefore(validityPeriod.getEndTime())) {
+                currentMax = validityPeriod.getEndTime();
+            }
+        }
+
+        if (currentMax == null) {
+            currentMax = ZonedDateTime.now().plusYears(100);
+        }
+
+        generalMessage.setValidUntilTime(currentMax);
+    }
+
+    private static void mapInfoId(GeneralMessage generalMessage, PtSituationElement situation) {
+        String msgId = situation.getSituationNumber().getValue();
+        generalMessage.setItemIdentifier(msgId);
+
+        InfoMessageRefStructure infoMess = new InfoMessageRefStructure();
+        infoMess.setValue(msgId);
+        generalMessage.setInfoMessageIdentifier(infoMess);
+
+        SituationRef situationRef = new SituationRef();
+        SituationSimpleRef simpleRef = new SituationSimpleRef();
+        simpleRef.setValue(msgId);
+        situationRef.setSituationSimpleRef(simpleRef);
+        generalMessage.setSituationRef(situationRef);
+    }
+
+    private static void mapInfoChannelRef(GeneralMessage generalMessage) {
+        InfoChannelRefStructure infoChannelRef = new InfoChannelRefStructure();
+        infoChannelRef.setValue(DEFAULT_CHANNEL_REF);
+        generalMessage.setInfoChannelRef(infoChannelRef);
+    }
+
+    public static GeneralMessageCancellation mapToCancellations(PtSituationElement ptSituationElement) {
+        GeneralMessageCancellation gmCancellation = new GeneralMessageCancellation();
+        InfoChannelRefStructure infoChannelRef = new InfoChannelRefStructure();
+        infoChannelRef.setValue(DEFAULT_CHANNEL_REF);
+        gmCancellation.setInfoChannelRef(infoChannelRef);
+        InfoMessageRefStructure infoMessageRef = new InfoMessageRefStructure();
+        infoMessageRef.setValue(ptSituationElement.getSituationNumber().getValue());
+        gmCancellation.setInfoMessageIdentifier(infoMessageRef);
+        ItemRefStructure itemRef = new ItemRefStructure();
+        itemRef.setValue(ptSituationElement.getSituationNumber().getValue());
+        gmCancellation.setItemRef(itemRef);
+        return gmCancellation;
+    }
 
     /**
      * Maps a situation to a general message
@@ -51,7 +118,11 @@ public class GeneralMessageMapper {
         mapValidUntil(generalMessage, situation);
         mapContent(datasetId, generalMessage, situation);
 
-        generalMessage.setExtensions(situation.getExtensions());
+        if (situation.getExtensions() != null && CollectionUtils.isNotEmpty(situation.getExtensions().getAnies())) {
+            Extensions extensions = new Extensions();
+            extensions.getAnies().addAll(situation.getExtensions().getAnies());
+            generalMessage.setExtensions(extensions);
+        }
 
         return generalMessage;
 
@@ -130,72 +201,5 @@ public class GeneralMessageMapper {
         content.setGroupOfLinesRefs(new ArrayList<>(groupOfLineRefs));
         content.setLineRefs(new ArrayList<>(lineRefs));
         content.setStopPointRefs(new ArrayList<>(stopPointRefs));
-    }
-
-    private static void mapAffectedRoute(AffectedRouteStructure affectedRoute, Set<String> stopPointRefs) {
-        if (affectedRoute.getStopPoints() == null) {
-            return;
-        }
-        stopPointRefs.addAll(affectedRoute.getStopPoints().getAffectedStopPointsAndLinkProjectionToNextStopPoints()
-                .stream()
-                .filter(e -> e instanceof AffectedStopPointStructure && ((AffectedStopPointStructure) e).getStopPointRef() != null)
-                .map(e -> ((AffectedStopPointStructure) e).getStopPointRef().getValue())
-                .collect(Collectors.toList()));
-    }
-
-    private static String getMsgText(PtSituationElement situation) {
-        // Get descriptions without HTML tags / line breaks
-        return situation.getDescriptions().stream().filter(d -> StringUtils.isNotBlank(d.getValue())).map(d -> Jsoup.parse(d.getValue()).text()).collect(Collectors.joining(", "));
-    }
-
-    private static void mapValidUntil(GeneralMessage generalMessage, PtSituationElement situation) {
-        ZonedDateTime currentMax = null;
-
-        for (HalfOpenTimestampOutputRangeStructure validityPeriod : situation.getValidityPeriods()) {
-            if (currentMax == null || currentMax.isBefore(validityPeriod.getEndTime())) {
-                currentMax = validityPeriod.getEndTime();
-            }
-        }
-
-        if (currentMax == null) {
-            currentMax = ZonedDateTime.now().plusYears(100);
-        }
-
-        generalMessage.setValidUntilTime(currentMax);
-    }
-
-    private static void mapInfoId(GeneralMessage generalMessage, PtSituationElement situation) {
-        String msgId = situation.getSituationNumber().getValue();
-        generalMessage.setItemIdentifier(msgId);
-
-        InfoMessageRefStructure infoMess = new InfoMessageRefStructure();
-        infoMess.setValue(msgId);
-        generalMessage.setInfoMessageIdentifier(infoMess);
-
-        SituationRef situationRef = new SituationRef();
-        SituationSimpleRef simpleRef = new SituationSimpleRef();
-        simpleRef.setValue(msgId);
-        situationRef.setSituationSimpleRef(simpleRef);
-        generalMessage.setSituationRef(situationRef);
-    }
-
-    private static void mapInfoChannelRef(GeneralMessage generalMessage) {
-        InfoChannelRefStructure infoChannelRef = new InfoChannelRefStructure();
-        infoChannelRef.setValue(DEFAULT_CHANNEL_REF);
-        generalMessage.setInfoChannelRef(infoChannelRef);
-    }
-
-    public static GeneralMessageCancellation mapToCancellations(PtSituationElement ptSituationElement) {
-        GeneralMessageCancellation gmCancellation = new GeneralMessageCancellation();
-        InfoChannelRefStructure infoChannelRef = new InfoChannelRefStructure();
-        infoChannelRef.setValue(DEFAULT_CHANNEL_REF);
-        gmCancellation.setInfoChannelRef(infoChannelRef);
-        InfoMessageRefStructure infoMessageRef = new InfoMessageRefStructure();
-        infoMessageRef.setValue(ptSituationElement.getSituationNumber().getValue());
-        gmCancellation.setInfoMessageIdentifier(infoMessageRef);
-        ItemRefStructure itemRef = new ItemRefStructure();
-        itemRef.setValue(ptSituationElement.getSituationNumber().getValue());
-        gmCancellation.setItemRef(itemRef);
-        return gmCancellation;
     }
 }
