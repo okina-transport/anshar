@@ -333,7 +333,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
                 currentChecksum = getSXCheckSum(situation);
                 timingTracer.mark("getChecksum");
             } catch (Exception e) {
-                //Ignore - data will be updated
+                logger.error("Error calculating checksum for situation: {}", situation.getSituationNumber(), e);
             }
 
             String existingChecksum = checksumCache.get(key);
@@ -413,30 +413,25 @@ public class Situations extends SiriRepository<PtSituationElement> {
 
     private String getSXCheckSum(PtSituationElement ptSituationElement) throws NoSuchAlgorithmException {
         StringBuilder result = new StringBuilder();
-        AffectsScopeStructure savedAffects = null;
-        if (ptSituationElement.getAffects() != null) {
-            savedAffects = ptSituationElement.getAffects();
-            ptSituationElement.setAffects(null);
-        }
-        Extensions savedExtension = null;
-        if (ptSituationElement.getExtensions() != null) {
-            savedExtension = ptSituationElement.getExtensions();
-            ptSituationElement.setExtensions(null);
-        }
-        result.append(getChecksum(ptSituationElement));
-        result.append("-");
-
-        if (savedAffects != null) {
-            result.append("-");
-            result.append(getAffectChecksum(savedAffects));
+        AffectsScopeStructure savedAffects = ptSituationElement.getAffects();
+        Extensions savedExtension = ptSituationElement.getExtensions();
+        ptSituationElement.setAffects(null);
+        ptSituationElement.setExtensions(null);
+        try {
+            result.append(getChecksum(ptSituationElement));
+            if (savedAffects != null) {
+                result.append("-");
+                result.append(getAffectChecksum(savedAffects));
+            }
+            if (savedExtension != null) {
+                result.append("-");
+                result.append(getExtensionsChecksum(savedExtension));
+            }
+            return result.toString();
+        } finally {
             ptSituationElement.setAffects(savedAffects);
-        }
-        if (savedExtension != null) {
-            result.append("-");
-            result.append(getExtensionsChecksum(savedExtension));
             ptSituationElement.setExtensions(savedExtension);
         }
-        return result.toString();
     }
 
     private String getExtensionsChecksum(Extensions extensions) throws NoSuchAlgorithmException {
