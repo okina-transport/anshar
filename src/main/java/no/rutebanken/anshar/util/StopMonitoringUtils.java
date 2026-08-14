@@ -4,10 +4,7 @@ package no.rutebanken.anshar.util;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import uk.org.siri.siri21.MonitoredStopVisit;
-import uk.org.siri.siri21.MonitoredStopVisitCancellation;
-import uk.org.siri.siri21.MonitoredVehicleJourneyStructure;
-import uk.org.siri.siri21.NaturalLanguageStringStructure;
+import uk.org.siri.siri21.*;
 
 import java.time.ZonedDateTime;
 import java.util.Optional;
@@ -15,6 +12,8 @@ import java.util.Optional;
 @Slf4j
 public class StopMonitoringUtils {
 
+    private StopMonitoringUtils() {
+    }
 
     public static Optional<String> getLineRef(MonitoredStopVisit stopVisit) {
         if (stopVisit.getMonitoredVehicleJourney() == null || stopVisit.getMonitoredVehicleJourney().getLineRef() == null) {
@@ -89,6 +88,23 @@ public class StopMonitoringUtils {
         }
         return stopVisit.getMonitoredVehicleJourney().getDestinationNames().stream()
                 .map(NaturalLanguageStringStructure::getValue)
+                .filter(StringUtils::isNotBlank)
+                .findFirst();
+    }
+
+    public static Optional<String> getOriginRef(MonitoredStopVisit stopVisit) {
+        if (stopVisit.getMonitoredVehicleJourney() == null || stopVisit.getMonitoredVehicleJourney().getOriginRef() == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(stopVisit.getMonitoredVehicleJourney().getOriginRef().getValue());
+    }
+
+    public static Optional<String> getOriginName(MonitoredStopVisit stopVisit) {
+        if (stopVisit.getMonitoredVehicleJourney() == null) {
+            return Optional.empty();
+        }
+        return stopVisit.getMonitoredVehicleJourney().getOriginNames().stream()
+                .map(NaturalLanguagePlaceNameStructure::getValue)
                 .filter(StringUtils::isNotBlank)
                 .findFirst();
     }
