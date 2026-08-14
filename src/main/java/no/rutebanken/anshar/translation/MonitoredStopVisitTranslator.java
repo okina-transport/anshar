@@ -42,15 +42,19 @@ public class MonitoredStopVisitTranslator extends BaseSiriEntityTranslator<Monit
         Optional<String> destinationRef = StopMonitoringUtils.getDestinationRef(entity);
         Optional<String> destinationName = StopMonitoringUtils.getDestinationName(entity);
 
+        Optional<String> originRef = StopMonitoringUtils.getOriginRef(entity);
+        Optional<String> originName = StopMonitoringUtils.getOriginName(entity);
+
         Optional<String> vehicleJourneyRef = StopMonitoringUtils.getVehicleJourneyRef(entity);
         Optional<String> vehicleJourneyName = StopMonitoringUtils.getVehicleJourneyName(entity);
 
         // vehicle journey translations
-        addLineNameTranslations(datasetId, lineRef.orElse(null), lineName.orElse(null),
+        addLineNameTranslationsNLSS(datasetId, lineRef.orElse(null), lineName.orElse(null),
                 vehicleJourney.getPublishedLineNames());
-        addStopNameTranslations(datasetId, destinationRef.orElse(null), destinationName.orElse(null),
+        addStopNameTranslationsNLSS(datasetId, destinationRef.orElse(null), destinationName.orElse(null),
                 vehicleJourney.getDestinationNames());
-        addVehicleJourneyNameTranslations(datasetId, vehicleJourneyRef.orElse(null), vehicleJourneyName.orElse(null),
+        addStopNameTranslationsNLPNSS(datasetId, originRef.orElse(null), originName.orElse(null), vehicleJourney.getOriginNames());
+        addVehicleJourneyNameTranslationsNLSS(datasetId, vehicleJourneyRef.orElse(null), vehicleJourneyName.orElse(null),
                 vehicleJourney.getVehicleJourneyNames());
 
         // monitored call translations
@@ -58,9 +62,9 @@ public class MonitoredStopVisitTranslator extends BaseSiriEntityTranslator<Monit
         if (monitoredCall == null) {
             return;
         }
-        addStopNameTranslations(datasetId, monitoringRef.orElse(null), monitoringName.orElse(null),
+        addStopNameTranslationsNLSS(datasetId, monitoringRef.orElse(null), monitoringName.orElse(null),
                 monitoredCall.getStopPointNames());
-        addStopNameTranslations(datasetId, destinationRef.orElse(null), destinationName.orElse(null),
+        addStopNameTranslationsNLSS(datasetId, destinationRef.orElse(null), destinationName.orElse(null),
                 monitoredCall.getDestinationDisplaies());
     }
 }
