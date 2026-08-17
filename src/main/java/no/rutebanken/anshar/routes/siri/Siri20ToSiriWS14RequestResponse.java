@@ -28,7 +28,6 @@ import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.MessageHistory;
 import org.apache.camel.http.base.HttpOperationFailedException;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 
@@ -40,14 +39,14 @@ import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFO
 
 public class Siri20ToSiriWS14RequestResponse extends SiriSubscriptionRouteBuilder {
 
-    @Autowired
-    private IncomingDataHealthService incomingDataHealthService;
+    private final IncomingDataHealthService incomingDataHealthService;
 
-    @Autowired
-    private PrometheusMetricsService metrics;
+    private final PrometheusMetricsService metrics;
 
-    public Siri20ToSiriWS14RequestResponse(AnsharConfiguration config, SubscriptionSetup subscriptionSetup, SubscriptionManager subscriptionManager) {
+    public Siri20ToSiriWS14RequestResponse(AnsharConfiguration config, SubscriptionSetup subscriptionSetup, SubscriptionManager subscriptionManager, IncomingDataHealthService incomingDataHealthService, PrometheusMetricsService metrics) {
         super(config, subscriptionManager);
+        this.incomingDataHealthService = incomingDataHealthService;
+        this.metrics = metrics;
 
         this.subscriptionSetup = subscriptionSetup;
     }
