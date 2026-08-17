@@ -338,10 +338,10 @@ public class SubscriptionInitializer implements CamelContextAware {
                 if (isSubscription || isFetchedDelivery) {
                     routeBuilders.add(new Siri20ToSiriWS14Subscription(configuration, handler, subscriptionSetup, subscriptionManager));
                 } else {
-                    routeBuilders.add(new Siri20ToSiriWS14RequestResponse(configuration, subscriptionSetup, subscriptionManager));
+                    routeBuilders.add(new Siri20ToSiriWS14RequestResponse(configuration, subscriptionSetup, subscriptionManager, incomingDataHealthService, metrics));
                 }
                 if (isFetchedDelivery) {
-                    routeBuilders.add(new Siri20ToSiriWS14RequestResponse(configuration, subscriptionSetup, subscriptionManager));
+                    routeBuilders.add(new Siri20ToSiriWS14RequestResponse(configuration, subscriptionSetup, subscriptionManager, incomingDataHealthService, metrics));
                 }
             } else {
                 routeBuilders.add(new Siri20ToSiriRS14Subscription(configuration, handler, subscriptionSetup, subscriptionManager));
@@ -362,12 +362,12 @@ public class SubscriptionInitializer implements CamelContextAware {
                     routeBuilders.add(new Siri20ToSiriRS20Subscription(configuration, handler, subscriptionSetup, subscriptionManager));
 
                     if (isFetchedDelivery || subscriptionSetup.isDataSupplyRequestForInitialDelivery()) {
-                        routeBuilders.add(new Siri20ToSiriRS20RequestResponse(configuration, subscriptionSetup, subscriptionManager));
+                        routeBuilders.add(new Siri20ToSiriRS20RequestResponse(configuration, subscriptionSetup, subscriptionManager, incomingDataHealthService, metrics));
                     }
                 } else if (isLite) {
                     routeBuilders.add(new SiriLiteToSiriRS20RequestResponse(configuration, subscriptionSetup, subscriptionManager, incomingDataHealthService, metrics));
                 } else {
-                    routeBuilders.add(new Siri20ToSiriRS20RequestResponse(configuration, subscriptionSetup, subscriptionManager));
+                    routeBuilders.add(new Siri20ToSiriRS20RequestResponse(configuration, subscriptionSetup, subscriptionManager, incomingDataHealthService, metrics));
                 }
             }
         }

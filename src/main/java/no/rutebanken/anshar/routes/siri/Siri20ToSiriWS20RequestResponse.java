@@ -21,7 +21,6 @@ import no.rutebanken.anshar.metrics.InboundTimeProcessor;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.health.IncomingDataHealthService;
 import no.rutebanken.anshar.routes.health.IncomingFlowType;
-import no.rutebanken.anshar.routes.siri.helpers.SiriRequestFactory;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.Exchange;
@@ -54,9 +53,6 @@ public class Siri20ToSiriWS20RequestResponse extends SiriSubscriptionRouteBuilde
     public void configure() throws Exception {
 
         long heartbeatIntervalMillis = subscriptionSetup.getHeartbeatInterval().toMillis();
-
-
-        SiriRequestFactory helper = new SiriRequestFactory(subscriptionSetup);
 
         String httpOptions = getTimeout();
 

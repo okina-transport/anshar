@@ -32,29 +32,22 @@ import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
 
 @Slf4j
-public class RequesResponseSubscriptionTest extends SpringBootBaseTest implements CamelContextAware {
-
-    private ClientAndServer mockServer;
-
-    @Autowired
-    AnsharConfiguration ansharConfiguration;
-
-    @Autowired
-    SubscriptionManager subscriptionManager;
-
-    @Autowired
-    IncomingDataHealthService incomingDataHealthService;
-
-    @Autowired
-    PrometheusMetricsService prometheusMetricsService;
-
-    private CamelContext camelContext;
+public class RequestResponseSubscriptionTest extends SpringBootBaseTest implements CamelContextAware {
 
     @Produce("direct:execute_request_responsereq_id1")
     protected ProducerTemplate executeRequestProducer;
-
     @Produce("direct:execute_request_responsereq_id2")
     protected ProducerTemplate executeRequestProducer2;
+    @Autowired
+    AnsharConfiguration ansharConfiguration;
+    @Autowired
+    SubscriptionManager subscriptionManager;
+    @Autowired
+    IncomingDataHealthService incomingDataHealthService;
+    @Autowired
+    PrometheusMetricsService prometheusMetricsService;
+    private ClientAndServer mockServer;
+    private CamelContext camelContext;
 
     @AfterEach
     void stopServer() throws InterruptedException {
@@ -94,7 +87,7 @@ public class RequesResponseSubscriptionTest extends SpringBootBaseTest implement
         subscriptionToCheck.setStopMonitoringRefValue(stopMonitoringRefs);
         log.info("Sending request to route:" + "direct:" + subscriptionToCheck.getServiceRequestRouteName());
 
-        Siri20ToSiriRS20RequestResponse siri20ToSiri20 = new Siri20ToSiriRS20RequestResponse(ansharConfiguration, subscriptionToCheck, subscriptionManager);
+        Siri20ToSiriRS20RequestResponse siri20ToSiri20 = new Siri20ToSiriRS20RequestResponse(ansharConfiguration, subscriptionToCheck, subscriptionManager, incomingDataHealthService, prometheusMetricsService);
         camelContext.addRoutes(siri20ToSiri20);
 
         executeRequestProducer.asyncRequestBody(executeRequestProducer.getDefaultEndpoint(), "fakeBody");
@@ -171,14 +164,13 @@ public class RequesResponseSubscriptionTest extends SpringBootBaseTest implement
         log.info("received {} requests", nbOfReceivedRequests);
     }
 
+    @Override
+    public CamelContext getCamelContext() {
+        return camelContext;
+    }
 
     @Override
     public void setCamelContext(CamelContext camelContext) {
         this.camelContext = camelContext;
-    }
-
-    @Override
-    public CamelContext getCamelContext() {
-        return camelContext;
     }
 }
