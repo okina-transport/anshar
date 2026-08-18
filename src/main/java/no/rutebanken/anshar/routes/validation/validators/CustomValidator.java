@@ -22,7 +22,6 @@ import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 
 import java.text.MessageFormat;
 import java.time.LocalDateTime;
@@ -124,11 +123,9 @@ public abstract class CustomValidator {
 
     protected Node getChildNodeByName(Node node, String name) {
         if (node != null) {
-            final NodeList childNodes = node.getChildNodes();
-            for (int i = 0; i < childNodes.getLength(); i++) {
-                final Node n = childNodes.item(i);
+            for (Node n = node.getFirstChild(); n != null; n = n.getNextSibling()) {
                 if (n.hasChildNodes()) {
-                    for (int j = 0; j < n.getChildNodes().getLength(); j++) {
+                    for (Node c = n.getFirstChild(); c != null; c = c.getNextSibling()) {
                         if (nodeNameMatches(n, name)) {
                             return n;
                         }
@@ -160,9 +157,7 @@ public abstract class CustomValidator {
     protected List<Node> getChildNodesByName(Node node, String name) {
         List<Node> nodes = new ArrayList<>();
         if (node != null) {
-            final NodeList childNodes = node.getChildNodes();
-            for (int i = 0; i < childNodes.getLength(); i++) {
-                final Node n = childNodes.item(i);
+            for (Node n = node.getFirstChild(); n != null; n = n.getNextSibling()) {
                 if (nodeNameMatches(n, name)) {
                     nodes.add(n);
                 }
@@ -179,9 +174,7 @@ public abstract class CustomValidator {
     private Node getSiblingNodeByName(Node node, String name) {
         final Node parentNode = node.getParentNode();
         if (parentNode != null) {
-            final NodeList childNodes = parentNode.getChildNodes();
-            for (int i = 0; i < childNodes.getLength(); i++) {
-                final Node n = childNodes.item(i);
+            for (Node n = parentNode.getFirstChild(); n != null; n = n.getNextSibling()) {
                 if (nodeNameMatches(n, name)) {
                     return n;
                 }
@@ -194,9 +187,7 @@ public abstract class CustomValidator {
         final Node parentNode = node.getParentNode();
         List<Node> nodes = new ArrayList<>();
         if (parentNode != null) {
-            final NodeList childNodes = parentNode.getChildNodes();
-            for (int i = 0; i < childNodes.getLength(); i++) {
-                final Node n = childNodes.item(i);
+            for (Node n = parentNode.getFirstChild(); n != null; n = n.getNextSibling()) {
                 if (nodeNameMatches(n, name)) {
                     nodes.add(n);
                 }
