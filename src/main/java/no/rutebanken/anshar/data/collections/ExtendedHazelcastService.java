@@ -29,7 +29,6 @@ import com.hazelcast.core.LifecycleEvent;
 import com.hazelcast.map.IMap;
 import com.hazelcast.replicatedmap.ReplicatedMap;
 import com.hazelcast.scheduledexecutor.IScheduledExecutorService;
-import com.hazelcast.scheduledexecutor.ScheduledTaskHandler;
 import no.rutebanken.anshar.data.RequestorRefStats;
 import no.rutebanken.anshar.data.SiriObjectStorageKey;
 import no.rutebanken.anshar.routes.outbound.OutboundSubscriptionSetup;
@@ -54,7 +53,6 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.*;
-import java.util.concurrent.ScheduledFuture;
 
 
 @Service
@@ -191,10 +189,6 @@ public class ExtendedHazelcastService extends HazelCastService {
 
     public IMap<String, Pair<LocalDateTime, String>> getScheduledGeneralMessages(String dataset) {
         return hazelcast.getMap("anshar.scheduled.general.messages." + dataset);
-    }
-
-    public ISet<LocalDateTime> getSubscriptionInitNextSynchroTimes() {
-        return hazelcast.getSet("anshar.subscription.next.synchronization.times");
     }
 
     @Bean

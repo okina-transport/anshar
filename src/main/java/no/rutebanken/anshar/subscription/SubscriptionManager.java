@@ -21,7 +21,6 @@ import com.hazelcast.replicatedmap.ReplicatedMap;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.data.*;
-import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
@@ -65,8 +64,6 @@ public class SubscriptionManager implements CamelContextAware {
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
     private final Set<String> gtfsSubscriptions = new HashSet<>();
     private final Map<String, String> siriAPISubscriptions = new HashMap<>();
-    private Map<String, Class> mappingAdaptersById = new HashMap<>();
-
     private final ReplicatedMap<String, SubscriptionSetup> subscriptions;
     private final IMap<String, java.time.Instant> activatedTimestamp;
     private final AnsharConfiguration configuration;
@@ -90,10 +87,10 @@ public class SubscriptionManager implements CamelContextAware {
     private final RequestorRefRepository requestorRefRepository;
     private final DatasetService datasetService;
     private final SubscriptionConfig subscriptionConfig;
-    private final ExtendedHazelcastService hazelcastService;
-    private CamelContext camelContext;
     private final int unresponsiveDelay;
     private final boolean disableUnresponsiveCheckSx;
+    private final Map<String, Class> mappingAdaptersById = new HashMap<>();
+    private CamelContext camelContext;
 
     public SubscriptionManager(@Qualifier("getSubscriptionsMap") ReplicatedMap<String, SubscriptionSetup> subscriptions, @Qualifier("getActivatedTimestampMap") IMap<String, Instant> activatedTimestamp,
                                AnsharConfiguration configuration, @Qualifier("getLastActivityMap") ReplicatedMap<String, Instant> lastActivity,
@@ -103,7 +100,7 @@ public class SubscriptionManager implements CamelContextAware {
                                @Qualifier("getSituationChangesMap") IMap<String, Set<SiriObjectStorageKey>> sxChanges, @Qualifier("getEstimatedTimetableChangesMap") IMap<String, Set<SiriObjectStorageKey>> etChanges,
                                @Qualifier("getVehicleChangesMap") IMap<String, Set<SiriObjectStorageKey>> vmChanges, @Qualifier("getMonitoredStopVisitChangesMap") IMap<String, Set<SiriObjectStorageKey>> smChanges,
                                RequestorRefRepository requestorRefRepository, DatasetService datasetService, SubscriptionConfig subscriptionConfig,
-                               ExtendedHazelcastService hazelcastService, @Value("${anshar.subscription.unresponsive.delay.min:15}") int unresponsiveDelay,
+                               @Value("${anshar.subscription.unresponsive.delay.min:15}") int unresponsiveDelay,
                                @Value("${disable.check.unresponsive.subscription.sx:false}") boolean disableUnresponsiveCheckSx) {
         this.subscriptions = subscriptions;
         this.activatedTimestamp = activatedTimestamp;
@@ -128,7 +125,6 @@ public class SubscriptionManager implements CamelContextAware {
         this.requestorRefRepository = requestorRefRepository;
         this.datasetService = datasetService;
         this.subscriptionConfig = subscriptionConfig;
-        this.hazelcastService = hazelcastService;
         this.unresponsiveDelay = unresponsiveDelay;
         this.disableUnresponsiveCheckSx = disableUnresponsiveCheckSx;
     }
@@ -852,14 +848,11 @@ public class SubscriptionManager implements CamelContextAware {
     public void launchSubscriptionsLifeCycleCheck() {
         logger.info("Starting subscriptions lifecycle check");
         long startTime = System.currentTimeMillis();
-        hazelcastService.getSubscriptionInitNextSynchroTimes().clear();
-
 
         List<SubscriptionSetup> subscriptionsToRestart = getSubscriptionsToStop();
         logger.info("Subscriptions to restart : {}", subscriptionsToRestart.size());
         launchTerminateRequest(subscriptionsToRestart);
         launchSubscriptionRequest(subscriptionsToRestart);
-
 
         List<SubscriptionSetup> newSubscriptions = subscriptions.values()
                 .stream().filter(subscription -> subscription.isActive() && SubscriptionSetup.SubscriptionMode.SUBSCRIBE.equals(subscription.getSubscriptionMode()) && SubscriptionStatus.WAITING_FOR_START.equals(subscription.getStatus()))
@@ -867,7 +860,6 @@ public class SubscriptionManager implements CamelContextAware {
 
         logger.info("New subscriptions to start : {}", newSubscriptions.size());
         launchSubscriptionRequest(newSubscriptions);
-
 
         logger.info("Subscriptions lifecycle check completed in {} ms", System.currentTimeMillis() - startTime);
     }
