@@ -16,11 +16,9 @@
 package no.rutebanken.anshar.subscription;
 
 import com.google.common.base.Preconditions;
-import com.hazelcast.scheduledexecutor.IScheduledExecutorService;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.data.DiscoveryCache;
-import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.health.IncomingDataHealthService;
 import no.rutebanken.anshar.routes.siri.*;
@@ -35,14 +33,12 @@ import org.apache.camel.CamelContextAware;
 import org.apache.camel.builder.RouteBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -53,7 +49,6 @@ import static no.rutebanken.anshar.subscription.SubscriptionSetup.ServiceType.SO
 @Component
 public class SubscriptionInitializer implements CamelContextAware {
     private static final Logger logger = LoggerFactory.getLogger(SubscriptionInitializer.class);
-    private static final int DEFAULT_INITIALIZER_DELAY_MIN = 1;
     private final SubscriptionManager subscriptionManager;
     private final SubscriptionConfig subscriptionConfig;
     private final SiriHandler handler;
@@ -62,14 +57,13 @@ public class SubscriptionInitializer implements CamelContextAware {
     private final PrometheusMetricsService metrics;
     private final IncomingDataHealthService incomingDataHealthService;
     private final TaskScheduler taskScheduler;
-    private final ExtendedHazelcastService hazelcastService;
-    private final IScheduledExecutorService sharedScheduler;
     private CamelContext camelContext;
     private ScheduledFuture<?> waitingInit;
 
-    public SubscriptionInitializer(SubscriptionManager subscriptionManager, SubscriptionConfig subscriptionConfig, SiriHandler handler, AnsharConfiguration configuration, DiscoveryCache discoveryCache,
+    public SubscriptionInitializer(SubscriptionManager subscriptionManager, SubscriptionConfig subscriptionConfig,
+                                   SiriHandler handler, AnsharConfiguration configuration, DiscoveryCache discoveryCache,
                                    PrometheusMetricsService metrics, IncomingDataHealthService incomingDataHealthService,
-                                   TaskScheduler taskScheduler, ExtendedHazelcastService hazelcastService, @Qualifier("getSharedScheduler") IScheduledExecutorService sharedScheduler) {
+                                   TaskScheduler taskScheduler) {
         this.subscriptionManager = subscriptionManager;
         this.subscriptionConfig = subscriptionConfig;
         this.handler = handler;
@@ -78,8 +72,6 @@ public class SubscriptionInitializer implements CamelContextAware {
         this.metrics = metrics;
         this.incomingDataHealthService = incomingDataHealthService;
         this.taskScheduler = taskScheduler;
-        this.hazelcastService = hazelcastService;
-        this.sharedScheduler = sharedScheduler;
     }
 
     @Override
@@ -186,25 +178,12 @@ public class SubscriptionInitializer implements CamelContextAware {
                 actualSubscriptionSetups.add(subscriptionSetup);
             }
 
-
             for (SubscriptionSetup subscriptionSetup : actualSubscriptionSetups) {
                 if (!subscriptionManager.isSubscriptionRegistered(subscriptionSetup.getSubscriptionId())) {
                     subscriptionManager.addSubscription(subscriptionSetup.getSubscriptionId(), subscriptionSetup);
                     initRouteBuilders(subscriptionSetup);
                 }
             }
-
-            // All active subscriptions has been added to manager. Launching init on one replica+
-            if (hazelcastService.getSubscriptionInitNextSynchroTimes().isEmpty()) {
-                LocalDateTime nextLaunchTime = LocalDateTime.now().plusMinutes(DEFAULT_INITIALIZER_DELAY_MIN);
-                hazelcastService.getSubscriptionInitNextSynchroTimes().add(nextLaunchTime);
-
-                long delayMs = DEFAULT_INITIALIZER_DELAY_MIN * 60 * 1000;
-                com.hazelcast.scheduledexecutor.IScheduledFuture<Object> plannedTask = sharedScheduler.schedule(subscriptionManager::launchSubscriptionsLifeCycleCheck, delayMs, TimeUnit.MILLISECONDS);
-            } else {
-                logger.info("Subscription init already planned");
-            }
-
 
         } else {
             logger.error("Subscriptions not configured correctly - no subscriptions will be started");
