@@ -40,7 +40,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 import uk.org.ifopt.siri21.StopPlaceRef;
 import uk.org.siri.siri21.*;
 
@@ -453,10 +452,9 @@ public class Situations extends SiriRepository<PtSituationElement> {
 
     private String getAlertsExtensionChecksum(Element alertExtension) throws NoSuchAlgorithmException {
         List<String> messageUniqueUIDs = new ArrayList<>();
-        for (int i = 0; i < alertExtension.getChildNodes().getLength(); i++) {
-            Node node = alertExtension.getChildNodes().item(i);
+        for (Node node = alertExtension.getFirstChild(); node != null; node = node.getNextSibling()) {
             if ("AlertMessages".equals(node.getLocalName())) {
-                messageUniqueUIDs.add(getUniqueUIDFromMessages(node.getChildNodes()));
+                messageUniqueUIDs.add(getUniqueUIDFromMessages(node));
             }
         }
 
@@ -466,10 +464,9 @@ public class Situations extends SiriRepository<PtSituationElement> {
         return getChecksum(orderedUIDs.toString());
     }
 
-    private String getUniqueUIDFromMessages(NodeList node) {
+    private String getUniqueUIDFromMessages(Node node) {
         List<String> messageUniqueUIDs = new ArrayList<>();
-        for (int i = 0; i < node.getLength(); i++) {
-            Node child = node.item(i);
+        for (Node child = node.getFirstChild(); child != null; child = child.getNextSibling()) {
             if ("AlertMessage".equals(child.getLocalName())) {
                 messageUniqueUIDs.add(getUniqueUIDFromSingleMessage(child));
             }
@@ -491,8 +488,7 @@ public class Situations extends SiriRepository<PtSituationElement> {
         String notificationDate = null;
         String messageText = null;
 
-        for (int i = 0; i < singleAlertMessage.getChildNodes().getLength(); i++) {
-            Node child = singleAlertMessage.getChildNodes().item(i);
+        for (Node child = singleAlertMessage.getFirstChild(); child != null; child = child.getNextSibling()) {
 
 
             if ("ChannelName".equals(child.getLocalName())) {
