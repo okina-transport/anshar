@@ -328,12 +328,12 @@ public class Situations extends SiriRepository<PtSituationElement> {
 
             defineAffectedPoints(situation, datasetId);
 
-            String currentChecksum = null;
+            String currentChecksum = "";
             try {
                 currentChecksum = getSXCheckSum(situation);
                 timingTracer.mark("getChecksum");
             } catch (Exception e) {
-                logger.error("Error calculating checksum for situation: {}", situation.getSituationNumber(), e);
+                logger.error("Error calculating checksum for situation: {}", situation.getSituationNumber().getValue(), e);
             }
 
             String existingChecksum = checksumCache.get(key);
