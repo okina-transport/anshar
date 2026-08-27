@@ -230,10 +230,23 @@ public class SiriHelperTest extends SpringBootBaseTest {
     }
 
     private MonitoredStopVisit createStopMonitoringActivity(String stopRefValue) {
+        return createStopMonitoringActivity(stopRefValue, null);
+    }
+
+    private MonitoredStopVisit createStopMonitoringActivity(String stopRefValue, String lineRefValue) {
         MonitoredStopVisit stopVisit = new MonitoredStopVisit();
         MonitoringRefStructure monitoringRef = new MonitoringRefStructure();
         monitoringRef.setValue(stopRefValue);
         stopVisit.setMonitoringRef(monitoringRef);
+
+        if (lineRefValue != null) {
+            MonitoredVehicleJourneyStructure mvj = new MonitoredVehicleJourneyStructure();
+            LineRef lineRef = new LineRef();
+            lineRef.setValue(lineRefValue);
+            mvj.setLineRef(lineRef);
+            stopVisit.setMonitoredVehicleJourney(mvj);
+        }
+
         return stopVisit;
     }
 
@@ -276,5 +289,52 @@ public class SiriHelperTest extends SpringBootBaseTest {
         assertEquals(1, stopMonitoringDeliveries.size());
         assertEquals(stopMonitoringDeliveries.get(0).getMonitoredStopVisits().size(), 1, "Only 1 of 4 points must be returned after filter");
         assertEquals(stopMonitoringDeliveries.get(0).getMonitoredStopVisits().get(0).getMonitoringRef().getValue(), "TESTPOINT1", "Only TESTPOINT1 must pass the filtering");
+    }
+
+    @Test
+    public void testStopMonitoringFilterByLineRef() {
+        SubscriptionRequest subscriptionRequest = new SubscriptionRequest();
+        StopMonitoringSubscriptionStructure smSubscription = new StopMonitoringSubscriptionStructure();
+        StopMonitoringRequestStructure sMRequest = new StopMonitoringRequestStructure();
+
+        IdProcessingParameters idProcessingParameter = new IdProcessingParameters();
+        idProcessingParameter.setDatasetId("TEST5");
+        idProcessingParameter.setOutputPrefixToAdd("TEST5:Quay:");
+        idProcessingParameter.setObjectType(ObjectType.STOP);
+        subscriptionConfig.getIdProcessingParameters().add(idProcessingParameter);
+
+        MonitoringRefStructure monitoringRef = new MonitoringRefStructure();
+        monitoringRef.setValue("TEST5:Quay:TESTPOINT1");
+        sMRequest.setMonitoringRef(monitoringRef);
+
+        LineRef requestedLineRef = new LineRef();
+        requestedLineRef.setValue("LINE:TARGET");
+        sMRequest.setLineRef(requestedLineRef);
+
+        smSubscription.setStopMonitoringRequest(sMRequest);
+        subscriptionRequest.getStopMonitoringSubscriptionRequests().add(smSubscription);
+
+        Map<Class, Set<String>> filter = siriHelper.getFilter(subscriptionRequest, OutboundIdMappingPolicy.ORIGINAL_ID, "datId");
+        assertTrue(filter.containsKey(LineRef.class), "Filter must contain a LineRef entry");
+
+        // Same stop, two different lines - simulates a push notification for the whole stop
+        List<MonitoredStopVisit> vmElements = new ArrayList<>();
+        vmElements.add(createStopMonitoringActivity("TESTPOINT1", "LINE:TARGET"));
+        vmElements.add(createStopMonitoringActivity("TESTPOINT1", "LINE:OTHER"));
+
+        Siri serviceDelivery = siriObjectFactory.createSMServiceDelivery(vmElements, null, null);
+
+        // This goes through the exact same filtering path used for outbound push notifications
+        Siri filtered = SiriHelper.filterSiriPayload(serviceDelivery, filter);
+        assertNotNull(filtered);
+        assertNotNull(filtered.getServiceDelivery());
+        List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = filtered.getServiceDelivery().getStopMonitoringDeliveries();
+        assertEquals(1, stopMonitoringDeliveries.size());
+        assertEquals(1, stopMonitoringDeliveries.get(0).getMonitoredStopVisits().size(), "Only the matching line must pass the filtering");
+        assertEquals(
+                "LINE:TARGET",
+                stopMonitoringDeliveries.get(0).getMonitoredStopVisits().get(0).getMonitoredVehicleJourney().getLineRef().getValue(),
+                "Only LINE:TARGET must pass the filtering"
+        );
     }
 }

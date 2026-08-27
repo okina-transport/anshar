@@ -599,7 +599,7 @@ public class SiriHelper {
         serviceDel.setStatus(siri.getServiceDelivery().isStatus());
 
         if (containsValues(siri.getServiceDelivery().getStopMonitoringDeliveries())) {
-            List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = getFilteredMonitoringRef(siri, filter.get(MonitoringRefStructure.class));
+            List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = getFilteredMonitoringRef(siri, filter.get(MonitoringRefStructure.class), filter.get(LineRef.class));
             serviceDel.getStopMonitoringDeliveries().addAll(stopMonitoringDeliveries);
         } else if (containsValues(siri.getServiceDelivery().getEstimatedTimetableDeliveries())) {
             List<EstimatedTimetableDeliveryStructure> estimatedTimetableDeliveries = getFilteredEstimatedRef(siri, filter.get(LineRef.class), filter.get(VehicleRef.class));
@@ -872,7 +872,7 @@ public class SiriHelper {
         return results;
     }
 
-    private static List<StopMonitoringDeliveryStructure> getFilteredMonitoringRef(Siri siri, Set<String> monitoringRef) {
+    private static List<StopMonitoringDeliveryStructure> getFilteredMonitoringRef(Siri siri, Set<String> monitoringRef, Set<String> lineRef) {
         if (monitoringRef == null || monitoringRef.isEmpty()) {
             return Collections.emptyList();
         }
@@ -886,18 +886,34 @@ public class SiriHelper {
             List<MonitoredStopVisit> monitoredStopVisits = delivery.getMonitoredStopVisits();
             List<MonitoredStopVisit> filteredStopVisits = new ArrayList<>();
             for (MonitoredStopVisit monitoredStopVisit : monitoredStopVisits) {
-                if (monitoringRef.contains(monitoredStopVisit.getMonitoringRef().getValue())) {
-                    filteredStopVisits.add(monitoredStopVisit);
+                if (!monitoringRef.contains(monitoredStopVisit.getMonitoringRef().getValue())) {
+                    continue;
                 }
+                if (lineRef != null && !lineRef.isEmpty()) {
+                    LineRef visitLineRef = monitoredStopVisit.getMonitoredVehicleJourney() != null
+                            ? monitoredStopVisit.getMonitoredVehicleJourney().getLineRef()
+                            : null;
+                    if (visitLineRef == null || !lineRef.contains(visitLineRef.getValue())) {
+                        continue;
+                    }
+                }
+                filteredStopVisits.add(monitoredStopVisit);
             }
 
             // Cancellations
             List<MonitoredStopVisitCancellation> filteredCancellations = new ArrayList<>();
             List<MonitoredStopVisitCancellation> cancellations = delivery.getMonitoredStopVisitCancellations();
             for (MonitoredStopVisitCancellation cancellation : cancellations) {
-                if (monitoringRef.contains(cancellation.getMonitoringRef().getValue())) {
-                    filteredCancellations.add(cancellation);
+                if (!monitoringRef.contains(cancellation.getMonitoringRef().getValue())) {
+                    continue;
                 }
+                if (lineRef != null && !lineRef.isEmpty()) {
+                    LineRef cancellationLineRef = cancellation.getLineRef();
+                    if (cancellationLineRef == null || !lineRef.contains(cancellationLineRef.getValue())) {
+                        continue;
+                    }
+                }
+                filteredCancellations.add(cancellation);
             }
 
             if (!filteredStopVisits.isEmpty() || !filteredCancellations.isEmpty()) {
