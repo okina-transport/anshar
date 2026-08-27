@@ -338,6 +338,19 @@ public class GeneralMessages extends SiriRepository<GeneralMessage> {
                 .collect(Collectors.toSet());
     }
 
+    public Map<String, Integer> getDatasetSize() {
+        Map<String, Integer> sizeMap = new HashMap<>();
+        long t1 = System.currentTimeMillis();
+        generalMessages.keySet().forEach(key -> {
+            String datasetId = key.getCodespaceId();
+
+            Integer count = sizeMap.getOrDefault(datasetId, 0);
+            sizeMap.put(datasetId, count + 1);
+        });
+        logger.debug("Calculating data-distribution (GM) took {} ms: {}", (System.currentTimeMillis() - t1), sizeMap);
+        return sizeMap;
+    }
+
     public void clearAll() {
         logger.error("Deleting all data - should only be used in test!!!");
         generalMessages.clear();
