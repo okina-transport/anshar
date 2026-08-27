@@ -16,6 +16,7 @@
 package no.rutebanken.anshar.subscription;
 
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hazelcast.map.IMap;
 import com.hazelcast.replicatedmap.ReplicatedMap;
 import no.rutebanken.anshar.config.AnsharConfiguration;
@@ -79,11 +80,13 @@ public class SubscriptionManager implements CamelContextAware {
     private final EstimatedTimetables et;
     private final VehicleActivities vm;
     private final MonitoredStopVisits sm;
+    private final GeneralMessages gm;
     private final FacilityMonitoring fm;
     private final IMap<String, Set<SiriObjectStorageKey>> sxChanges;
     private final IMap<String, Set<SiriObjectStorageKey>> etChanges;
     private final IMap<String, Set<SiriObjectStorageKey>> vmChanges;
     private final IMap<String, Set<SiriObjectStorageKey>> smChanges;
+    private final IMap<String, Set<SiriObjectStorageKey>> gmChanges;
     private final RequestorRefRepository requestorRefRepository;
     private final DatasetService datasetService;
     private final SubscriptionConfig subscriptionConfig;
@@ -96,9 +99,10 @@ public class SubscriptionManager implements CamelContextAware {
                                AnsharConfiguration configuration, @Qualifier("getLastActivityMap") ReplicatedMap<String, Instant> lastActivity,
                                @Qualifier("getDataReceivedMap") ReplicatedMap<String, Instant> dataReceived, @Qualifier("getReceivedBytesMap") IMap<String, Long> receivedBytes, @Value("${anshar.environment}") String environment,
                                @Qualifier("getHitcountMap") IMap<String, Integer> hitcount, IMap<String, BigInteger> objectCounter,
-                               SiriObjectFactory siriObjectFactory, HealthManager healthManager, Situations sx, EstimatedTimetables et, VehicleActivities vm, MonitoredStopVisits sm, FacilityMonitoring fm,
+                               SiriObjectFactory siriObjectFactory, HealthManager healthManager, Situations sx, EstimatedTimetables et, VehicleActivities vm, MonitoredStopVisits sm, GeneralMessages gm, FacilityMonitoring fm,
                                @Qualifier("getSituationChangesMap") IMap<String, Set<SiriObjectStorageKey>> sxChanges, @Qualifier("getEstimatedTimetableChangesMap") IMap<String, Set<SiriObjectStorageKey>> etChanges,
                                @Qualifier("getVehicleChangesMap") IMap<String, Set<SiriObjectStorageKey>> vmChanges, @Qualifier("getMonitoredStopVisitChangesMap") IMap<String, Set<SiriObjectStorageKey>> smChanges,
+                               @Qualifier("getGeneralMessagesChangesMap") IMap<String, Set<SiriObjectStorageKey>> gmChanges,
                                RequestorRefRepository requestorRefRepository, DatasetService datasetService, SubscriptionConfig subscriptionConfig,
                                @Value("${anshar.subscription.unresponsive.delay.min:15}") int unresponsiveDelay,
                                @Value("${disable.check.unresponsive.subscription.sx:false}") boolean disableUnresponsiveCheckSx) {
@@ -117,11 +121,13 @@ public class SubscriptionManager implements CamelContextAware {
         this.et = et;
         this.vm = vm;
         this.sm = sm;
+        this.gm = gm;
         this.fm = fm;
         this.sxChanges = sxChanges;
         this.etChanges = etChanges;
         this.vmChanges = vmChanges;
         this.smChanges = smChanges;
+        this.gmChanges = gmChanges;
         this.requestorRefRepository = requestorRefRepository;
         this.datasetService = datasetService;
         this.subscriptionConfig = subscriptionConfig;
@@ -425,7 +431,7 @@ public class SubscriptionManager implements CamelContextAware {
                 .filter(subscriptionSetup -> subscriptionSetup.getSubscriptionType() == ESTIMATED_TIMETABLE)
                 .map(this::getJsonObject)
                 .filter(Objects::nonNull)
-                .collect(Collectors.toList())
+                .toList()
         );
         logger.debug("Built ET stats");
 
@@ -434,7 +440,7 @@ public class SubscriptionManager implements CamelContextAware {
                 .filter(subscriptionSetup -> subscriptionSetup.getSubscriptionType() == VEHICLE_MONITORING)
                 .map(this::getJsonObject)
                 .filter(Objects::nonNull)
-                .collect(Collectors.toList())
+                .toList()
         );
         logger.debug("Built VM stats");
 
@@ -443,7 +449,7 @@ public class SubscriptionManager implements CamelContextAware {
                 .filter(subscriptionSetup -> subscriptionSetup.getSubscriptionType() == SITUATION_EXCHANGE)
                 .map(this::getJsonObject)
                 .filter(Objects::nonNull)
-                .collect(Collectors.toList())
+                .toList()
         );
         logger.debug("Built SX stats");
 
@@ -452,9 +458,18 @@ public class SubscriptionManager implements CamelContextAware {
                 .filter(subscriptionSetup -> subscriptionSetup.getSubscriptionType() == STOP_MONITORING)
                 .map(this::getJsonObject)
                 .filter(Objects::nonNull)
-                .collect(Collectors.toList())
+                .toList()
         );
         logger.debug("Built SM stats");
+
+        JSONArray gmSubscriptions = new JSONArray();
+        gmSubscriptions.addAll(this.subscriptions.values().stream()
+                .filter(subscriptionSetup -> subscriptionSetup.getSubscriptionType() == GENERAL_MESSAGE)
+                .map(this::getJsonObject)
+                .filter(Objects::nonNull)
+                .toList()
+        );
+        logger.debug("Built GM stats");
 
         JSONObject etType = new JSONObject();
         etType.put("typeName", "" + ESTIMATED_TIMETABLE);
@@ -468,11 +483,15 @@ public class SubscriptionManager implements CamelContextAware {
         JSONObject smType = new JSONObject();
         smType.put("typeName", "" + STOP_MONITORING);
         smType.put("subscriptions", smSubscriptions);
+        JSONObject gmType = new JSONObject();
+        gmType.put("typeName", "" + GENERAL_MESSAGE);
+        gmType.put("subscriptions", gmSubscriptions);
 
         stats.add(etType);
         stats.add(vmType);
         stats.add(sxType);
         stats.add(smType);
+        stats.add(gmType);
 
         result.put("types", stats);
 
@@ -495,11 +514,16 @@ public class SubscriptionManager implements CamelContextAware {
         smPolling.put("typeName", "" + STOP_MONITORING);
         smPolling.put("polling", getIdAndCount(smChanges, STOP_MONITORING));
         logger.debug("Built SM polling stats");
+        JSONObject gmPolling = new JSONObject();
+        gmPolling.put("typeName", "" + GENERAL_MESSAGE);
+        gmPolling.put("polling", getIdAndCount(gmChanges, GENERAL_MESSAGE));
+        logger.debug("Built GM polling stats");
 
         pollingClients.add(etPolling);
         pollingClients.add(vmPolling);
         pollingClients.add(sxPolling);
         pollingClients.add(smPolling);
+        pollingClients.add(gmPolling);
 
         result.put("polling", pollingClients);
 
@@ -518,12 +542,14 @@ public class SubscriptionManager implements CamelContextAware {
         Map<String, Integer> smMonitoredDatasetSize = sm.getMonitoredDatasetSize();
         Map<String, Integer> smNotMonitoredDatasetSize = sm.getNotMonitoredDatasetSize();
         logger.debug("Got SM size");
+        Map<String, Integer> gmDatasetSize = gm.getDatasetSize();
         Map<String, Integer> fmDatasetSize = fm.getDatasetSize();
         logger.debug("Got FM size");
 
         count.put("sx", sxDatasetSize.values().stream().mapToInt(Number::intValue).sum());
         count.put("et", etDatasetSize.values().stream().mapToInt(Number::intValue).sum());
         count.put("vm", vmDatasetSize.values().stream().mapToInt(Number::intValue).sum());
+        count.put("gm", gmDatasetSize.values().stream().mapToInt(Number::intValue).sum());
         count.put("fm", fmDatasetSize.values().stream().mapToInt(Number::intValue).sum());
         count.put("sm-monitored", smMonitoredDatasetSize.values().stream().mapToInt(Number::intValue).sum());
         count.put("sm-notMonitored", smNotMonitoredDatasetSize.values().stream().mapToInt(Number::intValue).sum());
@@ -533,13 +559,17 @@ public class SubscriptionManager implements CamelContextAware {
             etDatasetSize.putIfAbsent(datasetId, 0);
             vmDatasetSize.putIfAbsent(datasetId, 0);
             sxDatasetSize.putIfAbsent(datasetId, 0);
+            gmDatasetSize.putIfAbsent(datasetId, 0);
             fmDatasetSize.putIfAbsent(datasetId, 0);
             smMonitoredDatasetSize.putIfAbsent(datasetId, 0);
             smNotMonitoredDatasetSize.putIfAbsent(datasetId, 0);
         }
 
         logger.debug("Building distribution stats");
-        count.put("distribution", getCountPerDataset(etDatasetSize, vmDatasetSize, sxDatasetSize, smMonitoredDatasetSize, smNotMonitoredDatasetSize, fmDatasetSize));
+        List<DatasetCountDTO> distribution = getCountPerDataset(etDatasetSize, vmDatasetSize, sxDatasetSize, smMonitoredDatasetSize, smNotMonitoredDatasetSize, gmDatasetSize, fmDatasetSize);
+        JSONArray distributionArray = new JSONArray();
+        distributionArray.addAll(new ObjectMapper().convertValue(distribution, List.class));
+        count.put("distribution", distributionArray);
         logger.debug("Built distribution stats");
 
         result.put("elements", count);
@@ -600,29 +630,30 @@ public class SubscriptionManager implements CamelContextAware {
         return count;
     }
 
-    private JSONArray getCountPerDataset(Map<String, Integer> etDatasetSize, Map<String, Integer> vmDatasetSize, Map<String, Integer> sxDatasetSize, Map<String, Integer> smMonitoredDatasetSize, Map<String, Integer> smNotMonitoredDatasetSize, Map<String, Integer> fmDatasetSize) {
-        JSONArray etDatasetCount = new JSONArray();
-
+    private List<DatasetCountDTO> getCountPerDataset(Map<String, Integer> etDatasetSize, Map<String, Integer> vmDatasetSize, Map<String, Integer> sxDatasetSize, Map<String, Integer> smMonitoredDatasetSize, Map<String, Integer> smNotMonitoredDatasetSize, Map<String, Integer> gmDatasetSize, Map<String, Integer> fmDatasetSize) {
         Set<String> allKeys = new HashSet<>();
         allKeys.addAll(etDatasetSize.keySet());
         allKeys.addAll(vmDatasetSize.keySet());
         allKeys.addAll(sxDatasetSize.keySet());
         allKeys.addAll(smMonitoredDatasetSize.keySet());
         allKeys.addAll(smNotMonitoredDatasetSize.keySet());
+        allKeys.addAll(gmDatasetSize.keySet());
         allKeys.addAll(fmDatasetSize.keySet());
 
+        List<DatasetCountDTO> datasetCounts = new ArrayList<>();
         for (String datasetId : allKeys) {
-            JSONObject counter = new JSONObject();
-            counter.put("datasetId", datasetId);
-            counter.put("etCount", etDatasetSize.getOrDefault(datasetId, 0));
-            counter.put("vmCount", vmDatasetSize.getOrDefault(datasetId, 0));
-            counter.put("sxCount", sxDatasetSize.getOrDefault(datasetId, 0));
-            counter.put("fmCount", fmDatasetSize.getOrDefault(datasetId, 0));
-            counter.put("smMonitoredCount", smMonitoredDatasetSize.getOrDefault(datasetId, 0));
-            counter.put("smNotMonitoredCount", smNotMonitoredDatasetSize.getOrDefault(datasetId, 0));
-            etDatasetCount.add(counter);
+            datasetCounts.add(new DatasetCountDTO(
+                    datasetId,
+                    etDatasetSize.getOrDefault(datasetId, 0),
+                    vmDatasetSize.getOrDefault(datasetId, 0),
+                    sxDatasetSize.getOrDefault(datasetId, 0),
+                    gmDatasetSize.getOrDefault(datasetId, 0),
+                    fmDatasetSize.getOrDefault(datasetId, 0),
+                    smMonitoredDatasetSize.getOrDefault(datasetId, 0),
+                    smNotMonitoredDatasetSize.getOrDefault(datasetId, 0)
+            ));
         }
-        return etDatasetCount;
+        return datasetCounts;
     }
 
     private JSONObject getJsonObject(SubscriptionSetup setup) {
