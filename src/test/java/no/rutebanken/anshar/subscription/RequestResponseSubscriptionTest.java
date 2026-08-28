@@ -32,7 +32,7 @@ import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
 
 @Slf4j
-public class RequestResponseSubscriptionTest extends SpringBootBaseTest implements CamelContextAware {
+class RequestResponseSubscriptionTest extends SpringBootBaseTest implements CamelContextAware {
 
     @Produce("direct:execute_request_responsereq_id1")
     protected ProducerTemplate executeRequestProducer;

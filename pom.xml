@@ -186,6 +186,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>io.lettuce</groupId>
             <artifactId>lettuce-core</artifactId>
             <version>6.8.1.RELEASE</version>

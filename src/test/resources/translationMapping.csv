@@ -1,0 +1,2 @@
+dataset,object_type,object_id,field_name,field_value,language,translation
+TESTDATASET,LINE,LINE1,name,,fr,Ligne Test

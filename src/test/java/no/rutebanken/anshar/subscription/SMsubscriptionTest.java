@@ -43,7 +43,7 @@ public class SMsubscriptionTest extends SpringBootBaseTest {
     @BeforeEach
     public void startServer() {
         mockServer = startClientAndServer(1080);
-        System.out.println("MockServer démarré sur le port 1080");
+
         serverSubscriptionManager.clearAllOutboundSubscriptions();
     }
 
@@ -51,7 +51,7 @@ public class SMsubscriptionTest extends SpringBootBaseTest {
     public void stopServer() {
         if (mockServer != null) {
             mockServer.stop();
-            System.out.println("MockServer arrêté");
+
         }
     }
 
