@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.data;
 
+import jakarta.xml.bind.JAXBException;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
@@ -17,8 +18,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import uk.org.ifopt.siri21.StopPlaceRef;
 import uk.org.siri.siri21.*;
 
-import jakarta.xml.bind.JAXBException;
-
 import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -27,7 +26,8 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class GeneralMessageMapperTest extends SpringBootBaseTest {
 
@@ -72,8 +72,9 @@ public class GeneralMessageMapperTest extends SpringBootBaseTest {
         assertTrue(CollectionUtils.isEqualCollection(List.of("FR_NAOLIB:Quay:297", "FR_NAOLIB:Quay:351", "FR_NAOLIB" +
                         ":Quay:111", "FR_NAOLIB:Quay:112"),
                 outputContent.getStopPointRefs()), "should map 4 stop point refs");
-        assertSame(siri.getServiceDelivery().getSituationExchangeDeliveries().get(0).getSituations().getPtSituationElements().get(0).getExtensions(),
-                output.getExtensions(), "should copy extensions");
+        assertTrue(CollectionUtils.isEqualCollection(
+                siri.getServiceDelivery().getSituationExchangeDeliveries().getFirst().getSituations().getPtSituationElements().getFirst().getExtensions().getAnies(),
+                output.getExtensions().getAnies()), "should copy extensions");
     }
 
     @Test
