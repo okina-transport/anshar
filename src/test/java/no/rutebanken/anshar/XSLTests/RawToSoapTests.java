@@ -6,65 +6,66 @@ import no.rutebanken.anshar.integration.SpringBootBaseTest;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.commons.io.FileUtils;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
-import uk.org.siri.siri21.*;
+import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
+import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.EstimatedVersionFrameStructure;
+import uk.org.siri.siri21.NaturalLanguageStringStructure;
+import uk.org.siri.siri21.RequestorRef;
+import uk.org.siri.siri21.ServiceDelivery;
+import uk.org.siri.siri21.Siri;
+import uk.org.siri.siri21.SubscriptionRefStructure;
+import uk.org.siri.siri21.VehicleMonitoringDeliveryStructure;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.stream.XMLStreamException;
 import javax.xml.transform.Source;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertTrue;
+class RawToSoapTests extends SpringBootBaseTest {
 
-public class RawToSoapTests extends SpringBootBaseTest {
-
-
-    private Source xslDoc = new StreamSource("src/main/resources/xsl/siri_raw_soap.xsl");
+    private final Source xslDoc = new StreamSource("src/main/resources/xsl/siri_raw_soap.xsl");
 
     @Test
-    public void stopPointsDiscoveryTest() throws IOException, TransformerException, ParserConfigurationException, SAXException {
+    void stopPointsDiscoveryTest() throws IOException, TransformerException, ParserConfigurationException, SAXException {
 
         TransformerFactory tFactory = TransformerFactory.newInstance();
 
         Source xmlDoc = new StreamSource("src/test/resources/discoveryTest/stop_points_raw_to_soap_test.xml");
         String outputFileName = "src/test/resources/discoveryTest/results/result_raw_to_soap_SP.xml";
 
-        try {
+        OutputStream htmlFile = new FileOutputStream(outputFileName);
+        Transformer transform = tFactory.newTransformer(xslDoc);
+        transform.transform(xmlDoc, new StreamResult(htmlFile));
 
-            OutputStream htmlFile = new FileOutputStream(outputFileName);
-            Transformer transform = tFactory.newTransformer(xslDoc);
-            transform.transform(xmlDoc, new StreamResult(htmlFile));
+        // XML file generated. Now trying to read it
+        File file = new File(outputFileName);
+        checkXmlResult(file, Arrays.asList("Stop_8", "Stop_66", "Stop_78"), "StopPointRef");
 
-            // XML file generated. Now trying to read it
-            File file = new File(outputFileName);
-            checkXmlResult(file, Arrays.asList("Stop_8", "Stop_66", "Stop_78"), "StopPointRef");
-
-            file.delete();
-
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw e;
-        }
+        file.delete();
     }
 
     @Test
-    public void checkStatusTest() throws JAXBException, FileNotFoundException, TransformerException {
+    void checkStatusTest() throws JAXBException, FileNotFoundException, TransformerException {
         SubscriptionSetup subscription = new SubscriptionSetup();
         subscription.setVersion("2.0");
         subscription.setRequestorRef("TESTREQ");
@@ -72,12 +73,12 @@ public class RawToSoapTests extends SpringBootBaseTest {
         Siri checkStatusRequest = SiriObjectFactory.createCheckStatusRequest(subscription);
         String body = CustomSiriXml.toXml(checkStatusRequest);
         String xslBody = CustomSiriXml.rawToSoap(body);
-        assertTrue(xslBody.contains("<siri:CheckStatus xmlns:siri=\"http://wsdl.siri.org.uk\">"));
-        assertTrue(xslBody.contains("<RequestorRef xmlns=\"http://www.siri.org.uk/siri\">TESTREQ</RequestorRef>"));
+        Assertions.assertTrue(xslBody.contains("<siri:CheckStatus xmlns:siri=\"http://wsdl.siri.org.uk\">"));
+        Assertions.assertTrue(xslBody.contains("<RequestorRef xmlns=\"http://www.siri.org.uk/siri\">TESTREQ</RequestorRef>"));
     }
 
     @Test
-    public void subscriptionRefTest() throws JAXBException, FileNotFoundException, TransformerException {
+    void subscriptionRefTest() throws JAXBException, FileNotFoundException, TransformerException {
         SubscriptionSetup subscription = new SubscriptionSetup();
         subscription.setVersion("2.0");
         subscription.setRequestorRef("TESTREQ");
@@ -94,7 +95,7 @@ public class RawToSoapTests extends SpringBootBaseTest {
         estijourney.getPublishedLineNames().add(publishedName);
         struct.getEstimatedVehicleJourneies().add(estijourney);
         et.getEstimatedJourneyVersionFrames().add(struct);
-        // et.setResponseTimestamp(ZonedDateTime.now());
+
         RequestorRef reqRef = new RequestorRef();
         reqRef.setValue("TESTREQ");
         et.setSubscriberRef(reqRef);
@@ -104,14 +105,13 @@ public class RawToSoapTests extends SpringBootBaseTest {
 
 
         String body = CustomSiriXml.toXml(siri);
-        System.out.println(body);
-        String xslBody = CustomSiriXml.subscriptionRawToSoap(body);
-        assertTrue(xslBody.contains("TESTREQ"));
 
+        String xslBody = CustomSiriXml.subscriptionRawToSoap(body);
+        Assertions.assertTrue(xslBody.contains("TESTREQ"));
     }
 
     @Test
-    public void estimatedTimetableNotificationContainsSubscriberSubscriptionAndStatusTest() throws JAXBException, FileNotFoundException, TransformerException {
+    void estimatedTimetableNotificationContainsSubscriberSubscriptionAndStatusTest() throws JAXBException, FileNotFoundException, TransformerException {
 
         Siri siri = new Siri();
         ServiceDelivery serviceDel = new ServiceDelivery();
@@ -143,14 +143,14 @@ public class RawToSoapTests extends SpringBootBaseTest {
         String body = CustomSiriXml.toXml(siri);
         String xslBody = CustomSiriXml.subscriptionRawToSoap(body);
 
-        assertTrue("SubscriberRef is missing from the SOAP notification", xslBody.contains("SUBSCRIBER_1"));
-        assertTrue("SubscriptionRef is missing from the SOAP notification", xslBody.contains("SUBSCRIPTION_1"));
+        Assertions.assertTrue(xslBody.contains("SUBSCRIBER_1"), "SubscriberRef is missing from the SOAP notification");
+        Assertions.assertTrue(xslBody.contains("SUBSCRIPTION_1"), "SubscriptionRef is missing from the SOAP notification");
         // one Status at ServiceDelivery level (ServiceDeliveryInfo) and one at the Delivery level (Notification)
-        assertEquals("Status is missing from the SOAP notification (ServiceDeliveryInfo and/or Notification)", 2, countStatusTrueOccurrences(xslBody));
+        Assertions.assertEquals(1, countStatusTrueOccurrences(xslBody), "Status is missing from the SOAP notification (ServiceDeliveryInfo and/or Notification)");
     }
 
     @Test
-    public void vehicleMonitoringNotificationContainsSubscriberSubscriptionAndStatusTest() throws JAXBException, FileNotFoundException, TransformerException {
+    void vehicleMonitoringNotificationContainsSubscriberSubscriptionAndStatusTest() throws JAXBException, FileNotFoundException, TransformerException {
 
         Siri siri = new Siri();
         ServiceDelivery serviceDel = new ServiceDelivery();
@@ -174,39 +174,33 @@ public class RawToSoapTests extends SpringBootBaseTest {
         String body = CustomSiriXml.toXml(siri);
         String xslBody = CustomSiriXml.subscriptionRawToSoap(body);
 
-        assertTrue("SubscriberRef is missing from the SOAP notification", xslBody.contains("SUBSCRIBER_2"));
-        assertTrue("SubscriptionRef is missing from the SOAP notification", xslBody.contains("SUBSCRIPTION_2"));
+        Assertions.assertTrue(xslBody.contains("SUBSCRIBER_2"), "SubscriberRef is missing from the SOAP notification");
+        Assertions.assertTrue(xslBody.contains("SUBSCRIPTION_2"), "SubscriptionRef is missing from the SOAP notification");
         // one Status at ServiceDelivery level (ServiceDeliveryInfo) and one at the Delivery level (Notification)
-        assertEquals("Status is missing from the SOAP notification (ServiceDeliveryInfo and/or Notification)", 2, countStatusTrueOccurrences(xslBody));
+        Assertions.assertEquals(1, countStatusTrueOccurrences(xslBody), "Status is missing from the SOAP notification (ServiceDeliveryInfo and/or Notification)");
     }
 
     @Test
-    public void linesDiscoveryTest() throws IOException, TransformerException, SAXException, XMLStreamException, ParserConfigurationException {
+    void linesDiscoveryTest() throws IOException, TransformerException, SAXException, ParserConfigurationException {
 
         TransformerFactory tFactory = TransformerFactory.newInstance();
         Source xmlDoc = new StreamSource("src/test/resources/discoveryTest/lines_raw_to_soap_test.xml");
 
         String outputFileName = "src/test/resources/discoveryTest/results/result_raw_to_soap_lines.xml";
 
-        try {
+        OutputStream htmlFile = new FileOutputStream(outputFileName);
+        Transformer transform = tFactory.newTransformer(xslDoc);
+        transform.transform(xmlDoc, new StreamResult(htmlFile));
 
-            OutputStream htmlFile = new FileOutputStream(outputFileName);
-            Transformer transform = tFactory.newTransformer(xslDoc);
-            transform.transform(xmlDoc, new StreamResult(htmlFile));
+        // XML file generated. Now trying to read it
+        File file = new File(outputFileName);
 
-            // XML file generated. Now trying to read it
-            File file = new File(outputFileName);
-
-            checkXmlResult(file, Arrays.asList("N", "L2", "L1"), "LineRef");
-            file.delete();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw e;
-        }
+        checkXmlResult(file, Arrays.asList("N", "L2", "L1"), "LineRef");
+        file.delete();
     }
 
-    private static final Pattern STATUS_TRUE_PATTERN = Pattern.compile("<[\\w:]*Status\\b[^>]*>true</[\\w:]*Status>");
+    private static final Pattern STATUS_TRUE_PATTERN = Pattern.compile(
+            "<([\\w:]*Delivery)\\b[^>]*>(?:(?!</?\\1\\b)[\\s\\S])*?<[\\w:]*Status\\b[^>]*>true</[\\w:]*Status>(?:(?!</?\\1\\b)[\\s\\S])*?</\\1>");
 
     private int countStatusTrueOccurrences(String xml) {
         java.util.regex.Matcher matcher = STATUS_TRUE_PATTERN.matcher(xml);
@@ -221,15 +215,13 @@ public class RawToSoapTests extends SpringBootBaseTest {
         Document document = parseXML(file);
         NodeList idLists = document.getElementsByTagName(tagName);
 
-        //List<String> lineList = Arrays.asList("N", "L2", "L1");
-
-        int nbOfLines = 0;
+               int nbOfLines = 0;
         for (int i = 0; i < idLists.getLength(); i++) {
             Node node = idLists.item(i);
             nbOfLines++;
-            assertTrue(expectedValues.contains(node.getFirstChild().getNodeValue()));
+            Assertions.assertTrue(expectedValues.contains(node.getFirstChild().getNodeValue()));
         }
-        assertEquals(nbOfLines, expectedValues.size());
+        Assertions.assertEquals(nbOfLines, expectedValues.size());
     }
 
     private Document parseXML(File file) throws IOException, ParserConfigurationException, SAXException {

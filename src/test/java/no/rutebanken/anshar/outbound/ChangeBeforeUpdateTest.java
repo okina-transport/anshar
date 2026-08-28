@@ -50,14 +50,14 @@ public class ChangeBeforeUpdateTest extends SpringBootBaseTest {
         monitoredStopVisits.clearAll();
         serverSubscriptionManager.clearAllOutboundSubscriptions();
         mockServer = startClientAndServer(1080);
-        System.out.println("MockServer démarré sur le port 1080");
+
     }
 
     @AfterEach
     public void stopServer() {
         if (mockServer != null) {
             mockServer.stop();
-            System.out.println("MockServer arrêté");
+
         }
     }
 

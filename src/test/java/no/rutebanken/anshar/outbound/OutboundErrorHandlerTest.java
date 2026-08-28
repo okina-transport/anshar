@@ -21,7 +21,7 @@ import java.util.Map;
 import static no.rutebanken.anshar.routes.validation.validators.Constants.ENDPOINT_HEADER_NAME;
 
 @Slf4j
-public class OutboundErrorHandlerTest extends SpringBootBaseTest implements CamelContextAware {
+class OutboundErrorHandlerTest extends SpringBootBaseTest implements CamelContextAware {
 
 
     @Autowired
@@ -85,6 +85,7 @@ public class OutboundErrorHandlerTest extends SpringBootBaseTest implements Came
         }
 
         Assertions.assertEquals(21, errorMap.get(WRONG_URL));
+        outboundErrorHandler.banUrlsExceedingLimit();
 
         // subscription with wrong url has been banished
         Assertions.assertEquals(1, subscriptionManager.getAllSubscriptions(SiriDataType.SITUATION_EXCHANGE).size());

@@ -44,7 +44,7 @@ import static org.mockserver.model.HttpResponse.response;
 import static org.mockserver.model.XPathBody.xpath;
 
 @Slf4j
-public class SubscriptionManagerTest extends SpringBootBaseTest {
+class SubscriptionManagerTest extends SpringBootBaseTest {
 
     @Autowired
     private SubscriptionManager subscriptionManager;

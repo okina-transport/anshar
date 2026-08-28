@@ -92,7 +92,7 @@ public class TestUtils {
 
         for (HttpRequest recordedRequest : recordedRequests) {
             nbOfReceivedRequest++;
-            logger.info("Requête reçue: " + recordedRequest);
+            logger.debug("Requête reçue: {}", recordedRequest);
         }
         return nbOfReceivedRequest;
     }
@@ -109,7 +109,7 @@ public class TestUtils {
         for (HttpRequest recordedRequest : recordedRequests) {
             if (!recordedRequest.getBody().getValue().toString().contains("CheckStatus")) {
                 nbOfReceivedRequest++;
-                logger.info("Requête reçue: " + recordedRequest);
+                logger.debug("Requête reçue: {}", recordedRequest);
             }
 
         }
@@ -214,7 +214,7 @@ public class TestUtils {
     }
 
     public static void addAffectedStopInRoute(PtSituationElement situation, String stopCode) {
-        AffectedLineStructure line = situation.getAffects().getNetworks().getAffectedNetworks().get(0).getAffectedLines().get(0);
+        AffectedLineStructure line = situation.getAffects().getNetworks().getAffectedNetworks().getFirst().getAffectedLines().getFirst();
         AffectedStopPointStructure affectedStopStruct = new AffectedStopPointStructure();
         StopPointRefStructure stopRef = new StopPointRefStructure();
         stopRef.setValue(stopCode);
@@ -258,11 +258,11 @@ public class TestUtils {
 
     public static String getLineRef(PtSituationElement situation) {
         if (situation.getAffects() == null || situation.getAffects().getNetworks() == null || situation.getAffects().getNetworks().getAffectedNetworks() == null
-                || situation.getAffects().getNetworks().getAffectedNetworks().get(0).getAffectedLines() == null) {
+                || situation.getAffects().getNetworks().getAffectedNetworks().getFirst().getAffectedLines() == null) {
             return null;
         }
 
-        return situation.getAffects().getNetworks().getAffectedNetworks().get(0).getAffectedLines().get(0).getLineRef().getValue();
+        return situation.getAffects().getNetworks().getAffectedNetworks().getFirst().getAffectedLines().getFirst().getLineRef().getValue();
     }
 
 
@@ -277,27 +277,26 @@ public class TestUtils {
 
     public static String getStopRef(PtSituationElement situation) {
         if (situation.getAffects() == null || situation.getAffects().getStopPoints() == null || situation.getAffects().getStopPoints().getAffectedStopPoints() == null
-                || situation.getAffects().getStopPoints().getAffectedStopPoints().get(0).getStopPointRef() == null) {
+                || situation.getAffects().getStopPoints().getAffectedStopPoints().getFirst().getStopPointRef() == null) {
             return null;
         }
 
-        return situation.getAffects().getStopPoints().getAffectedStopPoints().get(0).getStopPointRef().getValue();
+        return situation.getAffects().getStopPoints().getAffectedStopPoints().getFirst().getStopPointRef().getValue();
     }
 
     public static String getStopRefInRoute(PtSituationElement situation) {
         if (situation.getAffects() == null || situation.getAffects().getNetworks() == null || situation.getAffects().getNetworks().getAffectedNetworks() == null
-                || situation.getAffects().getNetworks().getAffectedNetworks().get(0).getAffectedLines() == null) {
+                || situation.getAffects().getNetworks().getAffectedNetworks().getFirst().getAffectedLines() == null) {
             return null;
         }
 
-        AffectedLineStructure line = situation.getAffects().getNetworks().getAffectedNetworks().get(0).getAffectedLines().get(0);
+        AffectedLineStructure line = situation.getAffects().getNetworks().getAffectedNetworks().getFirst().getAffectedLines().getFirst();
         if (line.getRoutes() == null || line.getRoutes().getAffectedRoutes() == null) {
             return null;
         }
 
-        Serializable stop = line.getRoutes().getAffectedRoutes().get(0).getStopPoints().getAffectedStopPointsAndLinkProjectionToNextStopPoints().get(0);
-        if (stop instanceof AffectedStopPointStructure) {
-            AffectedStopPointStructure affectedStop = (AffectedStopPointStructure) stop;
+        Serializable stop = line.getRoutes().getAffectedRoutes().getFirst().getStopPoints().getAffectedStopPointsAndLinkProjectionToNextStopPoints().getFirst();
+        if (stop instanceof AffectedStopPointStructure affectedStop) {
             return affectedStop.getStopPointRef().getValue();
         }
 
