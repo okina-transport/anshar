@@ -844,7 +844,7 @@ public class SubscriptionManager implements CamelContextAware {
     /**
      * Main function that check subscriptions and launch restart if needed
      */
-    @Scheduled(fixedRateString = "${scheduler.subscription-check.rate:PT20M}")
+    @Scheduled(fixedRateString = "${scheduler.subscription-check.rate:PT20M}", initialDelayString = "${scheduler.subscription-check.rate:PT20M}")
     public void launchSubscriptionsLifeCycleCheck() {
         logger.info("Starting subscriptions lifecycle check");
         long startTime = System.currentTimeMillis();

@@ -185,6 +185,8 @@ public class SubscriptionInitializer implements CamelContextAware {
                 }
             }
 
+            taskScheduler.schedule(subscriptionManager::launchSubscriptionsLifeCycleCheck, Instant.now().plusSeconds(60));
+
         } else {
             logger.error("Subscriptions not configured correctly - no subscriptions will be started");
         }
