@@ -7,6 +7,7 @@ import jakarta.xml.bind.Marshaller;
 import jakarta.xml.bind.Unmarshaller;
 import no.rutebanken.anshar.data.frGeneralMessageStructure.Content;
 import no.rutebanken.anshar.routes.health.LivenessReadinessRoute;
+import no.rutebanken.anshar.routes.siri.transformer.util.LangAttributeNormalizingStreamReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -64,7 +65,7 @@ public class CustomSiriXml {
     public static Siri parseXml(String xml) throws JAXBException, XMLStreamException {
         Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
         XMLInputFactory xmlif = XMLInputFactory.newInstance();
-        XMLStreamReader xmler = xmlif.createXMLStreamReader(new StringReader(xml));
+        XMLStreamReader xmler = new LangAttributeNormalizingStreamReader(xmlif.createXMLStreamReader(new StringReader(xml)));
         return (Siri) jaxbUnmarshaller.unmarshal(xmler);
     }
 
@@ -78,7 +79,7 @@ public class CustomSiriXml {
     public static Siri parseXml(InputStream inputStream) throws JAXBException, XMLStreamException {
         Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
         XMLInputFactory xmlif = XMLInputFactory.newInstance();
-        XMLStreamReader xmler = xmlif.createXMLStreamReader(inputStream);
+        XMLStreamReader xmler = new LangAttributeNormalizingStreamReader(xmlif.createXMLStreamReader(inputStream));
         return (Siri) jaxbUnmarshaller.unmarshal(xmler);
     }
 

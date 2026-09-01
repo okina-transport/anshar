@@ -21,14 +21,18 @@ import com.google.common.cache.LoadingCache;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.processor.PostProcessor;
 import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
-import org.entur.siri21.util.SiriXml;
+import no.rutebanken.anshar.routes.siri.transformer.util.LangAttributeNormalizingStreamReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.org.siri.siri21.Siri;
 
+import jakarta.xml.bind.JAXBContext;
 import jakarta.xml.bind.JAXBException;
+import jakarta.xml.bind.Unmarshaller;
 
+import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -37,6 +41,16 @@ import java.util.*;
 public class SiriValueTransformer {
 
     public static final String SEPARATOR = "$";
+    private static final JAXBContext SIRI_JAXB_CONTEXT;
+
+    static {
+        try {
+            SIRI_JAXB_CONTEXT = JAXBContext.newInstance(Siri.class);
+        } catch (JAXBException e) {
+            throw new InstantiationError(e.getMessage());
+        }
+    }
+
     public static final List<String> methodsToIgnore = Collections.singletonList("getMonitoringError");
     private static final Logger logger = LoggerFactory.getLogger(SiriValueTransformer.class);
     private static final Map<GetterKey, Set<Method>> cachedGettersForAdapter = new HashMap<>();
@@ -63,11 +77,15 @@ public class SiriValueTransformer {
      * @throws JAXBException
      */
     public static Siri parseXml(InputStream xml, List<ValueAdapter> adapters) throws JAXBException, XMLStreamException {
-        return transform(SiriXml.parseXml(xml), adapters);
+        return transform(parseXml(xml), adapters);
     }
 
     public static Siri parseXml(InputStream xml) throws JAXBException, XMLStreamException {
-        return SiriXml.parseXml(xml);
+        Unmarshaller jaxbUnmarshaller = SIRI_JAXB_CONTEXT.createUnmarshaller();
+        XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
+        XMLStreamReader xmlStreamReader = new LangAttributeNormalizingStreamReader(
+                xmlInputFactory.createXMLStreamReader(xml));
+        return (Siri) jaxbUnmarshaller.unmarshal(xmlStreamReader);
     }
 
     public static Siri transform(Siri siri, List<ValueAdapter> adapters) {

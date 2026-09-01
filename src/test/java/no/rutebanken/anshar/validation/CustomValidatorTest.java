@@ -142,4 +142,64 @@ public class CustomValidatorTest extends SpringBootBaseTest {
         Siri incoming = siriXmlValidator.parseXml(new SubscriptionSetup(), inputStream);
         assertNotNull(incoming);
     }
+
+    /**
+     * DATA-2114: SiriXmlValidator#parseXml is the parsing entry point used for SOAP/WS-delivered
+     * subscription pushes (see MessagingRoute "direct:process.mapping"). Some producers (e.g.
+     * Traffic Report / Chaos) send a bare lang="xx" attribute on Summary/Description/Prompt
+     * instead of the standards-compliant xml:lang="xx". JAXB only binds the latter, so without
+     * normalization the language would be silently lost - and lost for good, since the parsed
+     * object is later re-marshalled and forwarded downstream.
+     */
+    @Test
+    public void testBareLangAttributeIsPreservedBySiriXmlValidator() throws XMLStreamException {
+        String xml = """
+                <Siri xmlns="http://www.siri.org.uk/siri" version="2.1">
+                    <ServiceDelivery>
+                        <ResponseTimestamp>2026-08-18T15:58:27+02:00</ResponseTimestamp>
+                        <ProducerRef>TEST</ProducerRef>
+                        <SituationExchangeDelivery>
+                            <ResponseTimestamp>2026-08-18T15:58:27+02:00</ResponseTimestamp>
+                            <Situations>
+                                <PtSituationElement>
+                                    <CreationTime>2026-08-18T15:58:27+02:00</CreationTime>
+                                    <ParticipantRef>TEST</ParticipantRef>
+                                    <SituationNumber>test-1</SituationNumber>
+                                    <Source><SourceType>other</SourceType></Source>
+                                    <Progress>open</Progress>
+                                    <ValidityPeriod><StartTime>2026-08-18T15:56:00+02:00</StartTime></ValidityPeriod>
+                                    <Severity>normal</Severity>
+                                    <Summary lang="fr">test message de ligne</Summary>
+                                    <Summary lang="en">Line message test</Summary>
+                                    <PublishingActions>
+                                        <PublishToWebAction>
+                                            <ActionData>
+                                                <Name>SiteWeb</Name>
+                                                <Prompt lang="fr">&lt;p&gt;test de message&lt;/p&gt;</Prompt>
+                                                <Prompt lang="en">&lt;p&gt;Message test&lt;/p&gt;</Prompt>
+                                            </ActionData>
+                                        </PublishToWebAction>
+                                    </PublishingActions>
+                                </PtSituationElement>
+                            </Situations>
+                        </SituationExchangeDelivery>
+                    </ServiceDelivery>
+                </Siri>
+                """;
+
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8));
+
+        Siri incoming = siriXmlValidator.parseXml(new SubscriptionSetup(), inputStream);
+
+        var situation = incoming.getServiceDelivery().getSituationExchangeDeliveries().get(0)
+                .getSituations().getPtSituationElements().get(0);
+
+        assertEquals("fr", situation.getSummaries().get(0).getLang());
+        assertEquals("en", situation.getSummaries().get(1).getLang());
+
+        var prompts = situation.getPublishingActions().getPublishToWebActions().get(0)
+                .getActionDatas().get(0).getPrompts();
+        assertEquals("fr", prompts.get(0).getLang());
+        assertEquals("en", prompts.get(1).getLang());
+    }
 }

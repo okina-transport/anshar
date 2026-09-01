@@ -28,8 +28,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import uk.org.siri.siri21.*;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -121,6 +123,158 @@ public class SiriValueTransformerTest extends SpringBootBaseTest {
         assertEquals("NEWLINEPREFFIX:123##3A##4:NEWLINESUFF", getLineRefFromSiriObj(transformedSiri));
 
 
+    }
+
+
+    /**
+     * DATA-2114: some producers (e.g. Traffic Report / Chaos) send a bare {@code lang="xx"}
+     * attribute on Summary/Description/Prompt instead of the standards-compliant
+     * {@code xml:lang="xx"}. JAXB only binds the latter, so without normalization the language
+     * is silently lost when parsing. Extensions content (raw/untyped) must stay untouched.
+     */
+    @Test
+    public void testBareLangAttributeIsPreservedWhenParsingIncomingXml() throws Exception {
+        String xml = """
+                <Siri xmlns="http://www.siri.org.uk/siri" version="2.1">
+                    <ServiceDelivery>
+                        <ResponseTimestamp>2026-08-18T15:58:27+02:00</ResponseTimestamp>
+                        <ProducerRef>TEST</ProducerRef>
+                        <SituationExchangeDelivery>
+                            <ResponseTimestamp>2026-08-18T15:58:27+02:00</ResponseTimestamp>
+                            <Situations>
+                                <PtSituationElement>
+                                    <CreationTime>2026-08-18T15:58:27+02:00</CreationTime>
+                                    <ParticipantRef>TEST</ParticipantRef>
+                                    <SituationNumber>test-1</SituationNumber>
+                                    <Source><SourceType>other</SourceType></Source>
+                                    <Progress>open</Progress>
+                                    <ValidityPeriod><StartTime>2026-08-18T15:56:00+02:00</StartTime></ValidityPeriod>
+                                    <Severity>normal</Severity>
+                                    <Summary lang="fr">test message de ligne</Summary>
+                                    <Summary lang="en">Line message test</Summary>
+                                    <Description lang="fr">&lt;p&gt;test de message&lt;/p&gt;</Description>
+                                    <Description lang="es">&lt;p&gt;Prueba de mensajes&lt;/p&gt;</Description>
+                                    <PublishingActions>
+                                        <PublishToWebAction>
+                                            <ActionData>
+                                                <Name>SiteWeb</Name>
+                                                <Prompt lang="fr">&lt;p&gt;test de message&lt;/p&gt;</Prompt>
+                                                <Prompt lang="en">&lt;p&gt;Message test&lt;/p&gt;</Prompt>
+                                            </ActionData>
+                                        </PublishToWebAction>
+                                    </PublishingActions>
+                                    <Extensions>
+                                        <Alerts>
+                                            <AlertMessages>
+                                                <AlertMessage>
+                                                    <ChannelName>Site web</ChannelName>
+                                                    <MessageText lang="fr">test</MessageText>
+                                                </AlertMessage>
+                                            </AlertMessages>
+                                        </Alerts>
+                                    </Extensions>
+                                </PtSituationElement>
+                            </Situations>
+                        </SituationExchangeDelivery>
+                    </ServiceDelivery>
+                </Siri>
+                """;
+
+        Siri siri = SiriValueTransformer.parseXml(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
+
+        PtSituationElement situation = siri.getServiceDelivery().getSituationExchangeDeliveries().get(0)
+                .getSituations().getPtSituationElements().get(0);
+
+        List<DefaultedTextStructure> summaries = situation.getSummaries();
+        assertEquals("fr", summaries.get(0).getLang());
+        assertEquals("en", summaries.get(1).getLang());
+
+        List<DefaultedTextStructure> descriptions = situation.getDescriptions();
+        assertEquals("fr", descriptions.get(0).getLang());
+        assertEquals("es", descriptions.get(1).getLang());
+
+        List<NaturalLanguageStringStructure> prompts = situation.getPublishingActions()
+                .getPublishToWebActions().get(0).getActionDatas().get(0).getPrompts();
+        assertEquals("fr", prompts.get(0).getLang());
+        assertEquals("en", prompts.get(1).getLang());
+    }
+
+    @Test
+    public void testProperlyNamespacedLangAttributeIsStillParsedCorrectly() throws Exception {
+        String xml = """
+                <Siri xmlns="http://www.siri.org.uk/siri" xmlns:xml="http://www.w3.org/XML/1998/namespace" version="2.1">
+                    <ServiceDelivery>
+                        <ResponseTimestamp>2026-08-18T15:58:27+02:00</ResponseTimestamp>
+                        <ProducerRef>TEST</ProducerRef>
+                        <SituationExchangeDelivery>
+                            <ResponseTimestamp>2026-08-18T15:58:27+02:00</ResponseTimestamp>
+                            <Situations>
+                                <PtSituationElement>
+                                    <CreationTime>2026-08-18T15:58:27+02:00</CreationTime>
+                                    <ParticipantRef>TEST</ParticipantRef>
+                                    <SituationNumber>test-2</SituationNumber>
+                                    <Source><SourceType>other</SourceType></Source>
+                                    <Progress>open</Progress>
+                                    <ValidityPeriod><StartTime>2026-08-18T15:56:00+02:00</StartTime></ValidityPeriod>
+                                    <Severity>normal</Severity>
+                                    <Summary xml:lang="fr">message correctement préfixé</Summary>
+                                </PtSituationElement>
+                            </Situations>
+                        </SituationExchangeDelivery>
+                    </ServiceDelivery>
+                </Siri>
+                """;
+
+        Siri siri = SiriValueTransformer.parseXml(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
+
+        PtSituationElement situation = siri.getServiceDelivery().getSituationExchangeDeliveries().get(0)
+                .getSituations().getPtSituationElements().get(0);
+
+        assertEquals("fr", situation.getSummaries().get(0).getLang());
+    }
+
+    @Test
+    public void testUnrelatedBareLangAttributeIsNotAffected() throws Exception {
+        // "lang" on an element other than Summary/Description/Prompt must not be touched
+        String xml = """
+                <Siri xmlns="http://www.siri.org.uk/siri" version="2.1">
+                    <ServiceDelivery>
+                        <ResponseTimestamp>2026-08-18T15:58:27+02:00</ResponseTimestamp>
+                        <ProducerRef>TEST</ProducerRef>
+                        <SituationExchangeDelivery>
+                            <ResponseTimestamp>2026-08-18T15:58:27+02:00</ResponseTimestamp>
+                            <Situations>
+                                <PtSituationElement>
+                                    <CreationTime>2026-08-18T15:58:27+02:00</CreationTime>
+                                    <ParticipantRef>TEST</ParticipantRef>
+                                    <SituationNumber>test-3</SituationNumber>
+                                    <Source><SourceType>other</SourceType></Source>
+                                    <Progress>open</Progress>
+                                    <ValidityPeriod><StartTime>2026-08-18T15:56:00+02:00</StartTime></ValidityPeriod>
+                                    <Severity>normal</Severity>
+                                    <Extensions>
+                                        <Alerts>
+                                            <AlertMessages>
+                                                <AlertMessage>
+                                                    <ChannelName>Site web</ChannelName>
+                                                    <MessageText lang="fr">test</MessageText>
+                                                </AlertMessage>
+                                            </AlertMessages>
+                                        </Alerts>
+                                    </Extensions>
+                                </PtSituationElement>
+                            </Situations>
+                        </SituationExchangeDelivery>
+                    </ServiceDelivery>
+                </Siri>
+                """;
+
+        Siri siri = SiriValueTransformer.parseXml(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
+
+        PtSituationElement situation = siri.getServiceDelivery().getSituationExchangeDeliveries().get(0)
+                .getSituations().getPtSituationElements().get(0);
+
+        assertNotNull(situation.getExtensions());
     }
 
 

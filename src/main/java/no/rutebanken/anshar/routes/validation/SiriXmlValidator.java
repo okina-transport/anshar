@@ -24,6 +24,7 @@ import jakarta.xml.bind.*;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
+import no.rutebanken.anshar.routes.siri.transformer.util.LangAttributeNormalizingStreamReader;
 import no.rutebanken.anshar.routes.validation.validators.CustomValidator;
 import no.rutebanken.anshar.routes.validation.validators.ProfileValidationEventOrList;
 import no.rutebanken.anshar.routes.validation.validators.SiriObjectValidator;
@@ -184,7 +185,7 @@ public class SiriXmlValidator extends ApplicationContextHolder {
 
             Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
 
-            XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(xml);
+            XMLStreamReader reader = new LangAttributeNormalizingStreamReader(xmlInputFactory.createXMLStreamReader(xml));
 
             final SiriValidationEventHandler schemaValidationHandler = new SiriValidationEventHandler();
 
@@ -234,7 +235,7 @@ public class SiriXmlValidator extends ApplicationContextHolder {
             boolean validated = false;
             Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
 
-            XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(xml);
+            XMLStreamReader reader = new LangAttributeNormalizingStreamReader(xmlInputFactory.createXMLStreamReader(xml));
 
             SiriValidationEventHandler handler = new SiriValidationEventHandler();
 

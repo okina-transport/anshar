@@ -640,7 +640,7 @@ public class SiriHandler {
                 receivedBytes = 0;
             }
             long t1 = System.currentTimeMillis();
-            Siri incoming = SiriXml.parseXml(xml);
+            Siri incoming = SiriValueTransformer.parseXml(xml);
 
             if (discoverySubsOpt.isPresent()) {
                 Optional<SubscriptionSetup> childSubscriptionOpt = subscriptionManager.getChildSubscriptionId(discoverySubsOpt.get(), incoming);
