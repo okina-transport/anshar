@@ -223,6 +223,8 @@ public class SubscriptionConfig {
                 existingSubscription.setPreviewIntervalSeconds(incomingSubscription.getPreviewInterval().toSeconds());
                 existingSubscription.setOverrideDestinationName(incomingSubscription.isOverrideDestinationName());
                 existingSubscription.setPublishToDisplayAction(incomingSubscription.getPublishToDisplayAction());
+                existingSubscription.setOperatorRefValue(incomingSubscription.getOperatorRefValue());
+                existingSubscription.setNetworkRefValue(incomingSubscription.getNetworkRefValue());
             } else {
                 subscriptions.add(incomingSubscription);
             }

@@ -64,6 +64,8 @@ public class SubscriptionDtoToSubscriptionSetupConverter implements Converter<Su
             );
             target.setLineRefValues(ListUtils.emptyIfNull(source.getSubscriptionLines()).stream().map(SubscriptionLineDto::getLineRef).collect(Collectors.toList()));
             target.setSiteRefValues(ListUtils.emptyIfNull(source.getSubscriptionSites()).stream().map(SubscriptionSiteDto::getSiteRef).collect(Collectors.toList()));
+            target.setOperatorRefValue(source.getOperatorRef());
+            target.setNetworkRefValue(source.getNetworkRef());
             target.setMappingAdapterId(source.getMappingAdapterId());
             target.setUpdateIntervalSeconds(source.getUpdateIntervalSeconds());
             target.setPreviewIntervalSeconds(source.getPreviewIntervalSeconds());

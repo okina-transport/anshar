@@ -72,7 +72,7 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
                     exchange.getIn().setBody(errorMsg);
                 })
                 .log("Exception handled in route: ${exchange.fromRouteId}");
-
+    
 
         //Start subscription
         from("direct:" + subscriptionSetup.getStartSubscriptionRouteName())

@@ -69,7 +69,7 @@ public class InitialDeliveryGenerator {
         Map<String, Siri> results = new HashMap<>();
         switch (subscriptionRequest.getSubscriptionType()) {
             case STOP_MONITORING:
-                Set<String> searchedStopIds = siriHelper.getSeachedStopIds(subscriptionRequest);
+                Set<String> searchedStopIds = siriHelper.getSearchedStopIds(subscriptionRequest);
                 return getSMinitialDeliveries(subscriptionRequest, searchedStopIds);
             case ESTIMATED_TIMETABLE:
                 return getETinitialDeliveries(subscriptionRequest);

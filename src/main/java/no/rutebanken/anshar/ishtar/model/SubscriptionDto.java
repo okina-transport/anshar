@@ -13,6 +13,8 @@ public class SubscriptionDto {
     private String name;
     private String datasetId;
     private String operatorNamespace;
+    private String operatorRef;
+    private String networkRef;
     private Integer previewIntervalSeconds;
     private Integer updateIntervalSeconds;
     private Integer changeBeforeUpdatesSeconds;

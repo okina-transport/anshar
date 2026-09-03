@@ -39,7 +39,7 @@ import java.util.Map;
 import static no.rutebanken.anshar.routes.HttpParameter.PARAM_RESPONSE_CODE;
 import static no.rutebanken.anshar.routes.siri.helpers.SiriRequestFactory.getCamelUrl;
 import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
-import static no.rutebanken.anshar.subscription.SubscriptionSetup.SubscriptionMode.FETCHED_DELIVERY;
+
 
 public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
 

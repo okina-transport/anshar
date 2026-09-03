@@ -88,15 +88,15 @@ public class SiriHelper {
 
 
     public Map<Class, Set<String>> getFilter(SubscriptionRequest subscriptionRequest, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
-        if (containsValues(subscriptionRequest.getSituationExchangeSubscriptionRequests())) {
+        if (CollectionUtils.isNotEmpty(subscriptionRequest.getSituationExchangeSubscriptionRequests())) {
             return getFilter(subscriptionRequest.getSituationExchangeSubscriptionRequests().getFirst());
-        } else if (containsValues(subscriptionRequest.getVehicleMonitoringSubscriptionRequests())) {
+        } else if (CollectionUtils.isNotEmpty(subscriptionRequest.getVehicleMonitoringSubscriptionRequests())) {
             return getFilter(subscriptionRequest.getVehicleMonitoringSubscriptionRequests().getFirst(), outboundIdMappingPolicy, datasetId);
-        } else if (containsValues(subscriptionRequest.getStopMonitoringSubscriptionRequests())) {
+        } else if (CollectionUtils.isNotEmpty(subscriptionRequest.getStopMonitoringSubscriptionRequests())) {
             return getFilter(subscriptionRequest.getStopMonitoringSubscriptionRequests().getFirst(), outboundIdMappingPolicy, datasetId);
-        } else if (containsValues(subscriptionRequest.getGeneralMessageSubscriptionRequests())) {
+        } else if (CollectionUtils.isNotEmpty(subscriptionRequest.getGeneralMessageSubscriptionRequests())) {
             return getFilter(subscriptionRequest.getGeneralMessageSubscriptionRequests().getFirst(), outboundIdMappingPolicy, datasetId);
-        } else if (containsValues(subscriptionRequest.getFacilityMonitoringSubscriptionRequests())) {
+        } else if (CollectionUtils.isNotEmpty(subscriptionRequest.getFacilityMonitoringSubscriptionRequests())) {
             return getFilter(subscriptionRequest.getFacilityMonitoringSubscriptionRequests().getFirst());
         }
 
@@ -407,7 +407,7 @@ public class SiriHelper {
     }
 
 
-    public Set<String> getSeachedStopIds(OutboundSubscriptionSetup subscriptionRequest) {
+    public Set<String> getSearchedStopIds(OutboundSubscriptionSetup subscriptionRequest) {
         Set<String> searchedStopIds = new HashSet<>();
 
         if (subscriptionRequest.getFilterMap() != null && subscriptionRequest.getFilterMap().containsKey(MonitoringRefStructure.class)) {
@@ -443,7 +443,7 @@ public class SiriHelper {
         if (requestMessageRef != null) {
             requestMessageRefValue = requestMessageRef.getValue();
         }
-        if (containsValues(payload.getServiceDelivery().getSituationExchangeDeliveries())) {
+        if (CollectionUtils.isNotEmpty(payload.getServiceDelivery().getSituationExchangeDeliveries())) {
 
             List<PtSituationElement> situationElementList = payload.getServiceDelivery()
                     .getSituationExchangeDeliveries().getFirst()
@@ -456,7 +456,7 @@ public class SiriHelper {
                 siriList.add(siriObjectFactory.createSXServiceDelivery(list, payload.getServiceDelivery().getProducerRef().getValue(), requestMessageRef != null ? requestMessageRefValue : null));
             }
 
-        } else if (containsValues(payload.getServiceDelivery().getVehicleMonitoringDeliveries())) {
+        } else if (CollectionUtils.isNotEmpty(payload.getServiceDelivery().getVehicleMonitoringDeliveries())) {
 
             List<VehicleActivityStructure> vehicleActivities = payload.getServiceDelivery()
                     .getVehicleMonitoringDeliveries().getFirst()
@@ -468,7 +468,7 @@ public class SiriHelper {
                 siriList.add(siriObjectFactory.createVMServiceDelivery(list, payload.getServiceDelivery().getProducerRef().getValue(), requestMessageRefValue));
             }
 
-        } else if (containsValues(payload.getServiceDelivery().getEstimatedTimetableDeliveries())) {
+        } else if (CollectionUtils.isNotEmpty(payload.getServiceDelivery().getEstimatedTimetableDeliveries())) {
 
             List<EstimatedVehicleJourney> timetables = payload.getServiceDelivery()
                     .getEstimatedTimetableDeliveries().getFirst()
@@ -481,7 +481,7 @@ public class SiriHelper {
                 siriList.add(siriObjectFactory.createETServiceDelivery(list, subscriptionId, requestMessageRefValue));
             }
 
-        } else if (containsValues(payload.getServiceDelivery().getStopMonitoringDeliveries())) {
+        } else if (CollectionUtils.isNotEmpty(payload.getServiceDelivery().getStopMonitoringDeliveries())) {
             // stop visits
             List<MonitoredStopVisit> monitoredStopVisits = payload.getServiceDelivery()
                     .getStopMonitoringDeliveries().getFirst()
@@ -507,7 +507,7 @@ public class SiriHelper {
                 }
             }
 
-        } else if (containsValues(payload.getServiceDelivery().getGeneralMessageDeliveries())) {
+        } else if (CollectionUtils.isNotEmpty(payload.getServiceDelivery().getGeneralMessageDeliveries())) {
 
             List<GeneralMessage> generalMsgList = payload.getServiceDelivery()
                     .getGeneralMessageDeliveries().getFirst()
@@ -531,7 +531,7 @@ public class SiriHelper {
             }
 
 
-        } else if (containsValues(payload.getServiceDelivery().getFacilityMonitoringDeliveries())) {
+        } else if (CollectionUtils.isNotEmpty(payload.getServiceDelivery().getFacilityMonitoringDeliveries())) {
 
             List<FacilityConditionStructure> facilityConditionsList = payload.getServiceDelivery()
                     .getFacilityMonitoringDeliveries().getFirst()
@@ -566,11 +566,6 @@ public class SiriHelper {
         return list;
     }
 
-    static boolean containsValues(List list) {
-        return (list != null && !list.isEmpty());
-    }
-
-
     public static Siri filterSiriPayload(Siri siri, Map<Class, Set<String>> filter) {
         return filterSiriPayload(siri, filter, true);
     }
@@ -598,22 +593,22 @@ public class SiriHelper {
         serviceDel.setProducerRef(siri.getServiceDelivery().getProducerRef());
         serviceDel.setStatus(siri.getServiceDelivery().isStatus());
 
-        if (containsValues(siri.getServiceDelivery().getStopMonitoringDeliveries())) {
+        if (CollectionUtils.isNotEmpty(siri.getServiceDelivery().getStopMonitoringDeliveries())) {
             List<StopMonitoringDeliveryStructure> stopMonitoringDeliveries = getFilteredMonitoringRef(siri, filter.get(MonitoringRefStructure.class), filter.get(LineRef.class));
             serviceDel.getStopMonitoringDeliveries().addAll(stopMonitoringDeliveries);
-        } else if (containsValues(siri.getServiceDelivery().getEstimatedTimetableDeliveries())) {
+        } else if (CollectionUtils.isNotEmpty(siri.getServiceDelivery().getEstimatedTimetableDeliveries())) {
             List<EstimatedTimetableDeliveryStructure> estimatedTimetableDeliveries = getFilteredEstimatedRef(siri, filter.get(LineRef.class), filter.get(VehicleRef.class));
             serviceDel.getEstimatedTimetableDeliveries().addAll(estimatedTimetableDeliveries);
-        } else if (containsValues(siri.getServiceDelivery().getVehicleMonitoringDeliveries())) {
+        } else if (CollectionUtils.isNotEmpty(siri.getServiceDelivery().getVehicleMonitoringDeliveries())) {
             List<VehicleMonitoringDeliveryStructure> vehicleMonitoringDeliveries = getFilteredVehicleRef(siri, filter.get(LineRef.class), filter.get(VehicleRef.class));
             serviceDel.getVehicleMonitoringDeliveries().addAll(vehicleMonitoringDeliveries);
-        } else if (containsValues(siri.getServiceDelivery().getSituationExchangeDeliveries())) {
+        } else if (CollectionUtils.isNotEmpty(siri.getServiceDelivery().getSituationExchangeDeliveries())) {
             List<SituationExchangeDeliveryStructure> situationExchangeDeliveries = getFilteredSituationRef(siri, filter.get(LineRef.class));
             serviceDel.getSituationExchangeDeliveries().addAll(situationExchangeDeliveries);
-        } else if (containsValues(siri.getServiceDelivery().getFacilityMonitoringDeliveries())) {
+        } else if (CollectionUtils.isNotEmpty(siri.getServiceDelivery().getFacilityMonitoringDeliveries())) {
             List<FacilityMonitoringDeliveryStructure> facilityMonitoringDeliveries = getFilteredFaciliesRef(siri, filter.get(FacilityRef.class));
             serviceDel.getFacilityMonitoringDeliveries().addAll(facilityMonitoringDeliveries);
-        } else if (containsValues(siri.getServiceDelivery().getGeneralMessageDeliveries())) {
+        } else if (CollectionUtils.isNotEmpty(siri.getServiceDelivery().getGeneralMessageDeliveries())) {
             List<GeneralMessageDeliveryStructure> generalMessageDeliveries = getFilteredGeneralRef(siri, filter.get(InfoChannel.class));
             serviceDel.getGeneralMessageDeliveries().addAll(generalMessageDeliveries);
         } else {
