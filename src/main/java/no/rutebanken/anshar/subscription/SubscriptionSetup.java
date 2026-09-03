@@ -125,6 +125,12 @@ public class SubscriptionSetup implements Serializable {
     private List<String> stopMonitoringRefValues;
     @Setter
     private List<String> siteRefValues;
+    @Setter
+    @Getter
+    private String operatorRefValue;
+    @Setter
+    @Getter
+    private String networkRefValue;
     @Getter
     private boolean validation;
     @Setter
