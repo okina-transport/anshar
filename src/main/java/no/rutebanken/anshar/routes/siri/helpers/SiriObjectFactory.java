@@ -109,7 +109,10 @@ public class SiriObjectFactory {
                     subscriptionSetup.getAddressFieldName(),
                     subscriptionSetup.getIncrementalUpdates(),
                     subscriptionSetup.getPreviewInterval(),
-                    subscriptionSetup.getVersion());
+                    subscriptionSetup.getVersion(),
+                    subscriptionSetup.getLineRefValues(),
+                    subscriptionSetup.getOperatorRefValue(),
+                    subscriptionSetup.getNetworkRefValue());
         }
         if (subscriptionSetup.getSubscriptionType().equals(SiriDataType.VEHICLE_MONITORING)) {
             request = createVehicleMonitoringSubscriptionRequest(subscriptionSetup.getRequestorRef(),
@@ -343,7 +346,7 @@ public class SiriObjectFactory {
         return fmRequest;
     }
 
-    private static SubscriptionRequest createSituationExchangeSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap, String addressFieldName, Boolean incrementalUpdates, Duration previewInterval, String version) {
+    private static SubscriptionRequest createSituationExchangeSubscriptionRequest(String requestorRef, String subscriptionId, Duration heartbeatInterval, String address, Duration subscriptionDuration, Map<Class, Set<Object>> filterMap, String addressFieldName, Boolean incrementalUpdates, Duration previewInterval, String version, List<String> lineRefValues, String operatorRefValue, String networkRefValue) {
         SubscriptionRequest request = createSubscriptionRequest(requestorRef, heartbeatInterval, address, addressFieldName);
 
         SituationExchangeRequestStructure sxRequest = createSituationExchangeRequestStructure(null, version);
@@ -360,6 +363,24 @@ public class SiriObjectFactory {
                     sxRequest.setVehicleRef((VehicleRef) next);
                 }
             }
+        }
+
+        if (CollectionUtils.isNotEmpty(lineRefValues)) {
+            for (String lineRefValue : lineRefValues) {
+                LineRef lineRef = new LineRef();
+                lineRef.setValue(lineRefValue);
+                sxRequest.getLineReves().add(lineRef);
+            }
+        }
+        if (StringUtils.isNotEmpty(operatorRefValue)) {
+            OperatorRefStructure operatorRef = new OperatorRefStructure();
+            operatorRef.setValue(operatorRefValue);
+            sxRequest.setOperatorRef(operatorRef);
+        }
+        if (StringUtils.isNotEmpty(networkRefValue)) {
+            OperatorRefStructure networkRef = new OperatorRefStructure();
+            networkRef.setValue(networkRefValue);
+            sxRequest.setNetworkRef(networkRef);
         }
 
         SituationExchangeSubscriptionStructure sxSubscriptionReq = new SituationExchangeSubscriptionStructure();

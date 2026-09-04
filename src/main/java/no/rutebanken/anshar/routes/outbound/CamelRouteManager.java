@@ -59,7 +59,8 @@ public class CamelRouteManager {
     ServerSubscriptionManager subscriptionManager;
     @Autowired
     ScheduledOutboundSubscriptionConfig scheduledOutboundSubscriptionConfig;
-
+    @Autowired
+    InitialDeliveryGenerator initialDeliveryGenerator;
     @Autowired
     private SiriHelper siriHelper;
     @Value("${anshar.default.max.elements.per.delivery:1000}")
@@ -71,12 +72,8 @@ public class CamelRouteManager {
     @Autowired
     private PrometheusMetricsService prometheusMetricsService;
     private ExecutorService executors;
-
     @Value("${anshar.outbound.push.siri.threads:20}")
     private int outboundPushSiriThreads;
-
-    @Autowired
-    InitialDeliveryGenerator initialDeliveryGenerator;
 
     /**
      * Splits SIRI-data if applicable, and pushes data to external subscription
@@ -388,40 +385,40 @@ public class CamelRouteManager {
         if (payload.getServiceDelivery() != null) {
             ServiceDelivery serviceDelivery = payload.getServiceDelivery();
 
-            if (SiriHelper.containsValues(serviceDelivery.getSituationExchangeDeliveries())) {
+            if (CollectionUtils.isNotEmpty(serviceDelivery.getSituationExchangeDeliveries())) {
                 SituationExchangeDeliveryStructure deliveryStructure = serviceDelivery.getSituationExchangeDeliveries().get(0);
                 return deliveryStructure.getSituations() != null &&
-                        SiriHelper.containsValues(deliveryStructure.getSituations().getPtSituationElements());
+                        CollectionUtils.isNotEmpty(deliveryStructure.getSituations().getPtSituationElements());
             }
 
-            if (SiriHelper.containsValues(serviceDelivery.getVehicleMonitoringDeliveries())) {
+            if (CollectionUtils.isNotEmpty(serviceDelivery.getVehicleMonitoringDeliveries())) {
                 VehicleMonitoringDeliveryStructure deliveryStructure = serviceDelivery.getVehicleMonitoringDeliveries().get(0);
                 return deliveryStructure.getVehicleActivities() != null &&
-                        SiriHelper.containsValues(deliveryStructure.getVehicleActivities());
+                        CollectionUtils.isNotEmpty(deliveryStructure.getVehicleActivities());
             }
 
-            if (SiriHelper.containsValues(serviceDelivery.getEstimatedTimetableDeliveries())) {
+            if (CollectionUtils.isNotEmpty(serviceDelivery.getEstimatedTimetableDeliveries())) {
                 EstimatedTimetableDeliveryStructure deliveryStructure = serviceDelivery.getEstimatedTimetableDeliveries().get(0);
                 return (deliveryStructure.getEstimatedJourneyVersionFrames() != null &&
-                        SiriHelper.containsValues(deliveryStructure.getEstimatedJourneyVersionFrames()) &&
-                        SiriHelper.containsValues(deliveryStructure.getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies()));
+                        CollectionUtils.isNotEmpty(deliveryStructure.getEstimatedJourneyVersionFrames()) &&
+                        CollectionUtils.isNotEmpty(deliveryStructure.getEstimatedJourneyVersionFrames().get(0).getEstimatedVehicleJourneies()));
             }
-            if (SiriHelper.containsValues(serviceDelivery.getStopMonitoringDeliveries())) {
+            if (CollectionUtils.isNotEmpty(serviceDelivery.getStopMonitoringDeliveries())) {
                 StopMonitoringDeliveryStructure deliveryStructure = serviceDelivery.getStopMonitoringDeliveries().get(0);
 
-                return (SiriHelper.containsValues(deliveryStructure.getMonitoredStopVisitCancellations()) &&
+                return (CollectionUtils.isNotEmpty(deliveryStructure.getMonitoredStopVisitCancellations()) &&
                         deliveryStructure.getMonitoredStopVisitCancellations().get(0) != null) ||
-                        (SiriHelper.containsValues(deliveryStructure.getMonitoredStopVisits()) &&
+                        (CollectionUtils.isNotEmpty(deliveryStructure.getMonitoredStopVisits()) &&
                                 deliveryStructure.getMonitoredStopVisits().get(0).getMonitoredVehicleJourney() != null);
             }
-            if (SiriHelper.containsValues(serviceDelivery.getGeneralMessageDeliveries())) {
+            if (CollectionUtils.isNotEmpty(serviceDelivery.getGeneralMessageDeliveries())) {
                 GeneralMessageDeliveryStructure deliveryStructure = serviceDelivery.getGeneralMessageDeliveries().get(0);
-                return (SiriHelper.containsValues(deliveryStructure.getGeneralMessages())) ||
-                        (SiriHelper.containsValues(deliveryStructure.getGeneralMessageCancellations()));
+                return (CollectionUtils.isNotEmpty(deliveryStructure.getGeneralMessages())) ||
+                        (CollectionUtils.isNotEmpty(deliveryStructure.getGeneralMessageCancellations()));
             }
-            if (SiriHelper.containsValues(serviceDelivery.getFacilityMonitoringDeliveries())) {
+            if (CollectionUtils.isNotEmpty(serviceDelivery.getFacilityMonitoringDeliveries())) {
                 FacilityMonitoringDeliveryStructure deliveryStructure = serviceDelivery.getFacilityMonitoringDeliveries().get(0);
-                return (SiriHelper.containsValues(deliveryStructure.getFacilityConditions()));
+                return (CollectionUtils.isNotEmpty(deliveryStructure.getFacilityConditions()));
             }
         }
         return true;
