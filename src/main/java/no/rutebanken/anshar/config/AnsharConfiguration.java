@@ -21,7 +21,6 @@ import lombok.Getter;
 import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.quartz.SchedulerFactoryBeanCustomizer;
@@ -120,9 +119,7 @@ public class AnsharConfiguration {
     private String siriGenerationFromTheoreticalDataCron;
     @Value("${anshar.vj.mapping.cache.cron:0+0+2+*+*+?}")
     private String vjMappingCacheCron;
-    @Autowired
-    @Qualifier("getLockMap")
-    private IMap<String, Instant> lockMap;
+    private final IMap<String, Instant> lockMap;
     @Value("${anshar.default.time.zone}")
     private String defaultTimeZone;
     private Boolean isCurrentInstanceLeader;
@@ -130,13 +127,12 @@ public class AnsharConfiguration {
     private boolean automaticConsistencyReportsEnabled;
     @Value("${anshar.automaticConsistencyReports.cron:0+0+9,17+*+*+?}")
     private String automaticConsistencyReportsCron;
-
-    @Value("${anshar.gtfsrt.retrieve.enabled:true}")
-    private boolean gtfsrtRetrieveEnabled;
-
     private boolean isInitialized = false;
     private boolean isVJCacheLoaded = false;
 
+    public AnsharConfiguration(@Qualifier("getLockMap") IMap<String, Instant> lockMap) {
+        this.lockMap = lockMap;
+    }
 
     @Bean
     public SchedulerFactoryBeanCustomizer schedulerDelayCustomizer() {
@@ -177,11 +173,7 @@ public class AnsharConfiguration {
     }
 
     public boolean processData() {
-        return (appModes.isEmpty() || ((appModes.contains(AppMode.DATA_ET) | appModes.contains(AppMode.DATA_VM) | appModes.contains(AppMode.DATA_SX))));
-    }
-
-    public boolean isHealthcheckDisabled() {
-        return isHealthcheckDisabled;
+        return appModes.isEmpty() || appModes.contains(AppMode.DATA_ET) || appModes.contains(AppMode.DATA_VM) || appModes.contains(AppMode.DATA_SX);
     }
 
     public boolean isCurrentInstanceLeader() {

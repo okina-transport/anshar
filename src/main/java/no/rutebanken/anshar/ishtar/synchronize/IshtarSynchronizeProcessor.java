@@ -1,13 +1,11 @@
 package no.rutebanken.anshar.ishtar.synchronize;
 
 import lombok.extern.slf4j.Slf4j;
-import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.api.SiriApi;
 import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.TokenService;
 import no.rutebanken.anshar.ishtar.converter.*;
-import no.rutebanken.anshar.ishtar.model.GtfsRTApiDto;
 import no.rutebanken.anshar.ishtar.model.IdProcessingParameterDto;
 import no.rutebanken.anshar.ishtar.model.SiriApiDto;
 import no.rutebanken.anshar.ishtar.model.SubscriptionDto;
@@ -19,7 +17,6 @@ import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.BooleanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -41,14 +38,12 @@ public class IshtarSynchronizeProcessor implements Processor {
     private static final String GET_ALL_SIRI_APIS_URI = "/siri-apis/all";
     private static final String GET_ALL_ID_PROCESSING_PARAMETERS_URI = "/id-processing-parameters/all";
     private static final String GET_ALL_SUBSCRIPTIONS_URI = "/subscriptions/all";
-    private static final String GET_ALL_GTFS_RT_APIS_URI = "/gtfs-rt-apis";
 
     private final SubscriptionConfig subscriptionConfig;
     private final DiscoverySubscriptionCreator discoverySubscriptionCreator;
 
     private final WebClient webClient;
 
-    private final GtfsRTApiDtoConverter gtfsRTApiDtoConverter;
     private final SiriApiDtoConverter siriApiDtoConverter;
     private final IdProcessingParameterDtoConverter idProcessingParameterDtoConverter;
     private final SubscriptionDtoToDiscoverySubscriptionConverter toDiscoverySubscriptionConverter;
@@ -65,7 +60,6 @@ public class IshtarSynchronizeProcessor implements Processor {
         this.subscriptionConfig = subscriptionConfig;
         this.discoverySubscriptionCreator = discoverySubscriptionCreator;
         this.webClient = WebClient.builder().baseUrl(ishtarUrl.toString()).defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE).build();
-        this.gtfsRTApiDtoConverter = new GtfsRTApiDtoConverter();
         this.siriApiDtoConverter = new SiriApiDtoConverter();
         this.idProcessingParameterDtoConverter = new IdProcessingParameterDtoConverter();
         this.toDiscoverySubscriptionConverter = new SubscriptionDtoToDiscoverySubscriptionConverter();
@@ -77,7 +71,6 @@ public class IshtarSynchronizeProcessor implements Processor {
     @Override
     public void process(Exchange exchange) throws Exception {
         getIdProcessingParameters();
-        getGtfsRTData();
         getSiriAPIData();
         getSubscriptions();
     }
@@ -212,38 +205,6 @@ public class IshtarSynchronizeProcessor implements Processor {
         } catch (Exception e) {
             log.error("--> ISHTAR : error during Siri API synchronization (SHOULD BE FIXED BY DEVS)", e);
         }
-    }
-
-    private void getGtfsRTData() {
-        try {
-            log.info("--> ISHTAR : get GTFS RT API(s)");
-            List<GtfsRTApiDto> gtfsRTApiDtos =
-                    ListUtils.emptyIfNull(getWebClient(GET_ALL_GTFS_RT_APIS_URI).retrieve().bodyToFlux(GtfsRTApiDto.class).collectList().block());
-            log.info("<-- ISHTAR : retrieved {} GTFS RT API(s)", gtfsRTApiDtos.size());
-            List<GtfsRTApi> gtfsRTApis = gtfsRTApiDtos.stream().map(gtfsRTApiDtoConverter::convert).collect(Collectors.toList());
-            Map<Boolean, List<GtfsRTApi>> validationMap = gtfsRTApis.stream()
-                    .collect(Collectors.partitioningBy(GtfsRTApi::getValidated));
-
-            if (validationMap.containsKey(false) && !validationMap.get(false).isEmpty()) {
-                for (GtfsRTApi unValidatedApi : validationMap.get(false)) {
-                    log.info("Unvalidated API : " + unValidatedApi.getDatasetId() + " - " + unValidatedApi.getUrl());
-                }
-            }
-
-            if (!validationMap.containsKey(true) || validationMap.get(true).isEmpty()) {
-                log.info("No validated GTFSRT APIs ");
-                return;
-            }
-            log.info("Before merge {} GTFS RT API(s) in cache", subscriptionConfig.getGtfsRTApis().size());
-            subscriptionConfig.mergeGTFSRTApis(validationMap.get(true));
-            log.info("After merge {} GTFS RT API(s) in cache", subscriptionConfig.getGtfsRTApis().size());
-        } catch (WebClientException e) {
-            log.error("--> ISHTAR : error during GTFS RT API synchronization : {}", e.getMessage());
-            log.debug("Error during GTFS RT API synchronization", e);
-        } catch (Exception e) {
-            log.error("--> ISHTAR : error during GTFS RT API synchronization (SHOULD BE FIXED BY DEVS)", e);
-        }
-
     }
 
     private WebClient.RequestHeadersSpec<?> getWebClient(String uri) {

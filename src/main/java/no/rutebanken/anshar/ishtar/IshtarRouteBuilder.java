@@ -3,7 +3,6 @@ package no.rutebanken.anshar.ishtar;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.ishtar.clearcache.ClearCacheProcessor;
-import no.rutebanken.anshar.ishtar.model.GtfsRTApiDto;
 import no.rutebanken.anshar.ishtar.model.SiriApiDto;
 import no.rutebanken.anshar.ishtar.model.SubscriptionDto;
 import no.rutebanken.anshar.ishtar.requestlogging.model.HttpRequestDto;
@@ -29,9 +28,10 @@ import static org.apache.camel.support.builder.PredicateBuilder.*;
 public class IshtarRouteBuilder extends BaseRouteBuilder {
 
     private static final Predicate isDiscoverySubscription = Builder.body().method("discoverySubscription").isEqualTo(true);
-    private static final Predicate isSubscription = Builder.body().method("subscriptionMode").isEqualTo(SUBSCRIBE);
-    private static final Predicate isLite = Builder.body().method("subscriptionMode").in(LITE, LITE_XML);
-    private static final Predicate isFetchedDelivery = Builder.body().method("subscriptionMode").in(FETCHED_DELIVERY,
+    public static final String SUBSCRIPTION_MODE = "subscriptionMode";
+    private static final Predicate isSubscription = Builder.body().method(SUBSCRIPTION_MODE).isEqualTo(SUBSCRIBE);
+    private static final Predicate isLite = Builder.body().method(SUBSCRIPTION_MODE).in(LITE, LITE_XML);
+    private static final Predicate isFetchedDelivery = Builder.body().method(SUBSCRIPTION_MODE).in(FETCHED_DELIVERY,
             POLLING_FETCHED_DELIVERY);
     private static final Predicate isSubscriptionV1_4 = Builder.body().method("version").isEqualTo("1.4");
     private static final Predicate isSOAP = Builder.body().method("serviceType").isEqualTo("SOAP");
@@ -91,14 +91,6 @@ public class IshtarRouteBuilder extends BaseRouteBuilder {
 
         from("direct:createSubscriptions")
                 .bean(SubscriptionInitializer.class, "createSubscriptions")
-                .end();
-
-        from(ISHTAR_GET_GTFS_RT_API_REQUEST_ROUTE)
-                .routeId(ISHTAR_GET_GTFS_RT_API_REQUEST_ROUTE)
-                .removeHeaders("*")
-                .unmarshal().json(GtfsRTApiDto.class)
-                .convertBodyTo(HttpRequestDto.class)
-                .marshal().json()
                 .end();
 
         from(ISHTAR_GET_SIRI_API_REQUEST_ROUTE)

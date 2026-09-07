@@ -18,23 +18,25 @@ package no.rutebanken.anshar.routes.validation;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
 
 import javax.ws.rs.core.MediaType;
 
 import static no.rutebanken.anshar.routes.HttpParameter.*;
+import static no.rutebanken.anshar.routes.admin.AdministrationRoute.REMOVE_HEADERS_ROUTE;
 
 @Service
 @Configuration
 public class ValidationRoute extends RestRouteBuilder {
 
-    @Autowired
-    private SiriXmlValidator siriXmlValidator;
+    private final SiriXmlValidator siriXmlValidator;
+    private final SubscriptionManager subscriptionManager;
 
-    @Autowired
-    private SubscriptionManager subscriptionManager;
+    public ValidationRoute(SiriXmlValidator siriXmlValidator, SubscriptionManager subscriptionManager) {
+        this.siriXmlValidator = siriXmlValidator;
+        this.subscriptionManager = subscriptionManager;
+    }
 
 
     @Override
@@ -56,20 +58,20 @@ public class ValidationRoute extends RestRouteBuilder {
 
         from("direct:validation.list")
                 .bean(subscriptionManager, "getSubscriptionsForCodespace(${header." + PARAM_CODESPACE + "})")
-                .to("direct:removeHeaders")
+                .to(REMOVE_HEADERS_ROUTE)
                 .to("freemarker:templates/validation.ftl")
                 .routeId("admin.validation.list")
         ;
         from("direct:validation.report")
                 .bean(siriXmlValidator, "getValidationResults(${header." + PARAM_SUBSCRIPTION_ID + "})")
-                .to("direct:removeHeaders")
+                .to(REMOVE_HEADERS_ROUTE)
                 .to("freemarker:templates/validation-report.ftl")
                 .routeId("admin.validation.report")
         ;
 
         from("direct:validation.siri")
                 .bean(siriXmlValidator, "getValidatedSiri(${header." + PARAM_VALIDATION_REF + "})")
-                .to("direct:removeHeaders")
+                .to(REMOVE_HEADERS_ROUTE)
                 .setHeader("Content-Disposition", simple("attachment; filename=\"SIRI.xml\""))
                 .routeId("admin.validation.siri")
         ;
@@ -77,7 +79,7 @@ public class ValidationRoute extends RestRouteBuilder {
     }
 
     private void toggleValidation(Long subscriptionId, String validationFilter) {
-        log.info("got validationFilter: " + validationFilter);
+        log.info("got validationFilter: {}", validationFilter);
         SubscriptionSetup subscriptionSetup = subscriptionManager.getSubscriptionByInternalId(subscriptionId);
         if (subscriptionSetup != null) {
             subscriptionSetup.setValidation(!subscriptionSetup.isValidation());

@@ -16,8 +16,6 @@
 package no.rutebanken.anshar.subscription;
 
 
-import io.micrometer.core.instrument.util.StringUtils;
-import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.api.SiriApi;
 import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.config.IdProcessingParameters;
@@ -28,8 +26,7 @@ import no.rutebanken.anshar.subscription.helpers.RequestType;
 import no.rutebanken.anshar.util.YamlPropertySourceFactory;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
@@ -46,14 +43,12 @@ import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFO
 @Configuration
 public class SubscriptionConfig {
 
-    private static final Logger logger = LoggerFactory.getLogger(SubscriptionConfig.class);
     private final List<IdProcessingParameters> idProcessingParameters = new CopyOnWriteArrayList<>();
     @Produce(AdministrationRoute.TERMINATE_SUBSCRIPTION_ROUTE)
     protected ProducerTemplate terminateSubscriptionRoute;
     @Value("${anshar.subscriptions.datatypes.filter:}")
     List<SiriDataType> dataTypes;
-    private List<SubscriptionSetup> subscriptions = new CopyOnWriteArrayList();
-    private List<GtfsRTApi> gtfsRTApis = new CopyOnWriteArrayList<>();
+    private List<SubscriptionSetup> subscriptions = new CopyOnWriteArrayList<>();
     private List<SiriApi> siriApis = new CopyOnWriteArrayList<>();
     private List<DiscoverySubscription> discoverySubscriptions = new ArrayList<>();
 
@@ -68,14 +63,6 @@ public class SubscriptionConfig {
 
     public void setSubscriptions(List<SubscriptionSetup> subscriptions) {
         this.subscriptions = subscriptions;
-    }
-
-    public List<GtfsRTApi> getGtfsRTApis() {
-        return gtfsRTApis;
-    }
-
-    public void setGtfsRTApis(List<GtfsRTApi> gtfsRTApis) {
-        this.gtfsRTApis = gtfsRTApis;
     }
 
     public List<SiriApi> getSiriApis() {
@@ -158,28 +145,6 @@ public class SubscriptionConfig {
         }
         return Optional.empty();
 
-    }
-
-
-    public void mergeGTFSRTApis(List<GtfsRTApi> incomingGtfsRTApis) {
-        for (GtfsRTApi incomingAPI : incomingGtfsRTApis) {
-            Optional<GtfsRTApi> existingOpt = getExistingGtfsAPI(incomingAPI);
-            if (existingOpt.isPresent()) {
-                //API is already existing in the list. Updatig the status
-                existingOpt.get().setUrl(incomingAPI.getUrl());
-                existingOpt.get().setActive(incomingAPI.getActive());
-                existingOpt.get().setRouteIdList(incomingAPI.getRouteIdList());
-                existingOpt.get().setActivePeriodDays(incomingAPI.getActivePeriodDays());
-                existingOpt.get().setCloseMissingAlerts(incomingAPI.getCloseMissingAlerts());
-                existingOpt.get().setGenerateActivePeriod(incomingAPI.getGenerateActivePeriod());
-                existingOpt.get().setPublishedLineNameMapping(incomingAPI.getPublishedLineNameMapping());
-                existingOpt.get().setApiKey(incomingAPI.getApiKey());
-                logger.info("gtfsrt already existing.updating. " + incomingAPI.getDatasetId() + "-" + incomingAPI.getUrl());
-            } else {
-                gtfsRTApis.add(incomingAPI);
-                logger.info("new gtfsrt adding. " + incomingAPI.getDatasetId() + "-" + incomingAPI.getUrl());
-            }
-        }
     }
 
     public void mergeSubscriptions(List<SubscriptionSetup> incomingSubscriptions) {
@@ -327,17 +292,6 @@ public class SubscriptionConfig {
         return Optional.empty();
     }
 
-
-    private Optional<GtfsRTApi> getExistingGtfsAPI(GtfsRTApi incomingAPI) {
-
-        for (GtfsRTApi existingGtfsRTApi : gtfsRTApis) {
-            if (incomingAPI.getId().equals(existingGtfsRTApi.getId())) {
-                return Optional.of(existingGtfsRTApi);
-            }
-        }
-        return Optional.empty();
-    }
-
     public Optional<IdProcessingParameters> getIdParametersForDataset(String datasetId, ObjectType objectType) {
         for (IdProcessingParameters idProcessingParametrer : idProcessingParameters) {
             if (datasetId != null && datasetId.equalsIgnoreCase(idProcessingParametrer.getDatasetId()) && objectType != null && objectType.equals(idProcessingParametrer.getObjectType())) {
@@ -402,7 +356,7 @@ public class SubscriptionConfig {
     }
 
     public Map<ObjectType, Optional<IdProcessingParameters>> buildIdProcessingParamsFromDataset(String datasetId) {
-        Map<ObjectType, Optional<IdProcessingParameters>> resultmap = new HashMap<>();
+        Map<ObjectType, Optional<IdProcessingParameters>> resultmap = new EnumMap<>(ObjectType.class);
         resultmap.put(ObjectType.STOP, getIdParametersForDataset(datasetId, ObjectType.STOP));
         resultmap.put(ObjectType.LINE, getIdParametersForDataset(datasetId, ObjectType.LINE));
         resultmap.put(ObjectType.VEHICLE_JOURNEY, getIdParametersForDataset(datasetId, ObjectType.VEHICLE_JOURNEY));
@@ -413,15 +367,9 @@ public class SubscriptionConfig {
     }
 
     public Set<String> getSXDatasetIds() {
-        Set<String> sxDatasetIds = subscriptions.stream()
+        return subscriptions.stream()
                 .filter(subscription -> subscription.getSubscriptionType().equals(SiriDataType.SITUATION_EXCHANGE))
                 .map(SubscriptionSetup::getDatasetId)
                 .collect(Collectors.toSet());
-
-
-        for (GtfsRTApi gtfsRTApi : gtfsRTApis) {
-            sxDatasetIds.add(gtfsRTApi.getDatasetId());
-        }
-        return sxDatasetIds;
     }
 }

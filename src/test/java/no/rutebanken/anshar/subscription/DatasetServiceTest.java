@@ -1,6 +1,5 @@
 package no.rutebanken.anshar.subscription;
 
-import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.api.SiriApi;
 import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.config.IdProcessingParameters;
@@ -18,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(MockitoExtension.class)
-public class DatasetServiceTest {
+class DatasetServiceTest {
 
     @Mock
     SubscriptionConfig subscriptionConfig;
@@ -27,11 +26,10 @@ public class DatasetServiceTest {
     private DatasetService tested;
 
     @Test
-    public void test_getAllDatasetIds_whenThereIsNoConfiguration_returnsEmptyList() {
+    void test_getAllDatasetIds_whenThereIsNoConfiguration_returnsEmptyList() {
         // Arrange
         Mockito.when(subscriptionConfig.getSubscriptions()).thenReturn(List.of());
         Mockito.when(subscriptionConfig.getDiscoverySubscriptions()).thenReturn(List.of());
-        Mockito.when(subscriptionConfig.getGtfsRTApis()).thenReturn(List.of());
         Mockito.when(subscriptionConfig.getSiriApis()).thenReturn(List.of());
         Mockito.when(subscriptionConfig.getIdProcessingParameters()).thenReturn(List.of());
 
@@ -43,7 +41,7 @@ public class DatasetServiceTest {
     }
 
     @Test
-    public void test_getAllDatasetIds_whenThereIsConfiguration_returnsAllDatasetIds() {
+    void test_getAllDatasetIds_whenThereIsConfiguration_returnsAllDatasetIds() {
         // Arrange
         SubscriptionSetup ss1 = new SubscriptionSetup();
         ss1.setDatasetId("A");
@@ -53,15 +51,12 @@ public class DatasetServiceTest {
         ds1.setDatasetId("C");
         DiscoverySubscription ds2 = new DiscoverySubscription();
         ds2.setDatasetId("D");
-        GtfsRTApi gtfsRTApi = new GtfsRTApi();
-        gtfsRTApi.setDatasetId("E");
         SiriApi siriApi = new SiriApi();
-        siriApi.setDatasetId("F");
+        siriApi.setDatasetId("E");
         IdProcessingParameters ipp = new IdProcessingParameters();
-        ipp.setDatasetId("G");
+        ipp.setDatasetId("F");
         Mockito.when(subscriptionConfig.getSubscriptions()).thenReturn(List.of(ss1, ss2));
         Mockito.when(subscriptionConfig.getDiscoverySubscriptions()).thenReturn(List.of(ds1, ds2));
-        Mockito.when(subscriptionConfig.getGtfsRTApis()).thenReturn(List.of(gtfsRTApi));
         Mockito.when(subscriptionConfig.getSiriApis()).thenReturn(List.of(siriApi));
         Mockito.when(subscriptionConfig.getIdProcessingParameters()).thenReturn(List.of(ipp));
 
@@ -69,7 +64,7 @@ public class DatasetServiceTest {
         var result = tested.getAllDatasetIds();
 
         // Assert
-        assertEquals(List.of("A", "B", "C", "D", "E", "F", "G"), result.stream().sorted().collect(Collectors.toList()), "should return all datasetIds");
+        assertEquals(List.of("A", "B", "C", "D", "E", "F"), result.stream().sorted().collect(Collectors.toList()), "should return all datasetIds");
 
     }
 
