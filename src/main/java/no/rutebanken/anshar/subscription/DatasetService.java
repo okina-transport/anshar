@@ -28,9 +28,6 @@ public class DatasetService {
         for (var ds : subscriptionConfig.getDiscoverySubscriptions()) {
             datasetIds.add(ds.getDatasetId());
         }
-        for (var gtfsRtApi : subscriptionConfig.getGtfsRTApis()) {
-            datasetIds.add(gtfsRtApi.getDatasetId());
-        }
         for (var siriApi : subscriptionConfig.getSiriApis()) {
             datasetIds.add(siriApi.getDatasetId());
         }

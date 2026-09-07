@@ -47,7 +47,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.entur.siri21.util.SiriXml;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
@@ -57,12 +56,7 @@ import uk.org.siri.siri21.Siri;
 import javax.ws.rs.core.MediaType;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -72,6 +66,7 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_HTML;
 import static no.rutebanken.anshar.routes.admin.AdminRouteHelper.mergeJsonStats;
 import static no.rutebanken.anshar.routes.policy.SingletonRoutePolicyFactory.DEFAULT_LOCK_VALUE;
+import static no.rutebanken.anshar.routes.validation.validators.Constants.DATASET_ID_HEADER_NAME;
 
 @SuppressWarnings("unchecked")
 @Service
@@ -79,11 +74,12 @@ import static no.rutebanken.anshar.routes.policy.SingletonRoutePolicyFactory.DEF
 public class AdministrationRoute extends RestRouteBuilder {
 
     public static final String ISHTAR_SYNCHRONIZE_DATA_ROUTE = "direct:isthar.synchronize.data";
-    public static final String ISHTAR_GET_GTFS_RT_API_REQUEST_ROUTE = "direct:ishtar.get.gtfs-rt-api.request";
     public static final String ISHTAR_GET_SIRI_API_REQUEST_ROUTE = "direct:ishtar.get.siri-api.request";
     public static final String ISHTAR_GET_SUBSCRIPTION_REQUEST_ROUTE = "direct:ishtar.get.subscription.request";
     public static final String ISHTAR_CLEAR_CACHE_BY_DATASET_ID = "direct:ishtar.clear.cache.by.datasetId";
     public static final String GET_CONSISTENCY_REPORT_BY_DATASET_ID = "direct:get.consistency.report.by.datasetId";
+    public static final String TERMINATE_SUBSCRIPTION_ROUTE = "direct:terminate.subscription";
+    public static final String REMOVE_HEADERS_ROUTE = "direct:removeHeaders";
     private static final String STATS_ROUTE = "direct:stats";
     private static final String SUBSCRIPTION_STATUSES = "direct:subscriptions.statuses";
     private static final String SUBSCRIPTION_LAST_REQUEST_RESPONSE = "direct:subscription.last.request.response";
@@ -100,57 +96,45 @@ public class AdministrationRoute extends RestRouteBuilder {
     private static final String SITUATIONS_ROUTE = "direct:situations";
     private static final String SYNTHESIS_ROUTE = "direct:synthesis";
     private static final String INTERNAL_SYNTHESIS_ROUTE = "direct:internal.synthesis";
-    public static final String TERMINATE_SUBSCRIPTION_ROUTE = "direct:terminate.subscription";
+    public static final String SIRI_DATA_TYPE = "SiriDataType";
+    public static final String ADMIN_SITUATIONS_ROUTE_ID = "admin.situations";
+    public static final String ANSHAR_INTERNALSTATS_BRIDGE_ENDPOINT_TRUE = "/anshar/internalstats?bridgeEndpoint=true";
+    public static final String DIRECT_INTERNAL_DELETE_SUBSCRIPTION_ROUTE = "direct:internal.delete.subscription";
+    public static final String DIRECT_TERMINATE_OUTBOUND_SUBSCRIPTION_ROUTE = "direct:terminate.outbound.subscription";
+    public static final String SUBSCRIPTION_ID = "subscriptionId";
 
-    @Autowired
-    private ExtendedHazelcastService extendedHazelcastService;
+    private final ExtendedHazelcastService extendedHazelcastService;
+    private final SubscriptionManager subscriptionManager;
+    private final ServerSubscriptionManager serverSubscriptionManager;
+    private final HealthManager healthManager;
+    private final AdminRouteHelper helper;
+    private final AnsharConfiguration configuration;
+    private final SiriXmlValidator siriXmlValidator;
+    private final ConsistencyService consistencyService;
+    private final ConsistencyForAllDatasetsProcessor cfadp;
+    private final OutboundErrorHandler outboundErrorHandler;
+    private final UserActionLoggingService userActionLoggingService;
+    private final boolean situationsDebugEndpoint;
+    private final int maximumOutboundErrorsAllowed;
+    private final boolean autoLockVerificationEnabled;
 
-    @Autowired
-    private SubscriptionManager subscriptionManager;
-
-    @Autowired
-    private ServerSubscriptionManager serverSubscriptionManager;
-
-    @Autowired
-    private HealthManager healthManager;
-
-    @Autowired
-    private AdminRouteHelper helper;
-
-    @Autowired
-    private AnsharConfiguration configuration;
-
-    @Autowired
-    private SiriXmlValidator siriXmlValidator;
-
-    @Autowired
-    private ConsistencyService consistencyService;
-
-    @Autowired
-    private ConsistencyForAllDatasetsProcessor cfadp;
-
-    @Value("${anshar.route.singleton.policy.automatic.verification:false}")
-    private boolean autoLockVerificationEnabled;
-
-    @Value("${anshar.situations.debug.endpoint.enabled:false}")
-    private boolean situationsDebugEndpoint;
-
-    @Autowired
-    private SiriObjectFactory siriObjectFactory;
-
-    @Value("${maximum.outbound.errors.allowed.by.url:2}")
-    int maximumOutboundErrorsAllowed;
-
-
-    @Autowired
-    private OutboundErrorHandler outboundErrorHandler;
-
-    @Autowired
-    private UserActionLoggingService userActionLoggingService;
-
-
-//    @Autowired
-//    private BasicAuthService basicAuthProcessor;
+    public AdministrationRoute(@Value("${maximum.outbound.errors.allowed.by.url:2}") int maximumOutboundErrorsAllowed, ExtendedHazelcastService extendedHazelcastService, SubscriptionManager subscriptionManager, ServerSubscriptionManager serverSubscriptionManager, HealthManager healthManager, AdminRouteHelper helper, AnsharConfiguration configuration, SiriXmlValidator siriXmlValidator, ConsistencyService consistencyService, ConsistencyForAllDatasetsProcessor cfadp, @Value("${anshar.route.singleton.policy.automatic.verification:false}") boolean autoLockVerificationEnabled, @Value("${anshar.situations.debug.endpoint.enabled:false}")
+    boolean situationsDebugEndpoint, OutboundErrorHandler outboundErrorHandler, UserActionLoggingService userActionLoggingService) {
+        this.maximumOutboundErrorsAllowed = maximumOutboundErrorsAllowed;
+        this.extendedHazelcastService = extendedHazelcastService;
+        this.subscriptionManager = subscriptionManager;
+        this.serverSubscriptionManager = serverSubscriptionManager;
+        this.healthManager = healthManager;
+        this.helper = helper;
+        this.configuration = configuration;
+        this.siriXmlValidator = siriXmlValidator;
+        this.consistencyService = consistencyService;
+        this.cfadp = cfadp;
+        this.autoLockVerificationEnabled = autoLockVerificationEnabled;
+        this.situationsDebugEndpoint = situationsDebugEndpoint;
+        this.outboundErrorHandler = outboundErrorHandler;
+        this.userActionLoggingService = userActionLoggingService;
+    }
 
     @Override
     public void configure() throws Exception {
@@ -187,7 +171,6 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .get("/subscriptions-statuses").produces(APPLICATION_JSON).to(SUBSCRIPTION_STATUSES)
                 .get("/launch-subscriptions-lifecycle-check").produces(APPLICATION_JSON).to(LAUNCH_SUBSCRIPTION_LIFECYCLE_CHECK)
                 .get("/last-request-response/{subscriptionId}").produces(APPLICATION_JSON).to(SUBSCRIPTION_LAST_REQUEST_RESPONSE)
-                .post("/gtfs-rt-request").produces(APPLICATION_JSON).to(ISHTAR_GET_GTFS_RT_API_REQUEST_ROUTE)
                 .post("/siri-request").produces(APPLICATION_JSON).to(ISHTAR_GET_SIRI_API_REQUEST_ROUTE)
                 .post("/subscription-request").produces(APPLICATION_JSON).to(ISHTAR_GET_SUBSCRIPTION_REQUEST_ROUTE)
                 .post("/unbanurl").produces(APPLICATION_JSON).to("direct:unbanurl")
@@ -196,7 +179,7 @@ public class AdministrationRoute extends RestRouteBuilder {
         ;
 
         if (autoLockVerificationEnabled) {
-            long verificationIntervalMillis = 10 * 60 * 1000;
+            long verificationIntervalMillis = 10 * 60 * 1000L;
             // repeatInterval : Use repeat interval to check every 10 minutes after startup - not every 10 minutes on clock
             from("quartz://anshar.verify.locks?trigger.repeatInterval=" + verificationIntervalMillis)
                     .log("Verifying locks - start")
@@ -265,19 +248,19 @@ public class AdministrationRoute extends RestRouteBuilder {
                         maxlength = Math.max(maxlength, s.length());
                     }
 
-                    String body = StringUtils.rightPad("key", maxlength) + " | value\n";
+                    StringBuilder body = new StringBuilder().append(StringUtils.rightPad("key", maxlength)).append(" | value\n");
 
                     // Now, sort by values to group hosts
                     final List<Map.Entry<String, String>> sortedEntries = locksMap
                             .entrySet()
                             .stream()
                             .sorted(Map.Entry.comparingByValue())
-                            .collect(Collectors.toList());
+                            .toList();
 
                     for (Map.Entry<String, String> e : sortedEntries) {
-                        body += StringUtils.rightPad(e.getKey(), maxlength) + " | " + e.getValue() + "\n";
+                        body.append(StringUtils.rightPad(e.getKey(), maxlength)).append(" | ").append(e.getValue()).append("\n");
                     }
-                    p.getOut().setBody(body);
+                    p.getIn().setBody(body);
                 })
                 .routeId("admin")
         ;
@@ -286,7 +269,7 @@ public class AdministrationRoute extends RestRouteBuilder {
                 //.process(basicAuthProcessor)
                 .setHeader(HttpHeaders.CONTENT_TYPE, simple(APPLICATION_JSON))
                 .to(INTERNAL_SYNTHESIS_ROUTE)
-                .to("direct:removeHeaders")
+                .to(REMOVE_HEADERS_ROUTE)
                 .setHeader(HttpHeaders.CONTENT_TYPE, simple(TEXT_HTML))
                 .to("freemarker:templates/synthesis.ftl")
                 .routeId("admin.synthesis")
@@ -302,7 +285,7 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .handled(true)
                 .setHeader(Exchange.HTTP_RESPONSE_CODE, constant(500))
                 .end()
-                .process(e -> e.getIn().setBody(consistencyService.buildReportForDataset(e.getIn().getHeader("datasetId", String.class))))
+                .process(e -> e.getIn().setBody(consistencyService.buildReportForDataset(e.getIn().getHeader(DATASET_ID_HEADER_NAME, String.class))))
                 .wireTap(KafkaRouteBuilder.SEND_TH_TR_CONSISTENCY_REPORT_TO_KAFKA) // send to KAFKA async
                 .marshal()
                 .json();
@@ -320,11 +303,11 @@ public class AdministrationRoute extends RestRouteBuilder {
                     .to(INTERNAL_STATS_ROUTE)
                     .removeHeader(HttpHeaders.CONTENT_TYPE)
                     .setProperty("proxy-stats", body())
-                    .toD(vmHandlerBaseUrl + "/anshar/internalstats?bridgeEndpoint=true")
+                    .toD(vmHandlerBaseUrl + ANSHAR_INTERNALSTATS_BRIDGE_ENDPOINT_TRUE)
                     .setProperty("vm-stats", body().convertTo(String.class))
-                    .toD(etHandlerBaseUrl + "/anshar/internalstats?bridgeEndpoint=true")
+                    .toD(etHandlerBaseUrl + ANSHAR_INTERNALSTATS_BRIDGE_ENDPOINT_TRUE)
                     .setProperty("et-stats", body().convertTo(String.class))
-                    .toD(sxHandlerBaseUrl + "/anshar/internalstats?bridgeEndpoint=true")
+                    .toD(sxHandlerBaseUrl + ANSHAR_INTERNALSTATS_BRIDGE_ENDPOINT_TRUE)
                     .setProperty("sx-stats", body().convertTo(String.class))
                     .process(p -> {
                         JSONObject body = mergeJsonStats(
@@ -335,7 +318,7 @@ public class AdministrationRoute extends RestRouteBuilder {
                         );
                         p.getMessage().setBody(body);
                     })
-                    .to("direct:removeHeaders")
+                    .to(REMOVE_HEADERS_ROUTE)
                     .setHeader(HttpHeaders.CONTENT_TYPE, simple(TEXT_HTML))
                     .to("freemarker:templates/stats.ftl")
                     .routeId("admin.stats")
@@ -352,22 +335,20 @@ public class AdministrationRoute extends RestRouteBuilder {
                     });
 
             from(LAUNCH_SUBSCRIPTION_LIFECYCLE_CHECK)
-                    .process(p -> {
-                        subscriptionManager.launchSubscriptionsLifeCycleCheck();
-                    });
+                    .process(p -> subscriptionManager.launchSubscriptionsLifeCycleCheck());
 
             //either proxy or data-handler
             from(STATS_ROUTE)
                     //.process(basicAuthProcessor)
                     .setHeader(HttpHeaders.CONTENT_TYPE, simple(APPLICATION_JSON))
                     .to(INTERNAL_STATS_ROUTE)
-                    .to("direct:removeHeaders")
+                    .to(REMOVE_HEADERS_ROUTE)
                     .setHeader(HttpHeaders.CONTENT_TYPE, simple(TEXT_HTML))
                     .to("freemarker:templates/stats.ftl")
                     .routeId("admin.stats")
             ;
         }
-        from("direct:removeHeaders")
+        from(REMOVE_HEADERS_ROUTE)
                 .removeHeaders("*")
                 .routeId("admin.remove.headers");
 
@@ -427,7 +408,7 @@ public class AdministrationRoute extends RestRouteBuilder {
 
         from(SUBSCRIPTION_LAST_REQUEST_RESPONSE)
                 .process(p -> {
-                    String subscriptionId = p.getIn().getHeader("subscriptionId", String.class);
+                    String subscriptionId = p.getIn().getHeader(SUBSCRIPTION_ID, String.class);
                     JSONObject lastRequestResponse = subscriptionManager.getSubscriptionLastRequestResponse(subscriptionId);
                     p.getIn().setBody(lastRequestResponse.toJSONString());
                 })
@@ -461,9 +442,6 @@ public class AdministrationRoute extends RestRouteBuilder {
                         SiriDataType siriDataType = SiriDataType.valueOf(siriDataTypeInput.toUpperCase());
 
                         List<String> requestorRefs = serverSubscriptionManager.getSubscriptionRequestorRefs(siriDataType);
-
-                        JSONArray requestorRefsArray = new JSONArray();
-                        requestorRefsArray.addAll(requestorRefs);
 
                         if (APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE, String.class))) {
                             p.getMessage().setBody(requestorRefs);
@@ -528,7 +506,7 @@ public class AdministrationRoute extends RestRouteBuilder {
                 .to("direct:start")
                 .endChoice()
                 .when(header(operationHeaderName).isEqualTo("terminate"))
-                .to("direct:terminate.outbound.subscription")
+                .to(DIRECT_TERMINATE_OUTBOUND_SUBSCRIPTION_ROUTE)
                 .endChoice()
                 .when(header(operationHeaderName).isEqualTo("terminateAll"))
                 .to("direct:terminate.all.subscriptions")
@@ -551,7 +529,7 @@ public class AdministrationRoute extends RestRouteBuilder {
 
         if (!configuration.processData()) {
             //Return subscription status
-            from("direct:terminate.outbound.subscription")
+            from(DIRECT_TERMINATE_OUTBOUND_SUBSCRIPTION_ROUTE)
                     //  .process(basicAuthProcessor)
                     .to("direct:redirect.request.et")
                     .to("direct:redirect.request.vm")
@@ -560,9 +538,9 @@ public class AdministrationRoute extends RestRouteBuilder {
             ;
         } else {
             //Return subscription status
-            from("direct:terminate.outbound.subscription")
+            from(DIRECT_TERMINATE_OUTBOUND_SUBSCRIPTION_ROUTE)
                     .process(p -> {
-                        String subscriptionId = p.getIn().getHeader("subscriptionId", String.class);
+                        String subscriptionId = p.getIn().getHeader(SUBSCRIPTION_ID, String.class);
                         OutboundSubscriptionSetup setup = serverSubscriptionManager.findSubscriptionById(subscriptionId);
                         ActionOutcome outcome = ActionOutcome.success();
                         try {
@@ -583,13 +561,13 @@ public class AdministrationRoute extends RestRouteBuilder {
         from("direct:flush.data.from.subscription")
                 //  .process(basicAuthProcessor)
                 .process(p -> {
-                    String subscriptionId = p.getIn().getHeader("subscriptionId", String.class);
+                    String subscriptionId = p.getIn().getHeader(SUBSCRIPTION_ID, String.class);
                     SubscriptionSetup subscriptionSetup = subscriptionManager.get(subscriptionId);
 
                     String dataType = subscriptionSetup.getSubscriptionType().toString();
 
                     p.getMessage().setHeaders(p.getIn().getHeaders());
-                    p.getMessage().setHeader("SiriDataType", dataType);
+                    p.getMessage().setHeader(SIRI_DATA_TYPE, dataType);
                 })
                 .to("direct:internal.flush.data.from.subscription")
         ;
@@ -615,13 +593,13 @@ public class AdministrationRoute extends RestRouteBuilder {
 
         from("direct:internal.flush.data.from.subscription")
                 .choice()
-                .when(p -> !configuration.processET() && p.getIn().getHeader("SiriDataType").equals(SiriDataType.ESTIMATED_TIMETABLE.name()))
+                .when(p -> !configuration.processET() && p.getIn().getHeader(SIRI_DATA_TYPE).equals(SiriDataType.ESTIMATED_TIMETABLE.name()))
                 .toD(etHandlerBaseUrl + "/anshar/stats?bridgeEndpoint=true&httpMethod=PUT&subscriptionId=${header.subscriptionId}")
-                .when(p -> !configuration.processVM() && p.getIn().getHeader("SiriDataType").equals(SiriDataType.VEHICLE_MONITORING.name()))
+                .when(p -> !configuration.processVM() && p.getIn().getHeader(SIRI_DATA_TYPE).equals(SiriDataType.VEHICLE_MONITORING.name()))
                 .toD(vmHandlerBaseUrl + "/anshar/stats?bridgeEndpoint=true&httpMethod=PUT&subscriptionId=${header.subscriptionId}")
-                .when(p -> !configuration.processSX() && p.getIn().getHeader("SiriDataType").equals(SiriDataType.SITUATION_EXCHANGE.name()))
+                .when(p -> !configuration.processSX() && p.getIn().getHeader(SIRI_DATA_TYPE).equals(SiriDataType.SITUATION_EXCHANGE.name()))
                 .toD(sxHandlerBaseUrl + "/anshar/stats?bridgeEndpoint=true&httpMethod=PUT&subscriptionId=${header.subscriptionId}")
-                .when(p -> !configuration.processSM() && p.getIn().getHeader("SiriDataType").equals(SiriDataType.STOP_MONITORING.name()))
+                .when(p -> !configuration.processSM() && p.getIn().getHeader(SIRI_DATA_TYPE).equals(SiriDataType.STOP_MONITORING.name()))
                 .toD(smHandlerBaseUrl + "/anshar/stats?bridgeEndpoint=true&httpMethod=PUT&subscriptionId=${header.subscriptionId}")
                 .otherwise()
                 .bean(helper, "flushDataFromSubscription(${header.subscriptionId})")
@@ -634,11 +612,11 @@ public class AdministrationRoute extends RestRouteBuilder {
         from("direct:delete.subscription")
                 // .process(basicAuthProcessor)
                 .bean(helper, "deleteSubscription(${header.subscriptionId})")
-                .to("direct:internal.delete.subscription")
+                .to(DIRECT_INTERNAL_DELETE_SUBSCRIPTION_ROUTE)
         ;
 
         if (configuration.processAdmin() && !configuration.processData()) {
-            from("direct:internal.delete.subscription")
+            from(DIRECT_INTERNAL_DELETE_SUBSCRIPTION_ROUTE)
                     .choice()
                     .when(p -> !configuration.processET())
                     .toD(etHandlerBaseUrl + "/anshar/stats?bridgeEndpoint=true&httpMethod=PUT&subscriptionId=${header.subscriptionId}")
@@ -658,7 +636,7 @@ public class AdministrationRoute extends RestRouteBuilder {
                     .routeId("admin.internal.delete.subscription")
             ;
         } else {
-            from("direct:internal.delete.subscription")
+            from(DIRECT_INTERNAL_DELETE_SUBSCRIPTION_ROUTE)
                     .log("Subscription deleted.")
                     .routeId("admin.internal.delete.subscription")
             ;
@@ -680,7 +658,7 @@ public class AdministrationRoute extends RestRouteBuilder {
                     final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
 
                     executorService.schedule(() -> getContext().shutdown(), 5, TimeUnit.SECONDS);
-                    executorService.schedule(() -> extendedHazelcastService.shutdown(), 10, TimeUnit.SECONDS);
+                    executorService.schedule(extendedHazelcastService::shutdown, 10, TimeUnit.SECONDS);
 
                 })
                 .routeId("admin.prepare.shutdown")
@@ -688,9 +666,9 @@ public class AdministrationRoute extends RestRouteBuilder {
 
         //Return unmapped ids
         from(UNMAPPED_ROUTE)
-                .filter(header("datasetId").isNotNull())
+                .filter(header(DATASET_ID_HEADER_NAME).isNotNull())
                 .bean(healthManager, "getUnmappedIdsAsJson(${header.datasetId})")
-                .to("direct:removeHeaders")
+                .to(REMOVE_HEADERS_ROUTE)
                 .to("freemarker:templates/unmapped.ftl")
                 .routeId("admin.unmapped")
         ;
@@ -699,22 +677,22 @@ public class AdministrationRoute extends RestRouteBuilder {
             if (configuration.processSX()) {
                 //Return unmapped ids
                 from(SITUATIONS_ROUTE)
-                        .filter(header("datasetId").isNotNull())
+                        .filter(header(DATASET_ID_HEADER_NAME).isNotNull())
                         .bean(helper, "getSituationMetadataAsJson(${header.datasetId})")
-                        .to("direct:removeHeaders")
+                        .to(REMOVE_HEADERS_ROUTE)
                         .to("freemarker:templates/situations.ftl")
-                        .routeId("admin.situations")
+                        .routeId(ADMIN_SITUATIONS_ROUTE_ID)
                 ;
             } else {
                 from(SITUATIONS_ROUTE)
                         .toD(sxHandlerBaseUrl + "${header.CamelHttpUri}?bridgeEndpoint=true")
-                        .routeId("admin.situations")
+                        .routeId(ADMIN_SITUATIONS_ROUTE_ID)
                 ;
             }
         } else {
             from(SITUATIONS_ROUTE)
                     .setHeader(Exchange.HTTP_RESPONSE_CODE, simple("404"))
-                    .routeId("admin.situations")
+                    .routeId(ADMIN_SITUATIONS_ROUTE_ID)
             ;
         }
 
@@ -727,7 +705,7 @@ public class AdministrationRoute extends RestRouteBuilder {
         from(TERMINATE_SUBSCRIPTION_ROUTE)
                 .log("Launching terminate subscription request ${header.subscriptionId}")
                 .process(e -> {
-                    String subscriptionId = (String) e.getIn().getHeader("subscriptionId");
+                    String subscriptionId = (String) e.getIn().getHeader(SUBSCRIPTION_ID);
                     RequestorRef requestorRef = new RequestorRef();
                     requestorRef.setValue((String) e.getIn().getHeader("requestorRef"));
                     Siri terminateRequest = SiriObjectFactory.createTerminateSubscriptionRequestWithParams(subscriptionId, requestorRef, "2.1");

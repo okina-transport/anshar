@@ -15,20 +15,17 @@
 
 package no.rutebanken.anshar.routes.health;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hazelcast.collection.ISet;
 import io.prometheus.jmx.JmxCollector;
 import io.prometheus.metrics.model.snapshots.MetricSnapshots;
 import jakarta.xml.bind.JAXBException;
 import no.rutebanken.anshar.api.FlowStatus;
-import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.data.util.CustomSiriXml;
 import no.rutebanken.anshar.metrics.JmxMetricsConverter;
 import no.rutebanken.anshar.metrics.PrometheusMetricsService;
 import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
-import no.rutebanken.anshar.routes.validation.validators.Constants;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
@@ -39,7 +36,6 @@ import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -48,14 +44,10 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.Siri;
 
-import javax.annotation.PostConstruct;
 import javax.ws.rs.core.MediaType;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.transform.TransformerException;
-import java.io.ByteArrayInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -68,63 +60,74 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static no.rutebanken.anshar.routes.health.IncomingFlowType.SIRI;
-import static no.rutebanken.anshar.routes.validation.validators.Constants.INCOMING_FLOW_PARAMETERS_HEADER_NAME;
 
 @Service
 @Configuration
 @EnableScheduling
 public class LivenessReadinessRoute extends RestRouteBuilder {
+    public static final String NOTIFY_HUBOT_ROUTE = "direct:notify.hubot";
+    public static final String NOTIFY_TARGET_HEADER = "notify-target";
     private static final Logger logger = LoggerFactory.getLogger(LivenessReadinessRoute.class);
+    public static final String HUBOT_NOTIFY_TARGET = "hubot";
+    private final JmxCollector jmxCollector;
+    private final ISet<String> unhealthySubscriptionsAlreadyNotified;
+    private final HealthManager healthManager;
+    private final SubscriptionManager subscriptionManager;
+    private final PrometheusMetricsService prometheusRegistry;
+    private final SubscriptionConfig subscriptionConfig;
+    private final IncomingDataHealthService incomingDataHealthService;
+    private final String hubotSource;
+    private final String hubotIconFail;
+    private final String hubotMessageFail;
+    private final String hubotIconSuccess;
+    private final String hubotMessageSuccess;
+    private final String hubotTemplate;
+    private final boolean jmxMetricsScrapingEnabled;
+    private final LocalTime startMonitorTime;
+    private final LocalTime endMonitorTime;
 
-    @Value("${anshar.healthcheck.hubot.url}")
-    private String hubotUrl;
-    @Value("${anshar.healthcheck.hubot.payload.source}")
-    private String hubotSource;
-    @Value("${anshar.healthcheck.hubot.payload.icon.fail}")
-    private String hubotIconFail;
-    @Value("${anshar.healthcheck.hubot.payload.message.fail}")
-    private String hubotMessageFail;
-    @Value("${anshar.healthcheck.hubot.payload.icon.success}")
-    private String hubotIconSuccess;
-    @Value("${anshar.healthcheck.hubot.payload.message.success}")
-    private String hubotMessageSuccess;
-    @Value("${anshar.healthcheck.hubot.payload.template}")
-    private String hubotTemplate;
-    @Value("${anshar.healthcheck.hubot.allowed.inactivity.minutes:10}")
-    private int allowedInactivityMinutes;
-    @Value("${anshar.healthcheck.hubot.start.time}")
-    private String startMonitorTimeStr;
-    private LocalTime startMonitorTime;
-    @Value("${anshar.healthcheck.hubot.end.time}")
-    private String endMonitorTimeStr;
-    private LocalTime endMonitorTime;
-    @Value("${anshar.jmx.metrics.configuration.filepath}")
-    private String pathToJmxMetricsConfiguration;
-    @Value("${anshar.jmx.metrics.scraping.enabled}")
-    private boolean jmxMetricsScrapingEnabled;
-    @Autowired
-    @Qualifier("getUnhealthySubscriptionsSet")
-    private ISet<String> unhealthySubscriptionsAlreadyNotified;
-    @Autowired
-    private HealthManager healthManager;
-    @Autowired
-    private SubscriptionManager subscriptionManager;
-    @Autowired
-    private PrometheusMetricsService prometheusRegistry;
-    @Autowired
-    private SubscriptionConfig subscriptionConfig;
-    private JmxCollector jmxCollector;
-
-    @Autowired
-    private IncomingDataHealthService incomingDataHealthService;
-
-    public final static String DAILY_STATUS_QUEUE = "activemq:queue:gtfsrt.daily.statuses";
-
-
-    @PostConstruct
-    private void init() {
-        startMonitorTime = LocalTime.parse(startMonitorTimeStr);
-        endMonitorTime = LocalTime.parse(endMonitorTimeStr);
+    public LivenessReadinessRoute(@Value("${anshar.healthcheck.hubot.payload.source}") String hubotSource,
+                                  @Value("${anshar.healthcheck.hubot.payload.icon.fail}") String hubotIconFail,
+                                  @Value("${anshar.healthcheck.hubot.payload.message.fail}") String hubotMessageFail,
+                                  @Value("${anshar.healthcheck.hubot.payload.icon.success}") String hubotIconSuccess,
+                                  @Value("${anshar.healthcheck.hubot.payload.message.success}") String hubotMessageSuccess,
+                                  @Value("${anshar.healthcheck.hubot.payload.template}") String hubotTemplate,
+                                  @Value("${anshar.healthcheck.hubot.start.time}") LocalTime startMonitorTime,
+                                  @Value("${anshar.healthcheck.hubot.end.time}") LocalTime endMonitorTime,
+                                  @Value("${anshar.jmx.metrics.configuration.filepath:}") String pathToJmxMetricsConfiguration,
+                                  @Value("${anshar.jmx.metrics.scraping.enabled:false}") boolean jmxMetricsScrapingEnabled,
+                                  @Qualifier("getUnhealthySubscriptionsSet") ISet<String> unhealthySubscriptionsAlreadyNotified,
+                                  HealthManager healthManager,
+                                  SubscriptionManager subscriptionManager,
+                                  PrometheusMetricsService prometheusRegistry,
+                                  SubscriptionConfig subscriptionConfig,
+                                  IncomingDataHealthService incomingDataHealthService) {
+        this.hubotSource = hubotSource;
+        this.hubotIconFail = hubotIconFail;
+        this.hubotMessageFail = hubotMessageFail;
+        this.hubotIconSuccess = hubotIconSuccess;
+        this.hubotMessageSuccess = hubotMessageSuccess;
+        this.hubotTemplate = hubotTemplate;
+        this.startMonitorTime = startMonitorTime;
+        this.endMonitorTime = endMonitorTime;
+        this.jmxMetricsScrapingEnabled = jmxMetricsScrapingEnabled;
+        this.unhealthySubscriptionsAlreadyNotified = unhealthySubscriptionsAlreadyNotified;
+        this.healthManager = healthManager;
+        this.subscriptionManager = subscriptionManager;
+        this.prometheusRegistry = prometheusRegistry;
+        this.subscriptionConfig = subscriptionConfig;
+        JmxCollector tmpJmxCollector = null;
+        if (jmxMetricsScrapingEnabled && StringUtils.isNotBlank(pathToJmxMetricsConfiguration)) {
+            try {
+                tmpJmxCollector = new JmxCollector(new File(pathToJmxMetricsConfiguration)).register();
+            } catch (Exception e) {
+                logger.error("Error creating jmx collector", e);
+            }
+        } else {
+            logger.info("Jmx metrics scraping is disabled");
+        }
+        this.jmxCollector = tmpJmxCollector;
+        this.incomingDataHealthService = incomingDataHealthService;
     }
 
     @Override
@@ -143,9 +146,7 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
         ;
 
         from("direct:incoming.data.daily.statuses")
-                .process(p -> {
-                    p.getIn().setBody(getDailyStatuses());
-                })
+                .process(p -> p.getIn().setBody(getDailyStatuses()))
                 .marshal().json()
                 .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.APPLICATION_JSON))
                 .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("200"))
@@ -153,9 +154,7 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
         ;
 
         from("direct:incoming.data.health")
-                .process(p -> {
-                    p.getIn().setBody(getIncomingDataHealth());
-                })
+                .process(p -> p.getIn().setBody(getIncomingDataHealth()))
                 .marshal().json()
                 .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.APPLICATION_JSON))
                 .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("200"))
@@ -178,7 +177,7 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
                         String parsedJmxMetrics = jmxMetrics.stream().map(JmxMetricsConverter::convertMetricSnapshotToPrometheusString).collect(Collectors.joining(""));
                         metrics = metrics + parsedJmxMetrics;
                     }
-                    p.getOut().setBody(metrics);
+                    p.getIn().setBody(metrics);
                 })
                 .setHeader(Exchange.CONTENT_TYPE, constant("text/plain"))
                 .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("200"))
@@ -210,9 +209,7 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
         from("direct:healthy")
                 .choice()
                 .when(p -> !healthManager.isReceivingData())
-                .process(p -> {
-                    p.getOut().setBody("Server has not received data for " + healthManager.getSecondsSinceDataReceived() + " seconds.");
-                })
+                .process(p -> p.getIn().setBody("Server has not received data for " + healthManager.getSecondsSinceDataReceived() + " seconds."))
                 .setHeader(Exchange.HTTP_RESPONSE_CODE, constant("500"))
                 .log("Server reports not receiving data")
                 .endChoice()
@@ -233,15 +230,15 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
                     if (LocalTime.now().isAfter(startMonitorTime) &&
                             LocalTime.now().isBefore(endMonitorTime)) {
                         String jsonPayload = "{" + MessageFormat.format(hubotTemplate, hubotSource, hubotIconSuccess, message) + "}";
-                        p.getOut().setBody("{" + jsonPayload + "}");
-                        p.getOut().setHeader("notify-target", "hubot");
+                        p.getIn().setBody("{" + jsonPayload + "}");
+                        p.getIn().setHeader(NOTIFY_TARGET_HEADER, HUBOT_NOTIFY_TARGET);
                     } else {
-                        p.getOut().setBody(message);
-                        p.getOut().setHeader("notify-target", "log");
+                        p.getIn().setBody(message);
+                        p.getIn().setHeader(NOTIFY_TARGET_HEADER, "log");
                     }
                 })
                 .log("Server is back to normal")
-                .to("direct:notify.hubot")
+                .to(NOTIFY_HUBOT_ROUTE)
                 .endChoice()
                 .when(p -> getAllUnhealthySubscriptions() != null && !getAllUnhealthySubscriptions().isEmpty())
                 .process(p -> {
@@ -260,16 +257,16 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
                                 LocalTime.now().isBefore(endMonitorTime)) {
 
                             String jsonPayload = "{" + MessageFormat.format(hubotTemplate, hubotSource, hubotIconFail, message) + "}";
-                            p.getOut().setBody(jsonPayload);
-                            p.getOut().setHeader("notify-target", "hubot");
+                            p.getIn().setBody(jsonPayload);
+                            p.getIn().setHeader(NOTIFY_TARGET_HEADER, HUBOT_NOTIFY_TARGET);
                         } else {
-                            p.getOut().setBody("Subscriptions not receiving data - NOT notifying hubot:" + message);
-                            p.getOut().setHeader("notify-target", "log");
+                            p.getIn().setBody("Subscriptions not receiving data - NOT notifying hubot:" + message);
+                            p.getIn().setHeader(NOTIFY_TARGET_HEADER, "log");
                         }
                     }
                 })
                 .log("Server is NOT receiving data")
-                .to("direct:notify.hubot")
+                .to(NOTIFY_HUBOT_ROUTE)
                 .endChoice()
                 .otherwise()
                 .setBody(simple("OK"))
@@ -277,33 +274,16 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
                 .endChoice()
                 .routeId("health.data.received")
         ;
-        from("direct:notify.hubot")
+        from(NOTIFY_HUBOT_ROUTE)
                 .choice()
-                .when(header("notify-target").isEqualTo("log"))
+                .when(header(NOTIFY_TARGET_HEADER).isEqualTo("log"))
                 .to("log:health:" + getClass().getSimpleName() + "?showAll=false&multiline=false")
                 .endChoice()
-                .when(header("notify-target").isEqualTo("hubot"))
+                .when(header(NOTIFY_TARGET_HEADER).isEqualTo(HUBOT_NOTIFY_TARGET))
                 .to("log:health:" + getClass().getSimpleName() + "?showAll=false&multiline=false")
-//                    .setHeader(Exchange.CONTENT_TYPE, constant(MediaType.JSON_UTF_8))
-//                    .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
-//                    .to(hubotUrl)
                 .endChoice()
                 .routeId("health.notify.hubot")
         ;
-
-        from(DAILY_STATUS_QUEUE)
-                .process(e -> {
-                    String json = e.getIn().getHeader(INCOMING_FLOW_PARAMETERS_HEADER_NAME, String.class);
-                    IncomingFlowParameters incomingFlowParameters = new ObjectMapper().readValue(json, IncomingFlowParameters.class);
-
-
-                    FlowStatus dailyStatus = e.getIn().getBody(FlowStatus.class);
-                    incomingDataHealthService.recordStatus(incomingFlowParameters, dailyStatus);
-
-                })
-                .routeId("gtfsrt.daily.Status.route");
-
-
     }
 
     private List<IncomingFlowDailyStatus> getDailyStatuses() {
@@ -323,9 +303,6 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
 
     private List<IncomingFlowStatus> getIncomingDataHealth() {
         List<IncomingFlowStatus> flowStatuses = new ArrayList<>();
-        if (CollectionUtils.isNotEmpty(subscriptionConfig.getGtfsRTApis())) {
-            flowStatuses.addAll(getGtfsRTStatus(subscriptionConfig.getGtfsRTApis()));
-        }
         if (CollectionUtils.isNotEmpty(subscriptionConfig.getSubscriptions())) {
             flowStatuses.addAll(getSiriStatus(subscriptionConfig.getSubscriptions()));
         }
@@ -404,7 +381,9 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
                 incomingDataHealthService.sendSubscriptionMonitoringData(SIRI.getCode(), subscription.getDatasetId(), String.valueOf(response.statusCode()), producerUrl, subscription.getSubscriptionType());
                 log.debug("original body : {}", body);
                 log.debug("transformed body : {}", transformedBody);
-                log.debug("checkStatus error: {} - {}", response.statusCode(), response.body());
+                if (log.isDebugEnabled()) {
+                    log.debug("checkStatus error: {} - {}", response.statusCode(), response.body());
+                }
             }
             return FlowStatus.ERROR;
         }
@@ -416,23 +395,22 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
         if (subscription.getServiceType().equals(SubscriptionSetup.ServiceType.SOAP)) {
             body = CustomSiriXml.rawToSoap(body);
         }
+        try (HttpClient client = HttpClient.newHttpClient()) {
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                    .uri(URI.create(subscription.getUrlMap().get(RequestType.SUBSCRIBE)))
+                    .header("Content-Type", subscription.getContentType())
+                    .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8));
 
-        HttpClient client = HttpClient.newHttpClient();
+            if (MapUtils.isNotEmpty(subscription.getCustomHeaders()))
+                subscription.getCustomHeaders().forEach((key, value) -> requestBuilder.headers(key, value.toString()));
 
-        HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
-                .uri(URI.create(subscription.getUrlMap().get(RequestType.SUBSCRIBE)))
-                .header("Content-Type", subscription.getContentType())
-                .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8));
+            HttpResponse<String> response = client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
 
-        if (MapUtils.isNotEmpty(subscription.getCustomHeaders()))
-            subscription.getCustomHeaders().forEach((key, value) -> requestBuilder.headers(key, value.toString()));
-
-        HttpResponse<String> response = client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() == 200) {
-            return extractStartDate(response.body());
+            if (response.statusCode() == 200) {
+                return extractStartDate(response.body());
+            }
+            return null;
         }
-        return null;
     }
 
     private ZonedDateTime extractStartDate(String body) throws FileNotFoundException, TransformerException, XMLStreamException, JAXBException {
@@ -461,24 +439,6 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
         }
     }
 
-
-    private List<IncomingFlowStatus> getGtfsRTStatus(List<GtfsRTApi> gtfsRtApis) {
-        List<IncomingFlowStatus> result = new ArrayList<>();
-        for (GtfsRTApi gtfsRtApi : gtfsRtApis) {
-            IncomingFlowStatus incomingFlowStatus = new IncomingFlowStatus();
-            // id might be null if config comes from YML
-            String id = gtfsRtApi.getId() != null ? gtfsRtApi.getId().toString() : String.format("%s-%s-%s", gtfsRtApi.getDatasetId(), gtfsRtApi.getType(), gtfsRtApi.getRouteIdList());
-            incomingFlowStatus.setId(id);
-            incomingFlowStatus.setStatus(gtfsRtApi.getStatus() != null ? gtfsRtApi.getStatus().name() : "UNKNOWN");
-            incomingFlowStatus.setLastUpdate(gtfsRtApi.getLastUpdate());
-            incomingFlowStatus.setDataset(gtfsRtApi.getDatasetId());
-            incomingFlowStatus.setUrl(gtfsRtApi.getUrl());
-            incomingFlowStatus.setType(IncomingFlowType.GTFS);
-            result.add(incomingFlowStatus);
-        }
-
-        return result;
-    }
 
     private Set<String> getAllUnhealthySubscriptions() {
         return subscriptionManager.getUnresponsiveSubscriptions().stream()

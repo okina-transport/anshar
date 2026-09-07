@@ -1,7 +1,6 @@
 package no.rutebanken.anshar.routes.health;
 
 import no.rutebanken.anshar.api.FlowStatus;
-import no.rutebanken.anshar.api.GtfsRTApi;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionMonitoring;
 import org.apache.camel.Produce;
@@ -46,16 +45,6 @@ public class IncomingDataHealthService {
         sm.setProducerUrl(producerUrl);
         sm.setSiriDataType(siriDataType);
         template.asyncSendBody(template.getDefaultEndpoint(), sm);
-    }
-
-    public void recordStatus(GtfsRTApi gtfsrtApi) {
-        IncomingFlowParameters incomingFlowParameters = new IncomingFlowParameters();
-        String id = gtfsrtApi.getId() != null ? gtfsrtApi.getId().toString() : String.format("%s-%s-%s", gtfsrtApi.getDatasetId(), gtfsrtApi.getType(), gtfsrtApi.getRouteIdList());
-        incomingFlowParameters.setId(id);
-        incomingFlowParameters.setDataset(gtfsrtApi.getDatasetId());
-        incomingFlowParameters.setUrl(gtfsrtApi.getUrl());
-        incomingFlowParameters.setType(IncomingFlowType.GTFS);
-        recordStatus(incomingFlowParameters, gtfsrtApi.getStatus());
     }
 
     public void recordStatus(IncomingFlowStatus currentStatus) {

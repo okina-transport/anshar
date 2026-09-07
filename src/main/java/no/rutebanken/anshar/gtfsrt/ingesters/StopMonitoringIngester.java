@@ -1,5 +1,7 @@
 package no.rutebanken.anshar.gtfsrt.ingesters;
 
+import jakarta.xml.bind.JAXBException;
+import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.data.DiscoveryCache;
 import no.rutebanken.anshar.routes.health.HealthManager;
 import no.rutebanken.anshar.routes.siri.handlers.inbound.StopMonitoringInbound;
@@ -8,34 +10,24 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
-import no.rutebanken.anshar.util.IDUtils;
 import org.apache.camel.Exchange;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.MonitoredStopVisit;
 import uk.org.siri.siri21.MonitoredStopVisitCancellation;
 import uk.org.siri.siri21.Siri;
 
-import jakarta.xml.bind.JAXBException;
-
 import javax.xml.stream.XMLStreamException;
 import java.io.InputStream;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import static no.rutebanken.anshar.routes.validation.validators.Constants.*;
 
 @Service
+@Slf4j
 public class StopMonitoringIngester extends AbstractIngester {
-
-    private static final Logger logger = LoggerFactory.getLogger(StopMonitoringIngester.class);
-    private static final int DEFAULT_HEARTBEAT_SECONDS = 300;
-
-
     private final SubscriptionManager subscriptionManager;
     private final StopMonitoringInbound stopMonitoringInbound;
     private final HealthManager healthManager;
@@ -60,13 +52,13 @@ public class StopMonitoringIngester extends AbstractIngester {
 
             if (siri.getServiceDelivery() == null || siri.getServiceDelivery().getStopMonitoringDeliveries() == null ||
                     siri.getServiceDelivery().getStopMonitoringDeliveries().get(0) == null) {
-                logger.info("Empty StopMonitoring from GTFS-RT on dataset:" + datasetId);
+                log.info("Empty StopMonitoring from GTFS-RT on dataset: {}", datasetId);
                 return;
             }
 
             healthManager.dataReceived();
 
-            List<MonitoredStopVisit> stopVisits = siri.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisits();
+            List<MonitoredStopVisit> stopVisits = siri.getServiceDelivery().getStopMonitoringDeliveries().getFirst().getMonitoredStopVisits();
             List<String> visitSubscriptionList = getSubscriptionsFromVisits(stopVisits);
             checkAndCreateSubscriptions(visitSubscriptionList, GTFSRT_SM_PREFIX, SiriDataType.STOP_MONITORING, RequestType.GET_STOP_MONITORING, datasetId, url);
             Collection<MonitoredStopVisit> ingestedVisits = stopMonitoringInbound.ingestStopVisits(datasetId, stopVisits, inboundTime);
@@ -75,17 +67,17 @@ public class StopMonitoringIngester extends AbstractIngester {
                 subscriptionManager.touchSubscription(GTFSRT_SM_PREFIX + visit.getMonitoringRef().getValue(), false);
             }
 
-            List<MonitoredStopVisitCancellation> stopVisitToCancel = siri.getServiceDelivery().getStopMonitoringDeliveries().get(0).getMonitoredStopVisitCancellations();
+            List<MonitoredStopVisitCancellation> stopVisitToCancel = siri.getServiceDelivery().getStopMonitoringDeliveries().getFirst().getMonitoredStopVisitCancellations();
 
-            if (stopVisitToCancel != null && stopVisitToCancel.size() > 0) {
+            if (CollectionUtils.isNotEmpty(stopVisitToCancel)) {
                 stopMonitoringInbound.cancelStopVisits(datasetId, stopVisitToCancel, inboundTime);
             }
 
-            logger.info("GTFS-RT - Ingested  stop Times {} on {} . datasetId:{}, URL:{}", ingestedVisits.size(), stopVisits.size(), datasetId, url);
+            log.info("GTFS-RT - Ingested  stop Times {} on {} . datasetId:{}, URL:{}", ingestedVisits.size(), stopVisits.size(), datasetId, url);
 
 
-        } catch (JAXBException | XMLStreamException jaxbException) {
-            logger.error("Error while unmarshalling siri message from gtfsrt SM", e);
+        } catch (JAXBException | XMLStreamException ex) {
+            log.error("Error while unmarshalling siri message from gtfsrt SM", ex);
         }
     }
 
@@ -107,13 +99,15 @@ public class StopMonitoringIngester extends AbstractIngester {
 
     /***
      * Read the list of subscription ids and for each, check if it exists. If not, a new subscription is created
-     * @param subscriptionsList
-     * @param customPrefix
+     * @param subscriptionIds subscription identifiers
+     * @param customPrefix custom prefix for subscription ids
+     * @param dataType subscription data type
+     * @param requestType subscription request type
      *  The list of subscription ids
      */
-    private void checkAndCreateSubscriptions(List<String> subscriptionsList, String customPrefix, SiriDataType dataType, RequestType requestType, String datasetId, String url) {
+    private void checkAndCreateSubscriptions(List<String> subscriptionIds, String customPrefix, SiriDataType dataType, RequestType requestType, String datasetId, String url) {
 
-        for (String subscriptionId : subscriptionsList) {
+        for (String subscriptionId : subscriptionIds) {
             if (subscriptionManager.isGTFSRTSubscriptionExisting(customPrefix + datasetId + "_" + subscriptionId))
                 //A subscription is already existing for this vehicle journey. No need to create one
                 continue;
