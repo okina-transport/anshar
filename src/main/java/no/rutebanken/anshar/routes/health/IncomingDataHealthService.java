@@ -72,19 +72,10 @@ public class IncomingDataHealthService {
     }
 
     public void recordStatus(IncomingFlowParameters flowParameters, FlowStatus status) {
-
-        DailyStatus currentColor = convertStatusToColor(status);
-        if (!dailyStatuses.containsKey(flowParameters) || !DailyStatus.GREEN.equals(currentColor) || !DailyStatus.YELLOW.equals(currentColor)) {
-            // In case of error, daily status must be red
-            dailyStatuses.put(flowParameters, currentColor);
-        } else {
-            DailyStatus previousDailyStatus = dailyStatuses.get(flowParameters);
-            if (previousDailyStatus == DailyStatus.RED) {
-                // if status was green and the last check is in error => it became orange
-                // if status was red and the last check is ok => it became orange
-                dailyStatuses.put(flowParameters, DailyStatus.ORANGE);
-            }
-        }
+        DailyStatus currentStatus = dailyStatuses.get(flowParameters);
+        DailyStatus newStatus = convertStatusToColor(status);
+        DailyStatus realStatus = getRealStatus(currentStatus, newStatus);
+        dailyStatuses.put(flowParameters, realStatus);
     }
 
     private DailyStatus convertStatusToColor(FlowStatus flowStatus) {
@@ -94,6 +85,20 @@ public class IncomingDataHealthService {
             return DailyStatus.YELLOW;
         }
         return DailyStatus.RED;
+    }
+
+    private DailyStatus getRealStatus(DailyStatus currentStatus, DailyStatus newStatus) {
+        if (newStatus == DailyStatus.RED) {
+            return DailyStatus.RED;
+        }
+        if (newStatus == DailyStatus.ORANGE) {
+            return DailyStatus.ORANGE;
+        }
+        if (currentStatus == DailyStatus.RED || currentStatus == DailyStatus.ORANGE) {
+            // at least one fail this day
+            return DailyStatus.ORANGE;
+        }
+        return newStatus;
     }
 
     public Map<IncomingFlowParameters, DailyStatus> getDailyStatuses() {
