@@ -31,7 +31,7 @@ class IncomingDataHealthServiceTest extends SpringBootBaseTest {
         Assertions.assertEquals(DailyStatus.GREEN, incomingDataHealthService.getDailyStatuses().get(flowParameters));
 
 
-        // Adding second status KO
+        // Adding a second status KO
         String url2 = "http://url2";
         IncomingFlowParameters flowParameters2 = new IncomingFlowParameters();
         flowParameters2.setUrl(url2);
@@ -47,18 +47,16 @@ class IncomingDataHealthServiceTest extends SpringBootBaseTest {
         Assertions.assertEquals(DailyStatus.RED, incomingDataHealthService.getDailyStatuses().get(flowParameters));
         Assertions.assertEquals(DailyStatus.RED, incomingDataHealthService.getDailyStatuses().get(flowParameters2));
 
-
-        // First became ok  again
+        // First became OK again
         incomingDataHealthService.recordStatus(flowParameters, FlowStatus.OK);
         Assertions.assertEquals(2, incomingDataHealthService.getDailyStatuses().size());
-        Assertions.assertEquals(DailyStatus.GREEN, incomingDataHealthService.getDailyStatuses().get(flowParameters));
+        Assertions.assertEquals(DailyStatus.ORANGE, incomingDataHealthService.getDailyStatuses().get(flowParameters));
         Assertions.assertEquals(DailyStatus.RED, incomingDataHealthService.getDailyStatuses().get(flowParameters2));
 
-        // second became ok
+        // second became OK
         incomingDataHealthService.recordStatus(flowParameters2, FlowStatus.OK);
         Assertions.assertEquals(2, incomingDataHealthService.getDailyStatuses().size());
-        Assertions.assertEquals(DailyStatus.GREEN, incomingDataHealthService.getDailyStatuses().get(flowParameters));
-        Assertions.assertEquals(DailyStatus.GREEN, incomingDataHealthService.getDailyStatuses().get(flowParameters2));
-
+        Assertions.assertEquals(DailyStatus.ORANGE, incomingDataHealthService.getDailyStatuses().get(flowParameters));
+        Assertions.assertEquals(DailyStatus.ORANGE, incomingDataHealthService.getDailyStatuses().get(flowParameters2));
     }
 }
