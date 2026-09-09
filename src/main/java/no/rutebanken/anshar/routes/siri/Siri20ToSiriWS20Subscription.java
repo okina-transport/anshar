@@ -27,6 +27,7 @@ import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.component.http.HttpMethods;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,7 +69,8 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
                 .handled(true)
                 .process(exchange -> {
                     String routeId = exchange.getFromRouteId();
-                    String errorMsg = "Error in route [" + routeId + "] : " + exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Exception.class).getMessage();
+                    Exception cause = exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Exception.class);
+                    String errorMsg = "Error in route [" + routeId + "] : " + ExceptionUtils.getStackTrace(cause);
                     exchange.getIn().setBody(errorMsg);
                 })
                 .log("Exception handled in route: ${exchange.fromRouteId}");
