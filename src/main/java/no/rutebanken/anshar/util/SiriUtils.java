@@ -6,6 +6,7 @@ import no.rutebanken.anshar.routes.outbound.model.OutSubscriptionIdentifier;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.entur.siri.validator.SiriValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,8 +14,10 @@ import uk.org.siri.siri21.*;
 
 import javax.xml.datatype.Duration;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class SiriUtils {
 
@@ -499,5 +502,126 @@ public class SiriUtils {
         } else {
             completeSiri.getServiceDelivery().getStopMonitoringDeliveries().addAll(dataToAdd.getServiceDelivery().getStopMonitoringDeliveries());
         }
+    }
+
+    public static Siri filterStopMonitoringOnNbOfStopVisits(Siri delivery, OutboundSubscriptionSetup subscriptionRequest) {
+        if (delivery.getServiceDelivery() == null || delivery.getServiceDelivery().getStopMonitoringDeliveries() == null) {
+            return delivery;
+        }
+
+        if (subscriptionRequest.getMaximumStopVisits() == null || subscriptionRequest.getMaximumStopVisits().longValue() <= 0) {
+            // No maximum defined. Returning the complete delivery
+            return delivery;
+        }
+
+        List<MonitoredStopVisit> completeList = new ArrayList<>();
+        for (StopMonitoringDeliveryStructure stopMonitoringDelivery : delivery.getServiceDelivery().getStopMonitoringDeliveries()) {
+            completeList.addAll(stopMonitoringDelivery.getMonitoredStopVisits());
+        }
+
+
+        Stream<MonitoredStopVisit> visitsStream = completeList.stream()
+                .map(stopVisit -> Pair.of(getExpiration(stopVisit, 0), stopVisit))
+                .filter(stopVisitWithExpiration -> stopVisitWithExpiration.getLeft() > 0)
+                .sorted(Comparator.comparing(Pair::getLeft))
+                .map(Pair::getRight);
+
+
+        List<MonitoredStopVisit> filteredVisits;
+        if (subscriptionRequest.getMinimumStopVisitsPerLineVia() == null && subscriptionRequest.getMinimumStopVisitsPerLine() == null) {
+            // first case : only maximum is defined
+            // sorting stopMonitoring by expiration and keeping the n first SM
+            filteredVisits = visitsStream
+                    .limit(subscriptionRequest.getMaximumStopVisits().longValue())
+                    .toList();
+        } else {
+            // second case : there is a minimum, per line or per line/via
+            filteredVisits = filterVisitsPerLine(visitsStream, subscriptionRequest);
+        }
+
+        List<MonitoredStopVisitCancellation> cancellations = new ArrayList<>();
+        for (StopMonitoringDeliveryStructure stopMonitoringDelivery : delivery.getServiceDelivery().getStopMonitoringDeliveries()) {
+            cancellations.addAll(stopMonitoringDelivery.getMonitoredStopVisitCancellations());
+        }
+        delivery.getServiceDelivery().getStopMonitoringDeliveries().clear();
+        StopMonitoringDeliveryStructure stopMonDelStructure = new StopMonitoringDeliveryStructure();
+        stopMonDelStructure.getMonitoredStopVisits().addAll(filteredVisits);
+        stopMonDelStructure.getMonitoredStopVisitCancellations().addAll(cancellations);
+        delivery.getServiceDelivery().getStopMonitoringDeliveries().add(stopMonDelStructure);
+
+        return delivery;
+    }
+
+    private static List<MonitoredStopVisit> filterVisitsPerLine(Stream<MonitoredStopVisit> visitStream, OutboundSubscriptionSetup subscriptionRequest) {
+
+        Map<String, Long> visitsPerLine = new HashMap<>();
+        long maximum = subscriptionRequest.getMaximumStopVisits().longValue();
+        List<MonitoredStopVisit> restOfTheVisits = new ArrayList<>();
+        List<MonitoredStopVisit> filteredVisits = new ArrayList<>();
+        long minimum = subscriptionRequest.getMinimumStopVisitsPerLine() != null ? subscriptionRequest.getMinimumStopVisitsPerLine().longValue() : subscriptionRequest.getMinimumStopVisitsPerLineVia().longValue();
+
+
+        visitStream.forEach(visit -> {
+            String lineRef = StopMonitoringUtils.getLineRef(visit).orElse(null);
+            Optional<String> viasOpt = StopMonitoringUtils.getVias(visit);
+            String key = null;
+
+            if (subscriptionRequest.getMinimumStopVisitsPerLine() != null) {
+                key = lineRef;
+            } else {
+                key = lineRef + "-" + viasOpt.orElse(null);
+            }
+
+            long currentVisitNb = visitsPerLine.getOrDefault(key, 0L) + 1;
+            if (currentVisitNb > minimum) {
+                // too many visits for this line or line/via. Adding the visit to the rest list
+                restOfTheVisits.add(visit);
+            } else {
+                // not enough visits to reach minimum by line or line/via. Visit will be kept.
+                filteredVisits.add(visit);
+            }
+            visitsPerLine.put(key, currentVisitNb);
+
+        });
+
+
+        if (maximum > filteredVisits.size() && !restOfTheVisits.isEmpty()) {
+            // minimum visits by line or line/via is completed. There is space to add more visits until maximum is reached
+            for (MonitoredStopVisit additionalVisit : restOfTheVisits) {
+                if (maximum > filteredVisits.size()) {
+                    filteredVisits.add(additionalVisit);
+                }
+            }
+        }
+        return filteredVisits;
+    }
+
+
+    public static long getExpiration(MonitoredStopVisit monitoredStopVisit, long smGracePeriod) {
+        MonitoredVehicleJourneyStructure monitoredVehicleJourney = monitoredStopVisit.getMonitoredVehicleJourney();
+
+        ZonedDateTime expiryTimestamp = null;
+        if (monitoredVehicleJourney.getMonitoredCall() != null) {
+            MonitoredCallStructure estimatedCalls = monitoredVehicleJourney.getMonitoredCall();
+
+            if (estimatedCalls.getAimedArrivalTime() != null) {
+                expiryTimestamp = estimatedCalls.getAimedArrivalTime();
+            }
+            if (estimatedCalls.getAimedDepartureTime() != null) {
+                expiryTimestamp = estimatedCalls.getAimedDepartureTime();
+            }
+            if (estimatedCalls.getExpectedArrivalTime() != null) {
+                expiryTimestamp = estimatedCalls.getExpectedArrivalTime();
+            }
+            if (estimatedCalls.getExpectedDepartureTime() != null) {
+                expiryTimestamp = estimatedCalls.getExpectedDepartureTime();
+            }
+        }
+
+        if (expiryTimestamp != null) {
+            return ZonedDateTime.now().until(expiryTimestamp.plusMinutes(smGracePeriod), ChronoUnit.MILLIS);
+        }
+
+        return -1;
     }
 }

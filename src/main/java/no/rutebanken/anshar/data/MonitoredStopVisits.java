@@ -32,6 +32,7 @@ import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.translation.SiriEntityTranslator;
+import no.rutebanken.anshar.util.SiriUtils;
 import no.rutebanken.anshar.util.StopMonitoringUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.BooleanUtils;
@@ -377,36 +378,6 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         }
 
         return getValuesByDatasetId(hazelcastService.getMonitoredStopVisitsForDataset(datasetId), datasetId);
-    }
-
-
-    @Override
-    long getExpiration(MonitoredStopVisit monitoredStopVisit) {
-        MonitoredVehicleJourneyStructure monitoredVehicleJourney = monitoredStopVisit.getMonitoredVehicleJourney();
-
-        ZonedDateTime expiryTimestamp = null;
-        if (monitoredVehicleJourney.getMonitoredCall() != null) {
-            MonitoredCallStructure estimatedCalls = monitoredVehicleJourney.getMonitoredCall();
-
-            if (estimatedCalls.getAimedArrivalTime() != null) {
-                expiryTimestamp = estimatedCalls.getAimedArrivalTime();
-            }
-            if (estimatedCalls.getAimedDepartureTime() != null) {
-                expiryTimestamp = estimatedCalls.getAimedDepartureTime();
-            }
-            if (estimatedCalls.getExpectedArrivalTime() != null) {
-                expiryTimestamp = estimatedCalls.getExpectedArrivalTime();
-            }
-            if (estimatedCalls.getExpectedDepartureTime() != null) {
-                expiryTimestamp = estimatedCalls.getExpectedDepartureTime();
-            }
-        }
-
-        if (expiryTimestamp != null) {
-            return ZonedDateTime.now().until(expiryTimestamp.plusMinutes(configuration.getSmGraceperiodMinutes()), ChronoUnit.MILLIS);
-        }
-
-        return -1;
     }
 
 
@@ -787,6 +758,11 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         }
         long duration = System.currentTimeMillis() - startTime;
         logger.info("Finished counting SM data in:" + duration + " ms");
+    }
+
+    @Override
+    long getExpiration(MonitoredStopVisit monitoredStopVisit) {
+        return SiriUtils.getExpiration(monitoredStopVisit, configuration.getSmGraceperiodMinutes());
     }
 
     /**

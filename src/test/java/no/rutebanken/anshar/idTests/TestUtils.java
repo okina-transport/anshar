@@ -400,6 +400,16 @@ public class TestUtils {
         return element;
     }
 
+    public static OutboundSubscriptionSetup createSmOutboundSubscription(boolean useOriginalId) {
+        String address = "http://localhost:1080/incomingSiri";
+        List<ValueAdapter> adapters = new ArrayList<>();
+        return new OutboundSubscriptionSetup(ZonedDateTime.now(),
+                SiriDataType.STOP_MONITORING, address, 3600,
+                true, 30, 0,
+                new HashMap<>(), adapters,
+                "outSubId1", "requestorRef", ZonedDateTime.now().plusHours(1), "DAT1", "clientTrackingName", useOriginalId, SiriValidator.Version.VERSION_2_1);
+    }
+
     public static OutboundSubscriptionSetup createSxOutboundSubscription(boolean useOriginalId) {
         String address = "http://localhost:1080/incomingSiri";
         List<ValueAdapter> adapters = new ArrayList<>();
