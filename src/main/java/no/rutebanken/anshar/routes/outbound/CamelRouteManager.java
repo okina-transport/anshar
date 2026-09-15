@@ -137,6 +137,12 @@ public class CamelRouteManager {
                 for (Siri siri : splitSiri) {
                     siri = SiriUtils.setSubscriberAndSubscriptionRef(siri, new OutSubscriptionIdentifier(subscriptionRequest.getSubscriberRef(), subscriptionRequest.getSubscriptionId()));
                     if (subscriptionRequest.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
+                        if (!hasStopMonitoringData(siri)) {
+                            continue;
+                        }
+
+                        siri = SiriUtils.filterStopMonitoringOnNbOfStopVisits(siri, subscriptionRequest);
+
                         if (subscriptionRequest.getPreviewInterval() != null) {
                             siri = SiriUtils.filterStopMonitoringOnPreviewInterval(siri, subscriptionRequest);
                         } else {
@@ -224,7 +230,7 @@ public class CamelRouteManager {
      * false : the siri object does not contain stopMonitoringVisits
      */
     private boolean hasStopMonitoringData(Siri siri) {
-        if (siri == null || siri.getServiceDelivery() == null || siri.getServiceDelivery().getStopMonitoringDeliveries() == null || siri.getServiceDelivery().getStopMonitoringDeliveries().size() == 0) {
+        if (siri == null || siri.getServiceDelivery() == null || siri.getServiceDelivery().getStopMonitoringDeliveries() == null || siri.getServiceDelivery().getStopMonitoringDeliveries().isEmpty()) {
             return false;
         }
 
