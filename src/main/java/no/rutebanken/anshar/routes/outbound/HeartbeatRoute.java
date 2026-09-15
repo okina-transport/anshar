@@ -36,6 +36,8 @@ public class HeartbeatRoute extends BaseRouteBuilder {
 
     private static final int HEARTBEAT_INTERVAL_MILLIS = 60_000;
 
+    private static final int OUTBOUND_TERMINATION_INTERVAL_MILLIS = 600_000;
+
 
     @Autowired
     @Qualifier("getHeartbeatTimestampMap")
@@ -63,11 +65,7 @@ public class HeartbeatRoute extends BaseRouteBuilder {
         final String routeId = "anshar.outbound.subscription.manager.route";
 
 
-        if (!outboundHeartbeatEnabled) {
-            return;
-        }
-
-        singletonFrom("quartz://anshar.outbound.subscription.manager?trigger.repeatInterval=" + HEARTBEAT_INTERVAL_MILLIS,
+        singletonFrom("quartz://anshar.outbound.subscription.manager?trigger.repeatInterval=" + OUTBOUND_TERMINATION_INTERVAL_MILLIS,
                 routeId
         )
                 .choice()
@@ -80,16 +78,6 @@ public class HeartbeatRoute extends BaseRouteBuilder {
                         if (outboundSubscriptionSetup != null) {
                             if (LocalDateTime.now().isAfter(outboundSubscriptionSetup.getInitialTerminationTime().toLocalDateTime())) {
                                 serverSubscriptionManager.terminateSubscription(outboundSubscriptionSetup.getSubscriptionId(), true);
-                            } else if (outboundHeartbeatEnabled && !heartbeatTimestampMap.containsKey(subscriptionId)) {
-                                final long heartbeatInterval = outboundSubscriptionSetup.getHeartbeatInterval();
-
-                                Siri heartbeatNotification = siriObjectFactory.createHeartbeatNotification(
-                                        outboundSubscriptionSetup.getSubscriptionId(),
-                                        resolveVersion(outboundSubscriptionSetup)
-                                );
-                                camelRouteManager.pushSiriData(null, heartbeatNotification, outboundSubscriptionSetup, true, null);
-
-                                heartbeatTimestampMap.put(subscriptionId, Instant.now(), heartbeatInterval, TimeUnit.MILLISECONDS);
                             }
                         } else {
                             log.info("Outbound subscription {} not found.", subscriptionId);
@@ -98,6 +86,39 @@ public class HeartbeatRoute extends BaseRouteBuilder {
                 })
                 .endChoice()
         ;
+
+        if (outboundHeartbeatEnabled) {
+            singletonFrom("quartz://anshar.outbound.subscription.heartbeat.manager?trigger.repeatInterval=" + HEARTBEAT_INTERVAL_MILLIS,
+                    routeId
+            )
+                    .choice()
+                    .when(p -> isLeader(routeId))
+                    .process(p -> {
+                        final Set<String> subscriptionIds = serverSubscriptionManager.subscriptions.keySet();
+                        for (String subscriptionId : subscriptionIds) {
+                            final OutboundSubscriptionSetup outboundSubscriptionSetup = serverSubscriptionManager.subscriptions.get(subscriptionId);
+                            if (outboundSubscriptionSetup != null) {
+                                if (!heartbeatTimestampMap.containsKey(subscriptionId)) {
+                                    final long heartbeatInterval = outboundSubscriptionSetup.getHeartbeatInterval();
+
+                                    Siri heartbeatNotification = siriObjectFactory.createHeartbeatNotification(
+                                            outboundSubscriptionSetup.getSubscriptionId(),
+                                            resolveVersion(outboundSubscriptionSetup)
+                                    );
+                                    camelRouteManager.pushSiriData(null, heartbeatNotification, outboundSubscriptionSetup, true, null);
+
+                                    heartbeatTimestampMap.put(subscriptionId, Instant.now(), heartbeatInterval, TimeUnit.MILLISECONDS);
+                                }
+                            } else {
+                                log.info("Outbound subscription {} not found.", subscriptionId);
+                            }
+                        }
+                    })
+                    .endChoice()
+            ;
+        }
+
+
     }
 
     private String resolveVersion(OutboundSubscriptionSetup outboundSubscriptionSetup) {
