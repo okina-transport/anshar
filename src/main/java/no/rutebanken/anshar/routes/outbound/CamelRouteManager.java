@@ -138,7 +138,7 @@ public class CamelRouteManager {
                 }
 
                 for (Siri siri : splitSiri) {
-                    siri = SiriUtils.setSubscriberAndSubscriptionRef(siri, new OutSubscriptionIdentifier(subscriptionRequest.getRequestorRef(), subscriptionRequest.getSubscriptionId()));
+                    siri = SiriUtils.setSubscriberAndSubscriptionRef(siri, new OutSubscriptionIdentifier(subscriptionRequest.getSubscriberRef(), subscriptionRequest.getSubscriptionId()));
                     if (subscriptionRequest.getSubscriptionType().equals(SiriDataType.STOP_MONITORING)) {
                         if (subscriptionRequest.getPreviewInterval() != null) {
                             siri = SiriUtils.filterStopMonitoringOnPreviewInterval(siri, subscriptionRequest);
@@ -192,7 +192,7 @@ public class CamelRouteManager {
         Map<String, Siri> completeDelivery = initialDeliveryGenerator.findInitialDeliveriesByDataset(subscriptionRequest);
 
         for (Map.Entry<String, Siri> deliveryWithDataset : completeDelivery.entrySet()) {
-            SiriUtils.setSubscriberAndSubscriptionRef(deliveryWithDataset.getValue(), new OutSubscriptionIdentifier(subscriptionRequest.getRequestorRef(), subscriptionRequest.getSubscriptionId()));
+            SiriUtils.setSubscriberAndSubscriptionRef(deliveryWithDataset.getValue(), new OutSubscriptionIdentifier(subscriptionRequest.getSubscriberRef(), subscriptionRequest.getSubscriptionId()));
             postDataToSubscription(deliveryWithDataset.getKey(), deliveryWithDataset.getValue(), subscriptionRequest, false, inboundTime);
         }
     }

@@ -709,7 +709,7 @@ public class ServerSubscriptionManager {
                 siriHelper.getFilter(subscriptionRequest, outboundIdMappingPolicy, datasetId),
                 mappers,
                 findSubscriptionIdentifier(subscriptionRequest),
-                getSubscriberRef(subscriptionRequest),
+                subscriptionRequest.getRequestorRef().getValue(),
                 findInitialTerminationTime(subscriptionRequest),
                 datasetId,
                 clientTrackingName,
@@ -723,6 +723,7 @@ public class ServerSubscriptionManager {
         );
         newOutboundSubscription.setOutboundIdMappingPolicy(outboundIdMappingPolicy);
         newOutboundSubscription.setPreviewInterval(previewInterval);
+        newOutboundSubscription.setSubscriberRef(getSubscriberRef(subscriptionRequest));
 
         return newOutboundSubscription;
     }
