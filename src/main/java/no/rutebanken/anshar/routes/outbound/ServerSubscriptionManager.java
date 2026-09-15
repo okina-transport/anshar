@@ -56,6 +56,7 @@ import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.*;
 
 import javax.xml.datatype.Duration;
+import java.math.BigInteger;
 import java.net.URI;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -615,18 +616,12 @@ public class ServerSubscriptionManager {
 
 
         switch (subscription.getSubscriptionType()) {
-            case STOP_MONITORING ->
-                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliverySMQueueName, null, headers);
-            case VEHICLE_MONITORING ->
-                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryVMQueueName, null, headers);
-            case SITUATION_EXCHANGE ->
-                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliverySXQueueName, null, headers);
-            case ESTIMATED_TIMETABLE ->
-                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryETQueueName, null, headers);
-            case GENERAL_MESSAGE ->
-                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryGMQueueName, null, headers);
-            case FACILITY_MONITORING ->
-                    initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryFMQueueName, null, headers);
+            case STOP_MONITORING -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliverySMQueueName, null, headers);
+            case VEHICLE_MONITORING -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryVMQueueName, null, headers);
+            case SITUATION_EXCHANGE -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliverySXQueueName, null, headers);
+            case ESTIMATED_TIMETABLE -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryETQueueName, null, headers);
+            case GENERAL_MESSAGE -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryGMQueueName, null, headers);
+            case FACILITY_MONITORING -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryFMQueueName, null, headers);
         }
     }
 
@@ -682,9 +677,15 @@ public class ServerSubscriptionManager {
         List<ValueAdapter> mappers = new ArrayList<>();
         String version = getVersion(incomingSiri);
         Duration previewInterval = null;
+        BigInteger maximumStopVisits = null;
+        BigInteger minimumStopVisitsPerLine = null;
+        BigInteger minimumStopVisitsPerLineVia = null;
         if (SiriUtils.hasSMRequest(subscriptionRequest)
-                && subscriptionRequest.getStopMonitoringSubscriptionRequests().getFirst().getStopMonitoringRequest().getPreviewInterval() != null) {
+                && subscriptionRequest.getStopMonitoringSubscriptionRequests().getFirst().getStopMonitoringRequest() != null) {
             previewInterval = subscriptionRequest.getStopMonitoringSubscriptionRequests().getFirst().getStopMonitoringRequest().getPreviewInterval();
+            maximumStopVisits = subscriptionRequest.getStopMonitoringSubscriptionRequests().getFirst().getStopMonitoringRequest().getMaximumStopVisits();
+            minimumStopVisitsPerLine = subscriptionRequest.getStopMonitoringSubscriptionRequests().getFirst().getStopMonitoringRequest().getMinimumStopVisitsPerLine();
+            minimumStopVisitsPerLineVia = subscriptionRequest.getStopMonitoringSubscriptionRequests().getFirst().getStopMonitoringRequest().getMinimumStopVisitsPerLineVia();
         } else {
             mappers = MappingAdapterPresets.getOutboundAdapters(outboundIdMappingPolicy);
         }
@@ -729,6 +730,9 @@ public class ServerSubscriptionManager {
         );
         newOutboundSubscription.setOutboundIdMappingPolicy(outboundIdMappingPolicy);
         newOutboundSubscription.setPreviewInterval(previewInterval);
+        newOutboundSubscription.setMaximumStopVisits(maximumStopVisits);
+        newOutboundSubscription.setMinimumStopVisitsPerLine(minimumStopVisitsPerLine);
+        newOutboundSubscription.setMinimumStopVisitsPerLineVia(minimumStopVisitsPerLineVia);
 
         return newOutboundSubscription;
     }

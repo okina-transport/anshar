@@ -8,6 +8,7 @@ import uk.org.siri.siri21.*;
 
 import java.time.ZonedDateTime;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class StopMonitoringUtils {
@@ -22,6 +23,30 @@ public class StopMonitoringUtils {
 
         return Optional.ofNullable(stopVisit.getMonitoredVehicleJourney().getLineRef().getValue());
     }
+
+    public static Optional<String> getVias(MonitoredStopVisit stopVisit) {
+        if (stopVisit.getMonitoredVehicleJourney() == null || stopVisit.getMonitoredVehicleJourney().getVias() == null) {
+            return Optional.empty();
+        }
+
+
+        return Optional.of(stopVisit.getMonitoredVehicleJourney().getVias().stream()
+                .map(StopMonitoringUtils::extractPlaceNameOrRef)
+                .collect(Collectors.joining("-")));
+    }
+
+    public static String extractPlaceNameOrRef(ViaNameStructure viaNameStruct) {
+        if (viaNameStruct.getPlaceRef() != null) {
+            return viaNameStruct.getPlaceRef().getValue();
+        } else if (CollectionUtils.isNotEmpty(viaNameStruct.getPlaceNames())) {
+            return viaNameStruct.getPlaceNames().stream()
+                    .map(NaturalLanguagePlaceNameStructure::getValue)
+                    .collect(Collectors.joining("-"));
+        } else {
+            return null;
+        }
+    }
+
 
     public static Optional<String> getLineName(MonitoredStopVisit stopVisit) {
         if (stopVisit.getMonitoredVehicleJourney() == null) {

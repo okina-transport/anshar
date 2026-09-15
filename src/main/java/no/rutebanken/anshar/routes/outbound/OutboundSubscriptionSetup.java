@@ -28,6 +28,7 @@ import org.entur.siri.validator.SiriValidator;
 
 import javax.xml.datatype.Duration;
 import java.io.Serializable;
+import java.math.BigInteger;
 import java.text.MessageFormat;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -114,6 +115,18 @@ public class OutboundSubscriptionSetup implements Serializable {
     @Getter
     @Setter
     private boolean isSicAQuaySubscription;
+
+    @Getter
+    @Setter
+    private BigInteger maximumStopVisits;
+
+    @Getter
+    @Setter
+    private BigInteger minimumStopVisitsPerLine;
+
+    @Getter
+    @Setter
+    private BigInteger minimumStopVisitsPerLineVia;
 
     public OutboundSubscriptionSetup(ZonedDateTime requestTimestamp, SiriDataType subscriptionType, String address, long heartbeatInterval,
                                      boolean incrementalUpdates, long changeBeforeUpdates, long updateInterval,
