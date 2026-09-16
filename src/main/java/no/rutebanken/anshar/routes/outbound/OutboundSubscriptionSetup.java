@@ -64,6 +64,10 @@ public class OutboundSubscriptionSetup implements Serializable {
     private final String requestorRef;
 
     @Getter
+    @Setter
+    private String subscriberRef;
+
+    @Getter
     private final ZonedDateTime initialTerminationTime;
 
     @Getter
