@@ -36,6 +36,7 @@ public class IncomingSiriParameters {
     private boolean theoreticalDataExcluded;
     private boolean mergePublishingActions = false;
     private Long inboundTime;
+    private String gmPublishingActionName;
 
 
     public static IncomingSiriParameters buildFromSubscription(String subscriptionId, InputStream incomingSiriStream) {

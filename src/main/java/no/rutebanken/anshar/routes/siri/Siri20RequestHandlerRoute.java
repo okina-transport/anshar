@@ -394,6 +394,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                     incomingSiriParameters.setCompressionFormat(acceptedEncoding);
                     incomingSiriParameters.setGmSIVSicAQuay(Boolean.parseBoolean(p.getIn().getHeader(PARAM_SIV_GM_SIC_A_QUAY, String.class)));
                     incomingSiriParameters.setMergePublishingActions(Boolean.parseBoolean(p.getIn().getHeader(PARAM_MERGE_PUBLISHING_ACTIONS, String.class)));
+                    incomingSiriParameters.setGmPublishingActionName(p.getIn().getHeader(PARAM_GM_PUBLISHING_ACTION_NAME, String.class));
 
                     Siri response = handler.handleIncomingSiri(incomingSiriParameters);
                     if (response != null) {
@@ -479,9 +480,10 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                     }
 
                     boolean isGmSIVSicAQuay = Boolean.parseBoolean(p.getIn().getHeader(PARAM_SIV_GM_SIC_A_QUAY, String.class));
+                    String gmPublishingActionName = p.getIn().getHeader(PARAM_GM_PUBLISHING_ACTION_NAME, String.class);
 
                     Set<String> datasets = SiriUtils.generateDatasetListFromHeader(datasetId);
-                    Pair<Siri, String> siriWithVersion = handleIncomingSiriWithMultipleDatasets(msg,datasets, excludedIdList, useOriginalId, useAltId, maxSize, clientTrackingName, isGmSIVSicAQuay);
+                    Pair<Siri, String> siriWithVersion = handleIncomingSiriWithMultipleDatasets(msg,datasets, excludedIdList, useOriginalId, useAltId, maxSize, clientTrackingName, isGmSIVSicAQuay, gmPublishingActionName);
 
                     Siri response = siriWithVersion.getLeft();
                     String version = siriWithVersion.getRight();
@@ -687,10 +689,10 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
             .end();
     }
 
-    private Pair<Siri,String> handleIncomingSiriWithMultipleDatasets(Message msg, Set<String> datasets, List<String> excludedIdList, String useOriginalId, String useAltId, int maxSize, String clientTrackingName, boolean isGmSIVSicAQuay) throws UnmarshalException, IOException {
+    private Pair<Siri,String> handleIncomingSiriWithMultipleDatasets(Message msg, Set<String> datasets, List<String> excludedIdList, String useOriginalId, String useAltId, int maxSize, String clientTrackingName, boolean isGmSIVSicAQuay, String gmPublishingActionName) throws UnmarshalException, IOException {
         InputStream originalStream = msg.getBody(InputStream.class);
         if (datasets.isEmpty()) {
-            return handleIncomingSiriForSingleDataset(originalStream, null, excludedIdList, useOriginalId, useAltId, maxSize, clientTrackingName, isGmSIVSicAQuay);
+            return handleIncomingSiriForSingleDataset(originalStream, null, excludedIdList, useOriginalId, useAltId, maxSize, clientTrackingName, isGmSIVSicAQuay, gmPublishingActionName);
         }
 
         Pair<Siri,String> globalResults = null;
@@ -698,7 +700,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
 
         byte[] data = originalStream.readAllBytes();
         for (String dataset : datasets) {
-            Pair<Siri,String> datasetResult = handleIncomingSiriForSingleDataset(new ByteArrayInputStream(data), dataset, excludedIdList, useOriginalId, useAltId, maxSize, clientTrackingName, isGmSIVSicAQuay);
+            Pair<Siri,String> datasetResult = handleIncomingSiriForSingleDataset(new ByteArrayInputStream(data), dataset, excludedIdList, useOriginalId, useAltId, maxSize, clientTrackingName, isGmSIVSicAQuay, gmPublishingActionName);
             globalResults = mergeDatasetResult(globalResults, datasetResult);
         }
         return globalResults;
@@ -714,7 +716,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
 
     }
 
-    private Pair<Siri, String> handleIncomingSiriForSingleDataset(InputStream incomingSiriStream, String datasetId, List<String> excludedIdList, String useOriginalId, String useAltId, int maxSize, String clientTrackingName, boolean isGmSIVSicAQuay)throws UnmarshalException{
+    private Pair<Siri, String> handleIncomingSiriForSingleDataset(InputStream incomingSiriStream, String datasetId, List<String> excludedIdList, String useOriginalId, String useAltId, int maxSize, String clientTrackingName, boolean isGmSIVSicAQuay, String gmPublishingActionName)throws UnmarshalException{
         IncomingSiriParameters incomingSiriParameters = new IncomingSiriParameters();
         incomingSiriParameters.setIncomingSiriStream(incomingSiriStream);
         incomingSiriParameters.setDatasetId(datasetId);
@@ -725,6 +727,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
         incomingSiriParameters.setSoapTransformation(false);
         incomingSiriParameters.setUseOriginalId(Boolean.valueOf(useOriginalId));
         incomingSiriParameters.setGmSIVSicAQuay(isGmSIVSicAQuay);
+        incomingSiriParameters.setGmPublishingActionName(gmPublishingActionName);
         Siri siriResponse = handler.handleIncomingSiri(incomingSiriParameters);
         return Pair.of(siriResponse,incomingSiriParameters.getVersion());
     }
