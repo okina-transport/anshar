@@ -140,7 +140,29 @@ public class GeneralMessageMapper {
         }
 
         content.getMessages().add(msg);
+        mapPublishingActions(content, situation);
         generalMessage.setContent(content);
+
+    }
+
+    private void mapPublishingActions(Content content, PtSituationElement situation) {
+        if (situation.getPublishingActions() == null) {
+            return;
+        }
+
+        situation.getPublishingActions().getPublishToDisplayActions().forEach(action -> addPublishingActionToContent(content, action));
+        situation.getPublishingActions().getPublishToWebActions().forEach(action -> addPublishingActionToContent(content, action));
+        situation.getPublishingActions().getPublishToMobileActions().forEach(action -> addPublishingActionToContent(content, action));
+        situation.getPublishingActions().getPublishToAlertsActions().forEach(action -> addPublishingActionToContent(content, action));
+        situation.getPublishingActions().getPublishToTvActions().forEach(action -> addPublishingActionToContent(content, action));
+    }
+
+    private void addPublishingActionToContent(Content content, ParameterisedActionStructure actionStruct) {
+        if (actionStruct.getActionDatas().isEmpty() || actionStruct.getActionDatas().getFirst().getPrompts().isEmpty()) {
+            return;
+        }
+        ActionDataStructure firstActionData = actionStruct.getActionDatas().getFirst();
+        content.getPublishingActions().put(firstActionData.getName(), firstActionData.getPrompts().getFirst().getValue());
     }
 
     public void mapAffects(String datasetId, Content content, PtSituationElement situation) {

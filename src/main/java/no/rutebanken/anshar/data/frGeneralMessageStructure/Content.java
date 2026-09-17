@@ -1,16 +1,14 @@
 package no.rutebanken.anshar.data.frGeneralMessageStructure;
 
+import jakarta.xml.bind.annotation.*;
 import lombok.Getter;
 import lombok.Setter;
 
-import jakarta.xml.bind.annotation.XmlAccessType;
-import jakarta.xml.bind.annotation.XmlAccessorType;
-import jakarta.xml.bind.annotation.XmlElement;
-import jakarta.xml.bind.annotation.XmlType;
-
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Getter
 @Setter
@@ -38,4 +36,8 @@ public class Content implements Serializable {
 
     @XmlElement(name = "Message", namespace = "http://www.siri.org.uk/siri")
     private List<Message> messages = new ArrayList<>();
+
+    @XmlTransient
+    private Map<String, String> publishingActions = new HashMap<>();
+
 }
