@@ -5,11 +5,13 @@ import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.data.Situations;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
+import no.rutebanken.anshar.routes.siri.processor.SxPublishingActionFilterPostProcessor;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -30,19 +32,31 @@ public class SituationExchangeOutbound {
     @Autowired
     SiriObjectFactory siriObjectFactory;
 
-    public List<ValueAdapter> getValueAdapters(String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy) {
+    public List<ValueAdapter> getValueAdapters(String datasetId, OutboundIdMappingPolicy outboundIdMappingPolicy, String sxPublishingName) {
         List<ValueAdapter> valueAdapters;
         Map<ObjectType, Optional<IdProcessingParameters>> idMap = subscriptionConfig.buildIdProcessingParamsFromDataset(datasetId);
-        valueAdapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.SITUATION_EXCHANGE, outboundIdMappingPolicy, idMap);
+        // creating a new list to avoid additional adapters to be cached
+        valueAdapters = new ArrayList<>(MappingAdapterPresets.getOutboundAdapters(SiriDataType.SITUATION_EXCHANGE, outboundIdMappingPolicy, idMap));
+        if (StringUtils.isNotBlank(sxPublishingName)) {
+            valueAdapters.add(new SxPublishingActionFilterPostProcessor(sxPublishingName));
+        }
         return valueAdapters;
     }
 
-    public Siri createServiceDelivery(String requestorRef, String datasetId, String clientTrackingName, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String messageId) {
-        Set<String> datasetToRequest = StringUtils.isEmpty(datasetId) ? situations.getAllDatasetIds() : new HashSet<>(Arrays.asList(datasetId));
-        return createServiceDelivery(requestorRef, datasetToRequest.stream().toList(), clientTrackingName, outboundIdMappingPolicy, maxSize, messageId);
+    private void removeSxPublishingActionFilterProcessor(List<ValueAdapter> valueAdapters) {
+        if (CollectionUtils.isEmpty(valueAdapters)) {
+            return;
+        }
+        valueAdapters.removeIf(valueAdapter -> valueAdapter instanceof SxPublishingActionFilterPostProcessor);
     }
 
-    public Siri createServiceDelivery(String requestorRef, List<String> datasetToRequest, String clientTrackingName, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String messageId) {
+    public Siri createServiceDelivery(String requestorRef, String datasetId, String clientTrackingName, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize, String messageId, String sxPublishingActionName) {
+        Set<String> datasetToRequest = StringUtils.isEmpty(datasetId) ? situations.getAllDatasetIds() : new HashSet<>(Arrays.asList(datasetId));
+        return createServiceDelivery(requestorRef, datasetToRequest.stream().toList(), clientTrackingName, outboundIdMappingPolicy, maxSize, messageId, sxPublishingActionName);
+    }
+
+    public Siri createServiceDelivery(String requestorRef, List<String> datasetToRequest, String clientTrackingName, OutboundIdMappingPolicy outboundIdMappingPolicy, int maxSize,
+                                      String messageId, String sxPublishingActionName) {
         List<Siri> results = new ArrayList<>();
         Siri serviceResponse;
 
@@ -51,7 +65,7 @@ public class SituationExchangeOutbound {
         }
 
         for (String datasetIdToRequest : datasetToRequest) {
-            Siri datasetResults = getTransformedSiriForDataset(datasetIdToRequest, outboundIdMappingPolicy, requestorRef, clientTrackingName, maxSize, messageId);
+            Siri datasetResults = getTransformedSiriForDataset(datasetIdToRequest, outboundIdMappingPolicy, requestorRef, clientTrackingName, maxSize, messageId, sxPublishingActionName);
             results.add(datasetResults);
         }
 
@@ -80,8 +94,9 @@ public class SituationExchangeOutbound {
      * @param maxSize                 max size of the delivery
      * @return a siri with transformed ids
      */
-    private Siri getTransformedSiriForDataset(String datasetIdToRequest, OutboundIdMappingPolicy outboundIdMappingPolicy, String requestorRef, String clientTrackingName, int maxSize, String messageId) {
-        List<ValueAdapter> valueAdapters = getValueAdapters(datasetIdToRequest, outboundIdMappingPolicy);
+    private Siri getTransformedSiriForDataset(String datasetIdToRequest, OutboundIdMappingPolicy outboundIdMappingPolicy, String requestorRef, String clientTrackingName, int maxSize,
+                                              String messageId, String sxPublishingActionName) {
+        List<ValueAdapter> valueAdapters = getValueAdapters(datasetIdToRequest, outboundIdMappingPolicy, sxPublishingActionName);
         Siri serviceResponse = situations.createServiceDelivery(requestorRef, datasetIdToRequest, clientTrackingName, maxSize, messageId);
         return SiriValueTransformer.transform(serviceResponse, valueAdapters, false, false);
     }

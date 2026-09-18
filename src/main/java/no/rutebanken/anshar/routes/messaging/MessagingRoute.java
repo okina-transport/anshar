@@ -590,6 +590,7 @@ public class MessagingRoute extends RestRouteBuilder {
                     String clientTrackingName = p.getIn().getHeader(configuration.getTrackingHeaderName(), String.class);
 
                     IncomingSiriParameters incomingSiriParameters = new IncomingSiriParameters();
+                    incomingSiriParameters.setSxPublishingActionName(p.getIn().getHeader(PARAM_SX_PUBLISHING_ACTION_NAME, String.class));
                     incomingSiriParameters.setIncomingSiriStream(xml);
                     incomingSiriParameters.setSubscriptionId(subscriptionId);
                     incomingSiriParameters.setDatasetId(datasetId);
