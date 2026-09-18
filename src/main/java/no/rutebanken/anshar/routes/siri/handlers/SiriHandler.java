@@ -337,7 +337,7 @@ public class SiriHandler {
             }
 
             if (hasValues(serviceRequest.getSituationExchangeRequests())) {
-                serviceResponse = situationExchangeOutbound.createServiceDelivery(requestorRef, datasetId, clientTrackingName, outboundIdMappingPolicy, maxSize, messageId);
+                serviceResponse = situationExchangeOutbound.createServiceDelivery(requestorRef, datasetId, clientTrackingName, outboundIdMappingPolicy, maxSize, messageId, incomingSiriParameters.getSxPublishingActionName());
             } else if (hasValues(serviceRequest.getVehicleMonitoringRequests())) {
                 Set<String> lineRefOriginalList = vehicleMonitoringOutbound.getLineRefOriginalList(serviceRequest, outboundIdMappingPolicy, datasetId);
                 Set<String> vehicleRefList = vehicleMonitoringOutbound.getVehicleRefList(serviceRequest);
