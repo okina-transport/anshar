@@ -37,6 +37,7 @@ public class HttpParameter {
     public static final String PARAM_PREVIEW_INTERVAL = "previewIntervalMinutes";
     public static final String PARAM_SIV_GM_SIC_A_QUAY = "gmSIVSicAQuay";
     public static final String PARAM_MERGE_PUBLISHING_ACTIONS = "mergePublishingActions";
+    public static final String PARAM_SX_PUBLISHING_ACTION_NAME = "sxPublishingActionName";
 
     public static final String PARAM_VERSION = "version";
 

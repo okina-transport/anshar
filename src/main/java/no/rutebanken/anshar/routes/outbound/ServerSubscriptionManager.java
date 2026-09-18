@@ -30,6 +30,7 @@ import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.processor.FacilityRefPostProcessor;
 import no.rutebanken.anshar.routes.siri.processor.GmSIVSicAQuayPostProcessor;
 import no.rutebanken.anshar.routes.siri.processor.FillPublishToDisplayActionsProcessor;
+import no.rutebanken.anshar.routes.siri.processor.SxPublishingActionFilterPostProcessor;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
@@ -672,6 +673,7 @@ public class ServerSubscriptionManager {
         boolean useOrignalId = incomingSiriParameters.isUseOriginalId();
         boolean isSicAQuay = incomingSiriParameters.isGmSIVSicAQuay();
 
+
         SubscriptionRequest subscriptionRequest = incomingSiri.getSubscriptionRequest();
         List<ValueAdapter> mappers = new ArrayList<>();
         String version = getVersion(incomingSiri);
@@ -696,6 +698,11 @@ public class ServerSubscriptionManager {
         if (incomingSiriParameters.isMergePublishingActions()) {
             mappers = new ArrayList<>(mappers);
             mappers.add(new FillPublishToDisplayActionsProcessor());
+        }
+
+        if (StringUtils.isNotBlank(incomingSiriParameters.getSxPublishingActionName())) {
+            mappers = new ArrayList<>(mappers);
+            mappers.add(new SxPublishingActionFilterPostProcessor(incomingSiriParameters.getSxPublishingActionName()));
         }
 
         OutboundSubscriptionSetup newOutboundSubscription = new OutboundSubscriptionSetup(
