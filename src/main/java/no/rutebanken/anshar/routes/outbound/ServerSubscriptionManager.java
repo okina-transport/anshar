@@ -28,6 +28,7 @@ import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.processor.FacilityRefPostProcessor;
+import no.rutebanken.anshar.routes.siri.processor.GmFilterPublishingActionPostProcessor;
 import no.rutebanken.anshar.routes.siri.processor.GmSIVSicAQuayPostProcessor;
 import no.rutebanken.anshar.routes.siri.processor.FillPublishToDisplayActionsProcessor;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
@@ -696,6 +697,11 @@ public class ServerSubscriptionManager {
         if (incomingSiriParameters.isMergePublishingActions()) {
             mappers = new ArrayList<>(mappers);
             mappers.add(new FillPublishToDisplayActionsProcessor());
+        }
+
+        if (StringUtils.isNotBlank(incomingSiriParameters.getGmPublishingActionName())) {
+            mappers = new ArrayList<>(mappers);
+            mappers.add(new GmFilterPublishingActionPostProcessor(incomingSiriParameters.getGmPublishingActionName()));
         }
 
         OutboundSubscriptionSetup newOutboundSubscription = new OutboundSubscriptionSetup(

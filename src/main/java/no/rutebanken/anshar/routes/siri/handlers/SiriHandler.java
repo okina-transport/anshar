@@ -30,6 +30,7 @@ import no.rutebanken.anshar.routes.siri.handlers.outbound.*;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.helpers.StopMonitoringServiceDeliveryParameter;
 import no.rutebanken.anshar.routes.siri.processor.FacilityRefPostProcessor;
+import no.rutebanken.anshar.routes.siri.processor.GmFilterPublishingActionPostProcessor;
 import no.rutebanken.anshar.routes.siri.processor.GmSIVSicAQuayPostProcessor;
 import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
@@ -42,13 +43,14 @@ import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import no.rutebanken.anshar.util.GeneralMessageHelper;
 import no.rutebanken.anshar.util.IDUtils;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.entur.siri21.util.SiriXml;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
+
 import uk.org.siri.siri21.*;
 
 import javax.xml.stream.XMLStreamException;
@@ -378,6 +380,11 @@ public class SiriHandler {
                     GmSIVSicAQuayPostProcessor.filteringSiriGMToKeepSicAQuayAlertMessages(serviceResponse);
                 }
 
+                if (StringUtils.isNotBlank(incomingSiriParameters.getGmPublishingActionName())) {
+                    valueAdapters = new ArrayList<>(valueAdapters);
+                    valueAdapters.add(new GmFilterPublishingActionPostProcessor(incomingSiriParameters.getGmPublishingActionName()));
+                }
+
                 //Ask for general message cancellations at the same time
                 Siri cancellationResponses = generalMessageCancellations.createServiceDelivery(requestorRef, datasetId, clientTrackingName, maxSize, requestedChannels);
                 // and add cancellations to the general message response
@@ -563,7 +570,7 @@ public class SiriHandler {
 
         if (stopRef.startsWith(superIdentifier)) {
             // cas 1: le datasetId n'est pas précisé dans le header.
-            if (!StringUtils.hasText(datasetId)) {
+            if (StringUtils.isBlank(datasetId)) {
                 return !stopPlaceUpdaterService.getReverse(stopRef, null).isEmpty();
             }
 
