@@ -1,2 +1,2 @@
-dataset,object_type,object_id,field_name,field_value,language,translation
-TESTDATASET,LINE,LINE1,name,,fr,Ligne Test
+dataset,object_type,object_id,field_name,field_value,language,translation,is_default
+TESTDATASET,LINE,LINE1,name,,fr,Ligne Test,

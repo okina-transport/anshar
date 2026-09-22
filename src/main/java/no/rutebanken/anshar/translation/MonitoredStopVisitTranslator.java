@@ -22,49 +22,31 @@ public class MonitoredStopVisitTranslator extends BaseSiriEntityTranslator<Monit
         if (entity == null) {
             return;
         }
-        if (!translationService.hasTranslationsForDatasetId(datasetId)) {
-            return;
-        }
         MonitoredVehicleJourneyStructure vehicleJourney = entity.getMonitoredVehicleJourney();
         if (vehicleJourney == null) {
             return;
         }
         Optional<String> lineRef = StopMonitoringUtils.getLineRef(entity);
-        Optional<String> lineName = StopMonitoringUtils.getLineName(entity);
-
         Optional<String> monitoringRef = StopMonitoringUtils.getMonitoringRef(entity);
-        Optional<String> monitoringName = Optional.empty();
-        if (monitoringRef.isPresent()) {
-            monitoringName = Optional.ofNullable(stopPlaceUpdaterService.getStopName(datasetId,
-                    monitoringRef.get()));
-        }
-
         Optional<String> destinationRef = StopMonitoringUtils.getDestinationRef(entity);
-        Optional<String> destinationName = StopMonitoringUtils.getDestinationName(entity);
-
         Optional<String> originRef = StopMonitoringUtils.getOriginRef(entity);
-        Optional<String> originName = StopMonitoringUtils.getOriginName(entity);
-
         Optional<String> vehicleJourneyRef = StopMonitoringUtils.getVehicleJourneyRef(entity);
-        Optional<String> vehicleJourneyName = StopMonitoringUtils.getVehicleJourneyName(entity);
 
         // vehicle journey translations
-        addLineNameTranslationsNLSS(datasetId, lineRef.orElse(null), lineName.orElse(null),
-                vehicleJourney.getPublishedLineNames());
-        addStopNameTranslationsNLSS(datasetId, destinationRef.orElse(null), destinationName.orElse(null),
-                vehicleJourney.getDestinationNames());
-        addStopNameTranslationsNLPNSS(datasetId, originRef.orElse(null), originName.orElse(null), vehicleJourney.getOriginNames());
-        addVehicleJourneyNameTranslationsNLSS(datasetId, vehicleJourneyRef.orElse(null), vehicleJourneyName.orElse(null),
-                vehicleJourney.getVehicleJourneyNames());
+        lineRef.ifPresent(value -> addLineNameTranslationsNLSS(datasetId, value, vehicleJourney.getPublishedLineNames()));
+        destinationRef.ifPresent(value -> addStopNameTranslationsNLSS(datasetId, value, vehicleJourney.getDestinationNames()));
+        originRef.ifPresent(value -> addStopNameTranslationsNLPNSS(datasetId, value, vehicleJourney.getOriginNames()));
+        vehicleJourneyRef.ifPresent(value -> addVehicleJourneyNameTranslationsNLSS(datasetId, value,
+                vehicleJourney.getVehicleJourneyNames()));
 
         // monitored call translations
         MonitoredCallStructure monitoredCall = vehicleJourney.getMonitoredCall();
         if (monitoredCall == null) {
             return;
         }
-        addStopNameTranslationsNLSS(datasetId, monitoringRef.orElse(null), monitoringName.orElse(null),
-                monitoredCall.getStopPointNames());
-        addStopNameTranslationsNLSS(datasetId, destinationRef.orElse(null), destinationName.orElse(null),
-                monitoredCall.getDestinationDisplaies());
+        monitoringRef.ifPresent(value -> addStopNameTranslationsNLSS(datasetId, value,
+                monitoredCall.getStopPointNames()));
+        destinationRef.ifPresent(value -> addStopNameTranslationsNLSS(datasetId, value,
+                monitoredCall.getDestinationDisplaies()));
     }
 }

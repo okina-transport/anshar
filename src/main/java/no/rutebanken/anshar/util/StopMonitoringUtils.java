@@ -2,9 +2,8 @@ package no.rutebanken.anshar.util;
 
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
-import uk.org.siri.siri21.*;
+import uk.org.siri.siri21.MonitoredStopVisit;
+import uk.org.siri.siri21.MonitoredStopVisitCancellation;
 
 import java.time.ZonedDateTime;
 import java.util.Optional;
@@ -23,16 +22,6 @@ public class StopMonitoringUtils {
         return Optional.ofNullable(stopVisit.getMonitoredVehicleJourney().getLineRef().getValue());
     }
 
-    public static Optional<String> getLineName(MonitoredStopVisit stopVisit) {
-        if (stopVisit.getMonitoredVehicleJourney() == null) {
-            return Optional.empty();
-        }
-        return stopVisit.getMonitoredVehicleJourney().getPublishedLineNames().stream()
-                .map(NaturalLanguageStringStructure::getValue)
-                .filter(StringUtils::isNotBlank)
-                .findFirst();
-    }
-
     public static Optional<String> getLineRef(MonitoredStopVisitCancellation stopVisitCancellation) {
         if (stopVisitCancellation.getLineRef() == null || stopVisitCancellation.getLineRef().getValue() == null) {
             return Optional.empty();
@@ -47,16 +36,6 @@ public class StopMonitoringUtils {
         }
 
         return Optional.ofNullable(stopVisit.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().getDatedVehicleJourneyRef());
-    }
-
-    public static Optional<String> getVehicleJourneyName(MonitoredStopVisit stopVisit) {
-        if (stopVisit.getMonitoredVehicleJourney() == null) {
-            return Optional.empty();
-        }
-        return stopVisit.getMonitoredVehicleJourney().getVehicleJourneyNames().stream()
-                .map(NaturalLanguageStringStructure::getValue)
-                .filter(StringUtils::isNotBlank)
-                .findFirst();
     }
 
     public static Optional<String> getVehicleJourneyRef(MonitoredStopVisitCancellation stopVisitCancellation) {
@@ -82,31 +61,11 @@ public class StopMonitoringUtils {
         return Optional.ofNullable(stopVisit.getMonitoredVehicleJourney().getDestinationRef().getValue());
     }
 
-    public static Optional<String> getDestinationName(MonitoredStopVisit stopVisit) {
-        if (stopVisit.getMonitoredVehicleJourney() == null) {
-            return Optional.empty();
-        }
-        return stopVisit.getMonitoredVehicleJourney().getDestinationNames().stream()
-                .map(NaturalLanguageStringStructure::getValue)
-                .filter(StringUtils::isNotBlank)
-                .findFirst();
-    }
-
     public static Optional<String> getOriginRef(MonitoredStopVisit stopVisit) {
         if (stopVisit.getMonitoredVehicleJourney() == null || stopVisit.getMonitoredVehicleJourney().getOriginRef() == null) {
             return Optional.empty();
         }
         return Optional.ofNullable(stopVisit.getMonitoredVehicleJourney().getOriginRef().getValue());
-    }
-
-    public static Optional<String> getOriginName(MonitoredStopVisit stopVisit) {
-        if (stopVisit.getMonitoredVehicleJourney() == null) {
-            return Optional.empty();
-        }
-        return stopVisit.getMonitoredVehicleJourney().getOriginNames().stream()
-                .map(NaturalLanguagePlaceNameStructure::getValue)
-                .filter(StringUtils::isNotBlank)
-                .findFirst();
     }
 
     public static Optional<String> getAimedTimeAtStop(MonitoredStopVisit stopVisit) {
@@ -125,15 +84,4 @@ public class StopMonitoringUtils {
         return result;
     }
 
-    public static void feedDestinationDisplay(MonitoredStopVisit stopVisit) {
-        MonitoredVehicleJourneyStructure monitoredVehicleJourney = stopVisit.getMonitoredVehicleJourney();
-        if (monitoredVehicleJourney != null
-                && monitoredVehicleJourney.getMonitoredCall() != null
-                && CollectionUtils.isEmpty(monitoredVehicleJourney.getMonitoredCall().getDestinationDisplaies())
-                && CollectionUtils.isNotEmpty(monitoredVehicleJourney.getDestinationNames())) {
-            monitoredVehicleJourney.getMonitoredCall().getDestinationDisplaies().addAll(monitoredVehicleJourney.getDestinationNames());
-        } else if (stopVisit.getMonitoringRef() != null) {
-            log.debug("No destination display and no destination name found for {}", stopVisit.getMonitoringRef().getValue());
-        }
-    }
 }

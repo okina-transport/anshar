@@ -8,8 +8,10 @@ import org.junit.jupiter.api.Test;
 import uk.org.siri.siri21.*;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -24,7 +26,6 @@ class MonitoredStopVisitTranslatorTest {
     @BeforeEach
     void setUp() {
         translationService = mock(TranslationService.class);
-        when(translationService.hasTranslationsForDatasetId(DATASET_ID)).thenReturn(true);
 
         translator = new MonitoredStopVisitTranslator(translationService, mock(StopPlaceUpdaterService.class));
     }
@@ -111,7 +112,7 @@ class MonitoredStopVisitTranslatorTest {
     }
 
     @Test
-    void replacesExistingTranslationWithSameLanguage() {
+    void keepsExistingTranslationWhenLanguageAlreadyPresent() {
         when(translationService.getTranslationsByDatasetIdAndObjectTypeAndOriginalId(DATASET_ID, ObjectType.LINE, "LINE1", "publishedName"))
                 .thenReturn(List.of(new TranslationService.TranslationDto("EN", "New name")));
 
@@ -125,48 +126,52 @@ class MonitoredStopVisitTranslatorTest {
 
         List<NaturalLanguageStringStructure> lineNames = getVehicleJourney(visit).getPublishedLineNames();
         assertThat(lineNames).hasSize(1);
-        assertThat(lineNames.getFirst().getValue()).isEqualTo("New name");
+        assertThat(lineNames.getFirst().getValue()).isEqualTo("Old name");
     }
 
     @Test
-    void fallsBackToFieldValueTranslationWhenNoOriginalIdTranslation() {
+    void defaultTranslationResolvesFieldValueKeyForOtherLanguages() {
         NaturalLanguageStringStructure original = new NaturalLanguageStringStructure();
         original.setLang("FR");
-        original.setValue("Ligne un");
+        original.setValue("Wrong name from SIRI message");
 
         MonitoredStopVisit visit = createVisit("LINE1", null, null, null);
         getVehicleJourney(visit).getPublishedLineNames().add(original);
 
+        when(translationService.getDefaultTranslationsByDatasetIdAndObjectTypeAndOriginalId(DATASET_ID, ObjectType.LINE, "LINE1", "publishedName"))
+                .thenReturn(Optional.of(new TranslationService.TranslationDto("FR", "Ligne un", "publishedName")));
         when(translationService.getTranslationsByDatasetIdAndObjectTypeAndFieldValue(DATASET_ID, ObjectType.LINE, "Ligne un", "publishedName"))
-                .thenReturn(List.of(new TranslationService.TranslationDto("EN", "Line one (by field value)")));
+                .thenReturn(List.of(new TranslationService.TranslationDto("EN", "Line one", "publishedName")));
 
         translator.handleTranslations(visit, DATASET_ID);
 
         List<NaturalLanguageStringStructure> lineNames = getVehicleJourney(visit).getPublishedLineNames();
-        assertThat(lineNames).extracting(NaturalLanguageStringStructure::getValue)
-                .contains("Line one (by field value)");
+        // FR already present in the raw SIRI message, so it is left untouched
+        assertThat(lineNames).filteredOn(name -> "FR".equalsIgnoreCase(name.getLang()))
+                .extracting(NaturalLanguageStringStructure::getValue)
+                .containsExactly("Wrong name from SIRI message");
+        // EN is missing from the message, so the field_value translation (keyed off the default's own text) is added
+        assertThat(lineNames).filteredOn(name -> "EN".equalsIgnoreCase(name.getLang()))
+                .extracting(NaturalLanguageStringStructure::getValue)
+                .containsExactly("Line one");
+        verify(translationService, never())
+                .getTranslationsByDatasetIdAndObjectTypeAndFieldValue(DATASET_ID, ObjectType.LINE, "Wrong name from SIRI message", "publishedName");
     }
 
     @Test
-    void originalIdTranslationTakesPrecedenceOverFieldValueForSameLanguage() {
-        NaturalLanguageStringStructure original = new NaturalLanguageStringStructure();
-        original.setLang("FR");
-        original.setValue("Ligne un");
-
+    void withoutDefaultTranslation_fieldValueLookupIsNeverAttempted() {
         MonitoredStopVisit visit = createVisit("LINE1", null, null, null);
-        getVehicleJourney(visit).getPublishedLineNames().add(original);
 
-        when(translationService.getTranslationsByDatasetIdAndObjectTypeAndFieldValue(DATASET_ID, ObjectType.LINE, "Ligne un", "publishedName"))
-                .thenReturn(List.of(new TranslationService.TranslationDto("EN", "By field value")));
         when(translationService.getTranslationsByDatasetIdAndObjectTypeAndOriginalId(DATASET_ID, ObjectType.LINE, "LINE1", "publishedName"))
                 .thenReturn(List.of(new TranslationService.TranslationDto("EN", "By object id")));
 
         translator.handleTranslations(visit, DATASET_ID);
 
         List<NaturalLanguageStringStructure> lineNames = getVehicleJourney(visit).getPublishedLineNames();
-        assertThat(lineNames).filteredOn(name -> "EN".equalsIgnoreCase(name.getLang()))
-                .extracting(NaturalLanguageStringStructure::getValue)
+        assertThat(lineNames).extracting(NaturalLanguageStringStructure::getValue)
                 .containsExactly("By object id");
+        verify(translationService, never())
+                .getTranslationsByDatasetIdAndObjectTypeAndFieldValue(anyString(), any(), anyString(), anyString());
     }
 
     @Test
@@ -184,25 +189,12 @@ class MonitoredStopVisitTranslatorTest {
     void noVehicleJourney_doesNotFail() {
         MonitoredStopVisit visit = new MonitoredStopVisit();
 
-        translator.handleTranslations(visit, DATASET_ID);
+        assertThatNoException().isThrownBy(() -> translator.handleTranslations(visit, DATASET_ID));
     }
 
     @Test
     void nullEntity_doesNotFail() {
-        translator.handleTranslations(null, DATASET_ID);
-    }
-
-    @Test
-    void noTranslationsForDataset_skipsLookup() {
-        when(translationService.hasTranslationsForDatasetId(DATASET_ID)).thenReturn(false);
-
-        MonitoredStopVisit visit = createVisit("LINE1", "STOP1", "VJ1", "MON1");
-
-        translator.handleTranslations(visit, DATASET_ID);
-
-        assertThat(getVehicleJourney(visit).getPublishedLineNames()).isEmpty();
-        verify(translationService, never())
-                .getTranslationsByDatasetIdAndObjectTypeAndOriginalId(anyString(), any(), anyString(), anyString());
+        assertThatNoException().isThrownBy(() -> translator.handleTranslations(null, DATASET_ID));
     }
 
     // -- helpers --
