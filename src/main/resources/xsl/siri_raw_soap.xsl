@@ -247,8 +247,7 @@
 
                                             <xsl:element name="siri:SituationExchangeRequest">
                                                 <xsl:attribute name="version">
-                                                    <!-- <xsl:value-of select="siri:SituationExchangeSubscriptionRequest/siri:SituationExchangeRequest/@version"/> -->
-                                                    <xsl:value-of select="1.4"/>
+                                                    <xsl:value-of select="siri:SituationExchangeSubscriptionRequest/siri:SituationExchangeRequest/@version"/>
                                                 </xsl:attribute>
                                                 <xsl:copy-of
                                                         select="siri:SituationExchangeSubscriptionRequest/siri:SituationExchangeRequest/*"
@@ -300,7 +299,7 @@
 
                                             <xsl:element name="siri:EstimatedTimetableRequest">
                                                 <xsl:attribute name="version">
-                                                    <xsl:value-of select="1.4"/>
+                                                    <xsl:value-of select="siri:EstimatedTimetableSubscriptionRequest/siri:EstimatedTimetableRequest/@version"/>
                                                 </xsl:attribute>
                                                 <xsl:copy-of
                                                         select="siri:EstimatedTimetableSubscriptionRequest/siri:EstimatedTimetableRequest/*"
@@ -353,7 +352,7 @@
 
                                             <xsl:element name="siri:GeneralMessageRequest">
                                                 <xsl:attribute name="version">
-                                                    <xsl:value-of select="1.4"/>
+                                                    <xsl:value-of select="siri:GeneralMessageSubscriptionRequest/siri:GeneralMessageRequest/@version"/>
                                                 </xsl:attribute>
                                                 <xsl:copy-of
                                                         select="siri:GeneralMessageSubscriptionRequest/siri:GeneralMessageRequest/*"
@@ -374,7 +373,7 @@
 
                                             <xsl:element name="siri:FacilityMonitoringRequest">
                                                 <xsl:attribute name="version">
-                                                    <xsl:value-of select="1.4"/>
+                                                    <xsl:value-of select="siri:FacilityMonitoringSubscriptionRequest/siri:FacilityMonitoringRequest/@version"/>
                                                 </xsl:attribute>
                                                 <xsl:copy-of
                                                         select="siri:FacilityMonitoringSubscriptionRequest/siri:FacilityMonitoringRequest/*"

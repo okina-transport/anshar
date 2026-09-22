@@ -26,8 +26,13 @@
         </xsl:copy>
     </xsl:template>
         
-    <xsl:template match="siri:*/@version">
+    <!-- Already 2.0/2.1: keep as-is. Anything else (e.g. legacy 1.4): normalize to 2.0. -->
+    <xsl:template match="siri:*/@version[. = '2.0' or . = '2.1']" priority="1">
+        <xsl:copy/>
+    </xsl:template>
+
+    <xsl:template match="siri:*/@version" priority="0">
         <xsl:attribute name="version">2.0</xsl:attribute>
-    </xsl:template>    
+    </xsl:template>
 
 </xsl:stylesheet>
