@@ -50,7 +50,6 @@ public class StopMonitoringUtils {
         }
     }
 
-
     public static Optional<String> getLineName(MonitoredStopVisit stopVisit) {
         if (stopVisit.getMonitoredVehicleJourney() == null) {
             return Optional.empty();
@@ -77,16 +76,6 @@ public class StopMonitoringUtils {
         return Optional.ofNullable(stopVisit.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().getDatedVehicleJourneyRef());
     }
 
-    public static Optional<String> getVehicleJourneyName(MonitoredStopVisit stopVisit) {
-        if (stopVisit.getMonitoredVehicleJourney() == null) {
-            return Optional.empty();
-        }
-        return stopVisit.getMonitoredVehicleJourney().getVehicleJourneyNames().stream()
-                .map(NaturalLanguageStringStructure::getValue)
-                .filter(StringUtils::isNotBlank)
-                .findFirst();
-    }
-
     public static Optional<String> getVehicleJourneyRef(MonitoredStopVisitCancellation stopVisitCancellation) {
         if (stopVisitCancellation.getVehicleJourneyRef() == null || stopVisitCancellation.getVehicleJourneyRef().getDatedVehicleJourneyRef() == null) {
             return Optional.empty();
@@ -110,31 +99,11 @@ public class StopMonitoringUtils {
         return Optional.ofNullable(stopVisit.getMonitoredVehicleJourney().getDestinationRef().getValue());
     }
 
-    public static Optional<String> getDestinationName(MonitoredStopVisit stopVisit) {
-        if (stopVisit.getMonitoredVehicleJourney() == null) {
-            return Optional.empty();
-        }
-        return stopVisit.getMonitoredVehicleJourney().getDestinationNames().stream()
-                .map(NaturalLanguageStringStructure::getValue)
-                .filter(StringUtils::isNotBlank)
-                .findFirst();
-    }
-
     public static Optional<String> getOriginRef(MonitoredStopVisit stopVisit) {
         if (stopVisit.getMonitoredVehicleJourney() == null || stopVisit.getMonitoredVehicleJourney().getOriginRef() == null) {
             return Optional.empty();
         }
         return Optional.ofNullable(stopVisit.getMonitoredVehicleJourney().getOriginRef().getValue());
-    }
-
-    public static Optional<String> getOriginName(MonitoredStopVisit stopVisit) {
-        if (stopVisit.getMonitoredVehicleJourney() == null) {
-            return Optional.empty();
-        }
-        return stopVisit.getMonitoredVehicleJourney().getOriginNames().stream()
-                .map(NaturalLanguagePlaceNameStructure::getValue)
-                .filter(StringUtils::isNotBlank)
-                .findFirst();
     }
 
     public static Optional<String> getAimedTimeAtStop(MonitoredStopVisit stopVisit) {
@@ -153,15 +122,4 @@ public class StopMonitoringUtils {
         return result;
     }
 
-    public static void feedDestinationDisplay(MonitoredStopVisit stopVisit) {
-        MonitoredVehicleJourneyStructure monitoredVehicleJourney = stopVisit.getMonitoredVehicleJourney();
-        if (monitoredVehicleJourney != null
-                && monitoredVehicleJourney.getMonitoredCall() != null
-                && CollectionUtils.isEmpty(monitoredVehicleJourney.getMonitoredCall().getDestinationDisplaies())
-                && CollectionUtils.isNotEmpty(monitoredVehicleJourney.getDestinationNames())) {
-            monitoredVehicleJourney.getMonitoredCall().getDestinationDisplaies().addAll(monitoredVehicleJourney.getDestinationNames());
-        } else if (stopVisit.getMonitoringRef() != null) {
-            log.debug("No destination display and no destination name found for {}", stopVisit.getMonitoringRef().getValue());
-        }
-    }
 }

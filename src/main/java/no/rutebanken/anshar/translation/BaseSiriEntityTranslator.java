@@ -1,9 +1,9 @@
 package no.rutebanken.anshar.translation;
 
-import jakarta.annotation.Nullable;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.mapping.TranslationService;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import uk.org.siri.siri21.NaturalLanguagePlaceNameStructure;
 import uk.org.siri.siri21.NaturalLanguageStringStructure;
@@ -11,6 +11,7 @@ import uk.org.siri.siri21.NaturalLanguageStringStructure;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public abstract class BaseSiriEntityTranslator<T> implements SiriEntityTranslator<T> {
 
@@ -26,89 +27,83 @@ public abstract class BaseSiriEntityTranslator<T> implements SiriEntityTranslato
         this.stopPlaceUpdaterService = stopPlaceUpdaterService;
     }
 
-    protected void addLineNameTranslationsNLSS(String datasetId, @Nullable String lineOriginalId, @Nullable String lineName,
+    protected void addLineNameTranslationsNLSS(String datasetId, String lineOriginalId,
                                                List<NaturalLanguageStringStructure> target) {
-        addTranslationsNLSS(ObjectType.LINE, datasetId, lineOriginalId, lineName, FIELD_NAME_LINE_NAME, target);
+        addTranslationsNLSS(ObjectType.LINE, datasetId, lineOriginalId, FIELD_NAME_LINE_NAME, target);
     }
 
-    protected void addStopNameTranslationsNLSS(String datasetId, @Nullable String stopOriginalId,
-                                               @Nullable String stopName, List<NaturalLanguageStringStructure> target) {
-        addTranslationsNLSS(ObjectType.STOP, datasetId, stopOriginalId, stopName, FIELD_NAME_STOP_NAME, target);
+    protected void addStopNameTranslationsNLSS(String datasetId, String stopOriginalId, List<NaturalLanguageStringStructure> target) {
+        addTranslationsNLSS(ObjectType.STOP, datasetId, stopOriginalId, FIELD_NAME_STOP_NAME, target);
     }
 
-    protected void addStopNameTranslationsNLPNSS(String datasetId, @Nullable String stopOriginalId,
-                                                 @Nullable String stopName, List<NaturalLanguagePlaceNameStructure> target) {
-        addTranslationNLPNSS(ObjectType.STOP, datasetId, stopOriginalId, stopName, FIELD_NAME_STOP_NAME, target);
+    protected void addStopNameTranslationsNLPNSS(String datasetId, String stopOriginalId, List<NaturalLanguagePlaceNameStructure> target) {
+        addTranslationNLPNSS(ObjectType.STOP, datasetId, stopOriginalId, FIELD_NAME_STOP_NAME, target);
     }
 
-    protected void addVehicleJourneyNameTranslationsNLSS(String datasetId, @Nullable String vjOriginalId,
-                                                         @Nullable String vjName, List<NaturalLanguageStringStructure> target) {
-        addTranslationsNLSS(ObjectType.VEHICLE_JOURNEY, datasetId, vjOriginalId, vjName, FIELD_NAME_SERVICE_JOURNEY_NAME, target);
+    protected void addVehicleJourneyNameTranslationsNLSS(String datasetId, String vjOriginalId, List<NaturalLanguageStringStructure> target) {
+        addTranslationsNLSS(ObjectType.VEHICLE_JOURNEY, datasetId, vjOriginalId, FIELD_NAME_SERVICE_JOURNEY_NAME, target);
     }
 
-    protected void addTranslationsNLSS(ObjectType objectType, String datasetId, @Nullable String originalId,
-                                       @Nullable String fieldValue, String fieldName,
+    protected void addTranslationsNLSS(ObjectType objectType, String datasetId, String originalId,
+                                       String fieldName,
                                        List<NaturalLanguageStringStructure> target) {
-        if (StringUtils.isBlank(originalId) && StringUtils.isBlank(fieldValue)) {
-            return;
-        }
-
-        // language -> translation; object_id translations are added last so they win over field_value ones for the same language
-        Map<String, TranslationService.TranslationDto> translationsByLanguage = new LinkedHashMap<>();
-
-        if (StringUtils.isNotBlank(fieldValue)) {
-            for (TranslationService.TranslationDto translation :
-                    translationService.getTranslationsByDatasetIdAndObjectTypeAndFieldValue(datasetId.toUpperCase(), objectType, fieldValue, fieldName)) {
-                translationsByLanguage.put(translation.language().toUpperCase(), translation);
-            }
-        }
-
-        if (StringUtils.isNotBlank(originalId)) {
-            for (TranslationService.TranslationDto translation :
-                    translationService.getTranslationsByDatasetIdAndObjectTypeAndOriginalId(datasetId.toUpperCase(), objectType, originalId, fieldName)) {
-                translationsByLanguage.put(translation.language().toUpperCase(), translation);
-            }
-        }
+        Map<String, TranslationService.TranslationDto> translationsByLanguage = getTranslationsByLanguage(objectType, datasetId, originalId, fieldName);
+        if (MapUtils.isEmpty(translationsByLanguage)) return;
 
         for (TranslationService.TranslationDto translation : translationsByLanguage.values()) {
-            target.removeIf(existing -> translation.language().equalsIgnoreCase(existing.getLang()));
+            if (target.stream().anyMatch(existing -> translation.language().equalsIgnoreCase(existing.getLang()))) {
+                continue;
+            }
             NaturalLanguageStringStructure translatedName = new NaturalLanguageStringStructure();
-            translatedName.setLang(translation.language().toUpperCase());
+            translatedName.setLang(translation.language());
             translatedName.setValue(translation.value());
             target.add(translatedName);
         }
     }
 
-    protected void addTranslationNLPNSS(ObjectType objectType, String datasetId, @Nullable String originalId,
-                                        @Nullable String fieldValue, String fieldName,
-                                        List<NaturalLanguagePlaceNameStructure> target) {
-        if (StringUtils.isBlank(originalId) && StringUtils.isBlank(fieldValue)) {
-            return;
+    protected void addTranslationNLPNSS(ObjectType objectType, String datasetId, String originalId,
+                                        String fieldName, List<NaturalLanguagePlaceNameStructure> target) {
+        Map<String, TranslationService.TranslationDto> translationsByLanguage = getTranslationsByLanguage(objectType, datasetId, originalId, fieldName);
+        if (MapUtils.isEmpty(translationsByLanguage)) return;
+
+        for (TranslationService.TranslationDto translation : translationsByLanguage.values()) {
+            if (target.stream().anyMatch(existing -> translation.language().equalsIgnoreCase(existing.getLang()))) {
+                continue;
+            }
+            NaturalLanguagePlaceNameStructure translatedName = new NaturalLanguagePlaceNameStructure();
+            translatedName.setLang(translation.language());
+            translatedName.setValue(translation.value());
+            target.add(translatedName);
+        }
+    }
+
+    private Map<String, TranslationService.TranslationDto> getTranslationsByLanguage(ObjectType objectType, String datasetId, String originalId, String fieldName) {
+        if (StringUtils.isBlank(originalId)) {
+            return Map.of();
         }
 
         // language -> translation; object_id translations are added last so they win over field_value ones for the same language
         Map<String, TranslationService.TranslationDto> translationsByLanguage = new LinkedHashMap<>();
 
-        if (StringUtils.isNotBlank(fieldValue)) {
+        Optional<TranslationService.TranslationDto> defaultTranslation =
+                translationService.getDefaultTranslationsByDatasetIdAndObjectTypeAndOriginalId(datasetId, objectType,
+                        originalId, fieldName);
+
+        if (defaultTranslation.isPresent()) {
+            translationsByLanguage.put(defaultTranslation.get().language(), defaultTranslation.get());
             for (TranslationService.TranslationDto translation :
-                    translationService.getTranslationsByDatasetIdAndObjectTypeAndFieldValue(datasetId.toUpperCase(), objectType, fieldValue, fieldName)) {
-                translationsByLanguage.put(translation.language().toUpperCase(), translation);
+                    translationService.getTranslationsByDatasetIdAndObjectTypeAndFieldValue(datasetId.toUpperCase(),
+                            objectType, defaultTranslation.get().value(), fieldName)) {
+                translationsByLanguage.put(translation.language(), translation);
             }
         }
 
         if (StringUtils.isNotBlank(originalId)) {
             for (TranslationService.TranslationDto translation :
                     translationService.getTranslationsByDatasetIdAndObjectTypeAndOriginalId(datasetId.toUpperCase(), objectType, originalId, fieldName)) {
-                translationsByLanguage.put(translation.language().toUpperCase(), translation);
+                translationsByLanguage.put(translation.language(), translation);
             }
         }
-
-        for (TranslationService.TranslationDto translation : translationsByLanguage.values()) {
-            target.removeIf(existing -> translation.language().equalsIgnoreCase(existing.getLang()));
-            NaturalLanguagePlaceNameStructure translatedName = new NaturalLanguagePlaceNameStructure();
-            translatedName.setLang(translation.language().toUpperCase());
-            translatedName.setValue(translation.value());
-            target.add(translatedName);
-        }
+        return translationsByLanguage;
     }
 }
