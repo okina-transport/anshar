@@ -32,6 +32,7 @@ public class KafkaConfig {
     private final String gmInTopic;
     private final String gmOutTopic;
     private final String trInSubscriptionMonitoringTopic;
+    private final int reconnectBackoffMaxMs;
 
     public KafkaConfig(@Value("${anshar.kafka.enabled:false}") boolean kafkaEnabled,
                        @Value("${anshar.send.siri.to.kafka:false}") boolean sendSiriToKafka,
@@ -47,7 +48,8 @@ public class KafkaConfig {
                        @Value("${anshar.kafka.topic.out.sx:}") String sxOutTopic,
                        @Value("${anshar.kafka.topic.th.tr.consistency:th_tr_consistency}") String thTrConsistencyTopic,
                        @Value("${anshar.kafka.topic.tr.in.subscription.data:tr_in_subscription_data}") String trInSubscriptionDataTopic,
-                       @Value("${anshar.kafka.topic.tr.in.subscription.monitoring:tr_in_subscription_monitoring}") String trInSubscriptionMonitoringTopic) {
+                       @Value("${anshar.kafka.topic.tr.in.subscription.monitoring:tr_in_subscription_monitoring}") String trInSubscriptionMonitoringTopic,
+                       @Value("${anshar.kafka.reconnectBackoffMaxMs:10000}") int reconnectBackoffMaxMs) {
         this.kafkaEnabled = kafkaEnabled;
         this.sxInTopic = sxInTopic;
         this.sendSiriSmInToKafka = sendSiriToKafka && StringUtils.isNotBlank(smInTopic);
@@ -68,6 +70,7 @@ public class KafkaConfig {
         this.thTrConsistencyTopic = thTrConsistencyTopic;
         this.trInSubscriptionDataTopic = trInSubscriptionDataTopic;
         this.trInSubscriptionMonitoringTopic = trInSubscriptionMonitoringTopic;
+        this.reconnectBackoffMaxMs = reconnectBackoffMaxMs;
     }
 
     public String createCamelConsumerConfig(String topicName) {
@@ -82,6 +85,7 @@ public class KafkaConfig {
         String config = "kafka:" + topicName;
         config += "?brokers=" + brokers;
         config += "&clientId=" + clientId;
+        config += "&reconnectBackoffMaxMs=" + reconnectBackoffMaxMs;
         return config;
     }
 
