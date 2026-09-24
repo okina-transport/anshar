@@ -31,6 +31,7 @@ public class IncomingSiriParameters {
     private boolean soapTransformation;
     private boolean useOriginalId;
     private String version;
+    private String sxPublishingActionName;
     private CompressionFormat compressionFormat;
     private boolean gmSIVSicAQuay;
     private boolean theoreticalDataExcluded;
