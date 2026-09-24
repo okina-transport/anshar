@@ -34,6 +34,10 @@ public class TranslationService {
     private static final Map<String, Map<ObjectType, Map<String, List<TranslationDto>>>> TRANSLATIONS_BY_FIELD_VALUE_CACHE =
             new ConcurrentHashMap<>();
 
+    // datasetid -> ObjectType -> objectid -> default translations only
+    private static final Map<String, Map<String, TranslationDto>> TRANSLATIONS_DEFAULT_BY_OBJECT_ID_CACHE =
+            new ConcurrentHashMap<>();
+
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
     private final BlobStoreService blobStoreService;
@@ -92,11 +96,12 @@ public class TranslationService {
 
         Map<String, Map<ObjectType, Map<String, List<TranslationDto>>>> updatedCache = new HashMap<>();
         Map<String, Map<ObjectType, Map<String, List<TranslationDto>>>> updatedFieldValueCache = new HashMap<>();
+        Map<String, Map<String, TranslationDto>> updatedDefaultByObjectIdCache = new HashMap<>();
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(blob, StandardCharsets.UTF_8));
              CSVParser csvParser = CSVFormat.RFC4180
                      .builder()
-                     .setHeader("dataset", "object_type", "object_id", "field_name", "field_value", "language", "translation")
+                     .setHeader("dataset", "object_type", "object_id", "field_name", "field_value", "language", "translation", "is_default")
                      .setSkipHeaderRecord(true)
                      .get()
                      .parse(reader)) {
@@ -104,7 +109,7 @@ public class TranslationService {
             Iterable<CSVRecord> records = csvParser.getRecords();
             int count = 0;
             for (CSVRecord csvRecord : records) {
-                if (addTranslation(updatedCache, updatedFieldValueCache, csvRecord)) {
+                if (addTranslation(updatedCache, updatedFieldValueCache, updatedDefaultByObjectIdCache, csvRecord)) {
                     count++;
                 }
             }
@@ -121,10 +126,14 @@ public class TranslationService {
 
         TRANSLATIONS_BY_FIELD_VALUE_CACHE.clear();
         TRANSLATIONS_BY_FIELD_VALUE_CACHE.putAll(updatedFieldValueCache);
+
+        TRANSLATIONS_DEFAULT_BY_OBJECT_ID_CACHE.clear();
+        TRANSLATIONS_DEFAULT_BY_OBJECT_ID_CACHE.putAll(updatedDefaultByObjectIdCache);
     }
 
     private boolean addTranslation(Map<String, Map<ObjectType, Map<String, List<TranslationDto>>>> cache,
                                    Map<String, Map<ObjectType, Map<String, List<TranslationDto>>>> fieldValueCache,
+                                   Map<String, Map<String, TranslationDto>> defaultByObjectIdCache,
                                    CSVRecord csvRecord) {
         String dataset = csvRecord.get("dataset");
         String objectTypeStr = csvRecord.get("object_type");
@@ -133,6 +142,7 @@ public class TranslationService {
         String fieldValue = csvRecord.get("field_value");
         String language = csvRecord.get("language");
         String translation = csvRecord.get("translation");
+        String isDefault = csvRecord.isSet("is_default") ? csvRecord.get("is_default") : "0";
 
         if (StringUtils.isBlank(dataset)
                 || (StringUtils.isBlank(objectId) && StringUtils.isBlank(fieldValue))
@@ -150,9 +160,15 @@ public class TranslationService {
             return false;
         }
 
+        boolean isDefaultTranslation = "1".equals(StringUtils.trim(isDefault));
         TranslationDto translationDto = new TranslationDto(language.toUpperCase(), translation, fieldName);
 
-        if (StringUtils.isNotBlank(fieldValue)) {
+        if (isDefaultTranslation) {
+            String defaultCacheKey = buildDefaultCacheKey(objectType, objectId, fieldName);
+            defaultByObjectIdCache
+                    .computeIfAbsent(dataset.toUpperCase(), key -> new HashMap<>())
+                    .put(defaultCacheKey, translationDto);
+        } else if (StringUtils.isNotBlank(fieldValue)) {
             fieldValueCache
                     .computeIfAbsent(dataset.toUpperCase(), key -> new EnumMap<>(ObjectType.class))
                     .computeIfAbsent(objectType, key -> new HashMap<>())
@@ -187,6 +203,18 @@ public class TranslationService {
         }
     }
 
+    public Optional<TranslationDto> getDefaultTranslationsByDatasetIdAndObjectTypeAndOriginalId(String datasetid,
+                                                                                                ObjectType type,
+                                                                                                String originalId,
+                                                                                                String fieldName) {
+        synchronized (this) {
+            String defaultCacheKey = buildDefaultCacheKey(type, originalId, fieldName);
+            return Optional.ofNullable(TRANSLATIONS_DEFAULT_BY_OBJECT_ID_CACHE
+                    .getOrDefault(datasetid, Map.of())
+                    .getOrDefault(defaultCacheKey, null));
+        }
+    }
+
     public List<TranslationDto> getTranslationsByDatasetIdAndObjectTypeAndFieldValue(String datasetid, ObjectType type,
                                                                                      String fieldValue, String fieldName) {
         synchronized (this) {
@@ -202,6 +230,10 @@ public class TranslationService {
         return translations.stream()
                 .filter(t -> Strings.CS.equals(t.fieldName(), fieldName))
                 .toList();
+    }
+
+    private String buildDefaultCacheKey(ObjectType type, String originalId, String fieldName) {
+        return String.format("%s##%s##%s", type, originalId, fieldName);
     }
 
     public record TranslationDto(String language, String value, String fieldName) {
