@@ -294,6 +294,59 @@ class SM_handle_stop_place_request extends SpringBootBaseTest {
     }
 
 
+    /**
+     * Request on quay 1 with LineRef filter.
+     * Should return only visits of the requested line
+     */
+    @Test
+    void test_request_on_quay1_with_lineRef_filter() {
+        initStopPlaceMapper();
+        initIdProcessingParameters();
+
+        monitoredStopVisits.add(DATASET, createMonitoredStopVisitWithLine("HBLI1", "LINE:TARGET", "ID-TARGET"));
+        monitoredStopVisits.add(DATASET, createMonitoredStopVisitWithLine("HBLI1", "LINE:OTHER", "ID-OTHER"));
+
+        IncomingSiriParameters incomingSiriParameters = new IncomingSiriParameters();
+        incomingSiriParameters.setOutboundIdMappingPolicy(OutboundIdMappingPolicy.DEFAULT);
+        incomingSiriParameters.setDatasetId(DATASET);
+        incomingSiriParameters.setClientTrackingName("clientTrackingName");
+        incomingSiriParameters.setMaxSize(1500000);
+
+        // Without LineRef : both visits returned
+        ServiceRequest requestWithoutLine = createStopMonitoringRequestForRef("MOBIITI:Quay:1");
+        Siri res = stopMonitoringOutbound.getStopMonitoringServiceDelivery(new StopMonitoringServiceDeliveryParameter(requestWithoutLine, incomingSiriParameters));
+        Assertions.assertEquals(2, extractMonitoredStopVisits(res).size());
+
+        // With LineRef : only target line returned
+        ServiceRequest requestWithLine = createStopMonitoringRequestForRef("MOBIITI:Quay:1", "LINE:TARGET");
+        res = stopMonitoringOutbound.getStopMonitoringServiceDelivery(new StopMonitoringServiceDeliveryParameter(requestWithLine, incomingSiriParameters));
+        List<MonitoredStopVisit> extractedMonitoredStopVisit = extractMonitoredStopVisits(res);
+        Assertions.assertEquals(1, extractedMonitoredStopVisit.size());
+        Assertions.assertEquals("ID-TARGET", extractedMonitoredStopVisit.get(0).getItemIdentifier());
+        Assertions.assertEquals("LINE:TARGET", extractedMonitoredStopVisit.get(0).getMonitoredVehicleJourney().getLineRef().getValue());
+
+        // With unknown LineRef : no visit returned
+        ServiceRequest requestWithUnknownLine = createStopMonitoringRequestForRef("MOBIITI:Quay:1", "LINE:UNKNOWN");
+        res = stopMonitoringOutbound.getStopMonitoringServiceDelivery(new StopMonitoringServiceDeliveryParameter(requestWithUnknownLine, incomingSiriParameters));
+        Assertions.assertTrue(extractMonitoredStopVisits(res).isEmpty());
+    }
+
+    private MonitoredStopVisit createMonitoredStopVisitWithLine(String stopReference, String lineRefValue, String itemIdentifier) {
+        MonitoredStopVisit element = TestUtils.createMonitoredStopVisit(ZonedDateTime.now().plusMinutes(1), stopReference, itemIdentifier);
+        LineRef lineRef = new LineRef();
+        lineRef.setValue(lineRefValue);
+        element.getMonitoredVehicleJourney().setLineRef(lineRef);
+        return element;
+    }
+
+    private ServiceRequest createStopMonitoringRequestForRef(String ref, String lineRefValue) {
+        ServiceRequest serviceRequest = createStopMonitoringRequestForRef(ref);
+        LineRef lineRef = new LineRef();
+        lineRef.setValue(lineRefValue);
+        serviceRequest.getStopMonitoringRequests().get(0).setLineRef(lineRef);
+        return serviceRequest;
+    }
+
     private ServiceRequest createStopMonitoringRequestForRef(String ref) {
         ServiceRequest serviceRequest1 = new ServiceRequest();
         RequestorRef reqRef = new RequestorRef();

@@ -7,6 +7,7 @@ import no.rutebanken.anshar.data.MonitoredStopVisits;
 import no.rutebanken.anshar.data.util.CustomStringUtils;
 import no.rutebanken.anshar.routes.mapping.OutputExternalIdsService;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
+import no.rutebanken.anshar.routes.outbound.SiriHelper;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.helpers.StopMonitoringServiceDeliveryParameter;
@@ -46,6 +47,9 @@ public class StopMonitoringOutbound {
 
     @Autowired
     SubscriptionConfig subscriptionConfig;
+
+    @Autowired
+    SiriHelper siriHelper;
 
     /**
      * Converts netex Ids (MOBIITI:Quay:xxx) to imported Ids prefixed by producer (PROD123:Quay:xxx)
@@ -92,6 +96,29 @@ public class StopMonitoringOutbound {
             }
         }
         return filterMap.get(MonitoringRefStructure.class) != null ? filterMap.get(MonitoringRefStructure.class) : new HashSet<>();
+    }
+
+    public Set<String> getLineRefs(ServiceRequest serviceRequest) {
+        Set<String> lineRefs = new HashSet<>();
+        for (StopMonitoringRequestStructure req : serviceRequest.getStopMonitoringRequests()) {
+            LineRef lineRef = req.getLineRef();
+            if (lineRef != null && StringUtils.isNotEmpty(lineRef.getValue())) {
+                lineRefs.add(lineRef.getValue());
+            }
+        }
+        return lineRefs;
+    }
+
+    /**
+     * Converts requested line ids to the ids stored in cache for the dataset.
+     * If lines can't be reverted (no idProcessingParameters defined), raw ids are kept
+     */
+    public Set<String> getSearchedLineIds(Set<String> requestedLineRefs, OutboundIdMappingPolicy outboundIdMappingPolicy, String datasetId) {
+        if (requestedLineRefs.isEmpty()) {
+            return new HashSet<>();
+        }
+        Set<String> revertedLines = siriHelper.revertLineIds(outboundIdMappingPolicy, requestedLineRefs, datasetId);
+        return revertedLines.isEmpty() ? requestedLineRefs : revertedLines;
     }
 
     public Set<String> getImportedIds(OutboundIdMappingPolicy outboundIdMappingPolicy, Set<String> originalMonitoringRefs, String datasetId) {
@@ -152,7 +179,7 @@ public class StopMonitoringOutbound {
             serviceResponse = getServiceResponseStopVisits(datasetId, importedIds, stopMonitoringServiceDeliveryParameter);
         }
 
-        logger.debug("Asking for service delivery for requestorId={}, monitoringRef={}, clientTrackingName={}, datasetId={}", requestorRef, String.join("|", originalMonitoringRefs), clientTrackingName, datasetId);
+        logger.debug("Asking for service delivery for requestorId={}, monitoringRef={}, lineRef={}, clientTrackingName={}, datasetId={}", requestorRef, String.join("|", originalMonitoringRefs), String.join("|", getLineRefs(serviceRequest)), clientTrackingName, datasetId);
 
         return serviceResponse;
     }
@@ -171,8 +198,9 @@ public class StopMonitoringOutbound {
         if (parameter.serviceRequest().getRequestorRef() != null) {
             requestorRef = parameter.serviceRequest().getRequestorRef().getValue();
         }
+        Set<String> searchedLineIds = getSearchedLineIds(getLineRefs(parameter.serviceRequest()), incomingSiriParameters.getOutboundIdMappingPolicy(), datasetId);
         List<ValueAdapter> valueAdapters = MappingAdapterPresets.getOutboundAdapters(SiriDataType.STOP_MONITORING, incomingSiriParameters.getOutboundIdMappingPolicy(), idMap);
-        Siri serviceResponse = monitoredStopVisits.createServiceDelivery(requestorRef, datasetId, incomingSiriParameters.getMaxSize(), revertedMonitoringRefs, messageId, incomingSiriParameters.isTheoreticalDataExcluded(), -1);
+        Siri serviceResponse = monitoredStopVisits.createServiceDelivery(requestorRef, datasetId, incomingSiriParameters.getMaxSize(), revertedMonitoringRefs, searchedLineIds, messageId, incomingSiriParameters.isTheoreticalDataExcluded(), -1);
         return SiriValueTransformer.transform(serviceResponse, valueAdapters, false, false);
     }
 
