@@ -653,7 +653,7 @@ public class RestRouteBuilder extends RouteBuilder {
         }
 
 
-        if (MediaType.APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE)) |
+        if (MediaType.APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE)) ||
                 MediaType.APPLICATION_JSON.equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
             p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
             out.setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
@@ -662,10 +662,10 @@ public class RestRouteBuilder extends RouteBuilder {
             } else {
                 org.rutebanken.siri20.util.SiriJson.toJson(siri20Response, out.getOutputStream());
             }
-        } else if ("application/x-protobuf".equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE)) |
+        } else if ("application/x-protobuf".equals(p.getIn().getHeader(HttpHeaders.CONTENT_TYPE)) ||
                 "application/x-protobuf".equals(p.getIn().getHeader(HttpHeaders.ACCEPT))) {
             try {
-                final byte[] bytes = SiriMapper.mapToPbf(siri20Response).toByteArray();
+                final byte[] bytes = SiriMapper.mapToPbf(response).toByteArray();
                 p.getMessage().setHeader(HttpHeaders.CONTENT_TYPE, "application/x-protobuf");
                 out.setHeader(HttpHeaders.CONTENT_TYPE, "application/x-protobuf");
                 p.getMessage().setHeader(HttpHeaders.CONTENT_LENGTH, "" + bytes.length);
