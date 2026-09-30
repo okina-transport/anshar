@@ -4,7 +4,6 @@ import no.rutebanken.anshar.data.collections.KryoSerializer;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
 import org.entur.protobuf.mapper.SiriMapper;
-import org.entur.siri21.util.SiriXml;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.Siri;
 import uk.org.siri.www.siri.SiriType;
@@ -68,10 +67,7 @@ public class ProtobufConverterRoute extends RouteBuilder {
                 .bean(SiriMapper.class, "mapToJaxb")
                 .process(p -> {
                     final Siri body = p.getIn().getBody(Siri.class);
-                    //Map protobuf to SIRI 2.0, create XML, parse 2.0 XML to SIRI 2.1 object
-                    uk.org.siri.siri21.Siri siri = org.entur.siri21.util.SiriXml.parseXml(SiriXml.toXml(body));
-
-                    p.getOut().setBody(siri);
+                    p.getOut().setBody(body);
                     p.getOut().setHeaders(p.getIn().getHeaders());
                 })
         ;

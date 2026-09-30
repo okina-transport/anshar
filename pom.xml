@@ -396,7 +396,7 @@
         <dependency>
             <groupId>org.entur</groupId>
             <artifactId>siri-java-model</artifactId>
-            <version>2.0.2-mobi-iti</version>
+            <version>2.0.3-mobi-iti</version>
             <exclusions>
                 <exclusion>
                     <groupId>javax.xml.bind</groupId>
@@ -408,7 +408,7 @@
         <dependency>
             <groupId>org.entur</groupId>
             <artifactId>siri-protobuf-mapper</artifactId>
-            <version>1.0.5-mobi-iti</version>
+            <version>1.0.6-mobi-iti</version>
         </dependency>
 
         <!--        Geotools needed for calculating speed between stops-->
@@ -494,6 +494,7 @@
         <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
+            <version>4.36.2</version>
         </dependency>
 
         <dependency>
