@@ -115,9 +115,13 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
     private static final String SEND_EXTERNAL_SUBSCRIPTION_THREADS = METRICS_PREFIX + "send.external.subscription.threads";
     private static final String EXTERNAL_SIRI_SM_THREADS = METRICS_PREFIX + "external.sm.threads";
     private static final String THREAD_COUNT = METRICS_PREFIX + "thread.count";
-    private static final String SERVER_SUBCRIPTION_MANAGER_THREAD_POOL = METRICS_PREFIX + "server.subscription.manager.thread.pool";
     private static final String HAZELCAST_SCHEDULED_FUTURES = METRICS_PREFIX + "hazelcast.scheduledFutures";
     private static final String SCHEDULED_ALREADY_SENT_SM_COUNT = METRICS_PREFIX + "scheduled.already.sent.sm.count";
+    private static final String OUTBOUND_NOTIFICATIONS_SENT = METRICS_PREFIX + "outbound.notifications.sent";
+    private static final String OUTBOUND_FULL_DELIVERY_REQUESTS_RECEIVED = METRICS_PREFIX + "outbound.full.delivery.requests.received";
+    private static final String OUTBOUND_FULL_DELIVERY_RESPONSES_SENT = METRICS_PREFIX + "outbound.full.delivery.responses.sent";
+    private static final String OUTBOUND_INITIAL_DELIVERIES_SENT = METRICS_PREFIX + "outbound.initial.deliveries.sent";
+    private static final String INBOUND_TO_OUTBOUND_QUEUE_TIME = METRICS_PREFIX + "data.inbound.to.outbound.queue.time";
 
     final Map<String, Integer> nbOfOutboundPushByRequestor = new HashMap<>();
     final Map<String, Long> totalPushTimeByRequestor = new HashMap<>();
@@ -265,6 +269,45 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
         counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType));
         counterTags.add(new ImmutableTag(DATASET_TAG_NAME, datasetId));
         counter(INBOUND_TO_OUTBOUND_TIME_ERRORS, counterTags).increment(1);
+    }
+
+    public void registerOutboundNotificationSent(SiriDataType dataType, String datasetId) {
+        registerOutboundQueueMessage(OUTBOUND_NOTIFICATIONS_SENT, dataType, datasetId);
+    }
+
+    /**
+     * Record elapsed time between data reception (inboundTime) and its push to the outbound notifications queue
+     *
+     * @param dataType    Siri type
+     * @param datasetId   id of the dataset
+     * @param inboundTime reception timestamp (ms)
+     */
+    public void recordInboundToOutboundQueueTime(SiriDataType dataType, String datasetId, long inboundTime) {
+        DistributionSummary.builder(INBOUND_TO_OUTBOUND_QUEUE_TIME)
+                .description("Temps entre entrée et envoi dans la file outbound (ms)")
+                .tags(DATATYPE_TAG_NAME, dataType != null ? dataType.name() : "emptyDataType",
+                        DATASET_TAG_NAME, StringUtils.isEmpty(datasetId) ? "emptyDatasetId" : datasetId)
+                .register(this)
+                .record(System.currentTimeMillis() - inboundTime);
+    }
+
+    public void registerOutboundFullDeliveryRequestReceived(SiriDataType dataType, String datasetId) {
+        registerOutboundQueueMessage(OUTBOUND_FULL_DELIVERY_REQUESTS_RECEIVED, dataType, datasetId);
+    }
+
+    public void registerOutboundFullDeliveryResponseSent(SiriDataType dataType, String datasetId) {
+        registerOutboundQueueMessage(OUTBOUND_FULL_DELIVERY_RESPONSES_SENT, dataType, datasetId);
+    }
+
+    public void registerOutboundInitialDeliverySent(SiriDataType dataType, String datasetId) {
+        registerOutboundQueueMessage(OUTBOUND_INITIAL_DELIVERIES_SENT, dataType, datasetId);
+    }
+
+    private void registerOutboundQueueMessage(String metricName, SiriDataType dataType, String datasetId) {
+        List<Tag> counterTags = new ArrayList<>();
+        counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType != null ? dataType.name() : "emptyDataType"));
+        counterTags.add(new ImmutableTag(DATASET_TAG_NAME, StringUtils.isEmpty(datasetId) ? "emptyDatasetId" : datasetId));
+        counter(metricName, counterTags).increment(1);
     }
 
     public void registerAdaptIncreaseTime() {
