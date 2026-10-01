@@ -4,7 +4,6 @@ import com.hazelcast.map.IMap;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.routes.BaseRouteBuilder;
-import no.rutebanken.anshar.routes.outbound.CamelRouteManager;
 import no.rutebanken.anshar.routes.outbound.OutboundSubscriptionSetup;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.siri.handlers.outbound.StopMonitoringOutbound;
@@ -41,9 +40,6 @@ public class ScheduledNotificationSender extends BaseRouteBuilder {
 
     @Autowired
     ExtendedHazelcastService hazelcastService;
-
-    @Autowired
-    private CamelRouteManager camelRouteManager;
 
     @Value("${outbound.scheduled.already.sent.cache.time.hours:5}")
     private int scheduledAlreadySentCacheTimeHours;
@@ -95,7 +91,7 @@ public class ScheduledNotificationSender extends BaseRouteBuilder {
             Siri delivery = entry.getValue();
             delivery = SiriUtils.filterStopMonitoringOnPreviewInterval(delivery, outboundSubscriptionSetup);
             delivery = filterAlreadySendMessages(delivery, outboundSubscriptionSetup);
-            camelRouteManager.pushSiriData(entry.getKey(), delivery, outboundSubscriptionSetup, true, null);
+            outboundSubscriptionManager.pushToOutboundInitialDeliveriesQueue(entry.getKey(), delivery, outboundSubscriptionSetup);
         }
     }
 
