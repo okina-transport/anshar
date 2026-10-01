@@ -161,7 +161,7 @@ public class TranslationService {
         }
 
         boolean isDefaultTranslation = "1".equals(StringUtils.trim(isDefault));
-        TranslationDto translationDto = new TranslationDto(language.toUpperCase(), translation, fieldName);
+        TranslationDto translationDto = new TranslationDto(language, translation, fieldName);
 
         if (isDefaultTranslation) {
             String defaultCacheKey = buildDefaultCacheKey(objectType, objectId, fieldName);
