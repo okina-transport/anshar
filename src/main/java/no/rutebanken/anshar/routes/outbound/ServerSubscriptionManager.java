@@ -104,7 +104,7 @@ public class ServerSubscriptionManager {
     @Produce("direct:send.sx.to.external.consumer")
     protected ProducerTemplate sendSXToExternalConsumer;
     @Produce
-    protected ProducerTemplate initialDeliveryRequestProducer;
+    protected ProducerTemplate producerTemplate;
     @Autowired
     IMap<String, OutboundSubscriptionSetup> subscriptions;
     Map<String, List<OutboundSubscriptionSetup>> outboundSubscriptionsByMonitoringRef = new HashMap<>();
@@ -137,6 +137,8 @@ public class ServerSubscriptionManager {
     private SiriHelper siriHelper;
     @Autowired
     private KafkaConfig kafkaConfig;
+    @Value("${anshar.outbound.notifications.queue:activemq:queue:outbound.notifications.to.send?jmsMessageType=Object&timeToLive=600000}")
+    private String outboundNotificationsQueue;
     @Value("${outbound.change.before.update.cache.hours:5}")
     private int outboundChangeBeforeUpdateCacheTTL;
     @Value("${server.subscription.manager.threads:20}")
@@ -618,12 +620,12 @@ public class ServerSubscriptionManager {
 
 
         switch (subscription.getSubscriptionType()) {
-            case STOP_MONITORING -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliverySMQueueName, null, headers);
-            case VEHICLE_MONITORING -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryVMQueueName, null, headers);
-            case SITUATION_EXCHANGE -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliverySXQueueName, null, headers);
-            case ESTIMATED_TIMETABLE -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryETQueueName, null, headers);
-            case GENERAL_MESSAGE -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryGMQueueName, null, headers);
-            case FACILITY_MONITORING -> initialDeliveryRequestProducer.sendBodyAndHeaders(initialDeliveryFMQueueName, null, headers);
+            case STOP_MONITORING -> producerTemplate.sendBodyAndHeaders(initialDeliverySMQueueName, null, headers);
+            case VEHICLE_MONITORING -> producerTemplate.sendBodyAndHeaders(initialDeliveryVMQueueName, null, headers);
+            case SITUATION_EXCHANGE -> producerTemplate.sendBodyAndHeaders(initialDeliverySXQueueName, null, headers);
+            case ESTIMATED_TIMETABLE -> producerTemplate.sendBodyAndHeaders(initialDeliveryETQueueName, null, headers);
+            case GENERAL_MESSAGE -> producerTemplate.sendBodyAndHeaders(initialDeliveryGMQueueName, null, headers);
+            case FACILITY_MONITORING -> producerTemplate.sendBodyAndHeaders(initialDeliveryFMQueueName, null, headers);
         }
     }
 
@@ -1193,6 +1195,9 @@ public class ServerSubscriptionManager {
     public void pushUpdatesAsync(SiriDataType datatype, List updates, String datasetId, Long inboundTime) {
         final String breadcrumbId = MDC.get("camel.breadcrumbId");
 
+        if (updates != null && !updates.isEmpty()) {
+            pushToOutboundNotificationsQueue(datatype, updates, datasetId, breadcrumbId, inboundTime);
+        }
 
         switch (datatype) {
             case ESTIMATED_TIMETABLE:
@@ -1216,6 +1221,21 @@ public class ServerSubscriptionManager {
             default:
                 // Ignore
                 break;
+        }
+    }
+
+    private void pushToOutboundNotificationsQueue(SiriDataType datatype, List updates, String datasetId, String breadcrumbId, Long inboundTime) {
+        try {
+            Map<String, Object> headers = new HashMap<>();
+            headers.put("datatype", datatype.name());
+            headers.put(DATASET_ID_HEADER_NAME, datasetId);
+            headers.put("breadcrumbId", breadcrumbId);
+            if (inboundTime != null) {
+                headers.put("inboundTime", inboundTime);
+            }
+            producerTemplate.sendBodyAndHeaders(outboundNotificationsQueue, new ArrayList<>(updates), headers);
+        } catch (Exception e) {
+            logger.error("Unable to push {} updates for dataset {} to outbound notifications queue", datatype, datasetId, e);
         }
     }
 
