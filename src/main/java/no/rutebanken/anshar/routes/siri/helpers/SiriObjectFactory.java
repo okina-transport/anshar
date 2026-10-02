@@ -1044,6 +1044,81 @@ public class SiriObjectFactory {
         return siri;
     }
 
+    public Siri createUnsupportedVersionResponse(String requestedVersion, String requestName) {
+        Siri siri = createSiriObject(SiriHelper.FALLBACK_SIRI_VERSION);
+        ServiceDelivery serviceDelivery = createServiceDelivery(null);
+        serviceDelivery.setStatus(false);
+
+        CapabilityNotSupportedErrorStructure capabilityNotSupportedError = new CapabilityNotSupportedErrorStructure();
+        capabilityNotSupportedError.setErrorText("Unsupported version: " + requestedVersion);
+        capabilityNotSupportedError.setCapabilityRef(requestedVersion);
+
+        AbstractServiceDeliveryStructure delivery = createDeliveryForRequest(requestName, serviceDelivery);
+        if (delivery == null) {
+            ServiceDeliveryStructure.ErrorCondition errorCondition = new ServiceDeliveryStructure.ErrorCondition();
+            errorCondition.setCapabilityNotSupportedError(capabilityNotSupportedError);
+            serviceDelivery.setErrorCondition(errorCondition);
+        } else {
+            ServiceDeliveryErrorConditionElement errorCondition = new ServiceDeliveryErrorConditionElement();
+            errorCondition.setCapabilityNotSupportedError(capabilityNotSupportedError);
+
+            delivery.setResponseTimestamp(serviceDelivery.getResponseTimestamp());
+            delivery.setRequestMessageRef(serviceDelivery.getRequestMessageRef());
+            delivery.setStatus(false);
+            delivery.setErrorCondition(errorCondition);
+        }
+
+        siri.setServiceDelivery(serviceDelivery);
+        return siri;
+    }
+
+    private static AbstractServiceDeliveryStructure createDeliveryForRequest(String requestName, ServiceDelivery serviceDelivery) {
+        if (requestName == null) {
+            return null;
+        }
+        switch (requestName) {
+            case "SituationExchangeRequest" -> {
+                SituationExchangeDeliveryStructure delivery = new SituationExchangeDeliveryStructure();
+                delivery.setVersion(SiriHelper.FALLBACK_SIRI_VERSION);
+                serviceDelivery.getSituationExchangeDeliveries().add(delivery);
+                return delivery;
+            }
+            case "EstimatedTimetableRequest" -> {
+                EstimatedTimetableDeliveryStructure delivery = new EstimatedTimetableDeliveryStructure();
+                delivery.setVersion(SiriHelper.FALLBACK_SIRI_VERSION);
+                serviceDelivery.getEstimatedTimetableDeliveries().add(delivery);
+                return delivery;
+            }
+            case "VehicleMonitoringRequest" -> {
+                VehicleMonitoringDeliveryStructure delivery = new VehicleMonitoringDeliveryStructure();
+                delivery.setVersion(SiriHelper.FALLBACK_SIRI_VERSION);
+                serviceDelivery.getVehicleMonitoringDeliveries().add(delivery);
+                return delivery;
+            }
+            case "StopMonitoringRequest" -> {
+                StopMonitoringDeliveryStructure delivery = new StopMonitoringDeliveryStructure();
+                delivery.setVersion(SiriHelper.FALLBACK_SIRI_VERSION);
+                serviceDelivery.getStopMonitoringDeliveries().add(delivery);
+                return delivery;
+            }
+            case "GeneralMessageRequest" -> {
+                GeneralMessageDeliveryStructure delivery = new GeneralMessageDeliveryStructure();
+                delivery.setVersion(SiriHelper.FALLBACK_SIRI_VERSION);
+                serviceDelivery.getGeneralMessageDeliveries().add(delivery);
+                return delivery;
+            }
+            case "FacilityMonitoringRequest" -> {
+                FacilityMonitoringDeliveryStructure delivery = new FacilityMonitoringDeliveryStructure();
+                delivery.setVersion(SiriHelper.FALLBACK_SIRI_VERSION);
+                serviceDelivery.getFacilityMonitoringDeliveries().add(delivery);
+                return delivery;
+            }
+            default -> {
+                return null;
+            }
+        }
+    }
+
     public Siri createSubscriptionResponse(String subscriptionRef, boolean status, String errorText, String version) {
         Siri siri = createSiriObject(version);
         SubscriptionResponseStructure response = new SubscriptionResponseStructure();

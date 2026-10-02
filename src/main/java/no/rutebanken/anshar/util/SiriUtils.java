@@ -77,6 +77,19 @@ public class SiriUtils {
         throw new IllegalArgumentException("Unsupported version: " + version);
     }
 
+    public static void setDeliveryVersion(Siri siri, String version) {
+        if (siri == null || siri.getServiceDelivery() == null) {
+            return;
+        }
+        ServiceDelivery delivery = siri.getServiceDelivery();
+        delivery.getEstimatedTimetableDeliveries().forEach(d -> d.setVersion(version));
+        delivery.getVehicleMonitoringDeliveries().forEach(d -> d.setVersion(version));
+        delivery.getSituationExchangeDeliveries().forEach(d -> d.setVersion(version));
+        delivery.getStopMonitoringDeliveries().forEach(d -> d.setVersion(version));
+        delivery.getGeneralMessageDeliveries().forEach(d -> d.setVersion(version));
+        delivery.getFacilityMonitoringDeliveries().forEach(d -> d.setVersion(version));
+    }
+
     public static boolean hasDataOfType(Siri siri, SiriDataType type) {
 
         if (siri == null || siri.getServiceDelivery() == null) {

@@ -512,7 +512,7 @@
                         <xsl:if test="local-name()='StopMonitoringDelivery'">
                             <xsl:element name="siri:StopMonitoringDelivery">
                                 <xsl:attribute name="version">
-                                    <xsl:value-of select="/siri:Siri/@version"/>
+                                    <xsl:value-of select="(@version, /siri:Siri/@version)[1]"/>
                                 </xsl:attribute>
                                 <xsl:element name="siri:ResponseTimestamp">
                                     <xsl:value-of select="../siri:ResponseTimestamp"/>
@@ -520,6 +520,9 @@
                                 <xsl:element name="siri:RequestMessageRef">
                                     <xsl:value-of select="../siri:RequestMessageRef"/>
                                 </xsl:element>
+                                <xsl:if test="./siri:ErrorCondition">
+                                    <xsl:copy-of select="./siri:Status | ./siri:ErrorCondition" copy-namespaces="no"/>
+                                </xsl:if>
                                 <xsl:copy-of select="./siri:MonitoredStopVisit" copy-namespaces="no">
                                 </xsl:copy-of>
                             </xsl:element>
@@ -557,7 +560,7 @@
                         <xsl:if test="local-name()='EstimatedTimetableDelivery'">
                             <xsl:element name="siri:EstimatedTimetableDelivery">
                                 <xsl:attribute name="version">
-                                    <xsl:value-of select="/siri:Siri/@version"/>
+                                    <xsl:value-of select="(@version, /siri:Siri/@version)[1]"/>
                                 </xsl:attribute>
                                 <xsl:element name="siri:ResponseTimestamp">
                                     <xsl:value-of select="../siri:ResponseTimestamp"/>
@@ -603,7 +606,7 @@
                         <xsl:if test="local-name()='GeneralMessageDelivery'">
                             <xsl:element name="siri:GeneralMessageDelivery">
                                 <xsl:attribute name="version">
-                                    <xsl:value-of select="/siri:Siri/@version"/>
+                                    <xsl:value-of select="(@version, /siri:Siri/@version)[1]"/>
                                 </xsl:attribute>
                                 <xsl:element name="siri:ResponseTimestamp">
                                     <xsl:value-of select="../siri:ResponseTimestamp"/>
@@ -650,7 +653,7 @@
                         <xsl:if test="local-name()='FacilityMonitoringDelivery'">
                             <xsl:element name="siri:FacilityMonitoringDelivery">
                                 <xsl:attribute name="version">
-                                    <xsl:value-of select="/siri:Siri/@version"/>
+                                    <xsl:value-of select="(@version, /siri:Siri/@version)[1]"/>
                                 </xsl:attribute>
                                 <xsl:element name="siri:ResponseTimestamp">
                                     <xsl:value-of select="../siri:ResponseTimestamp"/>
@@ -698,7 +701,7 @@
                         <xsl:if test="local-name()='VehicleMonitoringDelivery'">
                             <xsl:element name="siri:VehicleMonitoringDelivery">
                                 <xsl:attribute name="version">
-                                    <xsl:value-of select="/siri:Siri/@version"/>
+                                    <xsl:value-of select="(@version, /siri:Siri/@version)[1]"/>
                                 </xsl:attribute>
                                 <xsl:element name="siri:ResponseTimestamp">
                                     <xsl:value-of select="../siri:ResponseTimestamp"/>
@@ -747,7 +750,7 @@
                         <xsl:if test="local-name()='SituationExchangeDelivery'">
                             <xsl:element name="siri:SituationExchangeDelivery">
                                 <xsl:attribute name="version">
-                                    <xsl:value-of select="/siri:Siri/@version"/>
+                                    <xsl:value-of select="(@version, /siri:Siri/@version)[1]"/>
                                 </xsl:attribute>
                                 <xsl:element name="siri:ResponseTimestamp">
                                     <xsl:value-of select="../siri:ResponseTimestamp"/>
@@ -755,6 +758,9 @@
                                 <xsl:element name="siri:RequestMessageRef">
                                     <xsl:value-of select="../siri:RequestMessageRef"/>
                                 </xsl:element>
+                                <xsl:if test="./siri:ErrorCondition">
+                                    <xsl:copy-of select="./siri:Status | ./siri:ErrorCondition" copy-namespaces="no"/>
+                                </xsl:if>
                                 <xsl:copy-of select="./siri:Situations" copy-namespaces="no">
                                 </xsl:copy-of>
                             </xsl:element>
