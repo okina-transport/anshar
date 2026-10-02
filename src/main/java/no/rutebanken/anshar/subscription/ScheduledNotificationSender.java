@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.subscription;
 
+import com.hazelcast.map.IMap;
 import no.rutebanken.anshar.config.AnsharConfiguration;
 import no.rutebanken.anshar.data.collections.ExtendedHazelcastService;
 import no.rutebanken.anshar.routes.BaseRouteBuilder;
@@ -15,10 +16,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import uk.org.siri.siri21.*;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -113,57 +111,30 @@ public class ScheduledNotificationSender extends BaseRouteBuilder {
             return delivery;
         }
 
+        IMap<String, String> alreadySent = hazelcastService.getScheduledAlreadySentSM();
+        String subId = outboundSubscriptionSetup.getSubscriptionId();
         List<StopMonitoringDeliveryStructure> smDeliveries = delivery.getServiceDelivery().getStopMonitoringDeliveries();
         for (StopMonitoringDeliveryStructure smDelivery : smDeliveries) {
-            List<MonitoredStopVisit> filteredStopVisits = new ArrayList<>();
-
-            for (MonitoredStopVisit monitoredStopVisit : smDelivery.getMonitoredStopVisits()) {
-                if (shouldBeKept(monitoredStopVisit, outboundSubscriptionSetup)) {
-                    filteredStopVisits.add(monitoredStopVisit);
-                    recordSentNotification(monitoredStopVisit, outboundSubscriptionSetup);
+            Map<String, MonitoredStopVisit> byKey = new LinkedHashMap<>();
+            for (MonitoredStopVisit msv : smDelivery.getMonitoredStopVisits()) {
+                MonitoredVehicleJourneyStructure vj = msv.getMonitoredVehicleJourney();
+                if (vj != null && vj.getMonitoredCall() != null) {
+                    byKey.put(subId + "|" + buildNotificationId(msv), msv);
                 }
             }
+            Set<String> sent = alreadySent.getAll(byKey.keySet()).keySet();
+            List<MonitoredStopVisit> kept = new ArrayList<>();
+            byKey.forEach((k, msv) -> {
+                if (!sent.contains(k)) {
+                    kept.add(msv);
+                    alreadySent.setAsync(k, "1", scheduledAlreadySentCacheTimeHours, TimeUnit.HOURS);
+                }
+            });
             smDelivery.getMonitoredStopVisits().clear();
-            smDelivery.getMonitoredStopVisits().addAll(filteredStopVisits);
+            smDelivery.getMonitoredStopVisits().addAll(kept);
         }
+
         return delivery;
-    }
-
-
-    /**
-     * Save the notification id into a cache to list notifications that have been already sent
-     *
-     * @param stopVisit                 the notifications that must be recorded
-     * @param outboundSubscriptionSetup the outbound subscription for which the notification must be recorded
-     */
-    public void recordSentNotification(MonitoredStopVisit stopVisit, OutboundSubscriptionSetup outboundSubscriptionSetup) {
-        MonitoredVehicleJourneyStructure vehicleJourney = stopVisit.getMonitoredVehicleJourney();
-        if (vehicleJourney == null || vehicleJourney.getMonitoredCall() == null) {
-            return;
-        }
-
-        String notifId = buildNotificationId(stopVisit);
-        hazelcastService.getScheduledAlreadySentSM(outboundSubscriptionSetup.getSubscriptionId()).put(notifId, "1", scheduledAlreadySentCacheTimeHours, TimeUnit.HOURS);
-    }
-
-    /**
-     * Determines if the notification should be sent to external client or not.
-     * Using itemIdentifier + expected times (if an expectedTime changes, notification must be kept)
-     *
-     * @param stopVisit                 notification that must be checked
-     * @param outboundSubscriptionSetup outbound client subscription that contains parameters
-     * @return true : notification must be kept and sent to client
-     * false : notification must be rejected (it has already been sent before)
-     */
-    private boolean shouldBeKept(MonitoredStopVisit stopVisit, OutboundSubscriptionSetup outboundSubscriptionSetup) {
-        MonitoredVehicleJourneyStructure vehicleJourney = stopVisit.getMonitoredVehicleJourney();
-
-        if (vehicleJourney == null || vehicleJourney.getMonitoredCall() == null) {
-            return false;
-        }
-
-        String notifId = buildNotificationId(stopVisit);
-        return !hazelcastService.getScheduledAlreadySentSM(outboundSubscriptionSetup.getSubscriptionId()).containsKey(notifId);
     }
 
 
