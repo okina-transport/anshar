@@ -35,6 +35,7 @@ import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import no.rutebanken.anshar.util.CompressionUtil;
+import no.rutebanken.anshar.util.SiriRequestVersion;
 import no.rutebanken.anshar.util.SiriUtils;
 import org.apache.camel.*;
 import org.apache.camel.http.common.HttpMethods;
@@ -53,7 +54,6 @@ import uk.org.siri.siri21.Siri;
 import javax.ws.rs.core.MediaType;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Optional;
@@ -117,6 +117,8 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
     private SubscriptionManager subscriptionManager;
     @Autowired
     private SiriHandler handler;
+    @Autowired
+    private SiriObjectFactory siriObjectFactory;
     @Autowired
     private AnsharConfiguration configuration;
     @Value("${default.use.original.id:false}")
@@ -484,8 +486,20 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                     String gmPublishingActionName = p.getIn().getHeader(PARAM_GM_PUBLISHING_ACTION_NAME, String.class);
                     String sxPublishingActionName = p.getIn().getHeader(PARAM_SX_PUBLISHING_ACTION_NAME, String.class);
 
+                    byte[] requestData = msg.getBody(byte[].class);
+
+                    // Empty when the request is not a ServiceRequest (CheckStatus, discovery...)
+                    Optional<SiriRequestVersion> requestVersion = SiriRequestVersion.fromServiceRequest(requestData);
+                    if (requestVersion.isPresent() && !requestVersion.get().isSupported()) {
+                        logger.info("Unsupported SIRI version requested: {}", requestVersion.get().requested());
+                        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                        CustomSiriXml.toXml(siriObjectFactory.createUnsupportedVersionResponse(requestVersion.get().requested(), requestVersion.get().requestName()), null, byteArrayOutputStream);
+                        p.getOut().setBody(byteArrayOutputStream.toString());
+                        return;
+                    }
+
                     Set<String> datasets = SiriUtils.generateDatasetListFromHeader(datasetId);
-                    Pair<Siri, String> siriWithVersion = handleIncomingSiriWithMultipleDatasets(msg,datasets, excludedIdList, useOriginalId, useAltId, maxSize, clientTrackingName, isGmSIVSicAQuay, gmPublishingActionName, sxPublishingActionName);
+                    Pair<Siri, String> siriWithVersion = handleIncomingSiriWithMultipleDatasets(requestData, datasets, excludedIdList, useOriginalId, useAltId, maxSize, clientTrackingName, isGmSIVSicAQuay, gmPublishingActionName, sxPublishingActionName);
 
                     Siri response = siriWithVersion.getLeft();
                     String version = siriWithVersion.getRight();
@@ -496,7 +510,16 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
 
                         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
-                        if (!"2.1".equals(version)){
+                        if (requestVersion.isPresent()) {
+                            SiriRequestVersion requested = requestVersion.get();
+                            if (requested.isSiri21()) {
+                                response.setVersion(requested.siriVersion());
+                                SiriUtils.setDeliveryVersion(response, requested.requested());
+                                CustomSiriXml.toXml(response, null, byteArrayOutputStream);
+                            } else {
+                                CustomSiriXml.toXml(downgradeSiriVersion(response, requested.siriVersion(), requested.requested()), null, byteArrayOutputStream);
+                            }
+                        } else if (!"2.1".equals(version)){
                             uk.org.siri.siri20.Siri siri20response = downgradeSiriVersion(response, version);
                             CustomSiriXml.toXml(siri20response, null, byteArrayOutputStream);
                         }else{
@@ -691,16 +714,13 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
             .end();
     }
 
-    private Pair<Siri,String> handleIncomingSiriWithMultipleDatasets(Message msg, Set<String> datasets, List<String> excludedIdList, String useOriginalId, String useAltId, int maxSize, String clientTrackingName, boolean isGmSIVSicAQuay, String gmPublishingActionName, String sxPublishingActionName) throws UnmarshalException, IOException {
-        InputStream originalStream = msg.getBody(InputStream.class);
+    private Pair<Siri,String> handleIncomingSiriWithMultipleDatasets(byte[] data, Set<String> datasets, List<String> excludedIdList, String useOriginalId, String useAltId, int maxSize, String clientTrackingName, boolean isGmSIVSicAQuay, String gmPublishingActionName, String sxPublishingActionName) throws UnmarshalException {
         if (datasets.isEmpty()) {
-            return handleIncomingSiriForSingleDataset(originalStream, null, excludedIdList, useOriginalId, useAltId, maxSize, clientTrackingName, isGmSIVSicAQuay, gmPublishingActionName, sxPublishingActionName);
+            return handleIncomingSiriForSingleDataset(new ByteArrayInputStream(data), null, excludedIdList, useOriginalId, useAltId, maxSize, clientTrackingName, isGmSIVSicAQuay, gmPublishingActionName, sxPublishingActionName);
         }
 
         Pair<Siri,String> globalResults = null;
 
-
-        byte[] data = originalStream.readAllBytes();
         for (String dataset : datasets) {
             Pair<Siri,String> datasetResult = handleIncomingSiriForSingleDataset(new ByteArrayInputStream(data), dataset, excludedIdList, useOriginalId, useAltId, maxSize, clientTrackingName, isGmSIVSicAQuay, gmPublishingActionName, sxPublishingActionName);
             globalResults = mergeDatasetResult(globalResults, datasetResult);
