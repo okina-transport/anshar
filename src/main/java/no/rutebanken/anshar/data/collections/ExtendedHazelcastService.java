@@ -167,8 +167,9 @@ public class ExtendedHazelcastService extends HazelCastService {
         return hazelcast.getMap("anshar.sm." + dataset);
     }
 
-    public IMap<String, String> getScheduledAlreadySentSM(String subscriptionId) {
-        return hazelcast.getMap("anshar.scheduled.already.sent.sm." + subscriptionId);
+    @Bean
+    public IMap<String, String> getScheduledAlreadySentSM() {
+        return hazelcast.getMap("anshar.scheduled.already.sent.sm");
     }
 
     @Bean

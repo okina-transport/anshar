@@ -16,6 +16,7 @@
 package no.rutebanken.anshar.metrics;
 
 import com.google.common.collect.Sets;
+import com.hazelcast.map.IMap;
 import com.hazelcast.replicatedmap.ReplicatedMap;
 import com.hazelcast.scheduledexecutor.IScheduledExecutorService;
 import io.micrometer.core.instrument.DistributionSummary;
@@ -44,6 +45,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import uk.org.siri.siri21.*;
 
@@ -51,6 +53,7 @@ import javax.annotation.PreDestroy;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import static no.rutebanken.anshar.routes.HttpParameter.INTERNAL_SIRI_DATA_TYPE;
@@ -114,6 +117,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
     private static final String THREAD_COUNT = METRICS_PREFIX + "thread.count";
     private static final String SERVER_SUBCRIPTION_MANAGER_THREAD_POOL = METRICS_PREFIX + "server.subscription.manager.thread.pool";
     private static final String HAZELCAST_SCHEDULED_FUTURES = METRICS_PREFIX + "hazelcast.scheduledFutures";
+    private static final String SCHEDULED_ALREADY_SENT_SM_COUNT = METRICS_PREFIX + "scheduled.already.sent.sm.count";
 
     final Map<String, Integer> nbOfOutboundPushByRequestor = new HashMap<>();
     final Map<String, Long> totalPushTimeByRequestor = new HashMap<>();
@@ -128,18 +132,35 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
     protected final SubscriptionManager manager;
     private final ServerSubscriptionManager serverSubscriptionManager;
     private final IScheduledExecutorService sharedScheduler;
+    private final IMap<String, String> scheduledAlreadySentSM;
+    private final AtomicLong scheduledAlreadySentSMCount = new AtomicLong();
 
     private CamelContext camelContext;
     // datasetId -> DistributionSummary
     private final Map<String, DistributionSummary> inboundToOutboudTimes = new HashMap<>();
 
 
-    public PrometheusMetricsService(SubscriptionManager manager, ServerSubscriptionManager serverSubscriptionManager, @Qualifier("getSharedScheduler") IScheduledExecutorService sharedScheduler) {
+    public PrometheusMetricsService(SubscriptionManager manager, ServerSubscriptionManager serverSubscriptionManager, @Qualifier("getSharedScheduler") IScheduledExecutorService sharedScheduler,
+                                    @Qualifier("getScheduledAlreadySentSM") IMap<String, String> scheduledAlreadySentSM) {
         super(PrometheusConfig.DEFAULT);
         this.manager = manager;
         this.serverSubscriptionManager = serverSubscriptionManager;
         this.sharedScheduler = sharedScheduler;
+        this.scheduledAlreadySentSM = scheduledAlreadySentSM;
         counter(STARTUP_TIME).increment((double) System.currentTimeMillis() / 1000);
+        gauge(SCHEDULED_ALREADY_SENT_SM_COUNT, scheduledAlreadySentSMCount);
+    }
+
+    /**
+     * Counts keys of the scheduled already-sent SM map asynchronously, to avoid querying Hazelcast on each scrape
+     */
+    @Scheduled(fixedRateString = "${anshar.metrics.scheduled.already.sent.sm.rate:PT15M}")
+    public void updateScheduledAlreadySentSMCount() {
+        try {
+            scheduledAlreadySentSMCount.set(scheduledAlreadySentSM.size());
+        } catch (Exception e) {
+            logger.warn("Unable to count keys of scheduled already sent SM map", e);
+        }
     }
 
     @PreDestroy

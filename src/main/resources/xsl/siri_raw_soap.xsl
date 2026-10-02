@@ -276,6 +276,9 @@
                                                 <xsl:copy-of select="./siri:VehicleMonitoringRequest"
                                                              copy-namespaces="no"/>
 
+                                                <xsl:copy-of select="./siri:IncrementalUpdates"
+                                                             copy-namespaces="no"/>
+
                                                 <xsl:copy-of select="./siri:ChangeBeforeUpdates"
                                                              copy-namespaces="no"/>
 
@@ -330,6 +333,9 @@
                                                              copy-namespaces="no"/>
 
                                                 <xsl:copy-of select="./siri:StopMonitoringRequest"
+                                                             copy-namespaces="no"/>
+
+                                                <xsl:copy-of select="./siri:IncrementalUpdates"
                                                              copy-namespaces="no"/>
 
                                                 <xsl:copy-of select="./siri:ChangeBeforeUpdates"
