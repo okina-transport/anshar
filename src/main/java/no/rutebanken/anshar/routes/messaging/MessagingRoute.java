@@ -16,6 +16,7 @@ import no.rutebanken.anshar.routes.RestRouteBuilder;
 import no.rutebanken.anshar.routes.admin.AdminRouteHelper;
 import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
 import no.rutebanken.anshar.routes.external.ExternalDataHandler;
+import no.rutebanken.anshar.routes.outbound.FullDeliveryHandler;
 import no.rutebanken.anshar.routes.outbound.ServerSubscriptionManager;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.transformer.SiriJsonTransformer;
@@ -113,6 +114,12 @@ public class MessagingRoute extends RestRouteBuilder {
 
     @Value("${external.sx.consumer.queue}")
     private String externalSxQueue;
+
+    @Value("${anshar.outbound.notification.ask.full.delivery.queue.name}")
+    private String askFullDeliveryQueueName;
+
+    @Autowired
+    private FullDeliveryHandler fullDeliveryHandler;
 
 
     @Override
@@ -567,6 +574,10 @@ public class MessagingRoute extends RestRouteBuilder {
                     .bean(outboundSubscriptionManager, "generateAndSendInitialDelivery(${header.subscriptionId}, ${header.outboundIdMappingPolicy})")
                     .routeId("initial.delivery.facility.monitoring");
         }
+
+        from(askFullDeliveryQueueName)
+                .bean(fullDeliveryHandler, "handleFullDeliveryRequest")
+                .routeId("outbound.notification.ask.full.delivery");
 
         from("direct:process.queue.default.async")
                 .wireTap("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
