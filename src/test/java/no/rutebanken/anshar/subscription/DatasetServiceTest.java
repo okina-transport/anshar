@@ -1,5 +1,6 @@
 package no.rutebanken.anshar.subscription;
 
+import com.hazelcast.replicatedmap.ReplicatedMap;
 import no.rutebanken.anshar.api.SiriApi;
 import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.config.IdProcessingParameters;
@@ -22,6 +23,9 @@ class DatasetServiceTest {
     @Mock
     SubscriptionConfig subscriptionConfig;
 
+    @Mock
+    ReplicatedMap<String, SubscriptionSetup> subscriptions;
+
     @InjectMocks
     private DatasetService tested;
 
@@ -32,6 +36,7 @@ class DatasetServiceTest {
         Mockito.when(subscriptionConfig.getDiscoverySubscriptions()).thenReturn(List.of());
         Mockito.when(subscriptionConfig.getSiriApis()).thenReturn(List.of());
         Mockito.when(subscriptionConfig.getIdProcessingParameters()).thenReturn(List.of());
+        Mockito.when(subscriptions.values()).thenReturn(List.of());
 
         // Act
         var result = tested.getAllDatasetIds();
@@ -59,6 +64,7 @@ class DatasetServiceTest {
         Mockito.when(subscriptionConfig.getDiscoverySubscriptions()).thenReturn(List.of(ds1, ds2));
         Mockito.when(subscriptionConfig.getSiriApis()).thenReturn(List.of(siriApi));
         Mockito.when(subscriptionConfig.getIdProcessingParameters()).thenReturn(List.of(ipp));
+        Mockito.when(subscriptions.values()).thenReturn(List.of());
 
         // Act
         var result = tested.getAllDatasetIds();
@@ -66,6 +72,24 @@ class DatasetServiceTest {
         // Assert
         assertEquals(List.of("A", "B", "C", "D", "E", "F"), result.stream().sorted().collect(Collectors.toList()), "should return all datasetIds");
 
+    }
+
+    @Test
+    void test_getAllDatasetIds_whenGtfsRtSubscriptionOnly_returnsItsDatasetId() {
+
+        SubscriptionSetup gtfsRtSubscription = new SubscriptionSetup();
+        gtfsRtSubscription.setDatasetId("GTFS_RT_ONLY");
+        SubscriptionSetup subscriptionWithoutDataset = new SubscriptionSetup();
+        Mockito.when(subscriptionConfig.getSubscriptions()).thenReturn(List.of());
+        Mockito.when(subscriptionConfig.getDiscoverySubscriptions()).thenReturn(List.of());
+        Mockito.when(subscriptionConfig.getSiriApis()).thenReturn(List.of());
+        Mockito.when(subscriptionConfig.getIdProcessingParameters()).thenReturn(List.of());
+        Mockito.when(subscriptions.values()).thenReturn(List.of(gtfsRtSubscription, subscriptionWithoutDataset));
+
+        var result = tested.getAllDatasetIds();
+
+        assertEquals(List.of("GTFS_RT_ONLY"), List.copyOf(result), "should return datasetId of subscriptions created on data reception");
+        assertTrue(tested.exists("GTFS_RT_ONLY"), "dataset should exist");
     }
 
 }
