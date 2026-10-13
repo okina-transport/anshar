@@ -25,6 +25,7 @@ import org.apache.camel.model.RouteDefinition;
 import org.apache.camel.spi.RoutePolicy;
 import org.apache.camel.spring.SpringRouteBuilder;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -39,7 +40,14 @@ public abstract class BaseRouteBuilder extends SpringRouteBuilder {
     protected final SubscriptionManager subscriptionManager;
 
     protected final AnsharConfiguration config;
-    private boolean isRunning;
+    /**
+     * A request flagged as running for longer than this many heartbeat intervals is considered stuck.
+     */
+    private static final int STUCK_REQUEST_HEARTBEAT_FACTOR = 5;
+    private static final Duration DEFAULT_STUCK_REQUEST_DURATION = Duration.ofMinutes(5);
+
+    private volatile boolean isRunning;
+    private volatile long requestStartedAt;
 
     protected BaseRouteBuilder(AnsharConfiguration config, SubscriptionManager subscriptionManager) {
         this.subscriptionManager = subscriptionManager;
@@ -94,6 +102,7 @@ public abstract class BaseRouteBuilder extends SpringRouteBuilder {
     }
 
     protected void requestStarted() {
+        this.requestStartedAt = System.currentTimeMillis();
         this.isRunning = true;
     }
 
@@ -105,6 +114,11 @@ public abstract class BaseRouteBuilder extends SpringRouteBuilder {
             log.debug("isLeader {}, isRunning {}: {}", isLeader, isRunning, subscriptionSetup);
 
             if (config.isCurrentInstanceLeader() && isLeader && subscriptionSetup.isActive()) {
+                if (isRunning && isRequestStuck(subscriptionSetup)) {
+                    log.warn("Previous request running for {} ms - considered stuck, resetting running flag for {}",
+                            System.currentTimeMillis() - requestStartedAt, subscriptionSetup);
+                    requestFinished();
+                }
                 if (isRunning) {
                     log.debug("Previous request still running - ignore polling-trigger for {}", subscriptionSetup);
                     return false;
@@ -114,6 +128,14 @@ public abstract class BaseRouteBuilder extends SpringRouteBuilder {
             }
         }
         return false;
+    }
+
+    private boolean isRequestStuck(SubscriptionSetup subscriptionSetup) {
+        Duration heartbeatInterval = subscriptionSetup.getHeartbeatInterval();
+        long maxDurationMillis = heartbeatInterval != null
+                ? heartbeatInterval.toMillis() * STUCK_REQUEST_HEARTBEAT_FACTOR
+                : DEFAULT_STUCK_REQUEST_DURATION.toMillis();
+        return System.currentTimeMillis() - requestStartedAt > maxDurationMillis;
     }
 
     protected boolean isLeader(String routeId) {
