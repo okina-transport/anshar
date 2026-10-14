@@ -89,7 +89,7 @@ public abstract class SiriSubscriptionRouteBuilder extends BaseRouteBuilder {
             timeout = 30000;
         }
 
-        return "?httpClient.responseTimeout=" + timeout + "&httpClient.connectTimeout=" + timeout;
+        return "?httpClient.responseTimeout=" + timeout + "&httpClient.connectTimeout=" + timeout + "&httpClient.connectionRequestTimeout=" + timeout;
     }
 
     protected Processor addCustomHeaders() {
