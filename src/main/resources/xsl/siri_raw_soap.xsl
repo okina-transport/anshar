@@ -60,7 +60,8 @@
                         <xsl:copy-of select="./siri:MessageIdentifier" copy-namespaces="no">
                         </xsl:copy-of>
                     </Request>
-
+                    <RequestExtension>
+                    </RequestExtension>
                 </wsdl:StopPointsDiscovery>
             </soapenv:Body>
         </soapenv:Envelope>
@@ -80,7 +81,8 @@
                         <xsl:copy-of select="./siri:MessageIdentifier" copy-namespaces="no">
                         </xsl:copy-of>
                     </Request>
-
+                    <RequestExtension>
+                    </RequestExtension>
                 </wsdl:LinesDiscovery>
             </soapenv:Body>
         </soapenv:Envelope>
