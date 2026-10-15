@@ -11,6 +11,7 @@ import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.component.http.HttpMethods;
+import org.apache.camel.http.base.HttpOperationFailedException;
 import org.apache.commons.collections4.MapUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Component;
 import uk.org.siri.siri21.*;
 
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -35,6 +37,7 @@ public class DiscoverySubscriptionsRouteBuilder extends BaseRouteBuilder {
     private static final Logger logger = LoggerFactory.getLogger(DiscoverySubscriptionsRouteBuilder.class);
     public static final String SEND_DISCOVERY_REQUEST_PREPROCESS_ROUTE = "direct:send.discovery.request.preprocess";
     public static final String SEND_DISCOVERY_REQUEST_ROUTE = "direct:send.discovery.request";
+    private static final String DISCOVERY_REQUEST_BODY_PROPERTY = "discoveryRequestBody";
 
     private final AnsharConfiguration configuration;
 
@@ -91,7 +94,20 @@ public class DiscoverySubscriptionsRouteBuilder extends BaseRouteBuilder {
         from(SEND_DISCOVERY_REQUEST_ROUTE)
                 .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
                 .to(SEND_DISCOVERY_REQUEST_PREPROCESS_ROUTE)
+                .convertBodyTo(String.class)
+                .setProperty(DISCOVERY_REQUEST_BODY_PROPERTY, body())
+                .doTry()
                 .toD("${header.endpointUrl}")
+                .doCatch(Exception.class)
+                .process(e -> {
+                    Exception ex = e.getProperty(Exchange.EXCEPTION_CAUGHT, Exception.class);
+                    String responseBody = ex instanceof HttpOperationFailedException httpEx ? httpEx.getResponseBody() : null;
+                    logger.error("Error while sending discovery request to {}: {}\nRequest body:\n{}\nResponse body:\n{}",
+                            e.getIn().getHeader(ENDPOINT_URL_HEADER), ex == null ? null : ex.getMessage(),
+                            e.getProperty(DISCOVERY_REQUEST_BODY_PROPERTY, String.class), responseBody);
+                    throw ex;
+                })
+                .end()
                 .choice().when(simple("${in.body} != null"))
                 .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .choice()
@@ -133,9 +149,10 @@ public class DiscoverySubscriptionsRouteBuilder extends BaseRouteBuilder {
 
         if (SiriDataType.STOP_MONITORING.equals(discoverySubscription.getDiscoveryType())) {
             StopPointsRequest stopPointsRequest = new StopPointsRequest();
-            stopPointsRequest.setRequestTimestamp(ZonedDateTime.now());
+            stopPointsRequest.setRequestTimestamp(ZonedDateTime.now().truncatedTo(ChronoUnit.MILLIS));
             stopPointsRequest.setMessageIdentifier(messageId);
             stopPointsRequest.setRequestorRef(requestorRef);
+
             siriRequest.setStopPointsRequest(stopPointsRequest);
 
         }
@@ -144,7 +161,7 @@ public class DiscoverySubscriptionsRouteBuilder extends BaseRouteBuilder {
                 || SiriDataType.ESTIMATED_TIMETABLE.equals(discoverySubscription.getDiscoveryType())) {
             LinesDiscoveryRequestStructure lineRequest = new LinesDiscoveryRequestStructure();
             lineRequest.setMessageIdentifier(messageId);
-            lineRequest.setRequestTimestamp(ZonedDateTime.now());
+            lineRequest.setRequestTimestamp(ZonedDateTime.now().truncatedTo(ChronoUnit.MILLIS));
             lineRequest.setRequestorRef(requestorRef);
             siriRequest.setLinesRequest(lineRequest);
         }
