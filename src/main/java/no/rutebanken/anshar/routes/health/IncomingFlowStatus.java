@@ -9,5 +9,5 @@ public class IncomingFlowStatus {
     private long lastUpdate;
     private String dataset;
     private String url;
-    private IncomingFlowType type;
+    private String type;
 }

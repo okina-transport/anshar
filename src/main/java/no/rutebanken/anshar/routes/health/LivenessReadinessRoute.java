@@ -15,6 +15,9 @@
 
 package no.rutebanken.anshar.routes.health;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hazelcast.collection.ISet;
 import io.prometheus.jmx.JmxCollector;
 import io.prometheus.metrics.model.snapshots.MetricSnapshots;
@@ -54,11 +57,13 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.text.MessageFormat;
+import java.time.Duration;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static no.rutebanken.anshar.routes.health.IncomingFlowType.GTFS;
 import static no.rutebanken.anshar.routes.health.IncomingFlowType.SIRI;
 
 @Service
@@ -69,6 +74,8 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
     public static final String NOTIFY_TARGET_HEADER = "notify-target";
     private static final Logger logger = LoggerFactory.getLogger(LivenessReadinessRoute.class);
     public static final String HUBOT_NOTIFY_TARGET = "hubot";
+    private static final Duration GTFS_RT_RETRIEVER_TIMEOUT = Duration.ofSeconds(5);
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private final JmxCollector jmxCollector;
     private final ISet<String> unhealthySubscriptionsAlreadyNotified;
     private final HealthManager healthManager;
@@ -85,6 +92,7 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
     private final boolean jmxMetricsScrapingEnabled;
     private final LocalTime startMonitorTime;
     private final LocalTime endMonitorTime;
+    private final String gtfsRtRetrieverUrl;
 
     public LivenessReadinessRoute(@Value("${anshar.healthcheck.hubot.payload.source}") String hubotSource,
                                   @Value("${anshar.healthcheck.hubot.payload.icon.fail}") String hubotIconFail,
@@ -96,6 +104,7 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
                                   @Value("${anshar.healthcheck.hubot.end.time}") LocalTime endMonitorTime,
                                   @Value("${anshar.jmx.metrics.configuration.filepath:}") String pathToJmxMetricsConfiguration,
                                   @Value("${anshar.jmx.metrics.scraping.enabled:false}") boolean jmxMetricsScrapingEnabled,
+                                  @Value("${anshar.gtfsrt.retriever.url:}") String gtfsRtRetrieverUrl,
                                   @Qualifier("getUnhealthySubscriptionsSet") ISet<String> unhealthySubscriptionsAlreadyNotified,
                                   HealthManager healthManager,
                                   SubscriptionManager subscriptionManager,
@@ -111,6 +120,7 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
         this.startMonitorTime = startMonitorTime;
         this.endMonitorTime = endMonitorTime;
         this.jmxMetricsScrapingEnabled = jmxMetricsScrapingEnabled;
+        this.gtfsRtRetrieverUrl = StringUtils.removeEnd(StringUtils.trimToEmpty(gtfsRtRetrieverUrl), "/");
         this.unhealthySubscriptionsAlreadyNotified = unhealthySubscriptionsAlreadyNotified;
         this.healthManager = healthManager;
         this.subscriptionManager = subscriptionManager;
@@ -301,12 +311,45 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
         return dailyStatuses;
     }
 
-    private List<IncomingFlowStatus> getIncomingDataHealth() {
+    List<IncomingFlowStatus> getIncomingDataHealth() {
         List<IncomingFlowStatus> flowStatuses = new ArrayList<>();
+        if (StringUtils.isNotBlank(gtfsRtRetrieverUrl)) {
+            flowStatuses.addAll(getGtfsRtStatus());
+        }
         if (CollectionUtils.isNotEmpty(subscriptionConfig.getSubscriptions())) {
             flowStatuses.addAll(getSiriStatus(subscriptionConfig.getSubscriptions()));
         }
         return flowStatuses;
+    }
+
+    private List<IncomingFlowStatus> getGtfsRtStatus() {
+        String url = gtfsRtRetrieverUrl + "/incomingdatahealth";
+        try (HttpClient client = HttpClient.newBuilder().connectTimeout(GTFS_RT_RETRIEVER_TIMEOUT).build()) {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(GTFS_RT_RETRIEVER_TIMEOUT)
+                    .GET()
+                    .build();
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                throw new IOException("Unexpected HTTP status " + response.statusCode());
+            }
+            List<IncomingFlowStatus> gtfsRtStatuses = OBJECT_MAPPER.readValue(response.body(), new TypeReference<>() {});
+            gtfsRtStatuses.forEach(gtfsRtStatus -> gtfsRtStatus.setType(GTFS.getCode()));
+            return gtfsRtStatuses;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.error("Interrupted while retrieving GTFS-RT statuses from {}", url, e);
+        } catch (Exception e) {
+            logger.error("Unable to retrieve GTFS-RT statuses from {}", url, e);
+        }
+        IncomingFlowStatus retrieverStatus = new IncomingFlowStatus();
+        retrieverStatus.setId("gtfs-rt-retriever");
+        retrieverStatus.setStatus(FlowStatus.ERROR.name());
+        retrieverStatus.setLastUpdate(System.currentTimeMillis());
+        retrieverStatus.setUrl(url);
+        retrieverStatus.setType(GTFS.getCode());
+        return List.of(retrieverStatus);
     }
 
     private List<IncomingFlowStatus> getSiriStatus(List<SubscriptionSetup> subscriptions) {
@@ -336,7 +379,11 @@ public class LivenessReadinessRoute extends RestRouteBuilder {
         siriStatus.setLastUpdate(System.currentTimeMillis());
         siriStatus.setUrl(url);
         siriStatus.setDataset(subscriptionsByUrl.getFirst().getDatasetId());
-        siriStatus.setType(SIRI);
+        siriStatus.setType(subscriptionsByUrl.stream()
+                .map(subscription -> SIRI.getCode() + "-" + subscription.getSubscriptionType().getShortName())
+                .distinct()
+                .sorted()
+                .collect(Collectors.joining(",")));
 
         try {
             FlowStatus status = launchCheckStatus(subscriptionsByUrl.getFirst());

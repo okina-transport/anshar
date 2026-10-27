@@ -15,11 +15,20 @@
 
 package no.rutebanken.anshar.subscription;
 
+import lombok.Getter;
+
+@Getter
 public enum SiriDataType {
-    SITUATION_EXCHANGE,
-    VEHICLE_MONITORING,
-    ESTIMATED_TIMETABLE,
-    STOP_MONITORING,
-    GENERAL_MESSAGE,
-    FACILITY_MONITORING
+    SITUATION_EXCHANGE("SX"),
+    VEHICLE_MONITORING("VM"),
+    ESTIMATED_TIMETABLE("ET"),
+    STOP_MONITORING("SM"),
+    GENERAL_MESSAGE("GM"),
+    FACILITY_MONITORING("FM");
+
+    private final String shortName;
+
+    SiriDataType(String shortName) {
+        this.shortName = shortName;
+    }
 }
