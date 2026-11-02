@@ -17,6 +17,13 @@ public class StopMonitoringUtils {
     private StopMonitoringUtils() {
     }
 
+    public static boolean isMonitored(MonitoredStopVisit stopVisit) {
+        if (stopVisit.getMonitoredVehicleJourney() == null) {
+            return true;
+        }
+        return Boolean.TRUE.equals(stopVisit.getMonitoredVehicleJourney().isMonitored());
+    }
+
     public static Optional<String> getLineRef(MonitoredStopVisit stopVisit) {
         if (stopVisit.getMonitoredVehicleJourney() == null || stopVisit.getMonitoredVehicleJourney().getLineRef() == null) {
             return Optional.empty();

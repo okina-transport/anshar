@@ -34,7 +34,6 @@ import no.rutebanken.anshar.util.SiriUtils;
 import no.rutebanken.anshar.util.StopMonitoringUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
-import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.quartz.utils.counter.Counter;
 import org.quartz.utils.counter.CounterImpl;
@@ -250,7 +249,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
         }
 
         if (excludeTheoreticalData) {
-            finalResults = finalResults.stream().filter(stop -> BooleanUtils.isTrue(stop.getMonitoredVehicleJourney().isMonitored())).collect(Collectors.toList());
+            finalResults = finalResults.stream().filter(StopMonitoringUtils::isMonitored).collect(Collectors.toList());
         }
 
 
@@ -434,8 +433,8 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
                         // if new visit's monitored status != old visit's status => update must be made
                         // else, a look on checksum is made
                         updated =
-                                BooleanUtils.isTrue(existing.getMonitoredVehicleJourney().isMonitored())
-                                        != BooleanUtils.isTrue(monitoredStopVisit.getMonitoredVehicleJourney().isMonitored())
+                                StopMonitoringUtils.isMonitored(existing)
+                                        != StopMonitoringUtils.isMonitored(monitoredStopVisit)
                                         || !existingChecksum.equals(currentChecksum);
                     } else {
                         //Does not exist
@@ -590,7 +589,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
             return true;
         }
 
-        if (BooleanUtils.isTrue(oldData.getMonitoredVehicleJourney().isMonitored()) != BooleanUtils.isTrue(newData.getMonitoredVehicleJourney().isMonitored())) {
+        if (StopMonitoringUtils.isMonitored(oldData) != StopMonitoringUtils.isMonitored(newData)) {
             //monitored status has changed => new data must be kept
             return true;
         }
@@ -687,7 +686,7 @@ public class MonitoredStopVisits extends SiriRepository<MonitoredStopVisit> {
             int notMonitored = 0;
 
             for (MonitoredStopVisit currValue : hazelcastService.getMonitoredStopVisitsForDataset(datasetId).values()) {
-                if (BooleanUtils.isTrue(currValue.getMonitoredVehicleJourney().isMonitored())) {
+                if (StopMonitoringUtils.isMonitored(currValue)) {
                     monitored++;
                 } else {
                     notMonitored++;
