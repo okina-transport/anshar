@@ -330,7 +330,7 @@ public class SiriUtils {
             List<MonitoredStopVisit> filteredStopVisits = new ArrayList<>();
 
             for (MonitoredStopVisit monitoredStopVisit : smDelivery.getMonitoredStopVisits()) {
-                if (monitoredStopVisit.getMonitoredVehicleJourney().isMonitored() == null || monitoredStopVisit.getMonitoredVehicleJourney().isMonitored()) {
+                if (StopMonitoringUtils.isMonitored(monitoredStopVisit)) {
                     filteredStopVisits.add(monitoredStopVisit);
                 }
 
