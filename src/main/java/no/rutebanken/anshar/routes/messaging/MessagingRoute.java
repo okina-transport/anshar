@@ -421,6 +421,10 @@ public class MessagingRoute extends RestRouteBuilder {
                             }
 
                             SubscriptionSetup childSubscription =  discoveryFirstChild.get(subscriptionId);
+                            if (childSubscription == null) {
+                                p.getMessage().setBody(null);
+                                return;
+                            }
 
                             List<ValueAdapter> adapters = subscriptionManager.getValueAdaptersFromId(childSubscription, discoverySubscription.getMappingAdapterId());
                             Siri incoming = SiriValueTransformer.transform(originalInput, adapters, false, true);
