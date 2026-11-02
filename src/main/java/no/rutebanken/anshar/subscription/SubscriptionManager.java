@@ -813,7 +813,7 @@ public class SubscriptionManager implements CamelContextAware {
                 valueAdapters.addAll((List<ValueAdapter>) adapterClass.getMethod("getValueAdapters", SubscriptionSetup.class).invoke(adapterClass.newInstance(), subscriptionSetup));
 
             } catch (Exception e) {
-                throw new ServiceConfigurationError("Invalid mappingAdapterId for subscription " + subscriptionSetup, e);
+                throw new IllegalStateException("Invalid mappingAdapterId for subscription " + subscriptionSetup, e);
             }
         }
         return valueAdapters;
