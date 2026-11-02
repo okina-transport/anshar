@@ -159,6 +159,31 @@ class MonitoredStopVisitTranslatorTest {
     }
 
     @Test
+    void valueWithoutLang_getsDefaultLanguageAndIsNotDuplicated() {
+        NaturalLanguageStringStructure original = new NaturalLanguageStringStructure();
+        original.setValue("B2");
+
+        MonitoredStopVisit visit = createVisit("LINE1", null, null, null);
+        getVehicleJourney(visit).getPublishedLineNames().add(original);
+
+        when(translationService.getDefaultTranslationsByDatasetIdAndObjectTypeAndOriginalId(DATASET_ID, ObjectType.LINE, "LINE1", "publishedName"))
+                .thenReturn(Optional.of(new TranslationService.TranslationDto("fr", "Guillemins - Sart-Tilman", "publishedName")));
+        when(translationService.getTranslationsByDatasetIdAndObjectTypeAndFieldValue(DATASET_ID, ObjectType.LINE, "Guillemins - Sart-Tilman", "publishedName"))
+                .thenReturn(List.of(new TranslationService.TranslationDto("nl", "Guillemins - Sart-Tilman NL", "publishedName")));
+
+        translator.handleTranslations(visit, DATASET_ID);
+
+        List<NaturalLanguageStringStructure> lineNames = getVehicleJourney(visit).getPublishedLineNames();
+        assertThat(lineNames).hasSize(2);
+        assertThat(lineNames).filteredOn(name -> "fr".equals(name.getLang()))
+                .extracting(NaturalLanguageStringStructure::getValue)
+                .containsExactly("B2");
+        assertThat(lineNames).filteredOn(name -> "nl".equals(name.getLang()))
+                .extracting(NaturalLanguageStringStructure::getValue)
+                .containsExactly("Guillemins - Sart-Tilman NL");
+    }
+
+    @Test
     void withoutDefaultTranslation_fieldValueLookupIsNeverAttempted() {
         MonitoredStopVisit visit = createVisit("LINE1", null, null, null);
 
