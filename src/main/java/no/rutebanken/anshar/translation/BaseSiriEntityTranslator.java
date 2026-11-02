@@ -47,10 +47,17 @@ public abstract class BaseSiriEntityTranslator<T> implements SiriEntityTranslato
     protected void addTranslationsNLSS(ObjectType objectType, String datasetId, String originalId,
                                        String fieldName,
                                        List<NaturalLanguageStringStructure> target) {
-        Map<String, TranslationService.TranslationDto> translationsByLanguage = getTranslationsByLanguage(objectType, datasetId, originalId, fieldName);
-        if (MapUtils.isEmpty(translationsByLanguage)) return;
+        Translations translations = getTranslations(objectType, datasetId, originalId, fieldName);
+        if (MapUtils.isEmpty(translations.byLanguage())) return;
 
-        for (TranslationService.TranslationDto translation : translationsByLanguage.values()) {
+        // values without xml:lang are considered to be in the default language
+        if (StringUtils.isNotBlank(translations.defaultLanguage())) {
+            target.stream()
+                    .filter(existing -> StringUtils.isBlank(existing.getLang()))
+                    .forEach(existing -> existing.setLang(translations.defaultLanguage()));
+        }
+
+        for (TranslationService.TranslationDto translation : translations.byLanguage().values()) {
             if (target.stream().anyMatch(existing -> translation.language().equalsIgnoreCase(existing.getLang()))) {
                 continue;
             }
@@ -63,10 +70,17 @@ public abstract class BaseSiriEntityTranslator<T> implements SiriEntityTranslato
 
     protected void addTranslationNLPNSS(ObjectType objectType, String datasetId, String originalId,
                                         String fieldName, List<NaturalLanguagePlaceNameStructure> target) {
-        Map<String, TranslationService.TranslationDto> translationsByLanguage = getTranslationsByLanguage(objectType, datasetId, originalId, fieldName);
-        if (MapUtils.isEmpty(translationsByLanguage)) return;
+        Translations translations = getTranslations(objectType, datasetId, originalId, fieldName);
+        if (MapUtils.isEmpty(translations.byLanguage())) return;
 
-        for (TranslationService.TranslationDto translation : translationsByLanguage.values()) {
+        // values without xml:lang are considered to be in the default language
+        if (StringUtils.isNotBlank(translations.defaultLanguage())) {
+            target.stream()
+                    .filter(existing -> StringUtils.isBlank(existing.getLang()))
+                    .forEach(existing -> existing.setLang(translations.defaultLanguage()));
+        }
+
+        for (TranslationService.TranslationDto translation : translations.byLanguage().values()) {
             if (target.stream().anyMatch(existing -> translation.language().equalsIgnoreCase(existing.getLang()))) {
                 continue;
             }
@@ -77,9 +91,12 @@ public abstract class BaseSiriEntityTranslator<T> implements SiriEntityTranslato
         }
     }
 
-    private Map<String, TranslationService.TranslationDto> getTranslationsByLanguage(ObjectType objectType, String datasetId, String originalId, String fieldName) {
+    private record Translations(String defaultLanguage, Map<String, TranslationService.TranslationDto> byLanguage) {
+    }
+
+    private Translations getTranslations(ObjectType objectType, String datasetId, String originalId, String fieldName) {
         if (StringUtils.isBlank(originalId)) {
-            return Map.of();
+            return new Translations(null, Map.of());
         }
 
         // language -> translation; object_id translations are added last so they win over field_value ones for the same language
@@ -104,6 +121,7 @@ public abstract class BaseSiriEntityTranslator<T> implements SiriEntityTranslato
                 translationsByLanguage.put(translation.language(), translation);
             }
         }
-        return translationsByLanguage;
+        return new Translations(defaultTranslation.map(TranslationService.TranslationDto::language).orElse(null),
+                translationsByLanguage);
     }
 }
