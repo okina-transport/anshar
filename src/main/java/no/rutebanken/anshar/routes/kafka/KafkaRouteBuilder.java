@@ -28,11 +28,13 @@ public class KafkaRouteBuilder extends RouteBuilder {
     private final KafkaConfig kafkaConfig;
     private final OperatorService operatorService;
     private final KeepOnlyKafkaHeaders keepOnlyKafkaHeaders;
+    private final IdProcessingProcessor idProcessingProcessor;
 
-    public KafkaRouteBuilder(KafkaConfig kafkaConfig, OperatorService operatorService, KeepOnlyKafkaHeaders keepOnlyKafkaHeaders) {
+    public KafkaRouteBuilder(KafkaConfig kafkaConfig, OperatorService operatorService, KeepOnlyKafkaHeaders keepOnlyKafkaHeaders, IdProcessingProcessor idProcessingProcessor) {
         this.kafkaConfig = kafkaConfig;
         this.operatorService = operatorService;
         this.keepOnlyKafkaHeaders = keepOnlyKafkaHeaders;
+        this.idProcessingProcessor = idProcessingProcessor;
     }
 
     @Override
@@ -79,6 +81,7 @@ public class KafkaRouteBuilder extends RouteBuilder {
             from(SEND_SX_OUT_TO_KAFKA)
                     .log(LoggingLevel.INFO, "Sending SX message to KAFKA")
                     .process(keepOnlyKafkaHeaders)
+                    .process(idProcessingProcessor)
                     .process(e -> {
                         Set<String> operators = operatorService.getSxOperators(e.getIn().getBody(Siri.class));
                         byte[] operatorBytes = StringUtils.join(operators, ',').getBytes(StandardCharsets.UTF_8);
@@ -93,8 +96,9 @@ public class KafkaRouteBuilder extends RouteBuilder {
         }
         if (kafkaConfig.isKafkaEnabled() && kafkaConfig.isSendSiriSmOutToKafka()) {
             from(SEND_SM_OUT_TO_KAFKA)
-                    .marshal(SiriDataFormatHelper.getThreadSafeSiriJaxbDataformat())
                     .process(keepOnlyKafkaHeaders)
+                    .process(idProcessingProcessor)
+                    .marshal(SiriDataFormatHelper.getThreadSafeSiriJaxbDataformat())
                     .wireTap(kafkaConfig.createCamelProducerConfig(kafkaConfig.getSmOutTopic()));
         } else {
             from(SEND_SM_OUT_TO_KAFKA)
@@ -104,12 +108,13 @@ public class KafkaRouteBuilder extends RouteBuilder {
 
         if (kafkaConfig.isKafkaEnabled() && kafkaConfig.isSendSiriGmOutToKafka()) {
             from(SEND_GM_OUT_TO_KAFKA)
+                    .process(keepOnlyKafkaHeaders)
+                    .process(idProcessingProcessor)
                     .process(e -> {
                         Siri siri = e.getIn().getBody(Siri.class);
                         String stringMsg = CustomSiriXml.toXml(siri);
                         e.getIn().setBody(stringMsg);
                     })
-                    .process(keepOnlyKafkaHeaders)
                     .wireTap(kafkaConfig.createCamelProducerConfig(kafkaConfig.getGmOutTopic()));
         } else {
             from(SEND_GM_OUT_TO_KAFKA)
