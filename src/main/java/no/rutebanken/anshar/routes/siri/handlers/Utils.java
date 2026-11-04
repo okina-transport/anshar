@@ -3,8 +3,8 @@ package no.rutebanken.anshar.routes.siri.handlers;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.routes.mapping.OutputExternalIdsService;
+import no.rutebanken.anshar.routes.outbound.SiriHelper;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
-import org.apache.commons.collections4.CollectionUtils;
 import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -191,31 +191,20 @@ public class Utils {
 
     }
 
-    public Siri createInvalidDataReferencesSubscriptionResponse(List<String> unKnownStopMonitoring, Siri siri) {
-        Siri result = (siri != null) ? siri : new Siri();
-        SubscriptionResponseStructure response;
-        ResponseStatus status;
+    public Siri createInvalidDataReferencesSubscriptionResponse(List<String> unKnownStopMonitoring, String requestMessageId, String version) {
+        Siri result = new Siri();
+        result.setVersion(version != null ? version : SiriHelper.FALLBACK_SIRI_VERSION);
+        SubscriptionResponseStructure response = new SubscriptionResponseStructure();
+        response.setResponseTimestamp(ZonedDateTime.now());
 
-        if (result.getSubscriptionResponse() != null) {
-            response = result.getSubscriptionResponse();
-        } else {
-            response = new SubscriptionResponseStructure();
-            response.setResponseTimestamp(ZonedDateTime.now());
+        MessageRefStructure ref = new MessageRefStructure();
+        ref.setValue(requestMessageId != null ? requestMessageId : UUID.randomUUID().toString());
+        response.setRequestMessageRef(ref);
 
-            MessageRefStructure ref = new MessageRefStructure();
-            ref.setValue(UUID.randomUUID().toString());
-            response.setRequestMessageRef(ref);
-        }
-
-        if (response.getResponseStatuses() != null && !CollectionUtils.isEmpty(response.getResponseStatuses())) {
-            status = response.getResponseStatuses().getFirst();
-            status.setStatus(false);
-        } else {
-            status = new ResponseStatus();
-            status.setResponseTimestamp(ZonedDateTime.now());
-            status.setStatus(false);
-            status.setRequestMessageRef(response.getRequestMessageRef());
-        }
+        ResponseStatus status = new ResponseStatus();
+        status.setResponseTimestamp(ZonedDateTime.now());
+        status.setStatus(false);
+        status.setRequestMessageRef(ref);
 
         ServiceDeliveryErrorConditionElement errorCondition = new ServiceDeliveryErrorConditionElement();
         InvalidDataReferencesErrorStructure invalidDataStruct = new InvalidDataReferencesErrorStructure();
@@ -228,7 +217,6 @@ public class Utils {
 
         status.setErrorCondition(errorCondition);
 
-        response.getResponseStatuses().clear();
         response.getResponseStatuses().add(status);
 
         result.setSubscriptionResponse(response);

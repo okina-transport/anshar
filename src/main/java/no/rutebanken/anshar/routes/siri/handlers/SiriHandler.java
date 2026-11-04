@@ -284,22 +284,31 @@ public class SiriHandler {
                 return generateServerIsIntializingError(incoming);
             }
 
-            results = serverSubscriptionManager.handleMultipleSubscriptionsRequest(incoming, incomingSiriParameters);
-
+            // Validate stop references BEFORE creating any subscription: if at least one stop is invalid,
+            // the whole subscription request is rejected and no subscription is created.
             if (CollectionUtils.isNotEmpty(incoming.getSubscriptionRequest().getStopMonitoringSubscriptionRequests())) {
                 List<String> unKnownStopMonitoring = new ArrayList<>();
                 for (StopMonitoringSubscriptionStructure stopMonitoringSubcriptionRequest : incoming.getSubscriptionRequest().getStopMonitoringSubscriptionRequests()) {
-                    String monitoringRef = stopMonitoringSubcriptionRequest.getStopMonitoringRequest().getMonitoringRef().getValue();
+                    String monitoringRef = null;
+                    if (stopMonitoringSubcriptionRequest.getStopMonitoringRequest() != null
+                            && stopMonitoringSubcriptionRequest.getStopMonitoringRequest().getMonitoringRef() != null) {
+                        monitoringRef = stopMonitoringSubcriptionRequest.getStopMonitoringRequest().getMonitoringRef().getValue();
+                    }
 
                     if (!validateStopReferences(monitoringRef, datasetId)) {
                         unKnownStopMonitoring.add("MonitoringRef: " + monitoringRef + ", datasetId: " + datasetId);
                     }
                 }
                 if (CollectionUtils.isNotEmpty(unKnownStopMonitoring)) {
-                    results = utils.createInvalidDataReferencesSubscriptionResponse(unKnownStopMonitoring, results);
+                    logger.info("Subscription request rejected, invalid data references: {}", unKnownStopMonitoring);
+                    MessageQualifierStructure messageIdentifier = incoming.getSubscriptionRequest().getMessageIdentifier();
+                    return utils.createInvalidDataReferencesSubscriptionResponse(unKnownStopMonitoring,
+                            messageIdentifier != null ? messageIdentifier.getValue() : null,
+                            incoming.getVersion());
                 }
             }
-            return results;
+
+            return serverSubscriptionManager.handleMultipleSubscriptionsRequest(incoming, incomingSiriParameters);
         } else if (incoming.getTerminateSubscriptionRequest() != null) {
             logger.info("Handling terminateSubscriptionrequest...");
             TerminateSubscriptionRequestStructure terminateSubscriptionRequest = incoming.getTerminateSubscriptionRequest();
