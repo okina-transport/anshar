@@ -16,27 +16,23 @@
 package no.rutebanken.anshar.routes.siri.processor;
 
 
-import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.routes.siri.handlers.OutboundIdMappingPolicy;
-import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
+import no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter;
 import org.springframework.util.CollectionUtils;
 import uk.org.siri.siri21.*;
 
 import java.util.List;
 
-import static no.rutebanken.anshar.routes.siri.transformer.impl.OutboundIdAdapter.getOriginalId;
+public class RuterOutboundDatedVehicleRefAdapter extends OutboundIdAdapter implements PostProcessor {
 
-public class RuterOutboundDatedVehicleRefAdapter extends ValueAdapter implements PostProcessor {
-
-    private final OutboundIdMappingPolicy outboundIdMappingPolicy;
-
-    private IdProcessingParameters idProcessingParameters;
 
     public RuterOutboundDatedVehicleRefAdapter(Class clazz, OutboundIdMappingPolicy outboundIdMappingPolicy) {
-        super(clazz);
-        this.outboundIdMappingPolicy = outboundIdMappingPolicy;
+        super(clazz, outboundIdMappingPolicy);
     }
 
+    public RuterOutboundDatedVehicleRefAdapter(Class clazz, OutboundIdMappingPolicy outboundIdMappingPolicy, boolean shouldConvertToNetexId) {
+        super(clazz, outboundIdMappingPolicy, shouldConvertToNetexId);
+    }
 
     @Override
     public void process(Siri siri) {
@@ -182,20 +178,6 @@ public class RuterOutboundDatedVehicleRefAdapter extends ValueAdapter implements
         }
     }
 
-    protected String apply(String text) {
-        if (text == null || text.isEmpty()) {
-            return text;
-        }
-
-        switch (outboundIdMappingPolicy) {
-            case ORIGINAL_ID:
-                return getOriginalId(text);
-            default:
-                return getProcessedId(text);
-        }
-
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -204,15 +186,6 @@ public class RuterOutboundDatedVehicleRefAdapter extends ValueAdapter implements
         if (!super.getClassToApply().equals(that.getClassToApply())) return false;
         return outboundIdMappingPolicy == that.outboundIdMappingPolicy;
 
-    }
-
-
-    public String getProcessedId(String text) {
-        return idProcessingParameters == null ? text : idProcessingParameters.applyTransformationToString(text);
-    }
-
-    public void setIdProcessingParameters(IdProcessingParameters idProcessingParameters) {
-        this.idProcessingParameters = idProcessingParameters;
     }
 
 }

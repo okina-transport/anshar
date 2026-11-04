@@ -23,6 +23,10 @@ public class SiriUtils {
 
     private static final Logger logger = LoggerFactory.getLogger(SiriUtils.class);
 
+    private SiriUtils() {
+        /* This utility class should not be instantiated */
+    }
+
 
     /**
      * Builds a set of dataset using datasetId header received in the request
@@ -88,6 +92,26 @@ public class SiriUtils {
         delivery.getStopMonitoringDeliveries().forEach(d -> d.setVersion(version));
         delivery.getGeneralMessageDeliveries().forEach(d -> d.setVersion(version));
         delivery.getFacilityMonitoringDeliveries().forEach(d -> d.setVersion(version));
+    }
+
+    public static Optional<SiriDataType> getSiriDataType(Siri siri) {
+       for (SiriDataType type : SiriDataType.values()) {
+           if (hasDataOfType(siri, type)) {
+               return Optional.of(type);
+           }
+       }
+       if (hasStopVisitCancellations(siri)) {
+           return Optional.of(SiriDataType.STOP_MONITORING);
+       }
+       return Optional.empty();
+    }
+
+    private static boolean hasStopVisitCancellations(Siri siri) {
+        if (siri == null || siri.getServiceDelivery() == null || siri.getServiceDelivery().getStopMonitoringDeliveries() == null) {
+            return false;
+        }
+        return siri.getServiceDelivery().getStopMonitoringDeliveries().stream()
+                .anyMatch(d -> d.getMonitoredStopVisitCancellations() != null && !d.getMonitoredStopVisitCancellations().isEmpty());
     }
 
     public static boolean hasDataOfType(Siri siri, SiriDataType type) {
@@ -577,7 +601,7 @@ public class SiriUtils {
         visitStream.forEach(visit -> {
             String lineRef = StopMonitoringUtils.getLineRef(visit).orElse(null);
             Optional<String> viasOpt = StopMonitoringUtils.getVias(visit);
-            String key = null;
+            String key;
 
             if (subscriptionRequest.getMinimumStopVisitsPerLine() != null) {
                 key = lineRef;

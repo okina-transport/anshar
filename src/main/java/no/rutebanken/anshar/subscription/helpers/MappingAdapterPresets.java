@@ -50,7 +50,7 @@ public class MappingAdapterPresets {
             OutboundIdAdapter destinationRefAdapter = new OutboundIdAdapter(DestinationRef.class, outboundIdMappingPolicy, true);
             OutboundIdAdapter originRefAdapter = new OutboundIdAdapter(JourneyPlaceRefStructure.class, outboundIdMappingPolicy, true);
             OutboundIdAdapter lineRefAdapter = new OutboundIdAdapter(LineRef.class, outboundIdMappingPolicy, true);
-            RuterOutboundDatedVehicleRefAdapter datedVjRefAdapter = new RuterOutboundDatedVehicleRefAdapter(MappingAdapterPresets.class, outboundIdMappingPolicy);
+            RuterOutboundDatedVehicleRefAdapter datedVjRefAdapter = new RuterOutboundDatedVehicleRefAdapter(MappingAdapterPresets.class, outboundIdMappingPolicy, true);
             OutboundIdAdapter operatorRefAdapter = new OutboundIdAdapter(OperatorRefStructure.class, outboundIdMappingPolicy);
             OutboundIdAdapter networkRefAdapter = new OutboundIdAdapter(NetworkRefStructure.class, outboundIdMappingPolicy);
             OutboundIdAdapter routeRefAdapter = new OutboundIdAdapter(RouteRefStructure.class, outboundIdMappingPolicy, true);
