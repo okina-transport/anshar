@@ -157,23 +157,25 @@ public class SubscriptionInitializer implements CamelContextAware {
             }
 
             logger.info("Initializing {} subscriptions", activeSubscriptions.size());
+            List<SubscriptionSetup> subscriptionsToRestart = new ArrayList<>();
             // Validation and consistency-verification
             for (SubscriptionSetup subscriptionSetup : activeSubscriptions) {
                 addInfoToSubscription(mappingAdaptersById, subscriptionSetup);
                 SubscriptionSetup existingSubscription = subscriptionManager.getSubscriptionBySubscriptionId(subscriptionSetup.getSubscriptionId());
                 if (existingSubscription != null) {
-                    if (!existingSubscription.equals(subscriptionSetup)) {
-                        logger.info("Subscription with internalId={} is updated - reinitializing. {}", subscriptionSetup.getInternalId(), subscriptionSetup);
-                        disableSubscriptions(List.of(existingSubscription));
-                    } else {
-                        subscriptionManager.updateSubscription(subscriptionSetup);
+                    // keep runtime state, otherwise running subscriptions are reset to WAITING_FOR_START and re-subscribed
+                    subscriptionSetup.setStatus(existingSubscription.getStatus());
+                    subscriptionSetup.setStartedAt(existingSubscription.getStartedAt());
+                    subscriptionSetup.setLastRequest(existingSubscription.getLastRequest());
+                    subscriptionSetup.setLastResponse(existingSubscription.getLastResponse());
+                    subscriptionManager.updateSubscription(subscriptionSetup);
+
+                    if (SubscriptionSetup.SubscriptionMode.SUBSCRIBE.equals(subscriptionSetup.getSubscriptionMode())
+                            && SubscriptionStatus.RUNNING.equals(subscriptionSetup.getStatus())
+                            && !existingSubscription.hasSameSubscriptionRequestConfig(subscriptionSetup)) {
+                        logger.info("Subscription {} request config changed - restarting", subscriptionSetup.getSubscriptionId());
+                        subscriptionsToRestart.add(subscriptionSetup);
                     }
-
-
-                }
-                if (existingSubscription != null && !existingSubscription.equals(subscriptionSetup)) {
-                    logger.info("Subscription with internalId={} is updated - reinitializing. {}", subscriptionSetup.getInternalId(), subscriptionSetup);
-                    disableSubscriptions(List.of(existingSubscription));
                 }
                 actualSubscriptionSetups.add(subscriptionSetup);
             }
@@ -185,7 +187,11 @@ public class SubscriptionInitializer implements CamelContextAware {
                 }
             }
 
-            taskScheduler.schedule(subscriptionManager::launchSubscriptionsLifeCycleCheck, Instant.now().plusSeconds(60));
+            taskScheduler.schedule(() -> {
+                subscriptionManager.launchTerminateRequest(subscriptionsToRestart);
+                subscriptionManager.launchSubscriptionRequest(subscriptionsToRestart);
+                subscriptionManager.startWaitingSubscriptions();
+            }, Instant.now().plusSeconds(60));
 
         } else {
             logger.error("Subscriptions not configured correctly - no subscriptions will be started");

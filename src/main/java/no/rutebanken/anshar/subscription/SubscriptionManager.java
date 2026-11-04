@@ -228,7 +228,6 @@ public class SubscriptionManager implements CamelContextAware {
 
     private boolean touchDiscoverySubscription(DiscoverySubscription discoverySubscription, String monitoredRef) {
         Optional<SubscriptionSetup> childSubscriptionOpt = Optional.empty();
-
         if (STOP_MONITORING.equals(discoverySubscription.getDiscoveryType())) {
             childSubscriptionOpt = getChildSubscriptionIdFromMonitoringRefs(discoverySubscription, monitoredRef != null ? List.of(monitoredRef) : new ArrayList<>());
 
@@ -734,7 +733,7 @@ public class SubscriptionManager implements CamelContextAware {
         Optional<DiscoverySubscription> discoverySubsOpt = getDiscoverySubscription(subscriptionId);
 
         if (discoverySubsOpt.isPresent()) {
-            dataReceivedFromDiscovery(discoverySubsOpt.get(), monitoredRef);
+            dataReceivedFromDiscovery(discoverySubsOpt.get(), receivedByteCount, monitoredRef);
             return;
         }
 
@@ -747,7 +746,7 @@ public class SubscriptionManager implements CamelContextAware {
         }
     }
 
-    private void dataReceivedFromDiscovery(DiscoverySubscription discoverySubscription, String monitoredRef) {
+    private void dataReceivedFromDiscovery(DiscoverySubscription discoverySubscription, int receivedByteCount, String monitoredRef) {
         if (StringUtils.isEmpty(monitoredRef)) {
             return;
         }
@@ -763,7 +762,7 @@ public class SubscriptionManager implements CamelContextAware {
 
         if (childSubscriptionOpt.isPresent()) {
             SubscriptionSetup childSubcription = childSubscriptionOpt.get();
-            dataReceived(childSubcription.getSubscriptionId(), 0, monitoredRef);
+            dataReceived(childSubcription.getSubscriptionId(), receivedByteCount, monitoredRef);
         }
     }
 
@@ -885,14 +884,21 @@ public class SubscriptionManager implements CamelContextAware {
         launchTerminateRequest(subscriptionsToRestart);
         launchSubscriptionRequest(subscriptionsToRestart);
 
+        startWaitingSubscriptions();
+
+        logger.info("Subscriptions lifecycle check completed in {} ms", System.currentTimeMillis() - startTime);
+    }
+
+    /**
+     * Send a SubscriptionRequest for active SUBSCRIBE subscriptions waiting for start. Never terminates anything.
+     */
+    public void startWaitingSubscriptions() {
         List<SubscriptionSetup> newSubscriptions = subscriptions.values()
                 .stream().filter(subscription -> subscription.isActive() && SubscriptionSetup.SubscriptionMode.SUBSCRIBE.equals(subscription.getSubscriptionMode()) && SubscriptionStatus.WAITING_FOR_START.equals(subscription.getStatus()))
                 .toList();
 
         logger.info("New subscriptions to start : {}", newSubscriptions.size());
         launchSubscriptionRequest(newSubscriptions);
-
-        logger.info("Subscriptions lifecycle check completed in {} ms", System.currentTimeMillis() - startTime);
     }
 
     /**
