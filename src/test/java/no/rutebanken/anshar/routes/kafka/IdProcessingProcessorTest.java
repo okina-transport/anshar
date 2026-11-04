@@ -172,8 +172,7 @@ class IdProcessingProcessorTest {
         MonitoredStopVisitCancellation result = cancellationOf(exchange.getIn().getBody(Siri.class));
         assertEquals("STOP_OUT_1", result.getMonitoringRef().getValue());
         assertEquals("LINE_OUT_2", result.getLineRef().getValue());
-        // ORIGINAL_ID policy: RuterOutboundDatedVehicleRefAdapter keeps original VJ id, VEHICLE_JOURNEY IPP not applied
-        assertEquals("VJ_IN_3", result.getVehicleJourneyRef().getDatedVehicleJourneyRef());
+        assertEquals("VJ_OUT_3", result.getVehicleJourneyRef().getDatedVehicleJourneyRef());
     }
 
     @Test
