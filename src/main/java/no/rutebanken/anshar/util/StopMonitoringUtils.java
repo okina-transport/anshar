@@ -18,7 +18,7 @@ public class StopMonitoringUtils {
     }
 
     public static boolean isMonitored(MonitoredStopVisit stopVisit) {
-        if (stopVisit.getMonitoredVehicleJourney() == null) {
+        if (stopVisit.getMonitoredVehicleJourney() == null || stopVisit.getMonitoredVehicleJourney().isMonitored() == null) {
             return true;
         }
         return Boolean.TRUE.equals(stopVisit.getMonitoredVehicleJourney().isMonitored());
