@@ -38,6 +38,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 
+import static org.awaitility.Awaitility.await;
 import static org.mockserver.integration.ClientAndServer.startClientAndServer;
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
@@ -282,6 +283,85 @@ class SubscriptionManagerTest extends SpringBootBaseTest {
         } finally {
             ReflectionTestUtils.setField(subscriptionManager, "disableUnresponsiveCheckSx", false);
         }
+    }
+
+    @Test
+    void test_resync_without_config_change_does_not_resubscribe() throws Exception {
+        startProviderMock();
+
+        SubscriptionSetup subscription = createSubscription(10800);
+        subscriptionConfig.getSubscriptions().add(subscription);
+        subscriptionInitializer.createSubscriptions();
+        awaitSubscriptionRunning(subscription);
+
+        // simulating a new Ishtar synchronization with identical config
+        subscriptionInitializer.createSubscriptions();
+
+        // the post-sync task runs 60s after createSubscriptions: nothing must be sent during that window
+        await().during(Duration.ofSeconds(70))
+                .atMost(Duration.ofSeconds(75))
+                .untilAsserted(() -> Assertions.assertEquals(1, TestUtils.countNonCheckStatusRequests(mockServer, "/providerEndpoint")));
+        Assertions.assertEquals(SubscriptionStatus.RUNNING, subscriptionManager.get(subscription.getSubscriptionId()).getStatus());
+    }
+
+    @Test
+    void test_resync_with_config_change_terminates_then_resubscribes() throws Exception {
+        startProviderMock();
+
+        SubscriptionSetup subscription = createSubscription(10800);
+        subscriptionConfig.getSubscriptions().add(subscription);
+        subscriptionInitializer.createSubscriptions();
+        awaitSubscriptionRunning(subscription);
+
+        // simulating a new Ishtar synchronization adding a stop (SubscriptionConfig.mergeSubscriptions updates config objects in place)
+        subscription.getStopMonitoringRefValues().add("STOP2");
+        subscriptionInitializer.createSubscriptions();
+
+        await().atMost(Duration.ofMinutes(2))
+                .untilAsserted(() -> Assertions.assertEquals(3, TestUtils.countNonCheckStatusRequests(mockServer, "/providerEndpoint")));
+
+        List<String> receivedRequests = TestUtils.getNonCheckStatusRequests(mockServer, "/providerEndpoint");
+        Assertions.assertTrue(isSubscriptionRequest(receivedRequests.get(0)));
+        Assertions.assertFalse(receivedRequests.get(0).contains("STOP2"));
+        Assertions.assertTrue(isTerminateSubscriptionRequest(receivedRequests.get(1)));
+        Assertions.assertTrue(isSubscriptionRequest(receivedRequests.get(2)));
+        Assertions.assertTrue(receivedRequests.get(2).contains("STOP2"));
+    }
+
+    // first start can be delayed by the VJ cache loading retry (30s) plus the 60s start delay
+    private void awaitSubscriptionRunning(SubscriptionSetup subscription) {
+        await().atMost(Duration.ofMinutes(2))
+                .untilAsserted(() -> {
+                    Assertions.assertEquals(1, TestUtils.countNonCheckStatusRequests(mockServer, "/providerEndpoint"));
+                    Assertions.assertEquals(SubscriptionStatus.RUNNING, subscriptionManager.get(subscription.getSubscriptionId()).getStatus());
+                });
+    }
+
+    private void startProviderMock() {
+        mockServer = startClientAndServer(1080);
+        mockServer.when(
+                request()
+                        .withMethod("POST")
+                        .withPath("/providerEndpoint")
+                        .withBody(xpath(
+                                "count(//*[local-name()='StopMonitoringSubscriptionRequest']) > 0"
+                        ))
+        ).respond(
+                response()
+                        .withStatusCode(200)
+                        .withBody(subscriptionResponse)
+        );
+
+        mockServer.when(
+                request()
+                        .withMethod("POST")
+                        .withPath("/providerEndpoint"),
+                Times.unlimited(), TimeToLive.unlimited(), -10
+        ).respond(
+                response()
+                        .withStatusCode(200)
+                        .withBody(checkStatusResponse)
+        );
     }
 
     private SubscriptionSetup createRunningSubscription(SiriDataType type) {

@@ -5,6 +5,8 @@ import lombok.Getter;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 public class SubscriptionInfo {
@@ -16,6 +18,8 @@ public class SubscriptionInfo {
     private final ZonedDateTime startedAt;
     private final Long receivedBytes;
     private final boolean active;
+    private final List<String> stopMonitoringRefValues;
+    private final List<String> lineRefValues;
 
     public SubscriptionInfo(SubscriptionSetup subscription, Instant lastActivityInstant, Long receivedBytes) {
         this.id = subscription.getSubscriptionId();
@@ -26,5 +30,7 @@ public class SubscriptionInfo {
         this.startedAt = subscription.getStartedAt();
         this.receivedBytes = receivedBytes;
         this.active = subscription.isActive();
+        this.stopMonitoringRefValues = new ArrayList<>(subscription.getStopMonitoringRefValues());
+        this.lineRefValues = new ArrayList<>(subscription.getLineRefValues());
     }
 }

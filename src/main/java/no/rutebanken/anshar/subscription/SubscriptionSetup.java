@@ -516,6 +516,33 @@ public class SubscriptionSetup implements Serializable {
         return this.subscriptionId.equals(that.subscriptionId);
     }
 
+    public boolean hasSameSubscriptionRequestConfig(SubscriptionSetup other) {
+        return Objects.equals(subscriptionType, other.subscriptionType)
+                && Objects.equals(subscriptionMode, other.subscriptionMode)
+                && Objects.equals(version, other.version)
+                && Objects.equals(requestorRef, other.requestorRef)
+                && Objects.equals(heartbeatInterval, other.heartbeatInterval)
+                && Objects.equals(durationOfSubscription, other.durationOfSubscription)
+                && Objects.equals(previewInterval, other.previewInterval)
+                && Objects.equals(changeBeforeUpdates, other.changeBeforeUpdates)
+                && Objects.equals(updateInterval, other.updateInterval)
+                && Objects.equals(incrementalUpdates, other.incrementalUpdates)
+                && sameElements(stopMonitoringRefValues, other.stopMonitoringRefValues)
+                && sameElements(lineRefValues, other.lineRefValues)
+                && sameElements(siteRefValues, other.siteRefValues)
+                && Objects.equals(vehicleMonitoringRefValue, other.vehicleMonitoringRefValue)
+                && Objects.equals(operatorRefValue, other.operatorRefValue)
+                && Objects.equals(networkRefValue, other.networkRefValue)
+                && Objects.equals(customHeaders, other.customHeaders);
+    }
+
+    private static boolean sameElements(List<String> a, List<String> b) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+        return new HashSet<>(a).equals(new HashSet<>(b));
+    }
+
     public enum ServiceType {SOAP, REST}
 
     public enum SubscriptionMode {SUBSCRIBE, REQUEST_RESPONSE, POLLING_FETCHED_DELIVERY, FETCHED_DELIVERY, LITE, LITE_XML, WEBSOCKET, BIG_DATA_EXPORT, VM_POSITION_FORWARDING}
