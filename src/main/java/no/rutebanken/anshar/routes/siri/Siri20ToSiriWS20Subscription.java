@@ -26,6 +26,7 @@ import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
+import org.apache.camel.LoggingLevel;
 import org.apache.camel.component.http.HttpMethods;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
@@ -73,8 +74,9 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
                     String errorMsg = "Error in route [" + routeId + "] : " + ExceptionUtils.getStackTrace(cause);
                     exchange.getIn().setBody(errorMsg);
                 })
-                .log("Exception handled in route: ${exchange.fromRouteId}");
-    
+                .log("Exception handled in route: ${exchange.fromRouteId}")
+                .log(LoggingLevel.ERROR, "${body}");
+
 
         //Start subscription
         from("direct:" + subscriptionSetup.getStartSubscriptionRouteName())
@@ -83,7 +85,7 @@ public class Siri20ToSiriWS20Subscription extends SiriSubscriptionRouteBuilder {
                 .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
                 .to("direct:siri.20.to.siri.ws.20.subscription.preprocess")
                 .process(p -> {
-                    logger.debug("Subscription request content:" + p.getIn().getBody());
+                    logger.info("Subscription request content:" + p.getIn().getBody());
                     logger.info("Sending subscription request for sub:" + subscriptionSetup.getSubscriptionId());
                 })
                 .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")

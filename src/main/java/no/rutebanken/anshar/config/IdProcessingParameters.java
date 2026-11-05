@@ -11,6 +11,12 @@ import java.util.Objects;
 @Data
 public class IdProcessingParameters implements Serializable {
 
+    /**
+     * Fixed explicitly: instances are exchanged between anshar and outboundNotificationSender through Hazelcast (Java
+     * serialization). Value computed from anshar's class before it was set: it must stay the same in both projects.
+     */
+    private static final long serialVersionUID = -5234918379503127478L;
+
     private String datasetId;
     private ObjectType objectType;
     private String inputPrefixToRemove;

@@ -5,16 +5,20 @@ import com.hazelcast.map.IMap;
 import com.hazelcast.scheduledexecutor.DuplicateTaskException;
 import com.hazelcast.scheduledexecutor.IScheduledExecutorService;
 import com.hazelcast.scheduledexecutor.NamedTask;
-import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.routes.siri.transformer.ApplicationContextHolder;
 import org.apache.camel.Exchange;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
@@ -60,12 +64,39 @@ public class OutboundErrorHandler {
      * Waits for the Spring context to be fully refreshed, since the task may run immediately
      * (initial delay 0) and would otherwise find {@link ApplicationContextHolder} not yet set.
      */
-    @PostConstruct
+    @EventListener(ApplicationReadyEvent.class)
     public void scheduleBanCheck() {
         try {
-            sharedScheduler.scheduleOnKeyOwnerAtFixedRate(this::banUrlsExceedingLimit, BAN_CHECK_TASK_NAME, 0, 5, TimeUnit.MINUTES);
+            sharedScheduler.scheduleOnKeyOwnerAtFixedRate(new BanCheckTask(), BAN_CHECK_TASK_NAME, 0, 5, TimeUnit.MINUTES);
         } catch (DuplicateTaskException e) {
             log.info("Ban-check task [{}] is already scheduled on the cluster", BAN_CHECK_TASK_NAME);
+        }
+    }
+
+    /**
+     * Serializable task distributed by Hazelcast to the member owning its key (and replicated on
+     * migration). It must not capture the Spring bean: it looks it up on the executing node instead.
+     * Implementing {@link NamedTask} gives it a stable name, so a second scheduling attempt raises
+     * {@link DuplicateTaskException} instead of creating a duplicate task.
+     */
+    static class BanCheckTask implements Runnable, NamedTask, Serializable {
+
+        @Serial
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public String getName() {
+            return BAN_CHECK_TASK_NAME;
+        }
+
+        @Override
+        public void run() {
+            ApplicationContext context = ApplicationContextHolder.getContext();
+            if (context == null) {
+                log.warn("Ban-check task [{}] skipped: Spring context not available yet", BAN_CHECK_TASK_NAME);
+                return;
+            }
+            context.getBean(OutboundErrorHandler.class).banUrlsExceedingLimit();
         }
     }
 
