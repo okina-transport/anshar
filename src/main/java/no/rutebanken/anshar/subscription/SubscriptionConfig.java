@@ -20,12 +20,7 @@ import no.rutebanken.anshar.api.SiriApi;
 import no.rutebanken.anshar.config.DiscoverySubscription;
 import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
-import no.rutebanken.anshar.routes.admin.AdministrationRoute;
-import no.rutebanken.anshar.routes.siri.helpers.SiriRequestFactory;
-import no.rutebanken.anshar.subscription.helpers.RequestType;
 import no.rutebanken.anshar.util.YamlPropertySourceFactory;
-import org.apache.camel.Produce;
-import org.apache.camel.ProducerTemplate;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -36,16 +31,12 @@ import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
-import static no.rutebanken.anshar.routes.siri.Siri20RequestHandlerRoute.TRANSFORM_SOAP;
-
 @PropertySource(value = "${anshar.subscriptions.config.path}", factory = YamlPropertySourceFactory.class)
 @ConfigurationProperties(prefix = "anshar")
 @Configuration
 public class SubscriptionConfig {
 
     private final List<IdProcessingParameters> idProcessingParameters = new CopyOnWriteArrayList<>();
-    @Produce(AdministrationRoute.TERMINATE_SUBSCRIPTION_ROUTE)
-    protected ProducerTemplate terminateSubscriptionRoute;
     @Value("${anshar.subscriptions.datatypes.filter:}")
     List<SiriDataType> dataTypes;
     private List<SubscriptionSetup> subscriptions = new CopyOnWriteArrayList<>();
@@ -165,10 +156,6 @@ public class SubscriptionConfig {
                 existingSubscription.setRequestorRef(incomingSubscription.getRequestorRef());
                 existingSubscription.setDurationOfSubscriptionHours(incomingSubscription.getDurationOfSubscription().toHours());
                 existingSubscription.setSubscriptionMode(incomingSubscription.getSubscriptionMode());
-                if (hasURLchanged(existingSubscription, incomingSubscription)) {
-                    // need to terminate subscription from previous url before starting subscription from new URL
-                    terminateSubscription(existingSubscription);
-                }
                 existingSubscription.setUrlMap(incomingSubscription.getUrlMap());
                 existingSubscription.setServiceType(incomingSubscription.getServiceType());
                 existingSubscription.setContentType(incomingSubscription.getContentType());
@@ -195,45 +182,6 @@ public class SubscriptionConfig {
             }
         }
 
-    }
-
-    private void terminateSubscription(SubscriptionSetup subscriptionSetup) {
-        int limit = 0;
-        if (!subscriptionSetup.getStopMonitoringRefValues().isEmpty()) {
-            limit = subscriptionSetup.getStopMonitoringRefValues().size();
-        } else if (!subscriptionSetup.getLineRefValues().isEmpty()) {
-            limit = subscriptionSetup.getLineRefValues().size();
-        }
-        int subNb = 0;
-        for (int i = 0; i < limit; i++) {
-            Map<String, Object> headers = new HashMap<>();
-            headers.put("subscriptionId", subscriptionSetup.getSubscriptionId() + "-" + subNb);
-            headers.put("requestorRef", subscriptionSetup.getRequestorRef());
-            headers.put("url", SiriRequestFactory.getCamelUrl(subscriptionSetup.getUrlMap().get(RequestType.DELETE_SUBSCRIPTION)));
-
-            if (SubscriptionSetup.ServiceType.SOAP.equals(subscriptionSetup.getServiceType())) {
-                headers.put(TRANSFORM_SOAP, TRANSFORM_SOAP);
-            }
-
-            terminateSubscriptionRoute.asyncRequestBodyAndHeaders(terminateSubscriptionRoute.getDefaultEndpoint(), null, headers);
-            subNb++;
-        }
-    }
-
-    private boolean hasURLchanged(SubscriptionSetup existingSubscription, SubscriptionSetup incomingSubscription) {
-        if (existingSubscription.getUrlMap().size() != incomingSubscription.getUrlMap().size()) {
-            return true;
-        }
-
-        for (Map.Entry<RequestType, String> requestTypeStringEntry : existingSubscription.getUrlMap().entrySet()) {
-            RequestType action = requestTypeStringEntry.getKey();
-            String previousUrl = requestTypeStringEntry.getValue();
-            if (!incomingSubscription.getUrlMap().containsKey(action) || !previousUrl.equals(incomingSubscription.getUrlMap().get(action))) {
-                return true;
-            }
-        }
-        // all new URLs are equals to previous URLs
-        return false;
     }
 
     public void mergeDiscoverySubscriptions(List<DiscoverySubscription> incomingSubscriptions) {

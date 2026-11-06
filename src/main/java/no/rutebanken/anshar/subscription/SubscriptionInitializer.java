@@ -158,6 +158,7 @@ public class SubscriptionInitializer implements CamelContextAware {
 
             logger.info("Initializing {} subscriptions", activeSubscriptions.size());
             List<SubscriptionSetup> subscriptionsToRestart = new ArrayList<>();
+            List<SubscriptionSetup> subscriptionsToRebuild = new ArrayList<>();
             // Validation and consistency-verification
             for (SubscriptionSetup subscriptionSetup : activeSubscriptions) {
                 addInfoToSubscription(mappingAdaptersById, subscriptionSetup);
@@ -170,7 +171,10 @@ public class SubscriptionInitializer implements CamelContextAware {
                     subscriptionSetup.setLastResponse(existingSubscription.getLastResponse());
                     subscriptionManager.updateSubscription(subscriptionSetup);
 
-                    if (SubscriptionSetup.SubscriptionMode.SUBSCRIBE.equals(subscriptionSetup.getSubscriptionMode())
+                    if (isRebuildable(subscriptionSetup) && !existingSubscription.hasSameUrls(subscriptionSetup)) {
+                        logger.info("Subscription {} urls changed - rebuilding routes", subscriptionSetup.getSubscriptionId());
+                        subscriptionsToRebuild.add(subscriptionSetup);
+                    } else if (SubscriptionSetup.SubscriptionMode.SUBSCRIBE.equals(subscriptionSetup.getSubscriptionMode())
                             && SubscriptionStatus.RUNNING.equals(subscriptionSetup.getStatus())
                             && !existingSubscription.hasSameSubscriptionRequestConfig(subscriptionSetup)) {
                         logger.info("Subscription {} request config changed - restarting", subscriptionSetup.getSubscriptionId());
@@ -188,6 +192,7 @@ public class SubscriptionInitializer implements CamelContextAware {
             }
 
             taskScheduler.schedule(() -> {
+                subscriptionsToRebuild.forEach(this::rebuildRoutes);
                 subscriptionManager.launchTerminateRequest(subscriptionsToRestart);
                 subscriptionManager.launchSubscriptionRequest(subscriptionsToRestart);
                 subscriptionManager.startWaitingSubscriptions();
@@ -279,6 +284,51 @@ public class SubscriptionInitializer implements CamelContextAware {
         return disabledDiscoveryChilds;
     }
 
+
+    /**
+     * Only modes without a singleton monitor route: stopping a route holding an InterruptibleHazelcastRoutePolicy
+     * shuts down the shared Hazelcast instance (see InterruptibleHazelcastRoutePolicy.doStop)
+     */
+    private boolean isRebuildable(SubscriptionSetup subscriptionSetup) {
+        return SubscriptionSetup.SubscriptionMode.SUBSCRIBE.equals(subscriptionSetup.getSubscriptionMode())
+                || SubscriptionSetup.SubscriptionMode.FETCHED_DELIVERY.equals(subscriptionSetup.getSubscriptionMode());
+    }
+
+    /**
+     * Rebuild the routes of a subscription whose urls changed. A running SUBSCRIBE subscription is terminated
+     * through its old routes (old url) and re-subscribed through the new ones.
+     */
+    void rebuildRoutes(SubscriptionSetup subscriptionSetup) {
+        String subscriptionId = subscriptionSetup.getSubscriptionId();
+        try {
+            if (camelContext.getRoute(SiriSubscriptionRouteBuilder.getMonitorRouteId(subscriptionSetup)) != null) {
+                logger.warn("Subscription {} has a singleton monitor route - routes not rebuilt", subscriptionId);
+                return;
+            }
+
+            boolean resubscribe = SubscriptionSetup.SubscriptionMode.SUBSCRIBE.equals(subscriptionSetup.getSubscriptionMode())
+                    && SubscriptionStatus.RUNNING.equals(subscriptionManager.get(subscriptionId).getStatus());
+            if (resubscribe) {
+                subscriptionManager.sendTerminateRequest(subscriptionSetup);
+            }
+
+            for (String routeId : List.of(SiriSubscriptionRouteBuilder.getStartRouteId(subscriptionSetup),
+                    SiriSubscriptionRouteBuilder.getCancelRouteId(subscriptionSetup),
+                    SiriSubscriptionRouteBuilder.getServiceRequestRouteId(subscriptionSetup))) {
+                if (camelContext.getRoute(routeId) != null) {
+                    camelContext.getRouteController().stopRoute(routeId);
+                    camelContext.removeRoute(routeId);
+                }
+            }
+            initRouteBuilders(subscriptionSetup);
+
+            if (resubscribe) {
+                subscriptionManager.sendSubscriptionRequest(subscriptionSetup);
+            }
+        } catch (Exception e) {
+            logger.error("Could not rebuild routes for subscription {}", subscriptionId, e);
+        }
+    }
 
     private void initRouteBuilders(SubscriptionSetup subscriptionSetup) {
         try {

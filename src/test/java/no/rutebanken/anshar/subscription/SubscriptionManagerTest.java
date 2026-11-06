@@ -328,6 +328,33 @@ class SubscriptionManagerTest extends SpringBootBaseTest {
         Assertions.assertTrue(receivedRequests.get(2).contains("STOP2"));
     }
 
+    @Test
+    void test_resync_with_url_change_terminates_on_old_url_then_subscribes_on_new_url() throws Exception {
+        startProviderMock();
+
+        SubscriptionSetup subscription = createSubscription(10800);
+        subscriptionConfig.getSubscriptions().add(subscription);
+        subscriptionInitializer.createSubscriptions();
+        awaitSubscriptionRunning(subscription);
+
+        // simulating a new Ishtar synchronization changing the provider urls (SubscriptionConfig.mergeSubscriptions updates config objects in place)
+        HashMap<RequestType, String> newUrlMap = new HashMap<>();
+        newUrlMap.put(RequestType.SUBSCRIBE, "http://localhost:1080/newProviderEndpoint");
+        newUrlMap.put(RequestType.DELETE_SUBSCRIPTION, "http://localhost:1080/newProviderEndpoint");
+        subscription.setUrlMap(newUrlMap);
+        subscriptionInitializer.createSubscriptions();
+
+        await().atMost(Duration.ofMinutes(2))
+                .untilAsserted(() -> Assertions.assertEquals(1, TestUtils.countNonCheckStatusRequests(mockServer, "/newProviderEndpoint")));
+
+        List<String> oldUrlRequests = TestUtils.getNonCheckStatusRequests(mockServer, "/providerEndpoint");
+        Assertions.assertEquals(2, oldUrlRequests.size());
+        Assertions.assertTrue(isSubscriptionRequest(oldUrlRequests.get(0)));
+        Assertions.assertTrue(isTerminateSubscriptionRequest(oldUrlRequests.get(1)));
+        Assertions.assertTrue(isSubscriptionRequest(TestUtils.getFirstNonCheckStatusRequestOnEndpoint(mockServer, "/newProviderEndpoint")));
+        Assertions.assertEquals(SubscriptionStatus.RUNNING, subscriptionManager.get(subscription.getSubscriptionId()).getStatus());
+    }
+
     // first start can be delayed by the VJ cache loading retry (30s) plus the 60s start delay
     private void awaitSubscriptionRunning(SubscriptionSetup subscription) {
         await().atMost(Duration.ofMinutes(2))
@@ -342,7 +369,7 @@ class SubscriptionManagerTest extends SpringBootBaseTest {
         mockServer.when(
                 request()
                         .withMethod("POST")
-                        .withPath("/providerEndpoint")
+                        .withPath("/(providerEndpoint|newProviderEndpoint)")
                         .withBody(xpath(
                                 "count(//*[local-name()='StopMonitoringSubscriptionRequest']) > 0"
                         ))
@@ -355,7 +382,7 @@ class SubscriptionManagerTest extends SpringBootBaseTest {
         mockServer.when(
                 request()
                         .withMethod("POST")
-                        .withPath("/providerEndpoint"),
+                        .withPath("/(providerEndpoint|newProviderEndpoint)"),
                 Times.unlimited(), TimeToLive.unlimited(), -10
         ).respond(
                 response()

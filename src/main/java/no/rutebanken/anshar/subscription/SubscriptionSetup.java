@@ -536,6 +536,13 @@ public class SubscriptionSetup implements Serializable {
                 && Objects.equals(customHeaders, other.customHeaders);
     }
 
+    /**
+     * URLs are baked into the Camel routes when they are built: a difference means the routes must be rebuilt.
+     */
+    public boolean hasSameUrls(SubscriptionSetup other) {
+        return Objects.equals(getUrlMap(), other.getUrlMap());
+    }
+
     private static boolean sameElements(List<String> a, List<String> b) {
         if (a == null || b == null) {
             return a == b;
