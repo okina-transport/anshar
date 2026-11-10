@@ -19,7 +19,7 @@ public class FacilityRefPostProcessor extends ValueAdapter implements PostProces
 
     private final String operator;
     private final OutboundIdMappingPolicy outboundIdMappingPolicy;
-    private ParkingIdsService parkingIdsService;
+    private transient ParkingIdsService parkingIdsService;
 
     public FacilityRefPostProcessor(String operator, OutboundIdMappingPolicy outboundIdMappingPolicy) {
         this.operator = operator;
