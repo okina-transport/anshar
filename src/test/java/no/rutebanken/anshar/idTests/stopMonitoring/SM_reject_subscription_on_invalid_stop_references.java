@@ -32,6 +32,7 @@ public class SM_reject_subscription_on_invalid_stop_references extends SpringBoo
     private static final String QUAY1_REF = DATASET + ":Quay:REJ1";
     private static final String VALID_STOP = "MOBIITI:Quay:REJ1";
     private static final String UNKNOWN_STOP = "MOBIITI:Quay:DOES_NOT_EXIST";
+    private static final String UNKNOWN_DATASET_STOP = "NAOLIBORG:Quay:NLBR2";
     private static final String REQUEST_MESSAGE_ID = "TU-MSG-1507";
 
     @Autowired
@@ -72,6 +73,18 @@ public class SM_reject_subscription_on_invalid_stop_references extends SpringBoo
         String description = status.getErrorCondition().getDescription().getValue();
         Assertions.assertTrue(description.contains(UNKNOWN_STOP));
         Assertions.assertFalse(description.contains(VALID_STOP), "Valid stop must not be listed as invalid");
+    }
+
+    @Test
+    public void producer_stop_reference_with_unknown_dataset_is_rejected() throws UnmarshalException {
+        StopPlaceUpdaterService stopPlaceService = ApplicationContextHolder.getContext().getBean(StopPlaceUpdaterService.class);
+        Assertions.assertFalse(stopPlaceService.isKnownId(UNKNOWN_DATASET_STOP), "Precondition: stop must be unknown");
+
+        Siri response = handler.handleIncomingSiri(createParameters(List.of(UNKNOWN_DATASET_STOP)));
+
+        Assertions.assertTrue(serverSubscriptionManager.getSubscriptions().isEmpty(), "No subscription must be created");
+        ResponseStatus status = assertInvalidDataReferencesResponse(response);
+        Assertions.assertTrue(status.getErrorCondition().getDescription().getValue().contains(UNKNOWN_DATASET_STOP));
     }
 
     @Test
