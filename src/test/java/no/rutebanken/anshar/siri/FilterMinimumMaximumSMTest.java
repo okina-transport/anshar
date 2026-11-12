@@ -2,6 +2,7 @@ package no.rutebanken.anshar.siri;
 
 import no.rutebanken.anshar.idTests.TestUtils;
 import no.rutebanken.anshar.routes.outbound.OutboundSubscriptionSetup;
+import no.rutebanken.anshar.routes.outbound.model.OutSubscriptionIdentifier;
 import no.rutebanken.anshar.util.SiriUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -22,7 +23,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
-public class FilterMinimumMaximumSMTest {
+class FilterMinimumMaximumSMTest {
 
     private static final String[] LINE_REFS = {"L1", "L1", "L2", "L2"};
     private static final String[] VIAS = {"V1", "V2", "V3", "V4"};
@@ -38,7 +39,7 @@ public class FilterMinimumMaximumSMTest {
      * So, only first 4 visits must be returned
      */
     @Test
-    public void testFilterWithOnlyMaximum() {
+    void testFilterWithOnlyMaximum() {
 
         Siri siri = createSiriWithMultipleStopVisits();
         OutboundSubscriptionSetup outboundSubscriptionSetup = TestUtils.createSmOutboundSubscription(true);
@@ -47,7 +48,7 @@ public class FilterMinimumMaximumSMTest {
         Siri filteredSiri = SiriUtils.filterStopMonitoringOnNbOfStopVisits(siri, outboundSubscriptionSetup);
 
         List<MonitoredStopVisit> filteredVisits = filteredSiri.getServiceDelivery()
-                .getStopMonitoringDeliveries().get(0).getMonitoredStopVisits();
+                .getStopMonitoringDeliveries().getFirst().getMonitoredStopVisits();
 
         Assertions.assertEquals(4, filteredVisits.size());
 
@@ -69,7 +70,7 @@ public class FilterMinimumMaximumSMTest {
      * So, only first 4 visits must be returned
      */
     @Test
-    public void testFilterWithMinPerLine() {
+    void testFilterWithMinPerLine() {
 
         Siri siri = createSiriWithMultipleStopVisits();
         OutboundSubscriptionSetup outboundSubscriptionSetup = TestUtils.createSmOutboundSubscription(true);
@@ -78,7 +79,7 @@ public class FilterMinimumMaximumSMTest {
 
         Siri filteredSiri = SiriUtils.filterStopMonitoringOnNbOfStopVisits(siri, outboundSubscriptionSetup);
         List<MonitoredStopVisit> filteredVisits = filteredSiri.getServiceDelivery()
-                .getStopMonitoringDeliveries().get(0).getMonitoredStopVisits();
+                .getStopMonitoringDeliveries().getFirst().getMonitoredStopVisits();
         Assertions.assertEquals(4, filteredVisits.size());
 
         List<ZonedDateTime> expectedDepartures = filteredVisits.stream()
@@ -101,7 +102,7 @@ public class FilterMinimumMaximumSMTest {
      *
      */
     @Test
-    public void testFilterWithMinPerLine2() {
+    void testFilterWithMinPerLine2() {
 
         Siri siri = createSiriWithMultipleStopVisits();
         OutboundSubscriptionSetup outboundSubscriptionSetup = TestUtils.createSmOutboundSubscription(true);
@@ -110,7 +111,7 @@ public class FilterMinimumMaximumSMTest {
 
         Siri filteredSiri = SiriUtils.filterStopMonitoringOnNbOfStopVisits(siri, outboundSubscriptionSetup);
         List<MonitoredStopVisit> filteredVisits = filteredSiri.getServiceDelivery()
-                .getStopMonitoringDeliveries().get(0).getMonitoredStopVisits();
+                .getStopMonitoringDeliveries().getFirst().getMonitoredStopVisits();
 
         Assertions.assertEquals(6, filteredVisits.size());
 
@@ -134,16 +135,16 @@ public class FilterMinimumMaximumSMTest {
      *
      */
     @Test
-    public void testFilterWithMinPerLine3() {
+    void testFilterWithMinPerLine3() {
 
         Siri siri = createSiriWithMultipleStopVisits();
         OutboundSubscriptionSetup outboundSubscriptionSetup = TestUtils.createSmOutboundSubscription(true);
-        outboundSubscriptionSetup.setMaximumStopVisits(BigInteger.valueOf(4));
-        outboundSubscriptionSetup.setMinimumStopVisitsPerLine(BigInteger.valueOf(3));
+        outboundSubscriptionSetup.setMaximumStopVisits(BigInteger.valueOf(6));
+        outboundSubscriptionSetup.setMinimumStopVisitsPerLine(BigInteger.valueOf(2));
 
         Siri filteredSiri = SiriUtils.filterStopMonitoringOnNbOfStopVisits(siri, outboundSubscriptionSetup);
         List<MonitoredStopVisit> filteredVisits = filteredSiri.getServiceDelivery()
-                .getStopMonitoringDeliveries().get(0).getMonitoredStopVisits();
+                .getStopMonitoringDeliveries().getFirst().getMonitoredStopVisits();
 
         Assertions.assertEquals(6, filteredVisits.size());
 
@@ -158,7 +159,7 @@ public class FilterMinimumMaximumSMTest {
                 expectedDeparture(8, 20),
                 expectedDeparture(8, 30),
                 expectedDeparture(9, 0),
-                expectedDeparture(9, 20)
+                expectedDeparture(9, 10)
         ), expectedDepartures);
     }
 
@@ -167,7 +168,7 @@ public class FilterMinimumMaximumSMTest {
      *
      */
     @Test
-    public void testFilterWithMinPerLineVia() {
+    void testFilterWithMinPerLineVia() {
 
         Siri siri = createSiriWithMultipleStopVisits();
         OutboundSubscriptionSetup outboundSubscriptionSetup = TestUtils.createSmOutboundSubscription(true);
@@ -176,7 +177,7 @@ public class FilterMinimumMaximumSMTest {
 
         Siri filteredSiri = SiriUtils.filterStopMonitoringOnNbOfStopVisits(siri, outboundSubscriptionSetup);
         List<MonitoredStopVisit> filteredVisits = filteredSiri.getServiceDelivery()
-                .getStopMonitoringDeliveries().get(0).getMonitoredStopVisits();
+                .getStopMonitoringDeliveries().getFirst().getMonitoredStopVisits();
 
         Assertions.assertEquals(8, filteredVisits.size());
 
@@ -202,7 +203,7 @@ public class FilterMinimumMaximumSMTest {
      *
      */
     @Test
-    public void testFilterWithMinPerLineVia2() {
+    void testFilterWithMinPerLineVia2() {
 
         Siri siri = createSiriWithMultipleStopVisits();
         OutboundSubscriptionSetup outboundSubscriptionSetup = TestUtils.createSmOutboundSubscription(true);
@@ -211,7 +212,7 @@ public class FilterMinimumMaximumSMTest {
 
         Siri filteredSiri = SiriUtils.filterStopMonitoringOnNbOfStopVisits(siri, outboundSubscriptionSetup);
         List<MonitoredStopVisit> filteredVisits = filteredSiri.getServiceDelivery()
-                .getStopMonitoringDeliveries().get(0).getMonitoredStopVisits();
+                .getStopMonitoringDeliveries().getFirst().getMonitoredStopVisits();
 
         Assertions.assertEquals(10, filteredVisits.size());
 
@@ -234,6 +235,40 @@ public class FilterMinimumMaximumSMTest {
         ), expectedDepartures);
     }
 
+
+    /**
+     * Filtering with maximum must keep the header fields of the delivery
+     * (SubscriberRef, SubscriptionRef, Status, ResponseTimestamp, version)
+     */
+    @Test
+    void testFilterKeepsDeliveryHeaderFields() {
+
+        Siri siri = createSiriWithMultipleStopVisits();
+        ZonedDateTime responseTimestamp = ZonedDateTime.now();
+        StopMonitoringDeliveryStructure originalDelivery = siri.getServiceDelivery().getStopMonitoringDeliveries().getFirst();
+        originalDelivery.setStatus(true);
+        originalDelivery.setResponseTimestamp(responseTimestamp);
+        originalDelivery.setVersion("2.0");
+        SiriUtils.setSubscriberAndSubscriptionRef(siri, new OutSubscriptionIdentifier("subscriber-1", "subscription-1"));
+
+        OutboundSubscriptionSetup outboundSubscriptionSetup = TestUtils.createSmOutboundSubscription(true);
+        outboundSubscriptionSetup.setMaximumStopVisits(BigInteger.valueOf(4));
+
+        Siri filteredSiri = SiriUtils.filterStopMonitoringOnNbOfStopVisits(siri, outboundSubscriptionSetup);
+
+        List<StopMonitoringDeliveryStructure> deliveries = filteredSiri.getServiceDelivery().getStopMonitoringDeliveries();
+        Assertions.assertEquals(1, deliveries.size());
+
+        StopMonitoringDeliveryStructure filteredDelivery = deliveries.getFirst();
+        Assertions.assertEquals(4, filteredDelivery.getMonitoredStopVisits().size());
+        Assertions.assertNotNull(filteredDelivery.getSubscriberRef());
+        Assertions.assertEquals("subscriber-1", filteredDelivery.getSubscriberRef().getValue());
+        Assertions.assertNotNull(filteredDelivery.getSubscriptionRef());
+        Assertions.assertEquals("subscription-1", filteredDelivery.getSubscriptionRef().getValue());
+        Assertions.assertEquals(Boolean.TRUE, filteredDelivery.isStatus());
+        Assertions.assertEquals(responseTimestamp, filteredDelivery.getResponseTimestamp());
+        Assertions.assertEquals("2.0", filteredDelivery.getVersion());
+    }
 
     private ZonedDateTime expectedDeparture(int hour, int minute) {
         return baseDate.withHour(hour).withMinute(minute).withSecond(0).withNano(0);
