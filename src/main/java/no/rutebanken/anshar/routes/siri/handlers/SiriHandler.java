@@ -606,12 +606,6 @@ public class SiriHandler {
             if (parts.length < 2) {
                 return false;
             }
-            String producerDatasetId = parts[0];
-
-            if (!stopPlaceUpdaterService.isDatasetKnown(producerDatasetId)) {
-                return true;
-            }
-
             return stopPlaceUpdaterService.isKnownId(stopRef);
         }
     }
