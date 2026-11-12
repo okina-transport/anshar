@@ -23,10 +23,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
- * DATA-1507: a StopMonitoring subscription request containing at least one invalid stop reference
- * must be rejected with an InvalidDataReferencesError, and no subscription must be created.
+ * DATA-1507: each StopMonitoring subscription of a request containing an invalid stop reference
+ * must be rejected with an InvalidDataReferencesError, while subscriptions with a valid stop reference are created.
  */
-public class SM_reject_subscription_on_invalid_stop_references extends SpringBootBaseTest {
+class SM_reject_subscription_on_invalid_stop_references extends SpringBootBaseTest {
 
     private static final String DATASET = "DAT1";
     private static final String QUAY1_REF = DATASET + ":Quay:REJ1";
@@ -42,21 +42,23 @@ public class SM_reject_subscription_on_invalid_stop_references extends SpringBoo
     private ServerSubscriptionManager serverSubscriptionManager;
 
     @BeforeEach
-    public void init() {
+    void init() {
         serverSubscriptionManager.clearAllOutboundSubscriptions();
         initStopPlaceMapper();
     }
 
     @Test
-    public void valid_stop_reference_creates_subscription() throws UnmarshalException {
+    void valid_stop_reference_creates_subscription() throws UnmarshalException {
         Siri response = handler.handleIncomingSiri(createParameters(List.of(VALID_STOP)));
 
         Assertions.assertNotNull(response);
         Assertions.assertEquals(1, serverSubscriptionManager.getSubscriptions().size());
+        List<ResponseStatus> statuses = assertSubscriptionResponse(response, 1);
+        Assertions.assertTrue(statuses.getFirst().isStatus());
     }
 
     @Test
-    public void invalid_stop_reference_is_rejected_and_no_subscription_created() throws UnmarshalException {
+    void invalid_stop_reference_is_rejected_and_no_subscription_created() throws UnmarshalException {
         Siri response = handler.handleIncomingSiri(createParameters(List.of(UNKNOWN_STOP)));
 
         Assertions.assertTrue(serverSubscriptionManager.getSubscriptions().isEmpty(), "No subscription must be created");
@@ -65,18 +67,53 @@ public class SM_reject_subscription_on_invalid_stop_references extends SpringBoo
     }
 
     @Test
-    public void mixed_valid_and_invalid_stop_references_reject_whole_request() throws UnmarshalException {
+    void mixed_valid_and_invalid_stop_references_rejects_only_invalid_subscription() throws UnmarshalException {
         Siri response = handler.handleIncomingSiri(createParameters(List.of(VALID_STOP, UNKNOWN_STOP)));
 
-        Assertions.assertTrue(serverSubscriptionManager.getSubscriptions().isEmpty(), "No subscription must be created, even for the valid stop");
-        ResponseStatus status = assertInvalidDataReferencesResponse(response);
-        String description = status.getErrorCondition().getDescription().getValue();
+        Assertions.assertEquals(1, serverSubscriptionManager.getSubscriptions().size(), "Subscription on valid stop must be created");
+
+        List<ResponseStatus> statuses = assertSubscriptionResponse(response, 2);
+
+        ResponseStatus validStatus = statuses.getFirst();
+        Assertions.assertTrue(validStatus.isStatus(), "Subscription on valid stop must be accepted");
+        Assertions.assertNull(validStatus.getErrorCondition());
+
+        ResponseStatus invalidStatus = assertInvalidDataReferencesStatus(statuses.get(1));
+        Assertions.assertEquals("TU-SUB-REJ2", invalidStatus.getSubscriptionRef().getValue());
+        String description = invalidStatus.getErrorCondition().getDescription().getValue();
         Assertions.assertTrue(description.contains(UNKNOWN_STOP));
         Assertions.assertFalse(description.contains(VALID_STOP), "Valid stop must not be listed as invalid");
+        Assertions.assertFalse(description.contains("datasetId"), "No datasetId must be shown when no dataset is provided");
     }
 
     @Test
-    public void producer_stop_reference_with_unknown_dataset_is_rejected() throws UnmarshalException {
+    void invalid_then_valid_stop_references_keep_request_order() throws UnmarshalException {
+        Siri response = handler.handleIncomingSiri(createParameters(List.of(UNKNOWN_STOP, VALID_STOP)));
+
+        Assertions.assertEquals(1, serverSubscriptionManager.getSubscriptions().size(), "Subscription on valid stop must be created");
+
+        List<ResponseStatus> statuses = assertSubscriptionResponse(response, 2);
+
+        ResponseStatus invalidStatus = assertInvalidDataReferencesStatus(statuses.getFirst());
+        Assertions.assertEquals("TU-SUB-REJ1", invalidStatus.getSubscriptionRef().getValue());
+        Assertions.assertTrue(invalidStatus.getErrorCondition().getDescription().getValue().contains(UNKNOWN_STOP));
+
+        Assertions.assertTrue(statuses.get(1).isStatus(), "Subscription on valid stop must be accepted");
+    }
+
+    @Test
+    void multiple_invalid_stop_references_are_all_rejected() throws UnmarshalException {
+        Siri response = handler.handleIncomingSiri(createParameters(List.of(UNKNOWN_STOP, UNKNOWN_DATASET_STOP)));
+
+        Assertions.assertTrue(serverSubscriptionManager.getSubscriptions().isEmpty(), "No subscription must be created");
+
+        List<ResponseStatus> statuses = assertSubscriptionResponse(response, 2);
+        Assertions.assertTrue(assertInvalidDataReferencesStatus(statuses.getFirst()).getErrorCondition().getDescription().getValue().contains(UNKNOWN_STOP));
+        Assertions.assertTrue(assertInvalidDataReferencesStatus(statuses.get(1)).getErrorCondition().getDescription().getValue().contains(UNKNOWN_DATASET_STOP));
+    }
+
+    @Test
+    void producer_stop_reference_with_unknown_dataset_is_rejected() throws UnmarshalException {
         StopPlaceUpdaterService stopPlaceService = ApplicationContextHolder.getContext().getBean(StopPlaceUpdaterService.class);
         Assertions.assertFalse(stopPlaceService.isKnownId(UNKNOWN_DATASET_STOP), "Precondition: stop must be unknown");
 
@@ -88,7 +125,7 @@ public class SM_reject_subscription_on_invalid_stop_references extends SpringBoo
     }
 
     @Test
-    public void missing_monitoring_ref_is_rejected_without_exception() throws UnmarshalException {
+    void missing_monitoring_ref_is_rejected_without_exception() throws UnmarshalException {
         List<String> refs = new ArrayList<>();
         refs.add(null);
         Siri response = handler.handleIncomingSiri(createParameters(refs));
@@ -98,16 +135,25 @@ public class SM_reject_subscription_on_invalid_stop_references extends SpringBoo
     }
 
     private ResponseStatus assertInvalidDataReferencesResponse(Siri response) {
+        return assertInvalidDataReferencesStatus(assertSubscriptionResponse(response, 1).getFirst());
+    }
+
+    private List<ResponseStatus> assertSubscriptionResponse(Siri response, int expectedStatuses) {
         Assertions.assertNotNull(response);
         Assertions.assertEquals("2.0", response.getVersion(), "Response must carry the request SIRI version");
 
         SubscriptionResponseStructure subscriptionResponse = response.getSubscriptionResponse();
         Assertions.assertNotNull(subscriptionResponse);
         Assertions.assertEquals(REQUEST_MESSAGE_ID, subscriptionResponse.getRequestMessageRef().getValue());
-        Assertions.assertEquals(1, subscriptionResponse.getResponseStatuses().size());
+        Assertions.assertEquals(expectedStatuses, subscriptionResponse.getResponseStatuses().size());
+        subscriptionResponse.getResponseStatuses().forEach(status ->
+                Assertions.assertEquals(REQUEST_MESSAGE_ID, status.getRequestMessageRef().getValue(), "Every status must reference the request message"));
+        return subscriptionResponse.getResponseStatuses();
+    }
 
-        ResponseStatus status = subscriptionResponse.getResponseStatuses().get(0);
+    private ResponseStatus assertInvalidDataReferencesStatus(ResponseStatus status) {
         Assertions.assertFalse(status.isStatus());
+        Assertions.assertEquals(REQUEST_MESSAGE_ID, status.getRequestMessageRef().getValue());
         Assertions.assertNotNull(status.getErrorCondition());
         Assertions.assertNotNull(status.getErrorCondition().getInvalidDataReferencesError());
         return status;

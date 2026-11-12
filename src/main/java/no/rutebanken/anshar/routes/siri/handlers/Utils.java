@@ -191,20 +191,56 @@ public class Utils {
 
     }
 
-    public Siri createInvalidDataReferencesSubscriptionResponse(List<String> unKnownStopMonitoring, String requestMessageId, String version) {
+    /**
+     * A subscription rejected because it references invalid data.
+     *
+     * @param subscriptionId identifier of the rejected subscription (may be null)
+     * @param description    description of the invalid reference
+     */
+    public record InvalidSubscription(String subscriptionId, String description) {
+    }
+
+    /**
+     * Build a subscription response where every subscription has been rejected because of invalid data references.
+     *
+     * @param invalidSubscriptions rejected subscriptions
+     * @param requestMessageId     identifier of the incoming request message
+     * @param version              SIRI version of the incoming request
+     * @return the subscription response, containing one rejected ResponseStatus per invalid subscription
+     */
+    public Siri createInvalidDataReferencesSubscriptionResponse(List<InvalidSubscription> invalidSubscriptions, String requestMessageId, String version) {
         Siri result = new Siri();
         result.setVersion(version != null ? version : SiriHelper.FALLBACK_SIRI_VERSION);
         SubscriptionResponseStructure response = new SubscriptionResponseStructure();
         response.setResponseTimestamp(ZonedDateTime.now());
+        MessageRefStructure requestMessageRef = createMessageRef(requestMessageId);
+        response.setRequestMessageRef(requestMessageRef);
 
-        MessageRefStructure ref = new MessageRefStructure();
-        ref.setValue(requestMessageId != null ? requestMessageId : UUID.randomUUID().toString());
-        response.setRequestMessageRef(ref);
+        invalidSubscriptions.forEach(invalid ->
+                response.getResponseStatuses().add(createInvalidDataReferencesResponseStatus(invalid, requestMessageRef)));
 
+        result.setSubscriptionResponse(response);
+        return result;
+    }
+
+    /**
+     * Build a rejected ResponseStatus for a single subscription that references invalid data.
+     *
+     * @param invalidSubscription the rejected subscription
+     * @param requestMessageRef   reference to the incoming request message
+     * @return the rejected ResponseStatus, carrying an InvalidDataReferencesError
+     */
+    public ResponseStatus createInvalidDataReferencesResponseStatus(InvalidSubscription invalidSubscription, MessageRefStructure requestMessageRef) {
         ResponseStatus status = new ResponseStatus();
         status.setResponseTimestamp(ZonedDateTime.now());
         status.setStatus(false);
-        status.setRequestMessageRef(ref);
+        status.setRequestMessageRef(requestMessageRef);
+
+        if (invalidSubscription.subscriptionId() != null) {
+            SubscriptionRefStructure subscriptionRef = new SubscriptionRefStructure();
+            subscriptionRef.setValue(invalidSubscription.subscriptionId());
+            status.setSubscriptionRef(subscriptionRef);
+        }
 
         ServiceDeliveryErrorConditionElement errorCondition = new ServiceDeliveryErrorConditionElement();
         InvalidDataReferencesErrorStructure invalidDataStruct = new InvalidDataReferencesErrorStructure();
@@ -212,15 +248,23 @@ public class Utils {
         errorCondition.setInvalidDataReferencesError(invalidDataStruct);
 
         ErrorDescriptionStructure errorDesc = new ErrorDescriptionStructure();
-        errorDesc.setValue(String.join(", ", unKnownStopMonitoring));
+        errorDesc.setValue(invalidSubscription.description());
         errorCondition.setDescription(errorDesc);
 
         status.setErrorCondition(errorCondition);
+        return status;
+    }
 
-        response.getResponseStatuses().add(status);
-
-        result.setSubscriptionResponse(response);
-        return result;
+    /**
+     * Build a reference to the incoming request message.
+     *
+     * @param requestMessageId identifier of the incoming request message (may be null)
+     * @return the reference, with a random UUID when no identifier is provided
+     */
+    public MessageRefStructure createMessageRef(String requestMessageId) {
+        MessageRefStructure ref = new MessageRefStructure();
+        ref.setValue(requestMessageId != null ? requestMessageId : UUID.randomUUID().toString());
+        return ref;
     }
 
     /**

@@ -284,28 +284,8 @@ public class SiriHandler {
                 return generateServerIsIntializingError(incoming);
             }
 
-            // Validate stop references BEFORE creating any subscription: if at least one stop is invalid,
-            // the whole subscription request is rejected and no subscription is created.
             if (CollectionUtils.isNotEmpty(incoming.getSubscriptionRequest().getStopMonitoringSubscriptionRequests())) {
-                List<String> unKnownStopMonitoring = new ArrayList<>();
-                for (StopMonitoringSubscriptionStructure stopMonitoringSubcriptionRequest : incoming.getSubscriptionRequest().getStopMonitoringSubscriptionRequests()) {
-                    String monitoringRef = null;
-                    if (stopMonitoringSubcriptionRequest.getStopMonitoringRequest() != null
-                            && stopMonitoringSubcriptionRequest.getStopMonitoringRequest().getMonitoringRef() != null) {
-                        monitoringRef = stopMonitoringSubcriptionRequest.getStopMonitoringRequest().getMonitoringRef().getValue();
-                    }
-
-                    if (!validateStopReferences(monitoringRef, datasetId)) {
-                        unKnownStopMonitoring.add("MonitoringRef: " + monitoringRef + ", datasetId: " + datasetId);
-                    }
-                }
-                if (CollectionUtils.isNotEmpty(unKnownStopMonitoring)) {
-                    logger.info("Subscription request rejected, invalid data references: {}", unKnownStopMonitoring);
-                    MessageQualifierStructure messageIdentifier = incoming.getSubscriptionRequest().getMessageIdentifier();
-                    return utils.createInvalidDataReferencesSubscriptionResponse(unKnownStopMonitoring,
-                            messageIdentifier != null ? messageIdentifier.getValue() : null,
-                            incoming.getVersion());
-                }
+                return handleStopMonitoringSubscriptionRequest(incoming, incomingSiriParameters);
             }
 
             return serverSubscriptionManager.handleMultipleSubscriptionsRequest(incoming, incomingSiriParameters);
@@ -559,6 +539,94 @@ public class SiriHandler {
         return String.join(",", messageIds);
     }
 
+    /**
+     * Validate stop references of each StopMonitoring subscription BEFORE creating any subscription.
+     * Subscriptions with a valid MonitoringRef are created, subscriptions with an invalid MonitoringRef are rejected
+     * with an InvalidDataReferencesError. The response contains one ResponseStatus per requested subscription,
+     * in the order of the request.
+     *
+     * @param incoming               incoming subscription request
+     * @param incomingSiriParameters received parameters
+     * @return the subscription response
+     */
+    private Siri handleStopMonitoringSubscriptionRequest(Siri incoming, IncomingSiriParameters incomingSiriParameters) {
+        String datasetId = incomingSiriParameters.getDatasetId();
+        SubscriptionRequest subscriptionRequest = incoming.getSubscriptionRequest();
+        MessageQualifierStructure messageIdentifier = subscriptionRequest.getMessageIdentifier();
+        String requestMessageId = messageIdentifier != null ? messageIdentifier.getValue() : null;
+
+        List<StopMonitoringSubscriptionStructure> requestedSubscriptions = new ArrayList<>(subscriptionRequest.getStopMonitoringSubscriptionRequests());
+        List<StopMonitoringSubscriptionStructure> validSubscriptions = new ArrayList<>();
+        // index in the request -> rejected subscription
+        Map<Integer, Utils.InvalidSubscription> invalidSubscriptions = new LinkedHashMap<>();
+
+        for (int i = 0; i < requestedSubscriptions.size(); i++) {
+            StopMonitoringSubscriptionStructure stopMonitoringSubscriptionRequest = requestedSubscriptions.get(i);
+            String monitoringRef = null;
+            if (stopMonitoringSubscriptionRequest.getStopMonitoringRequest() != null
+                    && stopMonitoringSubscriptionRequest.getStopMonitoringRequest().getMonitoringRef() != null) {
+                monitoringRef = stopMonitoringSubscriptionRequest.getStopMonitoringRequest().getMonitoringRef().getValue();
+            }
+
+            if (validateStopReferences(monitoringRef, datasetId)) {
+                validSubscriptions.add(stopMonitoringSubscriptionRequest);
+            } else {
+                String subscriptionId = stopMonitoringSubscriptionRequest.getSubscriptionIdentifier() != null
+                        ? stopMonitoringSubscriptionRequest.getSubscriptionIdentifier().getValue() : null;
+                String description = "MonitoringRef: " + monitoringRef
+                        + (StringUtils.isNotBlank(datasetId) ? ", datasetId: " + datasetId : "");
+                invalidSubscriptions.put(i, new Utils.InvalidSubscription(subscriptionId, description));
+            }
+        }
+
+        if (invalidSubscriptions.isEmpty()) {
+            return alignRequestMessageRef(serverSubscriptionManager.handleMultipleSubscriptionsRequest(incoming, incomingSiriParameters), requestMessageId);
+        }
+
+        logger.info("Subscription request {}: rejected subscriptions with invalid data references: {}", requestMessageId, invalidSubscriptions.values());
+
+        if (validSubscriptions.isEmpty()) {
+            return utils.createInvalidDataReferencesSubscriptionResponse(new ArrayList<>(invalidSubscriptions.values()), requestMessageId, incoming.getVersion());
+        }
+
+        // Only valid subscriptions are created
+        subscriptionRequest.getStopMonitoringSubscriptionRequests().clear();
+        subscriptionRequest.getStopMonitoringSubscriptionRequests().addAll(validSubscriptions);
+        Siri response = alignRequestMessageRef(serverSubscriptionManager.handleMultipleSubscriptionsRequest(incoming, incomingSiriParameters), requestMessageId);
+        MessageRefStructure requestMessageRef = response.getSubscriptionResponse().getRequestMessageRef();
+
+        // Merge rejected statuses with created ones (one status per valid subscription, in order), keeping the order of the request
+        List<ResponseStatus> responseStatuses = response.getSubscriptionResponse().getResponseStatuses();
+        Iterator<ResponseStatus> validStatuses = new ArrayList<>(responseStatuses).iterator();
+        responseStatuses.clear();
+        for (int i = 0; i < requestedSubscriptions.size(); i++) {
+            Utils.InvalidSubscription invalid = invalidSubscriptions.get(i);
+            responseStatuses.add(invalid != null
+                    ? utils.createInvalidDataReferencesResponseStatus(invalid, requestMessageRef)
+                    : validStatuses.next());
+        }
+        return response;
+    }
+
+    /**
+     * Use a single RequestMessageRef (the client's MessageIdentifier when provided) for the response and all its statuses.
+     *
+     * @param response         subscription response
+     * @param requestMessageId identifier of the incoming request message (may be null)
+     * @return the response
+     */
+    private Siri alignRequestMessageRef(Siri response, String requestMessageId) {
+        if (response == null || response.getSubscriptionResponse() == null) {
+            return response;
+        }
+        SubscriptionResponseStructure subscriptionResponse = response.getSubscriptionResponse();
+        MessageRefStructure requestMessageRef = requestMessageId != null || subscriptionResponse.getRequestMessageRef() == null
+                ? utils.createMessageRef(requestMessageId)
+                : subscriptionResponse.getRequestMessageRef();
+        subscriptionResponse.setRequestMessageRef(requestMessageRef);
+        subscriptionResponse.getResponseStatuses().forEach(status -> status.setRequestMessageRef(requestMessageRef));
+        return response;
+    }
 
     /**
      * Valide les références d'arrêt (stopRef) en fonction d'un nouvel algorithme.
