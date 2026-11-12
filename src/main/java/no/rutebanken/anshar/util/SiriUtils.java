@@ -580,13 +580,20 @@ public class SiriUtils {
         for (StopMonitoringDeliveryStructure stopMonitoringDelivery : delivery.getServiceDelivery().getStopMonitoringDeliveries()) {
             cancellations.addAll(stopMonitoringDelivery.getMonitoredStopVisitCancellations());
         }
-        delivery.getServiceDelivery().getStopMonitoringDeliveries().clear();
-        StopMonitoringDeliveryStructure stopMonDelStructure = new StopMonitoringDeliveryStructure();
-        stopMonDelStructure.getMonitoredStopVisits().addAll(filteredVisits);
-        stopMonDelStructure.getMonitoredStopVisitCancellations().addAll(cancellations);
-        delivery.getServiceDelivery().getStopMonitoringDeliveries().add(stopMonDelStructure);
+        reuseServiceDeliveryHeaderFields(delivery, filteredVisits, cancellations);
 
         return delivery;
+    }
+
+    private static void reuseServiceDeliveryHeaderFields(Siri delivery, List<MonitoredStopVisit> filteredVisits, List<MonitoredStopVisitCancellation> cancellations) {
+        List<StopMonitoringDeliveryStructure> smDeliveries = delivery.getServiceDelivery().getStopMonitoringDeliveries();
+        StopMonitoringDeliveryStructure stopMonDelStructure = smDeliveries.isEmpty() ? new StopMonitoringDeliveryStructure() : smDeliveries.getFirst();
+        smDeliveries.clear();
+        stopMonDelStructure.getMonitoredStopVisits().clear();
+        stopMonDelStructure.getMonitoredStopVisits().addAll(filteredVisits);
+        stopMonDelStructure.getMonitoredStopVisitCancellations().clear();
+        stopMonDelStructure.getMonitoredStopVisitCancellations().addAll(cancellations);
+        smDeliveries.add(stopMonDelStructure);
     }
 
     private static List<MonitoredStopVisit> filterVisitsPerLine(Stream<MonitoredStopVisit> visitStream, OutboundSubscriptionSetup subscriptionRequest) {
