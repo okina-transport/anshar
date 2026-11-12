@@ -27,7 +27,6 @@ import no.rutebanken.anshar.routes.siri.processor.GmFilterPublishingActionPostPr
 import no.rutebanken.anshar.routes.siri.processor.GmSIVSicAQuayPostProcessor;
 import no.rutebanken.anshar.routes.siri.processor.FillPublishToDisplayActionsProcessor;
 import no.rutebanken.anshar.routes.siri.processor.SxPublishingActionFilterPostProcessor;
-import no.rutebanken.anshar.routes.siri.transformer.SiriValueTransformer;
 import no.rutebanken.anshar.routes.siri.transformer.ValueAdapter;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
@@ -506,7 +505,7 @@ public class ServerSubscriptionManager {
 
         if (SiriDataType.STOP_MONITORING.equals(subscription.getSubscriptionType()) && !hasAStopFilter(subscription)) {
             hasError = true;
-            errorText = "Unkwnown monitoringRef";
+            errorText = "Unknown monitoringRef";
         }
 
         if (subscriptions.containsKey(subscription.getSubscriptionId())) {
