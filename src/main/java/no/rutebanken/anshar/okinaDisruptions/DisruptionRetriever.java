@@ -5,7 +5,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import io.micrometer.core.instrument.util.StringUtils;
+import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.okinaDisruptions.model.Disruption;
 import no.rutebanken.anshar.okinaDisruptions.model.MillisOrLocalDateTimeDeserializer;
 import no.rutebanken.anshar.routes.siri.converter.SxInboundData;
@@ -14,8 +14,7 @@ import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import no.rutebanken.anshar.subscription.helpers.RequestType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -31,13 +30,12 @@ import java.util.stream.Collectors;
 
 
 @Component
+@Slf4j
 public class DisruptionRetriever {
 
 
     private static final int DEFAULT_HEARTBEAT_SECONDS = 300;
     private static final String PREFIX = "OKINA_SX_";
-
-    private static final Logger logger = LoggerFactory.getLogger(DisruptionRetriever.class);
 
     @Autowired
     private SubscriptionManager subscriptionManager;
@@ -59,7 +57,7 @@ public class DisruptionRetriever {
     }
 
     public void retrieveDisruptions() {
-        logger.debug("Début récupération des perturbations");
+        log.debug("Début récupération des perturbations");
 
         try {
             String disruptionsString = disruptionService.getAllDisrutionsFromOkinaDB(ansharUserId);
@@ -67,8 +65,8 @@ public class DisruptionRetriever {
             ingestDisruption(disruptionsString);
 
         } catch (IOException e) {
-            logger.error("Error while retrieving disruptions");
-            logger.error(e.getMessage());
+            log.error("Error while retrieving disruptions");
+            log.error(e.getMessage());
 
         }
 
@@ -78,7 +76,7 @@ public class DisruptionRetriever {
     void ingestDisruption(String disruptionsString) throws JsonProcessingException {
 
         if (StringUtils.isEmpty(disruptionsString)) {
-            logger.debug("Pas de nouvelle perturbation");
+            log.debug("Pas de nouvelle perturbation");
             return;
         }
 
@@ -138,7 +136,7 @@ public class DisruptionRetriever {
             subscriptionManager.touchSubscription(PREFIX + situation.getSituationNumber());
         }
 
-        logger.info("Ingested alerts from Okina disruption service {} on {}. Deleted : {} ", ingestedSituations.size(), totalSituationCount, totalDeletedSituationCount);
+        log.info("Ingested alerts from Okina disruption service {} on {}. Deleted : {} ", ingestedSituations.size(), totalSituationCount, totalDeletedSituationCount);
 
     }
 
