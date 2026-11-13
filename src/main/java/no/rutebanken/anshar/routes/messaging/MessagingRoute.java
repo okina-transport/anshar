@@ -357,8 +357,17 @@ public class MessagingRoute extends RestRouteBuilder {
                 .end()
 
                 .choice()
+                    .when(org.apache.camel.support.builder.PredicateBuilder.and(
+                            header(SUBSCRIPTION_MODE).isEqualTo(SubscriptionSetup.SubscriptionMode.LITE.name()),
+                            header(INTERNAL_SIRI_DATA_TYPE).isEqualTo(SiriDataType.VEHICLE_MONITORING.name())))
+                        .to("direct:transformSiriJsonToVM")
                     .when(header(SUBSCRIPTION_MODE).isEqualTo(SubscriptionSetup.SubscriptionMode.LITE.name()))
-                    .to("direct:transformSiriJsonToVM")
+                        .to("direct:transformSiriJsonToSiri")
+                .end()
+                .choice()
+                    .when(body().isNull())
+                        .log(LoggingLevel.WARN, "SIRI Lite response ignored, unable to convert it. subscriptionId: ${header.subscriptionId}")
+                        .stop()
                 .end()
                 .to("direct:process.mapping")
                 .to("direct:" + CamelRouteNames.PROCESSOR_QUEUE_DEFAULT)
@@ -372,6 +381,13 @@ public class MessagingRoute extends RestRouteBuilder {
                     p.getMessage().setBody(SiriXml.toXml(incomingSiri));
                 })
                 .routeId("TransformSiriJsonToVM");
+
+        from("direct:transformSiriJsonToSiri")
+                .process(p -> {
+                    Siri incomingSiri = SiriJsonTransformer.convertJsonToSiri(p.getIn().getBody(String.class));
+                    p.getMessage().setBody(incomingSiri != null ? SiriXml.toXml(incomingSiri) : null);
+                })
+                .routeId("TransformSiriJsonToSiri");
 
 
         from("direct:transform.siri")

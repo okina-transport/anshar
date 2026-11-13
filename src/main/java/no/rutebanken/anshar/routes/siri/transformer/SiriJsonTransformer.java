@@ -1,17 +1,27 @@
 package no.rutebanken.anshar.routes.siri.transformer;
 
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.deser.DeserializationProblemHandler;
+import com.fasterxml.jackson.databind.deser.ValueInstantiator;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.module.jakarta.xmlbind.JakartaXmlBindAnnotationModule;
+import lombok.extern.slf4j.Slf4j;
 import no.rutebanken.anshar.routes.siri.transformer.JsonDTOs.VehicleMonitoringJsonDTO;
 import no.rutebanken.anshar.util.DateUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import uk.org.siri.siri21.*;
 
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -21,9 +31,61 @@ import java.util.UUID;
 /**
  * Mapping class to convert a json representing VehicleMonitoring data to a Siri object
  */
+@Slf4j
 public class SiriJsonTransformer {
 
-    private static final Logger logger = LoggerFactory.getLogger(SiriJsonTransformer.class);
+    private SiriJsonTransformer() {
+        throw new IllegalStateException();
+    }
+
+    private static final ObjectMapper SIRI_READER = createSiriReader();
+
+    private static ObjectMapper createSiriReader() {
+        ObjectMapper mapper = JsonMapper.builder()
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                .configure(DeserializationFeature.READ_ENUMS_USING_TO_STRING, true)
+                .configure(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY, true)
+                .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true)
+                .build();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.registerModule(new JakartaXmlBindAnnotationModule());
+
+        // SIRI Lite producers send plain strings for SIRI types wrapping a single value (LineRef, MonitoringRef, ...)
+        mapper.addHandler(new DeserializationProblemHandler() {
+            @Override
+            public Object handleMissingInstantiator(DeserializationContext ctxt, Class<?> instClass, ValueInstantiator valueInsta,
+                                                    JsonParser p, String msg) throws IOException {
+                if (p.currentToken() == null || !p.currentToken().isScalarValue()) {
+                    return NOT_HANDLED;
+                }
+                try {
+                    Object instance = instClass.getDeclaredConstructor().newInstance();
+                    instClass.getMethod("setValue", String.class).invoke(instance, p.getText());
+                    return instance;
+                } catch (ReflectiveOperationException e) {
+                    return NOT_HANDLED;
+                }
+            }
+        });
+        return mapper;
+    }
+
+    /**
+     * Converts a SIRI Lite json (with or without the "Siri" root element) to a Siri object
+     *
+     * @param json the SIRI Lite json
+     * @return a siri object, or null if the json cannot be read
+     */
+    public static Siri convertJsonToSiri(String json) {
+        try {
+            JsonNode root = SIRI_READER.readTree(json);
+            JsonNode siriNode = root.has("Siri") ? root.get("Siri") : root;
+            return SIRI_READER.treeToValue(siriNode, Siri.class);
+        } catch (JsonProcessingException | IllegalArgumentException e) {
+            log.error("Error while converting SIRI Lite json to Siri", e);
+            return null;
+        }
+    }
 
     public static Siri convertJsonVMtoSiri(String jsonVehicleMonitoring) {
 
@@ -31,12 +93,12 @@ public class SiriJsonTransformer {
         Siri result = null;
         ObjectMapper objectMapper = new ObjectMapper();
         try {
-            VehicleMonitoringJsonDTO vehicleMonitoringJsonDTO = objectMapper.readValue(jsonVehicleMonitoring, new TypeReference<VehicleMonitoringJsonDTO>() {
+            VehicleMonitoringJsonDTO vehicleMonitoringJsonDTO = objectMapper.readValue(jsonVehicleMonitoring, new TypeReference<>() {
             });
             result = mapDTOToSiri(vehicleMonitoringJsonDTO);
 
         } catch (JsonProcessingException e) {
-            logger.error("Error while converting vehicleMonitoringJson to DTO");
+            log.error("Error while converting vehicleMonitoringJson to DTO");
         }
 
         return result;
@@ -104,7 +166,7 @@ public class SiriJsonTransformer {
             try {
                 createdVehicleMonitoringStruct.setShortestPossibleCycle(DatatypeFactory.newInstance().newDuration(monitoringDelivery.getShortestPossibleCycle()));
             } catch (DatatypeConfigurationException e) {
-                logger.error("Error while creating duration for shortestPossibleCycle", e);
+                log.error("Error while creating duration for shortestPossibleCycle", e);
             }
         }
         if (monitoringDelivery.getVehicleActivity() != null) {
@@ -223,7 +285,7 @@ public class SiriJsonTransformer {
         try {
             createdVehicleJourney.setDelay(DatatypeFactory.newInstance().newDuration(monitoredVehicleJourney.getDelay()));
         } catch (DatatypeConfigurationException e) {
-            logger.error("Error while converting delay", e);
+            log.error("Error while converting delay", e);
         }
 
         if (StringUtils.isNotEmpty(monitoredVehicleJourney.getVehicleRef())) {
@@ -236,7 +298,7 @@ public class SiriJsonTransformer {
             try {
                 createdVehicleJourney.setVehicleStatus(VehicleStatusEnumeration.fromValue(monitoredVehicleJourney.getVehicleStatus()));
             } catch (IllegalArgumentException e) {
-                logger.error("Unable to create vehicleStatus for value:" + monitoredVehicleJourney.getVehicleStatus());
+                log.error("Unable to create vehicleStatus for value: {}", monitoredVehicleJourney.getVehicleStatus());
             }
         }
 
