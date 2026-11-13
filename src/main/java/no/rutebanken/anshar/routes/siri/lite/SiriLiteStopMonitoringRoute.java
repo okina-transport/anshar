@@ -1,6 +1,6 @@
 package no.rutebanken.anshar.routes.siri.lite;
 
-import io.micrometer.core.instrument.util.StringUtils;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import no.rutebanken.anshar.config.AnsharConfiguration;
@@ -20,6 +20,7 @@ import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import no.rutebanken.anshar.subscription.helpers.MappingAdapterPresets;
 import no.rutebanken.anshar.util.IDUtils;
 import no.rutebanken.anshar.util.SiriUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.Siri;

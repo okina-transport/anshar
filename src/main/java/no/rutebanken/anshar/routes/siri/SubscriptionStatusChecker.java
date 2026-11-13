@@ -9,16 +9,19 @@ import org.apache.camel.builder.RouteBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
 
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Component
-@Configuration
 public class SubscriptionStatusChecker extends RouteBuilder {
 
     @Autowired
@@ -58,7 +61,11 @@ public class SubscriptionStatusChecker extends RouteBuilder {
 
     private void checkSubscriptionStatuses() {
         Map<String, SubscriptionSetup> filteredSubscriptions = subscriptions.entrySet().stream()
-                .filter(entry -> !"GTFS-RT".equals(entry.getValue().getContentType()) && !SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE.equals(entry.getValue().getSubscriptionMode()))
+                .filter(entry -> !"GTFS-RT".equals(entry.getValue().getContentType()))
+                .filter(entry -> !EnumSet.of(SubscriptionSetup.SubscriptionMode.REQUEST_RESPONSE,
+                                SubscriptionSetup.SubscriptionMode.LITE,
+                                SubscriptionSetup.SubscriptionMode.LITE_XML)
+                        .contains(entry.getValue().getSubscriptionMode()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
         Map<Collection<String>, SubscriptionSetup> uniqueUrls = filteredSubscriptions.values().stream()

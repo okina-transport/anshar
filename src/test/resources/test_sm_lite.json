@@ -1,0 +1,108 @@
+{
+  "Siri": {
+    "ServiceDelivery": {
+      "ResponseTimeStamp": "2026-11-13T08:27:46.359Z",
+      "Status": true,
+      "StopMonitoringDelivery": [
+        {
+          "MonitoredStopVisit": [
+            {
+              "RecordedAtTime": "2026-11-13T09:26:52.000+01:00",
+              "ItemIdentifier": "SMMAG:Item::SEM_268541857:LOC",
+              "MonitoringRef": "SMMAG:StopPointRef:BP:SEM_3205:LOC",
+              "MonitoredVehicleJourney": {
+                "LineRef": "SMMAG:LineRef::SEM_E:LOC",
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": "SMMAG:Version:1-23:SEM_LOC",
+                  "DatedVehicleJourneyRef": "SMMAG:VehicleJourney::SEM_32471146:LOC"
+                },
+                "JourneyPatternRef": "SMMAG:JourneyPatternRef:BP:SEM_E_A_56:LOC",
+                "DirectionName": "A",
+                "DestinationRef": "SMMAG:StopRef:BP:SEM_3235:LOC",
+                "DestinationName": "Palluel",
+                "Monitored": true,
+                "MonitoredCall": {
+                  "AimedArrivalTime": "2026-11-13T09:29:42.000+01:00",
+                  "AimedDepartureTime": "2026-11-13T09:29:42.000+01:00",
+                  "DestinationDisplay": "LE FONTANIL PALLUEL",
+                  "ExpectedArrivalTime": "2026-11-13T09:30:30.000+01:00",
+                  "ExpectedDepartureTime": "2026-11-13T09:30:30.000+01:00",
+                  "Order": 3,
+                  "StopPointName": "Vallier – Libération",
+                  "VehicleAtStop": false
+                },
+                "Extensions": {
+                  "DestinationCity": "Fontanil-Cornillon"
+                }
+              }
+            },
+            {
+              "RecordedAtTime": "2026-11-13T09:20:12.000+01:00",
+              "ItemIdentifier": "SMMAG:Item::SEM_268542226:LOC",
+              "MonitoringRef": "SMMAG:StopPointRef:BP:SEM_3205:LOC",
+              "MonitoredVehicleJourney": {
+                "LineRef": "SMMAG:LineRef::SEM_E:LOC",
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": "SMMAG:Version:1-23:SEM_LOC",
+                  "DatedVehicleJourneyRef": "SMMAG:VehicleJourney::SEM_32471173:LOC"
+                },
+                "JourneyPatternRef": "SMMAG:JourneyPatternRef:BP:SEM_E_A_56:LOC",
+                "DirectionName": "A",
+                "DestinationRef": "SMMAG:StopRef:BP:SEM_3235:LOC",
+                "DestinationName": "Palluel",
+                "Monitored": false,
+                "MonitoredCall": {
+                  "AimedArrivalTime": "2026-11-13T09:37:21.000+01:00",
+                  "AimedDepartureTime": "2026-11-13T09:37:21.000+01:00",
+                  "DestinationDisplay": "LE FONTANIL PALLUEL",
+                  "ExpectedArrivalTime": "2026-11-13T09:37:22.000+01:00",
+                  "ExpectedDepartureTime": "2026-11-13T09:37:22.000+01:00",
+                  "Order": 3,
+                  "StopPointName": "Vallier – Libération",
+                  "VehicleAtStop": false
+                },
+                "Extensions": {
+                  "DestinationCity": "Fontanil-Cornillon"
+                }
+              }
+            },
+            {
+              "RecordedAtTime": "2026-11-13T09:20:12.000+01:00",
+              "ItemIdentifier": "SMMAG:Item::SEM_268539787:LOC",
+              "MonitoringRef": "SMMAG:StopPointRef:BP:SEM_3205:LOC",
+              "MonitoredVehicleJourney": {
+                "LineRef": "SMMAG:LineRef::SEM_E:LOC",
+                "FramedVehicleJourneyRef": {
+                  "DataFrameRef": "SMMAG:Version:1-23:SEM_LOC",
+                  "DatedVehicleJourneyRef": "SMMAG:VehicleJourney::SEM_32471235:LOC"
+                },
+                "JourneyPatternRef": "SMMAG:JourneyPatternRef:BP:SEM_E_A_56:LOC",
+                "DirectionName": "A",
+                "DestinationRef": "SMMAG:StopRef:BP:SEM_3235:LOC",
+                "DestinationName": "Palluel",
+                "Monitored": true,
+                "MonitoredCall": {
+                  "AimedArrivalTime": "2026-11-13T09:45:21.000+01:00",
+                  "AimedDepartureTime": "2026-11-13T09:45:21.000+01:00",
+                  "DestinationDisplay": "LE FONTANIL PALLUEL",
+                  "ExpectedArrivalTime": "2026-11-13T09:45:22.000+01:00",
+                  "ExpectedDepartureTime": "2026-11-13T09:45:22.000+01:00",
+                  "Order": 3,
+                  "StopPointName": "Vallier – Libération",
+                  "VehicleAtStop": false
+                },
+                "Extensions": {
+                  "DestinationCity": "Fontanil-Cornillon"
+                }
+              }
+            }
+          ],
+          "ResponseTimeStamp": "2026-11-13T08:27:46.359Z",
+          "Status": true,
+          "Version": "2.0"
+        }
+      ],
+      "Version": "2.0"
+    }
+  }
+}
