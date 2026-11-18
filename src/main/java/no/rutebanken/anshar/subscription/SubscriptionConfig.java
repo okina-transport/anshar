@@ -50,7 +50,7 @@ public class SubscriptionConfig {
     List<SiriDataType> dataTypes;
     private List<SubscriptionSetup> subscriptions = new CopyOnWriteArrayList<>();
     private List<SiriApi> siriApis = new CopyOnWriteArrayList<>();
-    private List<DiscoverySubscription> discoverySubscriptions = new ArrayList<>();
+    private List<DiscoverySubscription> discoverySubscriptions = new CopyOnWriteArrayList<>();
 
     public List<SubscriptionSetup> getSubscriptions() {
         if (dataTypes != null && !dataTypes.isEmpty()) {
@@ -62,7 +62,11 @@ public class SubscriptionConfig {
     }
 
     public void setSubscriptions(List<SubscriptionSetup> subscriptions) {
-        this.subscriptions = subscriptions;
+        this.subscriptions = new CopyOnWriteArrayList<>(subscriptions);
+    }
+
+    public void addSubscriptions(List<SubscriptionSetup> newSubscriptions) {
+        subscriptions.addAll(newSubscriptions);
     }
 
     public List<SiriApi> getSiriApis() {
@@ -78,7 +82,7 @@ public class SubscriptionConfig {
     }
 
     public void setDiscoverySubscriptions(List<DiscoverySubscription> discoverySubscriptions) {
-        this.discoverySubscriptions = discoverySubscriptions;
+        this.discoverySubscriptions = new CopyOnWriteArrayList<>(discoverySubscriptions);
     }
 
     public List<IdProcessingParameters> getIdProcessingParameters() {

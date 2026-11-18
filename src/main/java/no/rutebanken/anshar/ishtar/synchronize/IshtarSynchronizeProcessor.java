@@ -12,6 +12,7 @@ import no.rutebanken.anshar.ishtar.model.SubscriptionDto;
 import no.rutebanken.anshar.routes.mapping.OutputExternalIdsService;
 import no.rutebanken.anshar.subscription.DiscoverySubscriptionCreator;
 import no.rutebanken.anshar.subscription.SubscriptionConfig;
+import no.rutebanken.anshar.subscription.SubscriptionInitializer;
 import no.rutebanken.anshar.subscription.SubscriptionSetup;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
@@ -41,6 +42,7 @@ public class IshtarSynchronizeProcessor implements Processor {
 
     private final SubscriptionConfig subscriptionConfig;
     private final DiscoverySubscriptionCreator discoverySubscriptionCreator;
+    private final SubscriptionInitializer subscriptionInitializer;
 
     private final WebClient webClient;
 
@@ -53,12 +55,14 @@ public class IshtarSynchronizeProcessor implements Processor {
 
     public IshtarSynchronizeProcessor(SubscriptionConfig subscriptionConfig,
                                       DiscoverySubscriptionCreator discoverySubscriptionCreator,
+                                      SubscriptionInitializer subscriptionInitializer,
                                       @Value("${ishtar.server.url}") URL ishtarUrl,
                                       SubscriptionDtoToSubscriptionSetupConverter toSubscriptionSetupConverter,
                                       OutputExternalIdsService outputExternalIdsService,
                                       TokenService tokenService) {
         this.subscriptionConfig = subscriptionConfig;
         this.discoverySubscriptionCreator = discoverySubscriptionCreator;
+        this.subscriptionInitializer = subscriptionInitializer;
         this.webClient = WebClient.builder().baseUrl(ishtarUrl.toString()).defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE).build();
         this.siriApiDtoConverter = new SiriApiDtoConverter();
         this.idProcessingParameterDtoConverter = new IdProcessingParameterDtoConverter();
@@ -105,7 +109,7 @@ public class IshtarSynchronizeProcessor implements Processor {
                 log.info("No validated Subscription APIs ");
             } else {
                 log.info("Before merge {} Setup Subscription(s) in cache", subscriptionConfig.getSubscriptions().size());
-                subscriptionConfig.mergeSubscriptions(validationMap.get(true));
+                subscriptionInitializer.runWithInitLock(() -> subscriptionConfig.mergeSubscriptions(validationMap.get(true)));
                 log.info("After merge {} Setup Subscription(s) in cache", subscriptionConfig.getSubscriptions().size());
             }
 
@@ -133,7 +137,7 @@ public class IshtarSynchronizeProcessor implements Processor {
                 log.info("No validated Subscription APIs ");
             } else {
                 log.info("Before merge {} discovery Subscription(s) in cache", subscriptionConfig.getSubscriptions().size());
-                subscriptionConfig.mergeDiscoverySubscriptions(discoveryMap.get(true));
+                subscriptionInitializer.runWithInitLock(() -> subscriptionConfig.mergeDiscoverySubscriptions(discoveryMap.get(true)));
                 log.info("After merge {} discovery Subscription(s) in cache", subscriptionConfig.getSubscriptions().size());
             }
             log.info("After merge {} Discovery Subscription(s) in cache",
