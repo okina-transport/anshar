@@ -117,11 +117,11 @@ public class DiscoverySubscriptionCreator {
 
         if (CollectionUtils.isNotEmpty(referenceList)) {
             List<SubscriptionSetup> subscriptionsToStart = createSubscriptionsSetups(referenceList, discoveryParams);
-            subscriptionConfig.getSubscriptions().addAll(subscriptionsToStart);
+            subscriptionInitializer.addSubscriptionsAndCreate(subscriptionsToStart);
         } else {
             logger.error("Discovery response received but no points found in response. id : {}", discoveryParams.getSubscriptionIdBase());
+            subscriptionInitializer.createSubscriptions();
         }
-        subscriptionInitializer.createSubscriptions();
     }
 
     public List<SubscriptionSetup> createSubscriptionsSetups(List<String> referenceList, DiscoverySubscription discoveryParams) {
@@ -155,7 +155,9 @@ public class DiscoverySubscriptionCreator {
             }
 
         }
-        results.add(currentSubscription);
+        if (currentNbOfMonitoredRef > 0) {
+            results.add(currentSubscription);
+        }
         return results;
     }
 

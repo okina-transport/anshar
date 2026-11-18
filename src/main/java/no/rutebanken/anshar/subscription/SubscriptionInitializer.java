@@ -60,6 +60,8 @@ public class SubscriptionInitializer implements CamelContextAware {
     private CamelContext camelContext;
     private ScheduledFuture<?> waitingInit;
 
+    private final Object initLock = new Object();
+
     public SubscriptionInitializer(SubscriptionManager subscriptionManager, SubscriptionConfig subscriptionConfig,
                                    SiriHandler handler, AnsharConfiguration configuration, DiscoveryCache discoveryCache,
                                    PrometheusMetricsService metrics, IncomingDataHealthService incomingDataHealthService,
@@ -92,9 +94,27 @@ public class SubscriptionInitializer implements CamelContextAware {
         logger.info("Triggered Camel shutdown");
     }
 
+    public void runWithInitLock(Runnable configUpdate) {
+        synchronized (initLock) {
+            configUpdate.run();
+        }
+    }
+
+    void addSubscriptionsAndCreate(List<SubscriptionSetup> subscriptionsToAdd) {
+        synchronized (initLock) {
+            subscriptionConfig.addSubscriptions(subscriptionsToAdd);
+            doCreateSubscriptions();
+        }
+    }
+
     @PostConstruct
     void createSubscriptions() {
+        synchronized (initLock) {
+            doCreateSubscriptions();
+        }
+    }
 
+    private void doCreateSubscriptions() {
 
         if (isWaitingInit()) {
             logger.info("Another initialization is scheduled. Cancelling this one");
