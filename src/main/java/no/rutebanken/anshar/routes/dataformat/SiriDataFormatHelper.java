@@ -25,6 +25,12 @@ import java.util.Map;
 
 public class SiriDataFormatHelper {
 
+    private static final String XML_SIRI_NAMESPACE = "http://www.siri.org.uk/siri";
+
+    private SiriDataFormatHelper() {
+        throw new IllegalStateException();
+    }
+
     private static final HashMap<String, DataFormat> dataformats = new HashMap<>();
     private static final HashMap<String, DataFormat> threadSafeDataformats = new HashMap<>();
 
@@ -66,9 +72,9 @@ public class SiriDataFormatHelper {
         }
         Map<String, String> prefixMap = new HashMap<>();
         if (prefix.startsWith("internal")) {
-            prefixMap.put("http://www.siri.org.uk/siri", "");
+            prefixMap.put(XML_SIRI_NAMESPACE, "");
         } else {
-            prefixMap.put("http://www.siri.org.uk/siri", prefix);
+            prefixMap.put(XML_SIRI_NAMESPACE, prefix);
         }
         String contextPath = "uk.org.siri.siri20";
         if (version.equals(SiriValidator.Version.VERSION_2_1)) {
@@ -84,7 +90,7 @@ public class SiriDataFormatHelper {
     }
 
     public static DataFormat getThreadSafeSiriJaxbDataformat() {
-        return getThreadSafeSiriJaxbDataformat(SiriValidator.Version.VERSION_2_0);
+        return getThreadSafeSiriJaxbDataformat(SiriValidator.Version.VERSION_2_1);
     }
 
     public static DataFormat getThreadSafeSiriJaxbDataformat(SiriValidator.Version version) {
@@ -113,9 +119,9 @@ public class SiriDataFormatHelper {
         }
         Map<String, String> prefixMap = new HashMap<>();
         if (prefix.startsWith("internal")) {
-            prefixMap.put("http://www.siri.org.uk/siri", "");
+            prefixMap.put(XML_SIRI_NAMESPACE, "");
         } else {
-            prefixMap.put("http://www.siri.org.uk/siri", prefix);
+            prefixMap.put(XML_SIRI_NAMESPACE, prefix);
         }
         String contextPath = "uk.org.siri.siri20";
         if (version.equals(SiriValidator.Version.VERSION_2_1)) {
