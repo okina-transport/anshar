@@ -21,6 +21,7 @@ public enum MappingNames {
     EXTRA_JOURNEY_TOO_FAST("ExtraJourney is reported to travel too fast between stops"),
     EXTRA_JOURNEY_INVALID_MODE("ExtraJourney mode does not match stops in use"),
     ENSURE_NON_NULL_VEHICLE_MODE("Ensure non null vehicle mode"),
+    SCHEDULED_STOP_POINT_TO_QUAY("Map ScheduledStopPoint to Quay"),
     EXTRA_JOURNEY_ID_EXISTS("ExtraJourney has ID that already exists in plan-data");
 
 

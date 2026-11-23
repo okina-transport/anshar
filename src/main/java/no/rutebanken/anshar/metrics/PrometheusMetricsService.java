@@ -122,6 +122,7 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
     private static final String OUTBOUND_FULL_DELIVERY_RESPONSES_SENT = METRICS_PREFIX + "outbound.full.delivery.responses.sent";
     private static final String OUTBOUND_INITIAL_DELIVERIES_SENT = METRICS_PREFIX + "outbound.initial.deliveries.sent";
     private static final String INBOUND_TO_OUTBOUND_QUEUE_TIME = METRICS_PREFIX + "data.inbound.to.outbound.queue.time";
+    private static final String SSP_TO_QUAY_LOOKUP = METRICS_PREFIX + "data.ssp.to.quay.lookup";
 
     final Map<String, Integer> nbOfOutboundPushByRequestor = new HashMap<>();
     final Map<String, Long> totalPushTimeByRequestor = new HashMap<>();
@@ -308,6 +309,23 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry implements
         counterTags.add(new ImmutableTag(DATATYPE_TAG_NAME, dataType != null ? dataType.name() : "emptyDataType"));
         counterTags.add(new ImmutableTag(DATASET_TAG_NAME, StringUtils.isEmpty(datasetId) ? "emptyDatasetId" : datasetId));
         counter(metricName, counterTags).increment(1);
+    }
+
+    /**
+     * Comptabilise les recherches de ScheduledStopPoint dans le cache SSP -> Quay
+     *
+     * @param datasetId    id du dataset
+     * @param foundCount   nombre de ScheduledStopPoint pour lesquels un Quay a été trouvé
+     * @param unknownCount nombre de ScheduledStopPoint inconnus du cache
+     */
+    public void registerScheduledStopPointLookup(String datasetId, int foundCount, int unknownCount) {
+        String dataset = StringUtils.isEmpty(datasetId) ? "emptyDatasetId" : datasetId;
+        if (foundCount > 0) {
+            counter(SSP_TO_QUAY_LOOKUP, List.of(new ImmutableTag(DATASET_TAG_NAME, dataset), new ImmutableTag(STATUS_TAG_NAME, "found"))).increment(foundCount);
+        }
+        if (unknownCount > 0) {
+            counter(SSP_TO_QUAY_LOOKUP, List.of(new ImmutableTag(DATASET_TAG_NAME, dataset), new ImmutableTag(STATUS_TAG_NAME, "unknown"))).increment(unknownCount);
+        }
     }
 
     public void registerAdaptIncreaseTime() {
