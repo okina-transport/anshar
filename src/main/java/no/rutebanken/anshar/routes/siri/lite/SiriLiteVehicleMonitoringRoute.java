@@ -56,7 +56,7 @@ public class SiriLiteVehicleMonitoringRoute extends RestRouteBuilder {
 
         from("direct:internal.anshar.rest.vm")
                 .log("RequestTracer - Incoming request (VM)")
-                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true")
+                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true&level=DEBUG")
                 .choice()
                 .when(e -> isTrackingHeaderAcceptable(e))
                 .process(p -> {
@@ -100,7 +100,7 @@ public class SiriLiteVehicleMonitoringRoute extends RestRouteBuilder {
 
         from("direct:internal.anshar.rest.vm.cached")
                 .log("RequestTracer - Incoming request (VM)")
-                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true")
+                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true&level=DEBUG")
                 .choice()
                 .when(e -> isTrackingHeaderAcceptable(e))
                 .process(p -> {

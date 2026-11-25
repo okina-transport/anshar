@@ -50,7 +50,7 @@ public class SiriLiteFacilityMonitoringRoute extends RestRouteBuilder {
 
         from("direct:internal.anshar.rest.fm")
                 .log("RequestTracer - Incoming request (FM)")
-                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true")
+                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true&level=DEBUG")
                 .choice()
                 .when(e -> isTrackingHeaderAcceptable(e))
                 .process(p -> {

@@ -57,7 +57,7 @@ public class SiriLiteStopMonitoringRoute extends RestRouteBuilder {
 
         from("direct:internal.anshar.rest.sm")
                 .log("RequestTracer - Incoming request (SM)")
-                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true")
+                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true&level=DEBUG")
                 .choice()
                 .when(e -> isTrackingHeaderAcceptable(e))
                 .process(p -> {

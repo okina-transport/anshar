@@ -55,7 +55,7 @@ public class SiriLiteEstimatedTimetableRoute extends RestRouteBuilder {
 
         from("direct:internal.anshar.rest.et")
                 .log("RequestTracer - Incoming request (ET)")
-                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true")
+                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true&level=DEBUG")
                 .choice()
                 .when(e -> isTrackingHeaderAcceptable(e))
                 .process(p -> {
@@ -110,7 +110,7 @@ public class SiriLiteEstimatedTimetableRoute extends RestRouteBuilder {
 
         from("direct:internal.anshar.rest.et.monitored")
                 .log("RequestTracer - Incoming request (ET)")
-                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true")
+                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true&level=DEBUG")
                 .choice()
                 .when(e -> isTrackingHeaderAcceptable(e))
                 .process(p -> {
@@ -142,7 +142,7 @@ public class SiriLiteEstimatedTimetableRoute extends RestRouteBuilder {
 
         from("direct:internal.anshar.rest.et.cached")
                 .log("RequestTracer - Incoming request (ET)")
-                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true")
+                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true&level=DEBUG")
                 .choice()
                 .when(e -> isTrackingHeaderAcceptable(e))
                 .process(p -> {
@@ -180,7 +180,7 @@ public class SiriLiteEstimatedTimetableRoute extends RestRouteBuilder {
 
         from("direct:internal.anshar.rest.et.monitored.cached")
                 .log("RequestTracer - Incoming request (ET)")
-                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true")
+                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true&level=DEBUG")
                 .choice()
                 .when(e -> isTrackingHeaderAcceptable(e))
                 .process(p -> {

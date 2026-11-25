@@ -29,6 +29,7 @@ import no.rutebanken.anshar.routes.siri.handlers.inbound.*;
 import no.rutebanken.anshar.routes.siri.handlers.outbound.*;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
 import no.rutebanken.anshar.routes.siri.helpers.StopMonitoringServiceDeliveryParameter;
+import no.rutebanken.anshar.routes.siri.helpers.SubscriptionRequestLogFormatter;
 import no.rutebanken.anshar.routes.siri.processor.FacilityRefPostProcessor;
 import no.rutebanken.anshar.routes.siri.processor.GmFilterPublishingActionPostProcessor;
 import no.rutebanken.anshar.routes.siri.processor.GmSIVSicAQuayPostProcessor;
@@ -278,7 +279,10 @@ public class SiriHandler {
 
         Siri results;
         if (incoming.getSubscriptionRequest() != null) {
-            logger.info("Handling subscriptionrequest with ID-policy {}.", outboundIdMappingPolicy);
+            if (logger.isInfoEnabled()) {
+                logger.info("Handling subscriptionrequest with ID-policy {}: {}", outboundIdMappingPolicy,
+                        SubscriptionRequestLogFormatter.summarize(incoming.getSubscriptionRequest()));
+            }
 
             if (!ansharConfiguration.isInitialized()) {
                 return generateServerIsIntializingError(incoming);

@@ -55,7 +55,7 @@ public class SiriLiteSituationExchangeRoute extends RestRouteBuilder {
 
         from("direct:internal.anshar.rest.sx")
                 .log("RequestTracer - Incoming request (SX)")
-                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true")
+                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true&level=DEBUG")
                 .choice()
                 .when(e -> isTrackingHeaderAcceptable(e))
                 .process(p -> {
@@ -92,7 +92,7 @@ public class SiriLiteSituationExchangeRoute extends RestRouteBuilder {
 
         from("direct:internal.anshar.rest.sx.cached")
                 .log("RequestTracer - Incoming request (SX)")
-                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true")
+                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true&level=DEBUG")
                 .choice()
                 .when(e -> isTrackingHeaderAcceptable(e))
                 .process(p -> {

@@ -50,7 +50,7 @@ public class SiriLiteGeneralMessageRoute extends RestRouteBuilder {
 
         from("direct:internal.anshar.rest.gm")
                 .log("RequestTracer - Incoming request (GM)")
-                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true")
+                .to("log:restRequest:" + getClass().getSimpleName() + "?showAll=false&showHeaders=true&level=DEBUG")
                 .choice()
                 .when(e -> isTrackingHeaderAcceptable(e))
                 .process(p -> {
