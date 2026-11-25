@@ -94,13 +94,13 @@ public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
                 .setExchangePattern(ExchangePattern.InOut)
                 .setBody(e -> subscriptionSetup)
                 .to("direct:siri.20.to.siri.rs.20.subscription.preprocess")
-                .to("log:sent request:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .to("log:sent request:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .setHeader(RECORDED_SUBSCRIPTION_HEADER_NAME, simple(subscriptionSetup.getSubscriptionId()))
                 .setHeader(RECORDED_SUBSCRIPTION_ACTION, simple(RECORDED_SUBSCRIPTION_ACTION_SUBSCRIBE))
                 .wireTap("direct:recordRequest")
                 .doTry()
                 .to(getCamelUrl(urlMap.get(RequestType.SUBSCRIBE), getTimeout()))
-                .to("log:received response:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .to("log:received response:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .process(p -> {
 
                     String responseCode = p.getIn().getHeader(PARAM_RESPONSE_CODE, String.class);
@@ -139,13 +139,13 @@ public class Siri20ToSiriRS20Subscription extends SiriSubscriptionRouteBuilder {
                 .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
                 .setHeader(Exchange.HTTP_METHOD, constant(HttpMethods.POST))
                 .process(addCustomHeaders())
-                .to("log:sent request:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .to("log:sent request:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .setHeader(RECORDED_SUBSCRIPTION_HEADER_NAME, simple(subscriptionSetup.getSubscriptionId()))
                 .setHeader(RECORDED_SUBSCRIPTION_ACTION, constant(RECORDED_SUBSCRIPTION_ACTION_TERMINATE))
                 .wireTap("direct:recordRequest")
                 .to(getCamelUrl(urlMap.get(RequestType.DELETE_SUBSCRIPTION), getTimeout()))
                 .wireTap("direct:recordResponse")
-                .to("log:received response:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .to("log:received response:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .process(exchange -> {
                     InputStream body = exchange.getIn().getBody(InputStream.class);
                     if (body != null && body.available() > 0) {

@@ -83,7 +83,7 @@ public class Siri20ToSiriWS14RequestResponse extends SiriSubscriptionRouteBuilde
                 .setBody(e -> subscriptionSetup)
                 .to("direct:siri.20.to.siri.ws.14.request-response.preprocess")
                 .log("Retrieving data " + subscriptionSetup.toString())
-                .to("log:request:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .to("log:request:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .doTry()
                 .to(getCamelRequestUrl(subscriptionSetup, httpOptions))
                 .process(InboundTimeProcessor::setInboundTime)

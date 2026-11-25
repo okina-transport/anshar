@@ -29,6 +29,7 @@ import no.rutebanken.anshar.routes.dataformat.SiriDataFormatHelper;
 import no.rutebanken.anshar.routes.outbound.model.CompressionFormat;
 import no.rutebanken.anshar.routes.siri.handlers.SiriHandler;
 import no.rutebanken.anshar.routes.siri.helpers.SiriObjectFactory;
+import no.rutebanken.anshar.routes.siri.helpers.SubscriptionResponseLogFormatter;
 import no.rutebanken.anshar.subscription.OAuthConfigElement;
 import no.rutebanken.anshar.subscription.SiriDataType;
 import no.rutebanken.anshar.subscription.SubscriptionManager;
@@ -340,7 +341,8 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                 .to("direct:process.subscription.request");
 
         from("direct:process.subscription.request")
-                .to("log:subRequest:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true")
+                .to("log:subRequest:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true" +
+                        "&level=DEBUG")
                 .choice()
                 .when(e -> isTrackingHeaderBlocked(e))
                 .to("direct:anshar.blocked.tracking.header.response")
@@ -401,7 +403,9 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
 
                     Siri response = handler.handleIncomingSiri(incomingSiriParameters);
                     if (response != null) {
-                        logger.info("Returning SubscriptionResponse");
+                        if (logger.isInfoEnabled()){
+                            logger.info("Returning {}", SubscriptionResponseLogFormatter.summarize(response));
+                        }
 
                         p.getOut().setBody(response);
                     }
@@ -422,7 +426,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
                     e.getIn().setHeader(Exchange.CONTENT_TYPE,MediaType.TEXT_XML);
                 })
                 .end()
-                .to("log:subResponse:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .to("log:subResponse:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
         ;
 
 
@@ -571,7 +575,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
         ;
 
         from("direct:internal.process.service.request.cache")
-                .to("log:serRequest:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true")
+                .to("log:serRequest:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true&level=DEBUG")
                 .process(p -> {
                     Message msg = p.getIn();
 
@@ -586,7 +590,7 @@ public class Siri20RequestHandlerRoute extends RestRouteBuilder implements Camel
 
                     streamOutput(p, response, out);
                 })
-                .to("log:serResponse:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true")
+                .to("log:serResponse:" + getClass().getSimpleName() + "?showAll=true&multiline=true&showStreams=true&level=DEBUG")
                 .routeId("process.service.cache")
         ;
 

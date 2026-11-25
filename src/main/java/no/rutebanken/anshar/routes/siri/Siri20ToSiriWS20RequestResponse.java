@@ -80,12 +80,9 @@ public class Siri20ToSiriWS20RequestResponse extends SiriSubscriptionRouteBuilde
                 .setExchangePattern(ExchangePattern.InOut) // Make sure we wait for a response
                 .setBody(e -> subscriptionSetup)
                 .to("direct:siri.20.to.siri.ws.20.request-response.preprocess")
-                //   .to("log:request:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .to(getCamelRequestUrl(subscriptionSetup, httpOptions))
                 .process(InboundTimeProcessor::setInboundTime)
-                //  .to("log:response:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
                 .setHeader("CamelHttpPath", constant("/appContext" + subscriptionSetup.buildUrl(false)))
-                //    .log("Got response " + subscriptionSetup.toString())
                 .setHeader(TRANSFORM_SOAP, constant(TRANSFORM_SOAP))
                 .setHeader(PARAM_SUBSCRIPTION_ID, simple(subscriptionSetup.getSubscriptionId()))
                 .setHeader(INTERNAL_SIRI_DATA_TYPE, simple(subscriptionSetup.getSubscriptionType().name()))

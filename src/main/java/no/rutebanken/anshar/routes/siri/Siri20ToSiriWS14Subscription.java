@@ -72,14 +72,14 @@ public class Siri20ToSiriWS14Subscription extends SiriSubscriptionRouteBuilder {
                 .process(p -> {
                     logger.debug("Subscription request content:" + p.getIn().getBody());
                 })
-                .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .setHeader(RECORDED_SUBSCRIPTION_HEADER_NAME, simple(subscriptionSetup.getSubscriptionId()))
                 .setHeader(RECORDED_SUBSCRIPTION_ACTION, simple(RECORDED_SUBSCRIPTION_ACTION_SUBSCRIBE))
                 .wireTap("direct:recordRequest")
                 .doTry()
                 .to(getCamelUrl(urlMap.get(RequestType.SUBSCRIBE), getTimeout()))
 
-                .to("log:received response:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .to("log:received response:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .doCatch(ConnectException.class)
                 .log("Caught ConnectException - subscription not started - will try again: " + subscriptionSetup.toString())
                 .process(p -> p.getOut().setBody(null))
@@ -88,7 +88,7 @@ public class Siri20ToSiriWS14Subscription extends SiriSubscriptionRouteBuilder {
                 .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false") // Extract SOAP version and convert to raw SIRI
                 .to("xslt-saxon:xsl/siri_14_20.xsl?allowStAX=false") // Convert from v1.4 to 2.0
                 .end()
-                .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .process(p -> {
 
                     String responseCode = p.getIn().getHeader(PARAM_RESPONSE_CODE, String.class);
@@ -129,7 +129,7 @@ public class Siri20ToSiriWS14Subscription extends SiriSubscriptionRouteBuilder {
                 .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
                 .setHeader(Exchange.HTTP_METHOD, constant(org.apache.camel.component.http.HttpMethods.POST))
                 .process(addCustomHeaders())
-                .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .setHeader(RECORDED_SUBSCRIPTION_HEADER_NAME, simple(subscriptionSetup.getSubscriptionId()))
                 .setHeader(RECORDED_SUBSCRIPTION_ACTION, constant(RECORDED_SUBSCRIPTION_ACTION_TERMINATE))
                 .wireTap("direct:recordRequest")
@@ -139,7 +139,7 @@ public class Siri20ToSiriWS14Subscription extends SiriSubscriptionRouteBuilder {
                 .to("xslt-saxon:xsl/siri_soap_raw.xsl?allowStAX=false") // Extract SOAP version and convert to raw SIRI
                 .to("xslt-saxon:xsl/siri_14_20.xsl?allowStAX=false") // Convert from v1.4 to 2.0
                 .end()
-                .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .process(p -> {
                     InputStream body = p.getIn().getBody(InputStream.class);
                     logger.debug("Response body [{}]", body);

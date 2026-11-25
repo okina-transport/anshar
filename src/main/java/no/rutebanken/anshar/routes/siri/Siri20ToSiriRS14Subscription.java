@@ -65,13 +65,13 @@ public class Siri20ToSiriRS14Subscription extends SiriSubscriptionRouteBuilder {
                 .process(p -> {
                     logger.debug("Subscription request content:" + p.getIn().getBody());
                 })
-                .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .setHeader(RECORDED_SUBSCRIPTION_HEADER_NAME, simple(subscriptionSetup.getSubscriptionId()))
                 .setHeader(RECORDED_SUBSCRIPTION_ACTION, simple(RECORDED_SUBSCRIPTION_ACTION_SUBSCRIBE))
                 .wireTap("direct:recordRequest")
                 .doTry()
                 .to(getCamelUrl(urlMap.get(RequestType.SUBSCRIBE), getTimeout()))
-                .to("log:received response:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .to("log:received response:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .doCatch(ConnectException.class)
                 .log("Caught ConnectException - subscription not started - will try again: " + subscriptionSetup.toString())
                 .process(p -> p.getOut().setBody(null))
@@ -103,7 +103,7 @@ public class Siri20ToSiriRS14Subscription extends SiriSubscriptionRouteBuilder {
                 .setHeader("SOAPAction", constant("DeleteSubscription")) // set SOAPAction Header (Microsoft requirement)
                 .setHeader("operatorNamespace", constant(subscriptionSetup.getOperatorNamespace())) // Need to make SOAP request with endpoint specific element namespace
                 .to("xslt-saxon:xsl/siri_20_14.xsl") // Convert from SIRI 2.0 to SIRI 1.4
-                .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .to("log:sent:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .removeHeaders("CamelHttp*") // Remove any incoming HTTP headers as they interfere with the outgoing definition
                 .setHeader(Exchange.CONTENT_TYPE, constant(subscriptionSetup.getContentType())) // Necessary when talking to Microsoft web services
                 .setHeader(Exchange.HTTP_METHOD, constant(org.apache.camel.component.http.HttpMethods.POST))
@@ -113,7 +113,7 @@ public class Siri20ToSiriRS14Subscription extends SiriSubscriptionRouteBuilder {
                 .wireTap("direct:recordRequest")
                 .to(getCamelUrl(urlMap.get(RequestType.DELETE_SUBSCRIPTION), getTimeout()))
                 .wireTap("direct:recordResponse")
-                .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true")
+                .to("log:received:" + getClass().getSimpleName() + "?showAll=true&multiline=true&level=DEBUG")
                 .process(p -> {
                     InputStream body = p.getIn().getBody(InputStream.class);
                     logger.debug("Response body [{}]", body);
