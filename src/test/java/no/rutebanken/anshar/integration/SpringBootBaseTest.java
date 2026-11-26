@@ -24,11 +24,17 @@ public abstract class SpringBootBaseTest {
                     .withEnv("ARTEMIS_USERNAME", "admin")
                     .withEnv("ARTEMIS_PASSWORD", "admin");
 
+    // dedicated Redis : tests must never read / write the developer's Redis (discovery cache is cleared by tests)
+    static final GenericContainer<?> redis =
+            new GenericContainer<>("redis:6.2")
+                    .withExposedPorts(6379);
+
     static final ClientAndServer mockServerIshtarKeycloakOkina
             = startClientAndServer(findFreePort());
 
     static {
         artemis.start();
+        redis.start();
 
         for (String path : new String[]{
                 "/siri-apis/all",
@@ -59,6 +65,8 @@ public abstract class SpringBootBaseTest {
     static void registerProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.activemq.broker-url",
                 () -> "tcp://" + artemis.getHost() + ":" + artemis.getMappedPort(61616));
+        registry.add("spring.redis.host", redis::getHost);
+        registry.add("spring.redis.port", () -> redis.getMappedPort(6379));
         registry.add("ishtar.server.url",
                 () -> "http://localhost:" + mockServerIshtarKeycloakOkina.getLocalPort());
         registry.add("keycloak.auth-server-url",
