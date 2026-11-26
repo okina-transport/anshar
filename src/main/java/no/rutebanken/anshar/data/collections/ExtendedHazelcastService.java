@@ -212,16 +212,6 @@ public class ExtendedHazelcastService extends HazelCastService {
 
 
     @Bean
-    public IMap<String, Set<String>> getDiscoveryStops() {
-        return hazelcast.getMap("anshar.discovery.stops");
-    }
-
-    @Bean
-    public IMap<String, Set<String>> getDiscoveryLines() {
-        return hazelcast.getMap("anshar.discovery.lines");
-    }
-
-    @Bean
     public IMap<SiriObjectStorageKey, GeneralMessage> getGeneralMessages() {
         return hazelcast.getMap("anshar.gm");
     }
