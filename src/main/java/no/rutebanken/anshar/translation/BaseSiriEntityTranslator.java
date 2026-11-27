@@ -58,7 +58,14 @@ public abstract class BaseSiriEntityTranslator<T> implements SiriEntityTranslato
         }
 
         for (TranslationService.TranslationDto translation : translations.byLanguage().values()) {
-            if (target.stream().anyMatch(existing -> translation.language().equalsIgnoreCase(existing.getLang()))) {
+            Optional<NaturalLanguageStringStructure> existingInLanguage = target.stream()
+                    .filter(existing -> translation.language().equalsIgnoreCase(existing.getLang()))
+                    .findFirst();
+            if (existingInLanguage.isPresent()) {
+                // a name sent without value (e.g. <DestinationName/>) is filled with the translation
+                if (StringUtils.isBlank(existingInLanguage.get().getValue())) {
+                    existingInLanguage.get().setValue(translation.value());
+                }
                 continue;
             }
             NaturalLanguageStringStructure translatedName = new NaturalLanguageStringStructure();
@@ -81,7 +88,14 @@ public abstract class BaseSiriEntityTranslator<T> implements SiriEntityTranslato
         }
 
         for (TranslationService.TranslationDto translation : translations.byLanguage().values()) {
-            if (target.stream().anyMatch(existing -> translation.language().equalsIgnoreCase(existing.getLang()))) {
+            Optional<NaturalLanguagePlaceNameStructure> existingInLanguage = target.stream()
+                    .filter(existing -> translation.language().equalsIgnoreCase(existing.getLang()))
+                    .findFirst();
+            if (existingInLanguage.isPresent()) {
+                // a name sent without value (e.g. <OriginName/>) is filled with the translation
+                if (StringUtils.isBlank(existingInLanguage.get().getValue())) {
+                    existingInLanguage.get().setValue(translation.value());
+                }
                 continue;
             }
             NaturalLanguagePlaceNameStructure translatedName = new NaturalLanguagePlaceNameStructure();
