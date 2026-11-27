@@ -19,12 +19,14 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import uk.org.siri.siri21.MonitoredStopVisit;
 import uk.org.siri.siri21.MonitoredStopVisitCancellation;
 import uk.org.siri.siri21.Siri;
 import uk.org.siri.siri21.StopMonitoringDeliveryStructure;
 
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -48,6 +50,8 @@ public class StopMonitoringInbound {
     private PrometheusMetricsService metrics;
     @Autowired
     private KafkaConfig kafkaConfig;
+    @Value("${anshar.inbound.sm.imminent.departure.proximity.text.enabled:false}")
+    private boolean imminentDepartureProximityTextEnabled;
 
     public boolean ingestStopVisitFromApi(SiriDataType dataFormat, String dataSetId, Siri incoming, List<SubscriptionSetup> subscriptionSetupList, Long inboundTime) {
         // logger.debug("Got SM-delivery: Subscription [{}] {}", subscriptionSetupList);
@@ -70,6 +74,7 @@ public class StopMonitoringInbound {
                             } else {
                                 if (sm.getMonitoredStopVisits() != null) {
                                     updateStopMonitoringItemIdentifier(sm.getMonitoredStopVisits());
+                                    applyImminentDepartureProximityText(sm.getMonitoredStopVisits());
                                     addedOrUpdated.addAll(
                                             monitoredStopVisits.addAll(dataSetId, sm.getMonitoredStopVisits()));
                                 }
@@ -142,6 +147,7 @@ public class StopMonitoringInbound {
                                 }
                             } else {
                                 if (sm.getMonitoredStopVisits() != null && !sm.getMonitoredStopVisits().isEmpty()) {
+                                    applyImminentDepartureProximityText(sm.getMonitoredStopVisits());
                                     addedOrUpdated.addAll(ingestStopVisits(subscriptionSetup.getDatasetId(), sm.getMonitoredStopVisits(), inboundTime));
                                 }
                                 if (sm.getMonitoredStopVisitCancellations() != null && !sm.getMonitoredStopVisitCancellations().isEmpty()) {
@@ -158,6 +164,12 @@ public class StopMonitoringInbound {
         // logger.debug("Active SM-elements: {}, current delivery: {}, {}", monitoredStopVisits.getSize(), addedOrUpdated.size(), subscriptionSetup);
 
         return !addedOrUpdated.isEmpty();
+    }
+
+    private void applyImminentDepartureProximityText(List<MonitoredStopVisit> stopVisits) {
+        if (imminentDepartureProximityTextEnabled) {
+            StopMonitoringUtils.setImminentDepartureProximityText(stopVisits, ZonedDateTime.now());
+        }
     }
 
     private void recordDeltaTimes(String datasetId, List<MonitoredStopVisit> smList) {
