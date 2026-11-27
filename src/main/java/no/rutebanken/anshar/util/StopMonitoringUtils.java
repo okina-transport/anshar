@@ -6,7 +6,9 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import uk.org.siri.siri21.*;
 
+import java.time.Duration;
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Comparator;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -14,7 +16,37 @@ import java.util.stream.Collectors;
 @Slf4j
 public class StopMonitoringUtils {
 
+    public static final String IMMINENT_DEPARTURE_TEXT = "Départ proche";
+    public static final Duration IMMINENT_DEPARTURE_THRESHOLD = Duration.ofSeconds(60);
+
     private StopMonitoringUtils() {
+    }
+
+    /**
+     * Sets ArrivalProximityText to "Départ proche" on each visit whose expected time at stop
+     * (ExpectedArrivalTime, or ExpectedDepartureTime when ExpectedArrivalTime is null)
+     * is strictly in the future and less than {@link #IMMINENT_DEPARTURE_THRESHOLD} after {@code now}.
+     */
+    public static void setImminentDepartureProximityText(List<MonitoredStopVisit> stopVisits, ZonedDateTime now) {
+        if (CollectionUtils.isEmpty(stopVisits)) {
+            return;
+        }
+        ZonedDateTime limit = now.plus(IMMINENT_DEPARTURE_THRESHOLD);
+        for (MonitoredStopVisit stopVisit : stopVisits) {
+            if (stopVisit == null || stopVisit.getMonitoredVehicleJourney() == null) {
+                continue;
+            }
+            MonitoredCallStructure call = stopVisit.getMonitoredVehicleJourney().getMonitoredCall();
+            if (call == null) {
+                continue;
+            }
+            ZonedDateTime expectedTime = call.getExpectedArrivalTime() != null ? call.getExpectedArrivalTime() : call.getExpectedDepartureTime();
+            if (expectedTime != null && expectedTime.isAfter(now) && expectedTime.isBefore(limit)) {
+                NaturalLanguageStringStructure text = new NaturalLanguageStringStructure();
+                text.setValue(IMMINENT_DEPARTURE_TEXT);
+                call.setArrivalProximityText(text);
+            }
+        }
     }
 
     public static boolean isMonitored(MonitoredStopVisit stopVisit) {
