@@ -1,8 +1,10 @@
 package no.rutebanken.anshar.translation;
 
+import no.rutebanken.anshar.config.IdProcessingParameters;
 import no.rutebanken.anshar.config.ObjectType;
 import no.rutebanken.anshar.routes.mapping.StopPlaceUpdaterService;
 import no.rutebanken.anshar.routes.mapping.TranslationService;
+import no.rutebanken.anshar.subscription.SubscriptionConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import uk.org.siri.siri21.*;
@@ -12,6 +14,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -21,13 +24,115 @@ class MonitoredStopVisitTranslatorTest {
     private static final String DATASET_ID = "TST";
 
     private TranslationService translationService;
+    private SubscriptionConfig subscriptionConfig;
     private MonitoredStopVisitTranslator translator;
 
     @BeforeEach
     void setUp() {
         translationService = mock(TranslationService.class);
+        subscriptionConfig = mock(SubscriptionConfig.class);
+        when(subscriptionConfig.getIdParametersForDataset(anyString(), any())).thenReturn(Optional.empty());
 
-        translator = new MonitoredStopVisitTranslator(translationService, mock(StopPlaceUpdaterService.class));
+        translator = new MonitoredStopVisitTranslator(translationService, mock(StopPlaceUpdaterService.class), subscriptionConfig);
+    }
+
+    @Test
+    void stopIdsArePrefixAndSuffixStrippedWithStopIdProcessingParameters() {
+        IdProcessingParameters stopParameters = new IdProcessingParameters();
+        stopParameters.setDatasetId(DATASET_ID);
+        stopParameters.setObjectType(ObjectType.STOP);
+        stopParameters.setInputPrefixToRemove("0:");
+        stopParameters.setInputSuffixToRemove(":LOC");
+        when(subscriptionConfig.getIdParametersForDataset(DATASET_ID, ObjectType.STOP)).thenReturn(Optional.of(stopParameters));
+
+        when(translationService.getTranslationsByDatasetIdAndObjectTypeAndOriginalId(DATASET_ID, ObjectType.STOP, "PRSON", "stopName"))
+                .thenReturn(List.of(new TranslationService.TranslationDto("fr-FR", "PR Sonnaz")));
+        when(translationService.getTranslationsByDatasetIdAndObjectTypeAndOriginalId(DATASET_ID, ObjectType.STOP, "ROCNO1", "stopName"))
+                .thenReturn(List.of(new TranslationService.TranslationDto("fr-FR", "Roc Noir")));
+        when(translationService.getTranslationsByDatasetIdAndObjectTypeAndOriginalId(DATASET_ID, ObjectType.STOP, "CEVEN2", "stopName"))
+                .thenReturn(List.of(new TranslationService.TranslationDto("fr-FR", "Cévennes")));
+
+        MonitoredStopVisit visit = createVisit(null, "0:PRSON", null, "0:CEVEN2:LOC");
+        JourneyPlaceRefStructure originRef = new JourneyPlaceRefStructure();
+        originRef.setValue("0:ROCNO1");
+        getVehicleJourney(visit).setOriginRef(originRef);
+        getVehicleJourney(visit).setMonitoredCall(new MonitoredCallStructure());
+
+        translator.handleTranslations(visit, DATASET_ID);
+
+        assertThat(getVehicleJourney(visit).getDestinationNames()).extracting(NaturalLanguageStringStructure::getValue).containsExactly("PR Sonnaz");
+        assertThat(getVehicleJourney(visit).getOriginNames()).extracting(NaturalLanguagePlaceNameStructure::getValue).containsExactly("Roc Noir");
+        assertThat(getVehicleJourney(visit).getMonitoredCall().getStopPointNames()).extracting(NaturalLanguageStringStructure::getValue).containsExactly("Cévennes");
+        assertThat(getVehicleJourney(visit).getMonitoredCall().getDestinationDisplaies()).extracting(NaturalLanguageStringStructure::getValue).containsExactly("PR Sonnaz");
+        // stored ids are left untouched
+        assertThat(getVehicleJourney(visit).getDestinationRef().getValue()).isEqualTo("0:PRSON");
+    }
+
+    @Test
+    void emptyNameSentByProducerIsFilledWithDefaultTranslation() {
+        // real case (CHAMBERY GTFS-RT) : DestinationRef "0:PRSON", empty <DestinationName/> and <OriginName/>,
+        // default translations in fr-FR referenced without the "0:" prefix
+        IdProcessingParameters stopParameters = new IdProcessingParameters();
+        stopParameters.setDatasetId(DATASET_ID);
+        stopParameters.setObjectType(ObjectType.STOP);
+        stopParameters.setInputPrefixToRemove("0:");
+        when(subscriptionConfig.getIdParametersForDataset(DATASET_ID, ObjectType.STOP)).thenReturn(Optional.of(stopParameters));
+        when(translationService.getDefaultTranslationsByDatasetIdAndObjectTypeAndOriginalId(DATASET_ID, ObjectType.STOP, "PRSON", "stopName"))
+                .thenReturn(Optional.of(new TranslationService.TranslationDto("fr-FR", "PR Sonnaz")));
+        when(translationService.getDefaultTranslationsByDatasetIdAndObjectTypeAndOriginalId(DATASET_ID, ObjectType.STOP, "ROCNO1", "stopName"))
+                .thenReturn(Optional.of(new TranslationService.TranslationDto("fr-FR", "Roc Noir")));
+
+        MonitoredStopVisit visit = createVisit(null, "0:PRSON", null, null);
+        getVehicleJourney(visit).getDestinationNames().add(new NaturalLanguageStringStructure());
+        JourneyPlaceRefStructure originRef = new JourneyPlaceRefStructure();
+        originRef.setValue("0:ROCNO1");
+        getVehicleJourney(visit).setOriginRef(originRef);
+        getVehicleJourney(visit).getOriginNames().add(new NaturalLanguagePlaceNameStructure());
+
+        translator.handleTranslations(visit, DATASET_ID);
+
+        List<NaturalLanguageStringStructure> destinationNames = getVehicleJourney(visit).getDestinationNames();
+        assertThat(destinationNames).hasSize(1);
+        assertThat(destinationNames.getFirst().getLang()).isEqualTo("fr-FR");
+        assertThat(destinationNames.getFirst().getValue()).isEqualTo("PR Sonnaz");
+
+        List<NaturalLanguagePlaceNameStructure> originNames = getVehicleJourney(visit).getOriginNames();
+        assertThat(originNames).hasSize(1);
+        assertThat(originNames.getFirst().getLang()).isEqualTo("fr-FR");
+        assertThat(originNames.getFirst().getValue()).isEqualTo("Roc Noir");
+    }
+
+    @Test
+    void emptyNameWithSameLanguageIsFilledButNonEmptyNameIsKept() {
+        when(translationService.getTranslationsByDatasetIdAndObjectTypeAndOriginalId(DATASET_ID, ObjectType.STOP, "STOP1", "stopName"))
+                .thenReturn(List.of(new TranslationService.TranslationDto("fr", "Arrêt un"),
+                        new TranslationService.TranslationDto("en", "Stop one")));
+
+        MonitoredStopVisit visit = createVisit(null, "STOP1", null, null);
+        NaturalLanguageStringStructure emptyFr = new NaturalLanguageStringStructure();
+        emptyFr.setLang("fr");
+        NaturalLanguageStringStructure producerEn = new NaturalLanguageStringStructure();
+        producerEn.setLang("en");
+        producerEn.setValue("Producer name");
+        getVehicleJourney(visit).getDestinationNames().addAll(List.of(emptyFr, producerEn));
+
+        translator.handleTranslations(visit, DATASET_ID);
+
+        assertThat(getVehicleJourney(visit).getDestinationNames())
+                .extracting(NaturalLanguageStringStructure::getLang, NaturalLanguageStringStructure::getValue)
+                .containsExactly(tuple("fr", "Arrêt un"), tuple("en", "Producer name"));
+    }
+
+    @Test
+    void stopIdsAreUsedAsIsWithoutStopIdProcessingParameters() {
+        when(translationService.getTranslationsByDatasetIdAndObjectTypeAndOriginalId(DATASET_ID, ObjectType.STOP, "0:PRSON", "stopName"))
+                .thenReturn(List.of(new TranslationService.TranslationDto("fr-FR", "PR Sonnaz")));
+
+        MonitoredStopVisit visit = createVisit(null, "0:PRSON", null, null);
+
+        translator.handleTranslations(visit, DATASET_ID);
+
+        assertThat(getVehicleJourney(visit).getDestinationNames()).extracting(NaturalLanguageStringStructure::getValue).containsExactly("PR Sonnaz");
     }
 
     @Test
